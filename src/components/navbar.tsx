@@ -138,7 +138,7 @@ export function Navbar() {
                       <button
                         onClick={() => {
                           setOpen(false);
-                          authClient
+                          void authClient
                             .signOut()
                             .then(() => window.location.reload());
                         }}
