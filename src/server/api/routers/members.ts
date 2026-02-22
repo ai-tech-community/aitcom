@@ -59,9 +59,9 @@ export const membersRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
 
       // Normalize empty strings to null for URL fields
-      const linkedinUrl = input.linkedinUrl || null;
-      const githubUrl = input.githubUrl || null;
-      const websiteUrl = input.websiteUrl || null;
+      const linkedinUrl = input.linkedinUrl === "" ? null : (input.linkedinUrl ?? null);
+      const githubUrl = input.githubUrl === "" ? null : (input.githubUrl ?? null);
+      const websiteUrl = input.websiteUrl === "" ? null : (input.websiteUrl ?? null);
 
       // Check if profile exists
       const [existing] = await ctx.db
@@ -213,8 +213,8 @@ export const membersRouter = createTRPCRouter({
       // Filter by skill in application layer (JSON column)
       const filtered = input.skill
         ? items.filter((item) =>
-            (item.profile.skills as string[]).some(
-              (s) => s.toLowerCase() === input.skill!.toLowerCase(),
+            item.profile.skills.some(
+              (s) => s.toLowerCase() === input.skill?.toLowerCase(),
             ),
           )
         : items;
