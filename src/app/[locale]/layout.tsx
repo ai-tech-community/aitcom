@@ -9,6 +9,7 @@ import { TRPCReactProvider } from "@/trpc/react";
 import { routing } from "@/i18n/routing";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "AIT Community — AI Tech Community Netherlands",
@@ -51,6 +52,7 @@ export default async function LocaleLayout({
             <Navbar />
             <main className="min-h-screen">{children}</main>
             <Footer />
+            <Toaster position="bottom-right" />
           </TRPCReactProvider>
         </NextIntlClientProvider>
       </body>
