@@ -65,20 +65,15 @@ export default async function MembersPage() {
                     className="border-border hover:bg-secondary/50 border-b transition-colors"
                   >
                     <td className="py-3 pr-4 align-top">
-                      <Link
-                        href={`/members/${member.profile.userId}`}
-                        className="block"
+                      <span
+                        className={
+                          isTopThree
+                            ? "font-medium text-foreground"
+                            : "text-muted-foreground"
+                        }
                       >
-                        <span
-                          className={
-                            isTopThree
-                              ? "font-medium text-foreground"
-                              : "text-muted-foreground"
-                          }
-                        >
-                          {rank}
-                        </span>
-                      </Link>
+                        {rank}
+                      </span>
                     </td>
                     <td className="py-3 pr-6 align-top">
                       <Link
@@ -109,46 +104,28 @@ export default async function MembersPage() {
                       </Link>
                     </td>
                     <td className="py-3 pr-6 align-top">
-                      <Link
-                        href={`/members/${member.profile.userId}`}
-                        className="block"
-                      >
-                        <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 text-[10px] tracking-wider">
-                          {t("level")} {member.profile.level}
-                        </span>
-                      </Link>
+                      <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 text-[10px] tracking-wider">
+                        {t("level")} {member.profile.level}
+                      </span>
                     </td>
                     <td className="py-3 pr-6 align-top">
-                      <Link
-                        href={`/members/${member.profile.userId}`}
-                        className="block"
+                      <span
+                        className={
+                          isTopThree
+                            ? "font-medium text-foreground"
+                            : "text-muted-foreground"
+                        }
                       >
-                        <span
-                          className={
-                            isTopThree
-                              ? "font-medium text-foreground"
-                              : "text-muted-foreground"
-                          }
-                        >
-                          {member.profile.xp}
-                        </span>
-                      </Link>
+                        {member.profile.xp}
+                      </span>
                     </td>
                     <td className="py-3 pr-6 align-top">
-                      <Link
-                        href={`/members/${member.profile.userId}`}
-                        className="block"
-                      >
-                        <span className="text-muted-foreground">
-                          {member.badgeCount > 0 ? member.badgeCount : "—"}
-                        </span>
-                      </Link>
+                      <span className="text-muted-foreground">
+                        {member.badgeCount > 0 ? member.badgeCount : "—"}
+                      </span>
                     </td>
                     <td className="py-3 align-top">
-                      <Link
-                        href={`/members/${member.profile.userId}`}
-                        className="flex flex-wrap gap-1"
-                      >
+                      <div className="flex flex-wrap gap-1">
                         {skills.length > 0 ? (
                           skills.map((skill) => (
                             <span
@@ -161,7 +138,7 @@ export default async function MembersPage() {
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
-                      </Link>
+                      </div>
                     </td>
                   </tr>
                 );

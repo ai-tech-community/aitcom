@@ -43,7 +43,7 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
       );
 
     case "heading": {
-      const tag = (node.tag ?? "h2") as React.ElementType;
+      const Tag = (node.tag ?? "h2") as keyof React.JSX.IntrinsicElements;
       const headingClass: Record<string, string> = {
         h1: "mt-8 mb-4 text-3xl font-bold tracking-tight",
         h2: "mt-8 mb-3 text-2xl font-bold tracking-tight",
@@ -52,7 +52,6 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
         h5: "mt-4 mb-2 font-semibold",
         h6: "mt-4 mb-2 font-medium text-muted-foreground",
       };
-      const Tag = tag;
       return (
         <Tag key={idx} className={headingClass[node.tag ?? "h2"]}>
           {node.children?.map((c, i) => renderNode(c, i))}
@@ -62,11 +61,14 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
 
     case "list": {
       const Tag = node.listType === "number" ? "ol" : "ul";
+      const listClass =
+        node.listType === "number"
+          ? "list-decimal"
+          : node.listType === "check"
+            ? "list-none"
+            : "list-disc";
       return (
-        <Tag
-          key={idx}
-          className={`mb-4 pl-6 ${node.listType === "number" ? "list-decimal" : "list-disc"}`}
-        >
+        <Tag key={idx} className={`mb-4 pl-6 ${listClass}`}>
           {node.children?.map((c, i) => renderNode(c, i))}
         </Tag>
       );
@@ -99,6 +101,7 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
         </pre>
       );
 
+    case "autolink":
     case "link": {
       const href = node.fields?.url ?? node.url ?? "#";
       const newTab = node.fields?.newTab ?? false;
