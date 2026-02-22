@@ -1,0 +1,92 @@
+{
+  "nav": {
+    "home": "Home",
+    "events": "Evenementen",
+    "blog": "Blog",
+    "community": "Community",
+    "members": "Leden",
+    "signIn": "Inloggen",
+    "joinUs": "Word Lid"
+  },
+  "hero": {
+    "title": "AI Tech Community Nederland",
+    "subtitle": "Engineers verbinden. Kennis delen. De toekomst bouwen.",
+    "description": "Een community voor technische innovators in Nederland. We stimuleren samenwerking door workshops, deep-dives en hackathons gericht op AI en automatisering.",
+    "cta": "Word Lid",
+    "learnMore": "Meer Informatie"
+  },
+  "features": {
+    "title": "Wat We Bieden",
+    "workshops": {
+      "title": "Workshops & Hackathons",
+      "description": "Praktische sessies waar je bouwt, leert en samenwerkt met mede-engineers aan echte AI-projecten."
+    },
+    "knowledge": {
+      "title": "Kennisuitwisseling",
+      "description": "Deep-dives in de nieuwste AI-onderwerpen, geleid door practitioners die de toekomst van technologie bouwen."
+    },
+    "community": {
+      "title": "Community Gedreven",
+      "description": "Onafhankelijk en praktisch. Gebouwd door engineers, voor engineers. Jong talent in Nederland ondersteunen."
+    },
+    "network": {
+      "title": "Professioneel Netwerk",
+      "description": "Maak verbinding met getalenteerde professionals in het Nederlandse tech-ecosysteem. Vind samenwerkingspartners, mentoren en kansen."
+    }
+  },
+  "events": {
+    "title": "Aankomende Evenementen",
+    "viewAll": "Alle Evenementen",
+    "register": "Registreren",
+    "spotsLeft": "{count} plekken beschikbaar",
+    "online": "Online",
+    "noEvents": "Geen aankomende evenementen. Kijk binnenkort nog eens!"
+  },
+  "join": {
+    "title": "Klaar om mee te doen?",
+    "subtitle": "Word onderdeel van de AI Tech community",
+    "attend": {
+      "title": "Bezoek Evenementen",
+      "description": "Doe mee aan onze workshops, hackathons en deep-dives. Gratis en open voor iedereen."
+    },
+    "speak": {
+      "title": "Word Spreker",
+      "description": "Deel je expertise met de community. We verwelkomen talks over AI, automatisering en innovatie."
+    },
+    "partner": {
+      "title": "Word Partner",
+      "description": "Steun de community en maak verbinding met top Nederlands tech-talent."
+    }
+  },
+  "footer": {
+    "description": "Een community voor technische innovators in Nederland.",
+    "navigation": "Navigatie",
+    "connect": "Verbinden",
+    "legal": "Juridisch",
+    "privacy": "Privacybeleid",
+    "terms": "Algemene Voorwaarden",
+    "newsletter": "Abonneer op onze nieuwsbrief",
+    "emailPlaceholder": "jouw@email.com",
+    "subscribe": "Abonneren",
+    "copyright": "© {year} AI Tech Community Nederland. Alle rechten voorbehouden."
+  },
+  "auth": {
+    "signIn": "Inloggen",
+    "signUp": "Registreren",
+    "email": "E-mail",
+    "password": "Wachtwoord",
+    "name": "Volledige Naam",
+    "confirmPassword": "Bevestig Wachtwoord",
+    "forgotPassword": "Wachtwoord vergeten?",
+    "noAccount": "Nog geen account?",
+    "hasAccount": "Heb je al een account?",
+    "orContinueWith": "Of ga verder met",
+    "github": "GitHub",
+    "signingIn": "Bezig met inloggen...",
+    "signingUp": "Bezig met registreren..."
+  },
+  "language": {
+    "en": "English",
+    "nl": "Nederlands"
+  }
+}

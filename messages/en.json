@@ -1,0 +1,92 @@
+{
+  "nav": {
+    "home": "Home",
+    "events": "Events",
+    "blog": "Blog",
+    "community": "Community",
+    "members": "Members",
+    "signIn": "Sign In",
+    "joinUs": "Join the Community"
+  },
+  "hero": {
+    "title": "AI Tech Community Netherlands",
+    "subtitle": "Connecting engineers. Sharing knowledge. Building the future.",
+    "description": "A community for technical innovators in the Netherlands. We foster collaboration through workshops, deep-dives, and hackathons focused on AI and automation.",
+    "cta": "Join the Community",
+    "learnMore": "Learn More"
+  },
+  "features": {
+    "title": "What We Offer",
+    "workshops": {
+      "title": "Workshops & Hackathons",
+      "description": "Hands-on sessions where you build, learn, and collaborate with fellow engineers on real AI projects."
+    },
+    "knowledge": {
+      "title": "Knowledge Exchange",
+      "description": "Deep-dives into cutting-edge AI topics, led by practitioners who are building the future of technology."
+    },
+    "community": {
+      "title": "Community Driven",
+      "description": "Independent and practical. Built by engineers, for engineers. Supporting young talent in the Netherlands."
+    },
+    "network": {
+      "title": "Professional Network",
+      "description": "Connect with talented professionals across the Dutch tech ecosystem. Find collaborators, mentors, and opportunities."
+    }
+  },
+  "events": {
+    "title": "Upcoming Events",
+    "viewAll": "View All Events",
+    "register": "Register",
+    "spotsLeft": "{count} spots left",
+    "online": "Online",
+    "noEvents": "No upcoming events. Check back soon!"
+  },
+  "join": {
+    "title": "Ready to Join?",
+    "subtitle": "Become part of the AI Tech community",
+    "attend": {
+      "title": "Attend Events",
+      "description": "Join our workshops, hackathons, and deep-dives. Free and open to all."
+    },
+    "speak": {
+      "title": "Become a Speaker",
+      "description": "Share your expertise with the community. We welcome talks on AI, automation, and innovation."
+    },
+    "partner": {
+      "title": "Partner With Us",
+      "description": "Support the community and connect with top Dutch tech talent."
+    }
+  },
+  "footer": {
+    "description": "A community for technical innovators in the Netherlands.",
+    "navigation": "Navigation",
+    "connect": "Connect",
+    "legal": "Legal",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "newsletter": "Subscribe to our newsletter",
+    "emailPlaceholder": "your@email.com",
+    "subscribe": "Subscribe",
+    "copyright": "© {year} AI Tech Community Netherlands. All rights reserved."
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "name": "Full Name",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "orContinueWith": "Or continue with",
+    "github": "GitHub",
+    "signingIn": "Signing in...",
+    "signingUp": "Signing up..."
+  },
+  "language": {
+    "en": "English",
+    "nl": "Nederlands"
+  }
+}
