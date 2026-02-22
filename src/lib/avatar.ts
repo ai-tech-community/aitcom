@@ -7,7 +7,7 @@ import { createHash } from "crypto";
  * 3. null (render initials in component)
  */
 export function getAvatarUrl(
-  email: string,
+  email: string | null,
   image?: string | null,
   size = 80,
 ): string | null {
