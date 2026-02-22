@@ -88,28 +88,20 @@ export async function awardXp(db: DB, userId: string, amount: number) {
 
 /**
  * Award a badge if not already earned. Returns true if newly awarded.
+ * Uses INSERT ... ON CONFLICT DO NOTHING to avoid race conditions.
  */
 export async function awardBadge(
   db: DB,
   userId: string,
   badgeSlug: string,
 ): Promise<boolean> {
-  // Check if already earned
-  const [existing] = await db
-    .select()
-    .from(memberBadges)
-    .where(
-      and(
-        eq(memberBadges.userId, userId),
-        eq(memberBadges.badgeSlug, badgeSlug),
-      ),
-    )
-    .limit(1);
+  const [result] = await db
+    .insert(memberBadges)
+    .values({ userId, badgeSlug })
+    .onConflictDoNothing()
+    .returning();
 
-  if (existing) return false;
-
-  await db.insert(memberBadges).values({ userId, badgeSlug });
-  return true;
+  return !!result;
 }
 
 /**
