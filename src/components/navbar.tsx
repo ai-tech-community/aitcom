@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { Menu, LogOut } from "lucide-react";
 import { LanguageSwitcher } from "./language-switcher";
 import { cn } from "@/lib/utils";
+import { authClient } from "@/server/better-auth/client";
 
 const navLinks = [
   { href: "/events", key: "events", shortcut: "E" },
@@ -18,6 +19,7 @@ export function Navbar() {
   const t = useTranslations("nav");
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { data: session } = authClient.useSession();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
@@ -56,15 +58,39 @@ export function Navbar() {
           </nav>
         </div>
 
-        {/* Right: Language + Join */}
+        {/* Right: Language + Session */}
         <div className="hidden items-center gap-2 md:flex">
           <LanguageSwitcher />
-          <Link
-            href="/auth/signup"
-            className="rounded bg-foreground px-3.5 py-1.5 font-mono text-xs font-semibold text-background transition-opacity hover:opacity-80"
-          >
-            [J] JOIN
-          </Link>
+          {session?.user ? (
+            <>
+              <Link
+                href="/dashboard"
+                className={cn(
+                  "font-mono text-xs transition-colors hover:text-foreground",
+                  pathname === "/dashboard"
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
+                [D] DASHBOARD
+              </Link>
+              <button
+                onClick={() =>
+                  authClient.signOut().then(() => window.location.reload())
+                }
+                className="rounded p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/auth/signup"
+              className="rounded bg-foreground px-3.5 py-1.5 font-mono text-xs font-semibold text-background transition-opacity hover:opacity-80"
+            >
+              [J] JOIN
+            </Link>
+          )}
         </div>
 
         {/* Mobile Menu */}
@@ -95,13 +121,42 @@ export function Navbar() {
                   </Link>
                 ))}
                 <div className="mt-4 flex flex-col gap-3 border-t pt-4">
-                  <Link
-                    href="/auth/signup"
-                    onClick={() => setOpen(false)}
-                    className="rounded bg-foreground px-4 py-2 text-center font-mono text-sm font-semibold text-background"
-                  >
-                    [J] JOIN
-                  </Link>
+                  {session?.user ? (
+                    <>
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "font-mono text-sm transition-colors hover:text-foreground",
+                          pathname === "/dashboard"
+                            ? "text-foreground"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        [D] DASHBOARD
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setOpen(false);
+                          authClient
+                            .signOut()
+                            .then(() => window.location.reload());
+                        }}
+                        className="flex items-center gap-2 font-mono text-sm text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        SIGN OUT
+                      </button>
+                    </>
+                  ) : (
+                    <Link
+                      href="/auth/signup"
+                      onClick={() => setOpen(false)}
+                      className="rounded bg-foreground px-4 py-2 text-center font-mono text-sm font-semibold text-background"
+                    >
+                      [J] JOIN
+                    </Link>
+                  )}
                 </div>
               </nav>
             </SheetContent>
