@@ -2,45 +2,70 @@
 
 import { useEffect, useRef } from "react";
 
-// Dino running frames
-const DINO_RUN_1 = [
-  "            ____ ",
-  "           / .  \\",
-  "      ____/  o  |",
-  "     /    \\__/\\_/",
-  "    |  /\\       ",
-  "    | /  \\      ",
-  " ___/    |      ",
-  "|   |____|      ",
-  "|__/   \\        ",
-  "       |_)      ",
+// Bart Simpson — body (shared across all frames)
+const BART_BODY = [
+  "    |\\/\\  ,.              ",
+  "    /   `' |,-,           ",
+  "   /         /_           ",
+  " _/            /          ",
+  "(.-,--.       /           ",
+  "/o/  o \\     /            ",
+  "\\_\\    /   _/             ",
+  "(__`--'    _)             ",
+  " /         |              ",
+  "(_____,'    \\             ",
+  "   \\_       _\\_           ",
+  "     `._..-'   `._        ",
+  "      /       ,'  `.      ",
+  "    .'|      /      \\     ",
+  "    |_|      |      |     ",
+  "     ||      |______|     ",
+  "     |/        |   |\\     ",
+  "     /         |   | \\    ",
+  "    /          |   |  \\   ",
+  "    `.         |   |   \\  ",
+  "    ( `-.._____|   |---i  ",
+  "     `.       _|   |  /   ",
+  "       |     (_     \\ |   ",
+  "       |    |  | | |_)|   ",
 ];
 
-const DINO_RUN_2 = [
-  "            ____ ",
-  "           / .  \\",
-  "      ____/  o  |",
-  "     /    \\__/\\_/",
-  "    |  /\\       ",
-  "    | /  \\      ",
-  " ___/    |      ",
-  "|   |____|      ",
-  "|__/    \\       ",
-  "        (_|     ",
+const BART_LEGS_1 = [
+  "       `-+--f--`-^-'--'  ",
+  "         |  |   |  |     ",
+  "         |  |   |  |     ",
+  "      _,(`--'), |  |     ",
+  "   .-'   `--'_t(`--'),   ",
+  "  /       .-'   `--' |   ",
+  "  `-..___/        (_)|   ",
+  "         `-.._____..-'   ",
 ];
 
-const DINO_JUMP = [
-  "            ____ ",
-  "           / ^  \\",
-  "      ____/  o  |",
-  "     /    \\__/\\_/",
-  "    |  /\\       ",
-  "    | /  \\      ",
-  " ___/    |      ",
-  "|   |____|      ",
-  "|__/  \\ \\       ",
-  "       \\_\\      ",
+const BART_LEGS_2 = [
+  "       `-+--f--`-^-'--'  ",
+  "         |  |   |  |     ",
+  "        /  /     \\  \\    ",
+  "      (`--'), _,(`--'),  ",
+  "   .-' `--'   `--'_t    ",
+  "  /       .-'   .-'     ",
+  "  `-..___/   `-(_)|     ",
+  "         `-.._____..-'   ",
 ];
+
+const BART_LEGS_JUMP = [
+  "       `-+--f--`-^-'--'  ",
+  "         |  |   |  |     ",
+  "         |  |   |  |     ",
+  "      _,(`--'),(`--'),   ",
+  "   .-'  `--'_t `--'     ",
+  "  /       .-'    .-'     ",
+  "  `-..___/    `-(_)|     ",
+  "         `-.._____..-'   ",
+];
+
+const BART_RUN_1 = [...BART_BODY, ...BART_LEGS_1];
+const BART_RUN_2 = [...BART_BODY, ...BART_LEGS_2];
+const BART_JUMP = [...BART_BODY, ...BART_LEGS_JUMP];
 
 // Cactus obstacles
 const CACTUS_SMALL = [
@@ -90,7 +115,7 @@ const CLOUDS = [
   ],
 ];
 
-// Community thoughts that float by
+// Community thoughts
 const THOUGHTS = [
   "{ AI is the future }",
   "< Build together >",
@@ -134,6 +159,116 @@ interface Thought {
   opacity: number;
 }
 
+// Generate mountain height map with smooth peaks
+function generateHeightMap(width: number): number[] {
+  const heights: number[] = [];
+  for (let x = 0; x < width; x++) {
+    const h =
+      Math.sin(x * 0.018) * 7 +
+      Math.sin(x * 0.045 + 1.2) * 5 +
+      Math.sin(x * 0.009) * 9 +
+      Math.cos(x * 0.028 + 2.5) * 3 +
+      Math.sin(x * 0.065 + 0.7) * 2;
+    heights.push(Math.max(3, Math.floor(h + 16)));
+  }
+  return heights;
+}
+
+// Generate mountain landscape as array of strings
+function generateMountainLandscape(
+  width: number,
+  rows: number,
+  heights: number[],
+): string[] {
+  const lines: string[] = [];
+
+  for (let row = 0; row < rows; row++) {
+    let line = "";
+    for (let x = 0; x < width; x++) {
+      const h = heights[x]!;
+      const surfaceY = rows - h;
+      const prevH = heights[((x - 1) + width) % width]!;
+      const nextH = heights[(x + 1) % width]!;
+      const prevSurfaceY = rows - prevH;
+      const nextSurfaceY = rows - nextH;
+
+      const inside = row >= surfaceY;
+      const prevInside = row >= prevSurfaceY;
+      const nextInside = row >= nextSurfaceY;
+
+      // Dense bottom band — always filled regardless of mountain shape
+      const bottomBand = rows - 8;
+      if (row >= bottomBand) {
+        const bd = row - bottomBand;
+        if (bd < 2) {
+          const c = ";;;;::;;ii;;:;";
+          line += c[(x * 17 + row * 7) % c.length];
+        } else if (bd < 4) {
+          const c = "iiIIlliiIIlii";
+          line += c[(x * 19 + row * 3) % c.length];
+        } else if (bd < 6) {
+          const c = "IIllTTIIlTTII";
+          line += c[(x * 23 + row * 13) % c.length];
+        } else {
+          const c = "TTTIIITTTlllTT";
+          line += c[(x * 29 + row * 11) % c.length];
+        }
+        continue;
+      }
+
+      if (!inside) {
+        line += " ";
+        continue;
+      }
+
+      // Left slope edge
+      if (!prevInside) {
+        line += "/";
+        continue;
+      }
+
+      // Right slope edge
+      if (!nextInside) {
+        line += "\\";
+        continue;
+      }
+
+      // Interior fill based on depth from surface
+      const depth = row - surfaceY;
+      const relDepth = depth / Math.max(1, h);
+
+      if (relDepth < 0.1) {
+        // Near peak: very sparse, mostly empty with some #
+        const v = (x * 7 + row * 13) % 8;
+        line += v < 2 ? "#" : " ";
+      } else if (relDepth < 0.25) {
+        // Upper mountain: sparse hash and slash
+        const v = (x * 11 + row * 7) % 7;
+        line += v < 1 ? "#" : v < 2 ? "/" : v < 3 ? "\\" : " ";
+      } else if (relDepth < 0.4) {
+        // Mid mountain: transition to vegetation
+        const c = " .  /.. \\. #";
+        line += c[(x * 13 + row * 5) % c.length];
+      } else if (relDepth < 0.55) {
+        // Vegetation starts
+        const c = ".::;.,..:.%";
+        line += c[(x * 17 + row * 11) % c.length];
+      } else if (relDepth < 0.7) {
+        // Denser vegetation
+        const c = ".:;::;,.;:;";
+        line += c[(x * 19 + row * 9) % c.length];
+      } else {
+        // Dense pre-bottom
+        const c = ";;:;i,;;:;ii";
+        line += c[(x * 23 + row * 7) % c.length];
+      }
+    }
+    lines.push(line);
+  }
+
+  return lines;
+}
+
 export function AsciiLandscape() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
@@ -145,8 +280,8 @@ export function AsciiLandscape() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const CHAR_W = 7.5;
-    const CHAR_H = 13;
+    const CHAR_W = 7;
+    const CHAR_H = 12;
 
     function resize() {
       const dpr = window.devicePixelRatio || 1;
@@ -164,20 +299,32 @@ export function AsciiLandscape() {
     const getCols = () => Math.floor(getWidth() / CHAR_W);
     const getRows = () => Math.floor(getHeight() / CHAR_H);
 
-    // Dino state
-    let dinoY = 0; // offset from ground (0 = on ground)
-    let dinoVelocity = 0;
+    // Ground position
+    const GROUND_Y_RATIO = 0.82;
+
+    // Mountain landscape (static backdrop)
+    const LANDSCAPE_ROWS = 26;
+    const initCols = getCols();
+    const landscapeHeights = generateHeightMap(initCols);
+    const landscapeLines = generateMountainLandscape(
+      initCols,
+      LANDSCAPE_ROWS,
+      landscapeHeights,
+    );
+
+    // Bart state
+    let bartY = 0;
+    let bartVelocity = 0;
     let isJumping = false;
     let runFrame = 0;
     let frameCount = 0;
-    const GRAVITY = 0.4;
-    const JUMP_FORCE = -6.5;
-    const GROUND_Y_RATIO = 0.78;
+    const GRAVITY = 0.35;
+    const JUMP_FORCE = -5;
 
     // Obstacles
     const obstacles: Obstacle[] = [];
     let nextObstacleTimer = 120;
-    const OBSTACLE_SPEED = 1.8;
+    const OBSTACLE_SPEED = 1.6;
     const obstacleTemplates = [CACTUS_SMALL, CACTUS_TALL, CACTUS_DOUBLE];
 
     // Clouds
@@ -185,10 +332,10 @@ export function AsciiLandscape() {
     for (let i = 0; i < 5; i++) {
       clouds.push({
         x: Math.random() * getCols() * 1.5,
-        y: 2 + Math.random() * (getRows() * 0.3),
+        y: 1 + Math.random() * (getRows() * 0.18),
         speed: 0.15 + Math.random() * 0.3,
         template: CLOUDS[Math.floor(Math.random() * CLOUDS.length)]!,
-        opacity: 0.35 + Math.random() * 0.2,
+        opacity: 0.25 + Math.random() * 0.15,
       });
     }
 
@@ -197,41 +344,13 @@ export function AsciiLandscape() {
     let nextThoughtTimer = 60;
     let thoughtIndex = 0;
 
-    // Ground pattern that scrolls
-    let groundOffset = 0;
-
-    function generateGroundLine(colCount: number, offset: number): string {
-      const chars = "_.~-._~-.=._~-._.~-=._";
-      let line = "";
-      for (let x = 0; x < colCount; x++) {
-        const idx = (x + Math.floor(offset)) % chars.length;
-        line += chars[idx];
-      }
-      return line;
-    }
-
-    function generateSubGround(colCount: number, row: number, offset: number): string {
-      let line = "";
-      for (let x = 0; x < colCount; x++) {
-        const seed = (x + Math.floor(offset * 0.5) + row * 7) % 17;
-        if (seed < 3) line += ".";
-        else if (seed < 5) line += ":";
-        else if (seed < 7) line += ";";
-        else if (seed < 9) line += ",";
-        else if (seed < 11) line += "'";
-        else line += " ";
-      }
-      return line;
-    }
-
     function draw() {
       const w = getWidth();
-      const h = getHeight();
       const c = getCols();
       const r = getRows();
       const groundY = Math.floor(r * GROUND_Y_RATIO);
 
-      ctx!.clearRect(0, 0, w, h);
+      ctx!.clearRect(0, 0, w, getHeight());
 
       const style = getComputedStyle(canvas!);
       const textColor = style.color || "#a1a1aa";
@@ -240,17 +359,21 @@ export function AsciiLandscape() {
       ctx!.font = font;
       ctx!.textBaseline = "top";
 
-      // --- Clouds ---
+      // --- Clouds (behind mountains) ---
       for (const cloud of clouds) {
         ctx!.globalAlpha = cloud.opacity;
         ctx!.fillStyle = textColor;
         for (let row = 0; row < cloud.template.length; row++) {
-          ctx!.fillText(cloud.template[row]!, cloud.x * CHAR_W, (cloud.y + row) * CHAR_H);
+          ctx!.fillText(
+            cloud.template[row]!,
+            cloud.x * CHAR_W,
+            (cloud.y + row) * CHAR_H,
+          );
         }
-        cloud.x -= cloud.speed * 0.15;
+        cloud.x -= cloud.speed * 0.12;
         if (cloud.x * CHAR_W < -200) {
           cloud.x = c + 10 + Math.random() * 20;
-          cloud.y = 2 + Math.random() * (r * 0.25);
+          cloud.y = 1 + Math.random() * (r * 0.15);
           cloud.template = CLOUDS[Math.floor(Math.random() * CLOUDS.length)]!;
         }
       }
@@ -260,10 +383,10 @@ export function AsciiLandscape() {
       if (nextThoughtTimer <= 0) {
         thoughts.push({
           x: c + 5,
-          y: 3 + Math.random() * (groundY * 0.5),
+          y: 2 + Math.random() * (groundY * 0.35),
           text: THOUGHTS[thoughtIndex % THOUGHTS.length]!,
           speed: 0.4 + Math.random() * 0.6,
-          opacity: 0.25 + Math.random() * 0.15,
+          opacity: 0.18 + Math.random() * 0.12,
         });
         thoughtIndex++;
         nextThoughtTimer = 180 + Math.random() * 200;
@@ -282,38 +405,42 @@ export function AsciiLandscape() {
       }
       ctx!.font = font;
 
-      // --- Ground line ---
-      groundOffset += OBSTACLE_SPEED * 0.35;
+      // --- Static mountain landscape ---
+      const landscapeBaseY = groundY - LANDSCAPE_ROWS + 2;
+
+      for (let row = 0; row < LANDSCAPE_ROWS; row++) {
+        const line = landscapeLines[row]!;
+        const visible = line.substring(0, c);
+
+        // Opacity: dimmer at top (distant peaks), brighter at bottom (foreground forest)
+        const alphaBase = 0.12 + (row / LANDSCAPE_ROWS) * 0.38;
+        ctx!.globalAlpha = alphaBase;
+        ctx!.fillStyle = textColor;
+        ctx!.fillText(visible, 0, (landscapeBaseY + row) * CHAR_H);
+      }
+
+      // --- Ground line (at base of mountains) ---
       ctx!.globalAlpha = 0.5;
       ctx!.fillStyle = textColor;
-
-      // Main ground line
       const groundLine = "\u2500".repeat(c);
       ctx!.fillText(groundLine, 0, groundY * CHAR_H);
-
-      // Scrolling ground detail
-      ctx!.globalAlpha = 0.35;
-      const surfaceLine = generateGroundLine(c, groundOffset);
-      ctx!.fillText(surfaceLine, 0, (groundY + 1) * CHAR_H);
-
-      // Sub-ground layers
-      ctx!.globalAlpha = 0.25;
-      for (let row = 0; row < 5; row++) {
-        const subLine = generateSubGround(c, row, groundOffset);
-        ctx!.fillText(subLine, 0, (groundY + 2 + row) * CHAR_H);
-      }
 
       // --- Obstacles ---
       nextObstacleTimer--;
       if (nextObstacleTimer <= 0) {
-        const template = obstacleTemplates[Math.floor(Math.random() * obstacleTemplates.length)]!;
+        const template =
+          obstacleTemplates[
+            Math.floor(Math.random() * obstacleTemplates.length)
+          ]!;
         obstacles.push({
           x: c + 5,
           template,
           passed: false,
         });
-        nextObstacleTimer = 100 + Math.random() * 180;
+        nextObstacleTimer = 120 + Math.random() * 200;
       }
+
+      const bartDrawX = 8;
 
       for (let i = obstacles.length - 1; i >= 0; i--) {
         const obs = obstacles[i]!;
@@ -329,65 +456,66 @@ export function AsciiLandscape() {
         }
         obs.x -= OBSTACLE_SPEED * 0.35;
 
-        // Auto-jump: dino detects upcoming obstacle
-        const dinoX = 12;
-        const distToObs = obs.x - dinoX;
-        if (distToObs > 0 && distToObs < 18 && !isJumping && !obs.passed) {
+        // Auto-jump
+        const distToObs = obs.x - bartDrawX;
+        if (distToObs > 0 && distToObs < 22 && !isJumping && !obs.passed) {
           isJumping = true;
-          dinoVelocity = JUMP_FORCE;
+          bartVelocity = JUMP_FORCE;
         }
-        if (obs.x < dinoX && !obs.passed) {
+        if (obs.x < bartDrawX && !obs.passed) {
           obs.passed = true;
         }
-
         if (obs.x < -15) {
           obstacles.splice(i, 1);
         }
       }
 
-      // --- Dino ---
+      // --- Bart Simpson ---
       if (isJumping) {
-        dinoVelocity += GRAVITY;
-        dinoY += dinoVelocity;
-        if (dinoY >= 0) {
-          dinoY = 0;
-          dinoVelocity = 0;
+        bartVelocity += GRAVITY;
+        bartY += bartVelocity;
+        if (bartY >= 0) {
+          bartY = 0;
+          bartVelocity = 0;
           isJumping = false;
         }
       }
 
       frameCount++;
-      if (frameCount % 8 === 0) {
+      if (frameCount % 10 === 0) {
         runFrame = runFrame === 0 ? 1 : 0;
       }
 
-      let dinoSprite: string[];
+      let bartSprite: string[];
       if (isJumping) {
-        dinoSprite = DINO_JUMP;
+        bartSprite = BART_JUMP;
       } else if (runFrame === 0) {
-        dinoSprite = DINO_RUN_1;
+        bartSprite = BART_RUN_1;
       } else {
-        dinoSprite = DINO_RUN_2;
+        bartSprite = BART_RUN_2;
       }
 
-      const dinoDrawX = 12;
-      const dinoH = dinoSprite.length;
-      const dinoDrawY = groundY - dinoH + dinoY;
+      const bartH = bartSprite.length;
+      const bartDrawY = groundY - bartH + bartY;
 
       ctx!.globalAlpha = 0.6;
       ctx!.fillStyle = textColor;
-      for (let row = 0; row < dinoH; row++) {
+      for (let row = 0; row < bartH; row++) {
         ctx!.fillText(
-          dinoSprite[row]!,
-          dinoDrawX * CHAR_W,
-          (dinoDrawY + row) * CHAR_H,
+          bartSprite[row]!,
+          bartDrawX * CHAR_W,
+          (bartDrawY + row) * CHAR_H,
         );
       }
 
-      // --- Subtle "AIT." watermark near dino ---
-      ctx!.globalAlpha = 0.14;
+      // --- Subtle "AIT." watermark ---
+      ctx!.globalAlpha = 0.1;
       ctx!.font = `bold ${CHAR_H * 3}px "Geist Mono", monospace`;
-      ctx!.fillText("AIT.", Math.floor(c * 0.6) * CHAR_W, Math.floor(groundY * 0.45) * CHAR_H);
+      ctx!.fillText(
+        "AIT.",
+        Math.floor(c * 0.55) * CHAR_W,
+        Math.floor(groundY * 0.3) * CHAR_H,
+      );
       ctx!.font = font;
 
       ctx!.globalAlpha = 1;
