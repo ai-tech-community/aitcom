@@ -4,10 +4,15 @@ import { Link } from "@/i18n/navigation";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
 import { MemberSearch } from "@/components/member-search";
 
-export default async function MembersPage() {
+export default async function MembersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const t = await getTranslations("members");
+  const { q } = await searchParams;
 
-  const members = await api.members.listMembers({ limit: 50 });
+  const members = await api.members.listMembers({ limit: 50, search: q });
 
   return (
     <div className="px-6 py-16 sm:px-12">
