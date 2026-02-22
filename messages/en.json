@@ -88,5 +88,48 @@
   "language": {
     "en": "English",
     "nl": "Nederlands"
+  },
+  "members": {
+    "title": "Members",
+    "search": "Search members...",
+    "filterBySkill": "Filter by skill",
+    "allSkills": "All skills",
+    "noMembers": "No members found.",
+    "leaderboard": "Leaderboard",
+    "level": "LVL",
+    "xp": "XP",
+    "badges": "Badges",
+    "eventsAttended": "Events Attended",
+    "skills": "Skills",
+    "bio": "Bio",
+    "socialLinks": "Links",
+    "memberSince": "Member since",
+    "profilePrivate": "This profile is private."
+  },
+  "dashboard": {
+    "myProfile": "MY PROFILE",
+    "completeProfile": "Complete your profile to earn 50 XP!",
+    "completeProfileCta": "Set up profile",
+    "editProfile": "EDIT",
+    "displayName": "Display Name",
+    "bio": "Bio",
+    "skills": "Skills (comma-separated)",
+    "company": "Company",
+    "linkedinUrl": "LinkedIn URL",
+    "githubUrl": "GitHub URL",
+    "websiteUrl": "Website URL",
+    "publicProfile": "Public profile",
+    "saveProfile": "Save",
+    "saving": "Saving...",
+    "profileSaved": "Profile saved!",
+    "profileError": "Failed to save profile."
+  },
+  "badges": {
+    "profile_complete": "Profile Complete",
+    "first_event": "First Event",
+    "regular": "Regular",
+    "veteran": "Veteran",
+    "early_adopter": "Early Adopter",
+    "speaker": "Speaker"
   }
 }

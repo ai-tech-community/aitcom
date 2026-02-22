@@ -88,5 +88,48 @@
   "language": {
     "en": "English",
     "nl": "Nederlands"
+  },
+  "members": {
+    "title": "Leden",
+    "search": "Zoek leden...",
+    "filterBySkill": "Filter op vaardigheid",
+    "allSkills": "Alle vaardigheden",
+    "noMembers": "Geen leden gevonden.",
+    "leaderboard": "Ranglijst",
+    "level": "LVL",
+    "xp": "XP",
+    "badges": "Badges",
+    "eventsAttended": "Bijgewoonde evenementen",
+    "skills": "Vaardigheden",
+    "bio": "Bio",
+    "socialLinks": "Links",
+    "memberSince": "Lid sinds",
+    "profilePrivate": "Dit profiel is privé."
+  },
+  "dashboard": {
+    "myProfile": "MIJN PROFIEL",
+    "completeProfile": "Vul je profiel in en verdien 50 XP!",
+    "completeProfileCta": "Profiel instellen",
+    "editProfile": "BEWERKEN",
+    "displayName": "Weergavenaam",
+    "bio": "Bio",
+    "skills": "Vaardigheden (kommagescheiden)",
+    "company": "Bedrijf",
+    "linkedinUrl": "LinkedIn URL",
+    "githubUrl": "GitHub URL",
+    "websiteUrl": "Website URL",
+    "publicProfile": "Openbaar profiel",
+    "saveProfile": "Opslaan",
+    "saving": "Opslaan...",
+    "profileSaved": "Profiel opgeslagen!",
+    "profileError": "Profiel opslaan mislukt."
+  },
+  "badges": {
+    "profile_complete": "Profiel Compleet",
+    "first_event": "Eerste Evenement",
+    "regular": "Vaste Bezoeker",
+    "veteran": "Veteraan",
+    "early_adopter": "Vroege Gebruiker",
+    "speaker": "Spreker"
   }
 }
