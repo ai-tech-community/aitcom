@@ -2,20 +2,34 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Github } from "lucide-react";
+import { authClient } from "@/server/better-auth/client";
+import { toast } from "sonner";
 
 export default function SignInPage() {
   const t = useTranslations("auth");
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    // TODO: integrate with better-auth
+    const { error } = await authClient.signIn.email({
+      email,
+      password,
+    });
+    setLoading(false);
+    if (error) {
+      toast.error(error.message ?? "Sign in failed");
+      return;
+    }
+    router.push("/");
   }
 
   return (
@@ -42,21 +56,21 @@ export default function SignInPage() {
               type="email"
               placeholder="engineer@company.nl"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="font-mono text-xs tracking-wider">
-                {t("password").toUpperCase()}
-              </Label>
-              <Link
-                href="/auth/forgot-password"
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                {t("forgotPassword")}
-              </Link>
-            </div>
-            <Input id="password" type="password" required />
+            <Label htmlFor="password" className="font-mono text-xs tracking-wider">
+              {t("password").toUpperCase()}
+            </Label>
+            <Input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? t("signingIn") : t("signIn")}
@@ -76,7 +90,11 @@ export default function SignInPage() {
         </div>
 
         {/* OAuth */}
-        <Button variant="outline" className="w-full gap-2">
+        <Button
+          variant="outline"
+          className="w-full gap-2"
+          onClick={() => authClient.signIn.social({ provider: "github" })}
+        >
           <Github className="h-4 w-4" />
           {t("github")}
         </Button>
