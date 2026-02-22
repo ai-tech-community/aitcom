@@ -17,6 +17,7 @@ export default async function BlogPage() {
     where: { status: { equals: "published" } },
     sort: "-publishedAt",
     locale: locale as "en" | "nl",
+    draft: false,
   });
 
   // Type label map using i18n keys for proper localization
@@ -33,6 +34,7 @@ export default async function BlogPage() {
         <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / {t("title").toUpperCase()}
         </span>
+        <p className="text-muted-foreground mt-1 text-sm">{t("subtitle")}</p>
       </div>
 
       {articles.length === 0 ? (

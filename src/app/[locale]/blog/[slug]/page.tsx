@@ -18,6 +18,7 @@ const getArticleBySlug = cache(async (slug: string, locale: string) => {
     where: { slug: { equals: slug } },
     locale: locale as "en" | "nl",
     limit: 1,
+    draft: false,
   });
   return docs[0] ?? null;
 });
