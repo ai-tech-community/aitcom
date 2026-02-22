@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
@@ -10,13 +11,7 @@ function formatDate(dateStr: string): string {
   return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const { slug } = await params;
-  const locale = await getLocale();
+const getArticleBySlug = cache(async (slug: string, locale: string) => {
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
     collection: "articles",
@@ -24,7 +19,17 @@ export async function generateMetadata({
     locale: locale as "en" | "nl",
     limit: 1,
   });
-  const article = docs[0];
+  return docs[0] ?? null;
+});
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const locale = await getLocale();
+  const article = await getArticleBySlug(slug, locale);
   if (!article) return {};
   return { title: article.title };
 }
@@ -38,15 +43,7 @@ export default async function ArticleDetailPage({
   const locale = await getLocale();
   const t = await getTranslations("blog");
 
-  const payload = await getPayloadClient();
-  const { docs } = await payload.find({
-    collection: "articles",
-    where: { slug: { equals: slug } },
-    locale: locale as "en" | "nl",
-    limit: 1,
-  });
-
-  const article = docs[0];
+  const article = await getArticleBySlug(slug, locale);
   if (!article) return notFound();
 
   const typeLabels: Record<string, string> = {
@@ -69,8 +66,12 @@ export default async function ArticleDetailPage({
 
       {/* Meta line */}
       <div className="text-muted-foreground mt-6 flex flex-wrap items-center gap-3 font-mono text-xs tracking-wider">
-        {article.publishedAt && <span>{formatDate(article.publishedAt)}</span>}
-        <span className="text-border">|</span>
+        {article.publishedAt && (
+          <>
+            <span>{formatDate(article.publishedAt)}</span>
+            <span className="text-border">|</span>
+          </>
+        )}
         <span className="border-border rounded border px-2.5 py-0.5 font-medium">
           {typeLabels[article.type] ?? article.type}
         </span>
