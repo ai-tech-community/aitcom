@@ -1,25 +1,31 @@
 import { relations, sql } from "drizzle-orm";
-import { index, sqliteTable } from "drizzle-orm/sqlite-core";
-
-/**
- * Multi-project schema prefix helper
- */
+import {
+  boolean,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 // Posts example table
-export const posts = sqliteTable(
+export const posts = pgTable(
   "post",
   (d) => ({
-    id: d.integer({ mode: "number" }).primaryKey({ autoIncrement: true }),
-    name: d.text({ length: 256 }),
+    id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
+    name: d.varchar({ length: 256 }),
     createdById: d
-      .text({ length: 255 })
+      .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
     createdAt: d
-      .integer({ mode: "timestamp" })
-      .default(sql`(unixepoch())`)
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: d.integer({ mode: "timestamp" }).$onUpdate(() => new Date()),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
   (t) => [
     index("created_by_idx").on(t.createdById),
@@ -28,21 +34,21 @@ export const posts = sqliteTable(
 );
 
 // Better Auth core tables
-export const user = sqliteTable("user", (d) => ({
+export const user = pgTable("user", (d) => ({
   id: d
-    .text({ length: 255 })
+    .varchar({ length: 255 })
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  name: d.text({ length: 255 }),
-  email: d.text({ length: 255 }).notNull().unique(),
-  emailVerified: d.integer({ mode: "boolean" }).default(false),
-  image: d.text({ length: 255 }),
+  name: d.varchar({ length: 255 }),
+  email: d.varchar({ length: 255 }).notNull().unique(),
+  emailVerified: d.boolean().default(false),
+  image: d.varchar({ length: 255 }),
   createdAt: d
-    .integer({ mode: "timestamp" })
-    .default(sql`(unixepoch())`)
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
-  updatedAt: d.integer({ mode: "timestamp" }).$onUpdate(() => new Date()),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 }));
 
 export const userRelations = relations(user, ({ many }) => ({
@@ -50,32 +56,32 @@ export const userRelations = relations(user, ({ many }) => ({
   session: many(session),
 }));
 
-export const account = sqliteTable(
+export const account = pgTable(
   "account",
   (d) => ({
     id: d
-      .text({ length: 255 })
+      .varchar({ length: 255 })
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     userId: d
-      .text({ length: 255 })
+      .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    accountId: d.text({ length: 255 }).notNull(),
-    providerId: d.text({ length: 255 }).notNull(),
+    accountId: d.varchar({ length: 255 }).notNull(),
+    providerId: d.varchar({ length: 255 }).notNull(),
     accessToken: d.text(),
     refreshToken: d.text(),
-    accessTokenExpiresAt: d.integer({ mode: "timestamp" }),
-    refreshTokenExpiresAt: d.integer({ mode: "timestamp" }),
-    scope: d.text({ length: 255 }),
+    accessTokenExpiresAt: d.timestamp({ withTimezone: true }),
+    refreshTokenExpiresAt: d.timestamp({ withTimezone: true }),
+    scope: d.varchar({ length: 255 }),
     idToken: d.text(),
     password: d.text(),
     createdAt: d
-      .integer({ mode: "timestamp" })
-      .default(sql`(unixepoch())`)
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: d.integer({ mode: "timestamp" }).$onUpdate(() => new Date()),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
   (t) => [index("account_user_id_idx").on(t.userId)],
 );
@@ -84,27 +90,27 @@ export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, { fields: [account.userId], references: [user.id] }),
 }));
 
-export const session = sqliteTable(
+export const session = pgTable(
   "session",
   (d) => ({
     id: d
-      .text({ length: 255 })
+      .varchar({ length: 255 })
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     userId: d
-      .text({ length: 255 })
+      .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    token: d.text({ length: 255 }).notNull().unique(),
-    expiresAt: d.integer({ mode: "timestamp" }).notNull(),
-    ipAddress: d.text({ length: 255 }),
-    userAgent: d.text({ length: 255 }),
+    token: d.varchar({ length: 255 }).notNull().unique(),
+    expiresAt: d.timestamp({ withTimezone: true }).notNull(),
+    ipAddress: d.varchar({ length: 255 }),
+    userAgent: d.varchar({ length: 255 }),
     createdAt: d
-      .integer({ mode: "timestamp" })
-      .default(sql`(unixepoch())`)
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: d.integer({ mode: "timestamp" }).$onUpdate(() => new Date()),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
   (t) => [index("session_user_id_idx").on(t.userId)],
 );
@@ -113,22 +119,65 @@ export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, { fields: [session.userId], references: [user.id] }),
 }));
 
-export const verification = sqliteTable(
+export const verification = pgTable(
   "verification",
   (d) => ({
     id: d
-      .text({ length: 255 })
+      .varchar({ length: 255 })
       .notNull()
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
-    identifier: d.text({ length: 255 }).notNull(),
-    value: d.text({ length: 255 }).notNull(),
-    expiresAt: d.integer({ mode: "timestamp" }).notNull(),
+    identifier: d.varchar({ length: 255 }).notNull(),
+    value: d.varchar({ length: 255 }).notNull(),
+    expiresAt: d.timestamp({ withTimezone: true }).notNull(),
     createdAt: d
-      .integer({ mode: "timestamp" })
-      .default(sql`(unixepoch())`)
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: d.integer({ mode: "timestamp" }).$onUpdate(() => new Date()),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
   (t) => [index("verification_identifier_idx").on(t.identifier)],
+);
+
+// Event registrations (member-facing, managed by Drizzle)
+export const registrationStatusEnum = pgEnum("registration_status", [
+  "registered",
+  "waitlisted",
+  "cancelled",
+  "attended",
+]);
+
+export const eventRegistrations = pgTable(
+  "event_registration",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    eventId: d.integer().notNull(), // References Payload events table
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    status: registrationStatusEnum().notNull().default("registered"),
+    registeredAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("registration_event_idx").on(t.eventId),
+    index("registration_user_idx").on(t.userId),
+  ],
+);
+
+export const eventRegistrationRelations = relations(
+  eventRegistrations,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [eventRegistrations.userId],
+      references: [user.id],
+    }),
+  }),
 );
