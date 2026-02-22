@@ -11,6 +11,7 @@ import { authClient } from "@/server/better-auth/client";
 
 const navLinks = [
   { href: "/events", key: "events", shortcut: "E" },
+  { href: "/members", key: "members", shortcut: "M" },
   { href: "/blog", key: "blog", shortcut: "B" },
   { href: "/community", key: "community", shortcut: "C" },
 ] as const;
