@@ -5,7 +5,8 @@ import {
   createTRPCRouter,
   protectedProcedure,
 } from "@/server/api/trpc";
-import { eventRegistrations } from "@/server/db/schema";
+import { eventRegistrations, memberProfiles } from "@/server/db/schema";
+import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 
 export const eventsRouter = createTRPCRouter({
   /**
@@ -64,6 +65,17 @@ export const eventsRouter = createTRPCRouter({
           status,
         })
         .returning();
+
+      // Award XP for registration (only if user has a profile)
+      const [profile] = await ctx.db
+        .select()
+        .from(memberProfiles)
+        .where(eq(memberProfiles.userId, userId))
+        .limit(1);
+
+      if (profile) {
+        await awardXp(ctx.db, userId, XP_AMOUNTS.REGISTER_EVENT);
+      }
 
       return { registration: registration!, alreadyRegistered: false };
     }),
