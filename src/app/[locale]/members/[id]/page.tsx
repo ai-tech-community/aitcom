@@ -129,7 +129,7 @@ export default async function MemberProfilePage({
       )}
 
       {/* Skills */}
-      {(profile.skills as string[]).length > 0 && (
+      {profile.skills.length > 0 && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
             <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
@@ -137,7 +137,7 @@ export default async function MemberProfilePage({
             </span>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {(profile.skills as string[]).map((skill) => (
+            {profile.skills.map((skill) => (
               <span
                 key={skill}
                 className="border-border text-muted-foreground rounded border px-2.5 py-0.5 font-mono text-[11px] tracking-wider"
@@ -164,7 +164,7 @@ export default async function MemberProfilePage({
                 className="border-border rounded border border-dashed px-3 py-2.5"
               >
                 <p className="font-mono text-xs font-medium">
-                  {tBadges(badge.slug as Parameters<typeof tBadges>[0])}
+                  {tBadges(badge.slug)}
                 </p>
                 <p className="text-muted-foreground mt-0.5 font-mono text-[10px] tracking-wider">
                   {badge.earnedAt

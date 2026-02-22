@@ -72,7 +72,7 @@ export function DashboardProfile({
 
   // Has profile
   const avatarUrl = getAvatarUrl(userEmail, userImage);
-  const initials = getInitials(profile.displayName || userName || "?");
+  const initials = getInitials(profile.displayName ?? userName ?? "?");
   const xpProgress = xpForNextLevel(profile.xp);
 
   return (

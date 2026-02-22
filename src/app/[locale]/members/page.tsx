@@ -80,7 +80,7 @@ export default async function MembersPage() {
           {members.items.map((member) => {
             const avatarUrl = getAvatarUrl(member.email, member.image);
             const initials = getInitials(member.profile.displayName);
-            const skills = (member.profile.skills as string[]).slice(0, 3);
+            const skills = member.profile.skills.slice(0, 3);
             return (
               <Link
                 key={member.profile.userId}
