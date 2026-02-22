@@ -3,189 +3,6 @@
   "children": [
     {
       "type": "frame",
-      "id": "c3vuG",
-      "x": 839,
-      "y": -588,
-      "name": "Event Card",
-      "reusable": true,
-      "width": 340,
-      "fill": "$--card",
-      "cornerRadius": "$--radius-lg",
-      "stroke": {
-        "align": "inside",
-        "thickness": 1,
-        "fill": "$--border"
-      },
-      "layout": "vertical",
-      "gap": 12,
-      "padding": 24,
-      "children": [
-        {
-          "type": "frame",
-          "id": "B0ddD",
-          "name": "typeBadge",
-          "fill": "$--secondary",
-          "cornerRadius": "$--radius-pill",
-          "padding": [
-            4,
-            10
-          ],
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "text",
-              "id": "Vh8cP",
-              "name": "label",
-              "fill": "$--secondary-foreground",
-              "content": "workshop",
-              "fontFamily": "Geist",
-              "fontSize": 12,
-              "fontWeight": "500"
-            }
-          ]
-        },
-        {
-          "type": "text",
-          "id": "L8pMS",
-          "name": "title",
-          "fill": "$--foreground",
-          "content": "AI-Powered Code Review",
-          "fontFamily": "Geist",
-          "fontSize": 18,
-          "fontWeight": "600"
-        },
-        {
-          "type": "frame",
-          "id": "77V5H",
-          "name": "meta",
-          "width": "fill_container",
-          "layout": "vertical",
-          "gap": 8,
-          "children": [
-            {
-              "type": "frame",
-              "id": "o3mJP",
-              "name": "dateRow",
-              "width": "fill_container",
-              "gap": 8,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon_font",
-                  "id": "r6H3t",
-                  "name": "eventDateIcon",
-                  "width": 16,
-                  "height": 16,
-                  "iconFontName": "calendar",
-                  "iconFontFamily": "lucide",
-                  "fill": "$--muted-foreground"
-                },
-                {
-                  "type": "text",
-                  "id": "JDzkt",
-                  "name": "date",
-                  "fill": "$--muted-foreground",
-                  "content": "March 15, 2026",
-                  "fontFamily": "Geist",
-                  "fontSize": 14,
-                  "fontWeight": "normal"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "GJlMY",
-              "name": "locationRow",
-              "width": "fill_container",
-              "gap": 8,
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon_font",
-                  "id": "4yw8z",
-                  "name": "eventLocIcon",
-                  "width": 16,
-                  "height": 16,
-                  "iconFontName": "map-pin",
-                  "iconFontFamily": "lucide",
-                  "fill": "$--muted-foreground"
-                },
-                {
-                  "type": "text",
-                  "id": "LsTow",
-                  "name": "location",
-                  "fill": "$--muted-foreground",
-                  "content": "Amsterdam",
-                  "fontFamily": "Geist",
-                  "fontSize": 14,
-                  "fontWeight": "normal"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "N6yWP",
-          "name": "footer",
-          "width": "fill_container",
-          "justifyContent": "space_between",
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "text",
-              "id": "FnNc6",
-              "name": "spots",
-              "fill": "$--muted-foreground",
-              "content": "12 spots left",
-              "fontFamily": "Geist",
-              "fontSize": 12,
-              "fontWeight": "normal"
-            },
-            {
-              "type": "frame",
-              "id": "7yjxj",
-              "name": "registerBtn",
-              "fill": "$--primary",
-              "cornerRadius": "$--radius-md",
-              "gap": 8,
-              "padding": [
-                10,
-                16
-              ],
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "XQgNQ",
-                  "name": "label",
-                  "fill": "$--primary-foreground",
-                  "content": "Register",
-                  "fontFamily": "Geist",
-                  "fontSize": 13,
-                  "fontWeight": "500"
-                },
-                {
-                  "type": "icon_font",
-                  "id": "ySDtk",
-                  "name": "icon",
-                  "enabled": false,
-                  "width": 16,
-                  "height": 16,
-                  "iconFontName": "arrow-right",
-                  "iconFontFamily": "lucide",
-                  "fill": "$--primary-foreground"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "frame",
       "id": "cWUgk",
       "x": 0,
       "y": 600,
@@ -790,7 +607,8 @@
                           "fill": "$--muted-foreground",
                           "content": "your@email.com",
                           "fontFamily": "Geist",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         }
                       ]
                     },
@@ -869,224 +687,6 @@
               "fontWeight": "normal"
             }
           ]
-        }
-      ]
-    },
-    {
-      "type": "frame",
-      "id": "H68KN",
-      "x": 839,
-      "y": -250,
-      "name": "Member Card",
-      "reusable": true,
-      "width": 260,
-      "fill": "$--card",
-      "cornerRadius": "$--radius-lg",
-      "stroke": {
-        "align": "inside",
-        "thickness": 1,
-        "fill": "$--border"
-      },
-      "layout": "vertical",
-      "gap": 12,
-      "padding": 24,
-      "alignItems": "center",
-      "children": [
-        {
-          "type": "frame",
-          "id": "Ko9sh",
-          "name": "avatar",
-          "width": 56,
-          "height": 56,
-          "fill": "$--muted",
-          "cornerRadius": "$--radius-pill",
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "text",
-              "id": "BOee1",
-              "name": "initials",
-              "fill": "$--muted-foreground",
-              "content": "JD",
-              "fontFamily": "Geist",
-              "fontSize": 14,
-              "fontWeight": "600"
-            }
-          ]
-        },
-        {
-          "type": "text",
-          "id": "K8NcC",
-          "name": "name",
-          "fill": "$--foreground",
-          "content": "Jane Doe",
-          "textAlign": "center",
-          "fontFamily": "Geist",
-          "fontSize": 16,
-          "fontWeight": "600"
-        },
-        {
-          "type": "text",
-          "id": "XbgpT",
-          "name": "company",
-          "fill": "$--muted-foreground",
-          "content": "AI Startup BV",
-          "textAlign": "center",
-          "fontFamily": "Geist",
-          "fontSize": 13,
-          "fontWeight": "normal"
-        },
-        {
-          "type": "frame",
-          "id": "4POi9",
-          "name": "skills",
-          "gap": 6,
-          "justifyContent": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "FhLsy",
-              "name": "skill1",
-              "fill": "$--secondary",
-              "cornerRadius": "$--radius-pill",
-              "padding": [
-                4,
-                10
-              ],
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "zX9tl",
-                  "name": "label",
-                  "fill": "$--secondary-foreground",
-                  "content": "Python",
-                  "fontFamily": "Geist",
-                  "fontSize": 11,
-                  "fontWeight": "500"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "jWTis",
-              "name": "skill2",
-              "fill": "$--secondary",
-              "cornerRadius": "$--radius-pill",
-              "padding": [
-                4,
-                10
-              ],
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "oO0AL",
-                  "name": "label",
-                  "fill": "$--secondary-foreground",
-                  "content": "AI/ML",
-                  "fontFamily": "Geist",
-                  "fontSize": 11,
-                  "fontWeight": "500"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "4SPge",
-              "name": "skill3",
-              "fill": "$--secondary",
-              "cornerRadius": "$--radius-pill",
-              "padding": [
-                4,
-                10
-              ],
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "text",
-                  "id": "8MRNS",
-                  "name": "label",
-                  "fill": "$--secondary-foreground",
-                  "content": "MLOps",
-                  "fontFamily": "Geist",
-                  "fontSize": 11,
-                  "fontWeight": "500"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "frame",
-      "id": "OkfwZ",
-      "x": 819,
-      "y": 109,
-      "name": "Feature Card",
-      "reusable": true,
-      "width": 300,
-      "fill": "$--background",
-      "cornerRadius": "$--radius-lg",
-      "stroke": {
-        "align": "inside",
-        "thickness": 1,
-        "fill": "$--border"
-      },
-      "layout": "vertical",
-      "gap": 12,
-      "padding": 24,
-      "children": [
-        {
-          "type": "frame",
-          "id": "TOKiP",
-          "name": "iconBg",
-          "width": 48,
-          "height": 48,
-          "fill": "#FFF7ED",
-          "cornerRadius": "$--radius-md",
-          "justifyContent": "center",
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "icon_font",
-              "id": "sVsSp",
-              "name": "icon",
-              "width": 24,
-              "height": 24,
-              "iconFontName": "cpu",
-              "iconFontFamily": "lucide",
-              "fill": "$--primary"
-            }
-          ]
-        },
-        {
-          "type": "text",
-          "id": "qZbno",
-          "name": "title",
-          "fill": "$--foreground",
-          "content": "Feature Title",
-          "fontFamily": "Geist",
-          "fontSize": 18,
-          "fontWeight": "600"
-        },
-        {
-          "type": "text",
-          "id": "3z7d1",
-          "name": "description",
-          "fill": "$--muted-foreground",
-          "textGrowth": "fixed-width",
-          "width": 252,
-          "content": "A brief description of this feature and what it offers to the community members.",
-          "lineHeight": 1.5,
-          "fontFamily": "Geist",
-          "fontSize": 14,
-          "fontWeight": "normal"
         }
       ]
     },
@@ -1389,7 +989,8 @@
           "content": "A community for technical innovators in the Netherlands.\nWe foster collaboration through workshops, deep-dives,\nand hackathons focused on AI and automation.",
           "lineHeight": 1.5,
           "fontFamily": "Geist",
-          "fontSize": 22
+          "fontSize": 22,
+          "fontWeight": "normal"
         },
         {
           "type": "frame",
@@ -1499,6 +1100,7 @@
                   "content": "COMMUNITY MEMBERS:",
                   "fontFamily": "Geist Mono",
                   "fontSize": 11,
+                  "fontWeight": "normal",
                   "letterSpacing": 0.5
                 },
                 {
@@ -1543,6 +1145,7 @@
                   "content": "EVENTS HOSTED:",
                   "fontFamily": "Geist Mono",
                   "fontSize": 11,
+                  "fontWeight": "normal",
                   "letterSpacing": 0.5
                 },
                 {
@@ -1587,6 +1190,7 @@
                   "content": "WORKSHOPS:",
                   "fontFamily": "Geist Mono",
                   "fontSize": 11,
+                  "fontWeight": "normal",
                   "letterSpacing": 0.5
                 },
                 {
@@ -1631,6 +1235,7 @@
                   "content": "HACKATHONS:",
                   "fontFamily": "Geist Mono",
                   "fontSize": 11,
+                  "fontWeight": "normal",
                   "letterSpacing": 0.5
                 },
                 {
@@ -1675,6 +1280,7 @@
                   "content": "COMPANIES:",
                   "fontFamily": "Geist Mono",
                   "fontSize": 11,
+                  "fontWeight": "normal",
                   "letterSpacing": 0.5
                 },
                 {
@@ -1765,7 +1371,8 @@
           "fill": "$--muted-foreground",
           "content": "2026.3.15",
           "fontFamily": "Geist Mono",
-          "fontSize": 13
+          "fontSize": 13,
+          "fontWeight": "normal"
         },
         {
           "type": "text",
@@ -1866,7 +1473,8 @@
           "fill": "$--primary-foreground",
           "content": "2026.3.22",
           "fontFamily": "Geist Mono",
-          "fontSize": 13
+          "fontSize": 13,
+          "fontWeight": "normal"
         },
         {
           "type": "text",
@@ -2708,6 +2316,320 @@
           "ref": "mUU1l",
           "width": "fill_container",
           "name": "footer"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "UAyBO",
+      "x": 0,
+      "y": 3536,
+      "name": "Dialog",
+      "reusable": true,
+      "clip": true,
+      "width": 800,
+      "fill": "$--background",
+      "cornerRadius": "$--radius-md",
+      "stroke": {
+        "align": "inside",
+        "thickness": 1,
+        "fill": "$--border"
+      },
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "xTTm8",
+          "name": "title-bar",
+          "width": "fill_container",
+          "height": 36,
+          "fill": "$--background",
+          "stroke": {
+            "align": "inside",
+            "thickness": {
+              "bottom": 1
+            },
+            "fill": "$--border"
+          },
+          "padding": [
+            0,
+            12
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "RV10S",
+              "name": "left-controls",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "V2ojV",
+                  "name": "split-icon",
+                  "width": 14,
+                  "height": 14,
+                  "iconFontName": "terminal",
+                  "iconFontFamily": "lucide",
+                  "fill": "$--muted-foreground"
+                },
+                {
+                  "type": "icon_font",
+                  "id": "5g350",
+                  "name": "maximize-icon",
+                  "enabled": false,
+                  "width": 14,
+                  "height": 14,
+                  "iconFontName": "chevron-down",
+                  "iconFontFamily": "lucide",
+                  "fill": "$--muted-foreground"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "5LQOp",
+              "name": "title",
+              "fill": "$--muted-foreground",
+              "content": "DIALOG",
+              "fontFamily": "Geist Mono",
+              "fontSize": 11,
+              "fontWeight": "500",
+              "letterSpacing": 1
+            },
+            {
+              "type": "frame",
+              "id": "ETi0g",
+              "name": "window-controls",
+              "gap": 2,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "Ip9ms",
+                  "name": "minimize-icon",
+                  "width": 14,
+                  "height": 14,
+                  "iconFontName": "minus",
+                  "iconFontFamily": "lucide",
+                  "fill": "$--muted-foreground"
+                },
+                {
+                  "type": "icon_font",
+                  "id": "nyr7K",
+                  "name": "maximize-icon",
+                  "width": 14,
+                  "height": 14,
+                  "iconFontName": "maximize-2",
+                  "iconFontFamily": "lucide",
+                  "fill": "$--muted-foreground"
+                },
+                {
+                  "type": "icon_font",
+                  "id": "6g0iQ",
+                  "name": "close-icon",
+                  "width": 14,
+                  "height": 14,
+                  "iconFontName": "x",
+                  "iconFontFamily": "lucide",
+                  "fill": "$--muted-foreground"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "4TIkp",
+          "name": "content-area",
+          "slot": [],
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 24,
+          "padding": 32,
+          "children": [
+            {
+              "type": "frame",
+              "id": "PUukj",
+              "name": "grid-markers-top",
+              "width": "fill_container",
+              "height": 16,
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "VYg7k",
+                  "name": "gm1",
+                  "fill": "$--border",
+                  "content": "+",
+                  "fontFamily": "Geist Mono",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "TnPnP",
+                  "name": "gm2",
+                  "fill": "$--border",
+                  "content": "+",
+                  "fontFamily": "Geist Mono",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "5Il8Z",
+                  "name": "gm3",
+                  "fill": "$--border",
+                  "content": "+",
+                  "fontFamily": "Geist Mono",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "4qDSO",
+              "name": "title-block",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "j1Cl1",
+                  "name": "dialog-title",
+                  "fill": "$--foreground",
+                  "content": "Confirm Action",
+                  "fontFamily": "Geist",
+                  "fontSize": 24,
+                  "fontWeight": "800",
+                  "letterSpacing": -0.5
+                },
+                {
+                  "type": "text",
+                  "id": "Jlpkq",
+                  "name": "dialog-desc",
+                  "fill": "$--muted-foreground",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Are you sure you want to proceed? This action\ncannot be undone.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Geist",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "NqVAP",
+              "name": "dialog-actions",
+              "width": "fill_container",
+              "gap": 8,
+              "justifyContent": "end",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "8uztM",
+                  "name": "cancel-btn",
+                  "cornerRadius": "$--radius-sm",
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "$--border"
+                  },
+                  "padding": [
+                    8,
+                    16
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p5lXX",
+                      "name": "cancel-txt",
+                      "fill": "$--muted-foreground",
+                      "content": "[ESC] Cancel",
+                      "fontFamily": "Geist Mono",
+                      "fontSize": 12,
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LI7HS",
+                  "name": "confirm-btn",
+                  "fill": "$--foreground",
+                  "cornerRadius": "$--radius-sm",
+                  "padding": [
+                    8,
+                    16
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fRe80",
+                      "name": "confirm-txt",
+                      "fill": "$--background",
+                      "content": "[ENTER] Confirm",
+                      "fontFamily": "Geist Mono",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "mXeSl",
+              "name": "grid-markers-bottom",
+              "width": "fill_container",
+              "height": 16,
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "n3o3c",
+                  "name": "gbm1",
+                  "fill": "$--border",
+                  "content": "+",
+                  "fontFamily": "Geist Mono",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "nadlC",
+                  "name": "gbm2",
+                  "fill": "$--border",
+                  "content": "+",
+                  "fontFamily": "Geist Mono",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "oFmPd",
+                  "name": "gbm3",
+                  "fill": "$--border",
+                  "content": "+",
+                  "fontFamily": "Geist Mono",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
         }
       ]
     }

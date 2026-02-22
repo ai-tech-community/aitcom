@@ -159,17 +159,23 @@ interface Thought {
   opacity: number;
 }
 
-// Generate mountain height map with smooth peaks
+// Generate mountain height map — one tile that repeats seamlessly
 function generateHeightMap(width: number): number[] {
+  const TILE = 45;
   const heights: number[] = [];
-  for (let x = 0; x < width; x++) {
+  // Generate one clean tile, then repeat it for the full width
+  const tile: number[] = [];
+  for (let x = 0; x < TILE; x++) {
+    const t = (x / TILE) * Math.PI * 2;
     const h =
-      Math.sin(x * 0.018) * 7 +
-      Math.sin(x * 0.045 + 1.2) * 5 +
-      Math.sin(x * 0.009) * 9 +
-      Math.cos(x * 0.028 + 2.5) * 3 +
-      Math.sin(x * 0.065 + 0.7) * 2;
-    heights.push(Math.max(3, Math.floor(h + 16)));
+      Math.sin(t) * 5 +
+      Math.sin(t * 2 + 1.2) * 4 +
+      Math.sin(t * 3) * 2.5 +
+      Math.cos(t * 5 + 2.5) * 1.5;
+    tile.push(Math.max(10, Math.floor(h + 18)));
+  }
+  for (let x = 0; x < width; x++) {
+    heights.push(tile[x % TILE]!);
   }
   return heights;
 }
@@ -280,8 +286,12 @@ export function AsciiLandscape() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const CHAR_W = 7;
     const CHAR_H = 12;
+    const font = `${CHAR_H - 2}px "Geist Mono", "SF Mono", "Monaco", "Inconsolata", "Fira Mono", monospace`;
+
+    // Measure actual character width from the font
+    ctx.font = font;
+    const CHAR_W = ctx.measureText("M").width || 7;
 
     function resize() {
       const dpr = window.devicePixelRatio || 1;
@@ -296,15 +306,16 @@ export function AsciiLandscape() {
 
     const getWidth = () => canvas.getBoundingClientRect().width;
     const getHeight = () => canvas.getBoundingClientRect().height;
-    const getCols = () => Math.floor(getWidth() / CHAR_W);
+    const getCols = () => Math.ceil(getWidth() / CHAR_W);
     const getRows = () => Math.floor(getHeight() / CHAR_H);
 
     // Ground position
-    const GROUND_Y_RATIO = 0.82;
+    const GROUND_Y_RATIO = 0.97;
 
     // Mountain landscape (static backdrop)
     const LANDSCAPE_ROWS = 26;
-    const initCols = getCols();
+    // Generate at least one full tile — the renderer tiles it to fill any screen width
+    const initCols = Math.max(getCols() + 40, 90);
     const landscapeHeights = generateHeightMap(initCols);
     const landscapeLines = generateMountainLandscape(
       initCols,
@@ -312,19 +323,20 @@ export function AsciiLandscape() {
       landscapeHeights,
     );
 
-    // Bart state
+    // Bart state — fixed position on the right (clear of heading text)
+    const BART_X_RATIO = 0.75;
     let bartY = 0;
     let bartVelocity = 0;
     let isJumping = false;
     let runFrame = 0;
     let frameCount = 0;
-    const GRAVITY = 0.35;
-    const JUMP_FORCE = -5;
+    const GRAVITY = 0.06;
+    const JUMP_FORCE = -1.2;
+    const OBSTACLE_SPEED = 0.6;
 
-    // Obstacles
+    // Obstacles move from right to left towards Bart
     const obstacles: Obstacle[] = [];
     let nextObstacleTimer = 120;
-    const OBSTACLE_SPEED = 1.6;
     const obstacleTemplates = [CACTUS_SMALL, CACTUS_TALL, CACTUS_DOUBLE];
 
     // Clouds
@@ -346,15 +358,15 @@ export function AsciiLandscape() {
 
     function draw() {
       const w = getWidth();
+      const h = getHeight();
       const c = getCols();
       const r = getRows();
       const groundY = Math.floor(r * GROUND_Y_RATIO);
 
-      ctx!.clearRect(0, 0, w, getHeight());
+      ctx!.clearRect(0, 0, w, h);
 
       const style = getComputedStyle(canvas!);
       const textColor = style.color || "#a1a1aa";
-      const font = `${CHAR_H - 2}px "Geist Mono", "SF Mono", "Monaco", "Inconsolata", "Fira Mono", monospace`;
 
       ctx!.font = font;
       ctx!.textBaseline = "top";
@@ -409,7 +421,11 @@ export function AsciiLandscape() {
       const landscapeBaseY = groundY - LANDSCAPE_ROWS + 2;
 
       for (let row = 0; row < LANDSCAPE_ROWS; row++) {
-        const line = landscapeLines[row]!;
+        let line = landscapeLines[row]!;
+        // Tile the landscape to always fill the full screen width
+        while (line.length < c) {
+          line += landscapeLines[row]!;
+        }
         const visible = line.substring(0, c);
 
         // Opacity: dimmer at top (distant peaks), brighter at bottom (foreground forest)
@@ -425,7 +441,10 @@ export function AsciiLandscape() {
       const groundLine = "\u2500".repeat(c);
       ctx!.fillText(groundLine, 0, groundY * CHAR_H);
 
-      // --- Obstacles ---
+      // --- Bart is stationary on the right (away from text) ---
+      const bartX = Math.floor(c * BART_X_RATIO);
+
+      // --- Obstacles spawn on the left and move right towards Bart ---
       nextObstacleTimer--;
       if (nextObstacleTimer <= 0) {
         const template =
@@ -433,39 +452,42 @@ export function AsciiLandscape() {
             Math.floor(Math.random() * obstacleTemplates.length)
           ]!;
         obstacles.push({
-          x: c + 5,
+          x: -10,
           template,
           passed: false,
         });
-        nextObstacleTimer = 120 + Math.random() * 200;
+        nextObstacleTimer = 120 + Math.random() * 150;
       }
-
-      const bartDrawX = 8;
 
       for (let i = obstacles.length - 1; i >= 0; i--) {
         const obs = obstacles[i]!;
-        ctx!.globalAlpha = 0.55;
-        ctx!.fillStyle = textColor;
-        const obsH = obs.template.length;
-        for (let row = 0; row < obsH; row++) {
-          ctx!.fillText(
-            obs.template[row]!,
-            obs.x * CHAR_W,
-            (groundY - obsH + row) * CHAR_H,
-          );
-        }
-        obs.x -= OBSTACLE_SPEED * 0.35;
+        obs.x += OBSTACLE_SPEED;
 
-        // Auto-jump
-        const distToObs = obs.x - bartDrawX;
-        if (distToObs > 0 && distToObs < 22 && !isJumping && !obs.passed) {
+        // Draw if on-screen
+        if (obs.x > -10 && obs.x < c + 5) {
+          ctx!.globalAlpha = 0.55;
+          ctx!.fillStyle = textColor;
+          const obsH = obs.template.length;
+          for (let row = 0; row < obsH; row++) {
+            ctx!.fillText(
+              obs.template[row]!,
+              obs.x * CHAR_W,
+              (groundY - obsH + row) * CHAR_H,
+            );
+          }
+        }
+
+        // Auto-jump: obstacle approaching Bart from the left
+        const distToObs = bartX - obs.x;
+        if (distToObs > 0 && distToObs < 14 && !isJumping && !obs.passed) {
           isJumping = true;
           bartVelocity = JUMP_FORCE;
         }
-        if (obs.x < bartDrawX && !obs.passed) {
+        if (obs.x > bartX + 5 && !obs.passed) {
           obs.passed = true;
         }
-        if (obs.x < -15) {
+        // Clean up obstacles that passed off-screen right
+        if (obs.x > c + 15) {
           obstacles.splice(i, 1);
         }
       }
@@ -503,7 +525,7 @@ export function AsciiLandscape() {
       for (let row = 0; row < bartH; row++) {
         ctx!.fillText(
           bartSprite[row]!,
-          bartDrawX * CHAR_W,
+          bartX * CHAR_W,
           (bartDrawY + row) * CHAR_H,
         );
       }
