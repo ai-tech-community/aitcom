@@ -10,7 +10,10 @@ type Args = {
   searchParams: Promise<Record<string, string | string[]>>;
 };
 
-export const generateMetadata = ({ params, searchParams }: Args): Promise<Metadata> =>
+export const generateMetadata = ({
+  params,
+  searchParams,
+}: Args): Promise<Metadata> =>
   generatePageMetadata({ config, params, searchParams });
 
 const NotFound = ({ params, searchParams }: Args) =>

@@ -9,7 +9,13 @@ export const Events: CollectionConfig = {
   versions: { drafts: true },
   fields: [
     { name: "title", type: "text", required: true, localized: true },
-    { name: "slug", type: "text", required: true, unique: true, admin: { position: "sidebar" } },
+    {
+      name: "slug",
+      type: "text",
+      required: true,
+      unique: true,
+      admin: { position: "sidebar" },
+    },
     { name: "description", type: "richText", required: true, localized: true },
     {
       name: "type",
@@ -22,7 +28,12 @@ export const Events: CollectionConfig = {
         { label: "Meetup", value: "meetup" },
       ],
     },
-    { name: "date", type: "date", required: true, admin: { position: "sidebar" } },
+    {
+      name: "date",
+      type: "date",
+      required: true,
+      admin: { position: "sidebar" },
+    },
     { name: "startTime", type: "text" },
     { name: "endTime", type: "text" },
     { name: "location", type: "text", required: true },

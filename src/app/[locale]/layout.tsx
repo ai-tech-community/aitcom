@@ -41,8 +41,10 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  const messages = (await import(`../../../messages/${locale}.json`)).default as Record<string, unknown>;
+  const messagesModule = (await import(`../../../messages/${locale}.json`)) as {
+    default: Record<string, unknown>;
+  };
+  const messages = messagesModule.default;
 
   return (
     <html lang={locale} className={`${geist.variable} ${geistMono.variable}`}>

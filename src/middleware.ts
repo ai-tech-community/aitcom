@@ -9,7 +9,9 @@ const protectedPaths = ["/dashboard"];
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const pathWithoutLocale = pathname.replace(/^\/(en|nl)/, "") || "/";
-  const isProtected = protectedPaths.some((p) => pathWithoutLocale.startsWith(p));
+  const isProtected = protectedPaths.some((p) =>
+    pathWithoutLocale.startsWith(p),
+  );
 
   if (isProtected) {
     const sessionToken = request.cookies.get("better-auth.session_token");
@@ -25,5 +27,5 @@ export default function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|admin|_next|.*\\..*).*)" ],
+  matcher: ["/((?!api|admin|_next|.*\\..*).*)"],
 };

@@ -1,6 +1,5 @@
 import { getLocale, getTranslations } from "next-intl/server";
-import { getPayload } from "payload";
-import config from "@payload-config";
+import { getPayloadClient } from "@/server/payload";
 import { Link } from "@/i18n/navigation";
 
 const typeLabels: Record<string, string> = {
@@ -19,7 +18,7 @@ export default async function EventsPage() {
   const locale = await getLocale();
   const t = await getTranslations("events");
 
-  const payload = await getPayload({ config });
+  const payload = await getPayloadClient();
   const { docs: events } = await payload.find({
     collection: "events",
     where: { status: { equals: "published" } },
@@ -30,27 +29,27 @@ export default async function EventsPage() {
   return (
     <div className="px-6 py-16 sm:px-12">
       {/* Section Header */}
-      <div className="border-b border-border pb-4">
-        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+      <div className="border-border border-b pb-4">
+        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / {t("title").toUpperCase()}
         </span>
       </div>
 
       {events.length === 0 ? (
-        <p className="mt-12 text-center text-muted-foreground">
+        <p className="text-muted-foreground mt-12 text-center">
           {t("noEvents")}
         </p>
       ) : (
         <>
           {/* Table Header */}
-          <div className="flex items-center border-b border-border px-4 py-2.5">
-            <span className="w-32 font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+          <div className="border-border flex items-center border-b px-4 py-2.5">
+            <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
               / DATE
             </span>
-            <span className="flex-1 font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+            <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
               / NAME
             </span>
-            <span className="font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+            <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
               / TYPE
             </span>
           </div>
@@ -59,22 +58,20 @@ export default async function EventsPage() {
           {events.map((event) => (
             <Link
               key={event.id}
-              href={`/events/${event.slug as string}`}
-              className="flex items-center border-b border-border px-4 py-3.5 transition-colors hover:bg-secondary/50"
+              href={`/events/${event.slug}`}
+              className="border-border hover:bg-secondary/50 flex items-center border-b px-4 py-3.5 transition-colors"
             >
               <div className="flex w-32 items-center gap-3">
-                <div className="h-2 w-2 rounded-full bg-foreground" />
+                <div className="bg-foreground h-2 w-2 rounded-full" />
                 <span className="font-mono text-[13px]">
-                  {formatDate(event.date as string)}
+                  {formatDate(event.date)}
                 </span>
               </div>
-              <span className="flex-1 font-medium">
-                {event.title as string}
+              <span className="flex-1 font-medium">{event.title}</span>
+              <span className="border-border text-muted-foreground rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider">
+                {typeLabels[event.type] ?? event.type}
               </span>
-              <span className="rounded border border-border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
-                {typeLabels[event.type as string] ?? (event.type as string)}
-              </span>
-              <span className="ml-4 font-mono text-lg font-light text-muted-foreground">
+              <span className="text-muted-foreground ml-4 font-mono text-lg font-light">
                 +
               </span>
             </Link>

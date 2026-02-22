@@ -16,7 +16,7 @@ export function Footer() {
             <span className="text-2xl font-extrabold tracking-tight">
               AIT<span className="text-primary">.</span>
             </span>
-            <p className="max-w-70 text-sm text-muted-foreground">
+            <p className="text-muted-foreground max-w-70 text-sm">
               {t("description")}
             </p>
           </div>
@@ -25,20 +25,32 @@ export function Footer() {
           <div className="flex flex-wrap gap-16">
             {/* Navigate */}
             <div className="space-y-3">
-              <h4 className="font-mono text-[11px] font-semibold tracking-wider text-muted-foreground">
+              <h4 className="text-muted-foreground font-mono text-[11px] font-semibold tracking-wider">
                 / {t("navigation").toUpperCase()}
               </h4>
               <nav className="flex flex-col gap-2">
-                <Link href="/" className="text-sm transition-colors hover:text-primary">
+                <Link
+                  href="/"
+                  className="hover:text-primary text-sm transition-colors"
+                >
                   {tNav("home")}
                 </Link>
-                <Link href="/events" className="text-sm transition-colors hover:text-primary">
+                <Link
+                  href="/events"
+                  className="hover:text-primary text-sm transition-colors"
+                >
                   {tNav("events")}
                 </Link>
-                <Link href="/blog" className="text-sm transition-colors hover:text-primary">
+                <Link
+                  href="/blog"
+                  className="hover:text-primary text-sm transition-colors"
+                >
                   {tNav("blog")}
                 </Link>
-                <Link href="/community" className="text-sm transition-colors hover:text-primary">
+                <Link
+                  href="/community"
+                  className="hover:text-primary text-sm transition-colors"
+                >
                   {tNav("community")}
                 </Link>
               </nav>
@@ -46,20 +58,40 @@ export function Footer() {
 
             {/* Connect */}
             <div className="space-y-3">
-              <h4 className="font-mono text-[11px] font-semibold tracking-wider text-muted-foreground">
+              <h4 className="text-muted-foreground font-mono text-[11px] font-semibold tracking-wider">
                 / {t("connect").toUpperCase()}
               </h4>
               <nav className="flex flex-col gap-2">
-                <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-sm transition-colors hover:text-primary">
+                <a
+                  href="https://github.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary text-sm transition-colors"
+                >
                   GitHub
                 </a>
-                <a href="https://discord.gg" target="_blank" rel="noopener noreferrer" className="text-sm transition-colors hover:text-primary">
+                <a
+                  href="https://discord.gg"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary text-sm transition-colors"
+                >
                   Discord
                 </a>
-                <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="text-sm transition-colors hover:text-primary">
+                <a
+                  href="https://x.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary text-sm transition-colors"
+                >
                   X (Twitter)
                 </a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-sm transition-colors hover:text-primary">
+                <a
+                  href="https://linkedin.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary text-sm transition-colors"
+                >
                   LinkedIn
                 </a>
               </nav>
@@ -67,14 +99,20 @@ export function Footer() {
 
             {/* Legal */}
             <div className="space-y-3">
-              <h4 className="font-mono text-[11px] font-semibold tracking-wider text-muted-foreground">
+              <h4 className="text-muted-foreground font-mono text-[11px] font-semibold tracking-wider">
                 / {t("legal").toUpperCase()}
               </h4>
               <nav className="flex flex-col gap-2">
-                <Link href="/privacy" className="text-sm transition-colors hover:text-primary">
+                <Link
+                  href="/privacy"
+                  className="hover:text-primary text-sm transition-colors"
+                >
                   {t("privacy")}
                 </Link>
-                <Link href="/terms" className="text-sm transition-colors hover:text-primary">
+                <Link
+                  href="/terms"
+                  className="hover:text-primary text-sm transition-colors"
+                >
                   {t("terms")}
                 </Link>
               </nav>
@@ -84,10 +122,10 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 sm:flex-row">
-          <p className="font-mono text-[11px] tracking-wider text-muted-foreground">
+          <p className="text-muted-foreground font-mono text-[11px] tracking-wider">
             {t("copyright", { year: new Date().getFullYear() })}
           </p>
-          <p className="font-mono text-[11px] tracking-wider text-muted-foreground">
+          <p className="text-muted-foreground font-mono text-[11px] tracking-wider">
             BUILT WITH &#9829; IN THE NETHERLANDS
           </p>
         </div>

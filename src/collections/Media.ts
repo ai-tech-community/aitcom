@@ -11,7 +11,5 @@ export const Media: CollectionConfig = {
       { name: "hero", width: 1440, height: 600, position: "centre" },
     ],
   },
-  fields: [
-    { name: "alt", type: "text", required: true },
-  ],
+  fields: [{ name: "alt", type: "text", required: true }],
 };

@@ -95,9 +95,9 @@ export function EventRegisterButton({
 
     return (
       <div className="space-y-3">
-        <div className="flex items-center gap-2 rounded border border-border px-4 py-2.5">
-          <div className="h-2 w-2 rounded-full bg-primary" />
-          <span className="font-mono text-xs tracking-wider text-muted-foreground">
+        <div className="border-border flex items-center gap-2 rounded border px-4 py-2.5">
+          <div className="bg-primary h-2 w-2 rounded-full" />
+          <span className="text-muted-foreground font-mono text-xs tracking-wider">
             STATUS: {statusLabel}
           </span>
         </div>

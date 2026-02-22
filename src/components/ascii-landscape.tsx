@@ -68,13 +68,7 @@ const BART_RUN_2 = [...BART_BODY, ...BART_LEGS_2];
 const BART_JUMP = [...BART_BODY, ...BART_LEGS_JUMP];
 
 // Cactus obstacles
-const CACTUS_SMALL = [
-  "  |  ",
-  " \\|/ ",
-  "  |  ",
-  "  |  ",
-  " _|_ ",
-];
+const CACTUS_SMALL = ["  |  ", " \\|/ ", "  |  ", "  |  ", " _|_ "];
 
 const CACTUS_TALL = [
   "  |    ",
@@ -98,21 +92,9 @@ const CACTUS_DOUBLE = [
 
 // Clouds
 const CLOUDS = [
-  [
-    "     .---.     ",
-    "  .-'     '-.  ",
-    "-'           '-",
-  ],
-  [
-    "        .____.      ",
-    "    .--'      '--.  ",
-    " --'              '-",
-  ],
-  [
-    "   .--.    ",
-    " .'    '-. ",
-    "-'        '-",
-  ],
+  ["     .---.     ", "  .-'     '-.  ", "-'           '-"],
+  ["        .____.      ", "    .--'      '--.  ", " --'              '-"],
+  ["   .--.    ", " .'    '-. ", "-'        '-"],
 ];
 
 // Community thoughts
@@ -193,7 +175,7 @@ function generateMountainLandscape(
     for (let x = 0; x < width; x++) {
       const h = heights[x]!;
       const surfaceY = rows - h;
-      const prevH = heights[((x - 1) + width) % width]!;
+      const prevH = heights[(x - 1 + width) % width]!;
       const nextH = heights[(x + 1) % width]!;
       const prevSurfaceY = rows - prevH;
       const nextSurfaceY = rows - nextH;
@@ -561,7 +543,7 @@ export function AsciiLandscape() {
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none absolute inset-0 h-full w-full text-foreground"
+      className="text-foreground pointer-events-none absolute inset-0 h-full w-full"
       aria-hidden="true"
     />
   );

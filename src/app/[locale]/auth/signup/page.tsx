@@ -43,7 +43,7 @@ export default function SignUpPage() {
           <h1 className="text-3xl font-extrabold tracking-tight">
             {t("signUp")}
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Join AIT<span className="text-primary">.</span> Community
           </p>
         </div>
@@ -77,7 +77,10 @@ export default function SignUpPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" className="font-mono text-xs tracking-wider">
+            <Label
+              htmlFor="password"
+              className="font-mono text-xs tracking-wider"
+            >
               {t("password").toUpperCase()}
             </Label>
             <Input
@@ -97,10 +100,10 @@ export default function SignUpPage() {
         {/* Divider */}
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border" />
+            <div className="border-border w-full border-t" />
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="bg-background px-2 font-mono text-muted-foreground">
+            <span className="bg-background text-muted-foreground px-2 font-mono">
               {t("orContinueWith").toUpperCase()}
             </span>
           </div>
@@ -117,11 +120,11 @@ export default function SignUpPage() {
         </Button>
 
         {/* Footer Link */}
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-center text-sm">
           {t("hasAccount")}{" "}
           <Link
             href="/auth/signin"
-            className="font-medium text-foreground underline-offset-4 hover:underline"
+            className="text-foreground font-medium underline-offset-4 hover:underline"
           >
             {t("signIn")}
           </Link>

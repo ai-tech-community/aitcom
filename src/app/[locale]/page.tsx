@@ -7,7 +7,7 @@ function GridMarkers() {
   return (
     <div className="flex w-full justify-between">
       {Array.from({ length: 5 }).map((_, i) => (
-        <span key={i} className="font-mono text-sm text-border select-none">
+        <span key={i} className="text-border font-mono text-sm select-none">
           +
         </span>
       ))}
@@ -17,8 +17,8 @@ function GridMarkers() {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="border-b border-border pb-4">
-      <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+    <div className="border-border border-b pb-4">
+      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
         {children}
       </span>
     </div>
@@ -28,10 +28,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function StatItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center gap-2 px-6">
-      <span className="font-mono text-[11px] tracking-wider text-muted-foreground">
+      <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
         {label}:
       </span>
-      <span className="font-mono text-[11px] font-bold tracking-wider text-primary">
+      <span className="text-primary font-mono text-[11px] font-bold tracking-wider">
         {value}
       </span>
     </div>
@@ -42,35 +42,79 @@ export default function Home() {
   const t = useTranslations();
 
   const eventData = [
-    { date: "2026.3.08", name: "Intro to RAG Pipelines", type: "WORKSHOP", highlight: false },
-    { date: "2026.3.15", name: "Fine-tuning LLMs in Production", type: "DEEP-DIVE", highlight: false },
-    { date: "2026.3.22", name: "AI Agents Hackathon \u2014 Build & Ship", type: "HACKATHON", highlight: true },
-    { date: "2026.4.05", name: "Prompt Engineering Masterclass", type: "WORKSHOP", highlight: false },
-    { date: "2026.4.19", name: "MLOps: From Notebook to Production", type: "DEEP-DIVE", highlight: false },
+    {
+      id: "intro-to-rag-pipelines",
+      date: "2026.3.08",
+      name: "Intro to RAG Pipelines",
+      type: "WORKSHOP",
+      highlight: false,
+    },
+    {
+      id: "fine-tuning-llms-in-production",
+      date: "2026.3.15",
+      name: "Fine-tuning LLMs in Production",
+      type: "DEEP-DIVE",
+      highlight: false,
+    },
+    {
+      id: "ai-agents-hackathon-build-ship",
+      date: "2026.3.22",
+      name: "AI Agents Hackathon \u2014 Build & Ship",
+      type: "HACKATHON",
+      highlight: true,
+    },
+    {
+      id: "prompt-engineering-masterclass",
+      date: "2026.4.05",
+      name: "Prompt Engineering Masterclass",
+      type: "WORKSHOP",
+      highlight: false,
+    },
+    {
+      id: "mlops-notebook-to-production",
+      date: "2026.4.19",
+      name: "MLOps: From Notebook to Production",
+      type: "DEEP-DIVE",
+      highlight: false,
+    },
   ];
 
   const features = [
-    { fig: 1, title: t("features.workshops.title"), desc: t("features.workshops.description") },
-    { fig: 2, title: t("features.knowledge.title"), desc: t("features.knowledge.description") },
-    { fig: 3, title: t("features.community.title"), desc: t("features.community.description") },
+    {
+      fig: 1,
+      title: t("features.workshops.title"),
+      desc: t("features.workshops.description"),
+    },
+    {
+      fig: 2,
+      title: t("features.knowledge.title"),
+      desc: t("features.knowledge.description"),
+    },
+    {
+      fig: 3,
+      title: t("features.community.title"),
+      desc: t("features.community.description"),
+    },
   ];
 
   return (
     <>
       {/* Hero with ASCII Landscape */}
-      <section className="relative min-h-[70vh] overflow-hidden bg-linear-to-b from-orange-50/60 via-amber-50/30 to-background">
+      <section className="to-background relative min-h-[70vh] overflow-hidden bg-linear-to-b from-orange-50/60 via-amber-50/30">
         <AsciiLandscape />
-        <div className="relative z-10 px-6 pb-12 pt-16 sm:px-12">
+        <div className="relative z-10 px-6 pt-16 pb-12 sm:px-12">
           <GridMarkers />
           <div className="mt-8 space-y-0">
-            <h1 className="text-6xl font-light leading-[0.95] tracking-tighter sm:text-8xl lg:text-[96px]">
-              {t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech" ? "Welcome to" : t("hero.title").split(" ")[0]}
+            <h1 className="text-6xl leading-[0.95] font-light tracking-tighter sm:text-8xl lg:text-[96px]">
+              {t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech"
+                ? "Welcome to"
+                : t("hero.title").split(" ")[0]}
             </h1>
-            <h1 className="text-6xl font-extrabold leading-[0.95] tracking-tighter sm:text-8xl lg:text-[96px]">
+            <h1 className="text-6xl leading-[0.95] font-extrabold tracking-tighter sm:text-8xl lg:text-[96px]">
               {t("hero.title")}
             </h1>
           </div>
-          <p className="mt-8 max-w-175 text-lg leading-relaxed text-muted-foreground sm:text-xl">
+          <p className="text-muted-foreground mt-8 max-w-175 text-lg leading-relaxed sm:text-xl">
             {t("hero.description")}
           </p>
           <GridMarkers />
@@ -78,15 +122,15 @@ export default function Home() {
       </section>
 
       {/* Stats Ticker */}
-      <div className="flex items-center overflow-x-auto border-y border-border py-2.5">
+      <div className="border-border flex items-center overflow-x-auto border-y py-2.5">
         <StatItem label="COMMUNITY MEMBERS" value="500+" />
-        <span className="font-mono text-[11px] text-border">|</span>
+        <span className="text-border font-mono text-[11px]">|</span>
         <StatItem label="EVENTS HOSTED" value="50+" />
-        <span className="font-mono text-[11px] text-border">|</span>
+        <span className="text-border font-mono text-[11px]">|</span>
         <StatItem label="WORKSHOPS" value="30+" />
-        <span className="font-mono text-[11px] text-border">|</span>
+        <span className="text-border font-mono text-[11px]">|</span>
         <StatItem label="HACKATHONS" value="12+" />
-        <span className="font-mono text-[11px] text-border">|</span>
+        <span className="text-border font-mono text-[11px]">|</span>
         <StatItem label="COMPANIES" value="75+" />
       </div>
 
@@ -97,18 +141,18 @@ export default function Home() {
           {features.map((feat) => (
             <div
               key={feat.fig}
-              className="group overflow-hidden rounded-lg border border-dashed border-border transition-colors hover:border-foreground/30"
+              className="group border-border hover:border-foreground/30 overflow-hidden rounded-lg border border-dashed transition-colors"
             >
               <div className="flex items-center justify-between px-4 py-3">
-                <span className="font-mono text-[10px] font-medium tracking-wider text-muted-foreground">
+                <span className="text-muted-foreground font-mono text-[10px] font-medium tracking-wider">
                   [ FIG. {feat.fig} ]
                 </span>
-                <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover:text-foreground" />
+                <ArrowUpRight className="text-muted-foreground group-hover:text-foreground h-3.5 w-3.5 transition-colors" />
               </div>
-              <div className="h-48 bg-secondary" />
+              <div className="bg-secondary h-48" />
               <div className="space-y-2 p-4 pb-5">
                 <h3 className="text-lg font-bold">{feat.title}</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">
+                <p className="text-muted-foreground text-sm leading-relaxed">
                   {feat.desc}
                 </p>
               </div>
@@ -122,22 +166,22 @@ export default function Home() {
         <SectionLabel>/ {t("events.title").toUpperCase()}</SectionLabel>
 
         {/* Table Header */}
-        <div className="flex items-center border-b border-border px-4 py-2.5">
-          <span className="w-32 font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+        <div className="border-border flex items-center border-b px-4 py-2.5">
+          <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
             / DATE
           </span>
-          <span className="flex-1 font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+          <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
             / NAME
           </span>
-          <span className="font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+          <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
             / TYPE
           </span>
         </div>
 
         {/* Event Rows */}
-        {eventData.map((event, i) => (
+        {eventData.map((event) => (
           <div
-            key={i}
+            key={event.id}
             className={`flex items-center border-b px-4 py-3.5 transition-colors ${
               event.highlight
                 ? "border-primary bg-primary text-primary-foreground"
@@ -179,19 +223,25 @@ export default function Home() {
       <section className="px-6 py-12 sm:px-12">
         <div className="grid gap-6 sm:grid-cols-3">
           {[
-            { title: t("join.attend.title"), desc: t("join.attend.description") },
+            {
+              title: t("join.attend.title"),
+              desc: t("join.attend.description"),
+            },
             { title: t("join.speak.title"), desc: t("join.speak.description") },
-            { title: t("join.partner.title"), desc: t("join.partner.description") },
+            {
+              title: t("join.partner.title"),
+              desc: t("join.partner.description"),
+            },
           ].map((cta) => (
             <Link
               key={cta.title}
               href="/auth/signup"
-              className="group flex h-44 flex-col items-center justify-center gap-2 rounded-xl border border-border transition-colors hover:border-foreground/30"
+              className="group border-border hover:border-foreground/30 flex h-44 flex-col items-center justify-center gap-2 rounded-xl border transition-colors"
             >
-              <span className="text-xl font-semibold group-hover:text-primary">
+              <span className="group-hover:text-primary text-xl font-semibold">
                 {cta.title}
               </span>
-              <ArrowUpRight className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />
+              <ArrowUpRight className="text-muted-foreground group-hover:text-primary h-5 w-5 transition-colors" />
             </Link>
           ))}
         </div>
