@@ -4,10 +4,11 @@
  */
 import "./src/env.js";
 import createNextIntlPlugin from "next-intl/plugin";
+import { withPayload } from "@payloadcms/next/withPayload";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 /** @type {import("next").NextConfig} */
 const config = {};
 
-export default withNextIntl(config);
+export default withPayload(withNextIntl(config));
