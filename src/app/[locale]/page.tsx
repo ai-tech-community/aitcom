@@ -1,6 +1,7 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight } from "lucide-react";
+import { AsciiLandscape } from "@/components/ascii-landscape";
 
 function GridMarkers() {
   return (
@@ -56,21 +57,24 @@ export default function Home() {
 
   return (
     <>
-      {/* Hero */}
-      <section className="px-6 pb-12 pt-16 sm:px-12">
-        <GridMarkers />
-        <div className="mt-8 space-y-0">
-          <h1 className="text-6xl font-light leading-[0.95] tracking-tighter sm:text-8xl lg:text-[96px]">
-            {t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech" ? "Welcome to" : t("hero.title").split(" ")[0]}
-          </h1>
-          <h1 className="text-6xl font-extrabold leading-[0.95] tracking-tighter sm:text-8xl lg:text-[96px]">
-            {t("hero.title")}
-          </h1>
+      {/* Hero with ASCII Landscape */}
+      <section className="relative min-h-[70vh] overflow-hidden bg-linear-to-b from-orange-50/60 via-amber-50/30 to-background">
+        <AsciiLandscape />
+        <div className="relative z-10 px-6 pb-12 pt-16 sm:px-12">
+          <GridMarkers />
+          <div className="mt-8 space-y-0">
+            <h1 className="text-6xl font-light leading-[0.95] tracking-tighter sm:text-8xl lg:text-[96px]">
+              {t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech" ? "Welcome to" : t("hero.title").split(" ")[0]}
+            </h1>
+            <h1 className="text-6xl font-extrabold leading-[0.95] tracking-tighter sm:text-8xl lg:text-[96px]">
+              {t("hero.title")}
+            </h1>
+          </div>
+          <p className="mt-8 max-w-175 text-lg leading-relaxed text-muted-foreground sm:text-xl">
+            {t("hero.description")}
+          </p>
+          <GridMarkers />
         </div>
-        <p className="mt-8 max-w-[700px] text-lg leading-relaxed text-muted-foreground sm:text-xl">
-          {t("hero.description")}
-        </p>
-        <GridMarkers />
       </section>
 
       {/* Stats Ticker */}
