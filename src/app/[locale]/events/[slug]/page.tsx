@@ -137,7 +137,7 @@ export default async function EventDetailPage({
         </div>
         <div className="mt-4">
           <EventRegisterButton
-            eventId={event.id}
+            eventId={Number(event.id)}
             maxAttendees={(event.maxAttendees as number | undefined) ?? null}
           />
         </div>
