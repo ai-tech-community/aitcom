@@ -17,7 +17,7 @@ export function getAvatarUrl(
     const hash = createHash("md5")
       .update(email.trim().toLowerCase())
       .digest("hex");
-    return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=404`;
+    return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=identicon`;
   }
 
   return null;
