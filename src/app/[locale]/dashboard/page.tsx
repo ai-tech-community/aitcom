@@ -7,6 +7,7 @@ import { getPayload } from "payload";
 import config from "@payload-config";
 import { getLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { DashboardProfile } from "@/components/dashboard-profile";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -83,6 +84,15 @@ export default async function DashboardPage() {
       <p className="mt-2 text-muted-foreground">
         Welcome back, {session.user.name ?? session.user.email}
       </p>
+
+      {/* My Profile section */}
+      <div className="mt-12">
+        <DashboardProfile
+          userEmail={session.user.email}
+          userImage={session.user.image}
+          userName={session.user.name}
+        />
+      </div>
 
       {/* My Events section */}
       <div className="mt-12">
