@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /c/projects/customers/aitcom && pnpm db:push 2>&1)",
+      "mcp__Neon__get_database_tables"
+    ]
+  }
+}
