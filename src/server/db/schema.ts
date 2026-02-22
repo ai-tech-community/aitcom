@@ -9,6 +9,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -244,6 +245,7 @@ export const memberBadges = pgTable(
       .notNull(),
   }),
   (t) => [
+    uniqueIndex("member_badge_user_slug_uidx").on(t.userId, t.badgeSlug),
     index("member_badge_user_idx").on(t.userId),
     index("member_badge_slug_idx").on(t.badgeSlug),
   ],
