@@ -42,6 +42,18 @@
     "online": "Online",
     "noEvents": "Geen aankomende evenementen. Kijk binnenkort nog eens!"
   },
+  "blog": {
+    "title": "Blog",
+    "subtitle": "Artikelen, tutorials en opnames van lezingen vanuit de community.",
+    "noArticles": "Nog geen artikelen gepubliceerd. Kom later terug!",
+    "readMore": "Lees meer",
+    "publishedAt": "Gepubliceerd",
+    "tags": "Tags",
+    "article": "Artikel",
+    "tutorial": "Tutorial",
+    "talkRecording": "Lezing Opname",
+    "backToBlog": "← Terug naar blog"
+  },
   "join": {
     "title": "Klaar om mee te doen?",
     "subtitle": "Word onderdeel van de AI Tech community",

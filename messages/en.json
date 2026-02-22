@@ -42,6 +42,18 @@
     "online": "Online",
     "noEvents": "No upcoming events. Check back soon!"
   },
+  "blog": {
+    "title": "Blog",
+    "subtitle": "Articles, tutorials, and talk recordings from the community.",
+    "noArticles": "No articles published yet. Check back soon!",
+    "readMore": "Read more",
+    "publishedAt": "Published",
+    "tags": "Tags",
+    "article": "Article",
+    "tutorial": "Tutorial",
+    "talkRecording": "Talk Recording",
+    "backToBlog": "← Back to blog"
+  },
   "join": {
     "title": "Ready to Join?",
     "subtitle": "Become part of the AI Tech community",
