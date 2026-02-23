@@ -100,7 +100,7 @@ export default function Home() {
   return (
     <>
       {/* Hero with ASCII Landscape */}
-      <section className="to-background relative min-h-[70vh] overflow-hidden bg-linear-to-b from-orange-50/60 via-amber-50/30">
+      <section className=" relative min-h-[70vh] overflow-hidden ">
         <AsciiLandscape />
         <div className="relative z-10 px-6 pt-16 pb-12 sm:px-12">
           <GridMarkers />

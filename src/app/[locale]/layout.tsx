@@ -48,11 +48,11 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} className={`${geist.variable} ${geistMono.variable}`}>
-      <body className="bg-background text-foreground antialiased">
+      <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <TRPCReactProvider>
             <Navbar />
-            <main className="min-h-screen">{children}</main>
+            <main className="min-h-screen to-background bg-linear-to-b from-orange-50/60 via-amber-50/30">{children}</main>
             <Footer />
             <Toaster position="bottom-right" />
           </TRPCReactProvider>

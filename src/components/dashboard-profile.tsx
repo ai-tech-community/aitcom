@@ -22,6 +22,7 @@ export function DashboardProfile({
   const tBadges = useTranslations("badges");
   const tMembers = useTranslations("members");
   const [editing, setEditing] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const { data, isLoading } = api.members.getMyProfile.useQuery();
 
@@ -94,11 +95,12 @@ export function DashboardProfile({
       ) : (
         <div className="mt-4 flex items-start gap-4">
           {/* Avatar */}
-          {avatarUrl ? (
+          {avatarUrl && !imgError ? (
             <img
               src={avatarUrl}
               alt={profile.displayName}
               className="h-12 w-12 rounded-full"
+              onError={() => setImgError(true)}
             />
           ) : (
             <div className="bg-secondary text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full font-mono text-sm font-medium">
