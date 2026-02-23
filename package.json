@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.2",
+    "@mollie/api-client": "^4.4.0",
     "@neondatabase/serverless": "^1.0.2",
     "@payloadcms/db-postgres": "^3.77.0",
     "@payloadcms/next": "^3.77.0",
@@ -44,6 +45,7 @@
     "radix-ui": "^1.4.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "resend": "^6.9.2",
     "server-only": "^0.0.1",
     "sharp": "^0.34.5",
     "shiki": "^3.22.0",

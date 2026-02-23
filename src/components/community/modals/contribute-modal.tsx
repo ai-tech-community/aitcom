@@ -9,6 +9,7 @@ type ContributeModalProps = {
   onClose: () => void;
   title: string;
   subtitle: string;
+  windowIndex?: number;
 };
 
 export function ContributeModal({
@@ -16,49 +17,50 @@ export function ContributeModal({
   onClose,
   title,
   subtitle,
+  windowIndex,
 }: ContributeModalProps) {
   const t = useTranslations("community.contribute");
 
   const cards = [
     {
       key: "speak" as const,
-      color: "border-orange-800/50 hover:border-orange-700",
-      badge: "bg-orange-500/10 text-orange-400",
+      border: "border-orange-200 hover:border-orange-300",
+      badge: "bg-orange-50 text-orange-600",
       href: null as string | null,
       disabled: false,
     },
     {
       key: "write" as const,
-      color: "border-zinc-800 hover:border-zinc-700",
-      badge: "bg-zinc-800 text-zinc-400",
+      border: "border-zinc-200 hover:border-zinc-300",
+      badge: "bg-zinc-100 text-zinc-600",
       href: "/dashboard" as string | null,
       disabled: false,
     },
     {
       key: "mentor" as const,
-      color: "border-zinc-800",
-      badge: "bg-zinc-800 text-zinc-600",
+      border: "border-zinc-200",
+      badge: "bg-zinc-100 text-zinc-400",
       href: null as string | null,
       disabled: true,
     },
     {
       key: "partner" as const,
-      color: "border-zinc-800 hover:border-zinc-700",
-      badge: "bg-zinc-800 text-zinc-400",
+      border: "border-zinc-200 hover:border-zinc-300",
+      badge: "bg-zinc-100 text-zinc-600",
       href: null as string | null,
       disabled: false,
     },
   ];
 
   return (
-    <BuildingModal isOpen={isOpen} onClose={onClose} title={title} subtitle={subtitle}>
+    <BuildingModal isOpen={isOpen} onClose={onClose} title={title} subtitle={subtitle} windowIndex={windowIndex}>
       <div className="grid gap-3 sm:grid-cols-2">
-        {cards.map(({ key, color, badge, href, disabled }) => (
+        {cards.map(({ key, border, badge, href, disabled }) => (
           <div
             key={key}
-            className={`rounded-lg border p-4 transition-colors ${color} ${disabled ? "opacity-50" : ""}`}
+            className={`rounded-lg border p-4 transition-colors ${border} ${disabled ? "opacity-50" : ""}`}
           >
-            <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-200">
+            <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-900">
               {t(`${key}.title`)}
             </h3>
             <p className="mt-1.5 text-[12px] leading-relaxed text-zinc-500">
@@ -67,7 +69,7 @@ export function ContributeModal({
             <div className="mt-3">
               {disabled ? (
                 <span
-                  className={`inline-block rounded px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-widest ${badge}`}
+                  className={`inline-block rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-widest ${badge}`}
                 >
                   {t(`${key}.cta`)}
                 </span>
@@ -75,13 +77,13 @@ export function ContributeModal({
                 <Link
                   href={href}
                   onClick={onClose}
-                  className={`inline-flex items-center gap-1 rounded px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-widest transition-colors ${badge} hover:opacity-80`}
+                  className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-widest transition-colors ${badge} hover:opacity-80`}
                 >
                   {t(`${key}.cta`)}
                 </Link>
               ) : (
                 <button
-                  className={`rounded px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-widest transition-colors ${badge} hover:opacity-80`}
+                  className={`rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-widest transition-colors ${badge} hover:opacity-80`}
                 >
                   {t(`${key}.cta`)}
                 </button>

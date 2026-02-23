@@ -15,6 +15,8 @@ export const env = createEnv({
     BETTER_AUTH_GITHUB_CLIENT_SECRET: z.string(),
     DATABASE_URL: z.string(),
     PAYLOAD_SECRET: z.string().optional(),
+    RESEND_API_KEY: z.string().optional(),
+    MOLLIE_API_KEY: z.string().optional(),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -26,7 +28,7 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    // NEXT_PUBLIC_CLIENTVAR: z.string(),
+    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
   },
 
   /**
@@ -40,7 +42,10 @@ export const env = createEnv({
       process.env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     PAYLOAD_SECRET: process.env.PAYLOAD_SECRET,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    MOLLIE_API_KEY: process.env.MOLLIE_API_KEY,
     NODE_ENV: process.env.NODE_ENV,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

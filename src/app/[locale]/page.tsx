@@ -1,7 +1,20 @@
-import { useTranslations } from "next-intl";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight } from "lucide-react";
 import { AsciiLandscape } from "@/components/ascii-landscape";
+import { getPayloadClient } from "@/server/payload";
+
+const typeLabels: Record<string, string> = {
+  workshop: "WORKSHOP",
+  hackathon: "HACKATHON",
+  deep_dive: "DEEP-DIVE",
+  meetup: "MEETUP",
+};
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
+}
 
 function GridMarkers() {
   return (
@@ -27,57 +40,33 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function StatItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 px-6">
-      <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+    <div className="flex items-center gap-1.5 px-3 py-1 sm:gap-2 sm:px-6 sm:py-0">
+      <span className="text-muted-foreground font-mono text-[10px] tracking-wider sm:text-[11px]">
         {label}:
       </span>
-      <span className="text-primary font-mono text-[11px] font-bold tracking-wider">
+      <span className="text-primary font-mono text-[10px] font-bold tracking-wider sm:text-[11px]">
         {value}
       </span>
     </div>
   );
 }
 
-export default function Home() {
-  const t = useTranslations();
+export default async function Home() {
+  const locale = await getLocale();
+  const t = await getTranslations();
 
-  const eventData = [
-    {
-      id: "intro-to-rag-pipelines",
-      date: "2026.3.08",
-      name: "Intro to RAG Pipelines",
-      type: "WORKSHOP",
-      highlight: false,
+  const payload = await getPayloadClient();
+  const { docs: events } = await payload.find({
+    collection: "events",
+    where: {
+      status: { equals: "published" },
+      date: { greater_than_equal: new Date().toISOString() },
     },
-    {
-      id: "fine-tuning-llms-in-production",
-      date: "2026.3.15",
-      name: "Fine-tuning LLMs in Production",
-      type: "DEEP-DIVE",
-      highlight: false,
-    },
-    {
-      id: "ai-agents-hackathon-build-ship",
-      date: "2026.3.22",
-      name: "AI Agents Hackathon \u2014 Build & Ship",
-      type: "HACKATHON",
-      highlight: true,
-    },
-    {
-      id: "prompt-engineering-masterclass",
-      date: "2026.4.05",
-      name: "Prompt Engineering Masterclass",
-      type: "WORKSHOP",
-      highlight: false,
-    },
-    {
-      id: "mlops-notebook-to-production",
-      date: "2026.4.19",
-      name: "MLOps: From Notebook to Production",
-      type: "DEEP-DIVE",
-      highlight: false,
-    },
-  ];
+    sort: "date",
+    limit: 5,
+    locale: locale as "en" | "nl",
+    draft: false,
+  });
 
   const features = [
     {
@@ -100,21 +89,21 @@ export default function Home() {
   return (
     <>
       {/* Hero with ASCII Landscape */}
-      <section className=" relative min-h-[70vh] overflow-hidden ">
+      <section className="relative min-h-[70vh] overflow-hidden">
         <AsciiLandscape />
-        <div className="relative z-10 px-6 pt-16 pb-12 sm:px-12">
+        <div className="relative z-10 px-4 pt-8 pb-6 sm:px-12 sm:pt-16 sm:pb-12">
           <GridMarkers />
-          <div className="mt-8 space-y-0">
-            <h1 className="text-6xl leading-[0.95] font-light tracking-tighter sm:text-8xl lg:text-[96px]">
+          <div className="mt-4 space-y-0 sm:mt-8">
+            <h1 className="text-[32px] leading-[0.95] font-light tracking-tighter sm:text-8xl lg:text-[96px]">
               {t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech"
                 ? "Welcome to"
                 : t("hero.title").split(" ")[0]}
             </h1>
-            <h1 className="text-6xl leading-[0.95] font-extrabold tracking-tighter sm:text-8xl lg:text-[96px]">
+            <h1 className="text-[32px] leading-[0.95] font-extrabold tracking-tighter sm:text-8xl lg:text-[96px]">
               {t("hero.title")}
             </h1>
           </div>
-          <p className="text-muted-foreground mt-8 max-w-175 text-lg leading-relaxed sm:text-xl">
+          <p className="text-muted-foreground mt-4 max-w-175 text-sm leading-relaxed sm:mt-8 sm:text-xl">
             {t("hero.description")}
           </p>
           <GridMarkers />
@@ -122,16 +111,14 @@ export default function Home() {
       </section>
 
       {/* Stats Ticker */}
-      <div className="border-border flex items-center overflow-x-auto border-y py-2.5">
-        <StatItem label="COMMUNITY MEMBERS" value="500+" />
-        <span className="text-border font-mono text-[11px]">|</span>
-        <StatItem label="EVENTS HOSTED" value="50+" />
-        <span className="text-border font-mono text-[11px]">|</span>
+      <div className="border-border grid grid-cols-2 gap-y-1 border-y px-4 py-3 sm:flex sm:items-center sm:gap-y-0 sm:overflow-x-auto sm:px-0 sm:py-2.5">
+        <StatItem label="MEMBERS" value="500+" />
+        <StatItem label="EVENTS" value="50+" />
         <StatItem label="WORKSHOPS" value="30+" />
-        <span className="text-border font-mono text-[11px]">|</span>
         <StatItem label="HACKATHONS" value="12+" />
-        <span className="text-border font-mono text-[11px]">|</span>
-        <StatItem label="COMPANIES" value="75+" />
+        <span className="col-span-2 sm:col-span-1">
+          <StatItem label="COMPANIES" value="75+" />
+        </span>
       </div>
 
       {/* Featured Section */}
@@ -165,58 +152,100 @@ export default function Home() {
       <section className="px-6 py-12 sm:px-12">
         <SectionLabel>/ {t("events.title").toUpperCase()}</SectionLabel>
 
-        {/* Table Header */}
-        <div className="border-border flex items-center border-b px-4 py-2.5">
-          <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
-            / DATE
-          </span>
-          <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
-            / NAME
-          </span>
-          <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
-            / TYPE
-          </span>
-        </div>
-
-        {/* Event Rows */}
-        {eventData.map((event) => (
-          <div
-            key={event.id}
-            className={`flex items-center border-b px-4 py-3.5 transition-colors ${
-              event.highlight
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border hover:bg-secondary/50"
-            }`}
-          >
-            <div className="flex w-32 items-center gap-3">
-              <div
-                className={`h-2 w-2 rounded-full ${
-                  event.highlight ? "bg-primary-foreground" : "bg-foreground"
-                }`}
-              />
-              <span className="font-mono text-[13px]">{event.date}</span>
+        {events.length === 0 ? (
+          <p className="text-muted-foreground mt-8 text-center font-mono text-xs tracking-wider">
+            {t("events.noEvents")}
+          </p>
+        ) : (
+          <>
+            {/* Table Header — desktop only */}
+            <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
+              <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
+                / DATE
+              </span>
+              <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
+                / NAME
+              </span>
+              <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+                / TYPE
+              </span>
             </div>
-            <span className="flex-1 font-medium">{event.name}</span>
-            <span
-              className={`rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider ${
-                event.highlight
-                  ? "border-primary-foreground"
-                  : "border-border text-muted-foreground"
-              }`}
-            >
-              {event.type}
-            </span>
-            <span
-              className={`ml-4 font-mono text-lg font-light ${
-                event.highlight
-                  ? "text-primary-foreground"
-                  : "text-muted-foreground"
-              }`}
-            >
-              +
-            </span>
-          </div>
-        ))}
+
+            {/* Event Rows */}
+            {events.map((event) => {
+              // Highlight the first hackathon, or the first event if none
+              const isHackathon = event.type === "hackathon";
+              return (
+                <Link
+                  key={event.id}
+                  href={`/events/${event.slug}`}
+                  className={`flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0 ${
+                    isHackathon
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border hover:bg-secondary/50"
+                  }`}
+                >
+                  {/* Title — first on mobile */}
+                  <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
+                    {event.title}
+                  </span>
+
+                  {/* Date + type on mobile */}
+                  <div className="flex items-center gap-3 sm:order-1 sm:w-32">
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        isHackathon ? "bg-primary-foreground" : "bg-foreground"
+                      }`}
+                    />
+                    <span className="font-mono text-[12px] sm:text-[13px]">
+                      {formatDate(event.date)}
+                    </span>
+                    {/* Type badge — inline on mobile */}
+                    <span
+                      className={`rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden ${
+                        isHackathon
+                          ? "border-primary-foreground"
+                          : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      {typeLabels[event.type] ?? event.type}
+                    </span>
+                  </div>
+
+                  {/* Type badge — desktop only */}
+                  <span
+                    className={`hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline ${
+                      isHackathon
+                        ? "border-primary-foreground"
+                        : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    {typeLabels[event.type] ?? event.type}
+                  </span>
+                  <span
+                    className={`ml-4 hidden font-mono text-lg font-light sm:order-4 sm:inline ${
+                      isHackathon
+                        ? "text-primary-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    +
+                  </span>
+                </Link>
+              );
+            })}
+
+            {/* View All link */}
+            <div className="mt-4 text-right">
+              <Link
+                href="/events"
+                className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
+              >
+                {t("events.viewAll")} →
+              </Link>
+            </div>
+          </>
+        )}
       </section>
 
       {/* CTA Cards */}

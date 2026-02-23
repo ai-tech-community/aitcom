@@ -1,187 +1,168 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
-import { Scale, Lightbulb, MessageSquare, Wrench } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
-import { BuildingCard } from "./building-card";
 import { RulesModal } from "./modals/rules-modal";
 import { IdeasModal } from "./modals/ideas-modal";
 import { ThreadsModal } from "./modals/threads-modal";
 import { ContributeModal } from "./modals/contribute-modal";
 
-type ActiveModal = "rules" | "ideas" | "threads" | "contribute" | null;
+type ModalKey = "rules" | "ideas" | "threads" | "contribute";
+
+const dotVariants = {
+  hidden: { opacity: 0, scale: 0 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: { type: "spring" as const, stiffness: 300, damping: 20 },
+  },
+};
 
 const containerVariants = {
   hidden: {},
   visible: {
-    transition: {
-      staggerChildren: 0.12,
-    },
-  },
-};
-
-const buildingVariants = {
-  hidden: { opacity: 0, y: 40 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 200, damping: 20 },
+    transition: { staggerChildren: 0.2, delayChildren: 0.5 },
   },
 };
 
 export function CommunityBoard() {
-  const [activeModal, setActiveModal] = useState<ActiveModal>(null);
+  // Set of open modals — multiple can be open at once
+  const [openModals, setOpenModals] = useState<Set<ModalKey>>(new Set());
   const t = useTranslations("community");
   const locale = useLocale();
 
-  const buildings = [
+  const openModal = useCallback((key: ModalKey) => {
+    setOpenModals((prev) => new Set(prev).add(key));
+  }, []);
+
+  const closeModal = useCallback((key: ModalKey) => {
+    setOpenModals((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
+  // Track order for cascade offset
+  const openList = Array.from(openModals);
+
+  const hotspots = [
     {
-      key: "rules" as const,
-      icon: Scale,
+      key: "rules" as ModalKey,
       label: t("rules.building"),
-      sublabel: t("rules.subtitle"),
-      size: "sm" as const,
-      accent: false,
-      style: { top: "15%", left: "12%" },
+      top: "72%",
+      left: "60%",
     },
     {
-      key: "ideas" as const,
-      icon: Lightbulb,
+      key: "ideas" as ModalKey,
       label: t("ideas.building"),
-      sublabel: t("ideas.subtitle"),
-      size: "lg" as const,
-      accent: true,
-      style: { top: "30%", left: "38%" },
+      top: "41%",
+      left: "58%",
     },
     {
-      key: "threads" as const,
-      icon: MessageSquare,
+      key: "threads" as ModalKey,
       label: t("threads.building"),
-      sublabel: t("threads.subtitle"),
-      size: "md" as const,
-      accent: false,
-      style: { top: "12%", right: "18%" },
+      top: "12%",
+      left: "34%",
     },
     {
-      key: "contribute" as const,
-      icon: Wrench,
+      key: "contribute" as ModalKey,
       label: t("contribute.building"),
-      sublabel: t("contribute.subtitle"),
-      size: "md" as const,
-      accent: false,
-      style: { bottom: "20%", right: "12%" },
+      top: "84%",
+      left: "70%",
     },
   ];
 
   return (
     <>
-      <div className="relative min-h-screen w-full overflow-hidden bg-zinc-950">
-        {/* Graph-paper grid */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgb(39 39 42 / 0.5) 1px, transparent 1px),
-              linear-gradient(90deg, rgb(39 39 42 / 0.5) 1px, transparent 1px)
-            `,
-            backgroundSize: "40px 40px",
-          }}
+      {/* Full viewport town map */}
+      <div className="relative min-h-screen w-full overflow-hidden">
+        {/* Background image fills entire viewport */}
+        <Image
+          src="/images/isometric-illustrated-town-square_16_9.png"
+          alt="Community town square"
+          fill
+          className="object-cover"
+          priority
         />
 
-        {/* Ambient glow */}
-        <div className="pointer-events-none absolute bottom-0 left-0 h-96 w-96 rounded-full bg-orange-500/5 blur-3xl" />
-        <div className="pointer-events-none absolute right-0 top-0 h-64 w-64 rounded-full bg-orange-500/5 blur-3xl" />
-
-        {/* Page breadcrumb */}
-        <div className="absolute left-6 top-6 z-10">
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+        {/* Title overlay — compact on mobile so it doesn't cover hotspots */}
+        <div className="absolute left-3 top-3 z-20 rounded-lg bg-white/85 px-3 py-2 shadow-lg backdrop-blur-sm sm:left-8 sm:top-8 sm:px-5 sm:py-4">
+          <span className="hidden font-mono text-[10px] font-medium tracking-wider text-zinc-400 sm:block">
             / {t("title").toUpperCase()}
           </span>
-        </div>
-
-        {/* Subtitle */}
-        <div className="absolute bottom-6 left-6 z-10">
-          <p className="max-w-xs font-mono text-[9px] leading-relaxed text-zinc-700">
+          <h1 className="text-sm font-extrabold tracking-tight text-zinc-900 sm:text-2xl">
+            {t("title")}
+          </h1>
+          <p className="mt-0.5 hidden max-w-xs text-xs text-zinc-500 sm:block">
             {t("subtitle")}
           </p>
         </div>
 
-        {/* Mobile layout: 2x2 grid */}
-        <div className="flex min-h-screen items-center justify-center md:hidden">
-          <motion.div
-            className="grid grid-cols-2 gap-6 p-8"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {buildings.map((b) => (
-              <motion.div key={b.key} variants={buildingVariants}>
-                <BuildingCard
-                  icon={b.icon}
-                  label={b.label}
-                  sublabel={b.sublabel}
-                  size={b.size}
-                  accent={b.accent}
-                  onClick={() => setActiveModal(b.key)}
-                />
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-
-        {/* Desktop layout: scattered absolute positioning */}
+        {/* Dot markers on buildings */}
         <motion.div
-          className="relative hidden h-screen w-full md:block"
+          className="absolute inset-0 z-10"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
-          {buildings.map((b) => (
-            <motion.div
-              key={b.key}
-              className="absolute"
-              style={b.style}
-              variants={buildingVariants}
+          {hotspots.map((spot) => (
+            <motion.button
+              key={spot.key}
+              className="group absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+              style={{ top: spot.top, left: spot.left }}
+              variants={dotVariants}
+              whileHover={{ scale: 1.2 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => openModal(spot.key)}
+              aria-label={spot.label}
             >
-              <BuildingCard
-                icon={b.icon}
-                label={b.label}
-                sublabel={b.sublabel}
-                size={b.size}
-                accent={b.accent}
-                onClick={() => setActiveModal(b.key)}
-              />
-            </motion.div>
+              {/* Outer pulse ring */}
+              <span className="absolute -inset-2 animate-ping rounded-full bg-orange-400/25 sm:-inset-3" />
+              {/* Steady glow ring */}
+              <span className="absolute -inset-1.5 rounded-full bg-orange-400/20 sm:-inset-2" />
+              {/* Dot */}
+              <span className="relative block h-4 w-4 rounded-full border-2 border-white bg-orange-500 shadow-lg transition-colors group-hover:bg-orange-600 sm:h-5 sm:w-5 sm:border-[2.5px]" />
+              {/* Label — always visible on mobile, hover-only on desktop */}
+              <span className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-900 shadow backdrop-blur-sm sm:mt-2 sm:rounded-md sm:px-3 sm:py-1.5 sm:text-xs sm:opacity-0 sm:shadow-lg sm:transition-opacity sm:group-hover:opacity-100">
+                {spot.label}
+              </span>
+            </motion.button>
           ))}
         </motion.div>
       </div>
 
-      {/* Modals */}
+      {/* Modals — all rendered, each independently open/closed */}
       <RulesModal
-        isOpen={activeModal === "rules"}
-        onClose={() => setActiveModal(null)}
+        isOpen={openModals.has("rules")}
+        onClose={() => closeModal("rules")}
         title={t("rules.title")}
         subtitle={t("rules.subtitle")}
+        windowIndex={openList.indexOf("rules")}
       />
       <IdeasModal
-        isOpen={activeModal === "ideas"}
-        onClose={() => setActiveModal(null)}
+        isOpen={openModals.has("ideas")}
+        onClose={() => closeModal("ideas")}
         title={t("ideas.title")}
         subtitle={t("ideas.subtitle")}
+        windowIndex={openList.indexOf("ideas")}
       />
       <ThreadsModal
-        isOpen={activeModal === "threads"}
-        onClose={() => setActiveModal(null)}
+        isOpen={openModals.has("threads")}
+        onClose={() => closeModal("threads")}
         title={t("threads.title")}
         subtitle={t("threads.subtitle")}
         locale={locale}
+        windowIndex={openList.indexOf("threads")}
       />
       <ContributeModal
-        isOpen={activeModal === "contribute"}
-        onClose={() => setActiveModal(null)}
+        isOpen={openModals.has("contribute")}
+        onClose={() => closeModal("contribute")}
         title={t("contribute.title")}
         subtitle={t("contribute.subtitle")}
+        windowIndex={openList.indexOf("contribute")}
       />
     </>
   );

@@ -14,15 +14,16 @@ type IdeasModalProps = {
   onClose: () => void;
   title: string;
   subtitle: string;
+  windowIndex?: number;
 };
 
-const statusColors: Record<string, string> = {
-  open: "text-zinc-400 border-zinc-700",
-  implemented: "text-green-400 border-green-800",
-  rejected: "text-zinc-600 border-zinc-800",
+const statusStyles: Record<string, string> = {
+  open: "text-zinc-500 border-zinc-200",
+  implemented: "text-green-600 border-green-200 bg-green-50",
+  rejected: "text-zinc-400 border-zinc-200 bg-zinc-50",
 };
 
-export function IdeasModal({ isOpen, onClose, title, subtitle }: IdeasModalProps) {
+export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: IdeasModalProps) {
   const t = useTranslations("community.ideas");
   const [sort, setSort] = useState<"votes" | "recent">("votes");
   const [showForm, setShowForm] = useState(false);
@@ -74,17 +75,17 @@ export function IdeasModal({ isOpen, onClose, title, subtitle }: IdeasModalProps
   });
 
   return (
-    <BuildingModal isOpen={isOpen} onClose={onClose} title={title} subtitle={subtitle} accent>
+    <BuildingModal isOpen={isOpen} onClose={onClose} title={title} subtitle={subtitle} windowIndex={windowIndex}>
       {/* Sort tabs */}
-      <div className="mb-4 flex gap-1 border-b border-zinc-800 pb-3">
+      <div className="mb-4 flex gap-1 border-b border-zinc-200 pb-3">
         {(["votes", "recent"] as const).map((s) => (
           <button
             key={s}
             onClick={() => setSort(s)}
             className={`rounded px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-widest transition-colors ${
               sort === s
-                ? "bg-orange-500/10 text-orange-400"
-                : "text-zinc-600 hover:text-zinc-400"
+                ? "bg-orange-50 text-orange-600"
+                : "text-zinc-400 hover:text-zinc-600"
             }`}
           >
             {s === "votes" ? t("mostVoted") : t("recent")}
@@ -96,17 +97,17 @@ export function IdeasModal({ isOpen, onClose, title, subtitle }: IdeasModalProps
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-14 animate-pulse rounded-lg bg-zinc-800" />
+            <div key={i} className="h-14 animate-pulse rounded-lg bg-zinc-100" />
           ))}
         </div>
       ) : ideas.length === 0 ? (
-        <p className="py-6 text-center font-mono text-xs text-zinc-500">{t("noIdeas")}</p>
+        <p className="py-6 text-center font-mono text-xs text-zinc-400">{t("noIdeas")}</p>
       ) : (
         <div className="space-y-2">
           {ideas.map((idea) => (
             <motion.div
               key={idea.id}
-              className="flex items-start gap-3 rounded-lg border border-zinc-800 bg-zinc-800/40 p-3"
+              className="flex items-start gap-3 rounded-lg border border-zinc-200 bg-zinc-50/50 p-3"
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
             >
@@ -121,8 +122,8 @@ export function IdeasModal({ isOpen, onClose, title, subtitle }: IdeasModalProps
                 }}
                 className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-[10px] font-bold transition-colors ${
                   idea.hasVoted
-                    ? "bg-orange-500/10 text-orange-400"
-                    : "text-zinc-500 hover:text-zinc-300"
+                    ? "bg-orange-50 text-orange-600"
+                    : "text-zinc-400 hover:text-zinc-600"
                 }`}
               >
                 <ChevronUp className="h-3 w-3" />
@@ -131,7 +132,7 @@ export function IdeasModal({ isOpen, onClose, title, subtitle }: IdeasModalProps
 
               {/* Content */}
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium leading-snug text-zinc-200">{idea.title}</p>
+                <p className="text-sm font-medium leading-snug text-zinc-900">{idea.title}</p>
                 {idea.description && (
                   <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-zinc-500">
                     {idea.description}
@@ -139,7 +140,7 @@ export function IdeasModal({ isOpen, onClose, title, subtitle }: IdeasModalProps
                 )}
                 <div className="mt-1 flex items-center gap-2">
                   <span
-                    className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider ${statusColors[idea.status]}`}
+                    className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider ${statusStyles[idea.status]}`}
                   >
                     {idea.status === "open"
                       ? t("statusOpen")
@@ -155,13 +156,13 @@ export function IdeasModal({ isOpen, onClose, title, subtitle }: IdeasModalProps
       )}
 
       {/* Submit idea section */}
-      <div className="mt-4 border-t border-zinc-800 pt-4">
+      <div className="mt-4 border-t border-zinc-200 pt-4">
         {!session?.user ? (
-          <p className="font-mono text-[10px] text-zinc-600">{t("loginToSubmit")}</p>
+          <p className="font-mono text-[10px] text-zinc-400">{t("loginToSubmit")}</p>
         ) : !showForm ? (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-orange-500 transition-colors hover:text-orange-400"
+            className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-orange-600 transition-colors hover:text-orange-500"
           >
             <Lightbulb className="h-3 w-3" />
             {t("submit")}
@@ -175,7 +176,7 @@ export function IdeasModal({ isOpen, onClose, title, subtitle }: IdeasModalProps
             className="space-y-3"
           >
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+              <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                 {t("titleLabel")}
               </label>
               <input
@@ -184,11 +185,11 @@ export function IdeasModal({ isOpen, onClose, title, subtitle }: IdeasModalProps
                 placeholder={t("titlePlaceholder")}
                 maxLength={100}
                 required
-                className="w-full rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-orange-500/50 focus:outline-none"
+                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
               />
             </div>
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+              <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                 {t("descriptionLabel")}
               </label>
               <textarea
@@ -197,21 +198,21 @@ export function IdeasModal({ isOpen, onClose, title, subtitle }: IdeasModalProps
                 placeholder={t("descriptionPlaceholder")}
                 maxLength={500}
                 rows={3}
-                className="w-full resize-none rounded border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:border-orange-500/50 focus:outline-none"
+                className="w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
               />
             </div>
             <div className="flex gap-2">
               <button
                 type="submit"
                 disabled={submitMutation.isPending}
-                className="rounded bg-orange-500 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-orange-600 disabled:opacity-50"
+                className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
               >
                 {submitMutation.isPending ? t("submitting") : t("submit")}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded border border-zinc-700 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500 transition-colors hover:text-zinc-300"
+                className="rounded-md border border-zinc-200 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500 transition-colors hover:bg-zinc-50"
               >
                 Cancel
               </button>

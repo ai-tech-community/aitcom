@@ -38,6 +38,14 @@ export const Events: CollectionConfig = {
     { name: "endTime", type: "text" },
     { name: "location", type: "text", required: true },
     { name: "maxAttendees", type: "number" },
+    {
+      name: "price",
+      type: "number",
+      admin: {
+        description: "Price in EUR cents (e.g. 1500 = €15.00). Leave empty for free events.",
+        position: "sidebar",
+      },
+    },
     { name: "image", type: "upload", relationTo: "media" },
     {
       name: "speakers",

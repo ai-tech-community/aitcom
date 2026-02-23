@@ -164,7 +164,9 @@ export const eventRegistrations = appSchema.table(
       .varchar({ length: 20 })
       .notNull()
       .default("registered")
-      .$type<"registered" | "waitlisted" | "cancelled" | "attended">(),
+      .$type<"registered" | "waitlisted" | "cancelled" | "attended" | "pending_payment" | "payment_failed">(),
+    paymentId: d.varchar({ length: 255 }),
+    paymentStatus: d.varchar({ length: 50 }),
     registeredAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
