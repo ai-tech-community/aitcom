@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { ArrowUpRight } from "lucide-react";
 import { AsciiLandscape } from "@/components/ascii-landscape";
 import { getPayloadClient } from "@/server/payload";
+import Image from "next/image";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -66,6 +67,16 @@ export default async function Home() {
     limit: 5,
     locale: locale as "en" | "nl",
     draft: false,
+  });
+
+  const { docs: featuredSponsors } = await payload.find({
+    collection: "sponsors",
+    where: {
+      status: { equals: "active" },
+      featured: { equals: true },
+    },
+    limit: 20,
+    depth: 1,
   });
 
   const features = [
@@ -247,6 +258,38 @@ export default async function Home() {
           </>
         )}
       </section>
+
+      {/* Sponsors Strip */}
+      {featuredSponsors.length > 0 && (
+        <section className="px-6 py-12 sm:px-12">
+          <SectionLabel>
+            / {t("sponsors.currentSponsors").toUpperCase()}
+          </SectionLabel>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-8">
+            {featuredSponsors.map((sponsor) => {
+              const logo =
+                typeof sponsor.logo === "object" ? sponsor.logo : null;
+              return logo?.url ? (
+                <a
+                  key={sponsor.id}
+                  href={sponsor.website ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="opacity-60 transition-opacity hover:opacity-100"
+                >
+                  <Image
+                    src={logo.url}
+                    alt={sponsor.name}
+                    width={120}
+                    height={48}
+                    className="h-8 w-auto object-contain sm:h-12"
+                  />
+                </a>
+              ) : null;
+            })}
+          </div>
+        </section>
+      )}
 
       {/* CTA Cards */}
       <section className="px-6 py-12 sm:px-12">
