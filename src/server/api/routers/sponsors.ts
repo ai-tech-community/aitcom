@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Where } from "payload";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import {
@@ -92,12 +93,10 @@ export const sponsorsRouter = createTRPCRouter({
     .query(async ({ input }) => {
       const payload = await getPayloadClient();
 
-      const where: Record<string, unknown> = {
+      const where: Where = {
         status: { equals: "active" },
+        ...(input?.type ? { type: { equals: input.type } } : {}),
       };
-      if (input?.type) {
-        where.type = { equals: input.type };
-      }
 
       const { docs } = await payload.find({
         collection: "jobs",
