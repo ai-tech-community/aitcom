@@ -4,224 +4,304 @@
 
 **Goal:** Build the `/community` page as a full-viewport isometric village board where four clickable CSS buildings open Framer Motion modals for Community Rules, Ideas & Voting, Discussion Threads, and Contribute.
 
-**Architecture:** Full-stack feature on the existing Next.js 15 monolith. New Drizzle tables (`forum_threads`, `forum_replies`, `community_ideas`, `idea_votes`) in the `app` schema. A Payload CMS Global (`CommunityRules`) managed via the admin. tRPC `communityRouter` for all mutations/queries. React client components for the board, buildings, and modals — server component only for the page wrapper.
+**Architecture:** Full-stack feature on the existing Next.js 15 monolith. All community data lives in **Payload CMS** — four new collections (`forum-threads`, `forum-replies`, `community-ideas`, `idea-votes`) and one Global (`community-rules`). No new Drizzle tables. tRPC `communityRouter` uses `getPayloadClient()` for all queries/mutations, consistent with the Events and Articles patterns. React client components for the board, buildings, and modals — server component only for the page wrapper.
 
-**Tech Stack:** Next.js 15 App Router, Drizzle ORM (PostgreSQL, `app` schema), tRPC 11, Payload CMS (Global), Framer Motion, Tailwind CSS 4, shadcn/ui, next-intl, Better Auth (`protectedProcedure`), Lucide React icons
+**Tech Stack:** Next.js 15 App Router, Payload CMS (collections + global, local API), tRPC 11, Framer Motion, Tailwind CSS 4, shadcn/ui, next-intl, Better Auth (`protectedProcedure`), Lucide React icons
 
 ---
 
 ## Context
 
-- Drizzle schema: `src/server/db/schema.ts` — all tables use `appSchema` (`pgSchema("app")`), `casing: "snake_case"`, varchar for UUIDs
-- tRPC pattern: `src/server/api/routers/events.ts` and `members.ts` — use `createTRPCRouter`, `publicProcedure`, `protectedProcedure` from `@/server/api/trpc`
+- Payload config: `src/payload.config.ts` — add new collections to `collections[]` array, add `globals: [CommunityRules]`
+- Payload local API pattern: `const payload = await getPayloadClient(); payload.find({ collection: "...", where: {...} })` — see `src/server/payload.ts` and how events/articles pages use it
+- Payload `create()` uses `data:` (not `values:`), returns the created document directly (not an array)
+- Payload `find()` returns `{ docs, totalDocs, hasNextPage }` — use `docs`
+- tRPC pattern: `src/server/api/routers/events.ts` — use `createTRPCRouter`, `publicProcedure`, `protectedProcedure` from `@/server/api/trpc`. For community router, call `getPayloadClient()` inside each procedure — no Drizzle imports needed
 - Root router: `src/server/api/root.ts` — add `community: communityRouter`
-- Payload config: `src/payload.config.ts` — add `globals: [CommunityRules]`
 - i18n: `messages/en.json` and `messages/nl.json` — `community` key already exists in `nav` but needs a full namespace
 - Layout: `src/app/[locale]/layout.tsx` — main has light gradient bg; community page must set `bg-zinc-950` to override
 - Navbar already has `/community` link — no changes needed
-- Migrations: run `npx drizzle-kit generate` then add entry to `src/migrations/index.ts`
-- The `LexicalRenderer` component at `src/lib/lexical.tsx` already exists — reuse for rendering Rules content
+- The `LexicalRenderer` at `src/lib/lexical.tsx` already exists — reuse for rendering Rules content
+- After editing `payload.config.ts`, always run `npx payload generate:types` to regenerate `src/payload-types.ts`
 
 ---
 
-## Task 1: Add DB tables — forum_threads, forum_replies, community_ideas, idea_votes
+## Task 1: Create Payload collections — ForumThreads, ForumReplies, CommunityIdeas, IdeaVotes
 
 **Files:**
-- Modify: `src/server/db/schema.ts`
+- Create: `src/collections/ForumThreads.ts`
+- Create: `src/collections/ForumReplies.ts`
+- Create: `src/collections/CommunityIdeas.ts`
+- Create: `src/collections/IdeaVotes.ts`
+- Modify: `src/payload.config.ts`
 
-**Step 1: Add four new tables to the end of `src/server/db/schema.ts`**
+These four collections replace what would otherwise be Drizzle tables. Payload handles the database schema automatically and gives admins full moderation control via `/admin`.
 
-Add after the last table (`memberBadgeRelations`):
-
-```typescript
-// Forum threads
-export const forumThreads = appSchema.table(
-  "forum_thread",
-  (d) => ({
-    id: d
-      .varchar({ length: 255 })
-      .notNull()
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    slug: d.varchar({ length: 255 }).notNull().unique(),
-    title: d.varchar({ length: 255 }).notNull(),
-    content: d.text().notNull(),
-    authorId: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => user.id),
-    category: d
-      .varchar({ length: 20 })
-      .notNull()
-      .default("general")
-      .$type<"general" | "question" | "showcase" | "job">(),
-    isPinned: d.boolean().default(false).notNull(),
-    isLocked: d.boolean().default(false).notNull(),
-    replyCount: d.integer().default(0).notNull(),
-    lastActivityAt: d
-      .timestamp({ withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  }),
-  (t) => [
-    index("forum_thread_author_idx").on(t.authorId),
-    index("forum_thread_category_idx").on(t.category),
-    index("forum_thread_last_activity_idx").on(t.lastActivityAt),
-  ],
-);
-
-export const forumThreadRelations = relations(forumThreads, ({ one, many }) => ({
-  author: one(user, { fields: [forumThreads.authorId], references: [user.id] }),
-  replies: many(forumReplies),
-}));
-
-// Forum replies
-export const forumReplies = appSchema.table(
-  "forum_reply",
-  (d) => ({
-    id: d
-      .varchar({ length: 255 })
-      .notNull()
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    threadId: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => forumThreads.id, { onDelete: "cascade" }),
-    authorId: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => user.id),
-    content: d.text().notNull(),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  }),
-  (t) => [
-    index("forum_reply_thread_idx").on(t.threadId),
-    index("forum_reply_author_idx").on(t.authorId),
-  ],
-);
-
-export const forumReplyRelations = relations(forumReplies, ({ one }) => ({
-  thread: one(forumThreads, { fields: [forumReplies.threadId], references: [forumThreads.id] }),
-  author: one(user, { fields: [forumReplies.authorId], references: [user.id] }),
-}));
-
-// Community ideas (voting board)
-export const communityIdeas = appSchema.table(
-  "community_idea",
-  (d) => ({
-    id: d
-      .varchar({ length: 255 })
-      .notNull()
-      .primaryKey()
-      .$defaultFn(() => crypto.randomUUID()),
-    title: d.varchar({ length: 100 }).notNull(),
-    description: d.text(),
-    authorId: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => user.id),
-    status: d
-      .varchar({ length: 20 })
-      .notNull()
-      .default("open")
-      .$type<"open" | "implemented" | "rejected">(),
-    voteCount: d.integer().default(0).notNull(),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  }),
-  (t) => [
-    index("community_idea_author_idx").on(t.authorId),
-    index("community_idea_votes_idx").on(t.voteCount),
-  ],
-);
-
-export const communityIdeaRelations = relations(communityIdeas, ({ one, many }) => ({
-  author: one(user, { fields: [communityIdeas.authorId], references: [user.id] }),
-  votes: many(ideaVotes),
-}));
-
-// Idea votes — composite PK prevents double-voting
-export const ideaVotes = appSchema.table(
-  "idea_vote",
-  (d) => ({
-    ideaId: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => communityIdeas.id, { onDelete: "cascade" }),
-    userId: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => user.id),
-    createdAt: d
-      .timestamp({ withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-  }),
-  (t) => [
-    uniqueIndex("idea_vote_uidx").on(t.ideaId, t.userId),
-    index("idea_vote_idea_idx").on(t.ideaId),
-  ],
-);
-
-export const ideaVoteRelations = relations(ideaVotes, ({ one }) => ({
-  idea: one(communityIdeas, { fields: [ideaVotes.ideaId], references: [communityIdeas.id] }),
-  user: one(user, { fields: [ideaVotes.userId], references: [user.id] }),
-}));
-```
-
-**Step 2: Generate migration**
-
-```bash
-npx drizzle-kit generate
-```
-
-Expected: creates a new file in `src/migrations/` like `20260223_XXXXXX.ts` and a JSON snapshot.
-
-**Step 3: Register migration in `src/migrations/index.ts`**
-
-Open `src/migrations/index.ts` and add the new migration import. Pattern from the existing file:
+**Step 1: Create `src/collections/ForumThreads.ts`**
 
 ```typescript
-import * as migration_20260223_064427 from './20260223_064427';
-import * as migration_XXXXXXXXXXXXXXXX from './XXXXXXXXXXXXXXXX'; // ← use the actual filename
+import type { CollectionConfig } from "payload";
 
-export const migrations = [
-  {
-    up: migration_20260223_064427.up,
-    down: migration_20260223_064427.down,
-    name: '20260223_064427'
+export const ForumThreads: CollectionConfig = {
+  slug: "forum-threads",
+  admin: {
+    useAsTitle: "title",
+    defaultColumns: ["title", "category", "isPinned", "replyCount", "createdAt"],
+    description: "Community discussion threads. Pin important threads, lock spam, delete abuse.",
   },
-  {
-    up: migration_XXXXXXXXXXXXXXXX.up,
-    down: migration_XXXXXXXXXXXXXXXX.down,
-    name: 'XXXXXXXXXXXXXXXX'  // ← use actual name without extension
-  },
-];
+  fields: [
+    { name: "title", type: "text", required: true },
+    {
+      name: "slug",
+      type: "text",
+      required: true,
+      unique: true,
+      admin: { description: "Auto-generated from title + timestamp. Do not edit manually." },
+    },
+    {
+      name: "content",
+      type: "textarea",
+      required: true,
+    },
+    {
+      name: "category",
+      type: "select",
+      required: true,
+      defaultValue: "general",
+      options: [
+        { label: "General", value: "general" },
+        { label: "Question", value: "question" },
+        { label: "Showcase", value: "showcase" },
+        { label: "Jobs", value: "job" },
+      ],
+      admin: { position: "sidebar" },
+    },
+    {
+      name: "author",
+      type: "relationship",
+      relationTo: "users",
+      required: true,
+      admin: { position: "sidebar" },
+    },
+    {
+      name: "isPinned",
+      type: "checkbox",
+      defaultValue: false,
+      admin: { position: "sidebar", description: "Pinned threads appear at the top." },
+    },
+    {
+      name: "isLocked",
+      type: "checkbox",
+      defaultValue: false,
+      admin: { position: "sidebar", description: "Locked threads cannot receive new replies." },
+    },
+    {
+      name: "replyCount",
+      type: "number",
+      defaultValue: 0,
+      admin: { position: "sidebar", readOnly: true },
+    },
+    {
+      name: "lastActivityAt",
+      type: "date",
+      admin: { position: "sidebar", readOnly: true },
+    },
+  ],
+  timestamps: true,
+};
 ```
 
-**Step 4: Run migration against database**
+**Step 2: Create `src/collections/ForumReplies.ts`**
 
-```bash
-npx drizzle-kit migrate
+```typescript
+import type { CollectionConfig } from "payload";
+
+export const ForumReplies: CollectionConfig = {
+  slug: "forum-replies",
+  admin: {
+    useAsTitle: "content",
+    defaultColumns: ["thread", "author", "createdAt"],
+    description: "Replies to forum threads. Delete spam or abusive replies here.",
+  },
+  fields: [
+    {
+      name: "thread",
+      type: "relationship",
+      relationTo: "forum-threads",
+      required: true,
+    },
+    {
+      name: "content",
+      type: "textarea",
+      required: true,
+    },
+    {
+      name: "author",
+      type: "relationship",
+      relationTo: "users",
+      required: true,
+    },
+  ],
+  timestamps: true,
+};
 ```
 
-Expected: "Applying migration XXXXXXXX..." followed by success.
+**Step 3: Create `src/collections/CommunityIdeas.ts`**
 
-**Step 5: Commit**
+```typescript
+import type { CollectionConfig } from "payload";
+
+export const CommunityIdeas: CollectionConfig = {
+  slug: "community-ideas",
+  admin: {
+    useAsTitle: "title",
+    defaultColumns: ["title", "status", "voteCount", "author", "createdAt"],
+    description: "Community feature requests and proposals. Change status as ideas are implemented or declined.",
+  },
+  fields: [
+    {
+      name: "title",
+      type: "text",
+      required: true,
+      maxLength: 100,
+    },
+    {
+      name: "description",
+      type: "textarea",
+      maxLength: 500,
+    },
+    {
+      name: "author",
+      type: "relationship",
+      relationTo: "users",
+      required: true,
+      admin: { position: "sidebar" },
+    },
+    {
+      name: "status",
+      type: "select",
+      required: true,
+      defaultValue: "open",
+      options: [
+        { label: "Open", value: "open" },
+        { label: "Implemented", value: "implemented" },
+        { label: "Rejected", value: "rejected" },
+      ],
+      admin: { position: "sidebar" },
+    },
+    {
+      name: "voteCount",
+      type: "number",
+      defaultValue: 0,
+      admin: { position: "sidebar", readOnly: true },
+    },
+  ],
+  timestamps: true,
+};
+```
+
+**Step 4: Create `src/collections/IdeaVotes.ts`**
+
+```typescript
+import type { CollectionConfig } from "payload";
+
+export const IdeaVotes: CollectionConfig = {
+  slug: "idea-votes",
+  admin: {
+    useAsTitle: "id",
+    defaultColumns: ["idea", "voter", "createdAt"],
+    description: "Tracks which users have voted for which ideas. One vote per user per idea (enforced by hook).",
+  },
+  hooks: {
+    beforeChange: [
+      async ({ data, operation, req }) => {
+        // Prevent double-voting: on create, check if this (idea, voter) pair already exists
+        if (operation === "create") {
+          const { docs } = await req.payload.find({
+            collection: "idea-votes",
+            where: {
+              and: [
+                { idea: { equals: data.idea } },
+                { voter: { equals: data.voter } },
+              ],
+            },
+            limit: 1,
+          });
+          if (docs.length > 0) {
+            throw new Error("You have already voted for this idea.");
+          }
+        }
+        return data;
+      },
+    ],
+  },
+  fields: [
+    {
+      name: "idea",
+      type: "relationship",
+      relationTo: "community-ideas",
+      required: true,
+    },
+    {
+      name: "voter",
+      type: "relationship",
+      relationTo: "users",
+      required: true,
+    },
+  ],
+  timestamps: true,
+};
+```
+
+**Step 5: Register all four collections in `src/payload.config.ts`**
+
+Add imports at the top:
+```typescript
+import { ForumThreads } from "./collections/ForumThreads";
+import { ForumReplies } from "./collections/ForumReplies";
+import { CommunityIdeas } from "./collections/CommunityIdeas";
+import { IdeaVotes } from "./collections/IdeaVotes";
+```
+
+Add to the `collections` array inside `buildConfig`:
+```typescript
+collections: [
+  Events,
+  Speakers,
+  Articles,
+  Pages,
+  Media,
+  ForumThreads,   // ← add
+  ForumReplies,   // ← add
+  CommunityIdeas, // ← add
+  IdeaVotes,      // ← add
+  { slug: "users", auth: true, /* ... existing ... */ },
+],
+```
+
+**Step 6: Regenerate Payload types**
 
 ```bash
-git add src/server/db/schema.ts src/migrations/
-git commit -m "feat: add forum threads, replies, community ideas and votes tables"
+npx payload generate:types
+```
+
+Expected: `src/payload-types.ts` updated with `ForumThread`, `ForumReply`, `CommunityIdea`, `IdeaVote` types.
+
+**Step 7: Verify TypeScript**
+
+```bash
+npx tsc --noEmit
+```
+
+Expected: no errors.
+
+**Step 8: Commit**
+
+```bash
+git add src/collections/ForumThreads.ts src/collections/ForumReplies.ts \
+        src/collections/CommunityIdeas.ts src/collections/IdeaVotes.ts \
+        src/payload.config.ts src/payload-types.ts
+git commit -m "feat: add ForumThreads, ForumReplies, CommunityIdeas, IdeaVotes Payload collections"
 ```
 
 ---
@@ -230,7 +310,7 @@ git commit -m "feat: add forum threads, replies, community ideas and votes table
 
 **Files:**
 - Create: `src/collections/CommunityRules.ts`
-- Modify: `src/payload.config.ts`
+- Modify: `src/payload.config.ts` (already modified in Task 1 — just add the global)
 
 **Step 1: Create `src/collections/CommunityRules.ts`**
 
@@ -256,7 +336,7 @@ export const CommunityRules: GlobalConfig = {
 
 **Step 2: Register global in `src/payload.config.ts`**
 
-Add the import at the top:
+Add the import at the top (alongside the other new imports from Task 1):
 ```typescript
 import { CommunityRules } from "./collections/CommunityRules";
 ```
@@ -458,30 +538,27 @@ git commit -m "feat: add community i18n translations"
 
 ---
 
-## Task 4: Build tRPC community router
+## Task 4: Build tRPC community router (Payload-backed)
 
 **Files:**
 - Create: `src/server/api/routers/community.ts`
 - Modify: `src/server/api/root.ts`
 
+All queries and mutations use `getPayloadClient()`. No Drizzle imports. The Payload local API is called server-side inside each tRPC procedure.
+
 **Step 1: Create `src/server/api/routers/community.ts`**
 
 ```typescript
 import { z } from "zod";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 import {
   createTRPCRouter,
   publicProcedure,
   protectedProcedure,
 } from "@/server/api/trpc";
-import {
-  communityIdeas,
-  ideaVotes,
-  forumThreads,
-  user,
-} from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
+import type { ForumThread, CommunityIdea, IdeaVote } from "@/payload-types";
 
 export const communityRouter = createTRPCRouter({
   // ── Rules ──────────────────────────────────────────────────────────────────
@@ -501,40 +578,38 @@ export const communityRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const rows = await ctx.db
-        .select({
-          id: communityIdeas.id,
-          title: communityIdeas.title,
-          description: communityIdeas.description,
-          status: communityIdeas.status,
-          voteCount: communityIdeas.voteCount,
-          authorId: communityIdeas.authorId,
-          createdAt: communityIdeas.createdAt,
-          authorName: user.name,
-        })
-        .from(communityIdeas)
-        .leftJoin(user, eq(communityIdeas.authorId, user.id))
-        .orderBy(
-          input.sort === "votes"
-            ? desc(communityIdeas.voteCount)
-            : desc(communityIdeas.createdAt),
-        )
-        .limit(50);
+      const payload = await getPayloadClient();
 
-      // If authenticated, also fetch which ideas the user has voted on
+      const { docs } = await payload.find({
+        collection: "community-ideas",
+        sort: input.sort === "votes" ? "-voteCount" : "-createdAt",
+        limit: 50,
+        depth: 1, // populate author relationship
+      });
+
       const userId = ctx.session?.user?.id;
-      if (!userId) {
-        return rows.map((r) => ({ ...r, hasVoted: false }));
+
+      // If authenticated, find which ideas this user has already voted on
+      if (userId) {
+        const { docs: myVotes } = await payload.find({
+          collection: "idea-votes",
+          where: { voter: { equals: userId } },
+          limit: 200,
+          depth: 0,
+        });
+        const votedIdeaIds = new Set(
+          myVotes.map((v) => {
+            const vote = v as IdeaVote;
+            return typeof vote.idea === "object" ? vote.idea.id : vote.idea;
+          }),
+        );
+        return docs.map((idea) => ({
+          ...idea,
+          hasVoted: votedIdeaIds.has(idea.id),
+        }));
       }
 
-      const votes = await ctx.db
-        .select({ ideaId: ideaVotes.ideaId })
-        .from(ideaVotes)
-        .where(eq(ideaVotes.userId, userId));
-
-      const votedSet = new Set(votes.map((v) => v.ideaId));
-
-      return rows.map((r) => ({ ...r, hasVoted: votedSet.has(r.id) }));
+      return docs.map((idea) => ({ ...idea, hasVoted: false }));
     }),
 
   submitIdea: protectedProcedure
@@ -545,60 +620,74 @@ export const communityRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const [idea] = await ctx.db
-        .insert(communityIdeas)
-        .values({
-          title: input.title,
-          description: input.description ?? null,
-          authorId: ctx.session.user.id,
-        })
-        .returning();
+      const payload = await getPayloadClient();
 
-      return idea!;
+      const idea = await payload.create({
+        collection: "community-ideas",
+        data: {
+          title: input.title,
+          description: input.description ?? undefined,
+          author: ctx.session.user.id,
+          status: "open",
+          voteCount: 0,
+        },
+      });
+
+      return idea;
     }),
 
   toggleVote: protectedProcedure
     .input(z.object({ ideaId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
       const userId = ctx.session.user.id;
 
-      // Check if vote exists
-      const [existing] = await ctx.db
-        .select()
-        .from(ideaVotes)
-        .where(
-          and(
-            eq(ideaVotes.ideaId, input.ideaId),
-            eq(ideaVotes.userId, userId),
-          ),
-        )
-        .limit(1);
+      // Check if this user already voted for this idea
+      const { docs: existingVotes } = await payload.find({
+        collection: "idea-votes",
+        where: {
+          and: [
+            { idea: { equals: input.ideaId } },
+            { voter: { equals: userId } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+      });
 
-      if (existing) {
+      // Get current idea to update vote count
+      const idea = await payload.findByID({
+        collection: "community-ideas",
+        id: input.ideaId,
+        depth: 0,
+      }) as CommunityIdea;
+
+      if (existingVotes.length > 0) {
         // Remove vote
-        await ctx.db
-          .delete(ideaVotes)
-          .where(
-            and(
-              eq(ideaVotes.ideaId, input.ideaId),
-              eq(ideaVotes.userId, userId),
-            ),
-          );
-        await ctx.db
-          .update(communityIdeas)
-          .set({ voteCount: sql`${communityIdeas.voteCount} - 1` })
-          .where(eq(communityIdeas.id, input.ideaId));
+        await payload.delete({
+          collection: "idea-votes",
+          id: existingVotes[0]!.id,
+        });
+        await payload.update({
+          collection: "community-ideas",
+          id: input.ideaId,
+          data: { voteCount: Math.max(0, (idea.voteCount ?? 0) - 1) },
+        });
         return { voted: false };
       } else {
         // Add vote
-        await ctx.db.insert(ideaVotes).values({
-          ideaId: input.ideaId,
-          userId,
+        await payload.create({
+          collection: "idea-votes",
+          data: {
+            idea: input.ideaId,
+            voter: userId,
+          },
         });
-        await ctx.db
-          .update(communityIdeas)
-          .set({ voteCount: sql`${communityIdeas.voteCount} + 1` })
-          .where(eq(communityIdeas.id, input.ideaId));
+        await payload.update({
+          collection: "community-ideas",
+          id: input.ideaId,
+          data: { voteCount: (idea.voteCount ?? 0) + 1 },
+        });
         return { voted: true };
       }
     }),
@@ -613,35 +702,23 @@ export const communityRouter = createTRPCRouter({
           .default("all"),
       }),
     )
-    .query(async ({ ctx, input }) => {
-      const rows = await ctx.db
-        .select({
-          id: forumThreads.id,
-          slug: forumThreads.slug,
-          title: forumThreads.title,
-          category: forumThreads.category,
-          isPinned: forumThreads.isPinned,
-          replyCount: forumThreads.replyCount,
-          lastActivityAt: forumThreads.lastActivityAt,
-          createdAt: forumThreads.createdAt,
-          authorId: forumThreads.authorId,
-          authorName: user.name,
-          authorImage: user.image,
-        })
-        .from(forumThreads)
-        .leftJoin(user, eq(forumThreads.authorId, user.id))
-        .where(
-          input.category === "all"
-            ? undefined
-            : eq(forumThreads.category, input.category),
-        )
-        .orderBy(
-          sql`${forumThreads.isPinned} DESC`,
-          desc(forumThreads.lastActivityAt),
-        )
-        .limit(30);
+    .query(async ({ input }) => {
+      const payload = await getPayloadClient();
 
-      return rows;
+      const whereClause =
+        input.category === "all"
+          ? {}
+          : { category: { equals: input.category } };
+
+      const { docs } = await payload.find({
+        collection: "forum-threads",
+        where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+        sort: "-isPinned,-lastActivityAt",
+        limit: 30,
+        depth: 1, // populate author
+      });
+
+      return docs as ForumThread[];
     }),
 
   createThread: protectedProcedure
@@ -653,7 +730,9 @@ export const communityRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      // Generate slug from title
+      const payload = await getPayloadClient();
+
+      // Generate slug from title + timestamp to ensure uniqueness
       const baseSlug = input.title
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
@@ -661,18 +740,22 @@ export const communityRouter = createTRPCRouter({
         .slice(0, 80);
       const slug = `${baseSlug}-${Date.now()}`;
 
-      const [thread] = await ctx.db
-        .insert(forumThreads)
-        .values({
-          slug,
+      const thread = await payload.create({
+        collection: "forum-threads",
+        data: {
           title: input.title,
+          slug,
           content: input.content,
-          authorId: ctx.session.user.id,
           category: input.category,
-        })
-        .returning();
+          author: ctx.session.user.id,
+          isPinned: false,
+          isLocked: false,
+          replyCount: 0,
+          lastActivityAt: new Date().toISOString(),
+        },
+      });
 
-      return thread!;
+      return thread as ForumThread;
     }),
 });
 ```
@@ -700,13 +783,13 @@ export const appRouter = createTRPCRouter({
 npx tsc --noEmit
 ```
 
-Expected: no errors.
+Expected: no errors. If Payload-generated types haven't been regenerated yet, run `npx payload generate:types` first.
 
 **Step 4: Commit**
 
 ```bash
 git add src/server/api/routers/community.ts src/server/api/root.ts
-git commit -m "feat: add community tRPC router (ideas, threads, rules)"
+git commit -m "feat: add community tRPC router using Payload local API"
 ```
 
 ---
@@ -1950,18 +2033,14 @@ The `CommunityBoard` uses `bg-zinc-950` which will cover the light gradient visu
 
 **Step 3: Create `src/app/[locale]/community/[slug]/page.tsx`**
 
-This is the thread detail page. Basic implementation — shows thread content and its replies.
+This is the thread detail page. Uses Payload local API — same pattern as `src/app/[locale]/blog/[slug]/page.tsx`. Depth 1 populates the author relationship.
 
 ```tsx
 import { notFound } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { getLocale } from "next-intl/server";
-import { db } from "@/server/db";
-import { forumThreads, forumReplies, user as userTable } from "@/server/db/schema";
 import { Link } from "@/i18n/navigation";
-import { auth } from "@/server/better-auth";
-import { headers } from "next/headers";
+import { getPayloadClient } from "@/server/payload";
 import type { Metadata } from "next";
+import type { ForumThread, ForumReply, User } from "@/payload-types";
 
 export async function generateMetadata({
   params,
@@ -1969,12 +2048,14 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const [thread] = await db
-    .select({ title: forumThreads.title })
-    .from(forumThreads)
-    .where(eq(forumThreads.slug, slug))
-    .limit(1);
-  return { title: thread?.title ?? "Thread" };
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "forum-threads",
+    where: { slug: { equals: slug } },
+    limit: 1,
+    depth: 0,
+  });
+  return { title: (docs[0] as ForumThread | undefined)?.title ?? "Thread" };
 }
 
 export default async function ThreadDetailPage({
@@ -1983,38 +2064,30 @@ export default async function ThreadDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const payload = await getPayloadClient();
 
-  // Fetch thread
-  const [row] = await db
-    .select({
-      id: forumThreads.id,
-      title: forumThreads.title,
-      content: forumThreads.content,
-      category: forumThreads.category,
-      createdAt: forumThreads.createdAt,
-      replyCount: forumThreads.replyCount,
-      authorName: userTable.name,
-    })
-    .from(forumThreads)
-    .leftJoin(userTable, eq(forumThreads.authorId, userTable.id))
-    .where(eq(forumThreads.slug, slug))
-    .limit(1);
+  // Fetch thread with author populated (depth: 1)
+  const { docs: threadDocs } = await payload.find({
+    collection: "forum-threads",
+    where: { slug: { equals: slug } },
+    limit: 1,
+    depth: 1,
+  });
 
-  if (!row) notFound();
+  const thread = threadDocs[0] as ForumThread | undefined;
+  if (!thread) notFound();
 
-  // Fetch replies
-  const replies = await db
-    .select({
-      id: forumReplies.id,
-      content: forumReplies.content,
-      createdAt: forumReplies.createdAt,
-      authorName: userTable.name,
-      authorImage: userTable.image,
-    })
-    .from(forumReplies)
-    .leftJoin(userTable, eq(forumReplies.authorId, userTable.id))
-    .where(eq(forumReplies.threadId, row.id))
-    .orderBy(forumReplies.createdAt);
+  // Fetch replies with authors populated
+  const { docs: replyDocs } = await payload.find({
+    collection: "forum-replies",
+    where: { thread: { equals: thread.id } },
+    sort: "createdAt",
+    limit: 200,
+    depth: 1,
+  });
+
+  const replies = replyDocs as ForumReply[];
+  const authorUser = typeof thread.author === "object" ? (thread.author as User) : null;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
@@ -2029,25 +2102,25 @@ export default async function ThreadDetailPage({
       {/* Thread header */}
       <div className="mt-6">
         <div className="flex items-center gap-2 font-mono text-[10px] tracking-widest text-zinc-600 uppercase">
-          <span>{row.category}</span>
+          <span>{thread.category}</span>
           <span>·</span>
-          <span>{new Date(row.createdAt).toLocaleDateString()}</span>
-          {row.authorName && (
+          <span>{new Date(thread.createdAt).toLocaleDateString()}</span>
+          {authorUser?.name && (
             <>
               <span>·</span>
-              <span>{row.authorName}</span>
+              <span>{authorUser.name}</span>
             </>
           )}
         </div>
         <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-zinc-100">
-          {row.title}
+          {thread.title}
         </h1>
       </div>
 
       {/* Thread content */}
       <div className="mt-6 rounded-lg border border-zinc-800 bg-zinc-900 p-5">
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
-          {row.content}
+          {thread.content}
         </p>
       </div>
 
@@ -2057,21 +2130,24 @@ export default async function ThreadDetailPage({
           {replies.length} {replies.length === 1 ? "Reply" : "Replies"}
         </h2>
         <div className="space-y-3">
-          {replies.map((reply) => (
-            <div
-              key={reply.id}
-              className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4"
-            >
-              <div className="mb-2 flex items-center gap-2 font-mono text-[9px] tracking-wider text-zinc-600">
-                <span>{reply.authorName ?? "member"}</span>
-                <span>·</span>
-                <span>{new Date(reply.createdAt).toLocaleDateString()}</span>
+          {replies.map((reply) => {
+            const replyAuthor = typeof reply.author === "object" ? (reply.author as User) : null;
+            return (
+              <div
+                key={reply.id}
+                className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4"
+              >
+                <div className="mb-2 flex items-center gap-2 font-mono text-[9px] tracking-wider text-zinc-600">
+                  <span>{replyAuthor?.name ?? "member"}</span>
+                  <span>·</span>
+                  <span>{new Date(reply.createdAt).toLocaleDateString()}</span>
+                </div>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
+                  {reply.content}
+                </p>
               </div>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
-                {reply.content}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
@@ -2144,12 +2220,12 @@ git commit -m "fix: resolve build errors in community board"
 
 | Task | Files | Status |
 |---|---|---|
-| 1 | DB schema + migration | ⬜ |
-| 2 | Payload CommunityRules global | ⬜ |
+| 1 | Payload collections: ForumThreads, ForumReplies, CommunityIdeas, IdeaVotes | ⬜ |
+| 2 | Payload global: CommunityRules | ⬜ |
 | 3 | i18n translations | ⬜ |
-| 4 | tRPC community router | ⬜ |
+| 4 | tRPC community router (Payload-backed) | ⬜ |
 | 5 | IsometricBuilding + BuildingCard | ⬜ |
 | 6 | Modal shell + 4 modals | ⬜ |
 | 7 | CommunityBoard | ⬜ |
-| 8 | Community page + thread detail | ⬜ |
+| 8 | Community page + thread detail (Payload-backed) | ⬜ |
 | 9 | TypeScript + build check | ⬜ |

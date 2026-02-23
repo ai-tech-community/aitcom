@@ -97,54 +97,63 @@ All modals share a common shell:
 
 ## Data Model
 
-### New Payload Global
+**All community data lives in Payload CMS** — no new Drizzle tables. This gives admins full control: pin/lock threads, change idea status, delete spam, and moderate replies directly from `/admin`.
+
+### Payload Global
 
 ```
-CommunityRules (Payload Global)
+CommunityRules (Global)
   - content: richText (Lexical editor)
-  - updatedAt: auto
 ```
 
-Registered in `payload.config.ts` under `globals`.
-
-### New Drizzle Tables
-
-```sql
-community_ideas
-  id          TEXT PRIMARY KEY (uuid)
-  title       TEXT NOT NULL (max 100)
-  description TEXT (max 500, nullable)
-  author_id   TEXT NOT NULL REFERENCES user(id)
-  status      TEXT NOT NULL DEFAULT 'open' -- open | implemented | rejected
-  created_at  INTEGER NOT NULL
-
-idea_votes
-  idea_id   TEXT NOT NULL REFERENCES community_ideas(id)
-  user_id   TEXT NOT NULL REFERENCES user(id)
-  PRIMARY KEY (idea_id, user_id)   -- prevents double-voting
-```
-
-### Existing Tables Used (Phase 5, built in this phase)
+### Payload Collections
 
 ```
-forum_threads  (from original design doc)
-forum_replies  (from original design doc)
+forum-threads
+  - title:          text (required)
+  - slug:           text (required, unique) — auto-generated from title
+  - content:        textarea (required)
+  - category:       select — general | question | showcase | job
+  - author:         relationship → users
+  - isPinned:       checkbox (default: false)
+  - isLocked:       checkbox (default: false)
+  - replyCount:     number (default: 0, admin-visible)
+  - lastActivityAt: date (auto-set on create/reply)
+
+forum-replies
+  - thread:   relationship → forum-threads
+  - content:  textarea (required)
+  - author:   relationship → users
+
+community-ideas
+  - title:       text (required, max 100)
+  - description: textarea (optional, max 500)
+  - author:      relationship → users
+  - status:      select — open | implemented | rejected (default: open)
+  - voteCount:   number (default: 0)
+
+idea-votes
+  - idea:  relationship → community-ideas
+  - voter: relationship → users
+  — uniqueness enforced via beforeChange hook (one vote per user per idea)
 ```
+
+Registered in `payload.config.ts` under `collections`.
 
 ---
 
 ## tRPC Router — `community`
 
-All routes under `src/server/trpc/routers/community.ts`:
+All routes under `src/server/api/routers/community.ts`. All procedures use `getPayloadClient()` — no Drizzle queries in this router.
 
 | Procedure | Type | Auth | Description |
 |---|---|---|---|
-| `ideas.list` | query | public | Paginated ideas, sorted by votes or createdAt |
-| `ideas.submit` | mutation | required | Create new idea |
-| `ideas.toggleVote` | mutation | required | Insert or delete from `idea_votes` |
-| `threads.list` | query | public | List threads, filter by category |
-| `threads.create` | mutation | required | Create new thread |
-| `rules.get` | query | public | Fetch Payload `CommunityRules` global |
+| `getRules` | query | public | `payload.findGlobal({ slug: "community-rules" })` |
+| `getIdeas` | query | public | `payload.find({ collection: "community-ideas", sort: "-voteCount" or "-createdAt" })` |
+| `submitIdea` | mutation | required | `payload.create({ collection: "community-ideas", data: {...} })` |
+| `toggleVote` | mutation | required | Find existing vote → delete or create in `idea-votes`; update `voteCount` on idea |
+| `getThreads` | query | public | `payload.find({ collection: "forum-threads", where: { category } })` |
+| `createThread` | mutation | required | `payload.create({ collection: "forum-threads", data: {...} })` |
 
 ---
 
