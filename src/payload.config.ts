@@ -12,6 +12,7 @@ import { ForumThreads } from "./collections/ForumThreads";
 import { ForumReplies } from "./collections/ForumReplies";
 import { CommunityIdeas } from "./collections/CommunityIdeas";
 import { IdeaVotes } from "./collections/IdeaVotes";
+import { CommunityRules } from "./collections/CommunityRules";
 import { Pages } from "./collections/Pages";
 import { Media } from "./collections/Media";
 
@@ -74,6 +75,7 @@ export default buildConfig({
       ],
     },
   ],
+  globals: [CommunityRules],
   editor: lexicalEditor(),
   db: postgresAdapter({
     pool: { connectionString: payloadDatabaseUrl },

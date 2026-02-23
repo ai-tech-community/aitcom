@@ -103,8 +103,12 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'nl') | ('en' | 'nl')[];
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    'community-rules': CommunityRule;
+  };
+  globalsSelect: {
+    'community-rules': CommunityRulesSelect<false> | CommunityRulesSelect<true>;
+  };
   locale: 'en' | 'nl';
   user: User;
   jobs: {
@@ -730,6 +734,42 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * The community code of conduct displayed on the Community board.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-rules".
+ */
+export interface CommunityRule {
+  id: number;
+  content: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-rules_select".
+ */
+export interface CommunityRulesSelect<T extends boolean = true> {
+  content?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
