@@ -70,6 +70,10 @@ export interface Config {
     events: Event;
     speakers: Speaker;
     articles: Article;
+    'forum-threads': ForumThread;
+    'forum-replies': ForumReply;
+    'community-ideas': CommunityIdea;
+    'idea-votes': IdeaVote;
     pages: Page;
     media: Media;
     users: User;
@@ -83,6 +87,10 @@ export interface Config {
     events: EventsSelect<false> | EventsSelect<true>;
     speakers: SpeakersSelect<false> | SpeakersSelect<true>;
     articles: ArticlesSelect<false> | ArticlesSelect<true>;
+    'forum-threads': ForumThreadsSelect<false> | ForumThreadsSelect<true>;
+    'forum-replies': ForumRepliesSelect<false> | ForumRepliesSelect<true>;
+    'community-ideas': CommunityIdeasSelect<false> | CommunityIdeasSelect<true>;
+    'idea-votes': IdeaVotesSelect<false> | IdeaVotesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
@@ -244,12 +252,9 @@ export interface Article {
   type: 'article' | 'tutorial' | 'talk_recording';
   tags?:
     | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
+        tag: string;
+        id?: string | null;
+      }[]
     | null;
   mediaUrl?: string | null;
   status: 'draft' | 'published';
@@ -259,31 +264,33 @@ export interface Article {
   _status?: ('draft' | 'published') | null;
 }
 /**
+ * Community discussion threads. Pin important threads, lock spam, delete abuse.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "pages".
+ * via the `definition` "forum-threads".
  */
-export interface Page {
+export interface ForumThread {
   id: number;
   title: string;
+  /**
+   * Auto-generated from title + timestamp. Do not edit manually.
+   */
   slug: string;
-  content: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  };
+  content: string;
+  category: 'general' | 'question' | 'showcase' | 'job';
+  author: number | User;
+  /**
+   * Pinned threads appear at the top.
+   */
+  isPinned?: boolean | null;
+  /**
+   * Locked threads cannot receive new replies.
+   */
+  isLocked?: boolean | null;
+  replyCount?: number | null;
+  lastActivityAt?: string | null;
   updatedAt: string;
   createdAt: string;
-  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -311,6 +318,76 @@ export interface User {
     | null;
   password?: string | null;
   collection: 'users';
+}
+/**
+ * Replies to forum threads. Delete spam or abusive replies here.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "forum-replies".
+ */
+export interface ForumReply {
+  id: number;
+  thread: number | ForumThread;
+  content: string;
+  author: number | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Community feature requests and proposals. Change status as ideas are implemented or declined.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-ideas".
+ */
+export interface CommunityIdea {
+  id: number;
+  title: string;
+  description?: string | null;
+  author: number | User;
+  status: 'open' | 'implemented' | 'rejected';
+  voteCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Tracks which users have voted for which ideas. One vote per user per idea (enforced by hook).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "idea-votes".
+ */
+export interface IdeaVote {
+  id: number;
+  idea: number | CommunityIdea;
+  voter: number | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages".
+ */
+export interface Page {
+  id: number;
+  title: string;
+  slug: string;
+  content: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  updatedAt: string;
+  createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -347,6 +424,22 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'articles';
         value: number | Article;
+      } | null)
+    | ({
+        relationTo: 'forum-threads';
+        value: number | ForumThread;
+      } | null)
+    | ({
+        relationTo: 'forum-replies';
+        value: number | ForumReply;
+      } | null)
+    | ({
+        relationTo: 'community-ideas';
+        value: number | CommunityIdea;
+      } | null)
+    | ({
+        relationTo: 'idea-votes';
+        value: number | IdeaVote;
       } | null)
     | ({
         relationTo: 'pages';
@@ -446,13 +539,69 @@ export interface ArticlesSelect<T extends boolean = true> {
   slug?: T;
   content?: T;
   type?: T;
-  tags?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
   mediaUrl?: T;
   status?: T;
   publishedAt?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "forum-threads_select".
+ */
+export interface ForumThreadsSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  content?: T;
+  category?: T;
+  author?: T;
+  isPinned?: T;
+  isLocked?: T;
+  replyCount?: T;
+  lastActivityAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "forum-replies_select".
+ */
+export interface ForumRepliesSelect<T extends boolean = true> {
+  thread?: T;
+  content?: T;
+  author?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-ideas_select".
+ */
+export interface CommunityIdeasSelect<T extends boolean = true> {
+  title?: T;
+  description?: T;
+  author?: T;
+  status?: T;
+  voteCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "idea-votes_select".
+ */
+export interface IdeaVotesSelect<T extends boolean = true> {
+  idea?: T;
+  voter?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

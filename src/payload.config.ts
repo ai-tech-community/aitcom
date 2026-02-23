@@ -8,6 +8,10 @@ import sharp from "sharp";
 import { Events } from "./collections/Events";
 import { Speakers } from "./collections/Speakers";
 import { Articles } from "./collections/Articles";
+import { ForumThreads } from "./collections/ForumThreads";
+import { ForumReplies } from "./collections/ForumReplies";
+import { CommunityIdeas } from "./collections/CommunityIdeas";
+import { IdeaVotes } from "./collections/IdeaVotes";
 import { Pages } from "./collections/Pages";
 import { Media } from "./collections/Media";
 
@@ -49,6 +53,10 @@ export default buildConfig({
     Events,
     Speakers,
     Articles,
+    ForumThreads,
+    ForumReplies,
+    CommunityIdeas,
+    IdeaVotes,
     Pages,
     Media,
     {
