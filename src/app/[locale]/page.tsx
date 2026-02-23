@@ -2,14 +2,13 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight } from "lucide-react";
 import { AsciiLandscape } from "@/components/ascii-landscape";
-import { AsciiDonut } from "@/components/ascii-donut";
-import { AsciiWave } from "@/components/ascii-wave";
-import { AsciiNetwork } from "@/components/ascii-network";
+import { FeatureModals } from "@/components/feature-modals";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
 import { count } from "drizzle-orm";
 import Image from "next/image";
+import type { Media } from "@/payload-types";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -104,27 +103,6 @@ export default async function Home() {
     limit: 0,
   }).then((r) => r.totalDocs);
 
-  const features = [
-    {
-      fig: 1,
-      title: t("features.workshops.title"),
-      desc: t("features.workshops.description"),
-      href: "/events" as const,
-    },
-    {
-      fig: 2,
-      title: t("features.knowledge.title"),
-      desc: t("features.knowledge.description"),
-      href: "/blog" as const,
-    },
-    {
-      fig: 3,
-      title: t("features.community.title"),
-      desc: t("features.community.description"),
-      href: "/community" as const,
-    },
-  ];
-
   return (
     <>
       {/* Hero with ASCII Landscape */}
@@ -163,33 +141,7 @@ export default async function Home() {
       {/* Featured Section */}
       <section className="px-6 py-12 sm:px-12">
         <SectionLabel>/ {t("features.title").toUpperCase()}</SectionLabel>
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feat) => (
-            <Link
-              key={feat.fig}
-              href={feat.href}
-              className="group border-border hover:border-foreground/30 overflow-hidden rounded-lg border border-dashed transition-colors"
-            >
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="text-muted-foreground font-mono text-[10px] font-medium tracking-wider">
-                  [ FIG. {feat.fig} ]
-                </span>
-                <ArrowUpRight className="text-muted-foreground group-hover:text-foreground h-3.5 w-3.5 transition-colors" />
-              </div>
-              <div className="bg-secondary h-48 overflow-hidden">
-                {feat.fig === 1 && <AsciiDonut />}
-                {feat.fig === 2 && <AsciiWave />}
-                {feat.fig === 3 && <AsciiNetwork />}
-              </div>
-              <div className="space-y-2 p-4 pb-5">
-                <h3 className="text-lg font-bold">{feat.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  {feat.desc}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <FeatureModals />
       </section>
 
       {/* Events Feed */}
@@ -301,7 +253,9 @@ export default async function Home() {
           <div className="mt-6 flex flex-wrap items-center justify-center gap-8">
             {featuredSponsors.map((sponsor) => {
               const logo =
-                typeof sponsor.logo === "object" ? sponsor.logo : null;
+                typeof sponsor.logo === "object"
+                  ? (sponsor.logo as Media)
+                  : null;
               return logo?.url ? (
                 <a
                   key={sponsor.id}

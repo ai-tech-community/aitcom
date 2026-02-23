@@ -26,7 +26,7 @@ export function SponsorApplicationModal() {
   const [tier, setTier] = useState<Tier>("silver");
   const [message, setMessage] = useState("");
 
-  const applyMutation = api.sponsors.apply.useMutation({
+  const applyMutation = api.sponsors.submitApplication.useMutation({
     onSuccess: () => setSuccess(true),
   });
 

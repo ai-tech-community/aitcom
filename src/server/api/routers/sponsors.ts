@@ -35,7 +35,7 @@ export const sponsorsRouter = createTRPCRouter({
   }),
 
   /** Submit a sponsor application (public, no auth required). */
-  apply: publicProcedure
+  submitApplication: publicProcedure
     .input(
       z.object({
         companyName: z.string().min(1).max(200),

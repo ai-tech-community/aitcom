@@ -24,6 +24,7 @@
     "@mollie/api-client": "^4.4.0",
     "@neondatabase/serverless": "^1.0.2",
     "@payloadcms/db-postgres": "^3.77.0",
+    "@payloadcms/email-resend": "^3.77.0",
     "@payloadcms/next": "^3.77.0",
     "@payloadcms/richtext-lexical": "^3.77.0",
     "@t3-oss/env-nextjs": "^0.12.0",

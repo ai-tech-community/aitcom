@@ -4,6 +4,7 @@ import { buildConfig } from "payload";
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import sharp from "sharp";
+import { resendAdapter } from '@payloadcms/email-resend'
 
 import { Events } from "./collections/Events";
 import { Speakers } from "./collections/Speakers";
@@ -105,4 +106,9 @@ export default buildConfig({
     process.env.BETTER_AUTH_SECRET ??
     "dev-secret-change-me",
   sharp,
+  email: resendAdapter({
+    defaultFromAddress: 'info@mailer.klevox.com',
+    defaultFromName: 'AI Tech Community',
+    apiKey: process.env.RESEND_API_KEY ?? '',
+  }),
 });
