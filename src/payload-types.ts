@@ -169,6 +169,9 @@ export interface Event {
   endTime?: string | null;
   location: string;
   maxAttendees?: number | null;
+  /**
+   * Price in EUR cents (e.g. 1500 = €15.00). Leave empty for free events.
+   */
   price?: number | null;
   image?: (number | null) | Media;
   speakers?: (number | Speaker)[] | null;
@@ -390,6 +393,88 @@ export interface Page {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsors".
+ */
+export interface Sponsor {
+  id: number;
+  name: string;
+  slug: string;
+  logo: number | Media;
+  website?: string | null;
+  tier: 'gold' | 'silver' | 'bronze';
+  tagline?: string | null;
+  /**
+   * Show on homepage sponsor strip
+   */
+  featured?: boolean | null;
+  status: 'active' | 'inactive';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsor-applications".
+ */
+export interface SponsorApplication {
+  id: number;
+  companyName: string;
+  website?: string | null;
+  contactName: string;
+  contactEmail: string;
+  tier: 'gold' | 'silver' | 'bronze';
+  message?: string | null;
+  status: 'pending' | 'in_review' | 'approved' | 'rejected';
+  /**
+   * Internal notes (not visible to applicant)
+   */
+  notes?: string | null;
+  appliedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "jobs".
+ */
+export interface Job {
+  id: number;
+  title: string;
+  sponsor: number | Sponsor;
+  description: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  location: string;
+  type: 'remote' | 'hybrid' | 'onsite';
+  /**
+   * External apply link
+   */
+  url: string;
+  tags?:
+    | {
+        tag: string;
+        id?: string | null;
+      }[]
+    | null;
+  status: 'active' | 'expired';
+  postedAt?: string | null;
+  expiresAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
 export interface User {
@@ -474,6 +559,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'sponsors';
+        value: number | Sponsor;
+      } | null)
+    | ({
+        relationTo: 'sponsor-applications';
+        value: number | SponsorApplication;
+      } | null)
+    | ({
+        relationTo: 'jobs';
+        value: number | Job;
       } | null)
     | ({
         relationTo: 'users';
@@ -699,6 +796,62 @@ export interface MediaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsors_select".
+ */
+export interface SponsorsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  logo?: T;
+  website?: T;
+  tier?: T;
+  tagline?: T;
+  featured?: T;
+  status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsor-applications_select".
+ */
+export interface SponsorApplicationsSelect<T extends boolean = true> {
+  companyName?: T;
+  website?: T;
+  contactName?: T;
+  contactEmail?: T;
+  tier?: T;
+  message?: T;
+  status?: T;
+  notes?: T;
+  appliedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "jobs_select".
+ */
+export interface JobsSelect<T extends boolean = true> {
+  title?: T;
+  sponsor?: T;
+  description?: T;
+  location?: T;
+  type?: T;
+  url?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  status?: T;
+  postedAt?: T;
+  expiresAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
@@ -805,106 +958,6 @@ export interface Auth {
   [k: string]: unknown;
 }
 
-export interface Sponsor {
-  id: number;
-  name: string;
-  slug: string;
-  logo: number | Media;
-  website?: string | null;
-  tier: 'gold' | 'silver' | 'bronze';
-  tagline?: string | null;
-  featured?: boolean | null;
-  status: 'active' | 'inactive';
-  updatedAt: string;
-  createdAt: string;
-}
-
-export interface SponsorApplication {
-  id: number;
-  companyName: string;
-  website?: string | null;
-  contactName: string;
-  contactEmail: string;
-  tier: 'gold' | 'silver' | 'bronze';
-  message?: string | null;
-  status: 'pending' | 'in_review' | 'approved' | 'rejected';
-  notes?: string | null;
-  appliedAt?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-
-export interface Job {
-  id: number;
-  title: string;
-  sponsor: number | Sponsor;
-  description: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  };
-  location: string;
-  type: 'remote' | 'hybrid' | 'onsite';
-  url: string;
-  tags?: { tag: string; id?: string | null }[] | null;
-  status: 'active' | 'expired';
-  postedAt?: string | null;
-  expiresAt?: string | null;
-  updatedAt: string;
-  createdAt: string;
-}
-
-export interface SponsorsSelect<T extends boolean = true> {
-  name?: T;
-  slug?: T;
-  logo?: T;
-  website?: T;
-  tier?: T;
-  tagline?: T;
-  featured?: T;
-  status?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-
-export interface SponsorApplicationsSelect<T extends boolean = true> {
-  companyName?: T;
-  website?: T;
-  contactName?: T;
-  contactEmail?: T;
-  tier?: T;
-  message?: T;
-  status?: T;
-  notes?: T;
-  appliedAt?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-
-export interface JobsSelect<T extends boolean = true> {
-  title?: T;
-  sponsor?: T;
-  description?: T;
-  location?: T;
-  type?: T;
-  url?: T;
-  tags?: T;
-  status?: T;
-  postedAt?: T;
-  expiresAt?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
 
 declare module 'payload' {
   export interface GeneratedTypes extends Config {}

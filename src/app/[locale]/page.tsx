@@ -2,7 +2,13 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight } from "lucide-react";
 import { AsciiLandscape } from "@/components/ascii-landscape";
+import { AsciiDonut } from "@/components/ascii-donut";
+import { AsciiWave } from "@/components/ascii-wave";
+import { AsciiNetwork } from "@/components/ascii-network";
 import { getPayloadClient } from "@/server/payload";
+import { db } from "@/server/db";
+import { user } from "@/server/db/schema";
+import { count } from "drizzle-orm";
 import Image from "next/image";
 
 const typeLabels: Record<string, string> = {
@@ -79,21 +85,43 @@ export default async function Home() {
     depth: 1,
   });
 
+  // Fetch real counts for stats ticker
+  const [memberCount, eventCount, sponsorCount] = await Promise.all([
+    db.select({ value: count() }).from(user).then((r) => r[0]?.value ?? 0),
+    payload.find({ collection: "events", where: { status: { not_equals: "draft" } }, limit: 0 }).then((r) => r.totalDocs),
+    payload.find({ collection: "sponsors", where: { status: { equals: "active" } }, limit: 0 }).then((r) => r.totalDocs),
+  ]);
+
+  const workshopCount = await payload.find({
+    collection: "events",
+    where: { type: { in: ["workshop", "deep_dive"] }, status: { not_equals: "draft" } },
+    limit: 0,
+  }).then((r) => r.totalDocs);
+
+  const hackathonCount = await payload.find({
+    collection: "events",
+    where: { type: { equals: "hackathon" }, status: { not_equals: "draft" } },
+    limit: 0,
+  }).then((r) => r.totalDocs);
+
   const features = [
     {
       fig: 1,
       title: t("features.workshops.title"),
       desc: t("features.workshops.description"),
+      href: "/events" as const,
     },
     {
       fig: 2,
       title: t("features.knowledge.title"),
       desc: t("features.knowledge.description"),
+      href: "/blog" as const,
     },
     {
       fig: 3,
       title: t("features.community.title"),
       desc: t("features.community.description"),
+      href: "/community" as const,
     },
   ];
 
@@ -123,12 +151,12 @@ export default async function Home() {
 
       {/* Stats Ticker */}
       <div className="border-border grid grid-cols-2 gap-y-1 border-y px-4 py-3 sm:flex sm:items-center sm:gap-y-0 sm:overflow-x-auto sm:px-0 sm:py-2.5">
-        <StatItem label="MEMBERS" value="500+" />
-        <StatItem label="EVENTS" value="50+" />
-        <StatItem label="WORKSHOPS" value="30+" />
-        <StatItem label="HACKATHONS" value="12+" />
+        <StatItem label="MEMBERS" value={String(memberCount)} />
+        <StatItem label="EVENTS" value={String(eventCount)} />
+        <StatItem label="WORKSHOPS" value={String(workshopCount)} />
+        <StatItem label="HACKATHONS" value={String(hackathonCount)} />
         <span className="col-span-2 sm:col-span-1">
-          <StatItem label="COMPANIES" value="75+" />
+          <StatItem label="SPONSORS" value={String(sponsorCount)} />
         </span>
       </div>
 
@@ -137,8 +165,9 @@ export default async function Home() {
         <SectionLabel>/ {t("features.title").toUpperCase()}</SectionLabel>
         <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feat) => (
-            <div
+            <Link
               key={feat.fig}
+              href={feat.href}
               className="group border-border hover:border-foreground/30 overflow-hidden rounded-lg border border-dashed transition-colors"
             >
               <div className="flex items-center justify-between px-4 py-3">
@@ -147,14 +176,18 @@ export default async function Home() {
                 </span>
                 <ArrowUpRight className="text-muted-foreground group-hover:text-foreground h-3.5 w-3.5 transition-colors" />
               </div>
-              <div className="bg-secondary h-48" />
+              <div className="bg-secondary h-48 overflow-hidden">
+                {feat.fig === 1 && <AsciiDonut />}
+                {feat.fig === 2 && <AsciiWave />}
+                {feat.fig === 3 && <AsciiNetwork />}
+              </div>
               <div className="space-y-2 p-4 pb-5">
                 <h3 className="text-lg font-bold">{feat.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
                   {feat.desc}
                 </p>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </section>
@@ -298,21 +331,30 @@ export default async function Home() {
             {
               title: t("join.attend.title"),
               desc: t("join.attend.description"),
+              href: "/events" as const,
             },
-            { title: t("join.speak.title"), desc: t("join.speak.description") },
+            {
+              title: t("join.speak.title"),
+              desc: t("join.speak.description"),
+              href: "/community" as const,
+            },
             {
               title: t("join.partner.title"),
               desc: t("join.partner.description"),
+              href: "/sponsors" as const,
             },
           ].map((cta) => (
             <Link
               key={cta.title}
-              href="/auth/signup"
-              className="group border-border hover:border-foreground/30 flex h-44 flex-col items-center justify-center gap-2 rounded-xl border transition-colors"
+              href={cta.href}
+              className="group border-border hover:border-foreground/30 flex h-44 flex-col items-center justify-center gap-2 rounded-xl border px-6 text-center transition-colors"
             >
               <span className="group-hover:text-primary text-xl font-semibold">
                 {cta.title}
               </span>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                {cta.desc}
+              </p>
               <ArrowUpRight className="text-muted-foreground group-hover:text-primary h-5 w-5 transition-colors" />
             </Link>
           ))}
