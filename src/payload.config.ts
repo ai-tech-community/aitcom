@@ -15,6 +15,7 @@ import { IdeaVotes } from "./collections/IdeaVotes";
 import { CommunityRules } from "./collections/CommunityRules";
 import { Pages } from "./collections/Pages";
 import { Media } from "./collections/Media";
+import { Sponsors } from "./collections/Sponsors";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
   if (!connectionString) {
@@ -60,6 +61,7 @@ export default buildConfig({
     IdeaVotes,
     Pages,
     Media,
+    Sponsors,
     {
       slug: "users",
       auth: true,
