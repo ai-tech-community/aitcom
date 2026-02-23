@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
@@ -30,8 +30,8 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const { data: session } = authClient.useSession();
 
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
       // Ignore when typing in inputs, textareas, or contenteditable elements
       const tag = (e.target as HTMLElement).tagName;
       if (
@@ -65,11 +65,14 @@ export function Navbar() {
         e.preventDefault();
         router.push("/auth/signup");
       }
-    }
+    },
+    [router, session],
+  );
 
+  useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [router, session]);
+  }, [handleKeyDown]);
 
   return (
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">

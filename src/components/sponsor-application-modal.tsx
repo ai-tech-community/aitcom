@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useReducer, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Dialog,
@@ -13,33 +13,59 @@ import { api } from "@/trpc/react";
 
 type Tier = "gold" | "silver" | "bronze";
 
+type FormState = {
+  step: number;
+  success: boolean;
+  companyName: string;
+  website: string;
+  contactName: string;
+  contactEmail: string;
+  tier: Tier;
+  message: string;
+};
+
+type FormAction =
+  | { type: "SET_STEP"; step: number }
+  | { type: "SET_FIELD"; field: keyof FormState; value: string }
+  | { type: "SET_TIER"; tier: Tier }
+  | { type: "SET_SUCCESS" }
+  | { type: "RESET" };
+
+const initialState: FormState = {
+  step: 1,
+  success: false,
+  companyName: "",
+  website: "",
+  contactName: "",
+  contactEmail: "",
+  tier: "silver",
+  message: "",
+};
+
+function formReducer(state: FormState, action: FormAction): FormState {
+  switch (action.type) {
+    case "SET_STEP":
+      return { ...state, step: action.step };
+    case "SET_FIELD":
+      return { ...state, [action.field]: action.value };
+    case "SET_TIER":
+      return { ...state, tier: action.tier };
+    case "SET_SUCCESS":
+      return { ...state, success: true };
+    case "RESET":
+      return initialState;
+  }
+}
+
 export function SponsorApplicationModal() {
   const t = useTranslations("sponsors");
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState(1);
-  const [success, setSuccess] = useState(false);
-
-  const [companyName, setCompanyName] = useState("");
-  const [website, setWebsite] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [tier, setTier] = useState<Tier>("silver");
-  const [message, setMessage] = useState("");
+  const [state, dispatch] = useReducer(formReducer, initialState);
+  const { step, success, companyName, website, contactName, contactEmail, tier, message } = state;
 
   const applyMutation = api.sponsors.submitApplication.useMutation({
-    onSuccess: () => setSuccess(true),
+    onSuccess: () => dispatch({ type: "SET_SUCCESS" }),
   });
-
-  function reset() {
-    setStep(1);
-    setSuccess(false);
-    setCompanyName("");
-    setWebsite("");
-    setContactName("");
-    setContactEmail("");
-    setTier("silver");
-    setMessage("");
-  }
 
   function handleSubmit() {
     applyMutation.mutate({
@@ -63,7 +89,7 @@ export function SponsorApplicationModal() {
       open={open}
       onOpenChange={(v) => {
         setOpen(v);
-        if (!v) reset();
+        if (!v) dispatch({ type: "RESET" });
       }}
     >
       <DialogTrigger asChild>
@@ -116,7 +142,7 @@ export function SponsorApplicationModal() {
                     <input
                       type="text"
                       value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
+                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "companyName", value: e.target.value })}
                       className="border-border bg-background mt-1 block w-full rounded border px-3 py-2 font-mono text-sm"
                       required
                     />
@@ -126,7 +152,7 @@ export function SponsorApplicationModal() {
                     <input
                       type="url"
                       value={website}
-                      onChange={(e) => setWebsite(e.target.value)}
+                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "website", value: e.target.value })}
                       className="border-border bg-background mt-1 block w-full rounded border px-3 py-2 font-mono text-sm"
                     />
                   </label>
@@ -137,7 +163,7 @@ export function SponsorApplicationModal() {
                     <input
                       type="text"
                       value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
+                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "contactName", value: e.target.value })}
                       className="border-border bg-background mt-1 block w-full rounded border px-3 py-2 font-mono text-sm"
                       required
                     />
@@ -149,7 +175,7 @@ export function SponsorApplicationModal() {
                     <input
                       type="email"
                       value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
+                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "contactEmail", value: e.target.value })}
                       className="border-border bg-background mt-1 block w-full rounded border px-3 py-2 font-mono text-sm"
                       required
                     />
@@ -157,7 +183,7 @@ export function SponsorApplicationModal() {
                 </div>
                 <div className="flex justify-end">
                   <button
-                    onClick={() => setStep(2)}
+                    onClick={() => dispatch({ type: "SET_STEP", step: 2 })}
                     disabled={!companyName || !contactName || !contactEmail}
                     className="bg-foreground text-background rounded px-4 py-2 font-mono text-xs font-semibold disabled:opacity-40"
                   >
@@ -177,7 +203,7 @@ export function SponsorApplicationModal() {
                   {(["gold", "silver", "bronze"] as const).map((t_tier) => (
                     <button
                       key={t_tier}
-                      onClick={() => setTier(t_tier)}
+                      onClick={() => dispatch({ type: "SET_TIER", tier: t_tier })}
                       className={`rounded border p-4 text-left font-mono text-sm transition-colors ${
                         tier === t_tier
                           ? "border-foreground bg-foreground/5"
@@ -190,13 +216,13 @@ export function SponsorApplicationModal() {
                 </div>
                 <div className="flex justify-between">
                   <button
-                    onClick={() => setStep(1)}
+                    onClick={() => dispatch({ type: "SET_STEP", step: 1 })}
                     className="text-muted-foreground font-mono text-xs hover:underline"
                   >
                     {t("back")}
                   </button>
                   <button
-                    onClick={() => setStep(3)}
+                    onClick={() => dispatch({ type: "SET_STEP", step: 3 })}
                     className="bg-foreground text-background rounded px-4 py-2 font-mono text-xs font-semibold"
                   >
                     {t("next")}
@@ -215,7 +241,7 @@ export function SponsorApplicationModal() {
                   <span className="font-mono text-xs">{t("message")}</span>
                   <textarea
                     value={message}
-                    onChange={(e) => setMessage(e.target.value)}
+                    onChange={(e) => dispatch({ type: "SET_FIELD", field: "message", value: e.target.value })}
                     rows={4}
                     className="border-border bg-background mt-1 block w-full rounded border px-3 py-2 font-mono text-sm"
                     placeholder={t("messagePlaceholder")}
@@ -223,7 +249,7 @@ export function SponsorApplicationModal() {
                 </label>
                 <div className="flex justify-between">
                   <button
-                    onClick={() => setStep(2)}
+                    onClick={() => dispatch({ type: "SET_STEP", step: 2 })}
                     className="text-muted-foreground font-mono text-xs hover:underline"
                   >
                     {t("back")}
