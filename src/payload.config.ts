@@ -4,12 +4,21 @@ import { buildConfig } from "payload";
 import { postgresAdapter } from "@payloadcms/db-postgres";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import sharp from "sharp";
+import { resendAdapter } from '@payloadcms/email-resend'
 
 import { Events } from "./collections/Events";
 import { Speakers } from "./collections/Speakers";
 import { Articles } from "./collections/Articles";
+import { ForumThreads } from "./collections/ForumThreads";
+import { ForumReplies } from "./collections/ForumReplies";
+import { CommunityIdeas } from "./collections/CommunityIdeas";
+import { IdeaVotes } from "./collections/IdeaVotes";
+import { CommunityRules } from "./collections/CommunityRules";
 import { Pages } from "./collections/Pages";
 import { Media } from "./collections/Media";
+import { Sponsors } from "./collections/Sponsors";
+import { SponsorApplications } from "./collections/SponsorApplications";
+import { Jobs } from "./collections/Jobs";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
   if (!connectionString) {
@@ -49,8 +58,15 @@ export default buildConfig({
     Events,
     Speakers,
     Articles,
+    ForumThreads,
+    ForumReplies,
+    CommunityIdeas,
+    IdeaVotes,
     Pages,
     Media,
+    Sponsors,
+    SponsorApplications,
+    Jobs,
     {
       slug: "users",
       auth: true,
@@ -66,6 +82,7 @@ export default buildConfig({
       ],
     },
   ],
+  globals: [CommunityRules],
   editor: lexicalEditor(),
   db: postgresAdapter({
     pool: { connectionString: payloadDatabaseUrl },
@@ -89,4 +106,9 @@ export default buildConfig({
     process.env.BETTER_AUTH_SECRET ??
     "dev-secret-change-me",
   sharp,
+  email: resendAdapter({
+    defaultFromAddress: 'info@mailer.klevox.com',
+    defaultFromName: 'AI Tech Community',
+    apiKey: process.env.RESEND_API_KEY ?? '',
+  }),
 });

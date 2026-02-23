@@ -70,8 +70,15 @@ export interface Config {
     events: Event;
     speakers: Speaker;
     articles: Article;
+    'forum-threads': ForumThread;
+    'forum-replies': ForumReply;
+    'community-ideas': CommunityIdea;
+    'idea-votes': IdeaVote;
     pages: Page;
     media: Media;
+    sponsors: Sponsor;
+    'sponsor-applications': SponsorApplication;
+    jobs: Job;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -83,8 +90,15 @@ export interface Config {
     events: EventsSelect<false> | EventsSelect<true>;
     speakers: SpeakersSelect<false> | SpeakersSelect<true>;
     articles: ArticlesSelect<false> | ArticlesSelect<true>;
+    'forum-threads': ForumThreadsSelect<false> | ForumThreadsSelect<true>;
+    'forum-replies': ForumRepliesSelect<false> | ForumRepliesSelect<true>;
+    'community-ideas': CommunityIdeasSelect<false> | CommunityIdeasSelect<true>;
+    'idea-votes': IdeaVotesSelect<false> | IdeaVotesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    sponsors: SponsorsSelect<false> | SponsorsSelect<true>;
+    'sponsor-applications': SponsorApplicationsSelect<false> | SponsorApplicationsSelect<true>;
+    jobs: JobsSelect<false> | JobsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -95,8 +109,12 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'nl') | ('en' | 'nl')[];
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    'community-rules': CommunityRule;
+  };
+  globalsSelect: {
+    'community-rules': CommunityRulesSelect<false> | CommunityRulesSelect<true>;
+  };
   locale: 'en' | 'nl';
   user: User;
   jobs: {
@@ -151,6 +169,10 @@ export interface Event {
   endTime?: string | null;
   location: string;
   maxAttendees?: number | null;
+  /**
+   * Price in EUR cents (e.g. 1500 = €15.00). Leave empty for free events.
+   */
+  price?: number | null;
   image?: (number | null) | Media;
   speakers?: (number | Speaker)[] | null;
   status: 'draft' | 'published' | 'cancelled' | 'completed';
@@ -244,12 +266,9 @@ export interface Article {
   type: 'article' | 'tutorial' | 'talk_recording';
   tags?:
     | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
+        tag: string;
+        id?: string | null;
+      }[]
     | null;
   mediaUrl?: string | null;
   status: 'draft' | 'published';
@@ -257,6 +276,93 @@ export interface Article {
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * Community discussion threads. Pin important threads, lock spam, delete abuse.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "forum-threads".
+ */
+export interface ForumThread {
+  id: number;
+  title: string;
+  /**
+   * Auto-generated from title + timestamp. Do not edit manually.
+   */
+  slug: string;
+  content: string;
+  category: 'general' | 'question' | 'showcase' | 'job';
+  /**
+   * Better Auth user ID (UUID).
+   */
+  authorId: string;
+  authorName?: string | null;
+  /**
+   * Pinned threads appear at the top.
+   */
+  isPinned?: boolean | null;
+  /**
+   * Locked threads cannot receive new replies.
+   */
+  isLocked?: boolean | null;
+  replyCount?: number | null;
+  lastActivityAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Replies to forum threads. Delete spam or abusive replies here.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "forum-replies".
+ */
+export interface ForumReply {
+  id: number;
+  thread: number | ForumThread;
+  content: string;
+  /**
+   * Better Auth user ID (UUID).
+   */
+  authorId: string;
+  authorName?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Community feature requests and proposals. Change status as ideas are implemented or declined.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-ideas".
+ */
+export interface CommunityIdea {
+  id: number;
+  title: string;
+  description?: string | null;
+  /**
+   * Better Auth user ID (UUID).
+   */
+  authorId: string;
+  authorName?: string | null;
+  status: 'open' | 'implemented' | 'rejected';
+  voteCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Tracks which users have voted for which ideas. One vote per user per idea (enforced by hook).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "idea-votes".
+ */
+export interface IdeaVote {
+  id: number;
+  idea: number | CommunityIdea;
+  /**
+   * Better Auth user ID (UUID).
+   */
+  voterId: string;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -284,6 +390,88 @@ export interface Page {
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsors".
+ */
+export interface Sponsor {
+  id: number;
+  name: string;
+  slug: string;
+  logo: number | Media;
+  website?: string | null;
+  tier: 'gold' | 'silver' | 'bronze';
+  tagline?: string | null;
+  /**
+   * Show on homepage sponsor strip
+   */
+  featured?: boolean | null;
+  status: 'active' | 'inactive';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsor-applications".
+ */
+export interface SponsorApplication {
+  id: number;
+  companyName: string;
+  website?: string | null;
+  contactName: string;
+  contactEmail: string;
+  tier: 'gold' | 'silver' | 'bronze';
+  message?: string | null;
+  status: 'pending' | 'in_review' | 'approved' | 'rejected';
+  /**
+   * Internal notes (not visible to applicant)
+   */
+  notes?: string | null;
+  appliedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "jobs".
+ */
+export interface Job {
+  id: number;
+  title: string;
+  sponsor: number | Sponsor;
+  description: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  location: string;
+  type: 'remote' | 'hybrid' | 'onsite';
+  /**
+   * External apply link
+   */
+  url: string;
+  tags?:
+    | {
+        tag: string;
+        id?: string | null;
+      }[]
+    | null;
+  status: 'active' | 'expired';
+  postedAt?: string | null;
+  expiresAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -349,12 +537,40 @@ export interface PayloadLockedDocument {
         value: number | Article;
       } | null)
     | ({
+        relationTo: 'forum-threads';
+        value: number | ForumThread;
+      } | null)
+    | ({
+        relationTo: 'forum-replies';
+        value: number | ForumReply;
+      } | null)
+    | ({
+        relationTo: 'community-ideas';
+        value: number | CommunityIdea;
+      } | null)
+    | ({
+        relationTo: 'idea-votes';
+        value: number | IdeaVote;
+      } | null)
+    | ({
         relationTo: 'pages';
         value: number | Page;
       } | null)
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'sponsors';
+        value: number | Sponsor;
+      } | null)
+    | ({
+        relationTo: 'sponsor-applications';
+        value: number | SponsorApplication;
+      } | null)
+    | ({
+        relationTo: 'jobs';
+        value: number | Job;
       } | null)
     | ({
         relationTo: 'users';
@@ -416,6 +632,7 @@ export interface EventsSelect<T extends boolean = true> {
   endTime?: T;
   location?: T;
   maxAttendees?: T;
+  price?: T;
   image?: T;
   speakers?: T;
   status?: T;
@@ -446,13 +663,72 @@ export interface ArticlesSelect<T extends boolean = true> {
   slug?: T;
   content?: T;
   type?: T;
-  tags?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
   mediaUrl?: T;
   status?: T;
   publishedAt?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "forum-threads_select".
+ */
+export interface ForumThreadsSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  content?: T;
+  category?: T;
+  authorId?: T;
+  authorName?: T;
+  isPinned?: T;
+  isLocked?: T;
+  replyCount?: T;
+  lastActivityAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "forum-replies_select".
+ */
+export interface ForumRepliesSelect<T extends boolean = true> {
+  thread?: T;
+  content?: T;
+  authorId?: T;
+  authorName?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-ideas_select".
+ */
+export interface CommunityIdeasSelect<T extends boolean = true> {
+  title?: T;
+  description?: T;
+  authorId?: T;
+  authorName?: T;
+  status?: T;
+  voteCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "idea-votes_select".
+ */
+export interface IdeaVotesSelect<T extends boolean = true> {
+  idea?: T;
+  voterId?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -520,6 +796,62 @@ export interface MediaSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsors_select".
+ */
+export interface SponsorsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  logo?: T;
+  website?: T;
+  tier?: T;
+  tagline?: T;
+  featured?: T;
+  status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sponsor-applications_select".
+ */
+export interface SponsorApplicationsSelect<T extends boolean = true> {
+  companyName?: T;
+  website?: T;
+  contactName?: T;
+  contactEmail?: T;
+  tier?: T;
+  message?: T;
+  status?: T;
+  notes?: T;
+  appliedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "jobs_select".
+ */
+export interface JobsSelect<T extends boolean = true> {
+  title?: T;
+  sponsor?: T;
+  description?: T;
+  location?: T;
+  type?: T;
+  url?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  status?: T;
+  postedAt?: T;
+  expiresAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
@@ -581,6 +913,42 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
+}
+/**
+ * The community code of conduct displayed on the Community board.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-rules".
+ */
+export interface CommunityRule {
+  id: number;
+  content: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-rules_select".
+ */
+export interface CommunityRulesSelect<T extends boolean = true> {
+  content?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

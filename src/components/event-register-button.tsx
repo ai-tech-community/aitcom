@@ -9,16 +9,19 @@ import { toast } from "sonner";
 interface EventRegisterButtonProps {
   eventId: number;
   maxAttendees: number | null;
+  price?: number | null;
 }
 
 export function EventRegisterButton({
   eventId,
   maxAttendees,
+  price,
 }: EventRegisterButtonProps) {
   const router = useRouter();
   const session = authClient.useSession();
 
   const isLoggedIn = !!session.data?.user;
+  const isPaid = (price ?? 0) > 0;
 
   const registrationStatus = api.events.registrationStatus.useQuery(
     { eventId },
@@ -31,6 +34,10 @@ export function EventRegisterButton({
     onSuccess: (data) => {
       if (data.alreadyRegistered) {
         toast.info("You are already registered for this event.");
+      } else if (data.checkoutUrl) {
+        toast.info("Redirecting to payment...");
+        window.location.href = data.checkoutUrl;
+        return;
       } else if (data.registration?.status === "waitlisted") {
         toast.success("You have been added to the waitlist.");
       } else {
@@ -91,7 +98,9 @@ export function EventRegisterButton({
           ? "WAITLISTED"
           : status === "attended"
             ? "ATTENDED"
-            : status.toUpperCase();
+            : status === "pending_payment"
+              ? "PENDING PAYMENT"
+              : status.toUpperCase();
 
     return (
       <div className="space-y-3">
@@ -101,26 +110,34 @@ export function EventRegisterButton({
             STATUS: {statusLabel}
           </span>
         </div>
-        <Button
-          variant="outline"
-          className="w-full font-mono text-xs tracking-wider"
-          onClick={() => cancelMutation.mutate({ eventId })}
-          disabled={cancelMutation.isPending}
-        >
-          {cancelMutation.isPending ? "Cancelling..." : "Cancel registration"}
-        </Button>
+        {status !== "pending_payment" && (
+          <Button
+            variant="outline"
+            className="w-full font-mono text-xs tracking-wider"
+            onClick={() => cancelMutation.mutate({ eventId })}
+            disabled={cancelMutation.isPending}
+          >
+            {cancelMutation.isPending ? "Cancelling..." : "Cancel registration"}
+          </Button>
+        )}
       </div>
     );
   }
 
   // Not registered yet
+  const priceLabel = isPaid
+    ? ` — €${((price ?? 0) / 100).toFixed(2)}`
+    : "";
+
   return (
     <Button
       className="w-full font-mono text-xs tracking-wider"
       onClick={() => registerMutation.mutate({ eventId, maxAttendees })}
       disabled={registerMutation.isPending}
     >
-      {registerMutation.isPending ? "Registering..." : "Register"}
+      {registerMutation.isPending
+        ? "Registering..."
+        : `Register${priceLabel}`}
     </Button>
   );
 }

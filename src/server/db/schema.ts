@@ -4,7 +4,7 @@ import {
   index,
   integer,
   json,
-  pgEnum,
+  pgSchema,
   pgTable,
   serial,
   text,
@@ -13,8 +13,12 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
+// All Drizzle-managed tables live in the "app" schema to avoid conflicts
+// with Payload CMS tables which live in "public".
+export const appSchema = pgSchema("app");
+
 // Posts example table
-export const posts = pgTable(
+export const posts = appSchema.table(
   "post",
   (d) => ({
     id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
@@ -36,7 +40,7 @@ export const posts = pgTable(
 );
 
 // Better Auth core tables
-export const user = pgTable("user", (d) => ({
+export const user = appSchema.table("user", (d) => ({
   id: d
     .varchar({ length: 255 })
     .notNull()
@@ -58,7 +62,7 @@ export const userRelations = relations(user, ({ many }) => ({
   session: many(session),
 }));
 
-export const account = pgTable(
+export const account = appSchema.table(
   "account",
   (d) => ({
     id: d
@@ -92,7 +96,7 @@ export const accountRelations = relations(account, ({ one }) => ({
   user: one(user, { fields: [account.userId], references: [user.id] }),
 }));
 
-export const session = pgTable(
+export const session = appSchema.table(
   "session",
   (d) => ({
     id: d
@@ -121,7 +125,7 @@ export const sessionRelations = relations(session, ({ one }) => ({
   user: one(user, { fields: [session.userId], references: [user.id] }),
 }));
 
-export const verification = pgTable(
+export const verification = appSchema.table(
   "verification",
   (d) => ({
     id: d
@@ -142,14 +146,8 @@ export const verification = pgTable(
 );
 
 // Event registrations (member-facing, managed by Drizzle)
-export const registrationStatusEnum = pgEnum("registration_status", [
-  "registered",
-  "waitlisted",
-  "cancelled",
-  "attended",
-]);
-
-export const eventRegistrations = pgTable(
+// Using varchar instead of pgEnum to avoid conflicts with Payload CMS enums in public schema.
+export const eventRegistrations = appSchema.table(
   "event_registration",
   (d) => ({
     id: d
@@ -162,7 +160,13 @@ export const eventRegistrations = pgTable(
       .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    status: registrationStatusEnum().notNull().default("registered"),
+    status: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("registered")
+      .$type<"registered" | "waitlisted" | "cancelled" | "attended" | "pending_payment" | "payment_failed">(),
+    paymentId: d.varchar({ length: 255 }),
+    paymentStatus: d.varchar({ length: 50 }),
     registeredAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -185,7 +189,7 @@ export const eventRegistrationRelations = relations(
 );
 
 // Member profiles (1:1 with user)
-export const memberProfiles = pgTable(
+export const memberProfiles = appSchema.table(
   "member_profile",
   (d) => ({
     userId: d
@@ -226,7 +230,7 @@ export const memberProfileRelations = relations(memberProfiles, ({ one }) => ({
 }));
 
 // Member badges (join table)
-export const memberBadges = pgTable(
+export const memberBadges = appSchema.table(
   "member_badge",
   (d) => ({
     id: d

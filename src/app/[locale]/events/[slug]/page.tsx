@@ -2,6 +2,8 @@ import { getLocale } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { EventRegisterButton } from "@/components/event-register-button";
+import { EventAttendees } from "@/components/event-attendees";
+import { LexicalRenderer } from "@/lib/lexical";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -40,7 +42,12 @@ export default async function EventDetailPage({
     name: string;
     company?: string;
     bio?: string;
+    photo?: { url?: string } | number;
   }>;
+
+  const eventId = Number(event.id);
+  const maxAttendees = (event.maxAttendees as number | undefined) ?? null;
+  const price = (event.price as number | undefined) ?? null;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
@@ -61,21 +68,27 @@ export default async function EventDetailPage({
       </div>
 
       {/* Title */}
-      <h1 className="mt-4 text-4xl font-extrabold tracking-tight">
+      <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
         {event.title}
       </h1>
 
-      {/* Type badge + attendees */}
+      {/* Type badge */}
       <div className="mt-4 flex items-center gap-3">
         <span className="border-border text-muted-foreground rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider">
           {typeLabels[event.type] ?? event.type}
         </span>
-        {event.maxAttendees != null && (
-          <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
-            Max {event.maxAttendees} attendees
-          </span>
-        )}
       </div>
+
+      {/* Featured image */}
+      {event.image && typeof event.image === "object" && "url" in event.image && event.image.url && (
+        <div className="mt-8 overflow-hidden rounded-lg border border-border">
+          <img
+            src={event.image.url as string}
+            alt={event.title}
+            className="h-auto w-full object-cover"
+          />
+        </div>
+      )}
 
       {/* Description */}
       {event.description && (
@@ -85,15 +98,8 @@ export default async function EventDetailPage({
               / ABOUT
             </span>
           </div>
-          <div className="prose prose-neutral text-muted-foreground mt-4 max-w-none">
-            {/* Rich text from Payload — render as serialized text for now */}
-            {typeof event.description === "string" ? (
-              <p>{event.description}</p>
-            ) : (
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                {extractTextFromRichText(event.description)}
-              </p>
-            )}
+          <div className="mt-4">
+            <LexicalRenderer content={event.description} />
           </div>
         </div>
       )}
@@ -107,25 +113,66 @@ export default async function EventDetailPage({
             </span>
           </div>
           <div className="mt-4 space-y-4">
-            {speakers.map((speaker) => (
-              <div
-                key={speaker.id}
-                className="border-border flex items-center gap-3 rounded border border-dashed px-4 py-3"
-              >
-                <div className="bg-primary h-2 w-2 rounded-full" />
-                <div>
-                  <span className="font-medium">{speaker.name}</span>
-                  {speaker.company && (
-                    <span className="text-muted-foreground ml-2 font-mono text-xs">
-                      @ {speaker.company}
-                    </span>
+            {speakers.map((speaker) => {
+              const photoUrl =
+                speaker.photo && typeof speaker.photo === "object"
+                  ? speaker.photo.url
+                  : undefined;
+
+              return (
+                <div
+                  key={speaker.id}
+                  className="border-border flex items-start gap-4 rounded border border-dashed px-4 py-4"
+                >
+                  {photoUrl ? (
+                    <img
+                      src={photoUrl}
+                      alt={speaker.name}
+                      className="h-10 w-10 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="bg-secondary text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-mono text-xs">
+                      {speaker.name
+                        .split(" ")
+                        .map((p) => p[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </div>
                   )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{speaker.name}</span>
+                      {speaker.company && (
+                        <span className="text-muted-foreground font-mono text-xs">
+                          @ {speaker.company}
+                        </span>
+                      )}
+                    </div>
+                    {speaker.bio && (
+                      <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                        {speaker.bio}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
+
+      {/* Attendees & Capacity */}
+      <div className="border-border mt-8 border-t pt-8">
+        <div className="border-border border-b pb-4">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            / ATTENDEES
+          </span>
+        </div>
+        <div className="mt-4">
+          <EventAttendees eventId={eventId} maxAttendees={maxAttendees} />
+        </div>
+      </div>
 
       {/* Registration */}
       <div className="border-border mt-8 border-t pt-8">
@@ -136,34 +183,12 @@ export default async function EventDetailPage({
         </div>
         <div className="mt-4">
           <EventRegisterButton
-            eventId={Number(event.id)}
-            maxAttendees={(event.maxAttendees as number | undefined) ?? null}
+            eventId={eventId}
+            maxAttendees={maxAttendees}
+            price={price}
           />
         </div>
       </div>
     </div>
   );
-}
-
-/**
- * Extract plain text from Payload's Lexical rich text JSON structure.
- */
-function extractTextFromRichText(richText: unknown): string {
-  if (!richText || typeof richText !== "object") return "";
-
-  const root = richText as { root?: { children?: unknown[] } };
-  if (!root.root?.children) return "";
-
-  function extractChildren(children: unknown[]): string {
-    return children
-      .map((child) => {
-        const node = child as { text?: string; children?: unknown[] };
-        if (typeof node.text === "string") return node.text;
-        if (Array.isArray(node.children)) return extractChildren(node.children);
-        return "";
-      })
-      .join("");
-  }
-
-  return extractChildren(root.root.children);
 }

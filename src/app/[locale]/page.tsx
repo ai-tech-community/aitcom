@@ -1,7 +1,26 @@
-import { useTranslations } from "next-intl";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight } from "lucide-react";
 import { AsciiLandscape } from "@/components/ascii-landscape";
+import { FeatureModals } from "@/components/feature-modals";
+import { getPayloadClient } from "@/server/payload";
+import { db } from "@/server/db";
+import { user } from "@/server/db/schema";
+import { count } from "drizzle-orm";
+import Image from "next/image";
+import type { Media } from "@/payload-types";
+
+const typeLabels: Record<string, string> = {
+  workshop: "WORKSHOP",
+  hackathon: "HACKATHON",
+  deep_dive: "DEEP-DIVE",
+  meetup: "MEETUP",
+};
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
+}
 
 function GridMarkers() {
   return (
@@ -27,94 +46,81 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function StatItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 px-6">
-      <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+    <div className="flex items-center gap-1.5 px-3 py-1 sm:gap-2 sm:px-6 sm:py-0">
+      <span className="text-muted-foreground font-mono text-[10px] tracking-wider sm:text-[11px]">
         {label}:
       </span>
-      <span className="text-primary font-mono text-[11px] font-bold tracking-wider">
+      <span className="text-primary font-mono text-[10px] font-bold tracking-wider sm:text-[11px]">
         {value}
       </span>
     </div>
   );
 }
 
-export default function Home() {
-  const t = useTranslations();
+export default async function Home() {
+  const locale = await getLocale();
+  const t = await getTranslations();
 
-  const eventData = [
-    {
-      id: "intro-to-rag-pipelines",
-      date: "2026.3.08",
-      name: "Intro to RAG Pipelines",
-      type: "WORKSHOP",
-      highlight: false,
+  const payload = await getPayloadClient();
+  const { docs: events } = await payload.find({
+    collection: "events",
+    where: {
+      status: { equals: "published" },
+      date: { greater_than_equal: new Date().toISOString() },
     },
-    {
-      id: "fine-tuning-llms-in-production",
-      date: "2026.3.15",
-      name: "Fine-tuning LLMs in Production",
-      type: "DEEP-DIVE",
-      highlight: false,
-    },
-    {
-      id: "ai-agents-hackathon-build-ship",
-      date: "2026.3.22",
-      name: "AI Agents Hackathon \u2014 Build & Ship",
-      type: "HACKATHON",
-      highlight: true,
-    },
-    {
-      id: "prompt-engineering-masterclass",
-      date: "2026.4.05",
-      name: "Prompt Engineering Masterclass",
-      type: "WORKSHOP",
-      highlight: false,
-    },
-    {
-      id: "mlops-notebook-to-production",
-      date: "2026.4.19",
-      name: "MLOps: From Notebook to Production",
-      type: "DEEP-DIVE",
-      highlight: false,
-    },
-  ];
+    sort: "date",
+    limit: 5,
+    locale: locale as "en" | "nl",
+    draft: false,
+  });
 
-  const features = [
-    {
-      fig: 1,
-      title: t("features.workshops.title"),
-      desc: t("features.workshops.description"),
+  const { docs: featuredSponsors } = await payload.find({
+    collection: "sponsors",
+    where: {
+      status: { equals: "active" },
+      featured: { equals: true },
     },
-    {
-      fig: 2,
-      title: t("features.knowledge.title"),
-      desc: t("features.knowledge.description"),
-    },
-    {
-      fig: 3,
-      title: t("features.community.title"),
-      desc: t("features.community.description"),
-    },
-  ];
+    limit: 20,
+    depth: 1,
+  });
+
+  // Fetch real counts for stats ticker
+  const [memberCount, eventCount, sponsorCount] = await Promise.all([
+    db.select({ value: count() }).from(user).then((r) => r[0]?.value ?? 0),
+    payload.find({ collection: "events", where: { status: { not_equals: "draft" } }, limit: 0 }).then((r) => r.totalDocs),
+    payload.find({ collection: "sponsors", where: { status: { equals: "active" } }, limit: 0 }).then((r) => r.totalDocs),
+  ]);
+
+  const workshopCount = await payload.find({
+    collection: "events",
+    where: { type: { in: ["workshop", "deep_dive"] }, status: { not_equals: "draft" } },
+    limit: 0,
+  }).then((r) => r.totalDocs);
+
+  const hackathonCount = await payload.find({
+    collection: "events",
+    where: { type: { equals: "hackathon" }, status: { not_equals: "draft" } },
+    limit: 0,
+  }).then((r) => r.totalDocs);
 
   return (
     <>
       {/* Hero with ASCII Landscape */}
-      <section className="to-background relative min-h-[70vh] overflow-hidden bg-linear-to-b from-orange-50/60 via-amber-50/30">
+      <section className="relative min-h-[70vh] overflow-hidden">
         <AsciiLandscape />
-        <div className="relative z-10 px-6 pt-16 pb-12 sm:px-12">
+        <div className="relative z-10 px-4 pt-8 pb-6 sm:px-12 sm:pt-16 sm:pb-12">
           <GridMarkers />
-          <div className="mt-8 space-y-0">
-            <h1 className="text-6xl leading-[0.95] font-light tracking-tighter sm:text-8xl lg:text-[96px]">
+          <div className="mt-4 space-y-0 sm:mt-8">
+            <h1 className="text-[32px] leading-[0.95] font-light tracking-tighter sm:text-8xl lg:text-[96px]">
               {t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech"
                 ? "Welcome to"
                 : t("hero.title").split(" ")[0]}
             </h1>
-            <h1 className="text-6xl leading-[0.95] font-extrabold tracking-tighter sm:text-8xl lg:text-[96px]">
+            <h1 className="text-[32px] leading-[0.95] font-extrabold tracking-tighter sm:text-8xl lg:text-[96px]">
               {t("hero.title")}
             </h1>
           </div>
-          <p className="text-muted-foreground mt-8 max-w-175 text-lg leading-relaxed sm:text-xl">
+          <p className="text-muted-foreground mt-4 max-w-175 text-sm leading-relaxed sm:mt-8 sm:text-xl">
             {t("hero.description")}
           </p>
           <GridMarkers />
@@ -122,102 +128,155 @@ export default function Home() {
       </section>
 
       {/* Stats Ticker */}
-      <div className="border-border flex items-center overflow-x-auto border-y py-2.5">
-        <StatItem label="COMMUNITY MEMBERS" value="500+" />
-        <span className="text-border font-mono text-[11px]">|</span>
-        <StatItem label="EVENTS HOSTED" value="50+" />
-        <span className="text-border font-mono text-[11px]">|</span>
-        <StatItem label="WORKSHOPS" value="30+" />
-        <span className="text-border font-mono text-[11px]">|</span>
-        <StatItem label="HACKATHONS" value="12+" />
-        <span className="text-border font-mono text-[11px]">|</span>
-        <StatItem label="COMPANIES" value="75+" />
+      <div className="border-border grid grid-cols-2 gap-y-1 border-y px-4 py-3 sm:flex sm:items-center sm:gap-y-0 sm:overflow-x-auto sm:px-0 sm:py-2.5">
+        <StatItem label="MEMBERS" value={String(memberCount)} />
+        <StatItem label="EVENTS" value={String(eventCount)} />
+        <StatItem label="WORKSHOPS" value={String(workshopCount)} />
+        <StatItem label="HACKATHONS" value={String(hackathonCount)} />
+        <span className="col-span-2 sm:col-span-1">
+          <StatItem label="SPONSORS" value={String(sponsorCount)} />
+        </span>
       </div>
 
       {/* Featured Section */}
       <section className="px-6 py-12 sm:px-12">
         <SectionLabel>/ {t("features.title").toUpperCase()}</SectionLabel>
-        <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feat) => (
-            <div
-              key={feat.fig}
-              className="group border-border hover:border-foreground/30 overflow-hidden rounded-lg border border-dashed transition-colors"
-            >
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="text-muted-foreground font-mono text-[10px] font-medium tracking-wider">
-                  [ FIG. {feat.fig} ]
-                </span>
-                <ArrowUpRight className="text-muted-foreground group-hover:text-foreground h-3.5 w-3.5 transition-colors" />
-              </div>
-              <div className="bg-secondary h-48" />
-              <div className="space-y-2 p-4 pb-5">
-                <h3 className="text-lg font-bold">{feat.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  {feat.desc}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <FeatureModals />
       </section>
 
       {/* Events Feed */}
       <section className="px-6 py-12 sm:px-12">
         <SectionLabel>/ {t("events.title").toUpperCase()}</SectionLabel>
 
-        {/* Table Header */}
-        <div className="border-border flex items-center border-b px-4 py-2.5">
-          <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
-            / DATE
-          </span>
-          <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
-            / NAME
-          </span>
-          <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
-            / TYPE
-          </span>
-        </div>
-
-        {/* Event Rows */}
-        {eventData.map((event) => (
-          <div
-            key={event.id}
-            className={`flex items-center border-b px-4 py-3.5 transition-colors ${
-              event.highlight
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border hover:bg-secondary/50"
-            }`}
-          >
-            <div className="flex w-32 items-center gap-3">
-              <div
-                className={`h-2 w-2 rounded-full ${
-                  event.highlight ? "bg-primary-foreground" : "bg-foreground"
-                }`}
-              />
-              <span className="font-mono text-[13px]">{event.date}</span>
+        {events.length === 0 ? (
+          <p className="text-muted-foreground mt-8 text-center font-mono text-xs tracking-wider">
+            {t("events.noEvents")}
+          </p>
+        ) : (
+          <>
+            {/* Table Header — desktop only */}
+            <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
+              <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
+                / DATE
+              </span>
+              <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
+                / NAME
+              </span>
+              <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+                / TYPE
+              </span>
             </div>
-            <span className="flex-1 font-medium">{event.name}</span>
-            <span
-              className={`rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider ${
-                event.highlight
-                  ? "border-primary-foreground"
-                  : "border-border text-muted-foreground"
-              }`}
-            >
-              {event.type}
-            </span>
-            <span
-              className={`ml-4 font-mono text-lg font-light ${
-                event.highlight
-                  ? "text-primary-foreground"
-                  : "text-muted-foreground"
-              }`}
-            >
-              +
-            </span>
-          </div>
-        ))}
+
+            {/* Event Rows */}
+            {events.map((event) => {
+              // Highlight the first hackathon, or the first event if none
+              const isHackathon = event.type === "hackathon";
+              return (
+                <Link
+                  key={event.id}
+                  href={`/events/${event.slug}`}
+                  className={`flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0 ${
+                    isHackathon
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border hover:bg-secondary/50"
+                  }`}
+                >
+                  {/* Title — first on mobile */}
+                  <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
+                    {event.title}
+                  </span>
+
+                  {/* Date + type on mobile */}
+                  <div className="flex items-center gap-3 sm:order-1 sm:w-32">
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        isHackathon ? "bg-primary-foreground" : "bg-foreground"
+                      }`}
+                    />
+                    <span className="font-mono text-[12px] sm:text-[13px]">
+                      {formatDate(event.date)}
+                    </span>
+                    {/* Type badge — inline on mobile */}
+                    <span
+                      className={`rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden ${
+                        isHackathon
+                          ? "border-primary-foreground"
+                          : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      {typeLabels[event.type] ?? event.type}
+                    </span>
+                  </div>
+
+                  {/* Type badge — desktop only */}
+                  <span
+                    className={`hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline ${
+                      isHackathon
+                        ? "border-primary-foreground"
+                        : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    {typeLabels[event.type] ?? event.type}
+                  </span>
+                  <span
+                    className={`ml-4 hidden font-mono text-lg font-light sm:order-4 sm:inline ${
+                      isHackathon
+                        ? "text-primary-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    +
+                  </span>
+                </Link>
+              );
+            })}
+
+            {/* View All link */}
+            <div className="mt-4 text-right">
+              <Link
+                href="/events"
+                className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
+              >
+                {t("events.viewAll")} →
+              </Link>
+            </div>
+          </>
+        )}
       </section>
+
+      {/* Sponsors Strip */}
+      {featuredSponsors.length > 0 && (
+        <section className="px-6 py-12 sm:px-12">
+          <SectionLabel>
+            / {t("sponsors.currentSponsors").toUpperCase()}
+          </SectionLabel>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-8">
+            {featuredSponsors.map((sponsor) => {
+              const logo =
+                typeof sponsor.logo === "object"
+                  ? (sponsor.logo as Media)
+                  : null;
+              return logo?.url ? (
+                <a
+                  key={sponsor.id}
+                  href={sponsor.website ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="opacity-60 transition-opacity hover:opacity-100"
+                >
+                  <Image
+                    src={logo.url}
+                    alt={sponsor.name}
+                    width={120}
+                    height={48}
+                    className="h-8 w-auto object-contain sm:h-12"
+                  />
+                </a>
+              ) : null;
+            })}
+          </div>
+        </section>
+      )}
 
       {/* CTA Cards */}
       <section className="px-6 py-12 sm:px-12">
@@ -226,21 +285,30 @@ export default function Home() {
             {
               title: t("join.attend.title"),
               desc: t("join.attend.description"),
+              href: "/events" as const,
             },
-            { title: t("join.speak.title"), desc: t("join.speak.description") },
+            {
+              title: t("join.speak.title"),
+              desc: t("join.speak.description"),
+              href: "/community" as const,
+            },
             {
               title: t("join.partner.title"),
               desc: t("join.partner.description"),
+              href: "/sponsors" as const,
             },
           ].map((cta) => (
             <Link
               key={cta.title}
-              href="/auth/signup"
-              className="group border-border hover:border-foreground/30 flex h-44 flex-col items-center justify-center gap-2 rounded-xl border transition-colors"
+              href={cta.href}
+              className="group border-border hover:border-foreground/30 flex h-44 flex-col items-center justify-center gap-2 rounded-xl border px-6 text-center transition-colors"
             >
               <span className="group-hover:text-primary text-xl font-semibold">
                 {cta.title}
               </span>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                {cta.desc}
+              </p>
               <ArrowUpRight className="text-muted-foreground group-hover:text-primary h-5 w-5 transition-colors" />
             </Link>
           ))}

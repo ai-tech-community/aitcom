@@ -24,6 +24,7 @@ export default async function EventsPage() {
     where: { status: { equals: "published" } },
     sort: "date",
     locale: locale as "en" | "nl",
+    draft: false,
   });
 
   return (
@@ -41,8 +42,8 @@ export default async function EventsPage() {
         </p>
       ) : (
         <>
-          {/* Table Header */}
-          <div className="border-border flex items-center border-b px-4 py-2.5">
+          {/* Table Header — desktop only */}
+          <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
             <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
               / DATE
             </span>
@@ -59,19 +60,30 @@ export default async function EventsPage() {
             <Link
               key={event.id}
               href={`/events/${event.slug}`}
-              className="border-border hover:bg-secondary/50 flex items-center border-b px-4 py-3.5 transition-colors"
+              className="border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0"
             >
-              <div className="flex w-32 items-center gap-3">
+              {/* Title — first on mobile */}
+              <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
+                {event.title}
+              </span>
+
+              {/* Date + type on mobile */}
+              <div className="flex items-center gap-3 sm:order-1 sm:w-32">
                 <div className="bg-foreground h-2 w-2 rounded-full" />
-                <span className="font-mono text-[13px]">
+                <span className="font-mono text-[12px] sm:text-[13px]">
                   {formatDate(event.date)}
                 </span>
+                {/* Type badge — inline on mobile */}
+                <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden">
+                  {typeLabels[event.type] ?? event.type}
+                </span>
               </div>
-              <span className="flex-1 font-medium">{event.title}</span>
-              <span className="border-border text-muted-foreground rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider">
+
+              {/* Type badge — desktop only */}
+              <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline">
                 {typeLabels[event.type] ?? event.type}
               </span>
-              <span className="text-muted-foreground ml-4 font-mono text-lg font-light">
+              <span className="text-muted-foreground ml-4 hidden font-mono text-lg font-light sm:order-4 sm:inline">
                 +
               </span>
             </Link>

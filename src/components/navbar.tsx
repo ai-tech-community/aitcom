@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link, usePathname } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
   Sheet,
   SheetContent,
@@ -19,13 +19,60 @@ const navLinks = [
   { href: "/members", key: "members", shortcut: "M" },
   { href: "/blog", key: "blog", shortcut: "B" },
   { href: "/community", key: "community", shortcut: "C" },
+  { href: "/sponsors", key: "sponsors", shortcut: "S" },
+  { href: "/jobs", key: "jobs", shortcut: "W" },
 ] as const;
 
 export function Navbar() {
   const t = useTranslations("nav");
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const { data: session } = authClient.useSession();
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      // Ignore when typing in inputs, textareas, or contenteditable elements
+      const tag = (e.target as HTMLElement).tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        (e.target as HTMLElement).isContentEditable
+      )
+        return;
+
+      // Ignore when modifier keys are held
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const key = e.key.toUpperCase();
+
+      // Check navLinks shortcuts
+      const match = navLinks.find((link) => link.shortcut === key);
+      if (match) {
+        e.preventDefault();
+        router.push(match.href);
+        return;
+      }
+
+      // Additional shortcuts
+      if (key === "G") {
+        e.preventDefault();
+        window.open("https://github.com", "_blank", "noopener,noreferrer");
+      } else if (key === "D" && session?.user) {
+        e.preventDefault();
+        router.push("/dashboard");
+      } else if (key === "J" && !session?.user) {
+        e.preventDefault();
+        router.push("/auth/signup");
+      }
+    },
+    [router, session],
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
 
   return (
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
