@@ -282,7 +282,11 @@ export interface ForumThread {
   slug: string;
   content: string;
   category: 'general' | 'question' | 'showcase' | 'job';
-  author: number | User;
+  /**
+   * Better Auth user ID (UUID).
+   */
+  authorId: string;
+  authorName?: string | null;
   /**
    * Pinned threads appear at the top.
    */
@@ -297,33 +301,6 @@ export interface ForumThread {
   createdAt: string;
 }
 /**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "users".
- */
-export interface User {
-  id: number;
-  name?: string | null;
-  role?: ('admin' | 'editor') | null;
-  updatedAt: string;
-  createdAt: string;
-  email: string;
-  resetPasswordToken?: string | null;
-  resetPasswordExpiration?: string | null;
-  salt?: string | null;
-  hash?: string | null;
-  loginAttempts?: number | null;
-  lockUntil?: string | null;
-  sessions?:
-    | {
-        id: string;
-        createdAt?: string | null;
-        expiresAt: string;
-      }[]
-    | null;
-  password?: string | null;
-  collection: 'users';
-}
-/**
  * Replies to forum threads. Delete spam or abusive replies here.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -333,7 +310,11 @@ export interface ForumReply {
   id: number;
   thread: number | ForumThread;
   content: string;
-  author: number | User;
+  /**
+   * Better Auth user ID (UUID).
+   */
+  authorId: string;
+  authorName?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -347,7 +328,11 @@ export interface CommunityIdea {
   id: number;
   title: string;
   description?: string | null;
-  author: number | User;
+  /**
+   * Better Auth user ID (UUID).
+   */
+  authorId: string;
+  authorName?: string | null;
   status: 'open' | 'implemented' | 'rejected';
   voteCount?: number | null;
   updatedAt: string;
@@ -362,7 +347,10 @@ export interface CommunityIdea {
 export interface IdeaVote {
   id: number;
   idea: number | CommunityIdea;
-  voter: number | User;
+  /**
+   * Better Auth user ID (UUID).
+   */
+  voterId: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -392,6 +380,33 @@ export interface Page {
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "users".
+ */
+export interface User {
+  id: number;
+  name?: string | null;
+  role?: ('admin' | 'editor') | null;
+  updatedAt: string;
+  createdAt: string;
+  email: string;
+  resetPasswordToken?: string | null;
+  resetPasswordExpiration?: string | null;
+  salt?: string | null;
+  hash?: string | null;
+  loginAttempts?: number | null;
+  lockUntil?: string | null;
+  sessions?:
+    | {
+        id: string;
+        createdAt?: string | null;
+        expiresAt: string;
+      }[]
+    | null;
+  password?: string | null;
+  collection: 'users';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -565,7 +580,8 @@ export interface ForumThreadsSelect<T extends boolean = true> {
   slug?: T;
   content?: T;
   category?: T;
-  author?: T;
+  authorId?: T;
+  authorName?: T;
   isPinned?: T;
   isLocked?: T;
   replyCount?: T;
@@ -580,7 +596,8 @@ export interface ForumThreadsSelect<T extends boolean = true> {
 export interface ForumRepliesSelect<T extends boolean = true> {
   thread?: T;
   content?: T;
-  author?: T;
+  authorId?: T;
+  authorName?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -591,7 +608,8 @@ export interface ForumRepliesSelect<T extends boolean = true> {
 export interface CommunityIdeasSelect<T extends boolean = true> {
   title?: T;
   description?: T;
-  author?: T;
+  authorId?: T;
+  authorName?: T;
   status?: T;
   voteCount?: T;
   updatedAt?: T;
@@ -603,7 +621,7 @@ export interface CommunityIdeasSelect<T extends boolean = true> {
  */
 export interface IdeaVotesSelect<T extends boolean = true> {
   idea?: T;
-  voter?: T;
+  voterId?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -18,11 +18,15 @@ export const CommunityIdeas: CollectionConfig = {
       type: "textarea",
     },
     {
-      name: "author",
-      type: "relationship",
-      relationTo: "users",
+      name: "authorId",
+      type: "text",
       required: true,
-      admin: { position: "sidebar" },
+      admin: { position: "sidebar", description: "Better Auth user ID (UUID)." },
+    },
+    {
+      name: "authorName",
+      type: "text",
+      admin: { position: "sidebar", readOnly: true },
     },
     {
       name: "status",

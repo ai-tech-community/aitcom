@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { getPayloadClient } from "@/server/payload";
 import type { Metadata } from "next";
-import type { ForumThread } from "@/payload-types";
 
 export async function generateMetadata({
   params,
@@ -17,7 +16,7 @@ export async function generateMetadata({
     limit: 1,
     depth: 0,
   });
-  return { title: (docs[0] as ForumThread | undefined)?.title ?? "Thread" };
+  return { title: docs[0]?.title ?? "Thread" };
 }
 
 export default async function ThreadDetailPage({
@@ -32,23 +31,19 @@ export default async function ThreadDetailPage({
     collection: "forum-threads",
     where: { slug: { equals: slug } },
     limit: 1,
-    depth: 1,
+    depth: 0,
   });
 
-  const thread = threadDocs[0] as ForumThread | undefined;
+  const thread = threadDocs[0];
   if (!thread) notFound();
 
-  const { docs: replyDocs } = await payload.find({
+  const { docs: replies } = await payload.find({
     collection: "forum-replies",
     where: { thread: { equals: thread.id } },
     sort: "createdAt",
     limit: 200,
-    depth: 1,
+    depth: 0,
   });
-
-  const replies = replyDocs;
-  const authorUser =
-    typeof thread.author === "object" ? thread.author : null;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
@@ -66,10 +61,10 @@ export default async function ThreadDetailPage({
           <span>{thread.category}</span>
           <span>&middot;</span>
           <span>{new Date(thread.createdAt).toLocaleDateString()}</span>
-          {authorUser?.name && (
+          {thread.authorName && (
             <>
               <span>&middot;</span>
-              <span>{authorUser.name}</span>
+              <span>{thread.authorName}</span>
             </>
           )}
         </div>
@@ -91,29 +86,23 @@ export default async function ThreadDetailPage({
           {replies.length} {replies.length === 1 ? "Reply" : "Replies"}
         </h2>
         <div className="space-y-3">
-          {replies.map((reply) => {
-            const replyAuthor =
-              typeof reply.author === "object"
-                ? reply.author
-                : null;
-            return (
-              <div
-                key={reply.id}
-                className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4"
-              >
-                <div className="mb-2 flex items-center gap-2 font-mono text-[9px] tracking-wider text-zinc-600">
-                  <span>{replyAuthor?.name ?? "member"}</span>
-                  <span>&middot;</span>
-                  <span>
-                    {new Date(reply.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
-                  {reply.content}
-                </p>
+          {replies.map((reply) => (
+            <div
+              key={reply.id}
+              className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4"
+            >
+              <div className="mb-2 flex items-center gap-2 font-mono text-[9px] tracking-wider text-zinc-600">
+                <span>{reply.authorName ?? "member"}</span>
+                <span>&middot;</span>
+                <span>
+                  {new Date(reply.createdAt).toLocaleDateString()}
+                </span>
               </div>
-            );
-          })}
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">
+                {reply.content}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

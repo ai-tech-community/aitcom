@@ -17,7 +17,7 @@ export const IdeaVotes: CollectionConfig = {
             where: {
               and: [
                 { idea: { equals: data.idea } },
-                { voter: { equals: data.voter } },
+                { voterId: { equals: data.voterId } },
               ],
             },
             limit: 1,
@@ -38,10 +38,10 @@ export const IdeaVotes: CollectionConfig = {
       required: true,
     },
     {
-      name: "voter",
-      type: "relationship",
-      relationTo: "users",
+      name: "voterId",
+      type: "text",
       required: true,
+      admin: { description: "Better Auth user ID (UUID)." },
     },
   ],
   timestamps: true,

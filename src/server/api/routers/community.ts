@@ -7,8 +7,6 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 
-
-
 export const communityRouter = createTRPCRouter({
   // ── Rules ──────────────────────────────────────────────────────────────────
 
@@ -33,7 +31,7 @@ export const communityRouter = createTRPCRouter({
         collection: "community-ideas",
         sort: input.sort === "votes" ? "-voteCount" : "-createdAt",
         limit: 50,
-        depth: 1,
+        depth: 0,
       });
 
       const userId = ctx.session?.user?.id;
@@ -41,7 +39,7 @@ export const communityRouter = createTRPCRouter({
       if (userId) {
         const { docs: myVotes } = await payload.find({
           collection: "idea-votes",
-          where: { voter: { equals: userId } },
+          where: { voterId: { equals: userId } },
           limit: 200,
           depth: 0,
         });
@@ -68,13 +66,15 @@ export const communityRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
+      const userName = ctx.session.user.name ?? "member";
 
       const idea = await payload.create({
         collection: "community-ideas",
         data: {
           title: input.title,
           description: input.description ?? undefined,
-          author: ctx.session.user.id as unknown as number,
+          authorId: ctx.session.user.id,
+          authorName: userName,
           status: "open",
           voteCount: 0,
         },
@@ -94,7 +94,7 @@ export const communityRouter = createTRPCRouter({
         where: {
           and: [
             { idea: { equals: input.ideaId } },
-            { voter: { equals: userId } },
+            { voterId: { equals: userId } },
           ],
         },
         limit: 1,
@@ -123,7 +123,7 @@ export const communityRouter = createTRPCRouter({
           collection: "idea-votes",
           data: {
             idea: input.ideaId,
-            voter: userId as unknown as number,
+            voterId: userId,
           },
         });
         await payload.update({
@@ -158,7 +158,7 @@ export const communityRouter = createTRPCRouter({
         where,
         sort: "-isPinned,-lastActivityAt",
         limit: 30,
-        depth: 1,
+        depth: 0,
       });
 
       return docs;
@@ -174,6 +174,7 @@ export const communityRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
+      const userName = ctx.session.user.name ?? "member";
 
       const baseSlug = input.title
         .toLowerCase()
@@ -189,7 +190,8 @@ export const communityRouter = createTRPCRouter({
           slug,
           content: input.content,
           category: input.category,
-          author: ctx.session.user.id as unknown as number,
+          authorId: ctx.session.user.id,
+          authorName: userName,
           isPinned: false,
           isLocked: false,
           replyCount: 0,

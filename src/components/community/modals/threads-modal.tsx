@@ -110,10 +110,7 @@ export function ThreadsModal({
         <p className="py-6 text-center font-mono text-xs text-zinc-500">{t("noThreads")}</p>
       ) : (
         <div className="space-y-1.5">
-          {threads.map((thread) => {
-            const authorUser =
-              typeof thread.author === "object" ? thread.author : null;
-            return (
+          {threads.map((thread) => (
               <motion.button
                 key={thread.id}
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-800/40 p-3 text-left transition-colors hover:border-zinc-700 hover:bg-zinc-800"
@@ -147,15 +144,14 @@ export function ThreadsModal({
                   <span className="font-mono text-[9px] text-zinc-600">
                     {timeAgo(thread.lastActivityAt)}
                   </span>
-                  {authorUser?.name && (
+                  {thread.authorName && (
                     <span className="font-mono text-[9px] text-zinc-600">
-                      {authorUser.name}
+                      {thread.authorName}
                     </span>
                   )}
                 </div>
               </motion.button>
-            );
-          })}
+            ))}
         </div>
       )}
 

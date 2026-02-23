@@ -20,10 +20,15 @@ export const ForumReplies: CollectionConfig = {
       required: true,
     },
     {
-      name: "author",
-      type: "relationship",
-      relationTo: "users",
+      name: "authorId",
+      type: "text",
       required: true,
+      admin: { description: "Better Auth user ID (UUID)." },
+    },
+    {
+      name: "authorName",
+      type: "text",
+      admin: { readOnly: true },
     },
   ],
   timestamps: true,
