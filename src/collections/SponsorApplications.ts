@@ -55,5 +55,20 @@ export const SponsorApplications: CollectionConfig = {
         return data;
       },
     ],
+    afterChange: [
+      async ({ doc, previousDoc }) => {
+        if (doc.status !== "approved" || previousDoc?.status === "approved")
+          return;
+
+        const { sendSponsorWelcome } = await import("@/server/email");
+
+        void sendSponsorWelcome(doc.contactEmail, doc.contactName, {
+          companyName: doc.companyName,
+          tier: doc.tier,
+          contactName: doc.contactName,
+          contactEmail: doc.contactEmail,
+        });
+      },
+    ],
   },
 };
