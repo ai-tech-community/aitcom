@@ -19,6 +19,8 @@ const navLinks = [
   { href: "/members", key: "members", shortcut: "M" },
   { href: "/blog", key: "blog", shortcut: "B" },
   { href: "/community", key: "community", shortcut: "C" },
+  { href: "/sponsors", key: "sponsors", shortcut: "S" },
+  { href: "/jobs", key: "jobs", shortcut: "W" },
 ] as const;
 
 export function Navbar() {
