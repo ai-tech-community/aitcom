@@ -130,3 +130,95 @@ export async function sendWaitlistPromotion(
     `,
   });
 }
+
+interface SponsorApplicationEmailData {
+  companyName: string;
+  tier: string;
+  contactName: string;
+  contactEmail: string;
+}
+
+/**
+ * Send confirmation to applicant after submitting sponsor application.
+ */
+export async function sendSponsorApplicationConfirmation(
+  to: string,
+  contactName: string,
+  data: SponsorApplicationEmailData,
+) {
+  const resend = getResend();
+  if (!resend) return;
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `Application received — ${data.tier} sponsorship`,
+    html: `
+      <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
+        <h2 style="font-size: 18px;">Thanks for your interest!</h2>
+        <p>Hi ${contactName},</p>
+        <p>We've received your <strong>${data.tier}</strong> sponsorship application for <strong>${data.companyName}</strong>.</p>
+        <p>Our team will review it and get back to you shortly.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #999;">AIT Community Netherlands</p>
+      </div>
+    `,
+  });
+}
+
+/**
+ * Notify AIT team of new sponsor application.
+ */
+export async function sendSponsorApplicationNotification(
+  data: SponsorApplicationEmailData,
+) {
+  const resend = getResend();
+  if (!resend) return;
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: "team@aitcommunity.nl",
+    subject: `New sponsor application: ${data.companyName} (${data.tier})`,
+    html: `
+      <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
+        <h2 style="font-size: 18px;">New Sponsor Application</h2>
+        <table style="margin: 16px 0; font-size: 14px;">
+          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Company</td><td>${data.companyName}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Tier</td><td>${data.tier}</td></tr>
+          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Contact</td><td>${data.contactName} (${data.contactEmail})</td></tr>
+        </table>
+        <p><a href="https://aitcommunity.nl/admin/collections/sponsor-applications" style="color: #000; font-weight: bold;">Review in admin →</a></p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #999;">AIT Community Netherlands</p>
+      </div>
+    `,
+  });
+}
+
+/**
+ * Welcome email sent to sponsor on application approval.
+ */
+export async function sendSponsorWelcome(
+  to: string,
+  contactName: string,
+  data: SponsorApplicationEmailData,
+) {
+  const resend = getResend();
+  if (!resend) return;
+
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `Welcome aboard, ${data.companyName}!`,
+    html: `
+      <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
+        <h2 style="font-size: 18px;">You're an official AIT sponsor!</h2>
+        <p>Hi ${contactName},</p>
+        <p>Great news — your <strong>${data.tier}</strong> sponsorship application for <strong>${data.companyName}</strong> has been approved.</p>
+        <p>Welcome to the AIT Community Netherlands as an official sponsor. Our team will be in touch with next steps.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #999;">AIT Community Netherlands</p>
+      </div>
+    `,
+  });
+}
