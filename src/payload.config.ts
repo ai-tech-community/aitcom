@@ -17,6 +17,7 @@ import { Pages } from "./collections/Pages";
 import { Media } from "./collections/Media";
 import { Sponsors } from "./collections/Sponsors";
 import { SponsorApplications } from "./collections/SponsorApplications";
+import { Jobs } from "./collections/Jobs";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
   if (!connectionString) {
@@ -64,6 +65,7 @@ export default buildConfig({
     Media,
     Sponsors,
     SponsorApplications,
+    Jobs,
     {
       slug: "users",
       auth: true,
