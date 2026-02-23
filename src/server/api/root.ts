@@ -1,3 +1,4 @@
+import { communityRouter } from "@/server/api/routers/community";
 import { eventsRouter } from "@/server/api/routers/events";
 import { membersRouter } from "@/server/api/routers/members";
 import { postRouter } from "@/server/api/routers/post";
@@ -12,6 +13,7 @@ export const appRouter = createTRPCRouter({
   post: postRouter,
   events: eventsRouter,
   members: membersRouter,
+  community: communityRouter,
 });
 
 // export type definition of API
