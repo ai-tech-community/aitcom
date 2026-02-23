@@ -9,7 +9,7 @@ type LexicalNode = {
   url?: string;
   language?: string;
   children?: LexicalNode[];
-  fields?: { url?: string; newTab?: boolean };
+  fields?: { url?: string; newTab?: boolean; blockType?: string; code?: string; language?: string };
 };
 
 type LexicalRoot = {
@@ -102,10 +102,21 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
       );
 
     case "code": {
+      // Legacy: standard Lexical CodeNode (type "code")
       const code = extractPlainText(node.children ?? []);
       return (
         <HighlightedCode key={idx} code={code} language={node.language} />
       );
+    }
+
+    case "block": {
+      // Payload BlocksFeature CodeBlock
+      if (node.fields?.blockType === "Code" && node.fields.code !== undefined) {
+        return (
+          <HighlightedCode key={idx} code={node.fields.code} language={node.fields.language} />
+        );
+      }
+      return null;
     }
 
     case "autolink":

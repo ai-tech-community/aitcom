@@ -53,7 +53,9 @@ export default async function ArticleDetailPage({
     talk_recording: t("talkRecording"),
   };
 
-  const tags = Array.isArray(article.tags) ? (article.tags as string[]) : [];
+  const tags = Array.isArray(article.tags)
+    ? (article.tags as { id?: string; tag: string }[]).map((t) => t.tag)
+    : [];
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
