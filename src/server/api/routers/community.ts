@@ -6,7 +6,8 @@ import {
   protectedProcedure,
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
-import type { CommunityIdea, IdeaVote } from "@/payload-types";
+
+
 
 export const communityRouter = createTRPCRouter({
   // ── Rules ──────────────────────────────────────────────────────────────────
@@ -45,10 +46,9 @@ export const communityRouter = createTRPCRouter({
           depth: 0,
         });
         const votedIdeaIds = new Set(
-          myVotes.map((v) => {
-            const vote = v as IdeaVote;
-            return typeof vote.idea === "object" ? vote.idea.id : vote.idea;
-          }),
+          myVotes.map((v) =>
+            typeof v.idea === "object" ? v.idea.id : v.idea,
+          ),
         );
         return docs.map((idea) => ({
           ...idea,
@@ -101,11 +101,11 @@ export const communityRouter = createTRPCRouter({
         depth: 0,
       });
 
-      const idea = (await payload.findByID({
+      const idea = await payload.findByID({
         collection: "community-ideas",
         id: input.ideaId,
         depth: 0,
-      })) as CommunityIdea;
+      });
 
       if (existingVotes.length > 0) {
         await payload.delete({

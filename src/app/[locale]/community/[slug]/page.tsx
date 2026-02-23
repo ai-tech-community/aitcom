@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { getPayloadClient } from "@/server/payload";
 import type { Metadata } from "next";
-import type { ForumThread, ForumReply, User } from "@/payload-types";
+import type { ForumThread } from "@/payload-types";
 
 export async function generateMetadata({
   params,
@@ -46,9 +46,9 @@ export default async function ThreadDetailPage({
     depth: 1,
   });
 
-  const replies = replyDocs as ForumReply[];
+  const replies = replyDocs;
   const authorUser =
-    typeof thread.author === "object" ? (thread.author as User) : null;
+    typeof thread.author === "object" ? thread.author : null;
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
@@ -94,7 +94,7 @@ export default async function ThreadDetailPage({
           {replies.map((reply) => {
             const replyAuthor =
               typeof reply.author === "object"
-                ? (reply.author as User)
+                ? reply.author
                 : null;
             return (
               <div

@@ -9,7 +9,6 @@ import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { BuildingModal } from "../building-modal";
 import { toast } from "sonner";
-import type { User } from "@/payload-types";
 
 type ThreadsModalProps = {
   isOpen: boolean;
@@ -113,7 +112,7 @@ export function ThreadsModal({
         <div className="space-y-1.5">
           {threads.map((thread) => {
             const authorUser =
-              typeof thread.author === "object" ? (thread.author as User) : null;
+              typeof thread.author === "object" ? thread.author : null;
             return (
               <motion.button
                 key={thread.id}
