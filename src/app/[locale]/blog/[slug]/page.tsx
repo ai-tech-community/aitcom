@@ -95,6 +95,17 @@ export default async function ArticleDetailPage({
         </div>
       )}
 
+      {/* Featured Image */}
+      {article.mediaUrl && (
+        <div className="mt-6 overflow-hidden rounded">
+          <img
+            src={article.mediaUrl}
+            alt={article.title}
+            className="w-full object-cover"
+          />
+        </div>
+      )}
+
       {/* Content */}
       <div className="border-border mt-8 border-t pt-8">
         <LexicalRenderer content={article.content} />

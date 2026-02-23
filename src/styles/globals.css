@@ -120,6 +120,19 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Shiki dual-theme support */
+.shiki,
+.shiki span {
+  color: var(--shiki-light) !important;
+  background-color: var(--shiki-light-bg) !important;
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

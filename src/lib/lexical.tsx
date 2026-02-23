@@ -16,6 +16,16 @@ type LexicalRoot = {
   root?: { children?: LexicalNode[] };
 };
 
+function extractPlainText(nodes: LexicalNode[]): string {
+  return nodes
+    .map((n) => {
+      if (typeof n.text === "string") return n.text;
+      if (n.children?.length) return extractPlainText(n.children);
+      return "";
+    })
+    .join("");
+}
+
 function renderText(node: LexicalNode): React.ReactNode {
   const fmt = node.format ?? 0;
   let el: React.ReactNode = node.text ?? "";
@@ -91,15 +101,12 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
         </blockquote>
       );
 
-    case "code":
+    case "code": {
+      const code = extractPlainText(node.children ?? []);
       return (
-        <pre
-          key={idx}
-          className="bg-muted overflow-x-auto rounded p-4 font-mono text-sm"
-        >
-          <code>{node.children?.map((c, i) => renderNode(c, i))}</code>
-        </pre>
+        <HighlightedCode key={idx} code={code} language={node.language} />
       );
+    }
 
     case "autolink":
     case "link": {
@@ -131,6 +138,44 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
       }
       return null;
   }
+}
+
+async function HighlightedCode({
+  code,
+  language,
+}: {
+  code: string;
+  language?: string;
+}) {
+  const { codeToHtml } = await import("shiki");
+  const lang = language ?? "plaintext";
+  let html: string;
+  try {
+    html = await codeToHtml(code, {
+      lang,
+      themes: {
+        light: "github-light",
+        dark: "github-dark-dimmed",
+      },
+      defaultColor: false,
+    });
+  } catch {
+    // Fall back to unformatted if language not supported
+    html = await codeToHtml(code, {
+      lang: "plaintext",
+      themes: {
+        light: "github-light",
+        dark: "github-dark-dimmed",
+      },
+      defaultColor: false,
+    });
+  }
+  return (
+    <div
+      className="[&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:p-4 [&_pre]:font-mono [&_pre]:text-sm [&_pre]:leading-relaxed my-4"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }
 
 /**
