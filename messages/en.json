@@ -54,6 +54,79 @@
     "talkRecording": "Talk Recording",
     "backToBlog": "← Back to blog"
   },
+  "community": {
+    "title": "Community",
+    "subtitle": "The AIT community board. Explore, participate, and contribute.",
+    "rules": {
+      "title": "Community Rules",
+      "building": "The Constitution",
+      "subtitle": "How we work together"
+    },
+    "ideas": {
+      "title": "Ideas & Voting",
+      "building": "Town Hall",
+      "subtitle": "Shape the community",
+      "mostVoted": "Most Voted",
+      "recent": "Recent",
+      "submit": "Submit Idea",
+      "submitting": "Submitting...",
+      "titleLabel": "Idea Title",
+      "titlePlaceholder": "What should we build or change?",
+      "descriptionLabel": "Description (optional)",
+      "descriptionPlaceholder": "Tell us more...",
+      "loginToVote": "Sign in to vote",
+      "loginToSubmit": "Sign in to submit ideas",
+      "noIdeas": "No ideas yet. Be the first!",
+      "statusOpen": "Open",
+      "statusImplemented": "Implemented",
+      "statusRejected": "Rejected"
+    },
+    "threads": {
+      "title": "Discussion",
+      "building": "The Forum",
+      "subtitle": "Ask, share, connect",
+      "all": "All",
+      "general": "General",
+      "question": "Question",
+      "showcase": "Showcase",
+      "job": "Jobs",
+      "newThread": "New Thread",
+      "titleLabel": "Title",
+      "titlePlaceholder": "What's on your mind?",
+      "contentLabel": "Content",
+      "contentPlaceholder": "Write your post...",
+      "categoryLabel": "Category",
+      "noThreads": "No threads yet. Start the conversation!",
+      "replies": "{count} replies",
+      "loginToPost": "Sign in to post",
+      "readThread": "Read thread →"
+    },
+    "contribute": {
+      "title": "Get Involved",
+      "building": "The Workshop",
+      "subtitle": "Help us grow",
+      "speak": {
+        "title": "Speak at an Event",
+        "description": "Share your expertise with the community. We welcome talks on AI, automation, and innovation.",
+        "cta": "Express Interest"
+      },
+      "write": {
+        "title": "Write an Article",
+        "description": "Contribute tutorials, deep-dives, or talk write-ups to the blog.",
+        "cta": "Go to Dashboard"
+      },
+      "mentor": {
+        "title": "Mentor a Member",
+        "description": "Help junior engineers grow. Mentorship connections coming soon.",
+        "cta": "Coming Soon"
+      },
+      "partner": {
+        "title": "Partner / Sponsor",
+        "description": "Support the community and connect with Dutch tech talent.",
+        "cta": "Get in Touch"
+      }
+    }
+  },
   "join": {
     "title": "Ready to Join?",
     "subtitle": "Become part of the AI Tech community",

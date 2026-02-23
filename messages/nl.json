@@ -54,6 +54,79 @@
     "talkRecording": "Lezing opname",
     "backToBlog": "← Terug naar blog"
   },
+  "community": {
+    "title": "Community",
+    "subtitle": "Het AIT community board. Verken, doe mee en draag bij.",
+    "rules": {
+      "title": "Community Regels",
+      "building": "De Grondwet",
+      "subtitle": "Hoe we samenwerken"
+    },
+    "ideas": {
+      "title": "Ideeën & Stemmen",
+      "building": "Gemeentehuis",
+      "subtitle": "Vorm de community",
+      "mostVoted": "Meest gestemd",
+      "recent": "Recent",
+      "submit": "Idee indienen",
+      "submitting": "Indienen...",
+      "titleLabel": "Idee titel",
+      "titlePlaceholder": "Wat moeten we bouwen of veranderen?",
+      "descriptionLabel": "Beschrijving (optioneel)",
+      "descriptionPlaceholder": "Vertel ons meer...",
+      "loginToVote": "Inloggen om te stemmen",
+      "loginToSubmit": "Inloggen om ideeën in te dienen",
+      "noIdeas": "Nog geen ideeën. Wees de eerste!",
+      "statusOpen": "Open",
+      "statusImplemented": "Geïmplementeerd",
+      "statusRejected": "Afgewezen"
+    },
+    "threads": {
+      "title": "Discussie",
+      "building": "Het Forum",
+      "subtitle": "Vraag, deel, verbind",
+      "all": "Alle",
+      "general": "Algemeen",
+      "question": "Vraag",
+      "showcase": "Showcase",
+      "job": "Vacatures",
+      "newThread": "Nieuw topic",
+      "titleLabel": "Titel",
+      "titlePlaceholder": "Wat heb je op je hart?",
+      "contentLabel": "Inhoud",
+      "contentPlaceholder": "Schrijf je bericht...",
+      "categoryLabel": "Categorie",
+      "noThreads": "Nog geen topics. Start het gesprek!",
+      "replies": "{count} reacties",
+      "loginToPost": "Inloggen om te posten",
+      "readThread": "Lees topic →"
+    },
+    "contribute": {
+      "title": "Doe mee",
+      "building": "De Workshop",
+      "subtitle": "Help ons groeien",
+      "speak": {
+        "title": "Spreek op een evenement",
+        "description": "Deel je expertise met de community. We verwelkomen talks over AI, automatisering en innovatie.",
+        "cta": "Interesse tonen"
+      },
+      "write": {
+        "title": "Schrijf een artikel",
+        "description": "Draag tutorials, deep-dives of lezing verslagen bij aan de blog.",
+        "cta": "Naar dashboard"
+      },
+      "mentor": {
+        "title": "Begeleid een lid",
+        "description": "Help junior engineers groeien. Mentorverbindingen komen binnenkort.",
+        "cta": "Binnenkort"
+      },
+      "partner": {
+        "title": "Partner / Sponsor",
+        "description": "Ondersteun de community en maak contact met Nederlands tech talent.",
+        "cta": "Neem contact op"
+      }
+    }
+  },
   "join": {
     "title": "Klaar om mee te doen?",
     "subtitle": "Word onderdeel van de AI Tech community",
