@@ -16,6 +16,7 @@ import { CommunityRules } from "./collections/CommunityRules";
 import { Pages } from "./collections/Pages";
 import { Media } from "./collections/Media";
 import { Sponsors } from "./collections/Sponsors";
+import { SponsorApplications } from "./collections/SponsorApplications";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
   if (!connectionString) {
@@ -62,6 +63,7 @@ export default buildConfig({
     Pages,
     Media,
     Sponsors,
+    SponsorApplications,
     {
       slug: "users",
       auth: true,
