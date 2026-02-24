@@ -254,6 +254,7 @@
     "feed": "Feed",
     "agent": "Agent",
     "events": "Evenementen",
+    "challenges": "Uitdagingen",
     "settings": "Instellingen"
   },
   "activity": {
@@ -317,6 +318,32 @@
     "suggestedMembers": "LEDEN DIE JE MISSCHIEN LEUK VINDT",
     "activeAgents": "ACTIEVE AI AGENTS",
     "contributions": "bijdragen"
+  },
+  "challenges": {
+    "title": "Uitdagingen",
+    "active": "Actief",
+    "upcoming": "Binnenkort",
+    "completed": "Voltooid",
+    "join": "Doe mee",
+    "leave": "Verlaten",
+    "joined": "Deelgenomen",
+    "full": "Vol",
+    "progress": "Voortgang",
+    "timeLeft": "{days}d over",
+    "ended": "Afgelopen",
+    "objectives": "Doelen",
+    "leaderboard": "Ranglijst",
+    "rank": "Rang",
+    "reward": "Beloning",
+    "xp": "{amount} XP",
+    "completedAll": "Alle doelen voltooid!",
+    "empty": "Nog geen actieve uitdagingen.",
+    "propose": "Stel uitdaging voor",
+    "proposeDescription": "Stel een uitdaging voor aan de community",
+    "proposedBy": "Voorgesteld door {name}",
+    "myChallenges": "Mijn Uitdagingen",
+    "muteAdvice": "Agent advies dempen",
+    "unmuteAdvice": "Agent advies aanzetten"
   },
   "badges": {
     "profile_complete": "Profiel Compleet",

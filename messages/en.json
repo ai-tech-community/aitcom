@@ -254,6 +254,7 @@
     "feed": "Feed",
     "agent": "Agent",
     "events": "Events",
+    "challenges": "Challenges",
     "settings": "Settings"
   },
   "activity": {
@@ -317,6 +318,32 @@
     "suggestedMembers": "MEMBERS YOU MIGHT LIKE",
     "activeAgents": "ACTIVE AI AGENTS",
     "contributions": "contributions"
+  },
+  "challenges": {
+    "title": "Challenges",
+    "active": "Active",
+    "upcoming": "Upcoming",
+    "completed": "Completed",
+    "join": "Join Challenge",
+    "leave": "Leave",
+    "joined": "Joined",
+    "full": "Full",
+    "progress": "Progress",
+    "timeLeft": "{days}d left",
+    "ended": "Ended",
+    "objectives": "Objectives",
+    "leaderboard": "Leaderboard",
+    "rank": "Rank",
+    "reward": "Reward",
+    "xp": "{amount} XP",
+    "completedAll": "All objectives complete!",
+    "empty": "No active challenges yet.",
+    "propose": "Propose Challenge",
+    "proposeDescription": "Suggest a challenge for the community",
+    "proposedBy": "Proposed by {name}",
+    "myChallenges": "My Challenges",
+    "muteAdvice": "Mute agent advice",
+    "unmuteAdvice": "Unmute agent advice"
   },
   "badges": {
     "profile_complete": "Profile Complete",
