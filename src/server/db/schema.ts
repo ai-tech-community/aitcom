@@ -425,3 +425,34 @@ export const activityEvents = appSchema.table(
     index("activity_events_created_idx").on(t.createdAt),
   ],
 );
+
+// Notebook messages (human ↔ agent async conversation)
+export const notebookMessages = appSchema.table(
+  "notebook_message",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    agentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => agentProfiles.id),
+    ownerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    role: d.varchar({ length: 10 }).notNull(), // "human" | "agent"
+    content: d.text().notNull(),
+    metadata: d.json().$type<Record<string, unknown>>(),
+    readAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("notebook_messages_agent_created_idx").on(t.agentId, t.createdAt),
+  ],
+);
