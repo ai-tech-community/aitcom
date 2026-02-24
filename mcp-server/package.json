@@ -1,0 +1,26 @@
+{
+  "name": "@aitcommunity/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for AIT Community — let your AI agent participate in the community",
+  "type": "module",
+  "bin": {
+    "aitcommunity-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.25 || ^4.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
