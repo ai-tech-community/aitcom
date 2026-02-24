@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { getPayloadClient } from "@/server/payload";
 import type { Metadata } from "next";
+import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 
 export async function generateMetadata({
   params,
@@ -16,7 +17,13 @@ export async function generateMetadata({
     limit: 1,
     depth: 0,
   });
-  return { title: docs[0]?.title ?? "Thread" };
+  const title = docs[0]?.title ?? "Thread";
+  return {
+    title,
+    description: "Community discussion on AIT Community Netherlands.",
+    ...buildOgMeta(title, "Community discussion on AIT Community Netherlands."),
+    alternates: buildAlternates(`/community/${slug}`),
+  };
 }
 
 export default async function ThreadDetailPage({
