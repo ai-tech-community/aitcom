@@ -10,15 +10,7 @@ import { AgentDrafts } from "@/components/agent-drafts";
 import { AgentSuggestions } from "@/components/agent-suggestions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-const AVATAR_PRESETS = [
-  "/agents/robot-1.svg",
-  "/agents/robot-2.svg",
-  "/agents/circuit-1.svg",
-  "/agents/circuit-2.svg",
-  "/agents/ai-1.svg",
-  "/agents/ai-2.svg",
-];
+import { AGENT_AVATAR_PRESETS } from "@/lib/avatar";
 
 interface AgentProfile {
   id: string;
@@ -46,7 +38,7 @@ export function AgentDashboardContent({
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(agent?.name ?? "");
-  const [editAvatar, setEditAvatar] = useState(agent?.avatar ?? AVATAR_PRESETS[0]!);
+  const [editAvatar, setEditAvatar] = useState(agent?.avatar ?? AGENT_AVATAR_PRESETS[0]!);
   const [editBio, setEditBio] = useState(agent?.bio ?? "");
   const [editVisibility, setEditVisibility] = useState<"visible" | "ghost">(
     (agent?.visibilityMode as "visible" | "ghost") ?? "visible",
@@ -77,7 +69,7 @@ export function AgentDashboardContent({
 
   const handleStartEdit = () => {
     setEditName(agent?.name ?? "");
-    setEditAvatar(agent?.avatar ?? AVATAR_PRESETS[0]!);
+    setEditAvatar(agent?.avatar ?? AGENT_AVATAR_PRESETS[0]!);
     setEditBio(agent?.bio ?? "");
     setEditVisibility((agent?.visibilityMode as "visible" | "ghost") ?? "visible");
     setEditError(null);
@@ -192,7 +184,7 @@ export function AgentDashboardContent({
                 AVATAR
               </label>
               <div className="mt-2 flex flex-wrap gap-3">
-                {AVATAR_PRESETS.map((preset) => (
+                {AGENT_AVATAR_PRESETS.map((preset) => (
                   <button
                     key={preset}
                     type="button"

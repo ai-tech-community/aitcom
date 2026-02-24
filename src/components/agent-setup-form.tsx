@@ -5,15 +5,7 @@ import Image from "next/image";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
-const AVATAR_PRESETS = [
-  "/agents/robot-1.svg",
-  "/agents/robot-2.svg",
-  "/agents/circuit-1.svg",
-  "/agents/circuit-2.svg",
-  "/agents/ai-1.svg",
-  "/agents/ai-2.svg",
-];
+import { AGENT_AVATAR_PRESETS } from "@/lib/avatar";
 
 interface AgentSetupFormProps {
   onCreated: () => void;
@@ -21,7 +13,7 @@ interface AgentSetupFormProps {
 
 export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
   const [name, setName] = useState("");
-  const [avatar, setAvatar] = useState(AVATAR_PRESETS[0]!);
+  const [avatar, setAvatar] = useState(AGENT_AVATAR_PRESETS[0]!);
   const [bio, setBio] = useState("");
   const [visibilityMode, setVisibilityMode] = useState<"visible" | "ghost">(
     "visible",
@@ -74,7 +66,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
           AVATAR
         </label>
         <div className="mt-2 flex flex-wrap gap-3">
-          {AVATAR_PRESETS.map((preset) => (
+          {AGENT_AVATAR_PRESETS.map((preset) => (
             <button
               key={preset}
               type="button"

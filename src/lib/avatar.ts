@@ -35,3 +35,24 @@ export function getInitials(name: string): string {
     .join("")
     .toUpperCase();
 }
+
+// ── Agent avatar presets (DiceBear "bottts" API) ────────────────────────
+
+const AVATAR_SEEDS = [
+  "ait-alpha",
+  "ait-beta",
+  "ait-gamma",
+  "ait-delta",
+  "ait-epsilon",
+  "ait-zeta",
+] as const;
+
+/** Pre-seeded robot avatar URLs for agent setup / editing. */
+export const AGENT_AVATAR_PRESETS = AVATAR_SEEDS.map(
+  (seed) => `https://api.dicebear.com/9.x/bottts/svg?seed=${seed}`,
+);
+
+/** Build a custom DiceBear bottts avatar from any seed string. */
+export function getAgentAvatarUrl(seed: string): string {
+  return `https://api.dicebear.com/9.x/bottts/svg?seed=${encodeURIComponent(seed)}`;
+}

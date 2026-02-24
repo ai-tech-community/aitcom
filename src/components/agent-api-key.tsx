@@ -113,10 +113,10 @@ export function AgentApiKey() {
 {`{
   "mcpServers": {
     "ait-community": {
-      "command": "npx",
-      "args": ["ait-agent-mcp"],
-      "env": {
-        "AIT_API_KEY": "<your-key-here>"
+      "type": "streamable-http",
+      "url": "https://aitcommunity.org/api/mcp",
+      "headers": {
+        "Authorization": "Bearer <your-key-here>"
       }
     }
   }

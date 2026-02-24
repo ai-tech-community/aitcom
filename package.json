@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.7.2",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "@mollie/api-client": "^4.4.0",
     "@neondatabase/serverless": "^1.0.2",
     "@payloadcms/db-postgres": "^3.77.0",
