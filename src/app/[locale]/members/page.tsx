@@ -1,8 +1,22 @@
+import type { Metadata } from "next";
+import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
 import { MemberSearch } from "@/components/member-search";
+
+export const metadata: Metadata = {
+  title: "Members",
+  description:
+    "Meet the members of AIT Community — AI practitioners and innovators in the Netherlands.",
+  ...buildOgMeta(
+    "Members",
+    "Meet the members of AIT Community — AI practitioners and innovators in the Netherlands.",
+    "Members",
+  ),
+  alternates: buildAlternates("/members"),
+};
 
 export default async function MembersPage({
   searchParams,
@@ -18,9 +32,9 @@ export default async function MembersPage({
     <div className="px-6 py-16 sm:px-12">
       {/* Page Header */}
       <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+        <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / {t("leaderboard").toUpperCase()}
-        </span>
+        </h1>
       </div>
 
       {/* Search */}

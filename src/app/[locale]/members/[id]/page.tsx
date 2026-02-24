@@ -1,9 +1,32 @@
+import type { Metadata } from "next";
+import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { api } from "@/trpc/server";
 import { notFound } from "next/navigation";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
 import { xpForNextLevel } from "@/lib/gamification";
 import { Linkedin, Github, Globe } from "lucide-react";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const data = await api.members.getPublicProfile({ userId: id });
+  if (!data) return {};
+
+  const description = data.profile.bio
+    ? data.profile.bio.slice(0, 160)
+    : `Member of AIT Community Netherlands — Level ${data.profile.level}`;
+
+  return {
+    title: data.profile.displayName,
+    description,
+    ...buildOgMeta(data.profile.displayName, description),
+    alternates: buildAlternates(`/members/${id}`),
+  };
+}
 
 export default async function MemberProfilePage({
   params,
@@ -118,9 +141,9 @@ export default async function MemberProfilePage({
       {profile.bio && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
-            <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / {t("bio").toUpperCase()}
-            </span>
+            </h2>
           </div>
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
             {profile.bio}
@@ -132,9 +155,9 @@ export default async function MemberProfilePage({
       {profile.skills.length > 0 && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
-            <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / {t("skills").toUpperCase()}
-            </span>
+            </h2>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {profile.skills.map((skill) => (
@@ -153,9 +176,9 @@ export default async function MemberProfilePage({
       {validBadges.length > 0 && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
-            <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / {t("badges").toUpperCase()}
-            </span>
+            </h2>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {validBadges.map((badge) => (
