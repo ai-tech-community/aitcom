@@ -7,6 +7,8 @@ import {
   publicProcedure,
   protectedProcedure,
 } from "@/server/api/trpc";
+
+const challengeIdInputSchema = z.object({ challengeId: z.number() });
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import {
@@ -59,9 +61,10 @@ export const challengesRouter = createTRPCRouter({
   // ── Enroll in a challenge ─────────────────────────────────────────────────
 
   enroll: protectedProcedure
-    .input(z.object({ challengeId: z.number() }))
+    .input(challengeIdInputSchema)
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      const { challengeId } = challengeIdInputSchema.parse(input);
 
       // Fetch challenge from Payload
       const payload = await getPayloadClient();
@@ -69,7 +72,7 @@ export const challengesRouter = createTRPCRouter({
       try {
         challenge = await payload.findByID({
           collection: "challenges",
-          id: input.challengeId,
+          id: challengeId,
           depth: 0,
         });
       } catch {
@@ -88,14 +91,21 @@ export const challengesRouter = createTRPCRouter({
       }
 
       // Check maxParticipants (0 = unlimited)
-      const maxParticipants = (challenge.maxParticipants as number) ?? 0;
+      const maxParticipantsRaw =
+        typeof challenge.maxParticipants === "number"
+          ? challenge.maxParticipants
+          : Number(challenge.maxParticipants ?? 0);
+      const maxParticipants =
+        Number.isFinite(maxParticipantsRaw) && maxParticipantsRaw > 0
+          ? maxParticipantsRaw
+          : 0;
       if (maxParticipants > 0) {
         const [countResult] = await ctx.db
           .select({ count: sql<number>`count(*)` })
           .from(challengeEnrollments)
           .where(
             and(
-              eq(challengeEnrollments.challengeId, input.challengeId),
+              eq(challengeEnrollments.challengeId, challengeId),
               sql`${challengeEnrollments.status} != 'abandoned'`,
             ),
           );
@@ -113,7 +123,7 @@ export const challengesRouter = createTRPCRouter({
       const [enrollment] = await ctx.db
         .insert(challengeEnrollments)
         .values({
-          challengeId: input.challengeId,
+          challengeId,
           userId,
           status: "active",
         })
@@ -128,7 +138,9 @@ export const challengesRouter = createTRPCRouter({
       }
 
       // Create progress rows for each objective
-      const objectives = challenge.objectives ?? [];
+      const objectives = Array.isArray(challenge.objectives)
+        ? challenge.objectives
+        : [];
       if (objectives.length > 0) {
         await ctx.db.insert(challengeProgress).values(
           objectives.map((_obj: unknown, index: number) => ({
@@ -145,7 +157,7 @@ export const challengesRouter = createTRPCRouter({
         actorType: "member",
         action: "challenge.enrolled",
         targetType: "challenges",
-        targetId: String(input.challengeId),
+        targetId: String(challengeId),
         metadata: { title: challenge.title },
       });
 
@@ -155,16 +167,17 @@ export const challengesRouter = createTRPCRouter({
   // ── Abandon a challenge ───────────────────────────────────────────────────
 
   abandon: protectedProcedure
-    .input(z.object({ challengeId: z.number() }))
+    .input(challengeIdInputSchema)
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      const { challengeId } = challengeIdInputSchema.parse(input);
 
       const [updated] = await ctx.db
         .update(challengeEnrollments)
         .set({ status: "abandoned" })
         .where(
           and(
-            eq(challengeEnrollments.challengeId, input.challengeId),
+            eq(challengeEnrollments.challengeId, challengeId),
             eq(challengeEnrollments.userId, userId),
             eq(challengeEnrollments.status, "active"),
           ),
@@ -184,7 +197,7 @@ export const challengesRouter = createTRPCRouter({
       try {
         const challenge = await payload.findByID({
           collection: "challenges",
-          id: input.challengeId,
+          id: challengeId,
           depth: 0,
         });
         title = challenge.title;
@@ -197,7 +210,7 @@ export const challengesRouter = createTRPCRouter({
         actorType: "member",
         action: "challenge.abandoned",
         targetType: "challenges",
-        targetId: String(input.challengeId),
+        targetId: String(challengeId),
         metadata: { title },
       });
 
@@ -221,33 +234,30 @@ export const challengesRouter = createTRPCRouter({
   // ── Get progress for a specific enrollment ────────────────────────────────
 
   getProgress: protectedProcedure
-    .input(z.object({ enrollmentId: z.string() }))
+    .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Verify the enrollment belongs to this user
+      // Find enrollment by challengeId + userId
       const [enrollment] = await ctx.db
         .select()
         .from(challengeEnrollments)
         .where(
           and(
-            eq(challengeEnrollments.id, input.enrollmentId),
+            eq(challengeEnrollments.challengeId, input.challengeId),
             eq(challengeEnrollments.userId, userId),
           ),
         )
         .limit(1);
 
       if (!enrollment) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Enrollment not found",
-        });
+        return null;
       }
 
       const progress = await ctx.db
         .select()
         .from(challengeProgress)
-        .where(eq(challengeProgress.enrollmentId, input.enrollmentId));
+        .where(eq(challengeProgress.enrollmentId, enrollment.id));
 
       return { enrollment, progress };
     }),

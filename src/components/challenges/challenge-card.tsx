@@ -33,12 +33,6 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
     },
   });
 
-  const abandon = api.challenges.abandon.useMutation({
-    onSuccess: () => {
-      void utils.challenges.getMyEnrollments.invalidate();
-    },
-  });
-
   const daysLeft = Math.max(
     0,
     Math.ceil(
