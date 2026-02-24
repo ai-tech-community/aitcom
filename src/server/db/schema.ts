@@ -474,7 +474,8 @@ export const conversations = appSchema.table("conversation", (d) => ({
   updatedAt: d
     .timestamp({ withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
+    .notNull()
+    .$onUpdate(() => new Date()),
 }));
 
 export const conversationParticipants = appSchema.table(
