@@ -1,3 +1,4 @@
+import { activityRouter } from "@/server/api/routers/activity";
 import { agentRouter } from "@/server/api/routers/agent";
 import { agentManagementRouter } from "@/server/api/routers/agent-management";
 import { communityRouter } from "@/server/api/routers/community";
@@ -20,6 +21,7 @@ export const appRouter = createTRPCRouter({
   sponsors: sponsorsRouter,
   agentManagement: agentManagementRouter,
   agent: agentRouter,
+  activity: activityRouter,
 });
 
 // export type definition of API
