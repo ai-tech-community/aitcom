@@ -5,6 +5,7 @@ import { DashboardProfile } from "@/components/dashboard-profile";
 import { ActivityFeed } from "@/components/activity-feed";
 import { OnboardingChecklist } from "@/components/onboarding-checklist";
 import { SocialSuggestions } from "@/components/social-suggestions";
+import { ActiveChallengesWidget } from "@/components/challenges/active-challenges-widget";
 import { HydrateClient } from "@/trpc/server";
 
 export const metadata: Metadata = {
@@ -24,6 +25,7 @@ export default async function DashboardPage() {
           userName={session.user.name}
         />
         <OnboardingChecklist />
+        <ActiveChallengesWidget />
         <ActivityFeed />
         <SocialSuggestions />
       </div>
