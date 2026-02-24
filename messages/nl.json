@@ -273,8 +273,7 @@
     "unreadBadge": "ongelezen berichten",
     "minimize": "Minimaliseren",
     "close": "Sluiten",
-    "back": "Terug",
-    "typeMessage": "Typ een bericht..."
+    "back": "Terug"
   },
   "badges": {
     "profile_complete": "Profiel Compleet",

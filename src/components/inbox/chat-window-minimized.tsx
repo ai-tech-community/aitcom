@@ -58,25 +58,17 @@ export function ChatWindowMinimized({
       </span>
 
       {/* Close button */}
-      <span
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         onClick={(e) => {
           e.stopPropagation();
           closeChat(conversationId);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.stopPropagation();
-            e.preventDefault();
-            closeChat(conversationId);
-          }
         }}
         className="rounded-md p-0.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
         aria-label="Close"
       >
         <XIcon className="h-3.5 w-3.5" />
-      </span>
+      </button>
     </button>
   );
 }

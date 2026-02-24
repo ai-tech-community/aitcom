@@ -187,7 +187,7 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
       <div className="border-t border-border">
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputTextarea
-            placeholder={t("typeMessage")}
+            placeholder={t("placeholder")}
             className="min-h-10 text-sm"
           />
           <PromptInputFooter>

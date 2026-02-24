@@ -170,7 +170,7 @@ export const inboxRouter = createTRPCRouter({
           let unreadCount = 0;
           if (row.lastReadAt) {
             const [unreadRow] = await ctx.db
-              .select({ count: sql<number>`count(*)` })
+              .select({ count: sql<number>`count(*)::int` })
               .from(messages)
               .where(
                 and(
@@ -186,7 +186,7 @@ export const inboxRouter = createTRPCRouter({
           } else {
             // Never read — all messages not sent by the user as "human" are unread
             const [unreadRow] = await ctx.db
-              .select({ count: sql<number>`count(*)` })
+              .select({ count: sql<number>`count(*)::int` })
               .from(messages)
               .where(
                 and(
@@ -284,7 +284,7 @@ export const inboxRouter = createTRPCRouter({
             eq(conversationParticipants.userId, userId),
           ),
         )
-        .then(() => {}, () => {});
+        .then(() => {}, (err) => { console.error("[inbox] update failed:", err); });
 
       return { messages: items, nextCursor, hasMore };
     }),
@@ -350,7 +350,7 @@ export const inboxRouter = createTRPCRouter({
             eq(conversationParticipants.userId, userId),
           ),
         )
-        .then(() => {}, () => {});
+        .then(() => {}, (err) => { console.error("[inbox] update failed:", err); });
 
       return message!;
     }),
@@ -419,43 +419,22 @@ export const inboxRouter = createTRPCRouter({
   totalUnreadCount: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
-    // Get all participant rows for this user
-    const participantRows = await ctx.db
-      .select({
-        conversationId: conversationParticipants.conversationId,
-        lastReadAt: conversationParticipants.lastReadAt,
-      })
-      .from(conversationParticipants)
-      .where(eq(conversationParticipants.userId, userId));
+    const [result] = await ctx.db
+      .select({ total: sql<number>`coalesce(sum(sub.cnt), 0)::int` })
+      .from(
+        sql`(
+          SELECT count(*) as cnt
+          FROM ${messages} m
+          JOIN ${conversationParticipants} cp
+            ON cp.conversation_id = m.conversation_id
+          WHERE cp.user_id = ${userId}
+            AND (m.sender_id != ${userId} OR m.sender_type != 'human')
+            AND (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at)
+          GROUP BY m.conversation_id
+        ) sub`,
+      );
 
-    if (participantRows.length === 0) {
-      return { count: 0 };
-    }
-
-    let totalUnread = 0;
-
-    for (const row of participantRows) {
-      const conditions = [
-        eq(messages.conversationId, row.conversationId),
-        or(
-          ne(messages.senderId, userId),
-          ne(messages.senderType, "human"),
-        )!,
-      ];
-
-      if (row.lastReadAt) {
-        conditions.push(sql`${messages.createdAt} > ${row.lastReadAt}`);
-      }
-
-      const [unreadRow] = await ctx.db
-        .select({ count: sql<number>`count(*)` })
-        .from(messages)
-        .where(and(...conditions));
-
-      totalUnread += unreadRow?.count ?? 0;
-    }
-
-    return { count: totalUnread };
+    return { count: result?.total ?? 0 };
   }),
 
   /**

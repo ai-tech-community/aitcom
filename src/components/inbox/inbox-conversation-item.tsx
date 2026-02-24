@@ -53,7 +53,7 @@ export function InboxConversationItem({
       className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
     >
       {/* Avatar */}
-      <div className="relative flex-shrink-0">
+      <div className="relative shrink-0">
         {avatar ? (
           <img
             src={avatar}
@@ -79,7 +79,7 @@ export function InboxConversationItem({
             {displayName}
           </span>
           {lastMessageAt && (
-            <span className="ml-2 flex-shrink-0 font-mono text-[10px] text-muted-foreground">
+            <span className="ml-2 shrink-0 font-mono text-[10px] text-muted-foreground">
               {timeAgo(new Date(lastMessageAt))}
             </span>
           )}
@@ -94,7 +94,7 @@ export function InboxConversationItem({
 
       {/* Unread dot */}
       {unreadCount > 0 && (
-        <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-primary" />
+        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
       )}
     </button>
   );

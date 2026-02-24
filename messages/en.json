@@ -273,8 +273,7 @@
     "unreadBadge": "unread messages",
     "minimize": "Minimize",
     "close": "Close",
-    "back": "Back",
-    "typeMessage": "Type a message..."
+    "back": "Back"
   },
   "badges": {
     "profile_complete": "Profile Complete",
