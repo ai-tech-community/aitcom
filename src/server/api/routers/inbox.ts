@@ -1,0 +1,711 @@
+import { z } from "zod";
+import { eq, and, desc, lt, sql, ne, or, like, isNull } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  agentProcedure,
+  requireScope,
+} from "@/server/api/trpc";
+import {
+  conversations,
+  conversationParticipants,
+  messages,
+  agentProfiles,
+  memberProfiles,
+  user,
+} from "@/server/db/schema";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+type DB = typeof import("@/server/db").db;
+
+async function findAgentConversation(db: DB, ownerId: string) {
+  const [row] = await db
+    .select({ id: conversations.id })
+    .from(conversations)
+    .innerJoin(
+      conversationParticipants,
+      eq(conversationParticipants.conversationId, conversations.id),
+    )
+    .where(
+      and(
+        eq(conversations.type, "agent"),
+        eq(conversationParticipants.userId, ownerId),
+      ),
+    )
+    .limit(1);
+
+  return row ?? null;
+}
+
+// ── Router ───────────────────────────────────────────────────────────────────
+
+export const inboxRouter = createTRPCRouter({
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HUMAN-FACING PROCEDURES (protectedProcedure)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * listConversations — paginated list of the user's conversations.
+   * Sorted by pinned first, then updatedAt desc. Includes last message,
+   * other participants, agent info, and unread count.
+   */
+  listConversations: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(20),
+        cursor: z.string().nullable().default(null),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Get user's participant rows with conversation data
+      const participantRows = await ctx.db
+        .select({
+          participantId: conversationParticipants.id,
+          conversationId: conversationParticipants.conversationId,
+          lastReadAt: conversationParticipants.lastReadAt,
+          isPinned: conversationParticipants.isPinned,
+          convType: conversations.type,
+          convUpdatedAt: conversations.updatedAt,
+        })
+        .from(conversationParticipants)
+        .innerJoin(
+          conversations,
+          eq(conversationParticipants.conversationId, conversations.id),
+        )
+        .where(eq(conversationParticipants.userId, userId));
+
+      if (participantRows.length === 0) {
+        return { conversations: [], nextCursor: null };
+      }
+
+      // Sort: pinned first, then updatedAt desc
+      participantRows.sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        return b.convUpdatedAt.getTime() - a.convUpdatedAt.getTime();
+      });
+
+      // Apply cursor-based pagination (cursor = updatedAt ISO string)
+      let filtered = participantRows;
+      if (input.cursor) {
+        const cursorDate = new Date(input.cursor);
+        filtered = participantRows.filter(
+          (r) => r.convUpdatedAt < cursorDate || (!r.isPinned && r.convUpdatedAt <= cursorDate),
+        );
+        // Re-filter: skip everything up to and including cursor
+        filtered = participantRows.filter(
+          (r) => r.convUpdatedAt.getTime() < cursorDate.getTime(),
+        );
+      }
+
+      const page = filtered.slice(0, input.limit + 1);
+      const hasMore = page.length > input.limit;
+      const items = hasMore ? page.slice(0, input.limit) : page;
+      const nextCursor = hasMore
+        ? items[items.length - 1]!.convUpdatedAt.toISOString()
+        : null;
+
+      // Build full conversation objects
+      const result = await Promise.all(
+        items.map(async (row) => {
+          // Last message
+          const [lastMessage] = await ctx.db
+            .select({
+              content: messages.content,
+              senderType: messages.senderType,
+              senderId: messages.senderId,
+              createdAt: messages.createdAt,
+            })
+            .from(messages)
+            .where(eq(messages.conversationId, row.conversationId))
+            .orderBy(desc(messages.createdAt))
+            .limit(1);
+
+          // Other participants
+          const otherParticipants = await ctx.db
+            .select({
+              userId: conversationParticipants.userId,
+              displayName: memberProfiles.displayName,
+              image: user.image,
+            })
+            .from(conversationParticipants)
+            .leftJoin(
+              memberProfiles,
+              eq(memberProfiles.userId, conversationParticipants.userId),
+            )
+            .leftJoin(
+              user,
+              eq(user.id, conversationParticipants.userId),
+            )
+            .where(
+              and(
+                eq(conversationParticipants.conversationId, row.conversationId),
+                ne(conversationParticipants.userId, userId),
+              ),
+            );
+
+          // Agent info (only for agent conversations)
+          let agentInfo = null;
+          if (row.convType === "agent") {
+            const [agent] = await ctx.db
+              .select({
+                id: agentProfiles.id,
+                name: agentProfiles.name,
+                avatar: agentProfiles.avatar,
+              })
+              .from(agentProfiles)
+              .where(eq(agentProfiles.ownerId, userId))
+              .limit(1);
+            agentInfo = agent ?? null;
+          }
+
+          // Unread count: messages after lastReadAt that aren't sent by the current user as "human"
+          let unreadCount = 0;
+          if (row.lastReadAt) {
+            const [unreadRow] = await ctx.db
+              .select({ count: sql<number>`count(*)` })
+              .from(messages)
+              .where(
+                and(
+                  eq(messages.conversationId, row.conversationId),
+                  sql`${messages.createdAt} > ${row.lastReadAt}`,
+                  or(
+                    ne(messages.senderId, userId),
+                    ne(messages.senderType, "human"),
+                  ),
+                ),
+              );
+            unreadCount = unreadRow?.count ?? 0;
+          } else {
+            // Never read — all messages not sent by the user as "human" are unread
+            const [unreadRow] = await ctx.db
+              .select({ count: sql<number>`count(*)` })
+              .from(messages)
+              .where(
+                and(
+                  eq(messages.conversationId, row.conversationId),
+                  or(
+                    ne(messages.senderId, userId),
+                    ne(messages.senderType, "human"),
+                  ),
+                ),
+              );
+            unreadCount = unreadRow?.count ?? 0;
+          }
+
+          return {
+            id: row.conversationId,
+            type: row.convType,
+            updatedAt: row.convUpdatedAt.toISOString(),
+            isPinned: row.isPinned,
+            lastMessage: lastMessage ?? null,
+            participants: otherParticipants,
+            agentInfo,
+            unreadCount,
+          };
+        }),
+      );
+
+      return { conversations: result, nextCursor };
+    }),
+
+  /**
+   * getMessages — paginated messages for a conversation.
+   * Verifies user is a participant. Returns chronological order.
+   * Fire-and-forget updates lastReadAt.
+   */
+  getMessages: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.string(),
+        cursor: z.string().nullable().default(null),
+        limit: z.number().min(1).max(100).default(50),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Verify user is a participant
+      const [participant] = await ctx.db
+        .select()
+        .from(conversationParticipants)
+        .where(
+          and(
+            eq(conversationParticipants.conversationId, input.conversationId),
+            eq(conversationParticipants.userId, userId),
+          ),
+        )
+        .limit(1);
+
+      if (!participant) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are not a participant in this conversation",
+        });
+      }
+
+      const conditions = [eq(messages.conversationId, input.conversationId)];
+
+      if (input.cursor) {
+        conditions.push(lt(messages.createdAt, new Date(input.cursor)));
+      }
+
+      const rows = await ctx.db
+        .select()
+        .from(messages)
+        .where(and(...conditions))
+        .orderBy(desc(messages.createdAt))
+        .limit(input.limit + 1);
+
+      const hasMore = rows.length > input.limit;
+      const items = hasMore ? rows.slice(0, input.limit) : rows;
+
+      const nextCursor = hasMore
+        ? items[items.length - 1]!.createdAt.toISOString()
+        : null;
+
+      // Reverse to chronological order
+      items.reverse();
+
+      // Fire-and-forget: update lastReadAt
+      ctx.db
+        .update(conversationParticipants)
+        .set({ lastReadAt: new Date() })
+        .where(
+          and(
+            eq(conversationParticipants.conversationId, input.conversationId),
+            eq(conversationParticipants.userId, userId),
+          ),
+        )
+        .then(() => {}, () => {});
+
+      return { messages: items, nextCursor, hasMore };
+    }),
+
+  /**
+   * sendMessage — human sends a message in a conversation.
+   * Verifies participant. Updates conversation.updatedAt.
+   * Fire-and-forget updates sender's lastReadAt.
+   */
+  sendMessage: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.string(),
+        content: z.string().min(1).max(10000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Verify user is a participant
+      const [participant] = await ctx.db
+        .select()
+        .from(conversationParticipants)
+        .where(
+          and(
+            eq(conversationParticipants.conversationId, input.conversationId),
+            eq(conversationParticipants.userId, userId),
+          ),
+        )
+        .limit(1);
+
+      if (!participant) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are not a participant in this conversation",
+        });
+      }
+
+      // Insert message
+      const [message] = await ctx.db
+        .insert(messages)
+        .values({
+          conversationId: input.conversationId,
+          senderId: userId,
+          senderType: "human",
+          content: input.content,
+        })
+        .returning();
+
+      // Update conversation.updatedAt
+      await ctx.db
+        .update(conversations)
+        .set({ updatedAt: new Date() })
+        .where(eq(conversations.id, input.conversationId));
+
+      // Fire-and-forget: update sender's lastReadAt
+      ctx.db
+        .update(conversationParticipants)
+        .set({ lastReadAt: new Date() })
+        .where(
+          and(
+            eq(conversationParticipants.conversationId, input.conversationId),
+            eq(conversationParticipants.userId, userId),
+          ),
+        )
+        .then(() => {}, () => {});
+
+      return message!;
+    }),
+
+  /**
+   * startConversation — start a DM with another user.
+   * Cannot message yourself. Returns existing conversation if one exists.
+   */
+  startConversation: protectedProcedure
+    .input(
+      z.object({
+        recipientId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      if (userId === input.recipientId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot start a conversation with yourself",
+        });
+      }
+
+      // Check if DM conversation already exists between the two users
+      const myConversations = await ctx.db
+        .select({ conversationId: conversationParticipants.conversationId })
+        .from(conversationParticipants)
+        .innerJoin(
+          conversations,
+          eq(conversationParticipants.conversationId, conversations.id),
+        )
+        .where(
+          and(
+            eq(conversationParticipants.userId, userId),
+            eq(conversations.type, "dm"),
+          ),
+        );
+
+      for (const conv of myConversations) {
+        const [otherParticipant] = await ctx.db
+          .select()
+          .from(conversationParticipants)
+          .where(
+            and(
+              eq(conversationParticipants.conversationId, conv.conversationId),
+              eq(conversationParticipants.userId, input.recipientId),
+            ),
+          )
+          .limit(1);
+
+        if (otherParticipant) {
+          return { conversationId: conv.conversationId, created: false };
+        }
+      }
+
+      // Create new DM conversation
+      const [conversation] = await ctx.db
+        .insert(conversations)
+        .values({ type: "dm" })
+        .returning();
+
+      // Add both participants
+      await ctx.db.insert(conversationParticipants).values([
+        { conversationId: conversation!.id, userId },
+        { conversationId: conversation!.id, userId: input.recipientId },
+      ]);
+
+      return { conversationId: conversation!.id, created: true };
+    }),
+
+  /**
+   * totalUnreadCount — sum of unread messages across all conversations.
+   */
+  totalUnreadCount: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    // Get all participant rows for this user
+    const participantRows = await ctx.db
+      .select({
+        conversationId: conversationParticipants.conversationId,
+        lastReadAt: conversationParticipants.lastReadAt,
+      })
+      .from(conversationParticipants)
+      .where(eq(conversationParticipants.userId, userId));
+
+    if (participantRows.length === 0) {
+      return { count: 0 };
+    }
+
+    let totalUnread = 0;
+
+    for (const row of participantRows) {
+      const conditions = [
+        eq(messages.conversationId, row.conversationId),
+        or(
+          ne(messages.senderId, userId),
+          ne(messages.senderType, "human"),
+        )!,
+      ];
+
+      if (row.lastReadAt) {
+        conditions.push(sql`${messages.createdAt} > ${row.lastReadAt}`);
+      }
+
+      const [unreadRow] = await ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(messages)
+        .where(and(...conditions));
+
+      totalUnread += unreadRow?.count ?? 0;
+    }
+
+    return { count: totalUnread };
+  }),
+
+  /**
+   * searchMembers — search for members by displayName or user.name.
+   * Excludes current user. Only public profiles.
+   */
+  searchMembers: protectedProcedure
+    .input(
+      z.object({
+        query: z.string().min(1).max(100),
+        limit: z.number().min(1).max(20).default(10),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const pattern = `%${input.query}%`;
+
+      const rows = await ctx.db
+        .select({
+          userId: memberProfiles.userId,
+          displayName: memberProfiles.displayName,
+          image: user.image,
+        })
+        .from(memberProfiles)
+        .innerJoin(user, eq(user.id, memberProfiles.userId))
+        .where(
+          and(
+            eq(memberProfiles.isPublic, true),
+            ne(memberProfiles.userId, userId),
+            or(
+              like(memberProfiles.displayName, pattern),
+              like(user.name, pattern),
+            ),
+          ),
+        )
+        .limit(input.limit);
+
+      return { members: rows };
+    }),
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // AGENT-FACING PROCEDURES (agentProcedure)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * agentCheckInbox — agent fetches recent human messages from their
+   * agent conversation.
+   */
+  agentCheckInbox: agentProcedure.query(async ({ ctx }) => {
+    requireScope(ctx.agent.scopes, "read");
+
+    const conv = await findAgentConversation(ctx.db, ctx.agent.ownerId);
+    if (!conv) {
+      return { messages: [] };
+    }
+
+    const rows = await ctx.db
+      .select({
+        id: messages.id,
+        content: messages.content,
+        createdAt: messages.createdAt,
+      })
+      .from(messages)
+      .where(
+        and(
+          eq(messages.conversationId, conv.id),
+          eq(messages.senderType, "human"),
+        ),
+      )
+      .orderBy(desc(messages.createdAt))
+      .limit(50);
+
+    // Reverse to chronological order
+    rows.reverse();
+
+    return { messages: rows };
+  }),
+
+  /**
+   * agentSendMessage — agent sends a message to its owner.
+   * Creates the agent conversation if it doesn't exist.
+   */
+  agentSendMessage: agentProcedure
+    .input(
+      z.object({
+        content: z.string().min(1).max(10000),
+        metadata: z.record(z.unknown()).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+
+      let conv = await findAgentConversation(ctx.db, ctx.agent.ownerId);
+
+      // Create agent conversation if it doesn't exist
+      if (!conv) {
+        const [newConv] = await ctx.db
+          .insert(conversations)
+          .values({ type: "agent" })
+          .returning();
+
+        await ctx.db.insert(conversationParticipants).values({
+          conversationId: newConv!.id,
+          userId: ctx.agent.ownerId,
+          isPinned: true,
+        });
+
+        conv = { id: newConv!.id };
+      }
+
+      // Insert message with senderType "agent", senderId = owner's userId
+      const [message] = await ctx.db
+        .insert(messages)
+        .values({
+          conversationId: conv.id,
+          senderId: ctx.agent.ownerId,
+          senderType: "agent",
+          content: input.content,
+          metadata: input.metadata,
+        })
+        .returning();
+
+      // Update conversation.updatedAt
+      await ctx.db
+        .update(conversations)
+        .set({ updatedAt: new Date() })
+        .where(eq(conversations.id, conv.id));
+
+      return { messageId: message!.id };
+    }),
+
+  /**
+   * agentGetConversationHistory — agent fetches paginated conversation history.
+   * Returns messages in chronological order.
+   */
+  agentGetConversationHistory: agentProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).default(50),
+        before: z.string().optional(), // ISO-8601 date string
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+
+      const conv = await findAgentConversation(ctx.db, ctx.agent.ownerId);
+      if (!conv) {
+        return { messages: [], hasMore: false };
+      }
+
+      const conditions = [eq(messages.conversationId, conv.id)];
+
+      if (input.before) {
+        conditions.push(lt(messages.createdAt, new Date(input.before)));
+      }
+
+      const rows = await ctx.db
+        .select({
+          id: messages.id,
+          senderType: messages.senderType,
+          content: messages.content,
+          createdAt: messages.createdAt,
+        })
+        .from(messages)
+        .where(and(...conditions))
+        .orderBy(desc(messages.createdAt))
+        .limit(input.limit + 1);
+
+      const hasMore = rows.length > input.limit;
+      const items = hasMore ? rows.slice(0, input.limit) : rows;
+
+      // Reverse to chronological order
+      items.reverse();
+
+      return { messages: items, hasMore };
+    }),
+
+  /**
+   * agentGetOwnerDMs — agent reads owner's DM conversations.
+   * Requires canReadOwnerDMs permission on agent profile.
+   */
+  agentGetOwnerDMs: agentProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(20),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+
+      // Check canReadOwnerDMs permission
+      const [agent] = await ctx.db
+        .select({ canReadOwnerDMs: agentProfiles.canReadOwnerDMs })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.id, ctx.agent.agentId))
+        .limit(1);
+
+      if (!agent?.canReadOwnerDMs) {
+        return { messages: [] };
+      }
+
+      // Get owner's DM conversations
+      const dmConversations = await ctx.db
+        .select({
+          conversationId: conversationParticipants.conversationId,
+        })
+        .from(conversationParticipants)
+        .innerJoin(
+          conversations,
+          eq(conversationParticipants.conversationId, conversations.id),
+        )
+        .where(
+          and(
+            eq(conversationParticipants.userId, ctx.agent.ownerId),
+            eq(conversations.type, "dm"),
+          ),
+        );
+
+      if (dmConversations.length === 0) {
+        return { messages: [] };
+      }
+
+      const convIds = dmConversations.map((c) => c.conversationId);
+
+      // Fetch recent messages across all DM conversations
+      const rows = await ctx.db
+        .select({
+          id: messages.id,
+          conversationId: messages.conversationId,
+          senderId: messages.senderId,
+          senderType: messages.senderType,
+          content: messages.content,
+          createdAt: messages.createdAt,
+        })
+        .from(messages)
+        .where(
+          or(...convIds.map((id) => eq(messages.conversationId, id))),
+        )
+        .orderBy(desc(messages.createdAt))
+        .limit(input.limit);
+
+      // Reverse to chronological order
+      rows.reverse();
+
+      return { messages: rows };
+    }),
+});
