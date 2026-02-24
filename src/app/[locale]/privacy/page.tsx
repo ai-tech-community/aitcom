@@ -6,10 +6,13 @@ import {
   ManPageToc,
 } from "@/components/man-page-layout";
 import { Link } from "@/i18n/navigation";
+import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — AIT Community",
+  title: "Privacy Policy",
   description: "AIT Community Netherlands Privacy Policy",
+  ...buildOgMeta("Privacy Policy", "AIT Community Netherlands Privacy Policy"),
+  alternates: buildAlternates("/privacy"),
 };
 
 export default async function PrivacyPage() {
