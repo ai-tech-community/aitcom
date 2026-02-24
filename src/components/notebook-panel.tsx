@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MessageSquareIcon,
   ChevronDownIcon,
@@ -63,12 +63,18 @@ export function NotebookPanel() {
   // ── Mark messages as read when expanded ──────────────────────────────────
 
   const hasAgent = messagesData?.hasAgent ?? false;
+  const hasMarkedRead = useRef(false);
 
   useEffect(() => {
-    if (expanded && hasAgent) {
+    if (expanded && hasAgent && !hasMarkedRead.current) {
+      hasMarkedRead.current = true;
       markRead.mutate();
     }
-  }, [expanded, hasAgent, markRead.mutate]);
+    if (!expanded) {
+      hasMarkedRead.current = false;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded, hasAgent]);
 
   // ── Hidden state ─────────────────────────────────────────────────────────
 
@@ -114,8 +120,8 @@ export function NotebookPanel() {
     <div className="fixed bottom-4 right-4 z-40 flex h-[500px] w-[380px] flex-col rounded-lg border border-border bg-background shadow-lg max-sm:inset-x-4 max-sm:top-20 max-sm:h-auto max-sm:w-auto">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
-          / NOTEBOOK
+        <span className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          / {t("title")}
         </span>
         <button
           type="button"

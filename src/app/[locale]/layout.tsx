@@ -63,7 +63,7 @@ export default async function LocaleLayout({
             <main className="min-h-screen to-background bg-linear-to-b from-orange-50/60 via-amber-50/30">{children}</main>
             <Footer />
             <NotebookPanel />
-            <Toaster position="bottom-right" />
+            <Toaster position="bottom-right" offset={60} />
           </TRPCReactProvider>
         </NextIntlClientProvider>
       </body>
