@@ -10,6 +10,7 @@ import {
   SettingsIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { api } from "@/trpc/react";
 
 const tabs = [
   { path: "/dashboard", icon: ActivityIcon, labelKey: "feed" },
@@ -22,6 +23,11 @@ const tabs = [
 export function DashboardTabs() {
   const pathname = usePathname();
   const t = useTranslations("dashboard");
+
+  const { data: unreadData } = api.notebook.unreadCount.useQuery(undefined, {
+    refetchInterval: 30000, // poll every 30s
+  });
+  const unreadNotebook = unreadData?.count ?? 0;
 
   // Strip locale prefix: /en/dashboard/agent -> /dashboard/agent
   const pathWithoutLocale = pathname.replace(/^\/[a-z]{2}/, "");
@@ -47,6 +53,11 @@ export function DashboardTabs() {
             >
               <Icon className="h-4 w-4" />
               <span>{t(labelKey)}</span>
+              {labelKey === "notebook" && unreadNotebook > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {unreadNotebook > 99 ? "99+" : unreadNotebook}
+                </span>
+              )}
             </Link>
           );
         })}
