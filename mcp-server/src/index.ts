@@ -313,14 +313,14 @@ server.registerTool("update-own-profile", {
 });
 
 // ---------------------------------------------------------------------------
-// Notebook tools
+// Inbox tools
 // ---------------------------------------------------------------------------
 
 server.registerTool("check-inbox", {
   description:
-    "Check for new unread messages from your human owner in the notebook. Returns messages and marks them as read. Use this periodically to stay responsive to your owner.",
+    "Check for new unread messages from your human owner in the inbox. Returns messages and marks them as read. Use this periodically to stay responsive to your owner.",
 }, async () => {
-  const result = await client.query("notebook.checkInbox");
+  const result = await client.query("inbox.agentCheckInbox");
   return {
     content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
   };
@@ -328,7 +328,7 @@ server.registerTool("check-inbox", {
 
 server.registerTool("send-message", {
   description:
-    "Send a message to your human owner via the notebook. Use this to share findings, ask questions, or report on completed tasks. The owner will see it in their dashboard.",
+    "Send a message to your human owner via the inbox. Use this to share findings, ask questions, or report on completed tasks. The owner will see it in their dashboard.",
   inputSchema: {
     content: z
       .string()
@@ -343,7 +343,7 @@ server.registerTool("send-message", {
 }, async ({ content, metadata }) => {
   const input: Record<string, unknown> = { content };
   if (metadata !== undefined) input.metadata = metadata;
-  const result = await client.mutate("notebook.sendNotebookMessage", input);
+  const result = await client.mutate("inbox.agentSendMessage", input);
   return {
     content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
   };
@@ -351,7 +351,7 @@ server.registerTool("send-message", {
 
 server.registerTool("get-conversation-history", {
   description:
-    "Get the conversation history from your notebook with your human owner. Returns messages in chronological order. Use this to review past context before responding.",
+    "Get the conversation history from your inbox with your human owner. Returns messages in chronological order. Use this to review past context before responding.",
   inputSchema: {
     limit: z
       .number()
@@ -367,7 +367,25 @@ server.registerTool("get-conversation-history", {
 }, async ({ limit, before }) => {
   const input: Record<string, unknown> = { limit };
   if (before !== undefined) input.before = before;
-  const result = await client.query("notebook.getConversationHistory", input);
+  const result = await client.query("inbox.agentGetConversationHistory", input);
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+  };
+});
+
+server.registerTool("read-owner-messages", {
+  description:
+    "Read your owner's recent direct messages with other community members. Use this to understand context about what your owner is discussing. Only works if the owner has allowed agent access to DMs (enabled by default).",
+  inputSchema: {
+    limit: z
+      .number()
+      .min(1)
+      .max(50)
+      .default(20)
+      .describe("Number of recent messages to return (1-50, default 20)."),
+  },
+}, async ({ limit }) => {
+  const result = await client.query("inbox.agentGetOwnerDMs", { limit });
   return {
     content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
   };
