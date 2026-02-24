@@ -49,25 +49,28 @@ export type ReasoningProps = ComponentProps<typeof Collapsible> & {
   isStreaming?: boolean;
   open?: boolean;
   defaultOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  onOpenChange?: (this: void, open: boolean) => void;
   duration?: number;
 };
 
 const AUTO_CLOSE_DELAY = 1000;
 const MS_IN_S = 1000;
 
-export const Reasoning = memo(
-  ({
+export const Reasoning = memo((reasoningProps: ReasoningProps) => {
+  const {
     className,
     isStreaming = false,
     open,
     defaultOpen,
-    onOpenChange,
     duration: durationProp,
     children,
     ...props
-  }: ReasoningProps) => {
-    const resolvedDefaultOpen = defaultOpen ?? isStreaming;
+  } = reasoningProps;
+  const onOpenChange = useMemo(
+    () => reasoningProps.onOpenChange?.bind(undefined),
+    [reasoningProps.onOpenChange]
+  );
+  const resolvedDefaultOpen = defaultOpen ?? isStreaming;
     // Track if defaultOpen was explicitly set to false (to prevent auto-open)
     const isExplicitlyClosed = defaultOpen === false;
     const handleOpenChange = useCallback(
@@ -142,16 +145,15 @@ export const Reasoning = memo(
       <ReasoningContext.Provider value={contextValue}>
         <Collapsible
           className={cn("not-prose mb-4", className)}
+          {...props}
           onOpenChange={handleOpenStateChange}
           open={isOpen}
-          {...props}
         >
           {children}
         </Collapsible>
       </ReasoningContext.Provider>
     );
-  }
-);
+});
 
 export type ReasoningTriggerProps = ComponentProps<
   typeof CollapsibleTrigger

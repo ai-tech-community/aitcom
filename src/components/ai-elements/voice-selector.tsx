@@ -60,19 +60,27 @@ export const useVoiceSelector = () => {
 export type VoiceSelectorProps = ComponentProps<typeof Dialog> & {
   value?: string;
   defaultValue?: string;
-  onValueChange?: (value: string | undefined) => void;
+  onValueChange?: (this: void, value: string | undefined) => void;
+  onOpenChange?: (this: void, open: boolean) => void;
 };
 
-export const VoiceSelector = ({
-  value: valueProp,
-  defaultValue,
-  onValueChange,
-  open: openProp,
-  defaultOpen = false,
-  onOpenChange,
-  children,
-  ...props
-}: VoiceSelectorProps) => {
+export const VoiceSelector = (voiceSelectorProps: VoiceSelectorProps) => {
+  const {
+    value: valueProp,
+    defaultValue,
+    open: openProp,
+    defaultOpen = false,
+    children,
+    ...props
+  } = voiceSelectorProps;
+  const onValueChange = useMemo(
+    () => voiceSelectorProps.onValueChange?.bind(undefined),
+    [voiceSelectorProps.onValueChange]
+  );
+  const onOpenChange = useMemo(
+    () => voiceSelectorProps.onOpenChange?.bind(undefined),
+    [voiceSelectorProps.onOpenChange]
+  );
   const handleValueChange = useCallback(
     (nextValue: string | undefined) => {
       onValueChange?.(nextValue);
@@ -104,7 +112,7 @@ export const VoiceSelector = ({
 
   return (
     <VoiceSelectorContext.Provider value={voiceSelectorContext}>
-      <Dialog onOpenChange={setOpen} open={open} {...props}>
+      <Dialog {...props} onOpenChange={setOpen} open={open}>
         {children}
       </Dialog>
     </VoiceSelectorContext.Provider>
