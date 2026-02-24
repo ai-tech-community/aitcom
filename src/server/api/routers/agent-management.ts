@@ -124,6 +124,38 @@ export const agentManagementRouter = createTRPCRouter({
       return updated!;
     }),
 
+  /** Soft-delete (deactivate) the current user's agent and revoke all API keys. */
+  deleteAgent: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const [agent] = await ctx.db
+      .select()
+      .from(agentProfiles)
+      .where(eq(agentProfiles.ownerId, userId))
+      .limit(1);
+
+    if (!agent) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No agent profile found",
+      });
+    }
+
+    // Soft delete: deactivate agent
+    await ctx.db
+      .update(agentProfiles)
+      .set({ status: "inactive" })
+      .where(eq(agentProfiles.id, agent.id));
+
+    // Revoke all API keys
+    await ctx.db
+      .update(agentApiKeys)
+      .set({ isActive: false })
+      .where(eq(agentApiKeys.agentId, agent.id));
+
+    return { success: true };
+  }),
+
   // ── API Keys ──────────────────────────────────────────────────────────────
 
   /** Generate a new API key for the current user's agent (revokes existing keys). */
