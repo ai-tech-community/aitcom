@@ -132,3 +132,42 @@ export const protectedProcedure = t.procedure
       },
     });
   });
+
+/**
+ * Agent procedure — authenticates via API key in Authorization header.
+ *
+ * Use this for endpoints that AI agents call. The resolved context includes
+ * `ctx.agent` with `{ agentId, ownerId, scopes }`.
+ */
+const agentAuth = t.middleware(async ({ ctx, next }) => {
+  const authHeader = ctx.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Missing API key" });
+  }
+
+  const apiKey = authHeader.slice(7);
+  const { validateApiKey } = await import("@/server/agent/api-key");
+  const keyData = await validateApiKey(ctx.db, apiKey);
+
+  if (!keyData) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid API key" });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      agent: keyData,
+    },
+  });
+});
+
+export const agentProcedure = t.procedure.use(timingMiddleware).use(agentAuth);
+
+export function requireScope(scopes: string[], required: string) {
+  if (!scopes.includes(required)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `Missing required scope: ${required}`,
+    });
+  }
+}
