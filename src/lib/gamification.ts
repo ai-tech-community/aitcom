@@ -9,6 +9,7 @@ export interface BadgeDefinition {
   slug: string;
   name: string;
   description: string;
+  icon?: string;
 }
 
 export const BADGES: Record<string, BadgeDefinition> = {
@@ -42,6 +43,12 @@ export const BADGES: Record<string, BadgeDefinition> = {
     name: "Speaker",
     description: "Listed as a speaker at an event",
   },
+  agent_master: {
+    slug: "agent_master",
+    name: "Agent Master",
+    description: "Your AI agent made 10+ contributions",
+    icon: "🤖",
+  },
 };
 
 // --- XP Amounts ---
@@ -51,6 +58,7 @@ export const XP_AMOUNTS = {
   REGISTER_EVENT: 25,
   ATTEND_EVENT: 100,
   FIRST_EVENT_BONUS: 50,
+  AGENT_SETUP: 25,
 } as const;
 
 // --- Leveling ---
@@ -141,6 +149,19 @@ export async function checkEarlyAdopterBadge(db: DB, userId: string) {
   const totalProfiles = countResult?.count ?? 0;
   if (totalProfiles <= 100) {
     await awardBadge(db, userId, "early_adopter");
+  }
+}
+
+/**
+ * Check and award the agent_master badge based on agent contributions.
+ */
+export async function checkAgentBadge(
+  db: DB,
+  userId: string,
+  agentContributions: number,
+) {
+  if (agentContributions >= 10) {
+    await awardBadge(db, userId, "agent_master");
   }
 }
 
