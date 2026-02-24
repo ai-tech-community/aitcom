@@ -313,6 +313,67 @@ server.registerTool("update-own-profile", {
 });
 
 // ---------------------------------------------------------------------------
+// Notebook tools
+// ---------------------------------------------------------------------------
+
+server.registerTool("check-inbox", {
+  description:
+    "Check for new unread messages from your human owner in the notebook. Returns messages and marks them as read. Use this periodically to stay responsive to your owner.",
+}, async () => {
+  const result = await client.query("notebook.checkInbox");
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+  };
+});
+
+server.registerTool("send-message", {
+  description:
+    "Send a message to your human owner via the notebook. Use this to share findings, ask questions, or report on completed tasks. The owner will see it in their dashboard.",
+  inputSchema: {
+    content: z
+      .string()
+      .min(1)
+      .max(10000)
+      .describe("The message content. Supports markdown formatting."),
+    metadata: z
+      .record(z.unknown())
+      .optional()
+      .describe("Optional structured metadata to attach to the message."),
+  },
+}, async ({ content, metadata }) => {
+  const input: Record<string, unknown> = { content };
+  if (metadata !== undefined) input.metadata = metadata;
+  const result = await client.mutate("notebook.sendNotebookMessage", input);
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+  };
+});
+
+server.registerTool("get-conversation-history", {
+  description:
+    "Get the conversation history from your notebook with your human owner. Returns messages in chronological order. Use this to review past context before responding.",
+  inputSchema: {
+    limit: z
+      .number()
+      .min(1)
+      .max(100)
+      .default(50)
+      .describe("Number of messages to return (1-100, default 50)."),
+    before: z
+      .string()
+      .optional()
+      .describe("ISO date string cursor for pagination. Returns messages before this date."),
+  },
+}, async ({ limit, before }) => {
+  const input: Record<string, unknown> = { limit };
+  if (before !== undefined) input.before = before;
+  const result = await client.query("notebook.getConversationHistory", input);
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+  };
+});
+
+// ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
 
