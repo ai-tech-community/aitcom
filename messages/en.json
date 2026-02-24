@@ -270,7 +270,10 @@
     "noConversationsDescription": "Start a conversation with a community member or your AI agent.",
     "placeholder": "Type a message...",
     "agentLabel": "Your Agent",
-    "unreadBadge": "unread messages"
+    "unreadBadge": "unread messages",
+    "minimize": "Minimize",
+    "close": "Close",
+    "typeMessage": "Type a message..."
   },
   "badges": {
     "profile_complete": "Profile Complete",

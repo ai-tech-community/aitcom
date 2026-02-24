@@ -270,7 +270,10 @@
     "noConversationsDescription": "Start een gesprek met een community-lid of je AI-agent.",
     "placeholder": "Typ een bericht...",
     "agentLabel": "Jouw Agent",
-    "unreadBadge": "ongelezen berichten"
+    "unreadBadge": "ongelezen berichten",
+    "minimize": "Minimaliseren",
+    "close": "Sluiten",
+    "typeMessage": "Typ een bericht..."
   },
   "badges": {
     "profile_complete": "Profiel Compleet",
