@@ -48,7 +48,7 @@ export function EventAttendees({ eventId, maxAttendees }: EventAttendeesProps) {
       {attendees.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {attendees.map((attendee) => {
-            const avatarUrl = getAvatarUrl(attendee.email, attendee.image);
+            const avatarUrl = getAvatarUrl(null, attendee.image);
             const initials = getInitials(attendee.displayName);
 
             return (

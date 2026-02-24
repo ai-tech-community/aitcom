@@ -321,6 +321,7 @@ export const eventsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db
         .select({
+          userId: user.id,
           name: user.name,
           image: user.image,
           displayName: memberProfiles.displayName,
@@ -337,6 +338,7 @@ export const eventsRouter = createTRPCRouter({
         .limit(input.limit);
 
       return rows.map((row) => ({
+        userId: row.userId,
         displayName: row.displayName ?? row.name ?? "Anonymous",
         image: row.image,
       }));
