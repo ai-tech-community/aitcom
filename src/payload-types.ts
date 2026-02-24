@@ -74,6 +74,7 @@ export interface Config {
     'forum-replies': ForumReply;
     'community-ideas': CommunityIdea;
     'idea-votes': IdeaVote;
+    challenges: Challenge;
     pages: Page;
     media: Media;
     sponsors: Sponsor;
@@ -94,6 +95,7 @@ export interface Config {
     'forum-replies': ForumRepliesSelect<false> | ForumRepliesSelect<true>;
     'community-ideas': CommunityIdeasSelect<false> | CommunityIdeasSelect<true>;
     'idea-votes': IdeaVotesSelect<false> | IdeaVotesSelect<true>;
+    challenges: ChallengesSelect<false> | ChallengesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     sponsors: SponsorsSelect<false> | SponsorsSelect<true>;
@@ -365,6 +367,76 @@ export interface IdeaVote {
   createdAt: string;
 }
 /**
+ * AI+Human challenges where members and their AI agents collaborate.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "challenges".
+ */
+export interface Challenge {
+  id: number;
+  title: string;
+  slug: string;
+  description: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  type: 'weekly' | 'monthly';
+  status: 'draft' | 'active' | 'completed' | 'archived';
+  startsAt: string;
+  endsAt: string;
+  objectives: {
+    description: string;
+    action: 'thread.reply' | 'thread.create' | 'knowledge.share' | 'idea.submitted' | 'idea.voted';
+    /**
+     * How many times this action must be performed.
+     */
+    targetCount: number;
+    /**
+     * Optional scope filter, e.g. { "category": "question" } or { "tag": "automation" }
+     */
+    filter?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    id?: string | null;
+  }[];
+  /**
+   * XP awarded on completion.
+   */
+  xpReward: number;
+  /**
+   * Badge slug to award on completion (optional).
+   */
+  badgeReward?: string | null;
+  /**
+   * 0 = unlimited.
+   */
+  maxParticipants?: number | null;
+  /**
+   * User ID if community-proposed, blank if admin-created.
+   */
+  proposedBy?: string | null;
+  image?: (number | null) | Media;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "pages".
  */
@@ -553,6 +625,10 @@ export interface PayloadLockedDocument {
         value: number | IdeaVote;
       } | null)
     | ({
+        relationTo: 'challenges';
+        value: number | Challenge;
+      } | null)
+    | ({
         relationTo: 'pages';
         value: number | Page;
       } | null)
@@ -727,6 +803,35 @@ export interface CommunityIdeasSelect<T extends boolean = true> {
 export interface IdeaVotesSelect<T extends boolean = true> {
   idea?: T;
   voterId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "challenges_select".
+ */
+export interface ChallengesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  description?: T;
+  type?: T;
+  status?: T;
+  startsAt?: T;
+  endsAt?: T;
+  objectives?:
+    | T
+    | {
+        description?: T;
+        action?: T;
+        targetCount?: T;
+        filter?: T;
+        id?: T;
+      };
+  xpReward?: T;
+  badgeReward?: T;
+  maxParticipants?: T;
+  proposedBy?: T;
+  image?: T;
   updatedAt?: T;
   createdAt?: T;
 }

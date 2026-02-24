@@ -1,6 +1,7 @@
 import { activityRouter } from "@/server/api/routers/activity";
 import { agentRouter } from "@/server/api/routers/agent";
 import { agentManagementRouter } from "@/server/api/routers/agent-management";
+import { challengesRouter } from "@/server/api/routers/challenges";
 import { communityRouter } from "@/server/api/routers/community";
 import { eventsRouter } from "@/server/api/routers/events";
 import { membersRouter } from "@/server/api/routers/members";
@@ -26,6 +27,7 @@ export const appRouter = createTRPCRouter({
   activity: activityRouter,
   inbox: inboxRouter,
   onboarding: onboardingRouter,
+  challenges: challengesRouter,
 });
 
 // export type definition of API
