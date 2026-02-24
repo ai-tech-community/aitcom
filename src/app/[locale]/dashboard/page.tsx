@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getSession } from "@/server/better-auth/server";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
@@ -8,6 +9,10 @@ import config from "@payload-config";
 import { getLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { DashboardProfile } from "@/components/dashboard-profile";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
