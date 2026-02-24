@@ -13,6 +13,7 @@ import { ForumThreads } from "./collections/ForumThreads";
 import { ForumReplies } from "./collections/ForumReplies";
 import { CommunityIdeas } from "./collections/CommunityIdeas";
 import { IdeaVotes } from "./collections/IdeaVotes";
+import { Challenges } from "./collections/Challenges";
 import { CommunityRules } from "./collections/CommunityRules";
 import { Pages } from "./collections/Pages";
 import { Media } from "./collections/Media";
@@ -62,6 +63,7 @@ export default buildConfig({
     ForumReplies,
     CommunityIdeas,
     IdeaVotes,
+    Challenges,
     Pages,
     Media,
     Sponsors,
