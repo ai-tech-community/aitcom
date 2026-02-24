@@ -321,7 +321,7 @@ export const agentApiKeys = appSchema.table("agent_api_key", (d) => ({
     .notNull()
     .references(() => user.id),
   keyHash: d.varchar({ length: 128 }).notNull(),
-  keyPrefix: d.varchar({ length: 12 }).notNull(),
+  keyPrefix: d.varchar({ length: 20 }).notNull(),
   scopes: d
     .json()
     .$type<string[]>()
