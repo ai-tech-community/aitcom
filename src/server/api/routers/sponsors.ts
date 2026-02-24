@@ -70,12 +70,18 @@ export const sponsorsRouter = createTRPCRouter({
       };
 
       // Fire emails async (don't block response)
-      void sendSponsorApplicationConfirmation(
-        input.contactEmail,
-        input.contactName,
-        emailData,
-      );
-      void sendSponsorApplicationNotification(emailData);
+      void (async () => {
+        try {
+          await sendSponsorApplicationConfirmation(
+            input.contactEmail,
+            input.contactName,
+            emailData,
+          );
+          await sendSponsorApplicationNotification(emailData);
+        } catch (e) {
+          console.error("Failed to send sponsor application emails:", e);
+        }
+      })();
 
       return { success: true, applicationId: application.id };
     }),

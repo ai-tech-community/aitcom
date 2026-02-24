@@ -48,7 +48,6 @@ export const eventsRouter = createTRPCRouter({
     .input(
       z.object({
         eventId: z.number(),
-        maxAttendees: z.number().nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -71,6 +70,13 @@ export const eventsRouter = createTRPCRouter({
         return { registration: existing[0]!, alreadyRegistered: true, checkoutUrl: null };
       }
 
+      // Fetch event from server for capacity and price check
+      const payload = await getPayloadClient();
+      const event = await payload.findByID({
+        collection: "events",
+        id: input.eventId,
+      });
+
       // Count current active registrations for capacity check
       const [countResult] = await ctx.db
         .select({ count: sql<number>`count(*)` })
@@ -83,15 +89,9 @@ export const eventsRouter = createTRPCRouter({
         );
 
       const currentCount = countResult?.count ?? 0;
+      const maxAttendees = (event.maxAttendees as number | undefined) ?? null;
       const isFull =
-        input.maxAttendees !== null && currentCount >= input.maxAttendees;
-
-      // Fetch event for price check
-      const payload = await getPayloadClient();
-      const event = await payload.findByID({
-        collection: "events",
-        id: input.eventId,
-      });
+        maxAttendees !== null && currentCount >= maxAttendees;
 
       const price = (event.price as number | undefined) ?? 0;
       const isPaid = price > 0;
@@ -321,9 +321,7 @@ export const eventsRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db
         .select({
-          userId: user.id,
           name: user.name,
-          email: user.email,
           image: user.image,
           displayName: memberProfiles.displayName,
         })
@@ -339,9 +337,7 @@ export const eventsRouter = createTRPCRouter({
         .limit(input.limit);
 
       return rows.map((row) => ({
-        userId: row.userId,
         displayName: row.displayName ?? row.name ?? "Anonymous",
-        email: row.email,
         image: row.image,
       }));
     }),

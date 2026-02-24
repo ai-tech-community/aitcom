@@ -8,13 +8,11 @@ import { toast } from "sonner";
 
 interface EventRegisterButtonProps {
   eventId: number;
-  maxAttendees: number | null;
   price?: number | null;
 }
 
 export function EventRegisterButton({
   eventId,
-  maxAttendees,
   price,
 }: EventRegisterButtonProps) {
   const router = useRouter();
@@ -132,7 +130,7 @@ export function EventRegisterButton({
   return (
     <Button
       className="w-full font-mono text-xs tracking-wider"
-      onClick={() => registerMutation.mutate({ eventId, maxAttendees })}
+      onClick={() => registerMutation.mutate({ eventId })}
       disabled={registerMutation.isPending}
     >
       {registerMutation.isPending

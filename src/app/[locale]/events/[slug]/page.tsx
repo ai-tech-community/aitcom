@@ -184,7 +184,6 @@ export default async function EventDetailPage({
         <div className="mt-4">
           <EventRegisterButton
             eventId={eventId}
-            maxAttendees={maxAttendees}
             price={price}
           />
         </div>
