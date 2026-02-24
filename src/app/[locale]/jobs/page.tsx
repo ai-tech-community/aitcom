@@ -1,6 +1,20 @@
+import type { Metadata } from "next";
+import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import Image from "next/image";
+
+export const metadata: Metadata = {
+  title: "Jobs",
+  description:
+    "Job openings from AIT Community sponsors — remote, hybrid, and on-site positions in AI and tech.",
+  ...buildOgMeta(
+    "Jobs",
+    "Job openings from AIT Community sponsors — remote, hybrid, and on-site positions in AI and tech.",
+    "Jobs",
+  ),
+  alternates: buildAlternates("/jobs"),
+};
 
 const typeLabels: Record<string, string> = {
   remote: "REMOTE",
@@ -24,9 +38,9 @@ export default async function JobsPage() {
     <div className="px-6 py-16 sm:px-12">
       {/* Section Header */}
       <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+        <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / {t("title").toUpperCase()}
-        </span>
+        </h1>
       </div>
       <p className="text-muted-foreground mt-4 text-sm">{t("subtitle")}</p>
 

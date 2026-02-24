@@ -1,7 +1,21 @@
+import type { Metadata } from "next";
+import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { SponsorApplicationModal } from "@/components/sponsor-application-modal";
 import Image from "next/image";
+
+export const metadata: Metadata = {
+  title: "Sponsors",
+  description:
+    "Support the AI Tech Community Netherlands. Sponsor tiers, benefits, and current partners.",
+  ...buildOgMeta(
+    "Sponsors",
+    "Support the AI Tech Community Netherlands. Sponsor tiers, benefits, and current partners.",
+    "Sponsors",
+  ),
+  alternates: buildAlternates("/sponsors"),
+};
 
 const tierOrder = { gold: 0, silver: 1, bronze: 2 } as const;
 
@@ -55,9 +69,9 @@ export default async function SponsorsPage() {
       {/* Tier Comparison Table */}
       <section className="mt-16">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+          <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
             / {t("tiersTitle").toUpperCase()}
-          </span>
+          </h2>
         </div>
         <div className="mt-6 overflow-x-auto">
           <table className="w-full text-sm">
@@ -111,9 +125,9 @@ export default async function SponsorsPage() {
       {/* Current Sponsors */}
       <section className="mt-16">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+          <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
             / {t("currentSponsors").toUpperCase()}
-          </span>
+          </h2>
         </div>
         {sortedSponsors.length === 0 ? (
           <p className="text-muted-foreground mt-8 text-center font-mono text-xs tracking-wider">
