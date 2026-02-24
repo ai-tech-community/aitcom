@@ -1,6 +1,20 @@
+import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { Link } from "@/i18n/navigation";
+import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+
+export const metadata: Metadata = {
+  title: "Blog",
+  description:
+    "Articles, tutorials, and talk recordings from the AI Tech Community Netherlands.",
+  ...buildOgMeta(
+    "Blog",
+    "Articles, tutorials, and talk recordings from the AI Tech Community Netherlands.",
+    "Blog",
+  ),
+  alternates: buildAlternates("/blog"),
+};
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -31,9 +45,9 @@ export default async function BlogPage() {
     <div className="px-6 py-16 sm:px-12">
       {/* Section Header */}
       <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+        <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / {t("title").toUpperCase()}
-        </span>
+        </h1>
         <p className="text-muted-foreground mt-1 text-sm">{t("subtitle")}</p>
       </div>
 
