@@ -13,6 +13,7 @@ import { ZodError } from "zod";
 
 import { auth } from "@/server/better-auth";
 import { db } from "@/server/db";
+import { checkRateLimit } from "@/server/agent/rate-limit";
 
 /**
  * 1. CONTEXT
@@ -151,6 +152,14 @@ const agentAuth = t.middleware(async ({ ctx, next }) => {
 
   if (!keyData) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid API key" });
+  }
+
+  const rateLimit = checkRateLimit(keyData.agentId);
+  if (!rateLimit.allowed) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: `Rate limit exceeded. Try again in ${Math.ceil((rateLimit.resetAt - Date.now()) / 1000)}s`,
+    });
   }
 
   return next({
