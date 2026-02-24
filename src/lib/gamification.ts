@@ -54,6 +54,31 @@ export const BADGES: Record<string, BadgeDefinition> = {
     name: "Onboarding Complete",
     description: "Finished all onboarding steps",
   },
+  first_challenge: {
+    slug: "first_challenge",
+    name: "First Challenge",
+    description: "Completed your first challenge",
+  },
+  challenge_streak_3: {
+    slug: "challenge_streak_3",
+    name: "Streak Master",
+    description: "Completed 3 consecutive weekly challenges",
+  },
+  challenge_streak_10: {
+    slug: "challenge_streak_10",
+    name: "Unstoppable",
+    description: "Completed 10 consecutive weekly challenges",
+  },
+  challenge_proposer: {
+    slug: "challenge_proposer",
+    name: "Challenge Proposer",
+    description: "Your proposed challenge was published",
+  },
+  mission_impossible: {
+    slug: "mission_impossible",
+    name: "Mission Impossible",
+    description: "Completed a monthly challenge in the first week",
+  },
 };
 
 // --- XP Amounts ---
@@ -66,6 +91,7 @@ export const XP_AMOUNTS = {
   AGENT_SETUP: 25,
   ONBOARDING_STEP: 10,
   ONBOARDING_COMPLETE: 50,
+  CHALLENGE_PROPOSE_PUBLISHED: 50,
 } as const;
 
 // --- Leveling ---
@@ -180,6 +206,31 @@ export async function checkAgentBadge(
 ) {
   if (agentContributions >= 10) {
     await awardBadge(db, userId, "agent_master");
+  }
+}
+
+/**
+ * Check and award challenge-related badges based on completion count.
+ */
+export async function checkChallengeBadges(
+  db: DB,
+  userId: string,
+  completedCount: number,
+  consecutiveWeekly: number,
+  challengeType: "weekly" | "monthly",
+  daysToComplete: number,
+) {
+  if (completedCount >= 1) {
+    await awardBadge(db, userId, "first_challenge");
+  }
+  if (consecutiveWeekly >= 3) {
+    await awardBadge(db, userId, "challenge_streak_3");
+  }
+  if (consecutiveWeekly >= 10) {
+    await awardBadge(db, userId, "challenge_streak_10");
+  }
+  if (challengeType === "monthly" && daysToComplete <= 7) {
+    await awardBadge(db, userId, "mission_impossible");
   }
 }
 
