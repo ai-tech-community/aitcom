@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, lt, sql, ne, or, like, isNull } from "drizzle-orm";
+import { eq, and, desc, lt, sql, ne, or, like } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -19,9 +19,8 @@ import {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-type DB = typeof import("@/server/db").db;
-
-async function findAgentConversation(db: DB, ownerId: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function findAgentConversation(db: any, ownerId: string) {
   const [row] = await db
     .select({ id: conversations.id })
     .from(conversations)
@@ -37,7 +36,7 @@ async function findAgentConversation(db: DB, ownerId: string) {
     )
     .limit(1);
 
-  return row ?? null;
+  return (row as { id: string } | undefined) ?? null;
 }
 
 // ── Router ───────────────────────────────────────────────────────────────────
@@ -94,10 +93,6 @@ export const inboxRouter = createTRPCRouter({
       if (input.cursor) {
         const cursorDate = new Date(input.cursor);
         filtered = participantRows.filter(
-          (r) => r.convUpdatedAt < cursorDate || (!r.isPinned && r.convUpdatedAt <= cursorDate),
-        );
-        // Re-filter: skip everything up to and including cursor
-        filtered = participantRows.filter(
           (r) => r.convUpdatedAt.getTime() < cursorDate.getTime(),
         );
       }
@@ -126,10 +121,11 @@ export const inboxRouter = createTRPCRouter({
             .limit(1);
 
           // Other participants
-          const otherParticipants = await ctx.db
+          const otherParticipantsRaw = await ctx.db
             .select({
               userId: conversationParticipants.userId,
               displayName: memberProfiles.displayName,
+              name: user.name,
               image: user.image,
             })
             .from(conversationParticipants)
@@ -148,6 +144,12 @@ export const inboxRouter = createTRPCRouter({
               ),
             );
 
+          const otherParticipants = otherParticipantsRaw.map((p) => ({
+            userId: p.userId,
+            displayName: p.displayName ?? p.name ?? "Unknown",
+            image: p.image,
+          }));
+
           // Agent info (only for agent conversations)
           let agentInfo = null;
           if (row.convType === "agent") {
@@ -156,6 +158,7 @@ export const inboxRouter = createTRPCRouter({
                 id: agentProfiles.id,
                 name: agentProfiles.name,
                 avatar: agentProfiles.avatar,
+                lastActiveAt: agentProfiles.lastActiveAt,
               })
               .from(agentProfiles)
               .where(eq(agentProfiles.ownerId, userId))
@@ -372,51 +375,42 @@ export const inboxRouter = createTRPCRouter({
         });
       }
 
-      // Check if DM conversation already exists between the two users
-      const myConversations = await ctx.db
+      // Find existing DM between these two users with a single query
+      const [existing] = await ctx.db
         .select({ conversationId: conversationParticipants.conversationId })
         .from(conversationParticipants)
-        .innerJoin(
-          conversations,
-          eq(conversationParticipants.conversationId, conversations.id),
-        )
+        .innerJoin(conversations, eq(conversations.id, conversationParticipants.conversationId))
         .where(
           and(
-            eq(conversationParticipants.userId, userId),
             eq(conversations.type, "dm"),
+            eq(conversationParticipants.userId, input.recipientId),
+            sql`${conversationParticipants.conversationId} IN (
+              SELECT ${conversationParticipants.conversationId} FROM ${conversationParticipants} WHERE ${conversationParticipants.userId} = ${userId}
+            )`,
           ),
-        );
+        )
+        .limit(1);
 
-      for (const conv of myConversations) {
-        const [otherParticipant] = await ctx.db
-          .select()
-          .from(conversationParticipants)
-          .where(
-            and(
-              eq(conversationParticipants.conversationId, conv.conversationId),
-              eq(conversationParticipants.userId, input.recipientId),
-            ),
-          )
-          .limit(1);
-
-        if (otherParticipant) {
-          return { conversationId: conv.conversationId, created: false };
-        }
+      if (existing) {
+        return { conversationId: existing.conversationId, created: false };
       }
 
-      // Create new DM conversation
-      const [conversation] = await ctx.db
-        .insert(conversations)
-        .values({ type: "dm" })
-        .returning();
+      // Create new DM conversation in a transaction
+      const conversation = await ctx.db.transaction(async (tx) => {
+        const [newConv] = await tx
+          .insert(conversations)
+          .values({ type: "dm" })
+          .returning();
 
-      // Add both participants
-      await ctx.db.insert(conversationParticipants).values([
-        { conversationId: conversation!.id, userId },
-        { conversationId: conversation!.id, userId: input.recipientId },
-      ]);
+        await tx.insert(conversationParticipants).values([
+          { conversationId: newConv!.id, userId },
+          { conversationId: newConv!.id, userId: input.recipientId },
+        ]);
 
-      return { conversationId: conversation!.id, created: true };
+        return newConv!;
+      });
+
+      return { conversationId: conversation.id, created: true };
     }),
 
   /**
@@ -477,7 +471,8 @@ export const inboxRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const pattern = `%${input.query}%`;
+      const escaped = input.query.replace(/%/g, "\\%").replace(/_/g, "\\_");
+      const pattern = `%${escaped}%`;
 
       const rows = await ctx.db
         .select({
@@ -554,23 +549,23 @@ export const inboxRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
 
-      let conv = await findAgentConversation(ctx.db, ctx.agent.ownerId);
+      const conv = await ctx.db.transaction(async (tx) => {
+        const existing = await findAgentConversation(tx, ctx.agent.ownerId);
+        if (existing) return existing;
 
-      // Create agent conversation if it doesn't exist
-      if (!conv) {
-        const [newConv] = await ctx.db
+        const [newConv] = await tx
           .insert(conversations)
           .values({ type: "agent" })
           .returning();
 
-        await ctx.db.insert(conversationParticipants).values({
+        await tx.insert(conversationParticipants).values({
           conversationId: newConv!.id,
           userId: ctx.agent.ownerId,
           isPinned: true,
         });
 
-        conv = { id: newConv!.id };
-      }
+        return { id: newConv!.id };
+      });
 
       // Insert message with senderType "agent", senderId = owner's userId
       const [message] = await ctx.db
@@ -660,7 +655,10 @@ export const inboxRouter = createTRPCRouter({
         .limit(1);
 
       if (!agent?.canReadOwnerDMs) {
-        return { messages: [] };
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Agent does not have permission to read owner DMs",
+        });
       }
 
       // Get owner's DM conversations
