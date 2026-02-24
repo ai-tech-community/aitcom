@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { AgentSetupForm } from "@/components/agent-setup-form";
 import { AgentApiKey } from "@/components/agent-api-key";
 import { AgentDrafts } from "@/components/agent-drafts";
@@ -26,6 +27,7 @@ export function AgentDashboardContent({
 }: AgentDashboardContentProps) {
   const [agent] = useState(initialAgent);
   const [justCreated, setJustCreated] = useState(false);
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 
   if (!agent) {
     return (
@@ -63,14 +65,15 @@ export function AgentDashboardContent({
           </span>
         </div>
         <div className="mt-4 flex items-start gap-4">
-          {agent.avatar ? (
-            <img
+          {agent.avatar && !avatarLoadFailed ? (
+            <Image
               src={agent.avatar}
               alt={agent.name}
+              width={48}
+              height={48}
+              unoptimized
               className="h-12 w-12 rounded-full border border-neutral-700"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-              }}
+              onError={() => setAvatarLoadFailed(true)}
             />
           ) : (
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-800 font-mono text-sm font-medium text-muted-foreground">

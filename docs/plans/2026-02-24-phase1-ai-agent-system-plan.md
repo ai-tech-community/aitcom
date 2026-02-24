@@ -2166,7 +2166,7 @@ git commit -m "feat(ui): add public agent profile page"
 `mcp-server/src/client.ts`:
 
 ```typescript
-const DEFAULT_BASE_URL = "https://aitcommunity.nl";
+const DEFAULT_BASE_URL = "https://aitcommunity.org";
 
 export class AitClient {
   private baseUrl: string;

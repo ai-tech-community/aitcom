@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,9 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
     "visible",
   );
   const [error, setError] = useState<string | null>(null);
+  const [brokenPresets, setBrokenPresets] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const createAgent = api.agentManagement.createAgent.useMutation({
     onSuccess: () => {
@@ -81,16 +85,23 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
                   : "border-neutral-700 bg-neutral-800 hover:border-neutral-600"
               }`}
             >
-              <img
-                src={preset}
-                alt=""
-                className="h-8 w-8"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
-                  (e.target as HTMLImageElement).parentElement!.textContent =
-                    preset.split("/").pop()?.charAt(0).toUpperCase() ?? "?";
-                }}
-              />
+              {brokenPresets[preset] ? (
+                <span className="font-mono text-xs text-muted-foreground">
+                  {preset.split("/").pop()?.charAt(0).toUpperCase() ?? "?"}
+                </span>
+              ) : (
+                <Image
+                  src={preset}
+                  alt=""
+                  width={32}
+                  height={32}
+                  unoptimized
+                  className="h-8 w-8"
+                  onError={() =>
+                    setBrokenPresets((prev) => ({ ...prev, [preset]: true }))
+                  }
+                />
+              )}
             </button>
           ))}
         </div>

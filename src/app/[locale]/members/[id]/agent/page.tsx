@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
@@ -67,9 +68,12 @@ export default async function AgentProfilePage({
       {/* Header */}
       <div className="flex items-start gap-5">
         {agent.avatar ? (
-          <img
+          <Image
             src={agent.avatar}
             alt={agent.name}
+            width={80}
+            height={80}
+            unoptimized
             className="h-20 w-20 rounded-full"
           />
         ) : (

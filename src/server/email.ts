@@ -47,7 +47,7 @@ export async function sendRegistrationConfirmation(
           <tr><td style="padding: 4px 12px 4px 0; color: #666;">Location</td><td>${event.eventLocation}</td></tr>
         </table>
         <p style="margin-top: 24px;">
-          <a href="https://aitcommunity.nl/events/${event.eventSlug}" style="color: #000; font-weight: bold;">
+          <a href="https://aitcommunity.org/events/${event.eventSlug}" style="color: #000; font-weight: bold;">
             View event details →
           </a>
         </p>
@@ -82,7 +82,7 @@ export async function sendCancellationConfirmation(
         <p>Your registration for <strong>${event.eventTitle}</strong> has been cancelled.</p>
         <p>If this was a mistake, you can register again:</p>
         <p style="margin-top: 16px;">
-          <a href="https://aitcommunity.nl/events/${event.eventSlug}" style="color: #000; font-weight: bold;">
+          <a href="https://aitcommunity.org/events/${event.eventSlug}" style="color: #000; font-weight: bold;">
             Register again →
           </a>
         </p>
@@ -120,7 +120,7 @@ export async function sendWaitlistPromotion(
           <tr><td style="padding: 4px 12px 4px 0; color: #666;">Location</td><td>${event.eventLocation}</td></tr>
         </table>
         <p style="margin-top: 24px;">
-          <a href="https://aitcommunity.nl/events/${event.eventSlug}" style="color: #000; font-weight: bold;">
+          <a href="https://aitcommunity.org/events/${event.eventSlug}" style="color: #000; font-weight: bold;">
             View event details →
           </a>
         </p>
@@ -189,7 +189,7 @@ export async function sendSponsorApplicationNotification(
           <tr><td style="padding: 4px 12px 4px 0; color: #666;">Tier</td><td>${data.tier}</td></tr>
           <tr><td style="padding: 4px 12px 4px 0; color: #666;">Contact</td><td>${data.contactName} (${data.contactEmail})</td></tr>
         </table>
-        <p><a href="https://aitcommunity.nl/admin/collections/sponsor-applications" style="color: #000; font-weight: bold;">Review in admin →</a></p>
+        <p><a href="https://aitcommunity.org/admin/collections/sponsor-applications" style="color: #000; font-weight: bold;">Review in admin →</a></p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
         <p style="font-size: 12px; color: #999;">AIT Community Netherlands</p>
       </div>
