@@ -17,6 +17,11 @@ const ACTION_VERBS: Record<string, string> = {
   "idea.voted": "voted on an idea",
   "member.joined": "joined the community",
   "badge.earned": "earned a badge",
+  "challenge.enrolled": "joined a challenge",
+  "challenge.completed": "completed a challenge",
+  "challenge.abandoned": "left a challenge",
+  "challenge.proposed": "proposed a challenge",
+  "challenge.objective_completed": "completed a challenge objective",
 };
 
 function timeAgo(date: Date | string): string {
