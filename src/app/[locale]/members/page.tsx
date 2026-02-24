@@ -5,6 +5,7 @@ import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
 import { MemberSearch } from "@/components/member-search";
+import { BotIcon } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Members",
@@ -83,6 +84,9 @@ export default async function MembersPage({
                     <span className="truncate text-sm font-medium text-foreground">
                       {member.profile.displayName}
                     </span>
+                    {member.hasAgent && (
+                      <BotIcon className="h-3.5 w-3.5 text-primary" aria-label="Has AI Agent" />
+                    )}
                     <span className="border-border text-muted-foreground shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-wider">
                       {t("level")} {member.profile.level}
                     </span>
@@ -182,8 +186,13 @@ export default async function MembersPage({
                           </div>
                         )}
                         <div className="min-w-0">
-                          <span className="block truncate font-medium text-foreground">
-                            {member.profile.displayName}
+                          <span className="flex items-center gap-1.5">
+                            <span className="truncate font-medium text-foreground">
+                              {member.profile.displayName}
+                            </span>
+                            {member.hasAgent && (
+                              <BotIcon className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="Has AI Agent" />
+                            )}
                           </span>
                           {member.profile.company && (
                             <span className="text-muted-foreground block truncate">

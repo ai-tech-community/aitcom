@@ -6,7 +6,7 @@ import {
   publicProcedure,
   protectedProcedure,
 } from "@/server/api/trpc";
-import { memberProfiles, memberBadges, user, eventRegistrations } from "@/server/db/schema";
+import { memberProfiles, memberBadges, user, eventRegistrations, agentProfiles } from "@/server/db/schema";
 import {
   awardXp,
   awardBadge,
@@ -199,9 +199,17 @@ export const membersRouter = createTRPCRouter({
           profile: memberProfiles,
           email: user.email,
           image: user.image,
+          agentId: agentProfiles.id,
         })
         .from(memberProfiles)
         .innerJoin(user, eq(memberProfiles.userId, user.id))
+        .leftJoin(
+          agentProfiles,
+          and(
+            eq(agentProfiles.ownerId, memberProfiles.userId),
+            eq(agentProfiles.status, "active"),
+          ),
+        )
         .where(and(...conditions))
         .orderBy(sql`${memberProfiles.xp} DESC`)
         .offset(input.cursor)
@@ -241,6 +249,7 @@ export const membersRouter = createTRPCRouter({
         items: filtered.map((m) => ({
           ...m,
           badgeCount: badgeCountMap.get(m.profile.userId) ?? 0,
+          hasAgent: !!m.agentId,
         })),
         nextCursor: hasMore ? input.cursor + input.limit : null,
       };
