@@ -464,6 +464,84 @@ export const activityEvents = appSchema.table(
   ],
 );
 
+// Challenge enrollments (member joins a challenge)
+export const challengeEnrollments = appSchema.table(
+  "challenge_enrollment",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    challengeId: d.integer().notNull(), // References Payload challenges table
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    enrolledAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    completedAt: d.timestamp({ withTimezone: true }),
+    status: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("active")
+      .$type<"active" | "completed" | "abandoned">(),
+  }),
+  (t) => [
+    index("enrollment_challenge_idx").on(t.challengeId),
+    index("enrollment_user_idx").on(t.userId),
+    uniqueIndex("enrollment_user_challenge_uidx").on(t.userId, t.challengeId),
+  ],
+);
+
+export const challengeEnrollmentRelations = relations(
+  challengeEnrollments,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [challengeEnrollments.userId],
+      references: [user.id],
+    }),
+  }),
+);
+
+// Challenge progress (per-objective tracking within an enrollment)
+export const challengeProgress = appSchema.table(
+  "challenge_progress",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    enrollmentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => challengeEnrollments.id),
+    objectiveIndex: d.integer().notNull(),
+    currentCount: d.integer().notNull().default(0),
+    completedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [
+    index("progress_enrollment_idx").on(t.enrollmentId),
+    uniqueIndex("progress_enrollment_objective_uidx").on(
+      t.enrollmentId,
+      t.objectiveIndex,
+    ),
+  ],
+);
+
+export const challengeProgressRelations = relations(
+  challengeProgress,
+  ({ one }) => ({
+    enrollment: one(challengeEnrollments, {
+      fields: [challengeProgress.enrollmentId],
+      references: [challengeEnrollments.id],
+    }),
+  }),
+);
+
 // Notebook messages (human ↔ agent async conversation)
 export const notebookMessages = appSchema.table(
   "notebook_message",
