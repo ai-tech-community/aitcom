@@ -7,12 +7,14 @@ import {
   BotIcon,
   CalendarIcon,
   SettingsIcon,
+  TrophyIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 const tabs = [
   { path: "/dashboard", icon: ActivityIcon, labelKey: "feed" },
   { path: "/dashboard/agent", icon: BotIcon, labelKey: "agent" },
+  { path: "/dashboard/challenges", icon: TrophyIcon, labelKey: "challenges" },
   { path: "/dashboard/events", icon: CalendarIcon, labelKey: "events" },
   { path: "/dashboard/settings", icon: SettingsIcon, labelKey: "settings" },
 ] as const;
