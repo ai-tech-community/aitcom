@@ -5,6 +5,7 @@ import { env } from "@/env";
 import { db } from "@/server/db";
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL ?? process.env.BETTER_AUTH_BASE_URL,
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
@@ -14,7 +15,7 @@ export const auth = betterAuth({
   socialProviders: {
     github: {
       clientId: env.BETTER_AUTH_GITHUB_CLIENT_ID,
-      clientSecret: env.BETTER_AUTH_GITHUB_CLIENT_SECRET
+      clientSecret: env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
     },
   },
 });
