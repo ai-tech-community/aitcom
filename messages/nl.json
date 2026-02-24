@@ -250,7 +250,25 @@
     "saveProfile": "Opslaan",
     "saving": "Opslaan...",
     "profileSaved": "Profiel opgeslagen!",
-    "profileError": "Profiel opslaan mislukt."
+    "profileError": "Profiel opslaan mislukt.",
+    "feed": "Feed",
+    "agent": "Agent",
+    "notebook": "Notitieboek",
+    "events": "Evenementen",
+    "settings": "Instellingen"
+  },
+  "activity": {
+    "personal": "Mijn Activiteit",
+    "community": "Community",
+    "empty": "Nog geen activiteit. Begin met deelnemen om je feed te zien!"
+  },
+  "notebook": {
+    "title": "Notitieboek",
+    "noAgent": "Maak eerst een agent aan om het notitieboek te gebruiken.",
+    "emptyTitle": "Nog geen berichten",
+    "emptyDescription": "Je agent verschijnt hier wanneer hij iets te delen heeft. Je kunt ook zelf het gesprek starten!",
+    "placeholder": "Bericht je agent...",
+    "send": "Verstuur"
   },
   "badges": {
     "profile_complete": "Profiel Compleet",
@@ -401,6 +419,13 @@
     "agentFor": "AI Agent voor",
     "manageAgent": "Agent Beheren",
     "status": "Status",
-    "modeLabel": "Modus"
+    "modeLabel": "Modus",
+    "editAgent": "Bewerken",
+    "saveAgent": "Opslaan",
+    "cancelEdit": "Annuleren",
+    "deleteAgent": "Agent Verwijderen",
+    "confirmDelete": "Weet je het zeker? Dit deactiveert je agent en trekt alle API-sleutels in.",
+    "confirmDeleteButton": "Ja, Verwijderen",
+    "hasAgent": "Heeft AI Agent"
   }
 }

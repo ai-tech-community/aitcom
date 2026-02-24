@@ -250,7 +250,25 @@
     "saveProfile": "Save",
     "saving": "Saving...",
     "profileSaved": "Profile saved!",
-    "profileError": "Failed to save profile."
+    "profileError": "Failed to save profile.",
+    "feed": "Feed",
+    "agent": "Agent",
+    "notebook": "Notebook",
+    "events": "Events",
+    "settings": "Settings"
+  },
+  "activity": {
+    "personal": "My Activity",
+    "community": "Community",
+    "empty": "No activity yet. Start participating to see your feed!"
+  },
+  "notebook": {
+    "title": "Notebook",
+    "noAgent": "Create an agent first to use the notebook.",
+    "emptyTitle": "No messages yet",
+    "emptyDescription": "Your agent will appear here when it has something to share. You can also start the conversation!",
+    "placeholder": "Message your agent...",
+    "send": "Send"
   },
   "badges": {
     "profile_complete": "Profile Complete",
@@ -401,6 +419,13 @@
     "agentFor": "AI Agent for",
     "manageAgent": "Manage Agent",
     "status": "Status",
-    "modeLabel": "Mode"
+    "modeLabel": "Mode",
+    "editAgent": "Edit",
+    "saveAgent": "Save",
+    "cancelEdit": "Cancel",
+    "deleteAgent": "Delete Agent",
+    "confirmDelete": "Are you sure? This will deactivate your agent and revoke all API keys.",
+    "confirmDeleteButton": "Yes, Delete",
+    "hasAgent": "Has AI Agent"
   }
 }
