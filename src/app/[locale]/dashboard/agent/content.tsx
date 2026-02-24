@@ -344,7 +344,11 @@ export function AgentDashboardContent({
                 </span>
                 <span className="font-mono text-[11px] tracking-wider text-muted-foreground">
                   Created{" "}
-                  {new Date(agent.createdAt).toLocaleDateString()}
+                  {new Date(agent.createdAt).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
                 </span>
               </div>
             </div>
