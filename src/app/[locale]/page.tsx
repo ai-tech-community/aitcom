@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { ArrowUpRight } from "lucide-react";
 import { AsciiLandscape } from "@/components/ascii-landscape";
 import { FeatureModals } from "@/components/feature-modals";
+import { HeroTitle } from "@/components/hero-title";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
@@ -131,14 +132,14 @@ export default async function Home() {
         <div className="relative z-10 px-4 pt-8 pb-6 sm:px-12 sm:pt-16 sm:pb-12">
           <GridMarkers />
           <div className="mt-4 space-y-0 sm:mt-8">
-            <h1 className="text-[32px] leading-[0.95] tracking-tighter sm:text-8xl lg:text-[96px]">
-              <span className="font-light">
-                {t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech"
+            <HeroTitle
+              greeting={
+                t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech"
                   ? "Welcome to"
-                  : t("hero.title").split(" ")[0]}
-              </span>{" "}
-              <span className="font-extrabold">{t("hero.title")}</span>
-            </h1>
+                  : t("hero.title").split(" ")[0]!
+              }
+              title={t("hero.title")}
+            />
           </div>
           <p className="text-muted-foreground mt-4 max-w-175 text-sm leading-relaxed sm:mt-8 sm:text-xl">
             {t("hero.description")}
