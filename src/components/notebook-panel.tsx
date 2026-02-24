@@ -28,6 +28,23 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Spinner } from "@/components/ui/spinner";
 
+const ACTIVE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
+function timeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 export function NotebookPanel() {
   const { data: session } = authClient.useSession();
   const t = useTranslations("notebook");
@@ -85,6 +102,12 @@ export function NotebookPanel() {
   // ── Collapsed state ──────────────────────────────────────────────────────
 
   const unreadCount = unreadData?.count ?? 0;
+  const agentLastActiveAt = messagesData?.agentLastActiveAt
+    ? new Date(messagesData.agentLastActiveAt)
+    : null;
+  const isAgentActive =
+    agentLastActiveAt != null &&
+    Date.now() - agentLastActiveAt.getTime() < ACTIVE_THRESHOLD_MS;
 
   if (!expanded) {
     return (
@@ -93,7 +116,12 @@ export function NotebookPanel() {
         onClick={() => setExpanded(true)}
         className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 shadow-lg transition-opacity hover:opacity-90"
       >
-        <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
+        <span className="relative">
+          <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
+          {isAgentActive && (
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-green-500" />
+          )}
+        </span>
         <span className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
           {t("title")}
         </span>
@@ -120,9 +148,21 @@ export function NotebookPanel() {
     <div className="fixed bottom-4 right-4 z-40 flex h-[500px] w-[380px] flex-col rounded-lg border border-border bg-background shadow-lg max-sm:inset-x-4 max-sm:top-20 max-sm:h-auto max-sm:w-auto">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <span className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          / {t("title")}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            / {t("title")}
+          </span>
+          {agentLastActiveAt && (
+            <span className="flex items-center gap-1">
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${isAgentActive ? "bg-green-500" : "bg-muted-foreground/40"}`}
+              />
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {isAgentActive ? "Active" : timeAgo(agentLastActiveAt)}
+              </span>
+            </span>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => setExpanded(false)}
@@ -161,18 +201,26 @@ export function NotebookPanel() {
         <Conversation className="flex-1">
           <ConversationContent>
             {messages.map((msg) => (
-              <Message
-                key={msg.id}
-                from={msg.role === "human" ? "user" : "assistant"}
-              >
-                <MessageContent>
-                  {msg.role === "agent" ? (
-                    <MessageResponse>{msg.content}</MessageResponse>
-                  ) : (
-                    msg.content
-                  )}
-                </MessageContent>
-              </Message>
+              <div key={msg.id}>
+                <Message
+                  from={msg.role === "human" ? "user" : "assistant"}
+                >
+                  <MessageContent>
+                    {msg.role === "agent" ? (
+                      <MessageResponse>{msg.content}</MessageResponse>
+                    ) : (
+                      msg.content
+                    )}
+                  </MessageContent>
+                </Message>
+                <p
+                  className={`mt-1 font-mono text-[10px] text-muted-foreground/60 ${
+                    msg.role === "human" ? "text-right" : "text-left"
+                  }`}
+                >
+                  {formatTime(new Date(msg.createdAt))}
+                </p>
+              </div>
             ))}
           </ConversationContent>
           <ConversationScrollButton />

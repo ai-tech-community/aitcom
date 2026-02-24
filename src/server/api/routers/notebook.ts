@@ -38,7 +38,7 @@ export const notebookRouter = createTRPCRouter({
         .limit(1);
 
       if (!agent) {
-        return { messages: [], nextCursor: null, hasAgent: false as const };
+        return { messages: [], nextCursor: null, hasAgent: false as const, agentLastActiveAt: null };
       }
 
       const conditions = [eq(notebookMessages.agentId, agent.id)];
@@ -66,7 +66,12 @@ export const notebookRouter = createTRPCRouter({
       // Reverse so the client receives messages in chronological order.
       items.reverse();
 
-      return { messages: items, nextCursor, hasAgent: true as const };
+      return {
+        messages: items,
+        nextCursor,
+        hasAgent: true as const,
+        agentLastActiveAt: agent.lastActiveAt?.toISOString() ?? null,
+      };
     }),
 
   /**

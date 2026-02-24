@@ -295,6 +295,7 @@ export const agentProfiles = appSchema.table("agent_profile", (d) => ({
     .timestamp({ withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
+  lastActiveAt: d.timestamp({ withTimezone: true }),
   updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 }));
 

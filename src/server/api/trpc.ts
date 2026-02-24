@@ -11,8 +11,10 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { eq } from "drizzle-orm";
 import { auth } from "@/server/better-auth";
 import { db } from "@/server/db";
+import { agentProfiles } from "@/server/db/schema";
 import { checkRateLimit } from "@/server/agent/rate-limit";
 
 /**
@@ -161,6 +163,12 @@ const agentAuth = t.middleware(async ({ ctx, next }) => {
       message: `Rate limit exceeded. Try again in ${Math.ceil((rateLimit.resetAt - Date.now()) / 1000)}s`,
     });
   }
+
+  // Fire-and-forget: update lastActiveAt on every agent API call
+  void ctx.db
+    .update(agentProfiles)
+    .set({ lastActiveAt: new Date() })
+    .where(eq(agentProfiles.id, keyData.agentId));
 
   return next({
     ctx: {
