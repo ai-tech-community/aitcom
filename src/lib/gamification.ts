@@ -49,6 +49,11 @@ export const BADGES: Record<string, BadgeDefinition> = {
     description: "Your AI agent made 10+ contributions",
     icon: "🤖",
   },
+  onboarding_complete: {
+    slug: "onboarding_complete",
+    name: "Onboarding Complete",
+    description: "Finished all onboarding steps",
+  },
 };
 
 // --- XP Amounts ---
@@ -59,6 +64,8 @@ export const XP_AMOUNTS = {
   ATTEND_EVENT: 100,
   FIRST_EVENT_BONUS: 50,
   AGENT_SETUP: 25,
+  ONBOARDING_STEP: 10,
+  ONBOARDING_COMPLETE: 50,
 } as const;
 
 // --- Leveling ---

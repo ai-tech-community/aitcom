@@ -211,6 +211,10 @@ export const memberProfiles = appSchema.table(
     isPublic: d.boolean().default(true).notNull(),
     xp: d.integer().default(0).notNull(),
     level: d.integer().default(1).notNull(),
+    onboardingIntent: d.varchar({ length: 50 }),
+    interests: d.json().$type<string[]>().default([]),
+    experienceLevel: d.varchar({ length: 30 }),
+    onboardingCompleted: d.boolean().default(false).notNull(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -258,6 +262,38 @@ export const memberBadges = appSchema.table(
 export const memberBadgeRelations = relations(memberBadges, ({ one }) => ({
   user: one(user, {
     fields: [memberBadges.userId],
+    references: [user.id],
+  }),
+}));
+
+// Onboarding steps (per-user step completion tracking)
+export const onboardingSteps = appSchema.table(
+  "onboarding_step",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    stepSlug: d.varchar({ length: 100 }).notNull(),
+    completedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("onboarding_step_user_slug_uidx").on(t.userId, t.stepSlug),
+    index("onboarding_step_user_idx").on(t.userId),
+  ],
+);
+
+export const onboardingStepRelations = relations(onboardingSteps, ({ one }) => ({
+  user: one(user, {
+    fields: [onboardingSteps.userId],
     references: [user.id],
   }),
 }));
