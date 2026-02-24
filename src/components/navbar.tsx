@@ -13,6 +13,7 @@ import { Menu, LogOut } from "lucide-react";
 import { LanguageSwitcher } from "./language-switcher";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/server/better-auth/client";
+import { AitLogo } from "@/components/ait-logo";
 
 const navLinks = [
   { href: "/events", key: "events", shortcut: "E" },
@@ -79,8 +80,8 @@ export function Navbar() {
       <div className="mx-auto flex h-12 items-center justify-between px-4 sm:px-8">
         {/* Left: Logo + Nav Links */}
         <div className="flex items-center gap-4">
-          <Link href="/" className="text-base font-extrabold tracking-tight">
-            AIT<span className="text-primary">.</span>
+          <Link href="/" className="flex items-center" aria-label="AIT. home">
+            <AitLogo className="h-4 w-auto" />
           </Link>
 
           <div className="bg-border hidden h-4 w-px md:block" />

@@ -15,7 +15,10 @@ export const metadata: Metadata = {
   title: "AIT Community — AI Tech Community Netherlands",
   description:
     "A community for technical innovators in the Netherlands. Workshops, hackathons, and deep-dives on AI and automation.",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
+  icons: [
+    { rel: "icon", url: "/icon.svg", type: "image/svg+xml" },
+    { rel: "icon", url: "/favicon.ico", sizes: "32x32" },
+  ],
 };
 
 const geist = Geist({

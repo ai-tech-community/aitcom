@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { AitLogo } from "@/components/ait-logo";
 
 export function Footer() {
   const t = useTranslations("footer");
@@ -13,9 +14,7 @@ export function Footer() {
         <div className="flex flex-col justify-between gap-12 lg:flex-row">
           {/* Brand */}
           <div className="space-y-3">
-            <span className="text-2xl font-extrabold tracking-tight">
-              AIT<span className="text-primary">.</span>
-            </span>
+            <AitLogo className="h-6 w-auto" />
             <p className="text-muted-foreground max-w-70 text-sm">
               {t("description")}
             </p>

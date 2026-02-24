@@ -15,6 +15,7 @@ export default function middleware(request: NextRequest) {
 
   if (isProtected) {
     const sessionToken = request.cookies.get("better-auth.session_token");
+    console.log("[middleware] protected path:", pathWithoutLocale, "| cookie:", sessionToken ? "EXISTS" : "MISSING", "| all cookies:", request.cookies.getAll().map(c => c.name).join(", "));
     if (!sessionToken) {
       const locale = pathname.startsWith("/nl") ? "nl" : "en";
       const signInUrl = new URL(`/${locale}/auth/signin`, request.url);

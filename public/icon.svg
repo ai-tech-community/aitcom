@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Bold A -->
+  <path d="M3 28L11.5 4H17.5L26 28H20.5L18.5 22H10.5L8.5 28H3ZM12 18L14.5 9L17 18H12Z" fill="#000" fill-rule="evenodd"/>
+  <!-- Orange dot -->
+  <circle cx="28.5" cy="26" r="2.5" fill="#EA580C"/>
+</svg>
