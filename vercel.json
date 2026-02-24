@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/challenge-advisory",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/challenge-expiry",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
