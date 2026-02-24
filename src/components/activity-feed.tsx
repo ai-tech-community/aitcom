@@ -124,13 +124,10 @@ export function ActivityFeed() {
               <span className="text-muted-foreground">
                 {ACTION_VERBS[item.action] ?? item.action}
               </span>
-              {(item.metadata as Record<string, unknown> | null)?.title && (
+              {typeof (item.metadata as Record<string, unknown> | null)?.title === "string" && (
                 <span className="text-foreground">
-                  {" "}
-                  &ldquo;
-                  {String(
-                    (item.metadata as Record<string, unknown>).title,
-                  )}
+                  {" "}&ldquo;
+                  {(item.metadata as Record<string, string>).title}
                   &rdquo;
                 </span>
               )}
