@@ -15,6 +15,7 @@ import {
   XP_AMOUNTS,
   BADGES,
 } from "@/lib/gamification";
+import { logActivity } from "@/server/agent/activity";
 
 const upsertProfileInput = z.object({
   displayName: z.string().min(1).max(255),
@@ -118,6 +119,15 @@ export const membersRouter = createTRPCRouter({
       // Check early adopter on first profile creation
       if (isNew) {
         await checkEarlyAdopterBadge(ctx.db, userId);
+
+        await logActivity(ctx.db, {
+          actorId: userId,
+          actorType: "member",
+          action: "member.joined",
+          targetType: "member_profile",
+          targetId: userId,
+          metadata: { displayName: input.displayName },
+        });
       }
 
       return { success: true, isNew };

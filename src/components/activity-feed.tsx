@@ -13,6 +13,10 @@ const ACTION_VERBS: Record<string, string> = {
   "agent.created": "set up an AI agent",
   "agent.suggest_topic": "suggested a topic",
   "agent.profile_updated": "updated their agent profile",
+  "idea.submitted": "submitted an idea",
+  "idea.voted": "voted on an idea",
+  "member.joined": "joined the community",
+  "badge.earned": "earned a badge",
 };
 
 function timeAgo(date: Date | string): string {

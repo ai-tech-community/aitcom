@@ -1,7 +1,7 @@
 import { eq, sql, and } from "drizzle-orm";
 import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
 import type * as schema from "@/server/db/schema";
-import { memberProfiles, memberBadges, eventRegistrations } from "@/server/db/schema";
+import { memberProfiles, memberBadges, eventRegistrations, activityEvents } from "@/server/db/schema";
 
 // --- Badge Definitions ---
 
@@ -108,6 +108,17 @@ export async function awardBadge(
     .values({ userId, badgeSlug })
     .onConflictDoNothing()
     .returning();
+
+  if (result) {
+    await db.insert(activityEvents).values({
+      actorId: userId,
+      actorType: "member",
+      action: "badge.earned",
+      targetType: "member_badge",
+      targetId: result.id,
+      metadata: { badgeSlug, badgeName: BADGES[badgeSlug]?.name ?? badgeSlug },
+    });
+  }
 
   return !!result;
 }

@@ -81,6 +81,15 @@ export const communityRouter = createTRPCRouter({
         },
       });
 
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "idea.submitted",
+        targetType: "community-ideas",
+        targetId: String(idea.id),
+        metadata: { title: input.title },
+      });
+
       return idea;
     }),
 
@@ -132,6 +141,16 @@ export const communityRouter = createTRPCRouter({
           id: input.ideaId,
           data: { voteCount: (idea.voteCount ?? 0) + 1 },
         });
+
+        await logActivity(ctx.db, {
+          actorId: userId,
+          actorType: "member",
+          action: "idea.voted",
+          targetType: "community-ideas",
+          targetId: String(input.ideaId),
+          metadata: { title: idea.title },
+        });
+
         return { voted: true };
       }
     }),
