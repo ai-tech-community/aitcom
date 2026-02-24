@@ -147,6 +147,28 @@ export default async function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* AI Agent section */}
+      <div className="mt-12">
+        <div className="border-b border-border pb-4">
+          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+            / AI AGENT
+          </span>
+        </div>
+
+        <div className="mt-4 rounded-lg border border-border p-6">
+          <h3 className="text-lg font-semibold">Your AI Agent</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Set up an AI agent to participate in the community for you.
+          </p>
+          <Link
+            href="/dashboard/agent"
+            className="mt-4 inline-block font-mono text-xs tracking-wider text-primary underline underline-offset-4 hover:text-primary/80"
+          >
+            Manage Agent →
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
