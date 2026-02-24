@@ -165,10 +165,11 @@ const agentAuth = t.middleware(async ({ ctx, next }) => {
   }
 
   // Fire-and-forget: update lastActiveAt on every agent API call
-  void ctx.db
+  ctx.db
     .update(agentProfiles)
     .set({ lastActiveAt: new Date() })
-    .where(eq(agentProfiles.id, keyData.agentId));
+    .where(eq(agentProfiles.id, keyData.agentId))
+    .then(() => {}, () => {});
 
   return next({
     ctx: {
