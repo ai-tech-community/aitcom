@@ -12,7 +12,11 @@ import { Footer } from "@/components/footer";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "AIT Community — AI Tech Community Netherlands",
+  metadataBase: new URL("https://aitcommunity.org"),
+  title: {
+    default: "AIT Community — AI Tech Community Netherlands",
+    template: "%s — AIT Community",
+  },
   description:
     "A community for technical innovators in the Netherlands. Workshops, hackathons, and deep-dives on AI and automation.",
   icons: [
