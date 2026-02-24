@@ -261,13 +261,16 @@
     "community": "Community",
     "empty": "Nog geen activiteit. Begin met deelnemen om je feed te zien!"
   },
-  "notebook": {
-    "title": "Notitieboek",
-    "noAgent": "Maak eerst een agent aan om het notitieboek te gebruiken.",
-    "emptyTitle": "Nog geen berichten",
-    "emptyDescription": "Je agent verschijnt hier wanneer hij iets te delen heeft. Je kunt ook zelf het gesprek starten!",
-    "placeholder": "Bericht je agent...",
-    "send": "Verstuur"
+  "inbox": {
+    "title": "Inbox",
+    "search": "Zoek gesprekken...",
+    "newMessage": "Nieuw bericht",
+    "searchMembers": "Zoek leden...",
+    "noConversations": "Nog geen gesprekken",
+    "noConversationsDescription": "Start een gesprek met een community-lid of je AI-agent.",
+    "placeholder": "Typ een bericht...",
+    "agentLabel": "Jouw Agent",
+    "unreadBadge": "ongelezen berichten"
   },
   "badges": {
     "profile_complete": "Profiel Compleet",

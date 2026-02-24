@@ -261,13 +261,16 @@
     "community": "Community",
     "empty": "No activity yet. Start participating to see your feed!"
   },
-  "notebook": {
-    "title": "Notebook",
-    "noAgent": "Create an agent first to use the notebook.",
-    "emptyTitle": "No messages yet",
-    "emptyDescription": "Your agent will appear here when it has something to share. You can also start the conversation!",
-    "placeholder": "Message your agent...",
-    "send": "Send"
+  "inbox": {
+    "title": "Inbox",
+    "search": "Search conversations...",
+    "newMessage": "New message",
+    "searchMembers": "Search members...",
+    "noConversations": "No conversations yet",
+    "noConversationsDescription": "Start a conversation with a community member or your AI agent.",
+    "placeholder": "Type a message...",
+    "agentLabel": "Your Agent",
+    "unreadBadge": "unread messages"
   },
   "badges": {
     "profile_complete": "Profile Complete",
