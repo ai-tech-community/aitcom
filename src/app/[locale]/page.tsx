@@ -8,6 +8,9 @@ import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
 import { count } from "drizzle-orm";
 import Image from "next/image";
+import type { Metadata } from "next";
+import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { JsonLd } from "@/components/json-ld";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -36,9 +39,9 @@ function GridMarkers() {
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-border border-b pb-4">
-      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+      <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
         {children}
-      </span>
+      </h2>
     </div>
   );
 }
@@ -55,6 +58,14 @@ function StatItem({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+export const metadata: Metadata = {
+  ...buildOgMeta(
+    "AIT Community — AI Tech Community Netherlands",
+    "A community for technical innovators in the Netherlands. We foster collaboration through workshops, deep-dives, and hackathons focused on AI and automation.",
+  ),
+  alternates: buildAlternates(""),
+};
 
 export default async function Home() {
   const locale = await getLocale();
@@ -104,19 +115,29 @@ export default async function Home() {
 
   return (
     <>
+      <JsonLd
+        data={{
+          "@type": "Organization",
+          name: "AIT Community",
+          url: "https://aitcommunity.org",
+          logo: "https://aitcommunity.org/logo.png",
+          description:
+            "A community for technical innovators in the Netherlands. Workshops, hackathons, and deep-dives on AI and automation.",
+        }}
+      />
       {/* Hero with ASCII Landscape */}
       <section className="relative min-h-[70vh] overflow-hidden">
         <AsciiLandscape />
         <div className="relative z-10 px-4 pt-8 pb-6 sm:px-12 sm:pt-16 sm:pb-12">
           <GridMarkers />
           <div className="mt-4 space-y-0 sm:mt-8">
-            <h1 className="text-[32px] leading-[0.95] font-light tracking-tighter sm:text-8xl lg:text-[96px]">
-              {t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech"
-                ? "Welcome to"
-                : t("hero.title").split(" ")[0]}
-            </h1>
-            <h1 className="text-[32px] leading-[0.95] font-extrabold tracking-tighter sm:text-8xl lg:text-[96px]">
-              {t("hero.title")}
+            <h1 className="text-[32px] leading-[0.95] tracking-tighter sm:text-8xl lg:text-[96px]">
+              <span className="font-light">
+                {t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech"
+                  ? "Welcome to"
+                  : t("hero.title").split(" ")[0]}
+              </span>{" "}
+              <span className="font-extrabold">{t("hero.title")}</span>
             </h1>
           </div>
           <p className="text-muted-foreground mt-4 max-w-175 text-sm leading-relaxed sm:mt-8 sm:text-xl">
