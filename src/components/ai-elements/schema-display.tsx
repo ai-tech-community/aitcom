@@ -368,7 +368,7 @@ export const SchemaDisplayProperty = ({
   className,
   ...props
 }: SchemaDisplayPropertyProps) => {
-  const hasChildren = properties || items;
+  const hasChildren = (properties?.length ?? 0) > 0 || items !== undefined;
   const paddingLeft = 40 + depth * 16;
 
   if (hasChildren) {

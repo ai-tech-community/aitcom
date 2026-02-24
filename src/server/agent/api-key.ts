@@ -42,7 +42,7 @@ export async function validateApiKey(
     .where(and(eq(agentApiKeys.keyHash, hash), eq(agentApiKeys.isActive, true)))
     .limit(1);
 
-  if (!key || key.agentStatus !== "active") return null;
+  if (key?.agentStatus !== "active") return null;
 
   // Update last used timestamp (fire and forget)
   void db

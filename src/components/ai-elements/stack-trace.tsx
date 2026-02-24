@@ -71,7 +71,7 @@ const parseStackFrame = (line: string): StackFrame => {
   const trimmed = line.trim();
 
   // Pattern: at functionName (filePath:line:column)
-  const withParensMatch = trimmed.match(STACK_FRAME_WITH_PARENS_REGEX);
+  const withParensMatch = STACK_FRAME_WITH_PARENS_REGEX.exec(trimmed);
   if (withParensMatch) {
     const [, functionName, filePath, lineNum, colNum] = withParensMatch;
     const isInternal =
@@ -89,7 +89,7 @@ const parseStackFrame = (line: string): StackFrame => {
   }
 
   // Pattern: at filePath:line:column (no function name)
-  const withoutFnMatch = trimmed.match(STACK_FRAME_WITHOUT_FN_REGEX);
+  const withoutFnMatch = STACK_FRAME_WITHOUT_FN_REGEX.exec(trimmed);
   if (withoutFnMatch) {
     const [, filePath, lineNum, colNum] = withoutFnMatch;
     const isInternal =
@@ -134,11 +134,11 @@ const parseStackTrace = (trace: string): ParsedStackTrace => {
   let errorMessage = firstLine;
 
   // Try to extract error type from "ErrorType: message" format
-  const errorMatch = firstLine.match(ERROR_TYPE_REGEX);
+  const errorMatch = ERROR_TYPE_REGEX.exec(firstLine);
   if (errorMatch) {
     const [, type, msg] = errorMatch;
     errorType = type ?? null;
-    errorMessage = msg || "";
+    errorMessage = msg ?? "";
   }
 
   // Parse stack frames (lines starting with "at")
@@ -506,7 +506,7 @@ export const StackTraceFrames = memo(
                 <span className="text-muted-foreground">)</span>
               </>
             )}
-            {!(frame.filePath || frame.functionName) && (
+            {frame.filePath == null && frame.functionName == null && (
               <span>{frame.raw.replace(AT_PREFIX_REGEX, "")}</span>
             )}
           </div>

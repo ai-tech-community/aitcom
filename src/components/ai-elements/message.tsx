@@ -1,7 +1,12 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
+import type {
+  ComponentProps,
+  HTMLAttributes,
+  ReactElement,
+  ReactNode,
+} from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +26,9 @@ import { math } from "@streamdown/math";
 import { mermaid } from "@streamdown/mermaid";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import {
+  Children,
   createContext,
+  isValidElement,
   memo,
   useCallback,
   useContext,
@@ -94,7 +101,7 @@ export const MessageAction = ({
   const button = (
     <Button size={size} type="button" variant={variant} {...props}>
       {children}
-      <span className="sr-only">{label || tooltip}</span>
+      <span className="sr-only">{label ?? tooltip}</span>
     </Button>
   );
 
@@ -126,6 +133,9 @@ interface MessageBranchContextType {
 const MessageBranchContext = createContext<MessageBranchContextType | null>(
   null
 );
+
+const isReactElement = (node: ReactNode): node is ReactElement =>
+  isValidElement(node);
 
 const useMessageBranch = () => {
   const context = useContext(MessageBranchContext);
@@ -203,7 +213,7 @@ export const MessageBranchContent = ({
 }: MessageBranchContentProps) => {
   const { currentBranch, setBranches, branches } = useMessageBranch();
   const childrenArray = useMemo(
-    () => (Array.isArray(children) ? children : [children]),
+    () => Children.toArray(children).filter(isReactElement),
     [children]
   );
 

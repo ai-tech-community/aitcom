@@ -73,15 +73,27 @@ export const VoiceSelector = ({
   children,
   ...props
 }: VoiceSelectorProps) => {
+  const handleValueChange = useCallback(
+    (nextValue: string | undefined) => {
+      onValueChange?.(nextValue);
+    },
+    [onValueChange]
+  );
   const [value, setValue] = useControllableState({
     defaultProp: defaultValue,
-    onChange: onValueChange,
+    onChange: handleValueChange,
     prop: valueProp,
   });
 
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      onOpenChange?.(nextOpen);
+    },
+    [onOpenChange]
+  );
   const [open, setOpen] = useControllableState({
     defaultProp: defaultOpen,
-    onChange: onOpenChange,
+    onChange: handleOpenChange,
     prop: openProp,
   });
 
@@ -239,38 +251,7 @@ export const VoiceSelectorGender = ({
 };
 
 export type VoiceSelectorAccentProps = ComponentProps<"span"> & {
-  value?:
-    | "american"
-    | "british"
-    | "australian"
-    | "canadian"
-    | "irish"
-    | "scottish"
-    | "indian"
-    | "south-african"
-    | "new-zealand"
-    | "spanish"
-    | "french"
-    | "german"
-    | "italian"
-    | "portuguese"
-    | "brazilian"
-    | "mexican"
-    | "argentinian"
-    | "japanese"
-    | "chinese"
-    | "korean"
-    | "russian"
-    | "arabic"
-    | "dutch"
-    | "swedish"
-    | "norwegian"
-    | "danish"
-    | "finnish"
-    | "polish"
-    | "turkish"
-    | "greek"
-    | string;
+  value?: string;
 };
 
 export const VoiceSelectorAccent = ({

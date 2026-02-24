@@ -211,7 +211,7 @@ export const SpeechInput = ({
         }
       };
 
-      const handleStop = async () => {
+      const handleStop = () => {
         for (const track of stream.getTracks()) {
           track.stop();
         }
@@ -222,17 +222,19 @@ export const SpeechInput = ({
         });
 
         if (audioBlob.size > 0 && onAudioRecordedRef.current) {
-          setIsProcessing(true);
-          try {
-            const transcript = await onAudioRecordedRef.current(audioBlob);
-            if (transcript) {
-              onTranscriptionChangeRef.current?.(transcript);
+          void (async () => {
+            setIsProcessing(true);
+            try {
+              const transcript = await onAudioRecordedRef.current?.(audioBlob);
+              if (transcript) {
+                onTranscriptionChangeRef.current?.(transcript);
+              }
+            } catch {
+              // Error handling delegated to the onAudioRecorded caller
+            } finally {
+              setIsProcessing(false);
             }
-          } catch {
-            // Error handling delegated to the onAudioRecorded caller
-          } finally {
-            setIsProcessing(false);
-          }
+          })();
         }
       };
 
@@ -275,7 +277,7 @@ export const SpeechInput = ({
       if (isListening) {
         stopMediaRecorder();
       } else {
-        startMediaRecorder();
+        void startMediaRecorder();
       }
     }
   }, [mode, isListening, startMediaRecorder, stopMediaRecorder]);

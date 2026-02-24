@@ -30,8 +30,7 @@ interface FileTreeContextType {
 }
 
 // Default noop for context default value
-// oxlint-disable-next-line eslint(no-empty-function)
-const noop = () => {};
+const noop = () => undefined;
 
 const FileTreeContext = createContext<FileTreeContextType>({
   // oxlint-disable-next-line eslint-plugin-unicorn(no-new-builtin)
@@ -141,6 +140,7 @@ export const FileTreeFolder = ({
     <FileTreeFolderContext.Provider value={folderContextValue}>
       <Collapsible onOpenChange={handleOpenChange} open={isExpanded}>
         <div
+          aria-selected={isSelected}
           className={cn("", className)}
           role="treeitem"
           tabIndex={0}
@@ -225,6 +225,7 @@ export const FileTreeFile = ({
   return (
     <FileTreeFileContext.Provider value={fileContextValue}>
       <div
+        aria-selected={isSelected}
         className={cn(
           "flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
           isSelected && "bg-muted",

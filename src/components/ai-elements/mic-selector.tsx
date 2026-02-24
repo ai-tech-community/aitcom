@@ -82,7 +82,7 @@ export const MicSelector = ({
 
   useEffect(() => {
     if (open && !hasPermission && !loading) {
-      loadDevices();
+      void loadDevices();
     }
   }, [open, hasPermission, loading, loadDevices]);
 
@@ -229,7 +229,7 @@ export const MicSelectorLabel = ({
   className,
   ...props
 }: MicSelectorLabelProps) => {
-  const matches = device.label.match(deviceIdRegex);
+  const matches = deviceIdRegex.exec(device.label);
 
   if (!matches) {
     return (
@@ -340,15 +340,15 @@ export const useAudioDevices = () => {
   }, [loading]);
 
   useEffect(() => {
-    loadDevicesWithoutPermission();
+    void loadDevicesWithoutPermission();
   }, [loadDevicesWithoutPermission]);
 
   useEffect(() => {
     const handleDeviceChange = () => {
       if (hasPermission) {
-        loadDevicesWithPermission();
+        void loadDevicesWithPermission();
       } else {
-        loadDevicesWithoutPermission();
+        void loadDevicesWithoutPermission();
       }
     };
 

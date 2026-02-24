@@ -181,8 +181,7 @@ export const PromptInputProvider = ({
     (FileUIPart & { id: string })[]
   >([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  // oxlint-disable-next-line eslint(no-empty-function)
-  const openRef = useRef<() => void>(() => {});
+  const openRef = useRef<() => void>(() => undefined);
 
   const add = useCallback((files: File[] | FileList) => {
     const incoming = [...files];
@@ -674,7 +673,7 @@ export const PromptInput = ({
         }
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanup only on unmount; filesRef always current
+     
     [usingProvider]
   );
 
@@ -720,7 +719,7 @@ export const PromptInput = ({
   );
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = useCallback(
-    async (event) => {
+    (event) => {
       event.preventDefault();
 
       const form = event.currentTarget;
@@ -728,7 +727,7 @@ export const PromptInput = ({
         ? controller.textInput.value
         : (() => {
             const formData = new FormData(form);
-            return (formData.get("message") as string) || "";
+            return (formData.get("message") as string) ?? "";
           })();
 
       // Reset form immediately after capturing text to avoid race condition
@@ -737,45 +736,47 @@ export const PromptInput = ({
         form.reset();
       }
 
-      try {
-        // Convert blob URLs to data URLs asynchronously
-        const convertedFiles: FileUIPart[] = await Promise.all(
-          files.map(async ({ id: _id, ...item }) => {
-            if (item.url?.startsWith("blob:")) {
-              const dataUrl = await convertBlobUrlToDataUrl(item.url);
-              // If conversion failed, keep the original blob URL
-              return {
-                ...item,
-                url: dataUrl ?? item.url,
-              };
+      void (async () => {
+        try {
+          // Convert blob URLs to data URLs asynchronously
+          const convertedFiles: FileUIPart[] = await Promise.all(
+            files.map(async ({ id: _id, ...item }) => {
+              if (item.url?.startsWith("blob:")) {
+                const dataUrl = await convertBlobUrlToDataUrl(item.url);
+                // If conversion failed, keep the original blob URL
+                return {
+                  ...item,
+                  url: dataUrl ?? item.url,
+                };
+              }
+              return item;
+            })
+          );
+
+          const result = onSubmit({ files: convertedFiles, text }, event);
+
+          // Handle both sync and async onSubmit
+          if (result instanceof Promise) {
+            try {
+              await result;
+              clear();
+              if (usingProvider) {
+                controller.textInput.clear();
+              }
+            } catch {
+              // Don't clear on error - user may want to retry
             }
-            return item;
-          })
-        );
-
-        const result = onSubmit({ files: convertedFiles, text }, event);
-
-        // Handle both sync and async onSubmit
-        if (result instanceof Promise) {
-          try {
-            await result;
+          } else {
+            // Sync function completed without throwing, clear inputs
             clear();
             if (usingProvider) {
               controller.textInput.clear();
             }
-          } catch {
-            // Don't clear on error - user may want to retry
           }
-        } else {
-          // Sync function completed without throwing, clear inputs
-          clear();
-          if (usingProvider) {
-            controller.textInput.clear();
-          }
+        } catch {
+          // Don't clear on error - user may want to retry
         }
-      } catch {
-        // Don't clear on error - user may want to retry
-      }
+      })();
     },
     [usingProvider, controller, files, onSubmit, clear]
   );

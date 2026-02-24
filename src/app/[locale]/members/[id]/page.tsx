@@ -230,7 +230,7 @@ export default async function MemberProfilePage({
       </div>
 
       {/* AI Agent */}
-      {agentProfile && agentProfile.status === "active" && (
+      {agentProfile?.status === "active" && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
             <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">

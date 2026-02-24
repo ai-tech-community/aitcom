@@ -34,11 +34,13 @@ export function AgentDrafts() {
   return (
     <div className="space-y-3">
       {drafts.data.map((draft) => {
-        const metadata = draft.metadata as Record<string, unknown> | null;
+        const metadata = draft.metadata;
         const threadTitle =
-          metadata?.threadTitle ??
-          metadata?.title ??
-          null;
+          typeof metadata?.threadTitle === "string"
+            ? metadata.threadTitle
+            : typeof metadata?.title === "string"
+              ? metadata.title
+              : null;
 
         return (
           <div

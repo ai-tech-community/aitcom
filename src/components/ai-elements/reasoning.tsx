@@ -70,10 +70,16 @@ export const Reasoning = memo(
     const resolvedDefaultOpen = defaultOpen ?? isStreaming;
     // Track if defaultOpen was explicitly set to false (to prevent auto-open)
     const isExplicitlyClosed = defaultOpen === false;
+    const handleOpenChange = useCallback(
+      (nextOpen: boolean) => {
+        onOpenChange?.(nextOpen);
+      },
+      [onOpenChange]
+    );
 
     const [isOpen, setIsOpen] = useControllableState<boolean>({
       defaultProp: resolvedDefaultOpen,
-      onChange: onOpenChange,
+      onChange: handleOpenChange,
       prop: open,
     });
     const [duration, setDuration] = useControllableState<number | undefined>({
@@ -89,9 +95,7 @@ export const Reasoning = memo(
     useEffect(() => {
       if (isStreaming) {
         hasEverStreamedRef.current = true;
-        if (startTimeRef.current === null) {
-          startTimeRef.current = Date.now();
-        }
+        startTimeRef.current ??= Date.now();
       } else if (startTimeRef.current !== null) {
         setDuration(Math.ceil((Date.now() - startTimeRef.current) / MS_IN_S));
         startTimeRef.current = null;
@@ -122,7 +126,7 @@ export const Reasoning = memo(
       }
     }, [isStreaming, isOpen, setIsOpen, hasAutoClosed]);
 
-    const handleOpenChange = useCallback(
+    const handleOpenStateChange = useCallback(
       (newOpen: boolean) => {
         setIsOpen(newOpen);
       },
@@ -138,7 +142,7 @@ export const Reasoning = memo(
       <ReasoningContext.Provider value={contextValue}>
         <Collapsible
           className={cn("not-prose mb-4", className)}
-          onOpenChange={handleOpenChange}
+          onOpenChange={handleOpenStateChange}
           open={isOpen}
           {...props}
         >

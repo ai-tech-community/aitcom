@@ -49,7 +49,7 @@ export const PackageInfo = ({
             <PackageInfoName />
             {changeType && <PackageInfoChangeType />}
           </PackageInfoHeader>
-          {(currentVersion || newVersion) && <PackageInfoVersion />}
+          {(currentVersion ?? newVersion) && <PackageInfoVersion />}
         </>
       )}
     </div>
@@ -143,7 +143,7 @@ export const PackageInfoVersion = ({
 }: PackageInfoVersionProps) => {
   const { currentVersion, newVersion } = useContext(PackageInfoContext);
 
-  if (!(currentVersion || newVersion)) {
+  if (currentVersion == null && newVersion == null) {
     return null;
   }
 
