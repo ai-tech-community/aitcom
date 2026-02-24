@@ -8,7 +8,6 @@ import { db } from "@/server/db";
 import { user } from "@/server/db/schema";
 import { count } from "drizzle-orm";
 import Image from "next/image";
-import type { Media } from "@/payload-types";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -254,7 +253,7 @@ export default async function Home() {
             {featuredSponsors.map((sponsor) => {
               const logo =
                 typeof sponsor.logo === "object"
-                  ? (sponsor.logo as Media)
+                  ? sponsor.logo
                   : null;
               return logo?.url ? (
                 <a

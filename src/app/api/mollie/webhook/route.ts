@@ -44,13 +44,12 @@ export async function POST(request: Request) {
   }
 
   // Update payment status
+  const paymentStatus = String(payment.status);
   await db
     .update(eventRegistrations)
-    .set({ paymentStatus: payment.status })
+    .set({ paymentStatus })
     .where(eq(eventRegistrations.id, registration.id));
-
-  // Handle payment completion
-  if (payment.status === "paid" && registration.status === "pending_payment") {
+  if (paymentStatus === "paid" && registration.status === "pending_payment") {
     await db
       .update(eventRegistrations)
       .set({ status: "registered", paymentStatus: "paid" })
@@ -95,10 +94,10 @@ export async function POST(request: Request) {
   }
 
   // Handle failed/expired/canceled payments
-  if (["failed", "expired", "canceled"].includes(payment.status)) {
+  if (["failed", "expired", "canceled"].includes(paymentStatus)) {
     await db
       .update(eventRegistrations)
-      .set({ status: "payment_failed", paymentStatus: payment.status })
+      .set({ status: "payment_failed", paymentStatus })
       .where(eq(eventRegistrations.id, registration.id));
   }
 

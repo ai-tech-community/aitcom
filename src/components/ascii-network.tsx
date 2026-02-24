@@ -60,7 +60,7 @@ export function AsciiNetwork() {
       // Initialize grid
       const grid: string[][] = [];
       for (let y = 0; y < rows; y++) {
-        grid.push(new Array(cols).fill(" "));
+        grid.push(new Array<string>(cols).fill(" "));
       }
 
       // Draw connections between nearby nodes

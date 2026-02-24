@@ -1,4 +1,4 @@
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { SponsorApplicationModal } from "@/components/sponsor-application-modal";
 import Image from "next/image";
@@ -19,7 +19,6 @@ const benefits = [
 ] as const;
 
 export default async function SponsorsPage() {
-  const locale = await getLocale();
   const t = await getTranslations("sponsors");
 
   const payload = await getPayloadClient();
@@ -32,8 +31,8 @@ export default async function SponsorsPage() {
 
   const sortedSponsors = sponsors.sort(
     (a, b) =>
-      (tierOrder[a.tier as keyof typeof tierOrder] ?? 2) -
-      (tierOrder[b.tier as keyof typeof tierOrder] ?? 2),
+      (tierOrder[a.tier] ?? 2) -
+      (tierOrder[b.tier] ?? 2),
   );
 
   return (

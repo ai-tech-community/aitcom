@@ -1,4 +1,5 @@
 import type { CollectionConfig } from "payload";
+import type { SponsorApplication } from "@/payload-types";
 
 export const SponsorApplications: CollectionConfig = {
   slug: "sponsor-applications",
@@ -57,16 +58,18 @@ export const SponsorApplications: CollectionConfig = {
     ],
     afterChange: [
       async ({ doc, previousDoc }) => {
-        if (doc.status !== "approved" || previousDoc?.status === "approved")
+        const current = doc as SponsorApplication;
+        const previous = previousDoc as SponsorApplication | undefined;
+        if (current.status !== "approved" || previous?.status === "approved")
           return;
 
         const { sendSponsorWelcome } = await import("@/server/email");
 
-        void sendSponsorWelcome(doc.contactEmail, doc.contactName, {
-          companyName: doc.companyName,
-          tier: doc.tier,
-          contactName: doc.contactName,
-          contactEmail: doc.contactEmail,
+        void sendSponsorWelcome(current.contactEmail, current.contactName, {
+          companyName: current.companyName,
+          tier: current.tier,
+          contactName: current.contactName,
+          contactEmail: current.contactEmail,
         });
       },
     ],

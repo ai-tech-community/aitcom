@@ -83,7 +83,7 @@ export default async function EventDetailPage({
       {event.image && typeof event.image === "object" && "url" in event.image && event.image.url && (
         <div className="mt-8 overflow-hidden rounded-lg border border-border">
           <img
-            src={event.image.url as string}
+            src={event.image.url}
             alt={event.title}
             className="h-auto w-full object-cover"
           />
