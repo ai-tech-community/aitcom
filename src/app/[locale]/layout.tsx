@@ -10,7 +10,8 @@ import { routing } from "@/i18n/routing";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Toaster } from "sonner";
-import { NotebookPanel } from "@/components/notebook-panel";
+import { InboxProvider } from "@/components/inbox/inbox-provider";
+import { InboxRoot } from "@/components/inbox/inbox-root";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aitcommunity.org"),
@@ -62,7 +63,9 @@ export default async function LocaleLayout({
             <Navbar />
             <main className="min-h-screen to-background bg-linear-to-b from-orange-50/60 via-amber-50/30">{children}</main>
             <Footer />
-            <NotebookPanel />
+            <InboxProvider>
+              <InboxRoot />
+            </InboxProvider>
             <Toaster position="bottom-right" offset={60} />
           </TRPCReactProvider>
         </NextIntlClientProvider>
