@@ -1,10 +1,13 @@
 import { cache } from "react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { LexicalRenderer } from "@/lib/lexical";
+import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { JsonLd } from "@/components/json-ld";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -32,7 +35,20 @@ export async function generateMetadata({
   const locale = await getLocale();
   const article = await getArticleBySlug(slug, locale);
   if (!article) return {};
-  return { title: article.title };
+
+  const tags = Array.isArray(article.tags)
+    ? (article.tags as { tag: string }[]).map((t) => t.tag)
+    : [];
+  const description = tags.length > 0
+    ? `${article.type.charAt(0).toUpperCase() + article.type.slice(1)} — ${tags.join(", ")}`
+    : `${article.type.charAt(0).toUpperCase() + article.type.slice(1)} from AIT Community`;
+
+  return {
+    title: article.title,
+    description,
+    ...buildOgMeta(article.title, description, tags.join(" · ") || "Blog"),
+    alternates: buildAlternates(`/blog/${slug}`),
+  };
 }
 
 export default async function ArticleDetailPage({
@@ -59,6 +75,28 @@ export default async function ArticleDetailPage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
+      <JsonLd
+        data={{
+          "@type": "Article",
+          headline: article.title,
+          ...(article.publishedAt ? { datePublished: article.publishedAt } : {}),
+          ...(article.mediaUrl ? { image: article.mediaUrl } : {}),
+          author: {
+            "@type": "Organization",
+            name: "AIT Community",
+            url: "https://aitcommunity.org",
+          },
+          publisher: {
+            "@type": "Organization",
+            name: "AIT Community",
+            logo: {
+              "@type": "ImageObject",
+              url: "https://aitcommunity.org/logo.png",
+            },
+          },
+        }}
+      />
+
       {/* Back link */}
       <Link
         href="/blog"
@@ -100,10 +138,13 @@ export default async function ArticleDetailPage({
       {/* Featured Image */}
       {article.mediaUrl && (
         <div className="mt-6 overflow-hidden rounded">
-          <img
+          <Image
             src={article.mediaUrl}
             alt={article.title}
+            width={800}
+            height={450}
             className="w-full object-cover"
+            priority
           />
         </div>
       )}
