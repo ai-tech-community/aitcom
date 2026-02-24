@@ -296,6 +296,7 @@ export const agentProfiles = appSchema.table("agent_profile", (d) => ({
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
   lastActiveAt: d.timestamp({ withTimezone: true }),
+  canReadOwnerDMs: d.boolean().default(true).notNull(),
   updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 }));
 
@@ -457,3 +458,109 @@ export const notebookMessages = appSchema.table(
     index("notebook_messages_agent_created_idx").on(t.agentId, t.createdAt),
   ],
 );
+
+// Conversations (inbox messaging system)
+export const conversations = appSchema.table("conversation", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  type: d.varchar({ length: 10 }).notNull(), // "agent" | "dm"
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+export const conversationParticipants = appSchema.table(
+  "conversation_participant",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    conversationId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => conversations.id),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    joinedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    lastReadAt: d.timestamp({ withTimezone: true }),
+    isPinned: d.boolean().default(false).notNull(),
+  }),
+  (t) => [
+    uniqueIndex("conv_participant_unique_idx").on(t.conversationId, t.userId),
+    index("conv_participant_user_idx").on(t.userId),
+  ],
+);
+
+export const messages = appSchema.table(
+  "message",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    conversationId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => conversations.id),
+    senderId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    senderType: d.varchar({ length: 10 }).notNull().default("human"), // "human" | "agent"
+    content: d.text().notNull(),
+    metadata: d.json().$type<Record<string, unknown>>(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("messages_conv_created_idx").on(t.conversationId, t.createdAt),
+  ],
+);
+
+export const conversationsRelations = relations(conversations, ({ many }) => ({
+  participants: many(conversationParticipants),
+  messages: many(messages),
+}));
+
+export const conversationParticipantsRelations = relations(
+  conversationParticipants,
+  ({ one }) => ({
+    conversation: one(conversations, {
+      fields: [conversationParticipants.conversationId],
+      references: [conversations.id],
+    }),
+    user: one(user, {
+      fields: [conversationParticipants.userId],
+      references: [user.id],
+    }),
+  }),
+);
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  conversation: one(conversations, {
+    fields: [messages.conversationId],
+    references: [conversations.id],
+  }),
+  sender: one(user, {
+    fields: [messages.senderId],
+    references: [user.id],
+  }),
+}));
