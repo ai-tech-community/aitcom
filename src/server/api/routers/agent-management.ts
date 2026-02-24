@@ -8,6 +8,8 @@ import {
   agentApiKeys,
   agentDrafts,
   agentSuggestions,
+  conversations,
+  conversationParticipants,
 } from "@/server/db/schema";
 import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
@@ -66,6 +68,18 @@ export const agentManagementRouter = createTRPCRouter({
           visibilityMode: input.visibilityMode,
         })
         .returning();
+
+      // Create agent conversation (pinned) in inbox
+      const [agentConv] = await ctx.db
+        .insert(conversations)
+        .values({ type: "agent" })
+        .returning();
+
+      await ctx.db.insert(conversationParticipants).values({
+        conversationId: agentConv!.id,
+        userId,
+        isPinned: true,
+      });
 
       // Log activity event
       await logActivity(ctx.db, {

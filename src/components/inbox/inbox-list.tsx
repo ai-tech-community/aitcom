@@ -20,6 +20,7 @@ export function InboxList() {
   const { data: session } = authClient.useSession();
   const { isListOpen, toggleList, openChat } = useInbox();
   const t = useTranslations("inbox");
+  const utils = api.useUtils();
 
   const [mode, setMode] = useState<"list" | "new">("list");
   const [search, setSearch] = useState("");
@@ -38,7 +39,8 @@ export function InboxList() {
   );
 
   const startConversation = api.inbox.startConversation.useMutation({
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      await utils.inbox.listConversations.invalidate();
       openChat(data.conversationId);
       setMode("list");
       setMemberSearch("");
@@ -86,7 +88,7 @@ export function InboxList() {
       className={[
         "flex flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg",
         // Desktop / tablet: fixed size
-        "w-80 max-h-[500px]",
+        "w-80 max-h-125",
         // Mobile: fullscreen overlay
         "max-sm:fixed max-sm:inset-0 max-sm:z-50 max-sm:h-full max-sm:w-full max-sm:rounded-none",
       ].join(" ")}

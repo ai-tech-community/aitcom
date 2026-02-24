@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, lt, sql, ne, or, like } from "drizzle-orm";
+import { eq, and, desc, lt, sql, ne, or, ilike } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -373,22 +373,18 @@ export const inboxRouter = createTRPCRouter({
         return { conversationId: existing.conversationId, created: false };
       }
 
-      // Create new DM conversation in a transaction
-      const conversation = await ctx.db.transaction(async (tx) => {
-        const [newConv] = await tx
-          .insert(conversations)
-          .values({ type: "dm" })
-          .returning();
+      // Create new DM conversation (neon-http driver doesn't support transactions)
+      const [newConv] = await ctx.db
+        .insert(conversations)
+        .values({ type: "dm" })
+        .returning();
 
-        await tx.insert(conversationParticipants).values([
-          { conversationId: newConv!.id, userId },
-          { conversationId: newConv!.id, userId: input.recipientId },
-        ]);
+      await ctx.db.insert(conversationParticipants).values([
+        { conversationId: newConv!.id, userId },
+        { conversationId: newConv!.id, userId: input.recipientId },
+      ]);
 
-        return newConv!;
-      });
-
-      return { conversationId: conversation.id, created: true };
+      return { conversationId: newConv!.id, created: true };
     }),
 
   /**
@@ -444,8 +440,8 @@ export const inboxRouter = createTRPCRouter({
             eq(memberProfiles.isPublic, true),
             ne(memberProfiles.userId, userId),
             or(
-              like(memberProfiles.displayName, pattern),
-              like(user.name, pattern),
+              ilike(memberProfiles.displayName, pattern),
+              ilike(user.name, pattern),
             ),
           ),
         )
