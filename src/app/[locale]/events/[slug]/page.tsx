@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
+import Image from "next/image";
 import { getLocale } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { EventRegisterButton } from "@/components/event-register-button";
 import { EventAttendees } from "@/components/event-attendees";
 import { LexicalRenderer } from "@/lib/lexical";
+import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { JsonLd } from "@/components/json-ld";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -15,6 +19,39 @@ const typeLabels: Record<string, string> = {
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const locale = await getLocale();
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "events",
+    where: { slug: { equals: slug } },
+    locale: locale as "en" | "nl",
+    limit: 1,
+    depth: 0,
+  });
+  const event = docs[0];
+  if (!event) return {};
+
+  const typeLabel = typeLabels[event.type] ?? event.type;
+  const description = `${typeLabel} on ${formatDate(event.date)} at ${event.location}`;
+
+  return {
+    title: event.title,
+    description,
+    ...buildOgMeta(
+      event.title,
+      description,
+      `${typeLabel} · ${formatDate(event.date)} · ${event.location}`,
+    ),
+    alternates: buildAlternates(`/events/${slug}`),
+  };
 }
 
 export default async function EventDetailPage({
@@ -51,6 +88,54 @@ export default async function EventDetailPage({
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
+      <JsonLd
+        data={{
+          "@type": "Event",
+          name: event.title,
+          startDate: event.startTime
+            ? `${event.date.split("T")[0]}T${event.startTime}`
+            : event.date,
+          ...(event.endTime
+            ? { endDate: `${event.date.split("T")[0]}T${event.endTime}` }
+            : {}),
+          location: { "@type": "Place", name: event.location },
+          ...(event.image &&
+          typeof event.image === "object" &&
+          "url" in event.image &&
+          event.image.url
+            ? { image: event.image.url }
+            : {}),
+          eventStatus:
+            event.status === "cancelled"
+              ? "https://schema.org/EventCancelled"
+              : "https://schema.org/EventScheduled",
+          eventAttendanceMode:
+            "https://schema.org/OfflineEventAttendanceMode",
+          organizer: {
+            "@type": "Organization",
+            name: "AIT Community",
+            url: "https://aitcommunity.org",
+          },
+          ...(price != null
+            ? {
+                offers: {
+                  "@type": "Offer",
+                  price: (price / 100).toFixed(2),
+                  priceCurrency: "EUR",
+                  availability: "https://schema.org/InStock",
+                },
+              }
+            : {
+                offers: {
+                  "@type": "Offer",
+                  price: "0",
+                  priceCurrency: "EUR",
+                  availability: "https://schema.org/InStock",
+                },
+              }),
+        }}
+      />
+
       {/* Meta line */}
       <div className="text-muted-foreground flex flex-wrap items-center gap-3 font-mono text-xs tracking-wider">
         <span>{formatDate(event.date)}</span>
@@ -82,10 +167,13 @@ export default async function EventDetailPage({
       {/* Featured image */}
       {event.image && typeof event.image === "object" && "url" in event.image && event.image.url && (
         <div className="mt-8 overflow-hidden rounded-lg border border-border">
-          <img
+          <Image
             src={event.image.url}
             alt={event.title}
+            width={800}
+            height={450}
             className="h-auto w-full object-cover"
+            priority
           />
         </div>
       )}
@@ -94,9 +182,9 @@ export default async function EventDetailPage({
       {event.description && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
-            <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / ABOUT
-            </span>
+            </h2>
           </div>
           <div className="mt-4">
             <LexicalRenderer content={event.description} />
@@ -108,9 +196,9 @@ export default async function EventDetailPage({
       {speakers.length > 0 && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
-            <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / SPEAKERS
-            </span>
+            </h2>
           </div>
           <div className="mt-4 space-y-4">
             {speakers.map((speaker) => {
@@ -165,9 +253,9 @@ export default async function EventDetailPage({
       {/* Attendees & Capacity */}
       <div className="border-border mt-8 border-t pt-8">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+          <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
             / ATTENDEES
-          </span>
+          </h2>
         </div>
         <div className="mt-4">
           <EventAttendees eventId={eventId} maxAttendees={maxAttendees} />
@@ -177,9 +265,9 @@ export default async function EventDetailPage({
       {/* Registration */}
       <div className="border-border mt-8 border-t pt-8">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+          <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
             / REGISTRATION
-          </span>
+          </h2>
         </div>
         <div className="mt-4">
           <EventRegisterButton
