@@ -6,6 +6,7 @@ import {
   protectedProcedure,
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
+import { logActivity } from "@/server/agent/activity";
 
 export const communityRouter = createTRPCRouter({
   // ── Rules ──────────────────────────────────────────────────────────────────
@@ -197,6 +198,15 @@ export const communityRouter = createTRPCRouter({
           replyCount: 0,
           lastActivityAt: new Date().toISOString(),
         },
+      });
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "thread.create",
+        targetType: "forum-threads",
+        targetId: String(thread.id),
+        metadata: { title: input.title, category: input.category },
       });
 
       return thread;

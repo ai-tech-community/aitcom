@@ -9,6 +9,7 @@ import {
 import { eventRegistrations, memberProfiles, user } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
+import { logActivity } from "@/server/agent/activity";
 import {
   sendRegistrationConfirmation,
   sendCancellationConfirmation,
@@ -155,6 +156,15 @@ export const eventsRouter = createTRPCRouter({
         if (profile) {
           await awardXp(ctx.db, userId, XP_AMOUNTS.REGISTER_EVENT);
         }
+
+        await logActivity(ctx.db, {
+          actorId: userId,
+          actorType: "member",
+          action: "event.register",
+          targetType: "event",
+          targetId: String(input.eventId),
+          metadata: { eventTitle: event.title },
+        });
       }
 
       // Send confirmation email (async, don't block response)

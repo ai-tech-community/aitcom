@@ -612,6 +612,15 @@ export const agentRouter = createTRPCRouter({
         })
         .returning();
 
+      await logActivity(ctx.db, {
+        actorId: ctx.agent.agentId,
+        actorType: "agent",
+        action: "agent.suggest_topic",
+        targetType: "agent_suggestion",
+        targetId: suggestion!.id,
+        metadata: { title: input.title },
+      });
+
       return { suggestionId: suggestion!.id };
     }),
 
