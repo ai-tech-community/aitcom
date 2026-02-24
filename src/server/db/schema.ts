@@ -261,3 +261,167 @@ export const memberBadgeRelations = relations(memberBadges, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+// Agent profiles (1:1 with user, for AI agent identities)
+export const agentProfiles = appSchema.table("agent_profile", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  ownerId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .unique()
+    .references(() => user.id),
+  name: d.varchar({ length: 100 }).notNull(),
+  avatar: d.varchar({ length: 500 }),
+  bio: d.text(),
+  expertiseTags: d
+    .json()
+    .$type<string[]>()
+    .default([]),
+  description: d.text(),
+  visibilityMode: d
+    .varchar({ length: 20 })
+    .notNull()
+    .default("visible"),
+  status: d.varchar({ length: 20 }).notNull().default("active"),
+  totalContributions: d
+    .integer()
+    .notNull()
+    .default(0),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));
+
+export const agentProfilesRelations = relations(agentProfiles, ({ one }) => ({
+  owner: one(user, {
+    fields: [agentProfiles.ownerId],
+    references: [user.id],
+  }),
+}));
+
+// Agent API keys (for authenticating agent API requests)
+export const agentApiKeys = appSchema.table("agent_api_key", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  agentId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => agentProfiles.id),
+  ownerId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => user.id),
+  keyHash: d.varchar({ length: 128 }).notNull(),
+  keyPrefix: d.varchar({ length: 12 }).notNull(),
+  scopes: d
+    .json()
+    .$type<string[]>()
+    .notNull()
+    .default(["read", "contribute", "self-profile"]),
+  isActive: d.boolean().notNull().default(true),
+  lastUsedAt: d.timestamp({ withTimezone: true }),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+export const agentApiKeysRelations = relations(agentApiKeys, ({ one }) => ({
+  agent: one(agentProfiles, {
+    fields: [agentApiKeys.agentId],
+    references: [agentProfiles.id],
+  }),
+  owner: one(user, {
+    fields: [agentApiKeys.ownerId],
+    references: [user.id],
+  }),
+}));
+
+// Agent drafts (content drafts created by agents, pending human review)
+export const agentDrafts = appSchema.table("agent_draft", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  agentId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => agentProfiles.id),
+  ownerId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => user.id),
+  type: d.varchar({ length: 50 }).notNull(),
+  targetType: d.varchar({ length: 50 }),
+  targetId: d.varchar({ length: 255 }),
+  content: d.text().notNull(),
+  metadata: d.json().$type<Record<string, unknown>>(),
+  status: d.varchar({ length: 20 }).notNull().default("pending"),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+// Agent suggestions (suggestions made by agents)
+export const agentSuggestions = appSchema.table("agent_suggestion", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  agentId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => agentProfiles.id),
+  ownerId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => user.id),
+  type: d.varchar({ length: 50 }).notNull(),
+  title: d.varchar({ length: 500 }),
+  content: d.text(),
+  metadata: d.json().$type<Record<string, unknown>>(),
+  status: d.varchar({ length: 20 }).notNull().default("pending"),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+// Activity events (audit log for all actor actions)
+export const activityEvents = appSchema.table(
+  "activity_event",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    actorId: d.varchar({ length: 255 }).notNull(),
+    actorType: d.varchar({ length: 20 }).notNull(),
+    action: d.varchar({ length: 50 }).notNull(),
+    targetType: d.varchar({ length: 50 }),
+    targetId: d.varchar({ length: 255 }),
+    metadata: d.json().$type<Record<string, unknown>>(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("activity_events_actor_idx").on(t.actorId),
+    index("activity_events_action_idx").on(t.action),
+    index("activity_events_created_idx").on(t.createdAt),
+  ],
+);
