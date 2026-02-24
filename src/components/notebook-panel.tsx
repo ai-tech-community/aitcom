@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import {
   MessageSquareIcon,
   ChevronDownIcon,
-  XIcon,
   BotIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -69,9 +68,7 @@ export function NotebookPanel() {
     if (expanded && hasAgent) {
       markRead.mutate();
     }
-    // Only trigger when expanded changes or when we first learn hasAgent
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expanded, hasAgent]);
+  }, [expanded, hasAgent, markRead.mutate]);
 
   // ── Hidden state ─────────────────────────────────────────────────────────
 
@@ -92,11 +89,11 @@ export function NotebookPanel() {
       >
         <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
         <span className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          Notebook
+          {t("title")}
         </span>
         {unreadCount > 0 && (
-          <span className="rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-            {unreadCount}
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+            {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
       </button>
@@ -107,11 +104,11 @@ export function NotebookPanel() {
 
   const messages = messagesData?.messages ?? [];
 
-  const handleSubmit = async ({ text }: { text: string }) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    await sendMessage.mutateAsync({ content: trimmed });
-  };
+  function handleSubmit({ text }: { text: string }) {
+    const content = text.trim();
+    if (!content) return;
+    sendMessage.mutate({ content });
+  }
 
   return (
     <div className="fixed bottom-4 right-4 z-40 flex h-[500px] w-[380px] flex-col rounded-lg border border-border bg-background shadow-lg max-sm:inset-x-4 max-sm:top-20 max-sm:h-auto max-sm:w-auto">
@@ -120,24 +117,14 @@ export function NotebookPanel() {
         <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
           / NOTEBOOK
         </span>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setExpanded(false)}
-            className="opacity-70 transition-opacity hover:opacity-100"
-            aria-label="Minimize"
-          >
-            <ChevronDownIcon className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setExpanded(false)}
-            className="opacity-70 transition-opacity hover:opacity-100"
-            aria-label="Close"
-          >
-            <XIcon className="h-4 w-4" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="rounded-sm p-1 opacity-70 transition-opacity hover:opacity-100"
+          aria-label="Minimize"
+        >
+          <ChevronDownIcon className="h-4 w-4" />
+        </button>
       </div>
 
       {/* Chat area */}
