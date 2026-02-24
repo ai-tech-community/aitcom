@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import Image from "next/image";
 import { BotIcon, ChevronDownIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
@@ -92,15 +93,18 @@ export function ChatWindow({
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-[450px] w-80 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg">
+    <div className="flex h-112.5 w-80 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg">
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
         {/* Avatar */}
         <div className="relative shrink-0">
           {image ? (
-            <img
+            <Image
               src={image}
               alt={displayName}
+              width={32}
+              height={32}
+              unoptimized
               className="h-8 w-8 rounded-full object-cover"
             />
           ) : (

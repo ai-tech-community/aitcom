@@ -17,28 +17,6 @@ import {
   user,
 } from "@/server/db/schema";
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function findAgentConversation(db: any, ownerId: string) {
-  const [row] = await db
-    .select({ id: conversations.id })
-    .from(conversations)
-    .innerJoin(
-      conversationParticipants,
-      eq(conversationParticipants.conversationId, conversations.id),
-    )
-    .where(
-      and(
-        eq(conversations.type, "agent"),
-        eq(conversationParticipants.userId, ownerId),
-      ),
-    )
-    .limit(1);
-
-  return (row as { id: string } | undefined) ?? null;
-}
-
 // ── Router ───────────────────────────────────────────────────────────────────
 
 export const inboxRouter = createTRPCRouter({
@@ -284,7 +262,7 @@ export const inboxRouter = createTRPCRouter({
             eq(conversationParticipants.userId, userId),
           ),
         )
-        .then(() => {}, (err) => { console.error("[inbox] update failed:", err); });
+        .catch((err: unknown) => { console.error("[inbox] update failed:", err); });
 
       return { messages: items, nextCursor, hasMore };
     }),
@@ -350,7 +328,7 @@ export const inboxRouter = createTRPCRouter({
             eq(conversationParticipants.userId, userId),
           ),
         )
-        .then(() => {}, (err) => { console.error("[inbox] update failed:", err); });
+        .catch((err: unknown) => { console.error("[inbox] update failed:", err); });
 
       return message!;
     }),
@@ -487,8 +465,22 @@ export const inboxRouter = createTRPCRouter({
   agentCheckInbox: agentProcedure.query(async ({ ctx }) => {
     requireScope(ctx.agent.scopes, "read");
 
-    const conv = await findAgentConversation(ctx.db, ctx.agent.ownerId);
-    if (!conv) {
+    const [agentConv] = await ctx.db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .innerJoin(
+        conversationParticipants,
+        eq(conversationParticipants.conversationId, conversations.id),
+      )
+      .where(
+        and(
+          eq(conversations.type, "agent"),
+          eq(conversationParticipants.userId, ctx.agent.ownerId),
+        ),
+      )
+      .limit(1);
+
+    if (!agentConv) {
       return { messages: [] };
     }
 
@@ -501,7 +493,7 @@ export const inboxRouter = createTRPCRouter({
       .from(messages)
       .where(
         and(
-          eq(messages.conversationId, conv.id),
+          eq(messages.conversationId, agentConv.id),
           eq(messages.senderType, "human"),
         ),
       )
@@ -528,29 +520,46 @@ export const inboxRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
 
-      const conv = await ctx.db.transaction(async (tx) => {
-        const existing = await findAgentConversation(tx, ctx.agent.ownerId);
-        if (existing) return existing;
+      // Find existing agent conversation
+      const [existingConv] = await ctx.db
+        .select({ id: conversations.id })
+        .from(conversations)
+        .innerJoin(
+          conversationParticipants,
+          eq(conversationParticipants.conversationId, conversations.id),
+        )
+        .where(
+          and(
+            eq(conversations.type, "agent"),
+            eq(conversationParticipants.userId, ctx.agent.ownerId),
+          ),
+        )
+        .limit(1);
 
-        const [newConv] = await tx
+      // Create agent conversation if it doesn't exist
+      let convId: string;
+      if (existingConv) {
+        convId = existingConv.id;
+      } else {
+        const [newConv] = await ctx.db
           .insert(conversations)
           .values({ type: "agent" })
           .returning();
 
-        await tx.insert(conversationParticipants).values({
+        await ctx.db.insert(conversationParticipants).values({
           conversationId: newConv!.id,
           userId: ctx.agent.ownerId,
           isPinned: true,
         });
 
-        return { id: newConv!.id };
-      });
+        convId = newConv!.id;
+      }
 
       // Insert message with senderType "agent", senderId = owner's userId
       const [message] = await ctx.db
         .insert(messages)
         .values({
-          conversationId: conv.id,
+          conversationId: convId,
           senderId: ctx.agent.ownerId,
           senderType: "agent",
           content: input.content,
@@ -562,7 +571,7 @@ export const inboxRouter = createTRPCRouter({
       await ctx.db
         .update(conversations)
         .set({ updatedAt: new Date() })
-        .where(eq(conversations.id, conv.id));
+        .where(eq(conversations.id, convId));
 
       return { messageId: message!.id };
     }),
@@ -581,12 +590,26 @@ export const inboxRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
 
-      const conv = await findAgentConversation(ctx.db, ctx.agent.ownerId);
-      if (!conv) {
+      const [agentConv] = await ctx.db
+        .select({ id: conversations.id })
+        .from(conversations)
+        .innerJoin(
+          conversationParticipants,
+          eq(conversationParticipants.conversationId, conversations.id),
+        )
+        .where(
+          and(
+            eq(conversations.type, "agent"),
+            eq(conversationParticipants.userId, ctx.agent.ownerId),
+          ),
+        )
+        .limit(1);
+
+      if (!agentConv) {
         return { messages: [], hasMore: false };
       }
 
-      const conditions = [eq(messages.conversationId, conv.id)];
+      const conditions = [eq(messages.conversationId, agentConv.id)];
 
       if (input.before) {
         conditions.push(lt(messages.createdAt, new Date(input.before)));

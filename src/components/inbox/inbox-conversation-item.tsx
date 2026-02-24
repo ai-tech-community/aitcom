@@ -1,6 +1,7 @@
 "use client";
 
 import { BotIcon } from "lucide-react";
+import Image from "next/image";
 import { useInbox } from "./inbox-provider";
 
 type ConversationItemProps = {
@@ -46,6 +47,10 @@ export function InboxConversationItem({
       : lastMessage
     : null;
 
+  const parsedLastMessageAt = lastMessageAt ? new Date(lastMessageAt) : null;
+  const isLastMessageAtValid =
+    parsedLastMessageAt && !Number.isNaN(parsedLastMessageAt.getTime());
+
   return (
     <button
       type="button"
@@ -55,11 +60,16 @@ export function InboxConversationItem({
       {/* Avatar */}
       <div className="relative shrink-0">
         {avatar ? (
-          <img
-            src={avatar}
-            alt={displayName}
-            className="h-10 w-10 rounded-full object-cover"
-          />
+          <div className="relative h-10 w-10 overflow-hidden rounded-full">
+            <Image
+              src={avatar}
+              alt={displayName}
+              fill
+              sizes="40px"
+              unoptimized
+              className="object-cover"
+            />
+          </div>
         ) : (
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-medium text-muted-foreground">
             {displayName.charAt(0).toUpperCase()}
@@ -78,9 +88,9 @@ export function InboxConversationItem({
           <span className={`truncate text-sm ${unreadCount > 0 ? "font-semibold text-foreground" : "font-medium text-foreground"}`}>
             {displayName}
           </span>
-          {lastMessageAt && (
+          {isLastMessageAtValid && parsedLastMessageAt && (
             <span className="ml-2 shrink-0 font-mono text-[10px] text-muted-foreground">
-              {timeAgo(new Date(lastMessageAt))}
+              {timeAgo(parsedLastMessageAt)}
             </span>
           )}
         </div>

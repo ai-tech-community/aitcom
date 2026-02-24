@@ -44,13 +44,13 @@ const matchJsxTag = (code: string) => {
     return null;
   }
 
-  const match = code.match(TAG_REGEX);
+  const match = TAG_REGEX.exec(code);
 
-  if (!match || match.index === undefined) {
+  if (match?.index === undefined) {
     return null;
   }
 
-  const [fullMatch, tagName, attributes, selfClosing] = match;
+  const [fullMatch, tagName, attributes = "", selfClosing] = match;
 
   let type: "self-closing" | "closing" | "opening";
   if (selfClosing) {
@@ -88,10 +88,12 @@ const completeJsxTag = (code: string) => {
     // Include any text content before this tag
     result += code.slice(currentPosition, currentPosition + endIndex);
 
-    if (type === "opening") {
+    if (type === "opening" && tagName) {
       stack.push(tagName);
-    } else if (type === "closing") {
-      stack.pop();
+    } else if (type === "closing" && tagName) {
+      if (stack.at(-1) === tagName) {
+        stack.pop();
+      }
     }
 
     currentPosition += endIndex;
@@ -99,9 +101,9 @@ const completeJsxTag = (code: string) => {
 
   return (
     result +
-    stack
-      .toReversed()
-      .map((tag) => `</${tag}>`)
+    [...stack]
+      .reverse()
+      .map((tag: string) => `</${tag}>`)
       .join("")
   );
 };
@@ -125,14 +127,12 @@ export const JSXPreview = memo(
     children,
     ...props
   }: JSXPreviewProps) => {
-    const [prevJsx, setPrevJsx] = useState(jsx);
     const [error, setError] = useState<Error | null>(null);
 
-    // Clear error when jsx changes (derived state pattern)
-    if (jsx !== prevJsx) {
-      setPrevJsx(jsx);
+    // Clear error when jsx changes
+    useEffect(() => {
       setError(null);
-    }
+    }, [jsx]);
 
     const processedJsx = useMemo(
       () => (isStreaming ? completeJsxTag(jsx) : jsx),

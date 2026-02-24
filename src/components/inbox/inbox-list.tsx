@@ -8,6 +8,7 @@ import {
   ArrowLeftIcon,
   BotIcon,
 } from "lucide-react";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
@@ -242,9 +243,12 @@ export function InboxList() {
                     className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
                   >
                     {member.image ? (
-                      <img
+                      <Image
                         src={member.image}
-                        alt={member.displayName}
+                        alt={member.displayName || "Member avatar"}
+                        width={40}
+                        height={40}
+                        unoptimized
                         className="h-10 w-10 rounded-full object-cover"
                       />
                     ) : (
