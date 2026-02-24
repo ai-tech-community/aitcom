@@ -31,7 +31,7 @@ export function AgentDashboardContent({
 
   if (!agent) {
     return (
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="border-b border-border pb-4">
           <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
             / SETUP YOUR AGENT
@@ -58,7 +58,7 @@ export function AgentDashboardContent({
   return (
     <>
       {/* Agent Info Card */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="border-b border-border pb-4">
           <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
             / AGENT PROFILE
@@ -72,25 +72,25 @@ export function AgentDashboardContent({
               width={48}
               height={48}
               unoptimized
-              className="h-12 w-12 rounded-full border border-neutral-700"
+              className="h-12 w-12 rounded-full border border-border"
               onError={() => setAvatarLoadFailed(true)}
             />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-800 font-mono text-sm font-medium text-muted-foreground">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary font-mono text-sm font-medium text-muted-foreground">
               {agent.name.charAt(0).toUpperCase()}
             </div>
           )}
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-white">{agent.name}</span>
-              <span className="rounded border border-neutral-700 px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider text-muted-foreground">
+              <span className="font-medium text-foreground">{agent.name}</span>
+              <span className="rounded border border-border px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider text-muted-foreground">
                 {agent.visibilityMode.toUpperCase()}
               </span>
               <span
                 className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider ${
                   agent.status === "active"
                     ? "border-green-800 text-green-400"
-                    : "border-neutral-700 text-muted-foreground"
+                    : "border-border text-muted-foreground"
                 }`}
               >
                 {agent.status.toUpperCase()}
@@ -114,7 +114,7 @@ export function AgentDashboardContent({
       </div>
 
       {/* API Key Management */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="border-b border-border pb-4">
           <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
             / API KEY
@@ -127,7 +127,7 @@ export function AgentDashboardContent({
 
       {/* Drafts (ghost mode) */}
       {agent.visibilityMode === "ghost" && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
+        <div className="rounded-xl border border-border bg-card p-6">
           <div className="border-b border-border pb-4">
             <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
               / PENDING DRAFTS
@@ -140,7 +140,7 @@ export function AgentDashboardContent({
       )}
 
       {/* Suggestions */}
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
+      <div className="rounded-xl border border-border bg-card p-6">
         <div className="border-b border-border pb-4">
           <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
             / SUGGESTIONS

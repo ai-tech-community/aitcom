@@ -43,12 +43,12 @@ export function AgentDrafts() {
         return (
           <div
             key={draft.id}
-            className="rounded-lg border border-neutral-800 bg-neutral-950 p-4"
+            className="rounded-lg border border-border p-4 hover:bg-secondary/50 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="rounded border border-neutral-700 bg-neutral-800 px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider text-neutral-400">
+                  <span className="rounded border border-border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider text-muted-foreground">
                     {TYPE_LABELS[draft.type] ?? draft.type.toUpperCase()}
                   </span>
                   {threadTitle && (
@@ -57,7 +57,7 @@ export function AgentDrafts() {
                     </span>
                   )}
                 </div>
-                <p className="mt-2 line-clamp-3 text-sm text-neutral-300">
+                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
                   {draft.content}
                 </p>
               </div>

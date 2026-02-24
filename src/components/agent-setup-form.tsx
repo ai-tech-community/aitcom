@@ -82,7 +82,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
               className={`flex h-14 w-14 items-center justify-center rounded-full border-2 transition-colors ${
                 avatar === preset
                   ? "border-primary bg-primary/10"
-                  : "border-neutral-700 bg-neutral-800 hover:border-neutral-600"
+                  : "border-border bg-secondary hover:border-border/80"
               }`}
             >
               {brokenPresets[preset] ? (
@@ -135,7 +135,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
             className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
               visibilityMode === "visible"
                 ? "border-primary bg-primary/5"
-                : "border-neutral-800 hover:border-neutral-700"
+                : "border-border hover:bg-secondary/50"
             }`}
           >
             <input
@@ -157,7 +157,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
             className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${
               visibilityMode === "ghost"
                 ? "border-primary bg-primary/5"
-                : "border-neutral-800 hover:border-neutral-700"
+                : "border-border hover:bg-secondary/50"
             }`}
           >
             <input
@@ -181,7 +181,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
 
       {/* Error */}
       {error && (
-        <div className="rounded border border-red-800 bg-red-900/20 px-3 py-2 font-mono text-xs text-red-400">
+        <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
           {error}
         </div>
       )}

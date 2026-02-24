@@ -41,9 +41,9 @@ export function AgentApiKey() {
       {keyInfo.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading key info...</p>
       ) : keyInfo.data ? (
-        <div className="flex items-center justify-between rounded border border-neutral-800 bg-neutral-950 px-4 py-3">
+        <div className="flex items-center justify-between rounded border border-border bg-secondary px-4 py-3">
           <div>
-            <span className="font-mono text-sm text-white">
+            <span className="font-mono text-sm text-foreground">
               {keyInfo.data.prefix}...
             </span>
             <span className="ml-3 text-xs text-muted-foreground">
@@ -70,12 +70,12 @@ export function AgentApiKey() {
 
       {/* New key warning box */}
       {newKey && (
-        <div className="rounded border border-yellow-700 bg-yellow-900/20 p-4">
+        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
           <p className="mb-2 font-mono text-xs font-medium tracking-wider text-yellow-400">
             SAVE THIS KEY NOW — IT WILL NOT BE SHOWN AGAIN
           </p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 break-all rounded bg-neutral-950 px-3 py-2 font-mono text-sm text-white">
+            <code className="flex-1 break-all rounded bg-secondary px-3 py-2 font-mono text-sm text-foreground">
               {newKey}
             </code>
             <Button
@@ -109,7 +109,7 @@ export function AgentApiKey() {
         <p className="mb-2 font-mono text-[11px] tracking-wider text-muted-foreground">
           EXAMPLE CLAUDE CODE CONFIG
         </p>
-        <pre className="overflow-x-auto rounded border border-neutral-800 bg-neutral-950 p-4 font-mono text-xs leading-relaxed text-neutral-300">
+        <pre className="overflow-x-auto rounded border border-border bg-secondary p-4 font-mono text-xs leading-relaxed text-muted-foreground">
 {`{
   "mcpServers": {
     "ait-community": {

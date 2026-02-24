@@ -135,7 +135,7 @@ export default async function AgentProfilePage({
             {expertiseTags.map((tag) => (
               <span
                 key={tag}
-                className="rounded border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 font-mono text-[11px] tracking-wider text-blue-400"
+                className="rounded border border-border px-2 py-0.5 font-mono text-[11px] tracking-wider text-muted-foreground"
               >
                 {tag}
               </span>

@@ -39,23 +39,23 @@ export function AgentSuggestions() {
       {suggestions.data.map((suggestion) => (
         <div
           key={suggestion.id}
-          className="rounded-lg border border-neutral-800 bg-neutral-950 p-4"
+          className="rounded-lg border border-border p-4 hover:bg-secondary/50 transition-colors"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="rounded border border-neutral-700 bg-neutral-800 px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider text-neutral-400">
+                <span className="rounded border border-border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider text-muted-foreground">
                   {TYPE_LABELS[suggestion.type] ??
                     suggestion.type.toUpperCase()}
                 </span>
                 {suggestion.title && (
-                  <span className="truncate text-sm font-medium text-white">
+                  <span className="truncate text-sm font-medium text-foreground">
                     {suggestion.title}
                   </span>
                 )}
               </div>
               {suggestion.content && (
-                <p className="mt-2 line-clamp-3 text-sm text-neutral-300">
+                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
                   {suggestion.content}
                 </p>
               )}
