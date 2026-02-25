@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   DecoratorNode,
-  type EditorConfig,
   type LexicalEditor,
   type LexicalNode,
   type NodeKey,
@@ -20,6 +19,11 @@ export type SerializedImageNode = SerializedLexicalNode & {
     alt: string;
     blockName: string;
   };
+};
+
+type LegacySerializedImageNode = SerializedImageNode & {
+  src?: string;
+  alt?: string;
 };
 
 function isValidImageUrl(url: string): boolean {
@@ -148,7 +152,7 @@ export class ImageNode extends DecoratorNode<React.JSX.Element> {
 
   static importJSON(json: SerializedImageNode): ImageNode {
     // Handle both new format (fields wrapper) and old format (top-level src/alt)
-    const raw = json as any;
+    const raw = json as LegacySerializedImageNode;
     return new ImageNode(
       json.fields?.src ?? raw.src ?? "",
       json.fields?.alt ?? raw.alt ?? "",

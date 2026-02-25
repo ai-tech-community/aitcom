@@ -96,6 +96,7 @@ export function DashboardProfile({
         <div className="mt-4 flex items-start gap-4">
           {/* Avatar */}
           {avatarUrl && !imgError ? (
+            // eslint-disable-next-line @next/next/no-img-element -- avatar URL is dynamic external source
             <img
               src={avatarUrl}
               alt={profile.displayName}

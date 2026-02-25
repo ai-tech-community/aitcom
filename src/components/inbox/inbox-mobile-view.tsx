@@ -115,6 +115,7 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
         {/* Avatar */}
         <div className="relative shrink-0">
           {chatInfo.image ? (
+            // eslint-disable-next-line @next/next/no-img-element -- avatar URL is dynamic external source
             <img
               src={chatInfo.image}
               alt={chatInfo.displayName}

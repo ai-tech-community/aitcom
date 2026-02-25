@@ -69,6 +69,7 @@ export default async function MembersPage({
                   {rank}
                 </span>
                 {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- avatar URLs are dynamic external sources
                   <img
                     src={avatarUrl}
                     alt={member.profile.displayName}
@@ -175,6 +176,7 @@ export default async function MembersPage({
                         className="flex items-start gap-2"
                       >
                         {avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- avatar URLs are dynamic external sources
                           <img
                             src={avatarUrl}
                             alt={member.profile.displayName}

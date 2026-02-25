@@ -8,7 +8,6 @@ import {
   FORMAT_TEXT_COMMAND,
   FORMAT_ELEMENT_COMMAND,
   type LexicalEditor,
-  type RangeSelection,
 } from "@payloadcms/richtext-lexical/lexical";
 import {
   $createHeadingNode,
@@ -119,7 +118,7 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
         return;
       }
 
-      const rs = selection as RangeSelection;
+      const rs = selection;
       setFormats({
         bold: rs.hasFormat("bold"),
         italic: rs.hasFormat("italic"),

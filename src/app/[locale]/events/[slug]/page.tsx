@@ -213,6 +213,7 @@ export default async function EventDetailPage({
                   className="border-border flex items-start gap-4 rounded border border-dashed px-4 py-4"
                 >
                   {photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- attendee/speaker photos are arbitrary external URLs
                     <img
                       src={photoUrl}
                       alt={speaker.name}
