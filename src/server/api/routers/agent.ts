@@ -621,20 +621,116 @@ export const agentRouter = createTRPCRouter({
           ),
         );
 
-      // Count owner's active challenge enrollments
-      const [challengeCount] = await ctx.db
-        .select({ count: sql<number>`count(*)::int` })
+      // Fetch owner's active challenge enrollments with progress
+      const activeEnrollments = await ctx.db
+        .select({
+          id: challengeEnrollments.id,
+          challengeId: challengeEnrollments.challengeId,
+          status: challengeEnrollments.status,
+        })
         .from(challengeEnrollments)
         .where(
           and(
             eq(challengeEnrollments.userId, ctx.agent.ownerId),
-            eq(challengeEnrollments.status, "active"),
+            sql`${challengeEnrollments.status} IN ('active', 'submitted')`,
           ),
         );
 
+      const activeChallenges = activeEnrollments.length;
+
+      // Get progress summary per enrollment
+      let challengeDetails: {
+        challengeId: number;
+        title: string;
+        status: string;
+        completedObjectives: number;
+        totalObjectives: number;
+      }[] = [];
+
+      if (activeEnrollments.length > 0) {
+        const payload = await getPayloadClient();
+        challengeDetails = await Promise.all(
+          activeEnrollments.map(async (enrollment) => {
+            const [progressSummary] = await ctx.db
+              .select({
+                completed: sql<number>`count(*) filter (where ${challengeProgress.completedAt} is not null)`,
+                total: sql<number>`count(*)`,
+              })
+              .from(challengeProgress)
+              .where(eq(challengeProgress.enrollmentId, enrollment.id));
+
+            let title = `Challenge #${enrollment.challengeId}`;
+            try {
+              const challenge = await payload.findByID({
+                collection: "challenges",
+                id: enrollment.challengeId,
+                depth: 0,
+              });
+              title = challenge.title;
+            } catch {
+              // Use fallback title
+            }
+
+            return {
+              challengeId: enrollment.challengeId,
+              title,
+              status: enrollment.status,
+              completedObjectives: progressSummary?.completed ?? 0,
+              totalObjectives: progressSummary?.total ?? 0,
+            };
+          }),
+        );
+      }
+
+      // Count pending peer reviews (submissions awaiting review by this user)
+      const [pendingReviewCount] = await ctx.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(challengeProgress)
+        .innerJoin(
+          challengeEnrollments,
+          eq(challengeProgress.enrollmentId, challengeEnrollments.id),
+        )
+        .where(
+          and(
+            eq(challengeProgress.verificationMode, "peer-review"),
+            sql`${challengeProgress.completedAt} IS NULL`,
+            sql`${challengeEnrollments.submittedAt} IS NOT NULL`,
+          ),
+        );
+
+      const pendingReviews = pendingReviewCount?.count ?? 0;
+
+      // Count new channel activity since last check
+      let newChannelActivity = 0;
+      if (activeEnrollments.length > 0) {
+        const enrollmentChallengeIds = activeEnrollments.map(
+          (e) => e.challengeId,
+        );
+        const [channelActivity] = await ctx.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(challengeReplies)
+          .innerJoin(
+            challengeThreads,
+            eq(challengeReplies.threadId, challengeThreads.id),
+          )
+          .innerJoin(
+            challengeChannels,
+            eq(challengeThreads.channelId, challengeChannels.id),
+          )
+          .where(
+            and(
+              sql`${challengeChannels.challengeId} IN (${sql.join(
+                enrollmentChallengeIds.map((id) => sql`${id}`),
+                sql`, `,
+              )})`,
+              sql`${challengeReplies.createdAt} > ${sinceDate}`,
+            ),
+          );
+        newChannelActivity = channelActivity?.count ?? 0;
+      }
+
       const notifications = eventCount?.count ?? 0;
       const pendingDrafts = draftCount?.count ?? 0;
-      const activeChallenges = challengeCount?.count ?? 0;
 
       // Build human-readable summary
       const parts: string[] = [];
@@ -642,6 +738,8 @@ export const agentRouter = createTRPCRouter({
       if (unreadInbox > 0) parts.push(`${unreadInbox} unread inbox message${unreadInbox !== 1 ? "s" : ""}`);
       if (pendingDrafts > 0) parts.push(`${pendingDrafts} draft${pendingDrafts !== 1 ? "s" : ""} awaiting owner approval`);
       if (activeChallenges > 0) parts.push(`${activeChallenges} active challenge${activeChallenges !== 1 ? "s" : ""}`);
+      if (pendingReviews > 0) parts.push(`${pendingReviews} submission${pendingReviews !== 1 ? "s" : ""} awaiting peer review`);
+      if (newChannelActivity > 0) parts.push(`${newChannelActivity} new channel message${newChannelActivity !== 1 ? "s" : ""}`);
 
       const summary = parts.length > 0
         ? parts.join(", ")
@@ -653,6 +751,9 @@ export const agentRouter = createTRPCRouter({
         unreadInbox,
         pendingDrafts,
         activeChallenges,
+        challengeDetails,
+        pendingReviews,
+        newChannelActivity,
         lastCheckedAt: now.toISOString(),
       };
     }),
