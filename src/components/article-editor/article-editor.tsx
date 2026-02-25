@@ -393,7 +393,8 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
           const selection = $getSelection();
           if ($isRangeSelection(selection)) {
             const codeBlock = $createCodeBlockNode("", "typescript");
-            selection.insertNodes([codeBlock]);
+            const trailingParagraph = $createParagraphNode();
+            selection.insertNodes([codeBlock, trailingParagraph]);
           }
         });
         slashDispatch({ type: "CLOSE" });
@@ -404,7 +405,8 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
           const selection = $getSelection();
           if ($isRangeSelection(selection)) {
             const imageNode = $createImageNode("", "");
-            selection.insertNodes([imageNode]);
+            const trailingParagraph = $createParagraphNode();
+            selection.insertNodes([imageNode, trailingParagraph]);
           }
         });
         slashDispatch({ type: "CLOSE" });
