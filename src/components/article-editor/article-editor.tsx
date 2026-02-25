@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef, useReducer } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 
 import {
   $createParagraphNode,
@@ -190,9 +190,7 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
 
         // Update URL so refresh loads the saved article instead of a blank editor
         if (!initialData?.id) {
-          const currentPath = window.location.pathname;
-          const editPath = currentPath.replace(/\/blog\/write$/, `/blog/edit/${slug}`);
-          window.history.replaceState(null, "", editPath);
+          router.replace(`/blog/edit/${slug}`, { scroll: false });
         }
 
         return createdId;
