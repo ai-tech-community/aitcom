@@ -42,9 +42,10 @@ import {
 } from "@payloadcms/richtext-lexical/lexical/react/LexicalHorizontalRuleNode";
 import { HorizontalRulePlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalHorizontalRulePlugin";
 
+import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import type { ArticleEditorProps, SaveState, SlashGroup, SlashCommand } from "./types";
 import { editorReducer, slashMenuReducer } from "./reducers";
-import { extractPlainText, hasCodeNode, getHeadingOutline, filterSlashCommands, generateSlug } from "./utils";
+import { extractPlainText, hasCodeNode, getHeadingOutline, filterSlashCommands, generateSlug, preprocessEditorState, postprocessEditorState } from "./utils";
 import { SlashCommandMenu } from "./slash-command-menu";
 import { PrePublishDialog } from "./pre-publish-dialog";
 
@@ -121,8 +122,8 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
       },
       link: "text-primary underline underline-offset-4 hover:opacity-80",
     },
-    nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, HorizontalRuleNode],
-    editorState: initialData?.content ? JSON.stringify(initialData.content) : undefined,
+    nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, HorizontalRuleNode, CodeBlockNode],
+    editorState: initialData?.content ? preprocessEditorState(initialData.content) : undefined,
     onError: (error: Error) => console.error("[ArticleEditor]", error),
   }), []);
 
@@ -328,7 +329,7 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
   const handleEditorChange = useCallback((edState: EditorState) => {
     if (serializeTimer.current) clearTimeout(serializeTimer.current);
     serializeTimer.current = setTimeout(() => {
-      dispatch({ type: "SET_EDITOR_STATE", payload: edState.toJSON() });
+      dispatch({ type: "SET_EDITOR_STATE", payload: postprocessEditorState(edState.toJSON()) });
     }, 150);
   }, []);
 
@@ -383,6 +384,17 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
       if (id === "check") editorRef.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
       if (id === "divider") {
         editorRef.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND, undefined);
+        slashDispatch({ type: "CLOSE" });
+        return;
+      }
+      if (id === "code") {
+        editorRef.update(() => {
+          const selection = $getSelection();
+          if ($isRangeSelection(selection)) {
+            const codeBlock = $createCodeBlockNode("", "typescript");
+            selection.insertNodes([codeBlock]);
+          }
+        });
         slashDispatch({ type: "CLOSE" });
         return;
       }
