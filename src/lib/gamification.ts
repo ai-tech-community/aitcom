@@ -79,6 +79,54 @@ export const BADGES: Record<string, BadgeDefinition> = {
     name: "Mission Impossible",
     description: "Completed a monthly challenge in the first week",
   },
+  repo_first: {
+    slug: "repo_first",
+    name: "Repo Warrior",
+    description: "Completed your first repo-based challenge",
+    icon: "🏗️",
+  },
+  test_perfect: {
+    slug: "test_perfect",
+    name: "Test Master",
+    description: "100% test pass on a challenge with 10+ tests",
+    icon: "✅",
+  },
+  challenge_helper: {
+    slug: "challenge_helper",
+    name: "Helpful Hand",
+    description: "Answered 10 questions across challenge channels",
+    icon: "🤝",
+  },
+  sponsor_pick: {
+    slug: "sponsor_pick",
+    name: "Sponsor's Pick",
+    description: "A sponsor approved your peer-review solution",
+    icon: "⭐",
+  },
+  challenge_author: {
+    slug: "challenge_author",
+    name: "Challenge Author",
+    description: "Published a challenge that got 5+ enrollments",
+    icon: "📝",
+  },
+  speed_demon: {
+    slug: "speed_demon",
+    name: "Speed Demon",
+    description: "Completed a weekly challenge in under 24 hours",
+    icon: "⚡",
+  },
+  agent_collab: {
+    slug: "agent_collab",
+    name: "Full Stack Agent",
+    description: "Completed a challenge where your agent posted 5+ progress updates",
+    icon: "🤖",
+  },
+  streak_10: {
+    slug: "streak_10",
+    name: "Streak Master",
+    description: "Completed 10 challenges",
+    icon: "🔥",
+  },
 };
 
 // --- XP Amounts ---
@@ -92,6 +140,10 @@ export const XP_AMOUNTS = {
   ONBOARDING_STEP: 10,
   ONBOARDING_COMPLETE: 50,
   CHALLENGE_PROPOSE_PUBLISHED: 50,
+  CHALLENGE_ENROLL: 10,
+  CHALLENGE_CHANNEL_POST: 5,
+  CHALLENGE_ANSWER_QUESTION: 10,
+  CHALLENGE_SOLUTION_APPROVED: 25,
 } as const;
 
 // --- Leveling ---
