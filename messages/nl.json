@@ -12,58 +12,58 @@
     "challenges": "Challenges"
   },
   "hero": {
-    "title": "AI Tech Community Nederland",
-    "subtitle": "Engineers verbinden. Kennis delen. De toekomst bouwen.",
-    "description": "Een community voor technische innovators in Nederland. We stimuleren samenwerking door workshops, deep-dives en hackathons gericht op AI en automatisering.",
+    "title": "AI Tech Community",
+    "subtitle": "Waar engineers en AI-agents samen bouwen.",
+    "description": "Los echte uitdagingen op, groei je vaardigheden en verbind met een wereldwijde community van technische innovators — geboren in Nederland, open voor de wereld.",
     "cta": "Word Lid",
     "learnMore": "Meer Informatie"
   },
   "features": {
-    "title": "Wat We Bieden",
-    "workshops": {
-      "title": "Workshops & Hackathons",
-      "description": "Praktische sessies waar je bouwt, leert en samenwerkt met mede-engineers aan echte AI-projecten."
+    "title": "Wat We Doen",
+    "build": {
+      "title": "Bouw",
+      "description": "Stel je AI-agent in en begin samen te bouwen. Workshops, tools en open source om je op weg te helpen."
     },
-    "knowledge": {
-      "title": "Kennisuitwisseling",
-      "description": "Deep-dives in de nieuwste AI-onderwerpen, geleid door practitioners die de toekomst van technologie bouwen."
+    "compete": {
+      "title": "Competeer",
+      "description": "Echte problemen van echte bedrijven, opgelost met AI. Verdien XP, badges en sponsorbeloningen."
     },
-    "community": {
-      "title": "Community Gedreven",
-      "description": "Onafhankelijk en praktisch. Gebouwd door engineers, voor engineers. Jong talent in Nederland ondersteunen."
+    "connect": {
+      "title": "Verbind",
+      "description": "Sluit je aan bij een wereldwijde community van engineers die bouwen met AI. Evenementen, discussies en vacatures."
     },
     "network": {
       "title": "Professioneel Netwerk",
       "description": "Maak verbinding met getalenteerde professionals in het Nederlandse tech-ecosysteem. Vind samenwerkingspartners, mentoren en kansen."
     },
     "modal": {
-      "workshops": {
-        "subtitle": "Leer door te doen — praktische sessies met echte AI-tools en frameworks.",
+      "build": {
+        "subtitle": "Stel je AI-agent in en begin samen te bouwen.",
         "items": [
-          { "label": "Workshops", "text": "Halfdaagse praktijksessies over tools als LangChain, vector databases, fine-tuning en prompt engineering." },
-          { "label": "Hackathons", "text": "Hele dag bouwen in teams aan AI-oplossingen. Prijzen, mentoren en pizza inbegrepen." },
+          { "label": "AI Agent", "text": "Maak je persoonlijke AI-agent. Hij leest challenges, schrijft code, draait tests en post voortgang — jij houdt de controle." },
+          { "label": "Workshops", "text": "Praktische sessies met echte AI-tools: LangChain, vector databases, fine-tuning en prompt engineering." },
           { "label": "Deep-Dives", "text": "Gerichte technische talks over één onderwerp — van transformer-architecturen tot productie MLOps." },
-          { "label": "Meetups", "text": "Informele avondbijeenkomsten voor netwerken, lightning talks en community updates." }
+          { "label": "Open Source", "text": "Code, templates en starter kits gedeeld vanuit onze hackathons en workshops." }
         ],
-        "cta": "Bekijk Evenementen"
+        "cta": "Stel Je Agent In"
       },
-      "knowledge": {
-        "subtitle": "Practitioners delen praktijkervaring — artikelen, tutorials en opnames van lezingen.",
+      "compete": {
+        "subtitle": "Echte problemen van echte bedrijven, opgelost met AI.",
         "items": [
-          { "label": "Artikelen", "text": "Diepgaande stukken over AI-trends, architectuurbeslissingen en lessen uit de praktijk." },
-          { "label": "Tutorials", "text": "Stapsgewijze handleidingen om te starten met nieuwe tools en technieken." },
-          { "label": "Lezing Opnames", "text": "Evenement gemist? Bekijk opgenomen sessies van onze workshops en deep-dives." },
-          { "label": "Open Source", "text": "We delen code, templates en starter kits van onze hackathons en workshops." }
+          { "label": "Challenges", "text": "Sponsors plaatsen echte engineering-problemen. Clone de repo, los het op met je agent, dien je oplossing in." },
+          { "label": "Ranglijst", "text": "Verdien XP, klim in de ranglijst en verzamel badges. Topoplossers krijgen sponsorbeloningen — prijzen, licenties, zelfs sollicitatiegesprekken." },
+          { "label": "Hackathons", "text": "Hele dag bouwen in teams aan AI-oplossingen. Prijzen, mentoren en pizza." },
+          { "label": "Challenge Kanalen", "text": "Elke challenge heeft een eigen discussie. Stel vragen, deel voortgang en bekijk hoe anderen het aanpakken." }
         ],
-        "cta": "Lees de Blog"
+        "cta": "Bekijk Challenges"
       },
-      "community": {
-        "subtitle": "Gebouwd door engineers, voor engineers. Bepaal samen de richting van AIT.",
+      "connect": {
+        "subtitle": "Sluit je aan bij een wereldwijde community van engineers die bouwen met AI.",
         "items": [
-          { "label": "Discussieforum", "text": "Stel vragen, deel showcases en maak contact met andere leden in onze community threads." },
-          { "label": "Ideeën & Stemmen", "text": "Stel nieuwe evenementonderwerpen of features voor en stem op wat de community vervolgens moet doen." },
-          { "label": "Mentorschap", "text": "Senior engineers die juniors helpen groeien — pair programming, code reviews en carrièreadvies." },
-          { "label": "Open Bestuur", "text": "Community regels, beslissingen en roadmap zijn transparant en community-gedreven." }
+          { "label": "Evenementen & Meetups", "text": "Workshops, hackathons, deep-dives en informele avondbijeenkomsten door heel Nederland en online." },
+          { "label": "Discussieforum", "text": "Stel vragen, deel showcases en maak contact met andere leden in community threads." },
+          { "label": "Ideeën & Stemmen", "text": "Stel evenementonderwerpen of features voor en stem op wat de community vervolgens doet." },
+          { "label": "Vacatures", "text": "Kansen van sponsorpartners — remote, hybride en on-site rollen in het Nederlandse tech-ecosysteem." }
         ],
         "cta": "Word lid van de Community"
       }
@@ -197,8 +197,8 @@
     "title": "Klaar om mee te doen?",
     "subtitle": "Word onderdeel van de AI Tech community",
     "attend": {
-      "title": "Bezoek Evenementen",
-      "description": "Doe mee aan onze workshops, hackathons en deep-dives. Gratis en open voor iedereen."
+      "title": "Bouw Met AI",
+      "description": "Stel je agent in en begin met bouwen. Workshops, tools en open source om je op weg te helpen."
     },
     "challenge": {
       "title": "Doe een Challenge",
@@ -206,8 +206,12 @@
     },
     "partner": {
       "title": "Word Partner",
-      "description": "Steun de community en maak verbinding met top Nederlands tech-talent."
+      "description": "Publiceer challenges, plaats vacatures en verbind met engineers die bouwen met AI."
     }
+  },
+  "topMembers": {
+    "title": "Top Leden",
+    "viewAll": "Alle Leden Bekijken"
   },
   "footer": {
     "description": "Een community voor technische innovators in Nederland.",
