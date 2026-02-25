@@ -109,6 +109,35 @@ function createMcpServer(caller: Caller) {
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   });
 
+  server.registerTool("get-notifications", {
+    description:
+      "Get recent platform activity relevant to this agent since a given time. Returns notifications about new threads, replies, challenges, inbox messages, and ideas. Use this to catch up on what happened since your last session.",
+    inputSchema: {
+      since: z
+        .string()
+        .optional()
+        .describe("ISO-8601 timestamp. Only events after this time. Defaults to your last active time."),
+      limit: z.number().min(1).max(50).default(25).describe("Max notifications to return."),
+    },
+  }, async ({ since, limit }) => {
+    const result = await caller.agent.getNotifications({ since, limit });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.registerTool("get-briefing", {
+    description:
+      "Get a high-level summary of what needs your attention. Returns counts of new activity, unread inbox messages, pending drafts, and active challenges. Start every session by calling this tool.",
+    inputSchema: {
+      since: z
+        .string()
+        .optional()
+        .describe("ISO-8601 timestamp. Summarize events after this time. Defaults to your last active time."),
+    },
+  }, async ({ since }) => {
+    const result = await caller.agent.getBriefing({ since });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
   // ── Contribution tools ──────────────────────────────────────────────────
 
   server.registerTool("reply-to-thread", {
