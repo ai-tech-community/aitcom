@@ -1,13 +1,13 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { ArrowUpRight, GitFork, Bot, Trophy } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { AsciiLandscape } from "@/components/ascii-landscape";
 import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
-import { user } from "@/server/db/schema";
-import { count } from "drizzle-orm";
+import { user, memberProfiles } from "@/server/db/schema";
+import { count, desc, sql } from "drizzle-orm";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
@@ -114,6 +114,18 @@ export default async function Home() {
     limit: 0,
   }).then((r) => r.totalDocs);
 
+  const topMembers = await db
+    .select({
+      userId: memberProfiles.userId,
+      displayName: memberProfiles.displayName,
+      xp: memberProfiles.xp,
+      level: memberProfiles.level,
+    })
+    .from(memberProfiles)
+    .where(sql`${memberProfiles.isPublic} = true`)
+    .orderBy(desc(memberProfiles.xp))
+    .limit(6);
+
   return (
     <>
       <JsonLd
@@ -133,11 +145,7 @@ export default async function Home() {
           <GridMarkers />
           <div className="mt-4 space-y-0 sm:mt-8">
             <HeroTitle
-              greeting={
-                t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech"
-                  ? "Welcome to"
-                  : t("hero.title").split(" ")[0]!
-              }
+              greeting="Welcome to"
               title={t("hero.title")}
             />
           </div>
@@ -163,70 +171,6 @@ export default async function Home() {
       <section className="px-6 py-12 sm:px-12">
         <SectionLabel>/ {t("features.title").toUpperCase()}</SectionLabel>
         <FeatureModals />
-      </section>
-
-      {/* AI Challenges */}
-      <section className="px-6 py-12 sm:px-12">
-        <SectionLabel>/ {t("challengesLanding.title").toUpperCase()}</SectionLabel>
-
-        <div className="mt-8 max-w-3xl">
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            {t("challengesLanding.headline")}
-          </h2>
-          <p className="text-muted-foreground mt-4 text-base leading-relaxed sm:text-lg">
-            {t("challengesLanding.description")}
-          </p>
-        </div>
-
-        {/* 3-Step Flow */}
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
-          {[
-            { icon: GitFork, step: "01", key: "clone" as const },
-            { icon: Bot, step: "02", key: "solve" as const },
-            { icon: Trophy, step: "03", key: "ship" as const },
-          ].map(({ icon: Icon, step, key }) => (
-            <div
-              key={step}
-              className="border-border group relative overflow-hidden rounded-lg border p-6"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
-                  {step}
-                </span>
-                <Icon className="text-muted-foreground h-4 w-4" />
-              </div>
-              <h3 className="mt-3 text-lg font-bold">
-                {t(`challengesLanding.steps.${key}`)}
-              </h3>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                {t(`challengesLanding.steps.${key}Desc`)}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* Value Props */}
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
-          {(["humanAi", "realProblems", "community"] as const).map((key) => (
-            <div key={key} className="space-y-2">
-              <h3 className="font-mono text-xs font-semibold tracking-wider">
-                {t(`challengesLanding.valueProps.${key}`)}
-              </h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                {t(`challengesLanding.valueProps.${key}Desc`)}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8">
-          <Link
-            href="/challenges"
-            className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
-          >
-            {t("challengesLanding.cta")} →
-          </Link>
-        </div>
       </section>
 
       {/* Events Feed */}
@@ -329,6 +273,43 @@ export default async function Home() {
         )}
       </section>
 
+      {/* Top Members */}
+      {topMembers.length > 0 && (
+        <section className="px-6 py-12 sm:px-12">
+          <SectionLabel>/ {t("topMembers.title").toUpperCase()}</SectionLabel>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-6">
+            {topMembers.map((member) => (
+              <Link
+                key={member.userId}
+                href={`/members/${member.userId}`}
+                className="group flex flex-col items-center gap-2 rounded-lg p-3 transition-colors hover:bg-secondary/50"
+              >
+                <div className="bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full font-mono text-sm font-bold">
+                  {member.displayName.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm font-medium">{member.displayName}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+                    LVL {member.level}
+                  </span>
+                  <span className="text-primary font-mono text-[10px] font-bold tracking-wider">
+                    {member.xp} XP
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+          <div className="mt-4 text-right">
+            <Link
+              href="/members"
+              className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
+            >
+              {t("topMembers.viewAll")} →
+            </Link>
+          </div>
+        </section>
+      )}
+
       {/* Sponsors Strip */}
       {featuredSponsors.length > 0 && (
         <section className="px-6 py-12 sm:px-12">
@@ -370,7 +351,7 @@ export default async function Home() {
             {
               title: t("join.attend.title"),
               desc: t("join.attend.description"),
-              href: "/events" as const,
+              href: "/dashboard/agent" as const,
             },
             {
               title: t("join.challenge.title"),
