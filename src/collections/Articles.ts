@@ -20,7 +20,7 @@ export const Articles: CollectionConfig = {
   slug: "articles",
   admin: {
     useAsTitle: "title",
-    defaultColumns: ["title", "type", "status", "publishedAt"],
+    defaultColumns: ["title", "type", "status", "authorType", "reviewStatus", "publishedAt"],
   },
   versions: { drafts: true },
   fields: [
@@ -54,6 +54,30 @@ export const Articles: CollectionConfig = {
       fields: [{ name: "tag", type: "text", required: true }],
     },
     { name: "mediaUrl", type: "text" },
+    { name: "authorId", type: "text", admin: { position: "sidebar" } },
+    { name: "authorName", type: "text", admin: { position: "sidebar" } },
+    {
+      name: "authorType",
+      type: "select",
+      defaultValue: "admin",
+      options: [
+        { label: "Admin", value: "admin" },
+        { label: "Member", value: "member" },
+      ],
+      admin: { position: "sidebar" },
+    },
+    {
+      name: "reviewStatus",
+      type: "select",
+      options: [
+        { label: "Pending Review", value: "pending_review" },
+        { label: "Approved", value: "approved" },
+        { label: "Rejected", value: "rejected" },
+        { label: "Changes Requested", value: "changes_requested" },
+      ],
+      admin: { position: "sidebar" },
+    },
+    { name: "reviewNote", type: "textarea", admin: { position: "sidebar" } },
     {
       name: "status",
       type: "select",
