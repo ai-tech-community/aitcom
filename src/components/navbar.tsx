@@ -20,6 +20,7 @@ const navLinks = [
   { href: "/members", key: "members", shortcut: "M" },
   { href: "/blog", key: "blog", shortcut: "B" },
   { href: "/community", key: "community", shortcut: "C" },
+  { href: "/challenges", key: "challenges", shortcut: "G" },
   { href: "/sponsors", key: "sponsors", shortcut: "S" },
   { href: "/jobs", key: "jobs", shortcut: "W" },
 ] as const;
@@ -56,10 +57,7 @@ export function Navbar() {
       }
 
       // Additional shortcuts
-      if (key === "G") {
-        e.preventDefault();
-        window.open("https://github.com", "_blank", "noopener,noreferrer");
-      } else if (key === "D" && session?.user) {
+      if (key === "D" && session?.user) {
         e.preventDefault();
         router.push("/dashboard");
       } else if (key === "J" && !session?.user) {
@@ -101,14 +99,6 @@ export function Navbar() {
                 [{link.shortcut}] {t(link.key).toUpperCase()}
               </Link>
             ))}
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground font-mono text-xs transition-colors"
-            >
-              [G] GITHUB
-            </a>
           </nav>
         </div>
 
@@ -151,10 +141,11 @@ export function Navbar() {
         <div className="flex items-center gap-2 md:hidden">
           <LanguageSwitcher />
           <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <button className="text-muted-foreground hover:text-foreground rounded p-1.5">
-                <Menu className="h-5 w-5" />
-              </button>
+            <SheetTrigger
+              className="text-muted-foreground hover:text-foreground rounded p-1.5"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="h-5 w-5" />
             </SheetTrigger>
             <SheetContent side="right" className="w-72">
               <SheetTitle className="sr-only">Navigation</SheetTitle>

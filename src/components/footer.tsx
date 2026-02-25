@@ -62,7 +62,7 @@ export function Footer() {
               </h4>
               <nav className="flex flex-col gap-2">
                 <a
-                  href="https://github.com"
+                  href="https://github.com/ai-tech-community"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-primary text-sm transition-colors"

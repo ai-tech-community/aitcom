@@ -111,8 +111,7 @@ export function SponsorChallengeForm({
   // Objectives
   const [objectives, setObjectives] = useState<Objective[]>([emptyObjective()]);
 
-  // Rewards
-  const [xpReward, setXpReward] = useState(0);
+  // Rewards (XP is auto-calculated by the platform based on difficulty + objectives)
   const [badgeReward, setBadgeReward] = useState("");
   const [sponsorReward, setSponsorReward] = useState("");
 
@@ -201,7 +200,6 @@ export function SponsorChallengeForm({
             ? { testPattern: obj.testPattern }
             : {}),
         })),
-        xpReward,
         ...(badgeReward ? { badgeReward } : {}),
         ...(sponsorReward ? { sponsorReward } : {}),
         maxParticipants,
@@ -223,7 +221,6 @@ export function SponsorChallengeForm({
       repoConfigFile,
       repoColabUrl,
       objectives,
-      xpReward,
       badgeReward,
       sponsorReward,
       maxParticipants,
@@ -582,28 +579,19 @@ export function SponsorChallengeForm({
             / REWARDS
           </span>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="font-mono text-xs tracking-wider text-muted-foreground">
-                XP Reward
-              </label>
-              <Input
-                type="number"
-                min={0}
-                value={xpReward}
-                onChange={(e) => setXpReward(parseInt(e.target.value) || 0)}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="font-mono text-xs tracking-wider text-muted-foreground">
-                Badge Reward
-              </label>
-              <Input
-                value={badgeReward}
-                onChange={(e) => setBadgeReward(e.target.value)}
-                placeholder="badge slug"
-              />
-            </div>
+          <p className="text-xs text-muted-foreground">
+            XP is auto-calculated based on difficulty and objective verification modes.
+          </p>
+
+          <div className="space-y-2">
+            <label className="font-mono text-xs tracking-wider text-muted-foreground">
+              Badge Reward
+            </label>
+            <Input
+              value={badgeReward}
+              onChange={(e) => setBadgeReward(e.target.value)}
+              placeholder="badge slug"
+            />
           </div>
 
           <div className="space-y-2">

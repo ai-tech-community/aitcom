@@ -193,8 +193,37 @@ export async function checkEnrollmentCompletion(
     | { xpReward?: number; badgeReward?: string }
     | undefined;
 
+  let xpAwarded = 0;
+
   if (rewards?.xpReward && typeof rewards.xpReward === "number") {
-    await awardXp(db, userId, rewards.xpReward);
+    xpAwarded = rewards.xpReward;
+
+    // Monthly XP cap for community-proposed challenges (sponsor challenges uncapped)
+    if (challenge.publishedBy === "member") {
+      const COMMUNITY_MONTHLY_XP_CAP = 500;
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+
+      const [earned] = await db
+        .select({ total: sql<number>`coalesce(sum((metadata->>'xp')::int), 0)` })
+        .from(activityEvents)
+        .where(
+          and(
+            eq(activityEvents.actorId, userId),
+            eq(activityEvents.action, "challenge.completed"),
+            sql`${activityEvents.createdAt} >= ${monthStart.toISOString()}`,
+          ),
+        );
+
+      const alreadyEarned = earned?.total ?? 0;
+      const remaining = Math.max(0, COMMUNITY_MONTHLY_XP_CAP - alreadyEarned);
+      xpAwarded = Math.min(xpAwarded, remaining);
+    }
+
+    if (xpAwarded > 0) {
+      await awardXp(db, userId, xpAwarded);
+    }
   }
 
   if (rewards?.badgeReward && typeof rewards.badgeReward === "string") {
@@ -209,7 +238,8 @@ export async function checkEnrollmentCompletion(
     targetId: String(challengeId),
     metadata: {
       title: challenge.title,
-      xpReward: rewards?.xpReward,
+      xp: xpAwarded,
+      publishedBy: challenge.publishedBy,
     },
   });
 }

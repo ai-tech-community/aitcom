@@ -221,7 +221,7 @@ export default async function Home() {
 
         <div className="mt-8">
           <Link
-            href="/dashboard/challenges"
+            href="/challenges"
             className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
           >
             {t("challengesLanding.cta")} →
@@ -375,7 +375,7 @@ export default async function Home() {
             {
               title: t("join.challenge.title"),
               desc: t("join.challenge.description"),
-              href: "/dashboard/challenges" as const,
+              href: "/challenges" as const,
             },
             {
               title: t("join.partner.title"),

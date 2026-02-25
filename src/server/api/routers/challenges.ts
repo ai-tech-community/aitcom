@@ -23,6 +23,42 @@ import {
   memberProfiles,
   user,
 } from "@/server/db/schema";
+// ── XP auto-calculation ───────────────────────────────────────────────────
+// Creators never set XP directly. The platform calculates it from difficulty
+// and objective verification modes to prevent gaming.
+
+const DIFFICULTY_BASE_XP: Record<string, number> = {
+  beginner: 50,
+  intermediate: 100,
+  advanced: 200,
+  expert: 500,
+};
+
+const VERIFICATION_WEIGHT: Record<string, number> = {
+  test: 1.5,
+  "peer-review": 1.3,
+  "platform-action": 1.0,
+  "self-report": 0.8,
+};
+
+/** Monthly XP cap for community-proposed challenges (sponsor challenges uncapped) */
+const COMMUNITY_MONTHLY_XP_CAP = 500;
+
+function calculateXpReward(
+  difficulty: string,
+  objectives: { verification?: string }[],
+): number {
+  const base = DIFFICULTY_BASE_XP[difficulty] ?? 50;
+  const avgWeight =
+    objectives.length > 0
+      ? objectives.reduce(
+          (sum, o) => sum + (VERIFICATION_WEIGHT[o.verification ?? "self-report"] ?? 1),
+          0,
+        ) / objectives.length
+      : 1;
+  return Math.round(base * avgWeight);
+}
+
 export const challengesRouter = createTRPCRouter({
   // ── List active + upcoming challenges ─────────────────────────────────────
 
@@ -640,7 +676,11 @@ export const challengesRouter = createTRPCRouter({
               targetCount: 1,
             },
           ],
-          rewards: { xpReward: 0 },
+          rewards: {
+            xpReward: calculateXpReward("beginner", [
+              { verification: "platform-action" },
+            ]),
+          },
           maxParticipants: 0,
           proposedBy: userId,
         },
@@ -692,7 +732,6 @@ export const challengesRouter = createTRPCRouter({
           )
           .min(1)
           .max(10),
-        xpReward: z.number().min(0).default(0),
         badgeReward: z.string().optional(),
         sponsorReward: z.string().optional(),
         maxParticipants: z.number().default(0),
@@ -755,7 +794,7 @@ export const challengesRouter = createTRPCRouter({
             filter: obj.filter,
           })),
           rewards: {
-            xpReward: input.xpReward,
+            xpReward: calculateXpReward(input.difficulty, input.objectives),
             badgeReward: input.badgeReward,
             sponsorReward: input.sponsorReward,
           },
