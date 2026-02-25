@@ -13,6 +13,7 @@ export const Image = ({
   mediaType,
   ...props
 }: ImageProps) => (
+  // eslint-disable-next-line @next/next/no-img-element -- generated image is encoded as data URL at runtime
   <img
     {...props}
     alt={props.alt}

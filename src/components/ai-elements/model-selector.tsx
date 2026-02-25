@@ -179,6 +179,7 @@ export const ModelSelectorLogo = ({
   className,
   ...props
 }: ModelSelectorLogoProps) => (
+  // eslint-disable-next-line @next/next/no-img-element -- provider logos are remote SVG URLs from dynamic provider keys
   <img
     {...props}
     alt={`${provider} logo`}

@@ -40,10 +40,10 @@ export function MyArticlesList() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const { data: articles, isLoading, refetch } = api.articles.myArticles.useQuery();
-  const deleteMutation = api.articles.delete.useMutation({
+const deleteMutation = api.articles.delete.useMutation({
     onSuccess: () => {
       toast.success(t("deleted"));
-      refetch();
+      void refetch();
     },
     onError: () => {
       toast.error(t("failedToDelete"));
@@ -150,7 +150,7 @@ export function MyArticlesList() {
                   statusColors[article.status] ?? "border-zinc-500/40 text-zinc-400"
                 }`}
               >
-                {(statusKeys[article.status] ? t(statusKeys[article.status] as any) : article.status).toUpperCase()}
+                {t(statusKeys[article.status] ?? article.status).toUpperCase()}
               </span>
 
               {/* Review status */}
@@ -161,7 +161,10 @@ export function MyArticlesList() {
                       reviewColors[article.reviewStatus] ?? ""
                     }`}
                   >
-                    {(reviewStatusKeys[article.reviewStatus] ? t(reviewStatusKeys[article.reviewStatus] as any) : article.reviewStatus).toUpperCase()}
+                    {(() => {
+                      const reviewKey = reviewStatusKeys[article.reviewStatus];
+                      return (reviewKey ? t(reviewKey) : article.reviewStatus).toUpperCase();
+                    })()}
                   </span>
                 ) : (
                   <span className="text-muted-foreground font-mono text-[10px]">-</span>
@@ -179,7 +182,7 @@ export function MyArticlesList() {
                 {canDelete(article.status, article.reviewStatus) && (
                   <button
                     type="button"
-                    onClick={() => handleDelete(article.id as number)}
+                    onClick={() => handleDelete(article.id)}
                     disabled={deletingId === article.id}
                     className="text-red-400 hover:text-red-300 font-mono text-[10px] tracking-wider transition-colors disabled:opacity-50"
                   >

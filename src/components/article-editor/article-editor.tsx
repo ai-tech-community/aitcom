@@ -108,7 +108,6 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
   const updateMutation = api.articles.update.useMutation();
   const submitMutation = api.articles.submit.useMutation();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally stable: initial config must not change after mount
   const initialConfig = useMemo(() => ({
     namespace: "ArticleEditor",
     theme: {
@@ -135,7 +134,7 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
     nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, HorizontalRuleNode, CodeBlockNode, ImageNode],
     editorState: initialData?.content ? preprocessEditorState(initialData.content) : undefined,
     onError: (error: Error) => console.error("[ArticleEditor]", error),
-  }), []);
+  }), [initialData?.content]);
 
   const showMessage = useCallback((text: string, msgType: "success" | "error") => {
     setMessage({ text, type: msgType });
@@ -216,7 +215,7 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
         dispatch({ type: "SAVE_END" });
       }
     },
-    [articleId, createMutation, editorState, mediaUrl, showMessage, t, tags, title, type, updateMutation],
+    [articleId, createMutation, editorState, initialData?.id, mediaUrl, showMessage, t, tags, title, type, updateMutation],
   );
 
   const saveDraftRef = useRef(saveDraftInternal);
@@ -334,7 +333,6 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- saving/submitting tracked via refs to avoid save loops
   }, [editorState, mediaUrl, tags, title, type]);
 
   const addTag = useCallback(() => {

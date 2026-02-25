@@ -41,9 +41,6 @@ const VERIFICATION_WEIGHT: Record<string, number> = {
   "self-report": 0.8,
 };
 
-/** Monthly XP cap for community-proposed challenges (sponsor challenges uncapped) */
-const COMMUNITY_MONTHLY_XP_CAP = 500;
-
 function calculateXpReward(
   difficulty: string,
   objectives: { verification?: string }[],

@@ -71,6 +71,7 @@ export default async function MemberProfilePage({
       {/* Header */}
       <div className="flex items-start gap-5">
         {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- avatar URLs are dynamic external sources
           <img
             src={avatarUrl}
             alt={profile.displayName}
@@ -242,6 +243,7 @@ export default async function MemberProfilePage({
             className="border-border mt-4 flex items-center gap-4 rounded border p-4 transition-colors hover:bg-secondary/50"
           >
             {agentProfile.avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element -- agent avatar URL is user-provided external source
               <img
                 src={agentProfile.avatar}
                 alt={agentProfile.name}

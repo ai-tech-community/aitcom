@@ -24,7 +24,16 @@ export function hasCodeNode(nodes: unknown): boolean {
     if (!node || typeof node !== "object") return false;
     const n = node as Record<string, unknown>;
     if (n.type === "code" || n.type === "code-block") return true;
-    if (n.type === "block" && (n as Record<string, any>).fields?.blockType === "Code") return true;
+    const fields = n.fields;
+    if (
+      n.type === "block" &&
+      fields &&
+      typeof fields === "object" &&
+      "blockType" in fields &&
+      (fields as { blockType?: unknown }).blockType === "Code"
+    ) {
+      return true;
+    }
     if (Array.isArray(n.children) && hasCodeNode(n.children)) return true;
     if (typeof n.text === "string" && n.text.includes("```")) return true;
     return false;
@@ -74,31 +83,67 @@ export function generateSlug(title: string): string {
 
 export function preprocessEditorState(content: SerializedEditorState | undefined): string | undefined {
   if (!content) return undefined;
-  const json = JSON.parse(JSON.stringify(content));
+  type MutableSerializedNode = {
+    type?: string;
+    fields?: {
+      blockType?: string;
+      id?: string;
+      src?: string;
+      alt?: string;
+      blockName?: string;
+    };
+    children?: MutableSerializedNode[];
+    src?: string;
+    alt?: string;
+  };
+  type MutableSerializedState = {
+    root?: {
+      children?: MutableSerializedNode[];
+    };
+  };
 
-  function walkNodes(nodes: any[]): void {
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
+  const json = JSON.parse(JSON.stringify(content)) as MutableSerializedState;
+
+  function walkNodes(nodes: MutableSerializedNode[]): void {
+    for (const node of nodes) {
       if (node.type === "block" && node.fields?.blockType === "Code") {
         node.type = "code-block"; // remap for our CodeBlockNode
       }
       if (node.type === "block" && node.fields?.blockType === "Image") {
         node.type = "image"; // remap for our ImageNode
       }
-      if (node.children) walkNodes(node.children);
+      if (Array.isArray(node.children)) walkNodes(node.children);
     }
   }
 
-  if (json.root?.children) walkNodes(json.root.children);
+  if (Array.isArray(json.root?.children)) walkNodes(json.root.children);
   return JSON.stringify(json);
 }
 
 export function postprocessEditorState(state: SerializedEditorState): SerializedEditorState {
-  const json = JSON.parse(JSON.stringify(state));
+  type MutableSerializedNode = {
+    type?: string;
+    fields?: {
+      blockType?: string;
+      id?: string;
+      src?: string;
+      alt?: string;
+      blockName?: string;
+    };
+    children?: MutableSerializedNode[];
+    src?: string;
+    alt?: string;
+  };
+  type MutableSerializedState = {
+    root?: {
+      children?: MutableSerializedNode[];
+    };
+  };
 
-  function walkNodes(nodes: any[]): void {
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
+  const json = JSON.parse(JSON.stringify(state)) as MutableSerializedState;
+
+  function walkNodes(nodes: MutableSerializedNode[]): void {
+    for (const node of nodes) {
       if (node.type === "code-block" && node.fields?.blockType) {
         node.type = "block";
       }
@@ -117,10 +162,10 @@ export function postprocessEditorState(state: SerializedEditorState): Serialized
           delete node.alt;
         }
       }
-      if (node.children) walkNodes(node.children);
+      if (Array.isArray(node.children)) walkNodes(node.children);
     }
   }
 
-  if (json.root?.children) walkNodes(json.root.children);
-  return json;
+  if (Array.isArray(json.root?.children)) walkNodes(json.root.children);
+  return json as SerializedEditorState;
 }

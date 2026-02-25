@@ -152,6 +152,7 @@ export const QueueItemImage = ({
   className,
   ...props
 }: QueueItemImageProps) => (
+  // eslint-disable-next-line @next/next/no-img-element -- queue thumbnails can be blob/data/external URLs
   <img
     alt=""
     className={cn("h-8 w-8 rounded border object-cover", className)}

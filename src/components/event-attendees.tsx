@@ -59,6 +59,7 @@ export function EventAttendees({ eventId, maxAttendees }: EventAttendeesProps) {
                 title={attendee.displayName}
               >
                 {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- avatar URLs are dynamic external sources
                   <img
                     src={avatarUrl}
                     alt={attendee.displayName}
