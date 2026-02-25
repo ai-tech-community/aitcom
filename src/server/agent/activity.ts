@@ -30,24 +30,30 @@ export async function logActivity(
     metadata: event.metadata,
   });
 
-  // Fire-and-forget: check challenge progress for member actions
+  // Fire-and-forget: check challenge progress for member platform actions
   if (event.actorType === "member") {
-    checkChallengeProgress(db, event.actorId, event.action, event.metadata).catch(
-      (err) => console.error("[challenges] progress check failed:", err),
+    checkPlatformActionProgress(
+      db,
+      event.actorId,
+      event.action,
+      event.metadata,
+    ).catch((err) =>
+      console.error("[challenges] progress check failed:", err),
     );
   }
 }
 
 /**
- * Check if a member's action advances any active challenge objectives.
+ * Check if a member's platform action advances any "platform-action" objectives.
+ * Other verification modes (test, self-report, peer-review) are handled by
+ * explicit MCP tool calls in the challenges/agent routers.
  */
-async function checkChallengeProgress(
+async function checkPlatformActionProgress(
   db: DB,
   userId: string,
   action: string,
   metadata?: Record<string, unknown>,
 ) {
-  // Find active enrollments for this user
   const enrollments = await db
     .select({
       enrollmentId: challengeEnrollments.id,
@@ -66,7 +72,6 @@ async function checkChallengeProgress(
   const payload = await getPayloadClient();
 
   for (const enrollment of enrollments) {
-    // Fetch challenge objectives
     const challenge = await payload.findByID({
       collection: "challenges",
       id: enrollment.challengeId,
@@ -76,7 +81,8 @@ async function checkChallengeProgress(
     const objectives =
       (challenge.objectives as
         | {
-            action: string;
+            verification?: string;
+            action?: string;
             targetCount: number;
             filter?: Record<string, unknown>;
           }[]
@@ -85,10 +91,11 @@ async function checkChallengeProgress(
     for (let i = 0; i < objectives.length; i++) {
       const objective = objectives[i]!;
 
-      // Check if this action matches the objective
+      // Only handle platform-action verification
+      if (objective.verification !== "platform-action") continue;
       if (objective.action !== action) continue;
 
-      // Check filter match (if present)
+      // Check filter match
       if (objective.filter && metadata) {
         const filterMatch = Object.entries(objective.filter).every(
           ([key, value]) => metadata[key] === value,
@@ -96,7 +103,7 @@ async function checkChallengeProgress(
         if (!filterMatch) continue;
       }
 
-      // Increment progress
+      // Increment progress (only for platform-action objectives)
       const [updated] = await db
         .update(challengeProgress)
         .set({
@@ -107,12 +114,12 @@ async function checkChallengeProgress(
           and(
             eq(challengeProgress.enrollmentId, enrollment.enrollmentId),
             eq(challengeProgress.objectiveIndex, i),
-            sql`${challengeProgress.completedAt} IS NULL`, // Don't increment already completed
+            eq(challengeProgress.verificationMode, "platform-action"),
+            sql`${challengeProgress.completedAt} IS NULL`,
           ),
         )
         .returning();
 
-      // Log objective completion for personal feed
       if (updated && updated.currentCount >= objective.targetCount) {
         await db.insert(activityEvents).values({
           actorId: userId,
@@ -130,45 +137,79 @@ async function checkChallengeProgress(
     }
 
     // Check if all objectives are now complete
-    const [incompleteCount] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(challengeProgress)
-      .where(
-        and(
-          eq(challengeProgress.enrollmentId, enrollment.enrollmentId),
-          sql`${challengeProgress.completedAt} IS NULL`,
-        ),
-      );
-
-    if ((incompleteCount?.count ?? 0) === 0) {
-      // All objectives complete — mark enrollment as completed
-      await db
-        .update(challengeEnrollments)
-        .set({ status: "completed", completedAt: new Date() })
-        .where(eq(challengeEnrollments.id, enrollment.enrollmentId));
-
-      // Award XP
-      if (challenge.xpReward && typeof challenge.xpReward === "number") {
-        await awardXp(db, userId, challenge.xpReward);
-      }
-
-      // Award badge
-      if (challenge.badgeReward && typeof challenge.badgeReward === "string") {
-        await awardBadge(db, userId, challenge.badgeReward);
-      }
-
-      // Log challenge completion for community feed
-      await db.insert(activityEvents).values({
-        actorId: userId,
-        actorType: "member",
-        action: "challenge.completed",
-        targetType: "challenges",
-        targetId: String(enrollment.challengeId),
-        metadata: {
-          title: challenge.title,
-          xpReward: challenge.xpReward,
-        },
-      });
-    }
+    await checkEnrollmentCompletion(
+      db,
+      enrollment.enrollmentId,
+      enrollment.challengeId,
+      userId,
+    );
   }
+}
+
+/**
+ * Shared function: check if all objectives for an enrollment are complete.
+ * Called by platform-action progress, test results, self-report, and peer-review flows.
+ */
+export async function checkEnrollmentCompletion(
+  db: DB,
+  enrollmentId: string,
+  challengeId: number,
+  userId: string,
+) {
+  const [incompleteCount] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(challengeProgress)
+    .where(
+      and(
+        eq(challengeProgress.enrollmentId, enrollmentId),
+        sql`${challengeProgress.completedAt} IS NULL`,
+      ),
+    );
+
+  if ((incompleteCount?.count ?? 0) !== 0) return;
+
+  // All objectives complete — mark enrollment
+  const [enrollment] = await db
+    .update(challengeEnrollments)
+    .set({ status: "completed", completedAt: new Date() })
+    .where(
+      and(
+        eq(challengeEnrollments.id, enrollmentId),
+        eq(challengeEnrollments.status, "active"),
+      ),
+    )
+    .returning();
+
+  if (!enrollment) return; // Already completed
+
+  const payload = await getPayloadClient();
+  const challenge = await payload.findByID({
+    collection: "challenges",
+    id: challengeId,
+    depth: 0,
+  });
+
+  const rewards = challenge.rewards as
+    | { xpReward?: number; badgeReward?: string }
+    | undefined;
+
+  if (rewards?.xpReward && typeof rewards.xpReward === "number") {
+    await awardXp(db, userId, rewards.xpReward);
+  }
+
+  if (rewards?.badgeReward && typeof rewards.badgeReward === "string") {
+    await awardBadge(db, userId, rewards.badgeReward);
+  }
+
+  await db.insert(activityEvents).values({
+    actorId: userId,
+    actorType: "member",
+    action: "challenge.completed",
+    targetType: "challenges",
+    targetId: String(challengeId),
+    metadata: {
+      title: challenge.title,
+      xpReward: rewards?.xpReward,
+    },
+  });
 }

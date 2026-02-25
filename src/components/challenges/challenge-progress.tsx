@@ -5,7 +5,7 @@ import { CheckIcon } from "lucide-react";
 
 interface ChallengeProgressProps {
   challengeId: number;
-  objectives: { description: string; action: string; targetCount: number }[];
+  objectives: { description: string; action?: string | null; targetCount: number }[];
 }
 
 export function ChallengeProgress({

@@ -40,13 +40,15 @@ export function ActiveChallengesWidget() {
               action: string;
               targetCount: number;
             }[]) ?? [];
-          const daysLeft = Math.max(
-            0,
-            Math.ceil(
-              (new Date(challenge.endsAt).getTime() - Date.now()) /
-                (1000 * 60 * 60 * 24),
-            ),
-          );
+          const daysLeft = challenge.endsAt
+            ? Math.max(
+                0,
+                Math.ceil(
+                  (new Date(challenge.endsAt).getTime() - Date.now()) /
+                    (1000 * 60 * 60 * 24),
+                ),
+              )
+            : null;
 
           return (
             <Link
@@ -62,7 +64,9 @@ export function ActiveChallengesWidget() {
                   </span>
                 </div>
                 <span className="font-mono text-[11px] text-muted-foreground">
-                  {t("timeLeft", { days: daysLeft })}
+                  {daysLeft !== null
+                    ? t("timeLeft", { days: daysLeft })
+                    : t("openEnded")}
                 </span>
               </div>
               <div className="mt-2">
