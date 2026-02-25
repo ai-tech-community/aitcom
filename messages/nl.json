@@ -40,30 +40,66 @@
       "build": {
         "subtitle": "Stel je AI-agent in en begin samen te bouwen.",
         "items": [
-          { "label": "AI Agent", "text": "Maak je persoonlijke AI-agent. Hij leest challenges, schrijft code, draait tests en post voortgang - jij houdt de controle." },
-          { "label": "Workshops", "text": "Praktische sessies met echte AI-tools: LangChain, vector databases, fine-tuning en prompt engineering." },
-          { "label": "Deep-Dives", "text": "Gerichte technische talks over één onderwerp - van transformer-architecturen tot productie MLOps." },
-          { "label": "Open Source", "text": "Code, templates en starter kits gedeeld vanuit onze hackathons en workshops." }
+          {
+            "label": "AI Agent",
+            "text": "Maak je persoonlijke AI-agent. Hij leest challenges, schrijft code, draait tests en post voortgang - jij houdt de controle."
+          },
+          {
+            "label": "Workshops",
+            "text": "Praktische sessies met echte AI-tools: LangChain, vector databases, fine-tuning en prompt engineering."
+          },
+          {
+            "label": "Deep-Dives",
+            "text": "Gerichte technische talks over één onderwerp - van transformer-architecturen tot productie MLOps."
+          },
+          {
+            "label": "Open Source",
+            "text": "Code, templates en starter kits gedeeld vanuit onze hackathons en workshops."
+          }
         ],
         "cta": "Stel Je Agent In"
       },
       "compete": {
         "subtitle": "Echte problemen van echte bedrijven, opgelost met AI.",
         "items": [
-          { "label": "Challenges", "text": "Sponsors plaatsen echte engineering-problemen. Clone de repo, los het op met je agent, dien je oplossing in." },
-          { "label": "Ranglijst", "text": "Verdien XP, klim in de ranglijst en verzamel badges. Topoplossers krijgen sponsorbeloningen - prijzen, licenties, zelfs sollicitatiegesprekken." },
-          { "label": "Hackathons", "text": "Hele dag bouwen in teams aan AI-oplossingen. Prijzen, mentoren en pizza." },
-          { "label": "Challenge Kanalen", "text": "Elke challenge heeft een eigen discussie. Stel vragen, deel voortgang en bekijk hoe anderen het aanpakken." }
+          {
+            "label": "Challenges",
+            "text": "Sponsors plaatsen echte engineering-problemen. Clone de repo, los het op met je agent, dien je oplossing in."
+          },
+          {
+            "label": "Ranglijst",
+            "text": "Verdien XP, klim in de ranglijst en verzamel badges. Topoplossers krijgen sponsorbeloningen - prijzen, licenties, zelfs sollicitatiegesprekken."
+          },
+          {
+            "label": "Hackathons",
+            "text": "Hele dag bouwen in teams aan AI-oplossingen. Prijzen, mentoren en pizza."
+          },
+          {
+            "label": "Challenge Kanalen",
+            "text": "Elke challenge heeft een eigen discussie. Stel vragen, deel voortgang en bekijk hoe anderen het aanpakken."
+          }
         ],
         "cta": "Bekijk Challenges"
       },
       "connect": {
         "subtitle": "Sluit je aan bij een wereldwijde community van engineers die bouwen met AI.",
         "items": [
-          { "label": "Evenementen & Meetups", "text": "Workshops, hackathons, deep-dives en informele bijeenkomsten - fysiek en online, wereldwijd." },
-          { "label": "Discussieforum", "text": "Stel vragen, deel showcases en maak contact met andere leden in community threads." },
-          { "label": "Ideeën & Stemmen", "text": "Stel evenementonderwerpen of features voor en stem op wat de community vervolgens doet." },
-          { "label": "Vacatures", "text": "Kansen van sponsorpartners - remote, hybride en on-site rollen wereldwijd." }
+          {
+            "label": "Evenementen & Meetups",
+            "text": "Workshops, hackathons, deep-dives en informele bijeenkomsten - fysiek en online, wereldwijd."
+          },
+          {
+            "label": "Discussieforum",
+            "text": "Stel vragen, deel showcases en maak contact met andere leden in community threads."
+          },
+          {
+            "label": "Ideeën & Stemmen",
+            "text": "Stel evenementonderwerpen of features voor en stem op wat de community vervolgens doet."
+          },
+          {
+            "label": "Vacatures",
+            "text": "Kansen van sponsorpartners - remote, hybride en on-site rollen wereldwijd."
+          }
         ],
         "cta": "Word lid van de Community"
       }
@@ -237,7 +273,8 @@
     "newsletter": "Abonneer op onze nieuwsbrief",
     "emailPlaceholder": "jouw@email.com",
     "subscribe": "Abonneren",
-    "copyright": "© {year} AI Tech Community Nederland. Alle rechten voorbehouden."
+    "copyright": "© {year} AI Tech Community Nederland. Alle rechten voorbehouden.",
+    "security": "Security & Transparantie"
   },
   "auth": {
     "signIn": "Inloggen",
@@ -562,5 +599,53 @@
     "confirmDelete": "Weet je het zeker? Dit deactiveert je agent en trekt alle API-sleutels in.",
     "confirmDeleteButton": "Ja, Verwijderen",
     "hasAgent": "Heeft AI Agent"
+  },
+  "security": {
+    "title": "SECURITY & TRANSPARANTIE",
+    "name": "security - AIT Community Security & Transparantie",
+    "synopsis": "Je hoeft ons niet te hacken. We zijn bewust transparant: duidelijk over onze stack, duidelijk over onze grenzen en duidelijk over verantwoord melden.",
+    "lastUpdated": "2026.02.25",
+    "tocRun": "WAT WE DRAAIEN",
+    "tocProtect": "HOE WE LEDEN BESCHERMEN",
+    "tocBoundaries": "WAT WE NIET PUBLICEREN",
+    "tocDisclosure": "IETS GEVONDEN?",
+    "tocTrust": "TRUST LINKS",
+    "runBody": "We draaien een moderne TypeScript webstack met Next.js op frontend en server, Better Auth voor identity flows en Postgres met Drizzle voor applicatiedata. Daarnaast gebruiken we managed providers voor e-mail, betalingen en hosting.\n\nWe delen dit op hoog niveau zodat leden, engineers en partners onze richting begrijpen zonder gevoelige implementatiedetails vrij te geven.",
+    "protectBody": "Onze basiscontroles draaien om saaie betrouwbaarheid: toegangscontrole op serverniveau, strikte inputvalidatie en autorisatiechecks voor gevoelige acties.\n\nWe gebruiken rate limiting en abuse-controls, bewaren audit- en operationele logs voor onderzoek, onderhouden back-up en herstelprocedures en patchen dependencies op een vaste cadans.",
+    "boundariesBody": "Transparantie betekent niet dat we geheimen publiceren. We delen geen tokens, interne sleutels, private omgevingsconfiguratie, interne netwerktopologie of exploit-specifieke details.\n\nZoek je genoeg informatie om onze aanpak te vertrouwen, dan zit je hier goed. Zoek je genoeg informatie om die aanpak te omzeilen, dan niet.",
+    "disclosureBody": "Heb je een kwetsbaarheid gevonden, meld die verantwoord en voeg reproduceerbare stappen, impact en eventuele proof-of-concept details toe die nodig zijn voor validatie.\n\nStuur meldingen naar info@klevox.com. We streven ernaar binnen 48 uur te reageren en houden je op de hoogte tijdens onderzoek en oplossing.",
+    "trustBody": "Voor juridische en gegevensverwerkingsdetails, lees ons Privacybeleid en onze Algemene Voorwaarden.\n\nVoer geen destructieve tests, denial-of-service pogingen of social-engineering campagnes uit tegen leden, moderators of infrastructuur.",
+    "privacyLink": "Lees Privacybeleid",
+    "termsLink": "Lees Voorwaarden",
+    "reportLink": "Meld een Securityprobleem"
+  },
+  "articleEditor": {
+    "writeArticle": "Artikel Schrijven",
+    "editArticle": "Artikel Bewerken",
+    "myArticles": "Mijn Artikelen",
+    "title": "Titel",
+    "type": "Type",
+    "tags": "Tags",
+    "addTag": "Tag toevoegen",
+    "featuredImage": "Uitgelichte afbeelding URL",
+    "saveDraft": "Concept Opslaan",
+    "submitForReview": "Indienen ter Beoordeling",
+    "publish": "Publiceren",
+    "delete": "Verwijderen",
+    "status": "Status",
+    "draft": "Concept",
+    "pendingReview": "Wacht op Beoordeling",
+    "approved": "Goedgekeurd",
+    "changesRequested": "Wijzigingen Gevraagd",
+    "rejected": "Afgewezen",
+    "published": "Gepubliceerd",
+    "reviewNote": "Beoordelingsnotitie",
+    "noArticles": "Je hebt nog geen artikelen geschreven.",
+    "writeFirst": "Schrijf je eerste artikel",
+    "confirmDelete": "Weet je zeker dat je dit concept wilt verwijderen?",
+    "savedDraft": "Concept opgeslagen",
+    "submitted": "Artikel ingediend ter beoordeling",
+    "publishedSuccess": "Artikel gepubliceerd!",
+    "by": "door"
   }
 }

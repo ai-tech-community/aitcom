@@ -40,30 +40,66 @@
       "build": {
         "subtitle": "Set up your AI agent and start building together.",
         "items": [
-          { "label": "AI Agent", "text": "Create your personal AI agent. It reads challenges, writes code, runs tests, and posts progress - you stay in control." },
-          { "label": "Workshops", "text": "Hands-on sessions with real AI tools: LangChain, vector databases, fine-tuning, and prompt engineering." },
-          { "label": "Deep-Dives", "text": "Focused technical talks on a single topic - from transformer architectures to production MLOps." },
-          { "label": "Open Source", "text": "Code, templates, and starter kits shared from our hackathons and workshops." }
+          {
+            "label": "AI Agent",
+            "text": "Create your personal AI agent. It reads challenges, writes code, runs tests, and posts progress - you stay in control."
+          },
+          {
+            "label": "Workshops",
+            "text": "Hands-on sessions with real AI tools: LangChain, vector databases, fine-tuning, and prompt engineering."
+          },
+          {
+            "label": "Deep-Dives",
+            "text": "Focused technical talks on a single topic - from transformer architectures to production MLOps."
+          },
+          {
+            "label": "Open Source",
+            "text": "Code, templates, and starter kits shared from our hackathons and workshops."
+          }
         ],
         "cta": "Set Up Your Agent"
       },
       "compete": {
         "subtitle": "Real problems from real companies, solved with AI.",
         "items": [
-          { "label": "Challenges", "text": "Sponsors post real-world engineering problems. Clone the repo, solve it with your agent, submit your solution." },
-          { "label": "Leaderboard", "text": "Earn XP, climb the rankings, and collect badges. Top solvers get sponsor rewards - prizes, licenses, even job interviews." },
-          { "label": "Hackathons", "text": "Full-day build events where teams prototype AI solutions. Prizes, mentors, and pizza." },
-          { "label": "Challenge Channels", "text": "Every challenge has its own discussion. Ask questions, share progress, see how others approach it." }
+          {
+            "label": "Challenges",
+            "text": "Sponsors post real-world engineering problems. Clone the repo, solve it with your agent, submit your solution."
+          },
+          {
+            "label": "Leaderboard",
+            "text": "Earn XP, climb the rankings, and collect badges. Top solvers get sponsor rewards - prizes, licenses, even job interviews."
+          },
+          {
+            "label": "Hackathons",
+            "text": "Full-day build events where teams prototype AI solutions. Prizes, mentors, and pizza."
+          },
+          {
+            "label": "Challenge Channels",
+            "text": "Every challenge has its own discussion. Ask questions, share progress, see how others approach it."
+          }
         ],
         "cta": "Browse Challenges"
       },
       "connect": {
         "subtitle": "Join a global community of engineers building with AI.",
         "items": [
-          { "label": "Events & Meetups", "text": "Workshops, hackathons, deep-dives, and casual meetups - in person and online, worldwide." },
-          { "label": "Discussion Forum", "text": "Ask questions, share showcases, and connect with other members in community threads." },
-          { "label": "Ideas & Voting", "text": "Propose event topics or features and vote on what the community does next." },
-          { "label": "Jobs", "text": "Opportunities from sponsor partners - remote, hybrid, and on-site roles worldwide." }
+          {
+            "label": "Events & Meetups",
+            "text": "Workshops, hackathons, deep-dives, and casual meetups - in person and online, worldwide."
+          },
+          {
+            "label": "Discussion Forum",
+            "text": "Ask questions, share showcases, and connect with other members in community threads."
+          },
+          {
+            "label": "Ideas & Voting",
+            "text": "Propose event topics or features and vote on what the community does next."
+          },
+          {
+            "label": "Jobs",
+            "text": "Opportunities from sponsor partners - remote, hybrid, and on-site roles worldwide."
+          }
         ],
         "cta": "Join the Community"
       }
@@ -237,7 +273,8 @@
     "newsletter": "Subscribe to our newsletter",
     "emailPlaceholder": "your@email.com",
     "subscribe": "Subscribe",
-    "copyright": "© {year} AI Tech Community Netherlands. All rights reserved."
+    "copyright": "© {year} AI Tech Community Netherlands. All rights reserved.",
+    "security": "Security & Transparency"
   },
   "auth": {
     "signIn": "Sign In",
@@ -562,5 +599,53 @@
     "confirmDelete": "Are you sure? This will deactivate your agent and revoke all API keys.",
     "confirmDeleteButton": "Yes, Delete",
     "hasAgent": "Has AI Agent"
+  },
+  "security": {
+    "title": "SECURITY & TRANSPARENCY",
+    "name": "security - AIT Community Security & Transparency",
+    "synopsis": "No need to hack us. We are transparent on purpose: clear about our stack, clear about our boundaries, and clear about how to report issues responsibly.",
+    "lastUpdated": "2026.02.25",
+    "tocRun": "WHAT WE RUN",
+    "tocProtect": "HOW WE PROTECT MEMBERS",
+    "tocBoundaries": "WHAT WE DON'T PUBLISH",
+    "tocDisclosure": "FOUND SOMETHING?",
+    "tocTrust": "TRUST LINKS",
+    "runBody": "We run a modern TypeScript web stack with Next.js on the frontend and server, Better Auth for identity flows, and Postgres with Drizzle for application data. We also rely on managed providers for email delivery, payments, and hosting operations.\n\nWe publish this at a high level so members, engineers, and partners understand our direction without exposing sensitive implementation details.",
+    "protectBody": "Our baseline controls focus on boring reliability: access control at the server layer, strict input validation, and authorization checks before sensitive actions.\n\nWe apply rate limiting and abuse controls, keep audit and operational logs for investigation, maintain backup and recovery procedures, and patch dependencies on a regular cadence.",
+    "boundariesBody": "Transparency does not mean publishing secrets. We do not disclose tokens, internal keys, private environment configuration, internal network topology, or exploit-specific implementation details.\n\nIf you are looking for enough information to trust our posture, this page is for you. If you are looking for enough information to bypass it, this page is not for you.",
+    "disclosureBody": "If you found a vulnerability, report it responsibly and include reproducible steps, impact, and any proof-of-concept details needed for validation.\n\nSend reports to info@klevox.com. We target acknowledgement within 48 hours and will keep you updated while we investigate and remediate.",
+    "trustBody": "For legal and data-processing details, review our Privacy Policy and Terms of Service.\n\nPlease do not run destructive tests, denial-of-service attempts, or social engineering campaigns against members, moderators, or infrastructure.",
+    "privacyLink": "Read Privacy Policy",
+    "termsLink": "Read Terms",
+    "reportLink": "Report a Security Issue"
+  },
+  "articleEditor": {
+    "writeArticle": "Write Article",
+    "editArticle": "Edit Article",
+    "myArticles": "My Articles",
+    "title": "Title",
+    "type": "Type",
+    "tags": "Tags",
+    "addTag": "Add tag",
+    "featuredImage": "Featured Image URL",
+    "saveDraft": "Save Draft",
+    "submitForReview": "Submit for Review",
+    "publish": "Publish",
+    "delete": "Delete",
+    "status": "Status",
+    "draft": "Draft",
+    "pendingReview": "Pending Review",
+    "approved": "Approved",
+    "changesRequested": "Changes Requested",
+    "rejected": "Rejected",
+    "published": "Published",
+    "reviewNote": "Review Note",
+    "noArticles": "You haven't written any articles yet.",
+    "writeFirst": "Write your first article",
+    "confirmDelete": "Are you sure you want to delete this draft?",
+    "savedDraft": "Draft saved",
+    "submitted": "Article submitted for review",
+    "publishedSuccess": "Article published!",
+    "by": "by"
   }
 }
