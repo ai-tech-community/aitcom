@@ -3,8 +3,16 @@
 import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { TrophyIcon } from "lucide-react";
+import { TrophyIcon, GitBranchIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { ChallengeProgress } from "./challenge-progress";
+
+const difficultyColors: Record<string, string> = {
+  beginner: "bg-green-500/15 text-green-600 dark:text-green-400",
+  intermediate: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+  advanced: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
+  expert: "bg-red-500/15 text-red-600 dark:text-red-400",
+};
 
 export function ActiveChallengesWidget() {
   const t = useTranslations("challenges");
@@ -39,6 +47,7 @@ export function ActiveChallengesWidget() {
               description: string;
               action: string;
               targetCount: number;
+              verification?: string;
             }[]) ?? [];
           const daysLeft = challenge.endsAt
             ? Math.max(
@@ -50,10 +59,15 @@ export function ActiveChallengesWidget() {
               )
             : null;
 
+          const difficulty = (challenge as { difficulty?: string }).difficulty;
+          const repo = (challenge as { repo?: { templateUrl?: string } }).repo;
+          const slug = (challenge as { slug?: string }).slug as string;
+          const hasRepo = !!repo?.templateUrl;
+
           return (
             <Link
               key={enrollment.id}
-              href="/dashboard/challenges"
+              href={`/challenges/${slug}`}
               className="block rounded-lg border border-border p-3 transition-colors hover:bg-secondary/30"
             >
               <div className="flex items-center justify-between">
@@ -62,6 +76,17 @@ export function ActiveChallengesWidget() {
                   <span className="text-sm font-medium">
                     {challenge.title}
                   </span>
+                  {difficulty && (
+                    <Badge
+                      variant="secondary"
+                      className={difficultyColors[difficulty] ?? ""}
+                    >
+                      {difficulty}
+                    </Badge>
+                  )}
+                  {hasRepo && (
+                    <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
                 </div>
                 <span className="font-mono text-[11px] text-muted-foreground">
                   {daysLeft !== null
