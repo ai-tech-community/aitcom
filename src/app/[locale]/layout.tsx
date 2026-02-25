@@ -12,6 +12,7 @@ import { Footer } from "@/components/footer";
 import { Toaster } from "sonner";
 import { InboxProvider } from "@/components/inbox/inbox-provider";
 import { InboxRoot } from "@/components/inbox/inbox-root";
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aitcommunity.org"),
@@ -69,6 +70,7 @@ export default async function LocaleLayout({
             <Toaster position="bottom-right" offset={60} />
           </TRPCReactProvider>
         </NextIntlClientProvider>
+        <Analytics />
       </body>
     </html>
   );
