@@ -114,6 +114,12 @@ export function Footer() {
                 >
                   {t("terms")}
                 </Link>
+                <Link
+                  href="/security"
+                  className="hover:text-primary text-sm transition-colors"
+                >
+                  {t("security")}
+                </Link>
               </nav>
             </div>
           </div>
