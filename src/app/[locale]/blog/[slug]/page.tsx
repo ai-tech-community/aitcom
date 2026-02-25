@@ -81,11 +81,9 @@ export default async function ArticleDetailPage({
           headline: article.title,
           ...(article.publishedAt ? { datePublished: article.publishedAt } : {}),
           ...(article.mediaUrl ? { image: article.mediaUrl } : {}),
-          author: {
-            "@type": "Organization",
-            name: "AIT Community",
-            url: "https://aitcommunity.org",
-          },
+          author: article.authorType === "member" && article.authorName
+            ? { "@type": "Person" as const, name: article.authorName }
+            : { "@type": "Organization" as const, name: "AIT Community", url: "https://aitcommunity.org" },
           publisher: {
             "@type": "Organization",
             name: "AIT Community",
@@ -116,6 +114,12 @@ export default async function ArticleDetailPage({
         <span className="border-border rounded border px-2.5 py-0.5 font-medium">
           {typeLabels[article.type] ?? article.type}
         </span>
+        {article.authorType === "member" && article.authorName && (
+          <>
+            <span className="text-border">|</span>
+            <span>by {article.authorName}</span>
+          </>
+        )}
       </div>
 
       {/* Title */}

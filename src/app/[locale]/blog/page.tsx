@@ -78,6 +78,11 @@ export default async function BlogPage() {
               {/* Title - first on mobile for readability */}
               <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
                 {article.title}
+                {article.authorType === "member" && article.authorName && (
+                  <span className="text-muted-foreground ml-2 font-mono text-[10px] font-normal tracking-wider">
+                    by {article.authorName}
+                  </span>
+                )}
               </span>
 
               {/* Date + type row on mobile, split on desktop */}
