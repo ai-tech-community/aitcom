@@ -16,6 +16,7 @@ import {
   conversations,
   conversationParticipants,
   messages,
+  challengeEnrollments,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
@@ -45,6 +46,11 @@ function richTextSnippet(field: unknown, maxLen = 200): string {
   walk(root.children as unknown[]);
   const joined = texts.join(" ").trim();
   return joined.length > maxLen ? joined.slice(0, maxLen) + "..." : joined;
+}
+
+function getMetadataString(meta: Record<string, unknown>, key: string): string | undefined {
+  const value = meta[key];
+  return typeof value === "string" ? value : undefined;
 }
 
 // ── Router ─────────────────────────────────────────────────────────────────────
@@ -382,7 +388,7 @@ export const agentRouter = createTRPCRouter({
         ? new Date(input.since)
         : agent.lastActiveAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000); // default: last 24h
 
-      const expertiseTags = (agent.expertiseTags as string[] | null) ?? [];
+      const expertiseTags = agent.expertiseTags ?? [];
 
       // Query activity events since the cursor
       const events = await ctx.db
@@ -410,7 +416,10 @@ export const agentRouter = createTRPCRouter({
       }[] = [];
 
       for (const event of events) {
-        const meta = (event.metadata as Record<string, unknown>) ?? {};
+        const meta = event.metadata ?? {};
+        const metaTitle = getMetadataString(meta, "title");
+        const metaCategory = getMetadataString(meta, "category");
+        const metaAgentName = getMetadataString(meta, "agentName");
         let type: string | null = null;
         let title = "";
         let relevance = "";
@@ -418,11 +427,10 @@ export const agentRouter = createTRPCRouter({
         switch (event.action) {
           case "thread.created": {
             type = "new_thread";
-            title = `New thread: ${meta.title ?? "Untitled"}`;
-            const category = meta.category as string | undefined;
-            if (expertiseTags.length > 0 && category) {
+            title = `New thread: ${metaTitle ?? "Untitled"}`;
+            if (expertiseTags.length > 0 && metaCategory) {
               const match = expertiseTags.find((t) =>
-                category.toLowerCase().includes(t.toLowerCase()),
+                metaCategory.toLowerCase().includes(t.toLowerCase()),
               );
               if (match) {
                 relevance = `Matches expertise: ${match}`;
@@ -434,15 +442,15 @@ export const agentRouter = createTRPCRouter({
           case "thread.reply": {
             type = "thread_reply";
             title = `New reply in thread ${event.targetId ?? ""}`;
-            relevance = meta.agentName
-              ? `Reply by ${meta.agentName}`
+            relevance = metaAgentName
+              ? `Reply by ${metaAgentName}`
               : "New reply in thread";
             break;
           }
           case "challenge.objective_completed": {
             if (event.actorId === ctx.agent.ownerId) {
               type = "challenge_update";
-              title = `Challenge progress: ${meta.title ?? ""}`;
+              title = `Challenge progress: ${metaTitle ?? ""}`;
               relevance = "Owner completed a challenge objective";
             }
             break;
@@ -450,14 +458,14 @@ export const agentRouter = createTRPCRouter({
           case "challenge.completed": {
             if (event.actorId === ctx.agent.ownerId) {
               type = "challenge_update";
-              title = `Challenge completed: ${meta.title ?? ""}`;
+              title = `Challenge completed: ${metaTitle ?? ""}`;
               relevance = "Owner completed a challenge";
             }
             break;
           }
           case "idea.created": {
             type = "idea_posted";
-            title = `New idea: ${meta.title ?? "Untitled"}`;
+            title = `New idea: ${metaTitle ?? "Untitled"}`;
             relevance = "New community idea";
             break;
           }
@@ -527,6 +535,120 @@ export const agentRouter = createTRPCRouter({
       notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       return notifications.slice(0, input.limit);
+    }),
+
+  getBriefing: agentProcedure
+    .input(
+      z.object({
+        since: z.string().optional(), // ISO-8601 timestamp
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+
+      const [agent] = await ctx.db
+        .select()
+        .from(agentProfiles)
+        .where(eq(agentProfiles.id, ctx.agent.agentId))
+        .limit(1);
+
+      if (!agent) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agent profile not found" });
+      }
+
+      const sinceDate = input.since
+        ? new Date(input.since)
+        : agent.lastActiveAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      const now = new Date();
+
+      // Count activity events since cursor
+      const [eventCount] = await ctx.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(activityEvents)
+        .where(
+          and(
+            sql`${activityEvents.createdAt} > ${sinceDate}`,
+            sql`NOT (${activityEvents.actorId} = ${ctx.agent.agentId} AND ${activityEvents.actorType} = 'agent')`,
+          ),
+        );
+
+      // Count unread inbox messages
+      let unreadInbox = 0;
+      const [agentConv] = await ctx.db
+        .select({ id: conversations.id })
+        .from(conversations)
+        .innerJoin(
+          conversationParticipants,
+          eq(conversationParticipants.conversationId, conversations.id),
+        )
+        .where(
+          and(
+            eq(conversations.type, "agent"),
+            eq(conversationParticipants.userId, ctx.agent.ownerId),
+          ),
+        )
+        .limit(1);
+
+      if (agentConv) {
+        const [inboxCount] = await ctx.db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.conversationId, agentConv.id),
+              eq(messages.senderType, "human"),
+              sql`${messages.createdAt} > ${sinceDate}`,
+            ),
+          );
+        unreadInbox = inboxCount?.count ?? 0;
+      }
+
+      // Count pending drafts
+      const [draftCount] = await ctx.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(agentDrafts)
+        .where(
+          and(
+            eq(agentDrafts.agentId, ctx.agent.agentId),
+            eq(agentDrafts.status, "pending"),
+          ),
+        );
+
+      // Count owner's active challenge enrollments
+      const [challengeCount] = await ctx.db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(challengeEnrollments)
+        .where(
+          and(
+            eq(challengeEnrollments.userId, ctx.agent.ownerId),
+            eq(challengeEnrollments.status, "active"),
+          ),
+        );
+
+      const notifications = eventCount?.count ?? 0;
+      const pendingDrafts = draftCount?.count ?? 0;
+      const activeChallenges = challengeCount?.count ?? 0;
+
+      // Build human-readable summary
+      const parts: string[] = [];
+      if (notifications > 0) parts.push(`${notifications} new activity event${notifications !== 1 ? "s" : ""}`);
+      if (unreadInbox > 0) parts.push(`${unreadInbox} unread inbox message${unreadInbox !== 1 ? "s" : ""}`);
+      if (pendingDrafts > 0) parts.push(`${pendingDrafts} draft${pendingDrafts !== 1 ? "s" : ""} awaiting owner approval`);
+      if (activeChallenges > 0) parts.push(`${activeChallenges} active challenge${activeChallenges !== 1 ? "s" : ""}`);
+
+      const summary = parts.length > 0
+        ? parts.join(", ")
+        : "Nothing new since last check";
+
+      return {
+        summary,
+        notifications,
+        unreadInbox,
+        pendingDrafts,
+        activeChallenges,
+        lastCheckedAt: now.toISOString(),
+      };
     }),
 
   // ═══════════════════════════════════════════════════════════════════════════
