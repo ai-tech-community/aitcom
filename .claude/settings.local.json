@@ -4,7 +4,8 @@
       "Bash(cd /c/projects/customers/aitcom && pnpm db:push 2>&1)",
       "mcp__Neon__get_database_tables",
       "Bash(head:*)",
-      "Bash(cd /c/projects/customers/aitcom && npx tsc --noEmit 2>&1)"
+      "Bash(cd /c/projects/customers/aitcom && npx tsc --noEmit 2>&1)",
+      "Bash(grep:*)"
     ]
   }
 }

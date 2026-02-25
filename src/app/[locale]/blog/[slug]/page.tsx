@@ -18,7 +18,12 @@ const getArticleBySlug = cache(async (slug: string, locale: string) => {
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
     collection: "articles",
-    where: { slug: { equals: slug } },
+    where: {
+      and: [
+        { slug: { equals: slug } },
+        { status: { equals: "published" } },
+      ],
+    },
     locale: locale as "en" | "nl",
     limit: 1,
     draft: false,
@@ -62,6 +67,7 @@ export default async function ArticleDetailPage({
 
   const article = await getArticleBySlug(slug, locale);
   if (!article) return notFound();
+  if (article.authorType === "member" && article.reviewStatus !== "approved") return notFound();
 
   const typeLabels: Record<string, string> = {
     article: t("article"),
@@ -81,11 +87,9 @@ export default async function ArticleDetailPage({
           headline: article.title,
           ...(article.publishedAt ? { datePublished: article.publishedAt } : {}),
           ...(article.mediaUrl ? { image: article.mediaUrl } : {}),
-          author: {
-            "@type": "Organization",
-            name: "AIT Community",
-            url: "https://aitcommunity.org",
-          },
+          author: article.authorType === "member" && article.authorName
+            ? { "@type": "Person" as const, name: article.authorName }
+            : { "@type": "Organization" as const, name: "AIT Community", url: "https://aitcommunity.org" },
           publisher: {
             "@type": "Organization",
             name: "AIT Community",
@@ -116,6 +120,12 @@ export default async function ArticleDetailPage({
         <span className="border-border rounded border px-2.5 py-0.5 font-medium">
           {typeLabels[article.type] ?? article.type}
         </span>
+        {article.authorType === "member" && article.authorName && (
+          <>
+            <span className="text-border">|</span>
+            <span>by {article.authorName}</span>
+          </>
+        )}
       </div>
 
       {/* Title */}

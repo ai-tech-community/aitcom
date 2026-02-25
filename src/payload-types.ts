@@ -273,6 +273,11 @@ export interface Article {
       }[]
     | null;
   mediaUrl?: string | null;
+  authorId?: string | null;
+  authorName?: string | null;
+  authorType?: ('admin' | 'member') | null;
+  reviewStatus?: ('pending_review' | 'approved' | 'rejected' | 'changes_requested') | null;
+  reviewNote?: string | null;
   status: 'draft' | 'published';
   publishedAt?: string | null;
   updatedAt: string;
@@ -809,6 +814,11 @@ export interface ArticlesSelect<T extends boolean = true> {
         id?: T;
       };
   mediaUrl?: T;
+  authorId?: T;
+  authorName?: T;
+  authorType?: T;
+  reviewStatus?: T;
+  reviewNote?: T;
   status?: T;
   publishedAt?: T;
   updatedAt?: T;

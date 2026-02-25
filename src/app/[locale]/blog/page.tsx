@@ -28,7 +28,17 @@ export default async function BlogPage() {
   const payload = await getPayloadClient();
   const { docs: articles } = await payload.find({
     collection: "articles",
-    where: { status: { equals: "published" } },
+    where: {
+      and: [
+        { status: { equals: "published" } },
+        {
+          or: [
+            { authorType: { not_equals: "member" } },
+            { reviewStatus: { equals: "approved" } },
+          ],
+        },
+      ],
+    },
     sort: "-publishedAt",
     locale: locale as "en" | "nl",
     draft: false,
@@ -44,11 +54,19 @@ export default async function BlogPage() {
   return (
     <div className="px-6 py-16 sm:px-12">
       {/* Section Header */}
-      <div className="border-border border-b pb-4">
-        <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / {t("title").toUpperCase()}
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">{t("subtitle")}</p>
+      <div className="border-border flex items-center justify-between border-b pb-4">
+        <div>
+          <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            / {t("title").toUpperCase()}
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">{t("subtitle")}</p>
+        </div>
+        <Link
+          href="/blog/write"
+          className="border-border text-muted-foreground hover:text-foreground rounded border px-3 py-1 font-mono text-xs tracking-wider transition-colors"
+        >
+          + WRITE
+        </Link>
       </div>
 
       {articles.length === 0 ? (
@@ -78,6 +96,11 @@ export default async function BlogPage() {
               {/* Title - first on mobile for readability */}
               <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
                 {article.title}
+                {article.authorType === "member" && article.authorName && (
+                  <span className="text-muted-foreground ml-2 font-mono text-[10px] font-normal tracking-wider">
+                    by {article.authorName}
+                  </span>
+                )}
               </span>
 
               {/* Date + type row on mobile, split on desktop */}

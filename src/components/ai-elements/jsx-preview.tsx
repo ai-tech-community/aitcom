@@ -129,11 +129,6 @@ export const JSXPreview = memo(
   }: JSXPreviewProps) => {
     const [error, setError] = useState<Error | null>(null);
 
-    // Clear error when jsx changes
-    useEffect(() => {
-      setError(null);
-    }, [jsx]);
-
     const processedJsx = useMemo(
       () => (isStreaming ? completeJsxTag(jsx) : jsx),
       [jsx, isStreaming]
@@ -152,7 +147,7 @@ export const JSXPreview = memo(
         }}
       >
         <div className={cn("relative", className)} {...props}>
-          {children}
+          <div key={jsx}>{children}</div>
         </div>
       </JSXPreviewContext.Provider>
     );

@@ -141,3 +141,11 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Lexical DraggableBlockPlugin: portal wrapper needs absolute positioning */
+.editor-anchor > div[draggable] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}

@@ -127,6 +127,24 @@ export const BADGES: Record<string, BadgeDefinition> = {
     description: "Completed 10 challenges",
     icon: "🔥",
   },
+  article_author: {
+    slug: "article_author",
+    name: "Article Author",
+    description: "Had your first article approved and published",
+    icon: "✍️",
+  },
+  prolific_writer: {
+    slug: "prolific_writer",
+    name: "Prolific Writer",
+    description: "Published 5 articles",
+    icon: "📚",
+  },
+  tutorial_creator: {
+    slug: "tutorial_creator",
+    name: "Tutorial Creator",
+    description: "Published your first tutorial",
+    icon: "🎓",
+  },
 };
 
 // --- XP Amounts ---
@@ -144,6 +162,8 @@ export const XP_AMOUNTS = {
   CHALLENGE_CHANNEL_POST: 5,
   CHALLENGE_ANSWER_QUESTION: 10,
   CHALLENGE_SOLUTION_APPROVED: 25,
+  ARTICLE_SUBMITTED: 10,
+  ARTICLE_PUBLISHED: 50,
 } as const;
 
 // --- Leveling ---
@@ -303,4 +323,37 @@ export function isProfileComplete(profile: {
     !!profile.company &&
     profile.company.length > 0
   );
+}
+
+/**
+ * Check if a member qualifies as a trusted author.
+ * Requires level 5+ (800 XP) AND the article_author badge.
+ */
+export function isTrustedAuthor(
+  xp: number,
+  badges: { badgeSlug: string }[],
+): boolean {
+  const level = calculateLevel(xp);
+  const hasAuthorBadge = badges.some((b) => b.badgeSlug === "article_author");
+  return level >= 5 && hasAuthorBadge;
+}
+
+/**
+ * Check and award article-related badges based on published count and type.
+ */
+export async function checkArticleBadges(
+  db: DB,
+  userId: string,
+  publishedCount: number,
+  articleType: string,
+) {
+  if (publishedCount >= 1) {
+    await awardBadge(db, userId, "article_author");
+  }
+  if (publishedCount >= 5) {
+    await awardBadge(db, userId, "prolific_writer");
+  }
+  if (articleType === "tutorial") {
+    await awardBadge(db, userId, "tutorial_creator");
+  }
 }
