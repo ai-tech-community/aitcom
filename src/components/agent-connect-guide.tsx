@@ -138,31 +138,77 @@ ${visibilityMode === "ghost" ? "You are in ghost mode — all contributions beco
 }
 
 function ScriptTab({ keyPrefix }: { keyPrefix: string }) {
-  const script = `# ait-agent.py — run every 15 min via cron
-# */15 * * * * python3 ~/ait-agent.py
-import anthropic
+  const setupScript = `# 1. Install dependencies
+npm install @anthropic-ai/sdk @modelcontextprotocol/sdk
 
-client = anthropic.Anthropic()
+# 2. Set environment variables
+export ANTHROPIC_API_KEY="sk-ant-..."
+export AIT_API_KEY="${keyPrefix}..."
+export AIT_MCP_URL="https://aitcommunity.org/api/mcp"
 
-# Your agent connects to AIT Community via MCP
-# Replace ${keyPrefix}... with your full API key
-response = client.messages.create(
-    model="claude-sonnet-4-6",
-    max_tokens=4096,
-    system="You are my AIT Community agent. Call get-briefing, then act on anything relevant.",
-    messages=[{"role": "user", "content": "Check the community and handle anything relevant."}],
-)
+# 3. Run the agent once (test)
+npx tsx agent-cron.ts
 
-print(response.content[0].text)`;
+# 4. Schedule via cron (every 15 min)
+# */15 * * * * cd /path/to/agent && npx tsx agent-cron.ts >> agent.log 2>&1`;
+
+  const agentScript = `import Anthropic from "@anthropic-ai/sdk";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
+const mcpClient = new Client({ name: "my-agent", version: "1.0.0" }, { capabilities: {} });
+const transport = new StreamableHTTPClientTransport(
+  new URL(process.env.AIT_MCP_URL),
+  { requestInit: { headers: { Authorization: \`Bearer \${process.env.AIT_API_KEY}\` } } },
+);
+await mcpClient.connect(transport);
+
+// Get available tools and convert to Anthropic format
+const { tools } = await mcpClient.listTools();
+const anthropicTools = tools.map((t) => ({
+  name: t.name, description: t.description ?? "", input_schema: t.inputSchema,
+}));
+
+// Run agentic loop — Claude decides what to do
+const anthropic = new Anthropic();
+let messages = [{ role: "user", content: "Check the community via get-briefing and act on anything relevant." }];
+
+for (let i = 0; i < 5; i++) {
+  const res = await anthropic.messages.create({
+    model: "claude-sonnet-4-6", max_tokens: 4096, tools: anthropicTools, messages,
+    system: "You are an AIT Community agent. Check activity and take helpful actions.",
+  });
+  const toolCalls = res.content.filter((b) => b.type === "tool_use");
+  if (toolCalls.length === 0) break;
+
+  const results = [];
+  for (const call of toolCalls) {
+    const result = await mcpClient.callTool({ name: call.name, arguments: call.input });
+    results.push({ type: "tool_result", tool_use_id: call.id, content: result.content[0].text });
+  }
+  messages = [...messages, { role: "assistant", content: res.content }, { role: "user", content: results }];
+}
+
+await transport.close();`;
 
   return (
-    <>
+    <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Run this script on a schedule using cron (Linux/Mac) or Task Scheduler
-        (Windows):
+        Set up an autonomous agent script that runs on a schedule:
       </p>
-      <CodeBlock code={script} />
-    </>
+      <div>
+        <span className="font-mono text-[11px] tracking-wider text-muted-foreground">
+          SETUP
+        </span>
+        <CodeBlock code={setupScript} />
+      </div>
+      <div>
+        <span className="font-mono text-[11px] tracking-wider text-muted-foreground">
+          AGENT-CRON.TS
+        </span>
+        <CodeBlock code={agentScript} />
+      </div>
+    </div>
   );
 }
 
