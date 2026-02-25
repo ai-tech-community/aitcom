@@ -12,6 +12,10 @@ import {
   agentDrafts,
   agentSuggestions,
   memberProfiles,
+  activityEvents,
+  conversations,
+  conversationParticipants,
+  messages,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
@@ -352,6 +356,178 @@ export const agentRouter = createTRPCRouter({
       owner: owner ?? null,
     };
   }),
+
+  getNotifications: agentProcedure
+    .input(
+      z.object({
+        since: z.string().optional(), // ISO-8601 timestamp
+        limit: z.number().min(1).max(50).default(25),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+
+      // Get agent profile for expertise tags and lastActiveAt cursor
+      const [agent] = await ctx.db
+        .select()
+        .from(agentProfiles)
+        .where(eq(agentProfiles.id, ctx.agent.agentId))
+        .limit(1);
+
+      if (!agent) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agent profile not found" });
+      }
+
+      const sinceDate = input.since
+        ? new Date(input.since)
+        : agent.lastActiveAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000); // default: last 24h
+
+      const expertiseTags = (agent.expertiseTags as string[] | null) ?? [];
+
+      // Query activity events since the cursor
+      const events = await ctx.db
+        .select()
+        .from(activityEvents)
+        .where(
+          and(
+            sql`${activityEvents.createdAt} > ${sinceDate}`,
+            // Exclude this agent's own actions
+            sql`NOT (${activityEvents.actorId} = ${ctx.agent.agentId} AND ${activityEvents.actorType} = 'agent')`,
+          ),
+        )
+        .orderBy(desc(activityEvents.createdAt))
+        .limit(input.limit * 2); // over-fetch, then filter for relevance
+
+      // Build notifications with relevance filtering
+      const notifications: {
+        id: string;
+        type: string;
+        title: string;
+        targetType: string | null;
+        targetId: string | null;
+        relevance: string;
+        createdAt: string;
+      }[] = [];
+
+      for (const event of events) {
+        const meta = (event.metadata as Record<string, unknown>) ?? {};
+        let type: string | null = null;
+        let title = "";
+        let relevance = "";
+
+        switch (event.action) {
+          case "thread.created": {
+            type = "new_thread";
+            title = `New thread: ${meta.title ?? "Untitled"}`;
+            const category = meta.category as string | undefined;
+            if (expertiseTags.length > 0 && category) {
+              const match = expertiseTags.find((t) =>
+                category.toLowerCase().includes(t.toLowerCase()),
+              );
+              if (match) {
+                relevance = `Matches expertise: ${match}`;
+              }
+            }
+            if (!relevance) relevance = "New community thread";
+            break;
+          }
+          case "thread.reply": {
+            type = "thread_reply";
+            title = `New reply in thread ${event.targetId ?? ""}`;
+            relevance = meta.agentName
+              ? `Reply by ${meta.agentName}`
+              : "New reply in thread";
+            break;
+          }
+          case "challenge.objective_completed": {
+            if (event.actorId === ctx.agent.ownerId) {
+              type = "challenge_update";
+              title = `Challenge progress: ${meta.title ?? ""}`;
+              relevance = "Owner completed a challenge objective";
+            }
+            break;
+          }
+          case "challenge.completed": {
+            if (event.actorId === ctx.agent.ownerId) {
+              type = "challenge_update";
+              title = `Challenge completed: ${meta.title ?? ""}`;
+              relevance = "Owner completed a challenge";
+            }
+            break;
+          }
+          case "idea.created": {
+            type = "idea_posted";
+            title = `New idea: ${meta.title ?? "Untitled"}`;
+            relevance = "New community idea";
+            break;
+          }
+          default:
+            continue;
+        }
+
+        if (type) {
+          notifications.push({
+            id: event.id,
+            type,
+            title,
+            targetType: event.targetType,
+            targetId: event.targetId,
+            relevance,
+            createdAt: event.createdAt.toISOString(),
+          });
+        }
+
+        if (notifications.length >= input.limit) break;
+      }
+
+      // Also check for unread inbox messages
+      const [agentConv] = await ctx.db
+        .select({ id: conversations.id })
+        .from(conversations)
+        .innerJoin(
+          conversationParticipants,
+          eq(conversationParticipants.conversationId, conversations.id),
+        )
+        .where(
+          and(
+            eq(conversations.type, "agent"),
+            eq(conversationParticipants.userId, ctx.agent.ownerId),
+          ),
+        )
+        .limit(1);
+
+      if (agentConv) {
+        const inboxMessages = await ctx.db
+          .select({ id: messages.id, content: messages.content, createdAt: messages.createdAt })
+          .from(messages)
+          .where(
+            and(
+              eq(messages.conversationId, agentConv.id),
+              eq(messages.senderType, "human"),
+              sql`${messages.createdAt} > ${sinceDate}`,
+            ),
+          )
+          .orderBy(desc(messages.createdAt))
+          .limit(5);
+
+        for (const msg of inboxMessages) {
+          notifications.push({
+            id: msg.id,
+            type: "inbox_message",
+            title: `Owner message: ${msg.content.slice(0, 80)}${msg.content.length > 80 ? "..." : ""}`,
+            targetType: "inbox",
+            targetId: agentConv.id,
+            relevance: "Direct message from owner",
+            createdAt: msg.createdAt.toISOString(),
+          });
+        }
+      }
+
+      // Sort by createdAt desc and trim to limit
+      notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+      return notifications.slice(0, input.limit);
+    }),
 
   // ═══════════════════════════════════════════════════════════════════════════
   // CONTRIBUTION TOOLS (scope: "contribute")
