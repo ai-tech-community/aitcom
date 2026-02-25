@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 
 import {
   createTRPCRouter,
@@ -229,5 +230,81 @@ export const communityRouter = createTRPCRouter({
       });
 
       return thread;
+    }),
+
+  // ── Replies ────────────────────────────────────────────────────────────────
+
+  addReply: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.number(),
+        content: z.string().min(1).max(10000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const thread = await payload.findByID({
+        collection: "forum-threads",
+        id: input.threadId,
+        depth: 0,
+      });
+
+      if (thread.isLocked) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This thread is locked",
+        });
+      }
+
+      const reply = await payload.create({
+        collection: "forum-replies",
+        data: {
+          thread: input.threadId,
+          content: input.content,
+          authorId: ctx.session.user.id,
+          authorName: ctx.session.user.name ?? "member",
+        },
+      });
+
+      await payload.update({
+        collection: "forum-threads",
+        id: input.threadId,
+        data: {
+          replyCount: (thread.replyCount ?? 0) + 1,
+          lastActivityAt: new Date().toISOString(),
+        },
+      });
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "reply.create",
+        targetType: "forum-threads",
+        targetId: String(input.threadId),
+        metadata: { threadTitle: thread.title },
+      });
+
+      return reply;
+    }),
+
+  getReplies: publicProcedure
+    .input(
+      z.object({
+        threadId: z.number(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const payload = await getPayloadClient();
+
+      const { docs } = await payload.find({
+        collection: "forum-replies",
+        where: { thread: { equals: input.threadId } },
+        sort: "createdAt",
+        limit: 200,
+        depth: 0,
+      });
+
+      return docs;
     }),
 });
