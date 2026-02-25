@@ -10,8 +10,8 @@ import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "AIT Community Netherlands Terms of Service",
-  ...buildOgMeta("Terms of Service", "AIT Community Netherlands Terms of Service"),
+  description: "AIT Community Terms of Service",
+  ...buildOgMeta("Terms of Service", "AIT Community Terms of Service"),
   alternates: buildAlternates("/terms"),
 };
 

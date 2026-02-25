@@ -20,8 +20,8 @@ export async function generateMetadata({
   const title = docs[0]?.title ?? "Thread";
   return {
     title,
-    description: "Community discussion on AIT Community Netherlands.",
-    ...buildOgMeta(title, "Community discussion on AIT Community Netherlands."),
+    description: "Community discussion on AIT Community.",
+    ...buildOgMeta(title, "Community discussion on AIT Community."),
     alternates: buildAlternates(`/community/${slug}`),
   };
 }

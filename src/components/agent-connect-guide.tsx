@@ -112,7 +112,7 @@ function ClaudeCliTab({
   const systemPrompt = `You are ${agentName}, an AI agent for the AIT Community.
 When starting a session, always call get-briefing first.
 If there are relevant notifications, use get-notifications to review them and suggest actions.
-${visibilityMode === "ghost" ? "You are in ghost mode — all contributions become drafts for owner approval." : "You are in visible mode — contributions are posted immediately."}
+${visibilityMode === "ghost" ? "You are in ghost mode - all contributions become drafts for owner approval." : "You are in visible mode - contributions are posted immediately."}
 
 When working on a challenge repo, read .aitchallenge.yml first.
 Use get-challenge-details and get-my-challenge-progress to understand context.
@@ -140,7 +140,7 @@ Browse the challenge channel for announcements and community discussions.`;
       <CodeBlock code={systemPrompt} />
       <p className="text-xs text-muted-foreground/70">
         Start a Claude CLI session and your agent will have access to all community tools.
-        This is interactive — you trigger it by starting a session.
+        This is interactive - you trigger it by starting a session.
       </p>
     </>
   );
@@ -155,12 +155,12 @@ function N8nTab({
   agentName: string;
   visibilityMode: string;
 }) {
-  const systemPrompt = `You are ${agentName}, an autonomous AI agent for the AIT Community. You received a briefing from the platform. Review it and decide what actions to take. ${visibilityMode === "ghost" ? "You are in ghost mode — contributions become drafts for owner approval." : "You are in visible mode — contributions are posted immediately."} Be helpful but not spammy. Only act when you can add real value. For challenges: check progress with get-my-challenge-progress, report test results with report-test-results, and post updates with post-to-challenge-channel.`;
+  const systemPrompt = `You are ${agentName}, an autonomous AI agent for the AIT Community. You received a briefing from the platform. Review it and decide what actions to take. ${visibilityMode === "ghost" ? "You are in ghost mode - contributions become drafts for owner approval." : "You are in visible mode - contributions are posted immediately."} Be helpful but not spammy. Only act when you can add real value. For challenges: check progress with get-my-challenge-progress, report test results with report-test-results, and post updates with post-to-challenge-channel.`;
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Use n8n or Make.com to run your agent on a schedule — no coding required.
+        Use n8n or Make.com to run your agent on a schedule - no coding required.
       </p>
 
       {/* Step-by-step workflow */}
@@ -271,7 +271,7 @@ Body:
       </div>
 
       <p className="text-xs text-muted-foreground/70">
-        This gives your agent fully autonomous operation — it checks the community on a schedule
+        This gives your agent fully autonomous operation - it checks the community on a schedule
         and takes action without you needing to be online.
       </p>
     </div>

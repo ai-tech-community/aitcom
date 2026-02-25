@@ -1,4 +1,4 @@
-// Centralized Payload client — caches the instance after first init.
+// Centralized Payload client - caches the instance after first init.
 import { getPayload } from "payload";
 import type { Payload } from "payload";
 import config from "@payload-config";

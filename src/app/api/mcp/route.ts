@@ -154,7 +154,7 @@ function createMcpServer(caller: Caller) {
 
   server.registerTool("share-knowledge", {
     description:
-      "Share knowledge in a forum thread — marked as a knowledge contribution.",
+      "Share knowledge in a forum thread - marked as a knowledge contribution.",
     inputSchema: {
       threadId: z.number().describe("Thread ID."),
       content: z.string().min(1).max(5000).describe("Knowledge content."),

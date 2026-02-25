@@ -137,7 +137,7 @@ export const protectedProcedure = t.procedure
   });
 
 /**
- * Agent procedure — authenticates via API key in Authorization header.
+ * Agent procedure - authenticates via API key in Authorization header.
  *
  * Use this for endpoints that AI agents call. The resolved context includes
  * `ctx.agent` with `{ agentId, ownerId, scopes }`.

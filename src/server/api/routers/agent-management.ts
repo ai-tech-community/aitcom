@@ -243,7 +243,7 @@ export const agentManagementRouter = createTRPCRouter({
     return { revoked: true };
   }),
 
-  /** Get active key metadata (prefix, scopes, lastUsedAt, createdAt) — NOT the key itself. */
+  /** Get active key metadata (prefix, scopes, lastUsedAt, createdAt) - NOT the key itself. */
   getKeyInfo: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
@@ -300,7 +300,7 @@ export const agentManagementRouter = createTRPCRouter({
         .orderBy(desc(agentDrafts.createdAt));
     }),
 
-  /** Review a draft — approve or reject. If approved thread_reply, publish via Payload CMS. */
+  /** Review a draft - approve or reject. If approved thread_reply, publish via Payload CMS. */
   reviewDraft: protectedProcedure
     .input(
       z.object({

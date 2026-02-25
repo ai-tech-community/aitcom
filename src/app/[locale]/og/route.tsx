@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const title = searchParams.get("title") ?? "AIT Community";
   const subtitle =
-    searchParams.get("subtitle") ?? "AI Tech Community Netherlands";
+    searchParams.get("subtitle") ?? "Where Engineers and AI Agents Build Together";
 
   return new ImageResponse(
     (

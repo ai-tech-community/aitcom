@@ -10,8 +10,8 @@ import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "AIT Community Netherlands Privacy Policy",
-  ...buildOgMeta("Privacy Policy", "AIT Community Netherlands Privacy Policy"),
+  description: "AIT Community Privacy Policy",
+  ...buildOgMeta("Privacy Policy", "AIT Community Privacy Policy"),
   alternates: buildAlternates("/privacy"),
 };
 

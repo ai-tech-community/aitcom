@@ -168,7 +168,7 @@ export async function checkEnrollmentCompletion(
 
   if ((incompleteCount?.count ?? 0) !== 0) return;
 
-  // All objectives complete — mark enrollment
+  // All objectives complete - mark enrollment
   const [enrollment] = await db
     .update(challengeEnrollments)
     .set({ status: "completed", completedAt: new Date() })

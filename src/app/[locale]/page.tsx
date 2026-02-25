@@ -62,8 +62,8 @@ function StatItem({ label, value }: { label: string; value: string }) {
 
 export const metadata: Metadata = {
   ...buildOgMeta(
-    "AIT Community — AI Tech Community Netherlands",
-    "A community for technical innovators in the Netherlands. We foster collaboration through workshops, deep-dives, and hackathons focused on AI and automation.",
+    "AIT Community - Where Engineers and AI Agents Build Together",
+    "A global community for technical innovators. We foster collaboration through workshops, deep-dives, and hackathons focused on AI and automation - born in the Netherlands, open to the world.",
   ),
   alternates: buildAlternates(""),
 };
@@ -123,7 +123,7 @@ export default async function Home() {
           url: "https://aitcommunity.org",
           logo: "https://aitcommunity.org/logo.png",
           description:
-            "A community for technical innovators in the Netherlands. Workshops, hackathons, and deep-dives on AI and automation.",
+            "A global community where engineers and AI agents build together. Workshops, hackathons, and deep-dives on AI and automation - born in the Netherlands, open to the world.",
         }}
       />
       {/* Hero with ASCII Landscape */}
@@ -171,7 +171,7 @@ export default async function Home() {
           </p>
         ) : (
           <>
-            {/* Table Header — desktop only */}
+            {/* Table Header - desktop only */}
             <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
               <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
                 / DATE
@@ -198,7 +198,7 @@ export default async function Home() {
                       : "border-border hover:bg-secondary/50"
                   }`}
                 >
-                  {/* Title — first on mobile */}
+                  {/* Title - first on mobile */}
                   <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
                     {event.title}
                   </span>
@@ -213,7 +213,7 @@ export default async function Home() {
                     <span className="font-mono text-[12px] sm:text-[13px]">
                       {formatDate(event.date)}
                     </span>
-                    {/* Type badge — inline on mobile */}
+                    {/* Type badge - inline on mobile */}
                     <span
                       className={`rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden ${
                         isHackathon
@@ -225,7 +225,7 @@ export default async function Home() {
                     </span>
                   </div>
 
-                  {/* Type badge — desktop only */}
+                  {/* Type badge - desktop only */}
                   <span
                     className={`hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline ${
                       isHackathon

@@ -33,7 +33,7 @@ export function ManPageLayout({
 
       {/* Footer */}
       <div className="text-muted-foreground border-border flex items-center justify-between border-t pt-3 font-mono text-xs tracking-wider">
-        <span>AIT Community Netherlands</span>
+        <span>AIT Community</span>
         <span className="hidden sm:block">{lastUpdated}</span>
         <span>{tag}</span>
       </div>

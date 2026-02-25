@@ -52,7 +52,7 @@ export default buildConfig({
   admin: {
     user: "users",
     meta: {
-      titleSuffix: " — AIT Admin",
+      titleSuffix: " - AIT Admin",
     },
   },
   collections: [

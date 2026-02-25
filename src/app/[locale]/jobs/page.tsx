@@ -7,10 +7,10 @@ import Image from "next/image";
 export const metadata: Metadata = {
   title: "Jobs",
   description:
-    "Job openings from AIT Community sponsors — remote, hybrid, and on-site positions in AI and tech.",
+    "Job openings from AIT Community sponsors - remote, hybrid, and on-site positions in AI and tech.",
   ...buildOgMeta(
     "Jobs",
-    "Job openings from AIT Community sponsors — remote, hybrid, and on-site positions in AI and tech.",
+    "Job openings from AIT Community sponsors - remote, hybrid, and on-site positions in AI and tech.",
     "Jobs",
   ),
   alternates: buildAlternates("/jobs"),

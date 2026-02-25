@@ -8,10 +8,10 @@ import Image from "next/image";
 export const metadata: Metadata = {
   title: "Sponsors",
   description:
-    "Support the AI Tech Community Netherlands. Sponsor tiers, benefits, and current partners.",
+    "Support the AI Tech Community. Sponsor tiers, benefits, and current partners.",
   ...buildOgMeta(
     "Sponsors",
-    "Support the AI Tech Community Netherlands. Sponsor tiers, benefits, and current partners.",
+    "Support the AI Tech Community. Sponsor tiers, benefits, and current partners.",
     "Sponsors",
   ),
   alternates: buildAlternates("/sponsors"),

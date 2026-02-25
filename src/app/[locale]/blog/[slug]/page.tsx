@@ -40,7 +40,7 @@ export async function generateMetadata({
     ? (article.tags as { tag: string }[]).map((t) => t.tag)
     : [];
   const description = tags.length > 0
-    ? `${article.type.charAt(0).toUpperCase() + article.type.slice(1)} — ${tags.join(", ")}`
+    ? `${article.type.charAt(0).toUpperCase() + article.type.slice(1)} - ${tags.join(", ")}`
     : `${article.type.charAt(0).toUpperCase() + article.type.slice(1)} from AIT Community`;
 
   return {

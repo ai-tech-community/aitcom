@@ -22,7 +22,7 @@ export async function generateMetadata({
 
   const description = data.profile.bio
     ? data.profile.bio.slice(0, 160)
-    : `Member of AIT Community Netherlands — Level ${data.profile.level}`;
+    : `Member of AIT Community - Level ${data.profile.level}`;
 
   return {
     title: data.profile.displayName,

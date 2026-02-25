@@ -43,7 +43,7 @@ export function OnboardingChecklist() {
   if (isLoading || dismissed) return null;
   if (data?.onboardingCompleted) return null;
 
-  // User hasn't taken the onboarding quiz yet — show soft welcome card
+  // User hasn't taken the onboarding quiz yet - show soft welcome card
   if (!data?.hasIntent) {
     return (
       <div className="relative rounded-lg border border-dashed border-primary/30 bg-primary/5 px-4 py-5">
@@ -73,7 +73,7 @@ export function OnboardingChecklist() {
     );
   }
 
-  // User has intent — show progress checklist
+  // User has intent - show progress checklist
   const checklist = data.checklist;
   const completedCount = checklist.filter((s) => s.completed).length;
   const totalCount = checklist.length;
