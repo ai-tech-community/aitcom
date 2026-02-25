@@ -23,6 +23,57 @@ export const Articles: CollectionConfig = {
     defaultColumns: ["title", "type", "status", "authorType", "reviewStatus", "publishedAt"],
   },
   versions: { drafts: true },
+  hooks: {
+    beforeChange: [
+      async ({ data, originalDoc }) => {
+        // Auto-publish on admin approval
+        if (
+          data?.reviewStatus === "approved" &&
+          originalDoc?.reviewStatus !== "approved" &&
+          data?.authorType === "member"
+        ) {
+          data.status = "published";
+          data.publishedAt = data.publishedAt ?? new Date().toISOString();
+        }
+        return data;
+      },
+    ],
+    afterChange: [
+      async ({ doc, previousDoc }) => {
+        // Award XP and badges when admin approves a member article
+        if (
+          doc.reviewStatus === "approved" &&
+          previousDoc?.reviewStatus !== "approved" &&
+          doc.authorType === "member" &&
+          doc.authorId
+        ) {
+          const { db } = await import("@/server/db");
+          const { awardXp, checkArticleBadges, XP_AMOUNTS } = await import(
+            "@/lib/gamification"
+          );
+          const { getPayloadClient } = await import("@/server/payload");
+
+          await awardXp(db, doc.authorId, XP_AMOUNTS.ARTICLE_PUBLISHED);
+
+          const payload = await getPayloadClient();
+          const { totalDocs } = await payload.find({
+            collection: "articles",
+            where: {
+              and: [
+                { authorId: { equals: doc.authorId } },
+                { status: { equals: "published" } },
+                { reviewStatus: { equals: "approved" } },
+              ],
+            },
+            limit: 0,
+            depth: 0,
+          });
+
+          await checkArticleBadges(db, doc.authorId, totalDocs, doc.type);
+        }
+      },
+    ],
+  },
   fields: [
     { name: "title", type: "text", required: true, localized: true },
     { name: "slug", type: "text", required: true, unique: true },
