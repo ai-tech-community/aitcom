@@ -3,21 +3,46 @@
 import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Link } from "@/i18n/navigation";
+import { GitBranch } from "lucide-react";
 import { ChallengeProgress } from "./challenge-progress";
+
+const difficultyColors: Record<string, string> = {
+  beginner: "text-green-600",
+  intermediate: "text-blue-600",
+  advanced: "text-orange-600",
+  expert: "text-red-600",
+};
 
 interface ChallengeCardProps {
   challenge: {
     id: number;
     title: string;
+    slug: string;
+    description?: string | null;
     type: string;
     status: string;
+    difficulty?: string | null;
     startsAt?: string | null;
     endsAt?: string | null;
+    publishedBy?: string | null;
+    repo?: {
+      templateUrl?: string | null;
+      configFile?: string | null;
+      testCommand?: string | null;
+    } | null;
     rewards: {
       xpReward: number;
       badgeReward?: string | null;
+      sponsorReward?: string | null;
     };
-    objectives: { description: string; action?: string | null; targetCount: number }[];
+    objectives: {
+      description: string;
+      action?: string | null;
+      targetCount: number;
+    }[];
+    tags?: string[] | null;
   };
   isEnrolled: boolean;
 }
@@ -49,7 +74,30 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
     <div className="rounded-lg border border-border p-4">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="font-medium text-foreground">{challenge.title}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-foreground">
+              <Link
+                href={`/challenges/${challenge.slug}`}
+                className="hover:underline"
+              >
+                {challenge.title}
+              </Link>
+            </h3>
+            {challenge.difficulty && (
+              <Badge
+                variant="secondary"
+                className={difficultyColors[challenge.difficulty] ?? ""}
+              >
+                {challenge.difficulty}
+              </Badge>
+            )}
+            {challenge.publishedBy === "sponsor" && (
+              <Badge variant="outline">Sponsor</Badge>
+            )}
+            {challenge.repo?.templateUrl && (
+              <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
+          </div>
           <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
             {challenge.type} &middot;{" "}
             {daysLeft === null
@@ -77,6 +125,25 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
         </div>
       </div>
 
+      {challenge.description && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {challenge.description}
+        </p>
+      )}
+
+      {challenge.tags && challenge.tags.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {challenge.tags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] tracking-wider text-muted-foreground"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
       {isEnrolled && (
         <div className="mt-4">
           <ChallengeProgress
@@ -89,6 +156,9 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
       <div className="mt-3 text-xs text-muted-foreground">
         {t("reward")}: {t("xp", { amount: challenge.rewards.xpReward })}
         {challenge.rewards.badgeReward && ` + badge`}
+        {challenge.rewards.sponsorReward && (
+          <> &middot; {challenge.rewards.sponsorReward}</>
+        )}
       </div>
     </div>
   );
