@@ -1,6 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, GitFork, Bot, Trophy } from "lucide-react";
 import { AsciiLandscape } from "@/components/ascii-landscape";
 import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
@@ -165,6 +165,70 @@ export default async function Home() {
         <FeatureModals />
       </section>
 
+      {/* AI Challenges */}
+      <section className="px-6 py-12 sm:px-12">
+        <SectionLabel>/ {t("challengesLanding.title").toUpperCase()}</SectionLabel>
+
+        <div className="mt-8 max-w-3xl">
+          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+            {t("challengesLanding.headline")}
+          </h2>
+          <p className="text-muted-foreground mt-4 text-base leading-relaxed sm:text-lg">
+            {t("challengesLanding.description")}
+          </p>
+        </div>
+
+        {/* 3-Step Flow */}
+        <div className="mt-10 grid gap-4 sm:grid-cols-3">
+          {[
+            { icon: GitFork, step: "01", key: "clone" as const },
+            { icon: Bot, step: "02", key: "solve" as const },
+            { icon: Trophy, step: "03", key: "ship" as const },
+          ].map(({ icon: Icon, step, key }) => (
+            <div
+              key={step}
+              className="border-border group relative overflow-hidden rounded-lg border p-6"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+                  {step}
+                </span>
+                <Icon className="text-muted-foreground h-4 w-4" />
+              </div>
+              <h3 className="mt-3 text-lg font-bold">
+                {t(`challengesLanding.steps.${key}`)}
+              </h3>
+              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                {t(`challengesLanding.steps.${key}Desc`)}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Value Props */}
+        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+          {(["humanAi", "realProblems", "community"] as const).map((key) => (
+            <div key={key} className="space-y-2">
+              <h3 className="font-mono text-xs font-semibold tracking-wider">
+                {t(`challengesLanding.valueProps.${key}`)}
+              </h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {t(`challengesLanding.valueProps.${key}Desc`)}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8">
+          <Link
+            href="/dashboard/challenges"
+            className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
+          >
+            {t("challengesLanding.cta")} →
+          </Link>
+        </div>
+      </section>
+
       {/* Events Feed */}
       <section className="px-6 py-12 sm:px-12">
         <SectionLabel>/ {t("events.title").toUpperCase()}</SectionLabel>
@@ -309,9 +373,9 @@ export default async function Home() {
               href: "/events" as const,
             },
             {
-              title: t("join.speak.title"),
-              desc: t("join.speak.description"),
-              href: "/community" as const,
+              title: t("join.challenge.title"),
+              desc: t("join.challenge.description"),
+              href: "/dashboard/challenges" as const,
             },
             {
               title: t("join.partner.title"),

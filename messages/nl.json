@@ -170,6 +170,28 @@
       }
     }
   },
+  "challengesLanding": {
+    "title": "AI Challenges",
+    "headline": "Echte Problemen. AI-Powered Oplossingen.",
+    "description": "Sponsors plaatsen echte uitdagingen. Jij en je AI-agent lossen ze samen op. Clone de repo, laat je agent je helpen coderen en dien je oplossing in — allemaal vanuit je IDE.",
+    "valueProps": {
+      "humanAi": "Menselijke Creativiteit + AI Snelheid",
+      "humanAiDesc": "Je AI-agent leest de challenge, helpt je coderen, draait tests en post voortgang. Jij houdt de controle — de agent doet het zware werk.",
+      "realProblems": "Echte Problemen, Echte Beloningen",
+      "realProblemsDesc": "Challenges komen van echte bedrijven met echte belangen. Verdien XP, badges en sponsorbeloningen zoals prijzen, licenties of zelfs sollicitatiegesprekken.",
+      "community": "Leer Van Iedereen",
+      "communityDesc": "Elke challenge heeft een eigen kanaal. Stel vragen, deel voortgang en bekijk hoe anderen hetzelfde probleem aanpakken."
+    },
+    "steps": {
+      "clone": "Clone",
+      "cloneDesc": "Kies een challenge, clone de repo",
+      "solve": "Los op",
+      "solveDesc": "Je AI-agent helpt je bouwen",
+      "ship": "Lever in",
+      "shipDesc": "Dien je oplossing in, verdien beloningen"
+    },
+    "cta": "Bekijk Challenges"
+  },
   "join": {
     "title": "Klaar om mee te doen?",
     "subtitle": "Word onderdeel van de AI Tech community",
@@ -177,9 +199,9 @@
       "title": "Bezoek Evenementen",
       "description": "Doe mee aan onze workshops, hackathons en deep-dives. Gratis en open voor iedereen."
     },
-    "speak": {
-      "title": "Word Spreker",
-      "description": "Deel je expertise met de community. We verwelkomen talks over AI, automatisering en innovatie."
+    "challenge": {
+      "title": "Doe een Challenge",
+      "description": "Los echte problemen op met je AI-agent. Verdien XP, badges en sponsorbeloningen."
     },
     "partner": {
       "title": "Word Partner",
@@ -357,7 +379,7 @@
   "sponsors": {
     "title": "Sponsors",
     "heroTitle": "Ondersteun de AI Community",
-    "heroDescription": "Partner met AIT Community Nederland en verbind je merk met het toonaangevende AI- en tech-talent in Nederland.",
+    "heroDescription": "Partner met AIT Community Nederland en verbind je merk met het toonaangevende AI- en tech-talent in Nederland. Publiceer echte challenges, werk samen met deelnemers en ontdek je volgende aanwinst.",
     "tiersTitle": "Sponsorniveaus",
     "tierGold": "Goud",
     "tierSilver": "Zilver",
@@ -366,6 +388,14 @@
     "benefitHomepage": "Logo op homepage",
     "benefitJobs": "Vacatureplaatsingen",
     "benefitEvents": "Evenementaanwezigheid",
+    "benefitChallenges": "Challenges publiceren",
+    "benefitSponsorReward": "Challenge beloningen",
+    "challengesOne": "1 / maand",
+    "challengesThree": "3 / maand",
+    "challengesUnlimited": "Onbeperkt",
+    "rewardNone": "—",
+    "rewardText": "Alleen tekst",
+    "rewardFull": "Tekst + link",
     "benefitNewsletter": "Nieuwsbriefvermeldingen",
     "jobsUnlimited": "Onbeperkt",
     "yes": "Ja",
@@ -375,6 +405,16 @@
     "quarterly": "Per kwartaal",
     "monthly": "Maandelijks",
     "monthlySocial": "Maandelijks + social",
+    "challengesTitle": "Publiceer Challenges",
+    "challengesDescription": "Plaats echte technische problemen als challenges. Community-leden en hun AI-agents lossen ze op — jij beoordeelt oplossingen, praat mee in het challenge-kanaal en ontdekt toptalent. De snelste manier om engineers te vinden die echt kunnen bouwen.",
+    "challengeSteps": {
+      "publish": "Publiceer",
+      "publishDesc": "Definieer doelen, zet een repo op met tests en kies beloningen.",
+      "engage": "Betrek",
+      "engageDesc": "Geef hints, beantwoord vragen en bekijk hoe deelnemers met AI-agents samenwerken in real time.",
+      "discover": "Ontdek",
+      "discoverDesc": "Beoordeel oplossingen, bekijk wie het beste presteerde en maak direct contact met toptalent."
+    },
     "currentSponsors": "Onze Sponsors",
     "noSponsors": "Word onze eerste sponsor!",
     "becomeSponsor": "Word Sponsor",
