@@ -183,9 +183,18 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
         });
 
         const createdId = Number(created.id);
+        const slug = generateSlug(title);
         const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         dispatch({ type: "SAVE_SUCCESS", payload: { articleId: createdId, time } });
         if (showToast) showMessage(t("draftCreated"), "success");
+
+        // Update URL so refresh loads the saved article instead of a blank editor
+        if (!initialData?.id) {
+          const currentPath = window.location.pathname;
+          const editPath = currentPath.replace(/\/blog\/write$/, `/blog/edit/${slug}`);
+          window.history.replaceState(null, "", editPath);
+        }
+
         return createdId;
       } catch (err) {
         dispatch({ type: "SAVE_ERROR" });
