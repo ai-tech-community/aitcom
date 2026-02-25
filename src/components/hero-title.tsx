@@ -26,7 +26,7 @@ export function HeroTitle({ greeting, title }: HeroTitleProps) {
           ]}
           cycleInterval={4}
           duration={2}
-          className="text-primary inline-block"
+          className="text-primary [--shimmer-color:var(--color-primary)] inline-block"
         />
       </span>
     </h1>

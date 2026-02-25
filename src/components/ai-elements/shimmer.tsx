@@ -86,7 +86,7 @@ const ShimmerComponent = ({
           ...(isTextItem
             ? {
                 backgroundImage:
-                  "var(--bg), linear-gradient(var(--color-muted-foreground), var(--color-muted-foreground))",
+                  "var(--bg), linear-gradient(var(--shimmer-color, var(--color-muted-foreground)), var(--shimmer-color, var(--color-muted-foreground)))",
               }
             : {}),
         } as CSSProperties
