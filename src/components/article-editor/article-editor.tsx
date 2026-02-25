@@ -43,6 +43,7 @@ import {
 import { HorizontalRulePlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalHorizontalRulePlugin";
 
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
+import { ImageNode, $createImageNode } from "./nodes/image-node";
 import type { ArticleEditorProps, SaveState, SlashGroup, SlashCommand } from "./types";
 import { editorReducer, slashMenuReducer } from "./reducers";
 import { extractPlainText, hasCodeNode, getHeadingOutline, filterSlashCommands, generateSlug, preprocessEditorState, postprocessEditorState } from "./utils";
@@ -122,7 +123,7 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
       },
       link: "text-primary underline underline-offset-4 hover:opacity-80",
     },
-    nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, HorizontalRuleNode, CodeBlockNode],
+    nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, HorizontalRuleNode, CodeBlockNode, ImageNode],
     editorState: initialData?.content ? preprocessEditorState(initialData.content) : undefined,
     onError: (error: Error) => console.error("[ArticleEditor]", error),
   }), []);
@@ -393,6 +394,17 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
           if ($isRangeSelection(selection)) {
             const codeBlock = $createCodeBlockNode("", "typescript");
             selection.insertNodes([codeBlock]);
+          }
+        });
+        slashDispatch({ type: "CLOSE" });
+        return;
+      }
+      if (id === "image") {
+        editorRef.update(() => {
+          const selection = $getSelection();
+          if ($isRangeSelection(selection)) {
+            const imageNode = $createImageNode("", "");
+            selection.insertNodes([imageNode]);
           }
         });
         slashDispatch({ type: "CLOSE" });

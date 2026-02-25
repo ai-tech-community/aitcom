@@ -80,6 +80,7 @@ export const SLASH_COMMANDS: SlashCommand[] = [
   { id: "admonition-warning", label: "Admonition: Warning", group: "Technical", keywords: ["warning", "warn", "risk"] },
   { id: "admonition-success", label: "Admonition: Success", group: "Technical", keywords: ["success", "tip", "good"] },
   { id: "mermaid", label: "Mermaid Diagram", group: "Technical", keywords: ["diagram", "flow", "mermaid"] },
+  { id: "image", label: "Image", group: "Basic", keywords: ["image", "picture", "photo", "img"] },
   { id: "code", label: "Code Block", group: "Technical", keywords: ["code", "snippet", "pre", "block"] },
   { id: "tabs", label: "Tabs/Snippets Template", group: "Technical", keywords: ["tabs", "snippets", "code"] },
 ];

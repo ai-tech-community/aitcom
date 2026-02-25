@@ -24,6 +24,7 @@ export function hasCodeNode(nodes: unknown): boolean {
     if (!node || typeof node !== "object") return false;
     const n = node as Record<string, unknown>;
     if (n.type === "code") return true;
+    if (n.type === "block" && (n as Record<string, any>).fields?.blockType === "Code") return true;
     if (Array.isArray(n.children) && hasCodeNode(n.children)) return true;
     if (typeof n.text === "string" && n.text.includes("```")) return true;
     return false;

@@ -8,6 +8,8 @@ type LexicalNode = {
   listType?: string;
   url?: string;
   language?: string;
+  src?: string;      // for image nodes
+  alt?: string;      // for image nodes
   children?: LexicalNode[];
   fields?: { url?: string; newTab?: boolean; blockType?: string; code?: string; language?: string };
 };
@@ -45,12 +47,59 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
     case "linebreak":
       return <br key={idx} />;
 
-    case "paragraph":
+    case "paragraph": {
+      const plain = extractPlainText(node.children ?? []).trim();
+
+      if (plain === "---") {
+        return <hr key={idx} className="border-border my-6" />;
+      }
+
+      if (plain.startsWith("[!")) {
+        const markerMatch = /^\[!([A-Z]+)\]\s*(.*)$/.exec(plain);
+        const variant = markerMatch?.[1] ?? "NOTE";
+        const title = markerMatch?.[2] ?? "";
+
+        const styleMap: Record<string, string> = {
+          INFO: "border-blue-500/40 bg-blue-500/10 text-blue-100",
+          WARNING: "border-orange-500/40 bg-orange-500/10 text-orange-100",
+          SUCCESS: "border-green-500/40 bg-green-500/10 text-green-100",
+          NOTE: "border-zinc-500/40 bg-zinc-500/10 text-zinc-100",
+        };
+
+        return (
+          <div key={idx} className={`my-4 rounded border px-4 py-3 ${styleMap[variant] ?? styleMap.NOTE}`}>
+            <p className="font-mono text-xs tracking-wider">{variant}</p>
+            {title ? <p className="mt-1 text-sm">{title}</p> : null}
+          </div>
+        );
+      }
+
+      if (plain.startsWith("[MERMAID]")) {
+        const source = plain.replace("[MERMAID]", "").trim();
+        return (
+          <div key={idx} className="border-border bg-muted/30 my-4 rounded border p-4">
+            <p className="text-muted-foreground mb-2 font-mono text-xs tracking-wider">MERMAID</p>
+            <pre className="overflow-x-auto font-mono text-xs leading-relaxed">
+              <code>{source || "graph TD; A[Start] --> B[End]"}</code>
+            </pre>
+          </div>
+        );
+      }
+
+      if (plain === "[TABS]") {
+        return (
+          <div key={idx} className="border-border bg-muted/20 my-4 rounded border px-3 py-2 font-mono text-xs">
+            Tabs/Snippets Block
+          </div>
+        );
+      }
+
       return (
         <p key={idx} className="mb-4 leading-relaxed">
           {node.children?.map((c, i) => renderNode(c, i))}
         </p>
       );
+    }
 
     case "heading": {
       const Tag = (node.tag ?? "h2") as keyof React.JSX.IntrinsicElements;
@@ -138,6 +187,18 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
 
     case "horizontalrule":
       return <hr key={idx} className="border-border my-6" />;
+
+    case "image": {
+      const src = node.src ?? "";
+      const alt = node.alt ?? "";
+      if (!src) return null;
+      return (
+        <figure key={idx} className="my-6">
+          <img src={src} alt={alt} className="w-full rounded" />
+          {alt && <figcaption className="text-muted-foreground mt-2 text-center text-sm">{alt}</figcaption>}
+        </figure>
+      );
+    }
 
     default:
       if (node.children?.length) {
