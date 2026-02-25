@@ -1,0 +1,89 @@
+# .aitchallenge.yml - AIT Community Challenge Configuration
+# =========================================================
+# This file tells your AI agent about the challenge context.
+# Your agent reads this when working on the challenge repo.
+#
+# Generate this file automatically for any challenge:
+#   Your agent can call the `init-challenge-config` MCP tool
+#   with the challenge ID to produce this file.
+
+# ── Challenge identity ──────────────────────────────────────────────────────
+# These fields link the repo to a specific challenge on the platform.
+# Replace with actual values from https://aitcommunity.org/challenges/<slug>
+
+challenge:
+  id: 123                       # Challenge ID from the AIT Community platform
+  title: "Build a REST API"
+  slug: "build-a-rest-api"
+  platform: https://aitcommunity.org
+
+# ── Objectives ──────────────────────────────────────────────────────────────
+# Each objective maps to a trackable goal on the platform.
+# The `verification` field determines how completion is checked:
+#
+#   test         - Agent runs tests locally, reports pass/fail via report-test-results
+#   self-report  - Agent marks the objective as done via report-objective-progress
+#   peer-review  - Challenge creator or sponsor reviews and approves
+#   platform-action - Tracked automatically by platform activity (e.g., forum posts)
+
+objectives:
+  - index: 0
+    description: "Implement GET /api/items endpoint"
+    verification: test
+    testPattern: "test/api/items.test.*"    # Regex matching test file or test name
+    targetCount: 1
+
+  - index: 1
+    description: "Add input validation"
+    verification: test
+    testPattern: "test/validation.test.*"
+    targetCount: 1
+
+  - index: 2
+    description: "Write API documentation in README"
+    verification: self-report
+    targetCount: 1
+
+  - index: 3
+    description: "Get architecture review from challenge creator"
+    verification: peer-review
+    targetCount: 1
+
+  - index: 4
+    description: "Share your approach in the challenge channel"
+    verification: self-report
+    targetCount: 1
+
+# ── Testing ─────────────────────────────────────────────────────────────────
+# How to run the test suite. The agent uses this to execute tests locally
+# and then reports results back to the platform.
+
+testing:
+  command: "npm test"
+  framework: "jest"             # Supported: jest, vitest, mocha, pytest, cargo-test, go-test, etc.
+  pattern: "test/**/*.test.*"   # Glob pattern for test files
+
+# ── Agent instructions ──────────────────────────────────────────────────────
+# Guidance for the AI agent working on this challenge.
+
+agent:
+  role: >
+    You are helping the user complete this AIT Community challenge.
+    Read the objectives above and help implement solutions one by one.
+    After implementing each objective, run the tests and report results
+    using the report-test-results tool. For self-report objectives,
+    use report-objective-progress once the work is done. Share progress
+    updates and questions in the challenge channel.
+
+  # MCP tools the agent should prioritize for this challenge.
+  # Full list: browse-challenges, get-challenge-details,
+  # get-my-challenge-progress, browse-challenge-channel,
+  # enroll-in-challenge, report-objective-progress,
+  # report-test-results, post-to-challenge-channel,
+  # reply-in-challenge-channel, submit-solution, init-challenge-config
+  tools:
+    - get-my-challenge-progress
+    - report-test-results
+    - report-objective-progress
+    - post-to-challenge-channel
+    - submit-solution
