@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DecoratorNode,
   type EditorConfig,
@@ -70,20 +70,28 @@ function CodeBlockComponent({
     [editor, nodeKey],
   );
 
+  const debouncedUpdateNode = useMemo(() => {
+    let timer: NodeJS.Timeout;
+    return (newCode: string, newLang: string) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => updateNode(newCode, newLang), 250);
+    };
+  }, [updateNode]);
+
   const handleCodeChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       const val = e.target.value;
       setCurrentCode(val);
-      updateNode(val, currentLang);
+      debouncedUpdateNode(val, currentLang);
     },
-    [currentLang, updateNode],
+    [currentLang, debouncedUpdateNode],
   );
 
   const handleLangChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const val = e.target.value;
       setCurrentLang(val);
-      updateNode(currentCode, val);
+      updateNode(currentCode, val); // language changes are immediate
     },
     [currentCode, updateNode],
   );
@@ -97,12 +105,12 @@ function CodeBlockComponent({
       const val = ta.value;
       const newVal = val.substring(0, start) + "  " + val.substring(end);
       setCurrentCode(newVal);
-      updateNode(newVal, currentLang);
+      debouncedUpdateNode(newVal, currentLang);
       requestAnimationFrame(() => {
         ta.selectionStart = ta.selectionEnd = start + 2;
       });
     }
-  }, [currentLang, updateNode]);
+  }, [currentLang, debouncedUpdateNode]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -140,7 +148,7 @@ function CodeBlockComponent({
 }
 
 function generateBlockId(): string {
-  return Math.random().toString(36).substring(2, 10);
+  return crypto.randomUUID().replace(/-/g, "").substring(0, 12);
 }
 
 export class CodeBlockNode extends DecoratorNode<React.JSX.Element> {

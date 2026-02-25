@@ -17,6 +17,15 @@ export type SerializedImageNode = SerializedLexicalNode & {
   alt: string;
 };
 
+function isValidImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function ImageComponent({
   src,
   alt,
@@ -76,7 +85,8 @@ function ImageComponent({
           className="w-32 bg-transparent text-xs text-muted-foreground focus:outline-none"
         />
       </div>
-      {currentSrc && !imgError ? (
+      {currentSrc && !imgError && isValidImageUrl(currentSrc) ? (
+        // eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs, next/image requires configured remotePatterns
         <img
           src={currentSrc}
           alt={currentAlt}
@@ -85,7 +95,7 @@ function ImageComponent({
         />
       ) : (
         <div className="flex h-32 items-center justify-center text-muted-foreground text-xs">
-          {currentSrc ? "Image failed to load" : "Enter an image URL above"}
+          {currentSrc ? (imgError ? "Image failed to load" : "Enter a valid https:// image URL") : "Enter an image URL above"}
         </div>
       )}
     </div>

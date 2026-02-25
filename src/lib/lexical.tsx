@@ -192,8 +192,16 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
       const src = node.src ?? "";
       const alt = node.alt ?? "";
       if (!src) return null;
+      // Only render http/https URLs to prevent XSS via javascript: or data: URIs
+      try {
+        const parsed = new URL(src);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+      } catch {
+        return null;
+      }
       return (
         <figure key={idx} className="my-6">
+          {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs, next/image requires configured remotePatterns */}
           <img src={src} alt={alt} className="w-full rounded" />
           {alt && <figcaption className="text-muted-foreground mt-2 text-center text-sm">{alt}</figcaption>}
         </figure>
