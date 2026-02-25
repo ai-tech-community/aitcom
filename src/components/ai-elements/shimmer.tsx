@@ -76,8 +76,8 @@ const ShimmerComponent = ({
       className={cn(
         "relative inline-block bg-[length:250%_100%] bg-clip-text",
         "[--bg:linear-gradient(90deg,#0000_calc(50%-var(--spread)),var(--color-background),#0000_calc(50%+var(--spread)))] [background-repeat:no-repeat,padding-box]",
+        className,
         isTextItem && "text-transparent",
-        className
       )}
       initial={{ backgroundPosition: "100% center" }}
       style={
