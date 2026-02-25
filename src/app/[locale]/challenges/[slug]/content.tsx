@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { LexicalRenderer } from "@/lib/lexical";
 import { ChallengeProgress } from "@/components/challenges/challenge-progress";
 import { ChallengeLeaderboard } from "@/components/challenges/challenge-leaderboard";
+import { ChallengeChannelView } from "@/components/challenges/challenge-channel-view";
 import {
   GitBranch,
   Trophy,
@@ -331,13 +332,7 @@ export function ChallengeDetailContent({
 
       {/* ── Channel Tab ───────────────────────────────────────────────── */}
       {tab === "channel" && (
-        <div className="mt-8">
-          <div className="rounded-lg border border-dashed border-border px-6 py-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              Challenge channel coming soon...
-            </p>
-          </div>
-        </div>
+        <ChallengeChannelView challengeId={challenge.id} />
       )}
 
       {/* ── My Progress Tab ───────────────────────────────────────────── */}
