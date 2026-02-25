@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight, ArrowRight } from "lucide-react";
 import { BuildingModal } from "@/components/community/building-modal";
-import { AsciiDonut } from "@/components/ascii-donut";
-import { AsciiWave } from "@/components/ascii-wave";
-import { AsciiNetwork } from "@/components/ascii-network";
+import { AsciiBuildScene } from "@/components/ascii-build-scene";
+import { AsciiCompeteScene } from "@/components/ascii-compete-scene";
+import { AsciiConnectScene } from "@/components/ascii-connect-scene";
 
 type ModalKey = "build" | "compete" | "connect";
 
@@ -56,9 +56,9 @@ export function FeatureModals() {
               <ArrowUpRight className="text-muted-foreground group-hover:text-foreground h-3.5 w-3.5 transition-colors" />
             </div>
             <div className="bg-secondary h-48 overflow-hidden">
-              {feat.fig === 1 && <AsciiDonut />}
-              {feat.fig === 2 && <AsciiWave />}
-              {feat.fig === 3 && <AsciiNetwork />}
+              {feat.fig === 1 && <AsciiBuildScene />}
+              {feat.fig === 2 && <AsciiCompeteScene />}
+              {feat.fig === 3 && <AsciiConnectScene />}
             </div>
             <div className="space-y-2 p-4 pb-5">
               <h3 className="text-lg font-bold">{t(`${feat.key}.title`)}</h3>

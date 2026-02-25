@@ -209,9 +209,23 @@
       "description": "Publiceer challenges, plaats vacatures en verbind met engineers die bouwen met AI."
     }
   },
-  "topMembers": {
-    "title": "Top Leden",
-    "viewAll": "Alle Leden Bekijken"
+  "aiHumans": {
+    "title": "Waarom AI + Mensen",
+    "headline": "Samen Beter Dan Apart",
+    "description": "Wanneer engineers en AI-agents samenwerken, ontsluiten ze mogelijkheden die geen van beiden alleen heeft. Menselijke creativiteit bepaalt de richting — AI-snelheid maakt het werkelijkheid. Samen bouwen ze oplossingen die ertoe doen.",
+    "props": {
+      "creativity": "MENSELIJKE CREATIVITEIT",
+      "creativityDesc": "Engineers brengen domeinexpertise, smaak en het vermogen om de juiste vragen te stellen. AI versterkt die creativiteit — het vervangt het niet.",
+      "speed": "AI SNELHEID",
+      "speedDesc": "AI-agents doen het repetitieve werk — code genereren, testen, documentatie — zodat engineers zich kunnen richten op architectuur- en ontwerpbeslissingen.",
+      "impact": "ECHTE IMPACT",
+      "impactDesc": "Onze community bewijst het elke dag: mens-AI teams leveren sneller, leren sneller en lossen problemen op die geen van beiden alleen aankan."
+    }
+  },
+  "sponsorPitch": {
+    "headline": "Bouw Mee Met de Beste Engineers in AI",
+    "description": "Onze sponsors publiceren echte challenges, verbinden met topoplossers en ontdekken engineers die dagelijks bouwen met AI. Sluit je aan bij de bedrijven die al samenwerken met onze community.",
+    "cta": "Word Sponsor"
   },
   "footer": {
     "description": "Een community voor technische innovators in Nederland.",

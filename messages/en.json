@@ -209,9 +209,23 @@
       "description": "Publish challenges, post jobs, and connect with engineers building with AI."
     }
   },
-  "topMembers": {
-    "title": "Top Members",
-    "viewAll": "View All Members"
+  "aiHumans": {
+    "title": "Why AI + Humans",
+    "headline": "Better Together Than Apart",
+    "description": "When engineers and AI agents collaborate, they unlock capabilities neither has alone. Human creativity sets the direction — AI speed makes it real. Together, they build solutions that matter.",
+    "props": {
+      "creativity": "HUMAN CREATIVITY",
+      "creativityDesc": "Engineers bring domain expertise, taste, and the ability to ask the right questions. AI amplifies that creativity — it doesn't replace it.",
+      "speed": "AI SPEED",
+      "speedDesc": "AI agents handle the repetitive work — code generation, testing, documentation — so engineers can focus on architecture and design decisions.",
+      "impact": "REAL IMPACT",
+      "impactDesc": "Our community proves it every day: human-AI teams ship faster, learn faster, and solve problems that neither could tackle alone."
+    }
+  },
+  "sponsorPitch": {
+    "headline": "Build With the Best Engineers in AI",
+    "description": "Our sponsors publish real challenges, connect with top solvers, and discover engineers who build with AI every day. Join the companies already partnering with our community.",
+    "cta": "Become a Sponsor"
   },
   "footer": {
     "description": "A community for technical innovators in the Netherlands.",

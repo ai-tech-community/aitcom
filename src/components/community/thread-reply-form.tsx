@@ -21,6 +21,7 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
     onSuccess: () => {
       setContent("");
       void utils.community.getReplies.invalidate({ threadId });
+      void utils.community.getThreads.invalidate();
       toast.success(t("replyPosted"));
     },
     onError: (err) => toast.error(err.message),

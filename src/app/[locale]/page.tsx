@@ -6,8 +6,8 @@ import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
-import { user, memberProfiles } from "@/server/db/schema";
-import { count, desc, sql } from "drizzle-orm";
+import { user } from "@/server/db/schema";
+import { count } from "drizzle-orm";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
@@ -113,18 +113,6 @@ export default async function Home() {
     where: { type: { equals: "hackathon" }, status: { not_equals: "draft" } },
     limit: 0,
   }).then((r) => r.totalDocs);
-
-  const topMembers = await db
-    .select({
-      userId: memberProfiles.userId,
-      displayName: memberProfiles.displayName,
-      xp: memberProfiles.xp,
-      level: memberProfiles.level,
-    })
-    .from(memberProfiles)
-    .where(sql`${memberProfiles.isPublic} = true`)
-    .orderBy(desc(memberProfiles.xp))
-    .limit(6);
 
   return (
     <>
@@ -273,50 +261,48 @@ export default async function Home() {
         )}
       </section>
 
-      {/* Top Members */}
-      {topMembers.length > 0 && (
-        <section className="px-6 py-12 sm:px-12">
-          <SectionLabel>/ {t("topMembers.title").toUpperCase()}</SectionLabel>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-6">
-            {topMembers.map((member) => (
-              <Link
-                key={member.userId}
-                href={`/members/${member.userId}`}
-                className="group flex flex-col items-center gap-2 rounded-lg p-3 transition-colors hover:bg-secondary/50"
-              >
-                <div className="bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full font-mono text-sm font-bold">
-                  {member.displayName.charAt(0).toUpperCase()}
-                </div>
-                <span className="text-sm font-medium">{member.displayName}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
-                    LVL {member.level}
-                  </span>
-                  <span className="text-primary font-mono text-[10px] font-bold tracking-wider">
-                    {member.xp} XP
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-4 text-right">
-            <Link
-              href="/members"
-              className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
-            >
-              {t("topMembers.viewAll")} →
-            </Link>
-          </div>
-        </section>
-      )}
+      {/* Why AI + Humans */}
+      <section className="px-6 py-12 sm:px-12">
+        <SectionLabel>/ {t("aiHumans.title").toUpperCase()}</SectionLabel>
 
-      {/* Sponsors Strip */}
-      {featuredSponsors.length > 0 && (
-        <section className="px-6 py-12 sm:px-12">
-          <SectionLabel>
-            / {t("sponsors.currentSponsors").toUpperCase()}
-          </SectionLabel>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-8">
+        <div className="mt-8 max-w-3xl">
+          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+            {t("aiHumans.headline")}
+          </h2>
+          <p className="text-muted-foreground mt-4 text-base leading-relaxed sm:text-lg">
+            {t("aiHumans.description")}
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+          {(["creativity", "speed", "impact"] as const).map((key) => (
+            <div key={key} className="space-y-2">
+              <h3 className="font-mono text-xs font-semibold tracking-wider">
+                {t(`aiHumans.props.${key}`)}
+              </h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {t(`aiHumans.props.${key}Desc`)}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Sponsors */}
+      <section className="px-6 py-12 sm:px-12">
+        <SectionLabel>/ {t("sponsors.currentSponsors").toUpperCase()}</SectionLabel>
+
+        <div className="mt-8 max-w-3xl">
+          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+            {t("sponsorPitch.headline")}
+          </h2>
+          <p className="text-muted-foreground mt-3 text-sm leading-relaxed sm:text-base">
+            {t("sponsorPitch.description")}
+          </p>
+        </div>
+
+        {featuredSponsors.length > 0 && (
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-8">
             {featuredSponsors.map((sponsor) => {
               const logo =
                 typeof sponsor.logo === "object"
@@ -341,8 +327,17 @@ export default async function Home() {
               ) : null;
             })}
           </div>
-        </section>
-      )}
+        )}
+
+        <div className="mt-6 text-right">
+          <Link
+            href="/sponsors"
+            className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
+          >
+            {t("sponsorPitch.cta")} →
+          </Link>
+        </div>
+      </section>
 
       {/* CTA Cards */}
       <section className="px-6 py-12 sm:px-12">
