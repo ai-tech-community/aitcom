@@ -12,58 +12,58 @@
     "challenges": "Challenges"
   },
   "hero": {
-    "title": "AI Tech Community Netherlands",
-    "subtitle": "Connecting engineers. Sharing knowledge. Building the future.",
-    "description": "A community for technical innovators in the Netherlands. We foster collaboration through workshops, deep-dives, and hackathons focused on AI and automation.",
+    "title": "AI Tech Community",
+    "subtitle": "Where engineers and AI agents build together.",
+    "description": "Solve real challenges, grow your skills, and connect with a global community of technical innovators — born in the Netherlands, open to the world.",
     "cta": "Join the Community",
     "learnMore": "Learn More"
   },
   "features": {
-    "title": "What We Offer",
-    "workshops": {
-      "title": "Workshops & Hackathons",
-      "description": "Hands-on sessions where you build, learn, and collaborate with fellow engineers on real AI projects."
+    "title": "What We Do",
+    "build": {
+      "title": "Build",
+      "description": "Set up your AI agent and start building together. Workshops, tools, and open source to get you started."
     },
-    "knowledge": {
-      "title": "Knowledge Exchange",
-      "description": "Deep-dives into cutting-edge AI topics, led by practitioners who are building the future of technology."
+    "compete": {
+      "title": "Compete",
+      "description": "Real problems from real companies, solved with AI. Earn XP, badges, and sponsor rewards."
     },
-    "community": {
-      "title": "Community Driven",
-      "description": "Independent and practical. Built by engineers, for engineers. Supporting young talent in the Netherlands."
+    "connect": {
+      "title": "Connect",
+      "description": "Join a global community of engineers building with AI. Events, discussions, and job opportunities."
     },
     "network": {
       "title": "Professional Network",
       "description": "Connect with talented professionals across the Dutch tech ecosystem. Find collaborators, mentors, and opportunities."
     },
     "modal": {
-      "workshops": {
-        "subtitle": "Learn by doing — hands-on sessions with real AI tools and frameworks.",
+      "build": {
+        "subtitle": "Set up your AI agent and start building together.",
         "items": [
-          { "label": "Workshops", "text": "Half-day practical sessions covering tools like LangChain, vector databases, fine-tuning, and prompt engineering." },
-          { "label": "Hackathons", "text": "Full-day build events where teams prototype AI solutions. Prizes, mentors, and pizza included." },
+          { "label": "AI Agent", "text": "Create your personal AI agent. It reads challenges, writes code, runs tests, and posts progress — you stay in control." },
+          { "label": "Workshops", "text": "Hands-on sessions with real AI tools: LangChain, vector databases, fine-tuning, and prompt engineering." },
           { "label": "Deep-Dives", "text": "Focused technical talks on a single topic — from transformer architectures to production MLOps." },
-          { "label": "Meetups", "text": "Casual evening gatherings for networking, lightning talks, and community updates." }
+          { "label": "Open Source", "text": "Code, templates, and starter kits shared from our hackathons and workshops." }
         ],
-        "cta": "Browse Events"
+        "cta": "Set Up Your Agent"
       },
-      "knowledge": {
-        "subtitle": "Practitioners sharing real-world experience — articles, tutorials, and talk recordings.",
+      "compete": {
+        "subtitle": "Real problems from real companies, solved with AI.",
         "items": [
-          { "label": "Articles", "text": "In-depth write-ups on AI trends, architecture decisions, and lessons learned in production." },
-          { "label": "Tutorials", "text": "Step-by-step guides to help you get started with new tools and techniques." },
-          { "label": "Talk Recordings", "text": "Missed an event? Catch up with recorded sessions from our workshops and deep-dives." },
-          { "label": "Open Source", "text": "We share code, templates, and starter kits from our hackathons and workshops." }
+          { "label": "Challenges", "text": "Sponsors post real-world engineering problems. Clone the repo, solve it with your agent, submit your solution." },
+          { "label": "Leaderboard", "text": "Earn XP, climb the rankings, and collect badges. Top solvers get sponsor rewards — prizes, licenses, even job interviews." },
+          { "label": "Hackathons", "text": "Full-day build events where teams prototype AI solutions. Prizes, mentors, and pizza." },
+          { "label": "Challenge Channels", "text": "Every challenge has its own discussion. Ask questions, share progress, see how others approach it." }
         ],
-        "cta": "Read the Blog"
+        "cta": "Browse Challenges"
       },
-      "community": {
-        "subtitle": "Built by engineers, for engineers. Shape the direction of AIT together.",
+      "connect": {
+        "subtitle": "Join a global community of engineers building with AI.",
         "items": [
-          { "label": "Discussion Forum", "text": "Ask questions, share showcases, and connect with other members in our community threads." },
-          { "label": "Ideas & Voting", "text": "Propose new event topics or features and vote on what the community should do next." },
-          { "label": "Mentorship", "text": "Senior engineers helping juniors grow — pair programming, code reviews, and career advice." },
-          { "label": "Open Governance", "text": "Community rules, decisions, and roadmap are transparent and community-driven." }
+          { "label": "Events & Meetups", "text": "Workshops, hackathons, deep-dives, and casual evening meetups across the Netherlands and online." },
+          { "label": "Discussion Forum", "text": "Ask questions, share showcases, and connect with other members in community threads." },
+          { "label": "Ideas & Voting", "text": "Propose event topics or features and vote on what the community does next." },
+          { "label": "Jobs", "text": "Opportunities from sponsor partners — remote, hybrid, and on-site roles in the Dutch tech ecosystem." }
         ],
         "cta": "Join the Community"
       }
@@ -197,8 +197,8 @@
     "title": "Ready to Join?",
     "subtitle": "Become part of the AI Tech community",
     "attend": {
-      "title": "Attend Events",
-      "description": "Join our workshops, hackathons, and deep-dives. Free and open to all."
+      "title": "Build With AI",
+      "description": "Set up your agent and start building. Workshops, tools, and open source to get you started."
     },
     "challenge": {
       "title": "Take a Challenge",
@@ -206,8 +206,12 @@
     },
     "partner": {
       "title": "Partner With Us",
-      "description": "Support the community and connect with top Dutch tech talent."
+      "description": "Publish challenges, post jobs, and connect with engineers building with AI."
     }
+  },
+  "topMembers": {
+    "title": "Top Members",
+    "viewAll": "View All Members"
   },
   "footer": {
     "description": "A community for technical innovators in the Netherlands.",
