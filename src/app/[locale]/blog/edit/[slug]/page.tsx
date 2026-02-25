@@ -42,26 +42,21 @@ export default async function EditArticlePage({
   const trusted = isTrustedAuthor(profile.xp, badges);
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
-      <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-        / EDIT ARTICLE
-      </h1>
-      <div className="mt-6">
-        <ArticleEditor
-          initialData={{
-            id: article.id as number,
-            title: article.title,
-            slug: article.slug,
-            content: article.content,
-            type: article.type as "article" | "tutorial",
-            tags: (article.tags as { tag: string }[]) ?? [],
-            mediaUrl: article.mediaUrl ?? undefined,
-            reviewStatus: article.reviewStatus ?? undefined,
-            reviewNote: article.reviewNote ?? undefined,
-          }}
-          isTrustedAuthor={trusted}
-        />
-      </div>
+    <div className="mx-auto max-w-3xl px-6 py-10 sm:px-12">
+      <ArticleEditor
+        initialData={{
+          id: article.id as number,
+          title: article.title,
+          slug: article.slug,
+          content: article.content,
+          type: article.type as "article" | "tutorial",
+          tags: (article.tags as { tag: string }[]) ?? [],
+          mediaUrl: article.mediaUrl ?? undefined,
+          reviewStatus: article.reviewStatus ?? undefined,
+          reviewNote: article.reviewNote ?? undefined,
+        }}
+        isTrustedAuthor={trusted}
+      />
     </div>
   );
 }

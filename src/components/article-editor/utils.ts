@@ -82,6 +82,9 @@ export function preprocessEditorState(content: SerializedEditorState | undefined
       if (node.type === "block" && node.fields?.blockType === "Code") {
         node.type = "code-block"; // remap for our CodeBlockNode
       }
+      if (node.type === "block" && node.fields?.blockType === "Image") {
+        node.type = "image"; // remap for our ImageNode
+      }
       if (node.children) walkNodes(node.children);
     }
   }
@@ -96,8 +99,23 @@ export function postprocessEditorState(state: SerializedEditorState): Serialized
   function walkNodes(nodes: any[]): void {
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
-      if (node.type === "code-block") {
+      if (node.type === "code-block" && node.fields?.blockType) {
         node.type = "block";
+      }
+      if (node.type === "image") {
+        node.type = "block";
+        // Ensure fields wrapper exists (handles old-format images with top-level src/alt)
+        if (!node.fields?.blockType) {
+          node.fields = {
+            id: node.fields?.id ?? crypto.randomUUID().replace(/-/g, "").substring(0, 12),
+            blockType: "Image",
+            src: node.fields?.src ?? node.src ?? "",
+            alt: node.fields?.alt ?? node.alt ?? "",
+            blockName: "",
+          };
+          delete node.src;
+          delete node.alt;
+        }
       }
       if (node.children) walkNodes(node.children);
     }

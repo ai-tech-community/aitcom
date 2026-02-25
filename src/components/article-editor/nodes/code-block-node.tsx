@@ -112,6 +112,13 @@ function CodeBlockComponent({
     }
   }, [currentLang, debouncedUpdateNode]);
 
+  const handleDelete = useCallback(() => {
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if (node) node.remove();
+    });
+  }, [editor, nodeKey]);
+
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
@@ -124,15 +131,25 @@ function CodeBlockComponent({
     <div className="bg-muted/50 border-border my-4 overflow-hidden rounded border">
       <div className="border-border flex items-center justify-between border-b px-3 py-1.5">
         <span className="font-mono text-[10px] tracking-wider text-muted-foreground">CODE</span>
-        <select
-          value={currentLang}
-          onChange={handleLangChange}
-          className="bg-transparent text-xs text-muted-foreground focus:outline-none"
-        >
-          {Object.entries(CODE_LANGUAGES).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={currentLang}
+            onChange={handleLangChange}
+            className="bg-transparent text-xs text-muted-foreground focus:outline-none"
+          >
+            {Object.entries(CODE_LANGUAGES).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="text-muted-foreground hover:text-destructive text-xs transition-colors"
+            title="Remove block"
+          >
+            ✕
+          </button>
+        </div>
       </div>
       <textarea
         ref={textareaRef}

@@ -11,7 +11,7 @@ type LexicalNode = {
   src?: string;      // for image nodes
   alt?: string;      // for image nodes
   children?: LexicalNode[];
-  fields?: { url?: string; newTab?: boolean; blockType?: string; code?: string; language?: string };
+  fields?: { url?: string; newTab?: boolean; blockType?: string; code?: string; language?: string; src?: string; alt?: string };
 };
 
 type LexicalRoot = {
@@ -163,6 +163,24 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
       if (node.fields?.blockType === "Code" && node.fields.code !== undefined) {
         return (
           <HighlightedCode key={idx} code={node.fields.code} language={node.fields.language} />
+        );
+      }
+      // Payload BlocksFeature ImageBlock
+      if (node.fields?.blockType === "Image" && node.fields.src) {
+        const imgSrc = node.fields.src;
+        const imgAlt = node.fields.alt ?? "";
+        try {
+          const parsed = new URL(imgSrc);
+          if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+        } catch {
+          return null;
+        }
+        return (
+          <figure key={idx} className="my-6">
+            {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs */}
+            <img src={imgSrc} alt={imgAlt} className="w-full rounded" />
+            {imgAlt && <figcaption className="text-muted-foreground mt-2 text-center text-sm">{imgAlt}</figcaption>}
+          </figure>
         );
       }
       return null;

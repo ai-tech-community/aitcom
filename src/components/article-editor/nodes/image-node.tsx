@@ -13,8 +13,13 @@ import {
 
 export type SerializedImageNode = SerializedLexicalNode & {
   type: "image";
-  src: string;
-  alt: string;
+  fields: {
+    id: string;
+    blockType: "Image";
+    src: string;
+    alt: string;
+    blockName: string;
+  };
 };
 
 function isValidImageUrl(url: string): boolean {
@@ -60,9 +65,16 @@ function ImageComponent({
     [editor, nodeKey],
   );
 
+  const handleDelete = useCallback(() => {
+    editor.update(() => {
+      const node = $getNodeByKey(nodeKey);
+      if (node) node.remove();
+    });
+  }, [editor, nodeKey]);
+
   return (
     <div className="border-border my-4 rounded border">
-      <div className="flex gap-2 border-b border-border px-3 py-1.5">
+      <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
         <input
           type="text"
           value={currentSrc}
@@ -84,6 +96,14 @@ function ImageComponent({
           placeholder="Alt text..."
           className="w-32 bg-transparent text-xs text-muted-foreground focus:outline-none"
         />
+        <button
+          type="button"
+          onClick={handleDelete}
+          className="text-muted-foreground hover:text-destructive text-xs transition-colors"
+          title="Remove image"
+        >
+          ✕
+        </button>
       </div>
       {currentSrc && !imgError && isValidImageUrl(currentSrc) ? (
         // eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs, next/image requires configured remotePatterns
@@ -102,34 +122,51 @@ function ImageComponent({
   );
 }
 
+function generateBlockId(): string {
+  return crypto.randomUUID().replace(/-/g, "").substring(0, 12);
+}
+
 export class ImageNode extends DecoratorNode<React.JSX.Element> {
   __src: string;
   __alt: string;
+  __blockId: string;
 
   static getType(): string {
     return "image";
   }
 
   static clone(node: ImageNode): ImageNode {
-    return new ImageNode(node.__src, node.__alt, node.__key);
+    return new ImageNode(node.__src, node.__alt, node.__blockId, node.__key);
   }
 
-  constructor(src: string, alt: string, key?: NodeKey) {
+  constructor(src: string, alt: string, blockId?: string, key?: NodeKey) {
     super(key);
     this.__src = src;
     this.__alt = alt;
+    this.__blockId = blockId ?? generateBlockId();
   }
 
   static importJSON(json: SerializedImageNode): ImageNode {
-    return new ImageNode(json.src ?? "", json.alt ?? "");
+    // Handle both new format (fields wrapper) and old format (top-level src/alt)
+    const raw = json as any;
+    return new ImageNode(
+      json.fields?.src ?? raw.src ?? "",
+      json.fields?.alt ?? raw.alt ?? "",
+      json.fields?.id,
+    );
   }
 
   exportJSON(): SerializedImageNode {
     return {
       type: "image",
       version: 1,
-      src: this.__src,
-      alt: this.__alt,
+      fields: {
+        id: this.__blockId,
+        blockType: "Image",
+        src: this.__src,
+        alt: this.__alt,
+        blockName: "",
+      },
     };
   }
 

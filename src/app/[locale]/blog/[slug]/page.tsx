@@ -18,7 +18,12 @@ const getArticleBySlug = cache(async (slug: string, locale: string) => {
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
     collection: "articles",
-    where: { slug: { equals: slug } },
+    where: {
+      and: [
+        { slug: { equals: slug } },
+        { status: { equals: "published" } },
+      ],
+    },
     locale: locale as "en" | "nl",
     limit: 1,
     draft: false,
@@ -62,6 +67,7 @@ export default async function ArticleDetailPage({
 
   const article = await getArticleBySlug(slug, locale);
   if (!article) return notFound();
+  if (article.authorType === "member" && article.reviewStatus !== "approved") return notFound();
 
   const typeLabels: Record<string, string> = {
     article: t("article"),

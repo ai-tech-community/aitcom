@@ -28,7 +28,17 @@ export default async function BlogPage() {
   const payload = await getPayloadClient();
   const { docs: articles } = await payload.find({
     collection: "articles",
-    where: { status: { equals: "published" } },
+    where: {
+      and: [
+        { status: { equals: "published" } },
+        {
+          or: [
+            { authorType: { not_equals: "member" } },
+            { reviewStatus: { equals: "approved" } },
+          ],
+        },
+      ],
+    },
     sort: "-publishedAt",
     locale: locale as "en" | "nl",
     draft: false,

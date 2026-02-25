@@ -41,6 +41,8 @@ import {
   INSERT_HORIZONTAL_RULE_COMMAND,
 } from "@payloadcms/richtext-lexical/lexical/react/LexicalHorizontalRuleNode";
 import { HorizontalRulePlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalHorizontalRulePlugin";
+import { CheckListPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalCheckListPlugin";
+import { LinkPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalLinkPlugin";
 
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
@@ -48,6 +50,8 @@ import type { ArticleEditorProps, SaveState, SlashGroup, SlashCommand } from "./
 import { editorReducer, slashMenuReducer } from "./reducers";
 import { extractPlainText, hasCodeNode, getHeadingOutline, filterSlashCommands, generateSlug, preprocessEditorState, postprocessEditorState } from "./utils";
 import { SlashCommandMenu } from "./slash-command-menu";
+import { FloatingToolbar } from "./floating-toolbar";
+import { BlockHandles } from "./block-handles";
 import { PrePublishDialog } from "./pre-publish-dialog";
 
 function EditorBridge({ onReady }: { onReady: (editor: LexicalEditor) => void }) {
@@ -89,11 +93,16 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [editorRef, setEditorRef] = useState<LexicalEditor | null>(null);
+  const [editorAnchor, setEditorAnchor] = useState<HTMLDivElement | null>(null);
 
   const autosaveTimer = useRef<NodeJS.Timeout | null>(null);
   const serializeTimer = useRef<NodeJS.Timeout | null>(null);
   const messageTimer = useRef<NodeJS.Timeout | null>(null);
   const initialized = useRef(false);
+  const savingRef = useRef(false);
+  const submittingRef = useRef(false);
+  savingRef.current = saving;
+  submittingRef.current = submitting;
 
   const createMutation = api.articles.create.useMutation();
   const updateMutation = api.articles.update.useMutation();
@@ -188,9 +197,12 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
         dispatch({ type: "SAVE_SUCCESS", payload: { articleId: createdId, time } });
         if (showToast) showMessage(t("draftCreated"), "success");
 
-        // Update URL so refresh loads the saved article instead of a blank editor
+        // Update URL so refresh loads the saved article instead of a blank editor.
+        // Use replaceState (not router.replace) to avoid soft navigation remount.
         if (!initialData?.id && createdSlug) {
-          router.replace(`/blog/edit/${createdSlug}`, { scroll: false });
+          const currentPath = window.location.pathname;
+          const locale = currentPath.split("/")[1]; // e.g. "en" or "nl"
+          window.history.replaceState(null, "", `/${locale}/blog/edit/${createdSlug}`);
         }
 
         return createdId;
@@ -311,7 +323,7 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
       return;
     }
 
-    if (!title.trim() || !editorState || submitting || saving) return;
+    if (!title.trim() || !editorState || submittingRef.current || savingRef.current) return;
     dispatch({ type: "MARK_UNSAVED" });
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
 
@@ -322,7 +334,8 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     };
-  }, [editorState, mediaUrl, saving, submitting, tags, title, type]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- saving/submitting tracked via refs to avoid save loops
+  }, [editorState, mediaUrl, tags, title, type]);
 
   const addTag = useCallback(() => {
     const trimmed = tagInput.trim();
@@ -568,18 +581,23 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
       <div className="border-b border-border my-4" />
 
       {/* Borderless content editor */}
-      <div className="relative">
+      <div className="editor-anchor relative" ref={setEditorAnchor}>
         <LexicalComposer initialConfig={initialConfig}>
           <EditorBridge onReady={setEditorRef} />
           <RichTextPlugin
-            contentEditable={<ContentEditable className="min-h-[60vh] text-sm leading-relaxed focus:outline-none" onKeyDown={handleEditorKeyDown} />}
+            contentEditable={<ContentEditable className="min-h-[60vh] pl-14 text-sm leading-relaxed focus:outline-none" onKeyDown={handleEditorKeyDown} />}
             ErrorBoundary={LexicalErrorBoundary}
           />
           <HistoryPlugin />
           <ListPlugin />
           <HorizontalRulePlugin />
+          <CheckListPlugin />
+          <LinkPlugin />
           <OnChangePlugin onChange={handleEditorChange} />
+          <BlockHandles editor={editorRef} anchorElem={editorAnchor} />
         </LexicalComposer>
+
+        <FloatingToolbar editor={editorRef} />
 
         <SlashCommandMenu
           slash={slash}

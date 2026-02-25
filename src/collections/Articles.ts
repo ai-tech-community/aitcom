@@ -1,5 +1,13 @@
-import type { CollectionConfig } from "payload";
+import type { Block, CollectionConfig } from "payload";
 import { BlocksFeature, CodeBlock, lexicalEditor } from "@payloadcms/richtext-lexical";
+
+const ImageBlock: Block = {
+  slug: "Image",
+  fields: [
+    { name: "src", type: "text", required: true },
+    { name: "alt", type: "text" },
+  ],
+};
 // Add bash to the language list (not in Monaco defaults, but Shiki supports it)
 const codeLanguages = {
   bash: "Bash",
@@ -26,14 +34,23 @@ export const Articles: CollectionConfig = {
   hooks: {
     beforeChange: [
       async ({ data, originalDoc }) => {
-        // Auto-publish on admin approval
-        if (
-          data?.reviewStatus === "approved" &&
-          originalDoc?.reviewStatus !== "approved" &&
-          data?.authorType === "member"
-        ) {
-          data.status = "published";
-          data.publishedAt = data.publishedAt ?? new Date().toISOString();
+        if (data?.authorType === "member") {
+          if (
+            data.reviewStatus === "approved" &&
+            originalDoc?.reviewStatus !== "approved"
+          ) {
+            data.status = "published";
+            data.publishedAt = data.publishedAt ?? new Date().toISOString();
+          } else if (
+            (data.reviewStatus === "rejected" || data.reviewStatus === "changes_requested") &&
+            originalDoc?.reviewStatus !== data.reviewStatus
+          ) {
+            data.status = "draft";
+            data.publishedAt = null;
+          } else if (data.reviewStatus === "pending_review") {
+            data.status = "draft";
+            data.publishedAt = null;
+          }
         }
         return data;
       },
@@ -132,7 +149,7 @@ export const Articles: CollectionConfig = {
       editor: lexicalEditor({
         features: ({ defaultFeatures }) => [
           ...defaultFeatures,
-          BlocksFeature({ blocks: [CodeBlock({ languages: codeLanguages })] }),
+          BlocksFeature({ blocks: [CodeBlock({ languages: codeLanguages }), ImageBlock] }),
         ],
       }),
     },
