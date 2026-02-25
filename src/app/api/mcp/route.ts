@@ -31,7 +31,7 @@ type Caller = ReturnType<typeof createCaller>;
 function createMcpServer(caller: Caller) {
   const server = new McpServer({
     name: "aitcommunity",
-    version: "0.2.0",
+    version: "0.3.0",
   });
 
   // ── Read tools ──────────────────────────────────────────────────────────
@@ -264,6 +264,141 @@ function createMcpServer(caller: Caller) {
     },
   }, async ({ limit }) => {
     const result = await caller.inbox.agentGetOwnerDMs({ limit });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  // ── Challenge read tools ────────────────────────────────────────────────
+
+  server.registerTool("browse-challenges", {
+    description: "Browse active challenges. Filter by difficulty or type.",
+    inputSchema: {
+      difficulty: z.enum(["beginner", "intermediate", "advanced", "expert"]).optional()
+        .describe("Filter by difficulty level."),
+      type: z.enum(["weekly", "monthly", "open-ended"]).optional()
+        .describe("Filter by challenge type."),
+      limit: z.number().min(1).max(50).default(20).describe("Max challenges to return."),
+    },
+  }, async ({ difficulty, type, limit }) => {
+    const result = await caller.agent.browseChallenges({ difficulty, type, limit });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.registerTool("get-challenge-details", {
+    description: "Get full details for a challenge including objectives, rewards, repo config, and your enrollment status.",
+    inputSchema: {
+      challengeId: z.number().describe("Challenge ID."),
+    },
+  }, async ({ challengeId }) => {
+    const result = await caller.agent.getChallengeDetails({ challengeId });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.registerTool("get-my-challenge-progress", {
+    description: "Get your owner's progress on a specific challenge. Shows per-objective completion.",
+    inputSchema: {
+      challengeId: z.number().describe("Challenge ID."),
+    },
+  }, async ({ challengeId }) => {
+    const result = await caller.agent.getMyChallengeProgress({ challengeId });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.registerTool("browse-challenge-channel", {
+    description: "Read threads in a challenge's channel. Filter by thread type.",
+    inputSchema: {
+      challengeId: z.number().describe("Challenge ID."),
+      type: z.enum(["announcement", "discussion", "question", "progress-log", "solution"]).optional()
+        .describe("Filter by thread type."),
+      limit: z.number().min(1).max(50).default(20).describe("Max threads."),
+    },
+  }, async ({ challengeId, type, limit }) => {
+    const result = await caller.agent.browseChallengeChannel({ challengeId, type, limit });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  // ── Challenge contribute tools ──────────────────────────────────────────
+
+  server.registerTool("enroll-in-challenge", {
+    description: "Enroll your owner in a challenge. Creates progress tracking and a progress-log thread.",
+    inputSchema: {
+      challengeId: z.number().describe("Challenge ID to enroll in."),
+    },
+  }, async ({ challengeId }) => {
+    const result = await caller.agent.enrollInChallenge({ challengeId });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.registerTool("report-objective-progress", {
+    description: "Self-report progress on a challenge objective. Only for self-report verification mode.",
+    inputSchema: {
+      challengeId: z.number().describe("Challenge ID."),
+      objectiveIndex: z.number().describe("0-based index of the objective."),
+      details: z.string().max(2000).optional().describe("Optional description of what was done."),
+    },
+  }, async ({ challengeId, objectiveIndex, details }) => {
+    const result = await caller.agent.reportObjectiveProgress({ challengeId, objectiveIndex, details });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.registerTool("report-test-results", {
+    description: "Report test run results for test-verified objectives. Run tests locally first, then report pass/fail.",
+    inputSchema: {
+      challengeId: z.number().describe("Challenge ID."),
+      results: z.array(z.object({
+        objectiveIndex: z.number().describe("0-based objective index."),
+        passed: z.boolean().describe("Whether tests passed."),
+        details: z.string().max(2000).optional().describe("Test output summary."),
+      })).describe("Test results per objective."),
+    },
+  }, async ({ challengeId, results }) => {
+    const result = await caller.agent.reportTestResults({ challengeId, results });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.registerTool("post-to-challenge-channel", {
+    description: "Post to a challenge channel. In ghost mode, saves as draft. Use for progress updates, questions, or discussions.",
+    inputSchema: {
+      challengeId: z.number().describe("Challenge ID."),
+      content: z.string().min(1).max(5000).describe("Post content."),
+      threadType: z.enum(["discussion", "question"]).default("discussion").describe("Type of thread."),
+      title: z.string().min(1).max(500).optional().describe("Thread title. Auto-generated if omitted."),
+    },
+  }, async ({ challengeId, content, threadType, title }) => {
+    const result = await caller.agent.postToChallengeChannel({ challengeId, content, threadType, title });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.registerTool("reply-in-challenge-channel", {
+    description: "Reply to a thread in a challenge channel. In ghost mode, saves as draft.",
+    inputSchema: {
+      threadId: z.string().describe("Thread ID to reply to."),
+      content: z.string().min(1).max(5000).describe("Reply content."),
+    },
+  }, async ({ threadId, content }) => {
+    const result = await caller.agent.replyInChallengeChannel({ threadId, content });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.registerTool("submit-solution", {
+    description: "Submit your solution for a challenge. Creates a solution thread. Triggers peer-review process if applicable.",
+    inputSchema: {
+      challengeId: z.number().describe("Challenge ID."),
+      title: z.string().min(1).max(500).describe("Solution title."),
+      content: z.string().min(1).max(10000).describe("Solution description."),
+      repoUrl: z.string().url().optional().describe("Link to solution repository."),
+    },
+  }, async ({ challengeId, title, content, repoUrl }) => {
+    const result = await caller.agent.submitSolution({ challengeId, title, content, repoUrl });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.registerTool("init-challenge-config", {
+    description: "Generate .aitchallenge.yml content for a challenge. Use for bring-your-own-repo challenges.",
+    inputSchema: {
+      challengeId: z.number().describe("Challenge ID."),
+    },
+  }, async ({ challengeId }) => {
+    const result = await caller.agent.initChallengeConfig({ challengeId });
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   });
 
