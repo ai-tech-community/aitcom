@@ -40,14 +40,22 @@ export const Articles: CollectionConfig = {
     ],
     afterChange: [
       async ({ doc, previousDoc }) => {
+        if (
+          doc.authorType !== "member" ||
+          !doc.authorId ||
+          doc.reviewStatus === previousDoc?.reviewStatus
+        ) {
+          return;
+        }
+
+        const { db } = await import("@/server/db");
+        const { logActivity } = await import("@/server/agent/activity");
+
         // Award XP and badges when admin approves a member article
         if (
           doc.reviewStatus === "approved" &&
-          previousDoc?.reviewStatus !== "approved" &&
-          doc.authorType === "member" &&
-          doc.authorId
+          previousDoc?.reviewStatus !== "approved"
         ) {
-          const { db } = await import("@/server/db");
           const { awardXp, checkArticleBadges, XP_AMOUNTS } = await import(
             "@/lib/gamification"
           );
@@ -70,6 +78,45 @@ export const Articles: CollectionConfig = {
           });
 
           await checkArticleBadges(db, doc.authorId, totalDocs, doc.type);
+
+          await logActivity(db, {
+            actorId: doc.authorId,
+            actorType: "member",
+            action: "article.approved",
+            targetType: "articles",
+            targetId: String(doc.id),
+            metadata: { title: doc.title, type: doc.type },
+          });
+        }
+
+        // Notify member when changes are requested
+        if (doc.reviewStatus === "changes_requested") {
+          await logActivity(db, {
+            actorId: doc.authorId,
+            actorType: "member",
+            action: "article.changes_requested",
+            targetType: "articles",
+            targetId: String(doc.id),
+            metadata: {
+              title: doc.title,
+              reviewNote: doc.reviewNote,
+            },
+          });
+        }
+
+        // Notify member when article is rejected
+        if (doc.reviewStatus === "rejected") {
+          await logActivity(db, {
+            actorId: doc.authorId,
+            actorType: "member",
+            action: "article.rejected",
+            targetType: "articles",
+            targetId: String(doc.id),
+            metadata: {
+              title: doc.title,
+              reviewNote: doc.reviewNote,
+            },
+          });
         }
       },
     ],
