@@ -9,16 +9,16 @@ import { AsciiDonut } from "@/components/ascii-donut";
 import { AsciiWave } from "@/components/ascii-wave";
 import { AsciiNetwork } from "@/components/ascii-network";
 
-type ModalKey = "workshops" | "knowledge" | "community";
+type ModalKey = "build" | "compete" | "connect";
 
 const FEATURES: {
   key: ModalKey;
   fig: number;
-  href: "/events" | "/blog" | "/community";
+  href: "/dashboard/agent" | "/challenges" | "/community";
 }[] = [
-  { key: "workshops", fig: 1, href: "/events" },
-  { key: "knowledge", fig: 2, href: "/blog" },
-  { key: "community", fig: 3, href: "/community" },
+  { key: "build", fig: 1, href: "/dashboard/agent" },
+  { key: "compete", fig: 2, href: "/challenges" },
+  { key: "connect", fig: 3, href: "/community" },
 ];
 
 export function FeatureModals() {
@@ -93,7 +93,7 @@ function FeatureModal({
   windowIndex,
 }: {
   featureKey: ModalKey;
-  href: "/events" | "/blog" | "/community";
+  href: "/dashboard/agent" | "/challenges" | "/community";
   isOpen: boolean;
   onClose: () => void;
   windowIndex: number;
