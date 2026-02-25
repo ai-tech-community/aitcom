@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { AgentSetupForm } from "@/components/agent-setup-form";
 import { AgentApiKey } from "@/components/agent-api-key";
+import { AgentConnectGuide } from "@/components/agent-connect-guide";
 import { AgentDrafts } from "@/components/agent-drafts";
 import { AgentSuggestions } from "@/components/agent-suggestions";
 import { Button } from "@/components/ui/button";
@@ -357,6 +358,18 @@ export function AgentDashboardContent({
         </div>
         <div className="mt-4">
           <AgentApiKey />
+        </div>
+      </div>
+
+      {/* Connect Your Agent */}
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="border-b border-border pb-4">
+          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+            / CONNECT YOUR AGENT
+          </span>
+        </div>
+        <div className="mt-4">
+          <AgentConnectGuide />
         </div>
       </div>
 
