@@ -1,7 +1,7 @@
 import { eq, sql, and } from "drizzle-orm";
 import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
 import type * as schema from "@/server/db/schema";
-import { memberProfiles, memberBadges, eventRegistrations } from "@/server/db/schema";
+import { memberProfiles, memberBadges, eventRegistrations, activityEvents } from "@/server/db/schema";
 
 // --- Badge Definitions ---
 
@@ -9,6 +9,7 @@ export interface BadgeDefinition {
   slug: string;
   name: string;
   description: string;
+  icon?: string;
 }
 
 export const BADGES: Record<string, BadgeDefinition> = {
@@ -42,6 +43,42 @@ export const BADGES: Record<string, BadgeDefinition> = {
     name: "Speaker",
     description: "Listed as a speaker at an event",
   },
+  agent_master: {
+    slug: "agent_master",
+    name: "Agent Master",
+    description: "Your AI agent made 10+ contributions",
+    icon: "🤖",
+  },
+  onboarding_complete: {
+    slug: "onboarding_complete",
+    name: "Onboarding Complete",
+    description: "Finished all onboarding steps",
+  },
+  first_challenge: {
+    slug: "first_challenge",
+    name: "First Challenge",
+    description: "Completed your first challenge",
+  },
+  challenge_streak_3: {
+    slug: "challenge_streak_3",
+    name: "Streak Master",
+    description: "Completed 3 consecutive weekly challenges",
+  },
+  challenge_streak_10: {
+    slug: "challenge_streak_10",
+    name: "Unstoppable",
+    description: "Completed 10 consecutive weekly challenges",
+  },
+  challenge_proposer: {
+    slug: "challenge_proposer",
+    name: "Challenge Proposer",
+    description: "Your proposed challenge was published",
+  },
+  mission_impossible: {
+    slug: "mission_impossible",
+    name: "Mission Impossible",
+    description: "Completed a monthly challenge in the first week",
+  },
 };
 
 // --- XP Amounts ---
@@ -51,6 +88,10 @@ export const XP_AMOUNTS = {
   REGISTER_EVENT: 25,
   ATTEND_EVENT: 100,
   FIRST_EVENT_BONUS: 50,
+  AGENT_SETUP: 25,
+  ONBOARDING_STEP: 10,
+  ONBOARDING_COMPLETE: 50,
+  CHALLENGE_PROPOSE_PUBLISHED: 50,
 } as const;
 
 // --- Leveling ---
@@ -101,6 +142,17 @@ export async function awardBadge(
     .onConflictDoNothing()
     .returning();
 
+  if (result) {
+    await db.insert(activityEvents).values({
+      actorId: userId,
+      actorType: "member",
+      action: "badge.earned",
+      targetType: "member_badge",
+      targetId: result.id,
+      metadata: { badgeSlug, badgeName: BADGES[badgeSlug]?.name ?? badgeSlug },
+    });
+  }
+
   return !!result;
 }
 
@@ -141,6 +193,44 @@ export async function checkEarlyAdopterBadge(db: DB, userId: string) {
   const totalProfiles = countResult?.count ?? 0;
   if (totalProfiles <= 100) {
     await awardBadge(db, userId, "early_adopter");
+  }
+}
+
+/**
+ * Check and award the agent_master badge based on agent contributions.
+ */
+export async function checkAgentBadge(
+  db: DB,
+  userId: string,
+  agentContributions: number,
+) {
+  if (agentContributions >= 10) {
+    await awardBadge(db, userId, "agent_master");
+  }
+}
+
+/**
+ * Check and award challenge-related badges based on completion count.
+ */
+export async function checkChallengeBadges(
+  db: DB,
+  userId: string,
+  completedCount: number,
+  consecutiveWeekly: number,
+  challengeType: "weekly" | "monthly",
+  daysToComplete: number,
+) {
+  if (completedCount >= 1) {
+    await awardBadge(db, userId, "first_challenge");
+  }
+  if (consecutiveWeekly >= 3) {
+    await awardBadge(db, userId, "challenge_streak_3");
+  }
+  if (consecutiveWeekly >= 10) {
+    await awardBadge(db, userId, "challenge_streak_10");
+  }
+  if (challengeType === "monthly" && daysToComplete <= 7) {
+    await awardBadge(db, userId, "mission_impossible");
   }
 }
 

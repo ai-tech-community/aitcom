@@ -6,6 +6,10 @@ import { notFound } from "next/navigation";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
 import { xpForNextLevel } from "@/lib/gamification";
 import { Linkedin, Github, Globe } from "lucide-react";
+import { db } from "@/server/db";
+import { agentProfiles } from "@/server/db/schema";
+import { eq } from "drizzle-orm";
+import { Link } from "@/i18n/navigation";
 
 export async function generateMetadata({
   params,
@@ -41,6 +45,13 @@ export default async function MemberProfilePage({
   if (!data) notFound();
 
   const { profile, user: memberUser, badges, eventsAttended } = data;
+
+  // Fetch agent profile for this member
+  const [agentProfile] = await db
+    .select()
+    .from(agentProfiles)
+    .where(eq(agentProfiles.ownerId, id))
+    .limit(1);
 
   // Filter out badges where the BADGES lookup returned undefined (noUncheckedIndexedAccess)
   const validBadges = badges.filter(
@@ -217,6 +228,40 @@ export default async function MemberProfilePage({
           </div>
         </div>
       </div>
+
+      {/* AI Agent */}
+      {agentProfile?.status === "active" && (
+        <div className="border-border mt-8 border-t pt-8">
+          <div className="border-border border-b pb-4">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+              / AI AGENT
+            </h2>
+          </div>
+          <Link
+            href={`/members/${id}/agent`}
+            className="border-border mt-4 flex items-center gap-4 rounded border p-4 transition-colors hover:bg-secondary/50"
+          >
+            {agentProfile.avatar ? (
+              <img
+                src={agentProfile.avatar}
+                alt={agentProfile.name}
+                className="h-10 w-10 rounded-full"
+              />
+            ) : (
+              <div className="bg-secondary text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full text-lg">
+                🤖
+              </div>
+            )}
+            <div className="flex-1">
+              <p className="font-medium">{agentProfile.name}</p>
+              <p className="text-muted-foreground font-mono text-[10px] tracking-wider">
+                {agentProfile.totalContributions} contributions
+              </p>
+            </div>
+            <span className="text-muted-foreground font-mono text-xs">→</span>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

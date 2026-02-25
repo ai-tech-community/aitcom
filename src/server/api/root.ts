@@ -1,6 +1,12 @@
+import { activityRouter } from "@/server/api/routers/activity";
+import { agentRouter } from "@/server/api/routers/agent";
+import { agentManagementRouter } from "@/server/api/routers/agent-management";
+import { challengesRouter } from "@/server/api/routers/challenges";
 import { communityRouter } from "@/server/api/routers/community";
 import { eventsRouter } from "@/server/api/routers/events";
 import { membersRouter } from "@/server/api/routers/members";
+import { inboxRouter } from "@/server/api/routers/inbox";
+import { onboardingRouter } from "@/server/api/routers/onboarding";
 import { postRouter } from "@/server/api/routers/post";
 import { sponsorsRouter } from "@/server/api/routers/sponsors";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
@@ -16,6 +22,12 @@ export const appRouter = createTRPCRouter({
   members: membersRouter,
   community: communityRouter,
   sponsors: sponsorsRouter,
+  agentManagement: agentManagementRouter,
+  agent: agentRouter,
+  activity: activityRouter,
+  inbox: inboxRouter,
+  onboarding: onboardingRouter,
+  challenges: challengesRouter,
 });
 
 // export type definition of API

@@ -211,6 +211,10 @@ export const memberProfiles = appSchema.table(
     isPublic: d.boolean().default(true).notNull(),
     xp: d.integer().default(0).notNull(),
     level: d.integer().default(1).notNull(),
+    onboardingIntent: d.varchar({ length: 50 }),
+    interests: d.json().$type<string[]>().default([]),
+    experienceLevel: d.varchar({ length: 30 }),
+    onboardingCompleted: d.boolean().default(false).notNull(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -258,6 +262,420 @@ export const memberBadges = appSchema.table(
 export const memberBadgeRelations = relations(memberBadges, ({ one }) => ({
   user: one(user, {
     fields: [memberBadges.userId],
+    references: [user.id],
+  }),
+}));
+
+// Onboarding steps (per-user step completion tracking)
+export const onboardingSteps = appSchema.table(
+  "onboarding_step",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    stepSlug: d.varchar({ length: 100 }).notNull(),
+    completedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("onboarding_step_user_slug_uidx").on(t.userId, t.stepSlug),
+    index("onboarding_step_user_idx").on(t.userId),
+  ],
+);
+
+export const onboardingStepRelations = relations(onboardingSteps, ({ one }) => ({
+  user: one(user, {
+    fields: [onboardingSteps.userId],
+    references: [user.id],
+  }),
+}));
+
+// Agent profiles (1:1 with user, for AI agent identities)
+export const agentProfiles = appSchema.table("agent_profile", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  ownerId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .unique()
+    .references(() => user.id),
+  name: d.varchar({ length: 100 }).notNull(),
+  avatar: d.varchar({ length: 500 }),
+  bio: d.text(),
+  expertiseTags: d
+    .json()
+    .$type<string[]>()
+    .default([]),
+  description: d.text(),
+  visibilityMode: d
+    .varchar({ length: 20 })
+    .notNull()
+    .default("visible"),
+  status: d.varchar({ length: 20 }).notNull().default("active"),
+  totalContributions: d
+    .integer()
+    .notNull()
+    .default(0),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  lastActiveAt: d.timestamp({ withTimezone: true }),
+  canReadOwnerDMs: d.boolean().default(true).notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));
+
+export const agentProfilesRelations = relations(agentProfiles, ({ one }) => ({
+  owner: one(user, {
+    fields: [agentProfiles.ownerId],
+    references: [user.id],
+  }),
+}));
+
+// Agent API keys (for authenticating agent API requests)
+export const agentApiKeys = appSchema.table("agent_api_key", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  agentId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => agentProfiles.id),
+  ownerId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => user.id),
+  keyHash: d.varchar({ length: 128 }).notNull(),
+  keyPrefix: d.varchar({ length: 20 }).notNull(),
+  scopes: d
+    .json()
+    .$type<string[]>()
+    .notNull()
+    .default(["read", "contribute", "self-profile"]),
+  isActive: d.boolean().notNull().default(true),
+  lastUsedAt: d.timestamp({ withTimezone: true }),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+export const agentApiKeysRelations = relations(agentApiKeys, ({ one }) => ({
+  agent: one(agentProfiles, {
+    fields: [agentApiKeys.agentId],
+    references: [agentProfiles.id],
+  }),
+  owner: one(user, {
+    fields: [agentApiKeys.ownerId],
+    references: [user.id],
+  }),
+}));
+
+// Agent drafts (content drafts created by agents, pending human review)
+export const agentDrafts = appSchema.table("agent_draft", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  agentId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => agentProfiles.id),
+  ownerId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => user.id),
+  type: d.varchar({ length: 50 }).notNull(),
+  targetType: d.varchar({ length: 50 }),
+  targetId: d.varchar({ length: 255 }),
+  content: d.text().notNull(),
+  metadata: d.json().$type<Record<string, unknown>>(),
+  status: d.varchar({ length: 20 }).notNull().default("pending"),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+// Agent suggestions (suggestions made by agents)
+export const agentSuggestions = appSchema.table("agent_suggestion", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  agentId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => agentProfiles.id),
+  ownerId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => user.id),
+  type: d.varchar({ length: 50 }).notNull(),
+  title: d.varchar({ length: 500 }),
+  content: d.text(),
+  metadata: d.json().$type<Record<string, unknown>>(),
+  status: d.varchar({ length: 20 }).notNull().default("pending"),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+// Activity events (audit log for all actor actions)
+export const activityEvents = appSchema.table(
+  "activity_event",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    actorId: d.varchar({ length: 255 }).notNull(),
+    actorType: d.varchar({ length: 20 }).notNull(),
+    action: d.varchar({ length: 50 }).notNull(),
+    targetType: d.varchar({ length: 50 }),
+    targetId: d.varchar({ length: 255 }),
+    metadata: d.json().$type<Record<string, unknown>>(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("activity_events_actor_idx").on(t.actorId),
+    index("activity_events_action_idx").on(t.action),
+    index("activity_events_created_idx").on(t.createdAt),
+  ],
+);
+
+// Challenge enrollments (member joins a challenge)
+export const challengeEnrollments = appSchema.table(
+  "challenge_enrollment",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    challengeId: d.integer().notNull(), // References Payload challenges table
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    enrolledAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    completedAt: d.timestamp({ withTimezone: true }),
+    status: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("active")
+      .$type<"active" | "completed" | "abandoned">(),
+  }),
+  (t) => [
+    index("enrollment_challenge_idx").on(t.challengeId),
+    index("enrollment_user_idx").on(t.userId),
+    uniqueIndex("enrollment_user_challenge_uidx").on(t.userId, t.challengeId),
+  ],
+);
+
+export const challengeEnrollmentRelations = relations(
+  challengeEnrollments,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [challengeEnrollments.userId],
+      references: [user.id],
+    }),
+  }),
+);
+
+// Challenge progress (per-objective tracking within an enrollment)
+export const challengeProgress = appSchema.table(
+  "challenge_progress",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    enrollmentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => challengeEnrollments.id),
+    objectiveIndex: d.integer().notNull(),
+    currentCount: d.integer().notNull().default(0),
+    completedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [
+    index("progress_enrollment_idx").on(t.enrollmentId),
+    uniqueIndex("progress_enrollment_objective_uidx").on(
+      t.enrollmentId,
+      t.objectiveIndex,
+    ),
+  ],
+);
+
+export const challengeProgressRelations = relations(
+  challengeProgress,
+  ({ one }) => ({
+    enrollment: one(challengeEnrollments, {
+      fields: [challengeProgress.enrollmentId],
+      references: [challengeEnrollments.id],
+    }),
+  }),
+);
+
+// Notebook messages (human ↔ agent async conversation)
+export const notebookMessages = appSchema.table(
+  "notebook_message",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    agentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => agentProfiles.id),
+    ownerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    role: d.varchar({ length: 10 }).notNull(), // "human" | "agent"
+    content: d.text().notNull(),
+    metadata: d.json().$type<Record<string, unknown>>(),
+    readAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("notebook_messages_agent_created_idx").on(t.agentId, t.createdAt),
+  ],
+);
+
+// Conversations (inbox messaging system)
+export const conversations = appSchema.table("conversation", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  type: d.varchar({ length: 10 }).notNull(), // "agent" | "dm"
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull()
+    .$onUpdate(() => new Date()),
+}));
+
+export const conversationParticipants = appSchema.table(
+  "conversation_participant",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    conversationId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => conversations.id),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    joinedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    lastReadAt: d.timestamp({ withTimezone: true }),
+    isPinned: d.boolean().default(false).notNull(),
+  }),
+  (t) => [
+    uniqueIndex("conv_participant_unique_idx").on(t.conversationId, t.userId),
+    index("conv_participant_user_idx").on(t.userId),
+  ],
+);
+
+export const messages = appSchema.table(
+  "message",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    conversationId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => conversations.id),
+    senderId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    senderType: d.varchar({ length: 10 }).notNull().default("human"), // "human" | "agent"
+    content: d.text().notNull(),
+    metadata: d.json().$type<Record<string, unknown>>(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("messages_conv_created_idx").on(t.conversationId, t.createdAt),
+  ],
+);
+
+export const conversationsRelations = relations(conversations, ({ many }) => ({
+  participants: many(conversationParticipants),
+  messages: many(messages),
+}));
+
+export const conversationParticipantsRelations = relations(
+  conversationParticipants,
+  ({ one }) => ({
+    conversation: one(conversations, {
+      fields: [conversationParticipants.conversationId],
+      references: [conversations.id],
+    }),
+    user: one(user, {
+      fields: [conversationParticipants.userId],
+      references: [user.id],
+    }),
+  }),
+);
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  conversation: one(conversations, {
+    fields: [messages.conversationId],
+    references: [conversations.id],
+  }),
+  sender: one(user, {
+    fields: [messages.senderId],
     references: [user.id],
   }),
 }));

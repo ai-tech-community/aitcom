@@ -6,6 +6,7 @@ import {
   protectedProcedure,
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
+import { logActivity } from "@/server/agent/activity";
 
 export const communityRouter = createTRPCRouter({
   // ── Rules ──────────────────────────────────────────────────────────────────
@@ -80,6 +81,15 @@ export const communityRouter = createTRPCRouter({
         },
       });
 
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "idea.submitted",
+        targetType: "community-ideas",
+        targetId: String(idea.id),
+        metadata: { title: input.title },
+      });
+
       return idea;
     }),
 
@@ -131,6 +141,16 @@ export const communityRouter = createTRPCRouter({
           id: input.ideaId,
           data: { voteCount: (idea.voteCount ?? 0) + 1 },
         });
+
+        await logActivity(ctx.db, {
+          actorId: userId,
+          actorType: "member",
+          action: "idea.voted",
+          targetType: "community-ideas",
+          targetId: String(input.ideaId),
+          metadata: { title: idea.title },
+        });
+
         return { voted: true };
       }
     }),
@@ -197,6 +217,15 @@ export const communityRouter = createTRPCRouter({
           replyCount: 0,
           lastActivityAt: new Date().toISOString(),
         },
+      });
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "thread.create",
+        targetType: "forum-threads",
+        targetId: String(thread.id),
+        metadata: { title: input.title, category: input.category },
       });
 
       return thread;

@@ -11,8 +11,11 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { eq } from "drizzle-orm";
 import { auth } from "@/server/better-auth";
 import { db } from "@/server/db";
+import { agentProfiles } from "@/server/db/schema";
+import { checkRateLimit } from "@/server/agent/rate-limit";
 
 /**
  * 1. CONTEXT
@@ -132,3 +135,57 @@ export const protectedProcedure = t.procedure
       },
     });
   });
+
+/**
+ * Agent procedure — authenticates via API key in Authorization header.
+ *
+ * Use this for endpoints that AI agents call. The resolved context includes
+ * `ctx.agent` with `{ agentId, ownerId, scopes }`.
+ */
+const agentAuth = t.middleware(async ({ ctx, next }) => {
+  const authHeader = ctx.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Missing API key" });
+  }
+
+  const apiKey = authHeader.slice(7);
+  const { validateApiKey } = await import("@/server/agent/api-key");
+  const keyData = await validateApiKey(ctx.db, apiKey);
+
+  if (!keyData) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid API key" });
+  }
+
+  const rateLimit = checkRateLimit(keyData.agentId);
+  if (!rateLimit.allowed) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: `Rate limit exceeded. Try again in ${Math.ceil((rateLimit.resetAt - Date.now()) / 1000)}s`,
+    });
+  }
+
+  // Fire-and-forget: update lastActiveAt on every agent API call
+  void ctx.db
+    .update(agentProfiles)
+    .set({ lastActiveAt: new Date() })
+    .where(eq(agentProfiles.id, keyData.agentId))
+    .catch(() => undefined);
+
+  return next({
+    ctx: {
+      ...ctx,
+      agent: keyData,
+    },
+  });
+});
+
+export const agentProcedure = t.procedure.use(timingMiddleware).use(agentAuth);
+
+export function requireScope(scopes: string[], required: string) {
+  if (!scopes.includes(required)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: `Missing required scope: ${required}`,
+    });
+  }
+}
