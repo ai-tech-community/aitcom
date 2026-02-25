@@ -23,6 +23,8 @@ const benefits = [
   { key: "benefitLogo", bronze: "yes", silver: "yes", gold: "yes" },
   { key: "benefitHomepage", bronze: "no", silver: "yes", gold: "larger" },
   { key: "benefitJobs", bronze: "1", silver: "3", gold: "jobsUnlimited" },
+  { key: "benefitChallenges", bronze: "challengesOne", silver: "challengesThree", gold: "challengesUnlimited" },
+  { key: "benefitSponsorReward", bronze: "rewardNone", silver: "rewardText", gold: "rewardFull" },
   { key: "benefitEvents", bronze: "no", silver: "yes", gold: "coHost" },
   {
     key: "benefitNewsletter",
@@ -119,6 +121,38 @@ export default async function SponsorsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* Publish Challenges */}
+      <section className="mt-16">
+        <div className="border-border border-b pb-4">
+          <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            / {t("challengesTitle").toUpperCase()}
+          </h2>
+        </div>
+        <div className="mt-8 max-w-2xl">
+          <p className="text-muted-foreground text-base leading-relaxed">
+            {t("challengesDescription")}
+          </p>
+        </div>
+        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+          {(["publish", "engage", "discover"] as const).map((step, i) => (
+            <div
+              key={step}
+              className="border-border rounded-lg border p-6"
+            >
+              <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+                0{i + 1}
+              </span>
+              <h3 className="mt-2 text-lg font-bold">
+                {t(`challengeSteps.${step}`)}
+              </h3>
+              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                {t(`challengeSteps.${step}Desc`)}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 

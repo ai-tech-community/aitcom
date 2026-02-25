@@ -367,7 +367,7 @@ export interface IdeaVote {
   createdAt: string;
 }
 /**
- * AI+Human challenges where members and their AI agents collaborate.
+ * Unified challenges: platform-action, repo-based, or mixed. Supports sponsor publishing, test verification, and agent collaboration.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "challenges".
@@ -391,19 +391,60 @@ export interface Challenge {
     };
     [k: string]: unknown;
   };
-  type: 'weekly' | 'monthly';
+  type: 'weekly' | 'monthly' | 'open-ended';
   status: 'draft' | 'active' | 'completed' | 'archived';
-  startsAt: string;
-  endsAt: string;
+  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  /**
+   * Optional for open-ended challenges.
+   */
+  startsAt?: string | null;
+  /**
+   * Optional for open-ended challenges.
+   */
+  endsAt?: string | null;
+  publishedBy: 'member' | 'sponsor';
+  /**
+   * User ID or Sponsor ID of the challenge creator.
+   */
+  creatorId: string;
+  /**
+   * GitHub repo configuration for repo-based challenges.
+   */
+  repo?: {
+    /**
+     * GitHub template repo URL (e.g., https://github.com/org/repo).
+     */
+    templateUrl?: string | null;
+    /**
+     * Whether .aitchallenge.yml is expected in participant repos.
+     */
+    configFile?: boolean | null;
+    /**
+     * Shell command to run tests (e.g., "npm test", "pytest").
+     */
+    testCommand?: string | null;
+    /**
+     * Google Colab notebook URL for cloud-based development.
+     */
+    colabUrl?: string | null;
+  };
   objectives: {
     description: string;
-    action: 'thread.reply' | 'thread.create' | 'knowledge.share' | 'idea.submitted' | 'idea.voted';
+    verification: 'platform-action' | 'test' | 'self-report' | 'peer-review';
     /**
-     * How many times this action must be performed.
+     * Only for platform-action verification.
+     */
+    action?: ('thread.reply' | 'thread.create' | 'knowledge.share' | 'idea.submitted' | 'idea.voted') | null;
+    /**
+     * Regex matching test names/files for test verification.
+     */
+    testPattern?: string | null;
+    /**
+     * How many times this must be completed. For tests, usually 1.
      */
     targetCount: number;
     /**
-     * Optional scope filter, e.g. { "category": "question" } or { "tag": "automation" }
+     * Optional scope filter for platform-action, e.g. { "category": "question" }.
      */
     filter?:
       | {
@@ -416,20 +457,42 @@ export interface Challenge {
       | null;
     id?: string | null;
   }[];
-  /**
-   * XP awarded on completion.
-   */
-  xpReward: number;
-  /**
-   * Badge slug to award on completion (optional).
-   */
-  badgeReward?: string | null;
+  rewards: {
+    /**
+     * XP awarded on completion.
+     */
+    xpReward: number;
+    /**
+     * Badge slug to award on completion (optional).
+     */
+    badgeReward?: string | null;
+    /**
+     * Sponsor-provided reward description (prizes, interviews, licenses).
+     */
+    sponsorReward?: string | null;
+  };
   /**
    * 0 = unlimited.
    */
   maxParticipants?: number | null;
   /**
-   * User ID if community-proposed, blank if admin-created.
+   * Array of tags for discovery, e.g. ["mcp", "typescript", "automation"].
+   */
+  tags?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * How the leaderboard is sorted.
+   */
+  rankingMode?: ('speed' | 'thoroughness' | 'collaboration') | null;
+  /**
+   * User ID if community-proposed.
    */
   proposedBy?: string | null;
   image?: (number | null) | Media;
@@ -816,20 +879,40 @@ export interface ChallengesSelect<T extends boolean = true> {
   description?: T;
   type?: T;
   status?: T;
+  difficulty?: T;
   startsAt?: T;
   endsAt?: T;
+  publishedBy?: T;
+  creatorId?: T;
+  repo?:
+    | T
+    | {
+        templateUrl?: T;
+        configFile?: T;
+        testCommand?: T;
+        colabUrl?: T;
+      };
   objectives?:
     | T
     | {
         description?: T;
+        verification?: T;
         action?: T;
+        testPattern?: T;
         targetCount?: T;
         filter?: T;
         id?: T;
       };
-  xpReward?: T;
-  badgeReward?: T;
+  rewards?:
+    | T
+    | {
+        xpReward?: T;
+        badgeReward?: T;
+        sponsorReward?: T;
+      };
   maxParticipants?: T;
+  tags?: T;
+  rankingMode?: T;
   proposedBy?: T;
   image?: T;
   updatedAt?: T;

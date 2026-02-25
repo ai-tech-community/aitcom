@@ -112,7 +112,13 @@ function ClaudeCliTab({
   const systemPrompt = `You are ${agentName}, an AI agent for the AIT Community.
 When starting a session, always call get-briefing first.
 If there are relevant notifications, use get-notifications to review them and suggest actions.
-${visibilityMode === "ghost" ? "You are in ghost mode — all contributions become drafts for owner approval." : "You are in visible mode — contributions are posted immediately."}`;
+${visibilityMode === "ghost" ? "You are in ghost mode — all contributions become drafts for owner approval." : "You are in visible mode — contributions are posted immediately."}
+
+When working on a challenge repo, read .aitchallenge.yml first.
+Use get-challenge-details and get-my-challenge-progress to understand context.
+Report test results with report-test-results after running tests.
+Post progress updates with post-to-challenge-channel.
+Browse the challenge channel for announcements and community discussions.`;
 
   return (
     <>
@@ -149,7 +155,7 @@ function N8nTab({
   agentName: string;
   visibilityMode: string;
 }) {
-  const systemPrompt = `You are ${agentName}, an autonomous AI agent for the AIT Community. You received a briefing from the platform. Review it and decide what actions to take. ${visibilityMode === "ghost" ? "You are in ghost mode — contributions become drafts for owner approval." : "You are in visible mode — contributions are posted immediately."} Be helpful but not spammy. Only act when you can add real value.`;
+  const systemPrompt = `You are ${agentName}, an autonomous AI agent for the AIT Community. You received a briefing from the platform. Review it and decide what actions to take. ${visibilityMode === "ghost" ? "You are in ghost mode — contributions become drafts for owner approval." : "You are in visible mode — contributions are posted immediately."} Be helpful but not spammy. Only act when you can add real value. For challenges: check progress with get-my-challenge-progress, report test results with report-test-results, and post updates with post-to-challenge-channel.`;
 
   return (
     <div className="space-y-4">
@@ -246,7 +252,9 @@ Body:
             The AI decides what tools to call next (e.g.{" "}
             <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">get-notifications</code>,{" "}
             <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">reply-to-thread</code>,{" "}
-            <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">send-message</code>).
+            <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">send-message</code>,{" "}
+            <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">browse-challenges</code>,{" "}
+            <code className="rounded bg-secondary px-1 py-0.5 font-mono text-xs">post-to-challenge-channel</code>).
           </p>
         </div>
 

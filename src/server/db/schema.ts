@@ -1,16 +1,8 @@
 import { relations, sql } from "drizzle-orm";
 import {
-  boolean,
   index,
-  integer,
-  json,
   pgSchema,
-  pgTable,
-  serial,
-  text,
-  timestamp,
   uniqueIndex,
-  varchar,
 } from "drizzle-orm/pg-core";
 
 // All Drizzle-managed tables live in the "app" schema to avoid conflicts
@@ -478,16 +470,18 @@ export const challengeEnrollments = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
+    progressLogThreadId: d.varchar({ length: 255 }), // FK → challengeThreads.id (set after creation)
     enrolledAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     completedAt: d.timestamp({ withTimezone: true }),
+    submittedAt: d.timestamp({ withTimezone: true }), // When solution submitted for review
     status: d
       .varchar({ length: 20 })
       .notNull()
       .default("active")
-      .$type<"active" | "completed" | "abandoned">(),
+      .$type<"active" | "completed" | "abandoned" | "submitted">(),
   }),
   (t) => [
     index("enrollment_challenge_idx").on(t.challengeId),
@@ -498,11 +492,13 @@ export const challengeEnrollments = appSchema.table(
 
 export const challengeEnrollmentRelations = relations(
   challengeEnrollments,
-  ({ one }) => ({
+  ({ one, many }) => ({
     user: one(user, {
       fields: [challengeEnrollments.userId],
       references: [user.id],
     }),
+    progress: many(challengeProgress),
+    testResults: many(challengeTestResults),
   }),
 );
 
@@ -521,6 +517,13 @@ export const challengeProgress = appSchema.table(
       .references(() => challengeEnrollments.id),
     objectiveIndex: d.integer().notNull(),
     currentCount: d.integer().notNull().default(0),
+    verificationMode: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("self-report")
+      .$type<"platform-action" | "test" | "self-report" | "peer-review">(),
+    reviewedBy: d.varchar({ length: 255 }), // userId of reviewer (for peer-review)
+    reviewedAt: d.timestamp({ withTimezone: true }),
     completedAt: d.timestamp({ withTimezone: true }),
   }),
   (t) => [
@@ -538,6 +541,188 @@ export const challengeProgressRelations = relations(
     enrollment: one(challengeEnrollments, {
       fields: [challengeProgress.enrollmentId],
       references: [challengeEnrollments.id],
+    }),
+  }),
+);
+
+// Challenge test results (test run history per enrollment)
+export const challengeTestResults = appSchema.table(
+  "challenge_test_result",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    enrollmentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => challengeEnrollments.id),
+    objectiveIndex: d.integer().notNull(),
+    passed: d.boolean().notNull(),
+    details: d.text(), // Test output summary
+    reportedBy: d
+      .varchar({ length: 10 })
+      .notNull()
+      .default("agent")
+      .$type<"agent" | "ci">(),
+    reportedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("test_result_enrollment_idx").on(t.enrollmentId),
+    index("test_result_enrollment_objective_idx").on(
+      t.enrollmentId,
+      t.objectiveIndex,
+    ),
+  ],
+);
+
+export const challengeTestResultRelations = relations(
+  challengeTestResults,
+  ({ one }) => ({
+    enrollment: one(challengeEnrollments, {
+      fields: [challengeTestResults.enrollmentId],
+      references: [challengeEnrollments.id],
+    }),
+  }),
+);
+
+// Challenge channels (dedicated forum per challenge)
+export const challengeChannels = appSchema.table(
+  "challenge_channel",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    challengeId: d.integer().notNull().unique(), // One channel per challenge
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [uniqueIndex("channel_challenge_uidx").on(t.challengeId)],
+);
+
+export const challengeChannelRelations = relations(
+  challengeChannels,
+  ({ many }) => ({
+    threads: many(challengeThreads),
+  }),
+);
+
+// Challenge threads (threads within a channel)
+export const challengeThreads = appSchema.table(
+  "challenge_thread",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    channelId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => challengeChannels.id),
+    type: d
+      .varchar({ length: 20 })
+      .notNull()
+      .$type<
+        "announcement" | "discussion" | "question" | "progress-log" | "solution"
+      >(),
+    authorId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    authorType: d
+      .varchar({ length: 10 })
+      .notNull()
+      .default("member")
+      .$type<"member" | "agent" | "sponsor">(),
+    title: d.varchar({ length: 500 }).notNull(),
+    content: d.text().notNull(),
+    isPinned: d.boolean().notNull().default(false),
+    metadata: d.json().$type<Record<string, unknown>>(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("thread_channel_idx").on(t.channelId),
+    index("thread_type_idx").on(t.type),
+    index("thread_author_idx").on(t.authorId),
+  ],
+);
+
+export const challengeThreadRelations = relations(
+  challengeThreads,
+  ({ one, many }) => ({
+    channel: one(challengeChannels, {
+      fields: [challengeThreads.channelId],
+      references: [challengeChannels.id],
+    }),
+    author: one(user, {
+      fields: [challengeThreads.authorId],
+      references: [user.id],
+    }),
+    replies: many(challengeReplies),
+  }),
+);
+
+// Challenge replies (replies within a thread)
+export const challengeReplies = appSchema.table(
+  "challenge_reply",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    threadId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => challengeThreads.id),
+    authorId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    authorType: d
+      .varchar({ length: 10 })
+      .notNull()
+      .default("member")
+      .$type<"member" | "agent" | "sponsor">(),
+    content: d.text().notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("reply_thread_idx").on(t.threadId),
+    index("reply_author_idx").on(t.authorId),
+  ],
+);
+
+export const challengeReplyRelations = relations(
+  challengeReplies,
+  ({ one }) => ({
+    thread: one(challengeThreads, {
+      fields: [challengeReplies.threadId],
+      references: [challengeThreads.id],
+    }),
+    author: one(user, {
+      fields: [challengeReplies.authorId],
+      references: [user.id],
     }),
   }),
 );

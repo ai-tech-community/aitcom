@@ -8,7 +8,8 @@
     "signIn": "Sign In",
     "joinUs": "Join the Community",
     "sponsors": "Sponsors",
-    "jobs": "Jobs"
+    "jobs": "Jobs",
+    "challenges": "Challenges"
   },
   "hero": {
     "title": "AI Tech Community Netherlands",
@@ -170,6 +171,28 @@
       }
     }
   },
+  "challengesLanding": {
+    "title": "AI Challenges",
+    "headline": "Real Problems. AI-Powered Solving.",
+    "description": "Sponsors post real-world challenges. You and your AI agent solve them together. Clone the repo, let your agent help you code, and submit your solution — all from your IDE.",
+    "valueProps": {
+      "humanAi": "Human Creativity + AI Speed",
+      "humanAiDesc": "Your AI agent reads the challenge, helps you code, runs tests, and posts progress. You stay in control — the agent handles the heavy lifting.",
+      "realProblems": "Real Problems, Real Rewards",
+      "realProblemsDesc": "Challenges come from real companies with real stakes. Earn XP, badges, and sponsor rewards like prizes, licenses, or even job interviews.",
+      "community": "Learn From Everyone",
+      "communityDesc": "Every challenge has its own channel. Ask questions, share progress, and see how others approach the same problem."
+    },
+    "steps": {
+      "clone": "Clone",
+      "cloneDesc": "Pick a challenge, clone the repo",
+      "solve": "Solve",
+      "solveDesc": "Your AI agent helps you build",
+      "ship": "Ship",
+      "shipDesc": "Submit your solution, earn rewards"
+    },
+    "cta": "Browse Challenges"
+  },
   "join": {
     "title": "Ready to Join?",
     "subtitle": "Become part of the AI Tech community",
@@ -177,9 +200,9 @@
       "title": "Attend Events",
       "description": "Join our workshops, hackathons, and deep-dives. Free and open to all."
     },
-    "speak": {
-      "title": "Become a Speaker",
-      "description": "Share your expertise with the community. We welcome talks on AI, automation, and innovation."
+    "challenge": {
+      "title": "Take a Challenge",
+      "description": "Solve real problems with your AI agent. Earn XP, badges, and sponsor rewards."
     },
     "partner": {
       "title": "Partner With Us",
@@ -357,7 +380,7 @@
   "sponsors": {
     "title": "Sponsors",
     "heroTitle": "Power the AI Community",
-    "heroDescription": "Partner with AIT Community Netherlands and connect your brand with the leading AI and tech talent in the Netherlands.",
+    "heroDescription": "Partner with AIT Community Netherlands and connect your brand with the leading AI and tech talent in the Netherlands. Publish real challenges, engage with solvers, and discover your next hire.",
     "tiersTitle": "Sponsorship Tiers",
     "tierGold": "Gold",
     "tierSilver": "Silver",
@@ -366,6 +389,14 @@
     "benefitHomepage": "Logo on homepage",
     "benefitJobs": "Job postings",
     "benefitEvents": "Event presence",
+    "benefitChallenges": "Publish challenges",
+    "benefitSponsorReward": "Challenge rewards",
+    "challengesOne": "1 / month",
+    "challengesThree": "3 / month",
+    "challengesUnlimited": "Unlimited",
+    "rewardNone": "—",
+    "rewardText": "Text only",
+    "rewardFull": "Text + link",
     "benefitNewsletter": "Newsletter mentions",
     "jobsUnlimited": "Unlimited",
     "yes": "Yes",
@@ -375,6 +406,16 @@
     "quarterly": "Quarterly",
     "monthly": "Monthly",
     "monthlySocial": "Monthly + social",
+    "challengesTitle": "Publish Challenges",
+    "challengesDescription": "Post real engineering problems as challenges. Community members and their AI agents solve them — you review solutions, engage in the challenge channel, and discover top talent. It's the fastest way to find engineers who can actually build.",
+    "challengeSteps": {
+      "publish": "Publish",
+      "publishDesc": "Define objectives, set up a repo with tests, and choose rewards.",
+      "engage": "Engage",
+      "engageDesc": "Post hints, answer questions, and watch solvers collaborate with AI agents in real time.",
+      "discover": "Discover",
+      "discoverDesc": "Review solutions, see who performed best, and connect with top talent directly."
+    },
     "currentSponsors": "Our Sponsors",
     "noSponsors": "Be our first sponsor!",
     "becomeSponsor": "Become a Sponsor",

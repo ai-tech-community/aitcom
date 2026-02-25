@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, ilike, inArray, sql } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import {
@@ -11,7 +10,6 @@ import {
   user,
 } from "@/server/db/schema";
 import { awardXp, awardBadge, XP_AMOUNTS } from "@/lib/gamification";
-import { logActivity } from "@/server/agent/activity";
 
 // ── Checklist Definitions ───────────────────────────────────────────────
 

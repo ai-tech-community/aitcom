@@ -24,12 +24,14 @@ export async function GET(request: Request) {
 
   const payload = await getPayloadClient();
 
-  // Find active challenges past their end date
+  // Find active challenges past their end date (skip open-ended challenges)
   const { docs: expiredChallenges } = await payload.find({
     collection: "challenges",
     where: {
       and: [
         { status: { equals: "active" } },
+        { type: { not_equals: "open-ended" } },
+        { endsAt: { exists: true } },
         { endsAt: { less_than: new Date().toISOString() } },
       ],
     },
@@ -83,13 +85,14 @@ export async function GET(request: Request) {
         .where(eq(challengeEnrollments.id, enrollment.id));
 
       // Award partial XP (proportional to objectives completed)
+      const xpReward = challenge.rewards?.xpReward;
       if (
         completedCount > 0 &&
-        challenge.xpReward &&
-        typeof challenge.xpReward === "number"
+        xpReward &&
+        typeof xpReward === "number"
       ) {
         const partialXp = Math.round(
-          (challenge.xpReward * completedCount) / totalObjectives,
+          (xpReward * completedCount) / totalObjectives,
         );
         if (partialXp > 0) {
           await awardXp(db, enrollment.userId, partialXp);

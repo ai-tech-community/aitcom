@@ -1,6 +1,7 @@
 import { activityRouter } from "@/server/api/routers/activity";
 import { agentRouter } from "@/server/api/routers/agent";
 import { agentManagementRouter } from "@/server/api/routers/agent-management";
+import { challengeChannelRouter } from "@/server/api/routers/challenge-channel";
 import { challengesRouter } from "@/server/api/routers/challenges";
 import { communityRouter } from "@/server/api/routers/community";
 import { eventsRouter } from "@/server/api/routers/events";
@@ -27,6 +28,7 @@ export const appRouter = createTRPCRouter({
   activity: activityRouter,
   inbox: inboxRouter,
   onboarding: onboardingRouter,
+  challengeChannel: challengeChannelRouter,
   challenges: challengesRouter,
 });
 
