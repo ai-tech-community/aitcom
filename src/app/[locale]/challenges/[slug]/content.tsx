@@ -347,7 +347,10 @@ export function ChallengeDetailContent({
             {isEnrolled ? (
               <ChallengeProgress
                 challengeId={challenge.id}
-                objectives={challenge.objectives}
+                objectives={challenge.objectives.map((o) => ({
+                  ...o,
+                  verification: o.verification ?? undefined,
+                }))}
               />
             ) : (
               <div className="rounded-lg border border-dashed border-border px-6 py-12 text-center">

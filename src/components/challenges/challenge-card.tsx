@@ -20,7 +20,7 @@ interface ChallengeCardProps {
     id: number;
     title: string;
     slug: string;
-    description?: string | null;
+    description?: unknown;
     type: string;
     status: string;
     difficulty?: string | null;
@@ -29,7 +29,7 @@ interface ChallengeCardProps {
     publishedBy?: string | null;
     repo?: {
       templateUrl?: string | null;
-      configFile?: string | null;
+      configFile?: boolean | null;
       testCommand?: string | null;
     } | null;
     rewards: {
@@ -42,7 +42,7 @@ interface ChallengeCardProps {
       action?: string | null;
       targetCount: number;
     }[];
-    tags?: string[] | null;
+    tags?: unknown;
   };
   isEnrolled: boolean;
 }
@@ -125,15 +125,9 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
         </div>
       </div>
 
-      {challenge.description && (
-        <p className="mt-2 text-sm text-muted-foreground">
-          {challenge.description}
-        </p>
-      )}
-
-      {challenge.tags && challenge.tags.length > 0 && (
+      {Array.isArray(challenge.tags) && challenge.tags.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
-          {challenge.tags.map((tag) => (
+          {(challenge.tags as string[]).map((tag) => (
             <span
               key={tag}
               className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] tracking-wider text-muted-foreground"
