@@ -106,6 +106,7 @@ export function SponsorChallengeForm({
   const [repoTemplateUrl, setRepoTemplateUrl] = useState("");
   const [repoTestCommand, setRepoTestCommand] = useState("");
   const [repoConfigFile, setRepoConfigFile] = useState(false);
+  const [repoColabUrl, setRepoColabUrl] = useState("");
 
   // Objectives
   const [objectives, setObjectives] = useState<Objective[]>([emptyObjective()]);
@@ -188,6 +189,7 @@ export function SponsorChallengeForm({
         ...(showRepo && repoTemplateUrl ? { repoTemplateUrl } : {}),
         ...(showRepo && repoTestCommand ? { repoTestCommand } : {}),
         ...(showRepo ? { repoConfigFile } : {}),
+        ...(showRepo && repoColabUrl ? { repoColabUrl } : {}),
         objectives: objectives.map((obj) => ({
           description: obj.description,
           verification: obj.verification,
@@ -219,6 +221,7 @@ export function SponsorChallengeForm({
       repoTemplateUrl,
       repoTestCommand,
       repoConfigFile,
+      repoColabUrl,
       objectives,
       xpReward,
       badgeReward,
@@ -406,6 +409,18 @@ export function SponsorChallengeForm({
                   value={repoTestCommand}
                   onChange={(e) => setRepoTestCommand(e.target.value)}
                   placeholder="npm test"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="font-mono text-xs tracking-wider text-muted-foreground">
+                  Google Colab URL
+                </label>
+                <Input
+                  value={repoColabUrl}
+                  onChange={(e) => setRepoColabUrl(e.target.value)}
+                  placeholder="https://colab.research.google.com/..."
+                  type="url"
                 />
               </div>
 

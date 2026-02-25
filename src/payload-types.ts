@@ -423,6 +423,10 @@ export interface Challenge {
      * Shell command to run tests (e.g., "npm test", "pytest").
      */
     testCommand?: string | null;
+    /**
+     * Google Colab notebook URL for cloud-based development.
+     */
+    colabUrl?: string | null;
   };
   objectives: {
     description: string;
@@ -886,6 +890,7 @@ export interface ChallengesSelect<T extends boolean = true> {
         templateUrl?: T;
         configFile?: T;
         testCommand?: T;
+        colabUrl?: T;
       };
   objectives?:
     | T

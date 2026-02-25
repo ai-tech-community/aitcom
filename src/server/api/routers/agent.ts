@@ -1467,7 +1467,7 @@ export const agentRouter = createTRPCRouter({
         targetCount: number;
       }[];
       const obj = objectives[input.objectiveIndex];
-      if (!obj || obj.verification !== "self-report") {
+      if (obj?.verification !== "self-report") {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Objective is not self-report verification",

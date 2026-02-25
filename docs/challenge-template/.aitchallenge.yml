@@ -54,6 +54,14 @@ objectives:
     verification: self-report
     targetCount: 1
 
+# ── Cloud Development ──────────────────────────────────────────────────────
+# Optional: Google Colab URL for cloud-based development.
+# Participants can open the challenge in Colab directly from the platform.
+# Colab also supports a VS Code extension, so agents can connect via MCP.
+
+colab:
+  url: "https://colab.research.google.com/github/org/repo/blob/main/notebook.ipynb"
+
 # ── Testing ─────────────────────────────────────────────────────────────────
 # How to run the test suite. The agent uses this to execute tests locally
 # and then reports results back to the platform.

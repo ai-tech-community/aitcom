@@ -19,6 +19,7 @@ import {
   challengeTestResults,
   challengeChannels,
   challengeThreads,
+  challengeReplies,
   memberProfiles,
   user,
 } from "@/server/db/schema";
@@ -421,29 +422,60 @@ export const challengesRouter = createTRPCRouter({
         progressRows.map((r) => [r.enrollmentId, r.totalCount]),
       );
 
-      // For collaboration mode, count thread replies per participant
-      let replyCountMap = new Map<string, number>();
-      if (rankingMode === "collaboration") {
-        // Count replies (contributions) per user across all challenge threads
-        const [channel] = await ctx.db
-          .select()
-          .from(challengeChannels)
-          .where(eq(challengeChannels.challengeId, input.challengeId))
-          .limit(1);
+      // Compute test score per enrollment (total passed test results)
+      const testScoreRows = await ctx.db
+        .select({
+          enrollmentId: challengeTestResults.enrollmentId,
+          passedCount: sql<number>`count(*) filter (where ${challengeTestResults.passed} = true)`,
+        })
+        .from(challengeTestResults)
+        .where(
+          sql`${challengeTestResults.enrollmentId} IN (${sql.join(
+            enrollmentIds.map((id) => sql`${id}`),
+            sql`, `,
+          )})`,
+        )
+        .groupBy(challengeTestResults.enrollmentId);
 
-        if (channel) {
-          const threads = await ctx.db
-            .select({ id: challengeThreads.id, authorId: challengeThreads.authorId })
-            .from(challengeThreads)
-            .where(eq(challengeThreads.channelId, channel.id));
+      const testScoreMap = new Map(
+        testScoreRows.map((r) => [r.enrollmentId, r.passedCount]),
+      );
 
-          // Count threads created per user as collaboration metric
-          const threadCounts = new Map<string, number>();
-          for (const t of threads) {
-            threadCounts.set(t.authorId, (threadCounts.get(t.authorId) ?? 0) + 1);
-          }
-          replyCountMap = threadCounts;
+      // Compute channel contributions (threads + replies) per user
+      let contributionMap = new Map<string, number>();
+      const [channel] = await ctx.db
+        .select()
+        .from(challengeChannels)
+        .where(eq(challengeChannels.challengeId, input.challengeId))
+        .limit(1);
+
+      if (channel) {
+        // Count threads per user
+        const threads = await ctx.db
+          .select({ authorId: challengeThreads.authorId })
+          .from(challengeThreads)
+          .where(eq(challengeThreads.channelId, channel.id));
+
+        const counts = new Map<string, number>();
+        for (const t of threads) {
+          counts.set(t.authorId, (counts.get(t.authorId) ?? 0) + 1);
         }
+
+        // Count replies per user across all threads in the channel
+        const replies = await ctx.db
+          .select({ authorId: challengeReplies.authorId })
+          .from(challengeReplies)
+          .innerJoin(
+            challengeThreads,
+            eq(challengeReplies.threadId, challengeThreads.id),
+          )
+          .where(eq(challengeThreads.channelId, channel.id));
+
+        for (const r of replies) {
+          counts.set(r.authorId, (counts.get(r.authorId) ?? 0) + 1);
+        }
+
+        contributionMap = counts;
       }
 
       // Build ranked list based on ranking mode
@@ -452,7 +484,8 @@ export const challengesRouter = createTRPCRouter({
           ...e,
           completedObjectives: completedMap.get(e.enrollmentId) ?? 0,
           totalObjectives: totalMap.get(e.enrollmentId) ?? 0,
-          collaborationScore: replyCountMap.get(e.userId) ?? 0,
+          testScore: testScoreMap.get(e.enrollmentId) ?? 0,
+          channelContributions: contributionMap.get(e.userId) ?? 0,
         }))
         .sort((a, b) => {
           if (rankingMode === "speed") {
@@ -472,7 +505,7 @@ export const challengesRouter = createTRPCRouter({
           }
 
           if (rankingMode === "thoroughness") {
-            // Completion ratio (completed/total), then total completed
+            // Completion ratio first, then test score, then total completed
             const ratioA =
               a.totalObjectives > 0
                 ? a.completedObjectives / a.totalObjectives
@@ -482,15 +515,16 @@ export const challengesRouter = createTRPCRouter({
                 ? b.completedObjectives / b.totalObjectives
                 : 0;
             if (ratioB !== ratioA) return ratioB - ratioA;
+            if (b.testScore !== a.testScore) return b.testScore - a.testScore;
             if (b.completedObjectives !== a.completedObjectives) {
               return b.completedObjectives - a.completedObjectives;
             }
             return 0;
           }
 
-          // collaboration: sort by collaboration score, then completed objectives
-          if (b.collaborationScore !== a.collaborationScore) {
-            return b.collaborationScore - a.collaborationScore;
+          // collaboration: sort by channel contributions (threads + replies), then completed objectives
+          if (b.channelContributions !== a.channelContributions) {
+            return b.channelContributions - a.channelContributions;
           }
           if (b.completedObjectives !== a.completedObjectives) {
             return b.completedObjectives - a.completedObjectives;
@@ -542,6 +576,8 @@ export const challengesRouter = createTRPCRouter({
           displayName: profile?.displayName ?? u?.name ?? "Anonymous",
           image: u?.image ?? null,
           completedObjectives: entry.completedObjectives,
+          testScore: entry.testScore,
+          channelContributions: entry.channelContributions,
           status: entry.status,
           completedAt: entry.completedAt,
         };
@@ -637,6 +673,7 @@ export const challengesRouter = createTRPCRouter({
         repoTemplateUrl: z.string().url().optional(),
         repoTestCommand: z.string().optional(),
         repoConfigFile: z.boolean().optional(),
+        repoColabUrl: z.string().url().optional(),
         objectives: z
           .array(
             z.object({
@@ -701,14 +738,11 @@ export const challengesRouter = createTRPCRouter({
             templateUrl: input.repoTemplateUrl,
             configFile: input.repoConfigFile ?? false,
             testCommand: input.repoTestCommand,
+            colabUrl: input.repoColabUrl,
           },
           objectives: input.objectives.map((obj) => ({
             description: obj.description,
-            verification: obj.verification as
-              | "platform-action"
-              | "test"
-              | "self-report"
-              | "peer-review",
+            verification: obj.verification,
             action: obj.action as
               | "thread.reply"
               | "thread.create"
@@ -727,10 +761,7 @@ export const challengesRouter = createTRPCRouter({
           },
           maxParticipants: input.maxParticipants,
           tags: input.tags,
-          rankingMode: input.rankingMode as
-            | "speed"
-            | "thoroughness"
-            | "collaboration",
+          rankingMode: input.rankingMode,
         },
       });
 

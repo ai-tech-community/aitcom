@@ -1,16 +1,8 @@
 import { relations, sql } from "drizzle-orm";
 import {
-  boolean,
   index,
-  integer,
-  json,
   pgSchema,
-  pgTable,
-  serial,
-  text,
-  timestamp,
   uniqueIndex,
-  varchar,
 } from "drizzle-orm/pg-core";
 
 // All Drizzle-managed tables live in the "app" schema to avoid conflicts

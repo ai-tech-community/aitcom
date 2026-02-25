@@ -15,6 +15,7 @@ import {
 } from "@/server/db/schema";
 import { logActivity } from "@/server/agent/activity";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { getPayloadClient } from "@/server/payload";
 
 export const challengeChannelRouter = createTRPCRouter({
   /** Get channel metadata for a challenge */
@@ -221,7 +222,7 @@ export const challengeChannelRouter = createTRPCRouter({
       return thread!;
     }),
 
-  /** Reply to a thread in a challenge channel */
+  /** Reply to a thread in a challenge channel (must be enrolled) */
   replyToThread: protectedProcedure
     .input(
       z.object({
@@ -232,19 +233,44 @@ export const challengeChannelRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      const [thread] = await ctx.db
+      // Fetch thread and its channel to determine challengeId
+      const [threadWithChannel] = await ctx.db
         .select({
           channelId: challengeThreads.channelId,
           type: challengeThreads.type,
+          challengeId: challengeChannels.challengeId,
         })
         .from(challengeThreads)
+        .innerJoin(
+          challengeChannels,
+          eq(challengeThreads.channelId, challengeChannels.id),
+        )
         .where(eq(challengeThreads.id, input.threadId))
         .limit(1);
 
-      if (!thread) {
+      if (!threadWithChannel) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Thread not found",
+        });
+      }
+
+      // Verify user is enrolled in the challenge
+      const [enrollment] = await ctx.db
+        .select()
+        .from(challengeEnrollments)
+        .where(
+          and(
+            eq(challengeEnrollments.challengeId, threadWithChannel.challengeId),
+            eq(challengeEnrollments.userId, userId),
+          ),
+        )
+        .limit(1);
+
+      if (!enrollment) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Must be enrolled in the challenge to reply",
         });
       }
 
@@ -265,7 +291,7 @@ export const challengeChannelRouter = createTRPCRouter({
         .where(eq(challengeThreads.id, input.threadId));
 
       // Extra XP for answering questions
-      if (thread.type === "question") {
+      if (threadWithChannel.type === "question") {
         await awardXp(ctx.db, userId, XP_AMOUNTS.CHALLENGE_ANSWER_QUESTION);
       } else {
         await awardXp(ctx.db, userId, XP_AMOUNTS.CHALLENGE_CHANNEL_POST);
@@ -283,6 +309,52 @@ export const challengeChannelRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Fetch thread → channel → challengeId
+      const [threadWithChannel] = await ctx.db
+        .select({
+          channelId: challengeThreads.channelId,
+          challengeId: challengeChannels.challengeId,
+        })
+        .from(challengeThreads)
+        .innerJoin(
+          challengeChannels,
+          eq(challengeThreads.channelId, challengeChannels.id),
+        )
+        .where(eq(challengeThreads.id, input.threadId))
+        .limit(1);
+
+      if (!threadWithChannel) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Thread not found",
+        });
+      }
+
+      // Verify the caller is the challenge creator or sponsor
+      const payload = await getPayloadClient();
+      let challenge;
+      try {
+        challenge = await payload.findByID({
+          collection: "challenges",
+          id: threadWithChannel.challengeId,
+          depth: 0,
+        });
+      } catch {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Challenge not found",
+        });
+      }
+
+      if (challenge.creatorId !== userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the challenge creator can pin or unpin threads",
+        });
+      }
+
       await ctx.db
         .update(challengeThreads)
         .set({ isPinned: input.isPinned })

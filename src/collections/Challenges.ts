@@ -123,6 +123,14 @@ export const Challenges: CollectionConfig = {
               'Shell command to run tests (e.g., "npm test", "pytest").',
           },
         },
+        {
+          name: "colabUrl",
+          type: "text",
+          admin: {
+            description:
+              "Google Colab notebook URL for cloud-based development.",
+          },
+        },
       ],
     },
     {

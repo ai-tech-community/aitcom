@@ -61,7 +61,7 @@ export function ActiveChallengesWidget() {
 
           const difficulty = (challenge as { difficulty?: string }).difficulty;
           const repo = (challenge as { repo?: { templateUrl?: string } }).repo;
-          const slug = (challenge as { slug?: string }).slug as string;
+          const slug = (challenge as { slug?: string }).slug!;
           const hasRepo = !!repo?.templateUrl;
 
           return (

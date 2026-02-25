@@ -60,6 +60,16 @@ export function ChallengeLeaderboard({
               <span className="font-mono text-xs text-muted-foreground">
                 {entry.completedObjectives} obj
               </span>
+              {entry.testScore > 0 && (
+                <span className="font-mono text-xs text-muted-foreground">
+                  {entry.testScore} tests
+                </span>
+              )}
+              {entry.channelContributions > 0 && (
+                <span className="font-mono text-xs text-muted-foreground">
+                  {entry.channelContributions} contrib
+                </span>
+              )}
               {badgeConfig && (
                 <Badge
                   variant="secondary"

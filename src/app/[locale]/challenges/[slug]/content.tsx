@@ -46,6 +46,7 @@ interface ChallengeDoc {
     templateUrl?: string | null;
     configFile?: boolean | string | null;
     testCommand?: string | null;
+    colabUrl?: string | null;
   } | null;
   objectives: ChallengeObjective[];
   rewards: {
@@ -188,18 +189,33 @@ export function ChallengeDetailContent({
             {challenge.title}
           </h1>
 
-          {/* Repo link */}
-          {challenge.repo?.templateUrl && (
-            <div className="mt-3">
-              <a
-                href={challenge.repo.templateUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-4 hover:opacity-80"
-              >
-                <GitBranch className="h-3.5 w-3.5" />
-                View Template Repo
-              </a>
+          {/* Repo & Colab links */}
+          {(challenge.repo?.templateUrl ?? challenge.repo?.colabUrl) && (
+            <div className="mt-3 flex flex-wrap items-center gap-4">
+              {challenge.repo.templateUrl && (
+                <a
+                  href={challenge.repo.templateUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-4 hover:opacity-80"
+                >
+                  <GitBranch className="h-3.5 w-3.5" />
+                  View Template Repo
+                </a>
+              )}
+              {challenge.repo.colabUrl && (
+                <a
+                  href={challenge.repo.colabUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-4 hover:opacity-80"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M16.94 2.634a1.255 1.255 0 0 0-1.078-.57c-.39 0-.78.19-1.078.57L12 6.298 9.198 2.634a1.255 1.255 0 0 0-1.078-.57c-.39 0-.78.19-1.078.57L4.32 6.298C3.5 7.39 3 8.74 3 10.21c0 4.42 4.03 8.01 9 8.01s9-3.59 9-8.01c0-1.47-.5-2.82-1.32-3.912l-2.74-3.664zM12 16.22c-3.87 0-7-2.69-7-6.01 0-1.04.35-2 .95-2.82L8.12 4.5 12 9.7l3.88-5.2 2.17 2.89c.6.82.95 1.78.95 2.82 0 3.32-3.13 6.01-7 6.01z"/>
+                  </svg>
+                  Open in Colab
+                </a>
+              )}
             </div>
           )}
 
