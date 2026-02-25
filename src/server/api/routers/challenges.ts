@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import type { Where } from "payload";
 
 import {
   createTRPCRouter,
@@ -10,31 +11,59 @@ import {
 
 const challengeIdInputSchema = z.object({ challengeId: z.number() });
 import { getPayloadClient } from "@/server/payload";
-import { logActivity } from "@/server/agent/activity";
+import { logActivity, checkEnrollmentCompletion } from "@/server/agent/activity";
+import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import {
   challengeEnrollments,
   challengeProgress,
+  challengeTestResults,
+  challengeChannels,
+  challengeThreads,
   memberProfiles,
   user,
 } from "@/server/db/schema";
 export const challengesRouter = createTRPCRouter({
   // ── List active + upcoming challenges ─────────────────────────────────────
 
-  list: publicProcedure.query(async () => {
-    const payload = await getPayloadClient();
+  list: publicProcedure
+    .input(
+      z
+        .object({
+          difficulty: z
+            .enum(["beginner", "intermediate", "advanced", "expert"])
+            .optional(),
+          type: z.enum(["weekly", "monthly", "open-ended"]).optional(),
+          tags: z.array(z.string()).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const payload = await getPayloadClient();
 
-    const { docs } = await payload.find({
-      collection: "challenges",
-      where: {
+      const whereConditions: Where = {
         status: { in: ["active"] },
-      },
-      sort: "-startsAt",
-      limit: 50,
-      depth: 0,
-    });
+      };
 
-    return docs;
-  }),
+      if (input?.difficulty) {
+        whereConditions.difficulty = { equals: input.difficulty };
+      }
+      if (input?.type) {
+        whereConditions.type = { equals: input.type };
+      }
+      if (input?.tags && input.tags.length > 0) {
+        whereConditions.tags = { in: input.tags };
+      }
+
+      const { docs } = await payload.find({
+        collection: "challenges",
+        where: whereConditions,
+        sort: "-startsAt",
+        limit: 50,
+        depth: 0,
+      });
+
+      return docs;
+    }),
 
   // ── Get challenge by ID ───────────────────────────────────────────────────
 
@@ -137,18 +166,78 @@ export const challengesRouter = createTRPCRouter({
         });
       }
 
-      // Create progress rows for each objective
+      // Create progress rows for each objective (with verificationMode)
       const objectives = Array.isArray(challenge.objectives)
         ? challenge.objectives
         : [];
       if (objectives.length > 0) {
         await ctx.db.insert(challengeProgress).values(
-          objectives.map((_obj: unknown, index: number) => ({
+          objectives.map((obj: { verification?: string }, index: number) => ({
             enrollmentId: enrollment.id,
             objectiveIndex: index,
             currentCount: 0,
+            verificationMode: (obj.verification ?? "self-report") as
+              | "platform-action"
+              | "test"
+              | "self-report"
+              | "peer-review",
           })),
         );
+      }
+
+      // Ensure challenge has a channel
+      let [channel] = await ctx.db
+        .select()
+        .from(challengeChannels)
+        .where(eq(challengeChannels.challengeId, challengeId))
+        .limit(1);
+
+      if (!channel) {
+        [channel] = await ctx.db
+          .insert(challengeChannels)
+          .values({ challengeId })
+          .onConflictDoNothing()
+          .returning();
+
+        // If race condition, fetch existing
+        if (!channel) {
+          [channel] = await ctx.db
+            .select()
+            .from(challengeChannels)
+            .where(eq(challengeChannels.challengeId, challengeId))
+            .limit(1);
+        }
+      }
+
+      // Create progress-log thread for this participant
+      if (channel) {
+        const profile = await ctx.db
+          .select({ displayName: memberProfiles.displayName })
+          .from(memberProfiles)
+          .where(eq(memberProfiles.userId, userId))
+          .limit(1);
+
+        const displayName = profile[0]?.displayName ?? "Member";
+
+        const [progressLogThread] = await ctx.db
+          .insert(challengeThreads)
+          .values({
+            channelId: channel.id,
+            type: "progress-log",
+            authorId: userId,
+            authorType: "member",
+            title: `Progress Log: ${displayName}`,
+            content: `Progress log for ${displayName}'s journey through this challenge.`,
+          })
+          .returning();
+
+        // Store thread reference on enrollment
+        if (progressLogThread) {
+          await ctx.db
+            .update(challengeEnrollments)
+            .set({ progressLogThreadId: progressLogThread.id })
+            .where(eq(challengeEnrollments.id, enrollment.id));
+        }
       }
 
       // Log activity
@@ -267,6 +356,26 @@ export const challengesRouter = createTRPCRouter({
   getLeaderboard: publicProcedure
     .input(z.object({ challengeId: z.number(), limit: z.number().default(50) }))
     .query(async ({ ctx, input }) => {
+      // Fetch challenge to determine ranking mode
+      const payload = await getPayloadClient();
+      let rankingMode: "speed" | "thoroughness" | "collaboration" = "speed";
+      try {
+        const challenge = await payload.findByID({
+          collection: "challenges",
+          id: input.challengeId,
+          depth: 0,
+        });
+        if (
+          challenge.rankingMode === "speed" ||
+          challenge.rankingMode === "thoroughness" ||
+          challenge.rankingMode === "collaboration"
+        ) {
+          rankingMode = challenge.rankingMode;
+        }
+      } catch {
+        // Use default ranking mode
+      }
+
       // Get all enrollments for this challenge (non-abandoned)
       const enrollments = await ctx.db
         .select({
@@ -274,6 +383,7 @@ export const challengesRouter = createTRPCRouter({
           userId: challengeEnrollments.userId,
           status: challengeEnrollments.status,
           completedAt: challengeEnrollments.completedAt,
+          enrolledAt: challengeEnrollments.enrolledAt,
         })
         .from(challengeEnrollments)
         .where(
@@ -293,6 +403,7 @@ export const challengesRouter = createTRPCRouter({
         .select({
           enrollmentId: challengeProgress.enrollmentId,
           completedCount: sql<number>`count(*) filter (where ${challengeProgress.completedAt} is not null)`,
+          totalCount: sql<number>`count(*)`,
         })
         .from(challengeProgress)
         .where(
@@ -306,28 +417,84 @@ export const challengesRouter = createTRPCRouter({
       const completedMap = new Map(
         progressRows.map((r) => [r.enrollmentId, r.completedCount]),
       );
+      const totalMap = new Map(
+        progressRows.map((r) => [r.enrollmentId, r.totalCount]),
+      );
 
-      // Build ranked list: sort by completed objectives (desc), then completedAt time (asc, null last)
+      // For collaboration mode, count thread replies per participant
+      let replyCountMap = new Map<string, number>();
+      if (rankingMode === "collaboration") {
+        // Count replies (contributions) per user across all challenge threads
+        const [channel] = await ctx.db
+          .select()
+          .from(challengeChannels)
+          .where(eq(challengeChannels.challengeId, input.challengeId))
+          .limit(1);
+
+        if (channel) {
+          const threads = await ctx.db
+            .select({ id: challengeThreads.id, authorId: challengeThreads.authorId })
+            .from(challengeThreads)
+            .where(eq(challengeThreads.channelId, channel.id));
+
+          // Count threads created per user as collaboration metric
+          const threadCounts = new Map<string, number>();
+          for (const t of threads) {
+            threadCounts.set(t.authorId, (threadCounts.get(t.authorId) ?? 0) + 1);
+          }
+          replyCountMap = threadCounts;
+        }
+      }
+
+      // Build ranked list based on ranking mode
       const ranked = enrollments
         .map((e) => ({
           ...e,
           completedObjectives: completedMap.get(e.enrollmentId) ?? 0,
+          totalObjectives: totalMap.get(e.enrollmentId) ?? 0,
+          collaborationScore: replyCountMap.get(e.userId) ?? 0,
         }))
         .sort((a, b) => {
-          // More completed objectives first
+          if (rankingMode === "speed") {
+            // More completed objectives first, then earlier completion time
+            if (b.completedObjectives !== a.completedObjectives) {
+              return b.completedObjectives - a.completedObjectives;
+            }
+            if (a.completedAt && b.completedAt) {
+              return (
+                new Date(a.completedAt).getTime() -
+                new Date(b.completedAt).getTime()
+              );
+            }
+            if (a.completedAt) return -1;
+            if (b.completedAt) return 1;
+            return 0;
+          }
+
+          if (rankingMode === "thoroughness") {
+            // Completion ratio (completed/total), then total completed
+            const ratioA =
+              a.totalObjectives > 0
+                ? a.completedObjectives / a.totalObjectives
+                : 0;
+            const ratioB =
+              b.totalObjectives > 0
+                ? b.completedObjectives / b.totalObjectives
+                : 0;
+            if (ratioB !== ratioA) return ratioB - ratioA;
+            if (b.completedObjectives !== a.completedObjectives) {
+              return b.completedObjectives - a.completedObjectives;
+            }
+            return 0;
+          }
+
+          // collaboration: sort by collaboration score, then completed objectives
+          if (b.collaborationScore !== a.collaborationScore) {
+            return b.collaborationScore - a.collaborationScore;
+          }
           if (b.completedObjectives !== a.completedObjectives) {
             return b.completedObjectives - a.completedObjectives;
           }
-          // Earlier completion time wins
-          if (a.completedAt && b.completedAt) {
-            return (
-              new Date(a.completedAt).getTime() -
-              new Date(b.completedAt).getTime()
-            );
-          }
-          // Completed before not-completed
-          if (a.completedAt) return -1;
-          if (b.completedAt) return 1;
           return 0;
         })
         .slice(0, input.limit);
@@ -453,5 +620,335 @@ export const challengesRouter = createTRPCRouter({
       });
 
       return challenge;
+    }),
+
+  // ── Create a sponsor challenge ────────────────────────────────────────────
+
+  create: protectedProcedure
+    .input(
+      z.object({
+        title: z.string().min(3).max(200),
+        slug: z.string().min(3).max(100),
+        description: z.string().min(10).max(5000),
+        type: z.enum(["weekly", "monthly", "open-ended"]),
+        difficulty: z.enum(["beginner", "intermediate", "advanced", "expert"]),
+        startsAt: z.string().optional(),
+        endsAt: z.string().optional(),
+        repoTemplateUrl: z.string().url().optional(),
+        repoTestCommand: z.string().optional(),
+        repoConfigFile: z.boolean().optional(),
+        objectives: z
+          .array(
+            z.object({
+              description: z.string().min(1),
+              verification: z.enum([
+                "platform-action",
+                "test",
+                "self-report",
+                "peer-review",
+              ]),
+              action: z.string().optional(),
+              testPattern: z.string().optional(),
+              targetCount: z.number().min(1).default(1),
+              filter: z.record(z.unknown()).optional(),
+            }),
+          )
+          .min(1)
+          .max(10),
+        xpReward: z.number().min(0).default(0),
+        badgeReward: z.string().optional(),
+        sponsorReward: z.string().optional(),
+        maxParticipants: z.number().default(0),
+        tags: z.array(z.string()).optional(),
+        rankingMode: z
+          .enum(["speed", "thoroughness", "collaboration"])
+          .default("speed"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const payload = await getPayloadClient();
+
+      const challenge = await payload.create({
+        collection: "challenges",
+        data: {
+          title: input.title,
+          slug: input.slug,
+          description: {
+            root: {
+              type: "root",
+              direction: "ltr" as const,
+              format: "" as const,
+              indent: 0,
+              version: 1,
+              children: [
+                {
+                  type: "paragraph",
+                  version: 1,
+                  children: [{ type: "text", text: input.description }],
+                },
+              ],
+            },
+          },
+          type: input.type,
+          status: "draft",
+          difficulty: input.difficulty,
+          publishedBy: "sponsor",
+          creatorId: userId,
+          startsAt: input.startsAt,
+          endsAt: input.endsAt,
+          repo: {
+            templateUrl: input.repoTemplateUrl,
+            configFile: input.repoConfigFile ?? false,
+            testCommand: input.repoTestCommand,
+          },
+          objectives: input.objectives.map((obj) => ({
+            description: obj.description,
+            verification: obj.verification as
+              | "platform-action"
+              | "test"
+              | "self-report"
+              | "peer-review",
+            action: obj.action as
+              | "thread.reply"
+              | "thread.create"
+              | "knowledge.share"
+              | "idea.submitted"
+              | "idea.voted"
+              | undefined,
+            testPattern: obj.testPattern,
+            targetCount: obj.targetCount,
+            filter: obj.filter,
+          })),
+          rewards: {
+            xpReward: input.xpReward,
+            badgeReward: input.badgeReward,
+            sponsorReward: input.sponsorReward,
+          },
+          maxParticipants: input.maxParticipants,
+          tags: input.tags,
+          rankingMode: input.rankingMode as
+            | "speed"
+            | "thoroughness"
+            | "collaboration",
+        },
+      });
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "challenge.created",
+        targetType: "challenges",
+        targetId: String(challenge.id),
+        metadata: { title: input.title },
+      });
+
+      return challenge;
+    }),
+
+  // ── Submit a solution ───────────────────────────────────────────────────
+
+  submitSolution: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        title: z.string().min(1).max(500),
+        content: z.string().min(1).max(10000),
+        repoUrl: z.string().url().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [enrollment] = await ctx.db
+        .select()
+        .from(challengeEnrollments)
+        .where(
+          and(
+            eq(challengeEnrollments.challengeId, input.challengeId),
+            eq(challengeEnrollments.userId, userId),
+            eq(challengeEnrollments.status, "active"),
+          ),
+        )
+        .limit(1);
+
+      if (!enrollment) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Active enrollment not found",
+        });
+      }
+
+      // Find challenge channel
+      const [channel] = await ctx.db
+        .select()
+        .from(challengeChannels)
+        .where(eq(challengeChannels.challengeId, input.challengeId))
+        .limit(1);
+
+      if (!channel) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Challenge channel not found",
+        });
+      }
+
+      // Create solution thread
+      const [thread] = await ctx.db
+        .insert(challengeThreads)
+        .values({
+          channelId: channel.id,
+          type: "solution",
+          authorId: userId,
+          authorType: "member",
+          title: input.title,
+          content: input.content,
+          metadata: input.repoUrl
+            ? { repoUrl: input.repoUrl }
+            : undefined,
+        })
+        .returning();
+
+      // Update enrollment
+      await ctx.db
+        .update(challengeEnrollments)
+        .set({ submittedAt: new Date() })
+        .where(eq(challengeEnrollments.id, enrollment.id));
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "challenge.solution_submitted",
+        targetType: "challenges",
+        targetId: String(input.challengeId),
+        metadata: { title: input.title },
+      });
+
+      return thread!;
+    }),
+
+  // ── Review a solution (peer-review objectives) ──────────────────────────
+
+  reviewSolution: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        participantUserId: z.string(),
+        objectiveIndex: z.number(),
+        approved: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const reviewerId = ctx.session.user.id;
+
+      // Verify reviewer is the challenge creator
+      const payload = await getPayloadClient();
+      const challenge = await payload.findByID({
+        collection: "challenges",
+        id: input.challengeId,
+        depth: 0,
+      });
+      if (challenge.creatorId !== reviewerId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the challenge creator can review solutions",
+        });
+      }
+
+      // Find participant's enrollment
+      const [enrollment] = await ctx.db
+        .select()
+        .from(challengeEnrollments)
+        .where(
+          and(
+            eq(challengeEnrollments.challengeId, input.challengeId),
+            eq(challengeEnrollments.userId, input.participantUserId),
+          ),
+        )
+        .limit(1);
+
+      if (!enrollment) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Enrollment not found",
+        });
+      }
+
+      if (input.approved) {
+        // Mark objective complete
+        await ctx.db
+          .update(challengeProgress)
+          .set({
+            completedAt: new Date(),
+            reviewedBy: reviewerId,
+            reviewedAt: new Date(),
+            currentCount: 1,
+          })
+          .where(
+            and(
+              eq(challengeProgress.enrollmentId, enrollment.id),
+              eq(challengeProgress.objectiveIndex, input.objectiveIndex),
+              eq(challengeProgress.verificationMode, "peer-review"),
+            ),
+          );
+
+        // Award solution approved XP
+        await awardXp(
+          ctx.db,
+          input.participantUserId,
+          XP_AMOUNTS.CHALLENGE_SOLUTION_APPROVED,
+        );
+
+        // Check if all objectives now complete
+        await checkEnrollmentCompletion(
+          ctx.db,
+          enrollment.id,
+          input.challengeId,
+          input.participantUserId,
+        );
+      }
+
+      await logActivity(ctx.db, {
+        actorId: reviewerId,
+        actorType: "member",
+        action: input.approved
+          ? "challenge.solution_approved"
+          : "challenge.solution_rejected",
+        targetType: "challenges",
+        targetId: String(input.challengeId),
+        metadata: {
+          participantUserId: input.participantUserId,
+          objectiveIndex: input.objectiveIndex,
+        },
+      });
+
+      return { success: true, approved: input.approved };
+    }),
+
+  // ── Get test results for an enrollment ──────────────────────────────────
+
+  getTestResults: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [enrollment] = await ctx.db
+        .select()
+        .from(challengeEnrollments)
+        .where(
+          and(
+            eq(challengeEnrollments.challengeId, input.challengeId),
+            eq(challengeEnrollments.userId, userId),
+          ),
+        )
+        .limit(1);
+
+      if (!enrollment) return [];
+
+      return ctx.db
+        .select()
+        .from(challengeTestResults)
+        .where(eq(challengeTestResults.enrollmentId, enrollment.id))
+        .orderBy(desc(challengeTestResults.reportedAt));
     }),
 });
