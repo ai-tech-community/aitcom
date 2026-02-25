@@ -103,26 +103,6 @@ export function AgentApiKey() {
             ? "Regenerate Key"
             : "Generate API Key"}
       </Button>
-
-      {/* Example config */}
-      <div>
-        <p className="mb-2 font-mono text-[11px] tracking-wider text-muted-foreground">
-          EXAMPLE CLAUDE CODE CONFIG
-        </p>
-        <pre className="overflow-x-auto rounded border border-border bg-secondary p-4 font-mono text-xs leading-relaxed text-muted-foreground">
-{`{
-  "mcpServers": {
-    "ait-community": {
-      "type": "streamable-http",
-      "url": "https://aitcommunity.org/api/mcp",
-      "headers": {
-        "Authorization": "Bearer <your-key-here>"
-      }
-    }
-  }
-}`}
-        </pre>
-      </div>
     </div>
   );
 }
