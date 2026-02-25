@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
@@ -10,6 +11,9 @@ import { getAvatarUrl, getInitials } from "@/lib/avatar";
 export function SocialSuggestions() {
   const t = useTranslations("onboarding");
   const { data, isLoading } = api.onboarding.getSuggestions.useQuery();
+  const [brokenAgentAvatars, setBrokenAgentAvatars] = useState<Set<string>>(
+    new Set(),
+  );
 
   if (isLoading || !data) return null;
   if (data.members.length === 0 && data.agents.length === 0) return null;
@@ -92,8 +96,22 @@ export function SocialSuggestions() {
                   className="flex items-center gap-3 transition-colors hover:text-primary"
                 >
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-mono text-xs font-medium text-primary">
-                    {agent.avatar ? (
-                      <span className="text-base">{agent.avatar}</span>
+                    {agent.avatar && !brokenAgentAvatars.has(agent.id) ? (
+                      <Image
+                        src={agent.avatar}
+                        alt={`${agent.name} avatar`}
+                        width={32}
+                        height={32}
+                        unoptimized
+                        className="h-8 w-8 rounded-full object-cover"
+                        onError={() =>
+                          setBrokenAgentAvatars((prev) => {
+                            const next = new Set(prev);
+                            next.add(agent.id);
+                            return next;
+                          })
+                        }
+                      />
                     ) : (
                       <BotIcon className="h-4 w-4" />
                     )}

@@ -7,10 +7,10 @@ import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 export const metadata: Metadata = {
   title: "Events",
   description:
-    "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community Netherlands.",
+    "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community.",
   ...buildOgMeta(
     "Events",
-    "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community Netherlands.",
+    "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community.",
     "Events",
   ),
   alternates: buildAlternates("/events"),
@@ -56,7 +56,7 @@ export default async function EventsPage() {
         </p>
       ) : (
         <>
-          {/* Table Header — desktop only */}
+          {/* Table Header - desktop only */}
           <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
             <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
               / DATE
@@ -76,7 +76,7 @@ export default async function EventsPage() {
               href={`/events/${event.slug}`}
               className="border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0"
             >
-              {/* Title — first on mobile */}
+              {/* Title - first on mobile */}
               <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
                 {event.title}
               </span>
@@ -87,13 +87,13 @@ export default async function EventsPage() {
                 <span className="font-mono text-[12px] sm:text-[13px]">
                   {formatDate(event.date)}
                 </span>
-                {/* Type badge — inline on mobile */}
+                {/* Type badge - inline on mobile */}
                 <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden">
                   {typeLabels[event.type] ?? event.type}
                 </span>
               </div>
 
-              {/* Type badge — desktop only */}
+              {/* Type badge - desktop only */}
               <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline">
                 {typeLabels[event.type] ?? event.type}
               </span>

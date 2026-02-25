@@ -28,7 +28,7 @@ const containerVariants = {
 };
 
 export function CommunityBoard() {
-  // Set of open modals — multiple can be open at once
+  // Set of open modals - multiple can be open at once
   const [openModals, setOpenModals] = useState<Set<ModalKey>>(new Set());
   const t = useTranslations("community");
   const locale = useLocale();
@@ -88,7 +88,7 @@ export function CommunityBoard() {
           priority
         />
 
-        {/* Title overlay — compact on mobile so it doesn't cover hotspots */}
+        {/* Title overlay - compact on mobile so it doesn't cover hotspots */}
         <div className="absolute left-3 top-3 z-20 rounded-lg bg-white/85 px-3 py-2 shadow-lg backdrop-blur-sm sm:left-8 sm:top-8 sm:px-5 sm:py-4">
           <span className="hidden font-mono text-[10px] font-medium tracking-wider text-zinc-400 sm:block">
             / {t("title").toUpperCase()}
@@ -125,7 +125,7 @@ export function CommunityBoard() {
               <span className="absolute -inset-1.5 rounded-full bg-orange-400/20 sm:-inset-2" />
               {/* Dot */}
               <span className="relative block h-4 w-4 rounded-full border-2 border-white bg-orange-500 shadow-lg transition-colors group-hover:bg-orange-600 sm:h-5 sm:w-5 sm:border-[2.5px]" />
-              {/* Label — always visible on mobile, hover-only on desktop */}
+              {/* Label - always visible on mobile, hover-only on desktop */}
               <span className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-900 shadow backdrop-blur-sm sm:mt-2 sm:rounded-md sm:px-3 sm:py-1.5 sm:text-xs sm:opacity-0 sm:shadow-lg sm:transition-opacity sm:group-hover:opacity-100">
                 {spot.label}
               </span>
@@ -134,7 +134,7 @@ export function CommunityBoard() {
         </motion.div>
       </div>
 
-      {/* Modals — all rendered, each independently open/closed */}
+      {/* Modals - all rendered, each independently open/closed */}
       <RulesModal
         isOpen={openModals.has("rules")}
         onClose={() => closeModal("rules")}

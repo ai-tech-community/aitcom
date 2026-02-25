@@ -43,7 +43,7 @@ export function DashboardProfile({
       b.slug != null && b.description != null,
   );
 
-  // No profile yet — show prompt
+  // No profile yet - show prompt
   if (!profile) {
     return (
       <div>

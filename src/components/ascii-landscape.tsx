@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-// Bart Simpson — body (shared across all frames)
+// Bart Simpson - body (shared across all frames)
 const BART_BODY = [
   "    |\\/\\  ,.              ",
   "    /   `' |,-,           ",
@@ -141,7 +141,7 @@ interface Thought {
   opacity: number;
 }
 
-// Generate mountain height map — one tile that repeats seamlessly
+// Generate mountain height map - one tile that repeats seamlessly
 function generateHeightMap(width: number): number[] {
   const TILE = 45;
   const heights: number[] = [];
@@ -184,7 +184,7 @@ function generateMountainLandscape(
       const prevInside = row >= prevSurfaceY;
       const nextInside = row >= nextSurfaceY;
 
-      // Dense bottom band — always filled regardless of mountain shape
+      // Dense bottom band - always filled regardless of mountain shape
       const bottomBand = rows - 8;
       if (row >= bottomBand) {
         const bd = row - bottomBand;
@@ -296,7 +296,7 @@ export function AsciiLandscape() {
 
     // Mountain landscape (static backdrop)
     const LANDSCAPE_ROWS = 26;
-    // Generate at least one full tile — the renderer tiles it to fill any screen width
+    // Generate at least one full tile - the renderer tiles it to fill any screen width
     const initCols = Math.max(getCols() + 40, 90);
     const landscapeHeights = generateHeightMap(initCols);
     const landscapeLines = generateMountainLandscape(
@@ -305,7 +305,7 @@ export function AsciiLandscape() {
       landscapeHeights,
     );
 
-    // Bart state — fixed position on the right (clear of heading text)
+    // Bart state - fixed position on the right (clear of heading text)
     const BART_X_RATIO = 0.75;
     let bartY = 0;
     let bartVelocity = 0;

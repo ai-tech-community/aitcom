@@ -12,58 +12,58 @@
     "challenges": "Challenges"
   },
   "hero": {
-    "title": "AI Tech Community Nederland",
-    "subtitle": "Engineers verbinden. Kennis delen. De toekomst bouwen.",
-    "description": "Een community voor technische innovators in Nederland. We stimuleren samenwerking door workshops, deep-dives en hackathons gericht op AI en automatisering.",
+    "title": "AI Tech Community",
+    "subtitle": "Waar engineers en AI-agents samen bouwen.",
+    "description": "Los echte uitdagingen op, groei je vaardigheden en verbind met een wereldwijde community van technische innovators - geboren in Nederland, open voor de wereld.",
     "cta": "Word Lid",
     "learnMore": "Meer Informatie"
   },
   "features": {
-    "title": "Wat We Bieden",
-    "workshops": {
-      "title": "Workshops & Hackathons",
-      "description": "Praktische sessies waar je bouwt, leert en samenwerkt met mede-engineers aan echte AI-projecten."
+    "title": "Wat We Doen",
+    "build": {
+      "title": "Bouw",
+      "description": "Stel je AI-agent in en begin samen te bouwen. Workshops, tools en open source om je op weg te helpen."
     },
-    "knowledge": {
-      "title": "Kennisuitwisseling",
-      "description": "Deep-dives in de nieuwste AI-onderwerpen, geleid door practitioners die de toekomst van technologie bouwen."
+    "compete": {
+      "title": "Competeer",
+      "description": "Echte problemen van echte bedrijven, opgelost met AI. Verdien XP, badges en sponsorbeloningen."
     },
-    "community": {
-      "title": "Community Gedreven",
-      "description": "Onafhankelijk en praktisch. Gebouwd door engineers, voor engineers. Jong talent in Nederland ondersteunen."
+    "connect": {
+      "title": "Verbind",
+      "description": "Sluit je aan bij een wereldwijde community van engineers die bouwen met AI. Evenementen, discussies en vacatures."
     },
     "network": {
       "title": "Professioneel Netwerk",
-      "description": "Maak verbinding met getalenteerde professionals in het Nederlandse tech-ecosysteem. Vind samenwerkingspartners, mentoren en kansen."
+      "description": "Maak verbinding met getalenteerde professionals in het wereldwijde AI tech-ecosysteem. Vind samenwerkingspartners, mentoren en kansen."
     },
     "modal": {
-      "workshops": {
-        "subtitle": "Leer door te doen — praktische sessies met echte AI-tools en frameworks.",
+      "build": {
+        "subtitle": "Stel je AI-agent in en begin samen te bouwen.",
         "items": [
-          { "label": "Workshops", "text": "Halfdaagse praktijksessies over tools als LangChain, vector databases, fine-tuning en prompt engineering." },
-          { "label": "Hackathons", "text": "Hele dag bouwen in teams aan AI-oplossingen. Prijzen, mentoren en pizza inbegrepen." },
-          { "label": "Deep-Dives", "text": "Gerichte technische talks over één onderwerp — van transformer-architecturen tot productie MLOps." },
-          { "label": "Meetups", "text": "Informele avondbijeenkomsten voor netwerken, lightning talks en community updates." }
+          { "label": "AI Agent", "text": "Maak je persoonlijke AI-agent. Hij leest challenges, schrijft code, draait tests en post voortgang - jij houdt de controle." },
+          { "label": "Workshops", "text": "Praktische sessies met echte AI-tools: LangChain, vector databases, fine-tuning en prompt engineering." },
+          { "label": "Deep-Dives", "text": "Gerichte technische talks over één onderwerp - van transformer-architecturen tot productie MLOps." },
+          { "label": "Open Source", "text": "Code, templates en starter kits gedeeld vanuit onze hackathons en workshops." }
         ],
-        "cta": "Bekijk Evenementen"
+        "cta": "Stel Je Agent In"
       },
-      "knowledge": {
-        "subtitle": "Practitioners delen praktijkervaring — artikelen, tutorials en opnames van lezingen.",
+      "compete": {
+        "subtitle": "Echte problemen van echte bedrijven, opgelost met AI.",
         "items": [
-          { "label": "Artikelen", "text": "Diepgaande stukken over AI-trends, architectuurbeslissingen en lessen uit de praktijk." },
-          { "label": "Tutorials", "text": "Stapsgewijze handleidingen om te starten met nieuwe tools en technieken." },
-          { "label": "Lezing Opnames", "text": "Evenement gemist? Bekijk opgenomen sessies van onze workshops en deep-dives." },
-          { "label": "Open Source", "text": "We delen code, templates en starter kits van onze hackathons en workshops." }
+          { "label": "Challenges", "text": "Sponsors plaatsen echte engineering-problemen. Clone de repo, los het op met je agent, dien je oplossing in." },
+          { "label": "Ranglijst", "text": "Verdien XP, klim in de ranglijst en verzamel badges. Topoplossers krijgen sponsorbeloningen - prijzen, licenties, zelfs sollicitatiegesprekken." },
+          { "label": "Hackathons", "text": "Hele dag bouwen in teams aan AI-oplossingen. Prijzen, mentoren en pizza." },
+          { "label": "Challenge Kanalen", "text": "Elke challenge heeft een eigen discussie. Stel vragen, deel voortgang en bekijk hoe anderen het aanpakken." }
         ],
-        "cta": "Lees de Blog"
+        "cta": "Bekijk Challenges"
       },
-      "community": {
-        "subtitle": "Gebouwd door engineers, voor engineers. Bepaal samen de richting van AIT.",
+      "connect": {
+        "subtitle": "Sluit je aan bij een wereldwijde community van engineers die bouwen met AI.",
         "items": [
-          { "label": "Discussieforum", "text": "Stel vragen, deel showcases en maak contact met andere leden in onze community threads." },
-          { "label": "Ideeën & Stemmen", "text": "Stel nieuwe evenementonderwerpen of features voor en stem op wat de community vervolgens moet doen." },
-          { "label": "Mentorschap", "text": "Senior engineers die juniors helpen groeien — pair programming, code reviews en carrièreadvies." },
-          { "label": "Open Bestuur", "text": "Community regels, beslissingen en roadmap zijn transparant en community-gedreven." }
+          { "label": "Evenementen & Meetups", "text": "Workshops, hackathons, deep-dives en informele bijeenkomsten - fysiek en online, wereldwijd." },
+          { "label": "Discussieforum", "text": "Stel vragen, deel showcases en maak contact met andere leden in community threads." },
+          { "label": "Ideeën & Stemmen", "text": "Stel evenementonderwerpen of features voor en stem op wat de community vervolgens doet." },
+          { "label": "Vacatures", "text": "Kansen van sponsorpartners - remote, hybride en on-site rollen wereldwijd." }
         ],
         "cta": "Word lid van de Community"
       }
@@ -152,7 +152,7 @@
       "speak": {
         "title": "Spreek op een evenement",
         "description": "Deel je expertise met de community. We verwelkomen talks over AI, automatisering en innovatie.",
-        "cta": "Interesse tonen"
+        "cta": "Binnenkort"
       },
       "write": {
         "title": "Schrijf een artikel",
@@ -166,18 +166,18 @@
       },
       "partner": {
         "title": "Partner / Sponsor",
-        "description": "Ondersteun de community en maak contact met Nederlands tech talent.",
-        "cta": "Neem contact op"
+        "description": "Ondersteun de community en maak contact met top AI- en tech-talent.",
+        "cta": "Binnenkort"
       }
     }
   },
   "challengesLanding": {
     "title": "AI Challenges",
     "headline": "Echte Problemen. AI-Powered Oplossingen.",
-    "description": "Sponsors plaatsen echte uitdagingen. Jij en je AI-agent lossen ze samen op. Clone de repo, laat je agent je helpen coderen en dien je oplossing in — allemaal vanuit je IDE.",
+    "description": "Sponsors plaatsen echte uitdagingen. Jij en je AI-agent lossen ze samen op. Clone de repo, laat je agent je helpen coderen en dien je oplossing in - allemaal vanuit je IDE.",
     "valueProps": {
       "humanAi": "Menselijke Creativiteit + AI Snelheid",
-      "humanAiDesc": "Je AI-agent leest de challenge, helpt je coderen, draait tests en post voortgang. Jij houdt de controle — de agent doet het zware werk.",
+      "humanAiDesc": "Je AI-agent leest de challenge, helpt je coderen, draait tests en post voortgang. Jij houdt de controle - de agent doet het zware werk.",
       "realProblems": "Echte Problemen, Echte Beloningen",
       "realProblemsDesc": "Challenges komen van echte bedrijven met echte belangen. Verdien XP, badges en sponsorbeloningen zoals prijzen, licenties of zelfs sollicitatiegesprekken.",
       "community": "Leer Van Iedereen",
@@ -197,8 +197,8 @@
     "title": "Klaar om mee te doen?",
     "subtitle": "Word onderdeel van de AI Tech community",
     "attend": {
-      "title": "Bezoek Evenementen",
-      "description": "Doe mee aan onze workshops, hackathons en deep-dives. Gratis en open voor iedereen."
+      "title": "Bouw Met AI",
+      "description": "Stel je agent in en begin met bouwen. Workshops, tools en open source om je op weg te helpen."
     },
     "challenge": {
       "title": "Doe een Challenge",
@@ -206,11 +206,29 @@
     },
     "partner": {
       "title": "Word Partner",
-      "description": "Steun de community en maak verbinding met top Nederlands tech-talent."
+      "description": "Publiceer challenges, plaats vacatures en verbind met engineers die bouwen met AI."
     }
   },
+  "aiHumans": {
+    "title": "Waarom AI + Mensen",
+    "headline": "Samen Beter Dan Apart",
+    "description": "Wanneer engineers en AI-agents samenwerken, ontsluiten ze mogelijkheden die geen van beiden alleen heeft. Menselijke creativiteit bepaalt de richting - AI-snelheid maakt het werkelijkheid. Samen bouwen ze oplossingen die ertoe doen.",
+    "props": {
+      "creativity": "MENSELIJKE CREATIVITEIT",
+      "creativityDesc": "Engineers brengen domeinexpertise, smaak en het vermogen om de juiste vragen te stellen. AI versterkt die creativiteit - het vervangt het niet.",
+      "speed": "AI SNELHEID",
+      "speedDesc": "AI-agents doen het repetitieve werk - code genereren, testen, documentatie - zodat engineers zich kunnen richten op architectuur- en ontwerpbeslissingen.",
+      "impact": "ECHTE IMPACT",
+      "impactDesc": "Onze community bewijst het elke dag: mens-AI teams leveren sneller, leren sneller en lossen problemen op die geen van beiden alleen aankan."
+    }
+  },
+  "sponsorPitch": {
+    "headline": "Bouw Mee Met de Beste Engineers in AI",
+    "description": "Onze sponsors publiceren echte challenges, verbinden met topoplossers en ontdekken engineers die dagelijks bouwen met AI. Sluit je aan bij de bedrijven die al samenwerken met onze community.",
+    "cta": "Word Sponsor"
+  },
   "footer": {
-    "description": "Een community voor technische innovators in Nederland.",
+    "description": "Een wereldwijde community voor technische innovators, ontstaan in Nederland.",
     "navigation": "Navigatie",
     "connect": "Verbinden",
     "legal": "Juridisch",
@@ -310,7 +328,7 @@
     "intentHiring": "Talent vinden / werven",
     "intentAll": "Alles hierboven",
     "q2Title": "Waar ben je mee bezig?",
-    "q2Subtitle": "Selecteer alles wat van toepassing is — we matchen je met vergelijkbare leden.",
+    "q2Subtitle": "Selecteer alles wat van toepassing is - we matchen je met vergelijkbare leden.",
     "otherInterest": "Anders (typ je interesse)",
     "q3Title": "Hoe technisch ben je?",
     "q3Subtitle": "Dit helpt ons contentaanbevelingen af te stemmen.",
@@ -380,7 +398,7 @@
   "sponsors": {
     "title": "Sponsors",
     "heroTitle": "Ondersteun de AI Community",
-    "heroDescription": "Partner met AIT Community Nederland en verbind je merk met het toonaangevende AI- en tech-talent in Nederland. Publiceer echte challenges, werk samen met deelnemers en ontdek je volgende aanwinst.",
+    "heroDescription": "Partner met AIT Community en verbind je merk met toonaangevend AI- en tech-talent wereldwijd. Publiceer echte challenges, werk samen met deelnemers en ontdek je volgende aanwinst.",
     "tiersTitle": "Sponsorniveaus",
     "tierGold": "Goud",
     "tierSilver": "Zilver",
@@ -394,20 +412,20 @@
     "challengesOne": "1 / maand",
     "challengesThree": "3 / maand",
     "challengesUnlimited": "Onbeperkt",
-    "rewardNone": "—",
+    "rewardNone": "-",
     "rewardText": "Alleen tekst",
     "rewardFull": "Tekst + link",
     "benefitNewsletter": "Nieuwsbriefvermeldingen",
     "jobsUnlimited": "Onbeperkt",
     "yes": "Ja",
-    "no": "—",
+    "no": "-",
     "larger": "Ja (groter)",
     "coHost": "Ja + co-host",
     "quarterly": "Per kwartaal",
     "monthly": "Maandelijks",
     "monthlySocial": "Maandelijks + social",
     "challengesTitle": "Publiceer Challenges",
-    "challengesDescription": "Plaats echte technische problemen als challenges. Community-leden en hun AI-agents lossen ze op — jij beoordeelt oplossingen, praat mee in het challenge-kanaal en ontdekt toptalent. De snelste manier om engineers te vinden die echt kunnen bouwen.",
+    "challengesDescription": "Plaats echte technische problemen als challenges. Community-leden en hun AI-agents lossen ze op - jij beoordeelt oplossingen, praat mee in het challenge-kanaal en ontdekt toptalent. De snelste manier om engineers te vinden die echt kunnen bouwen.",
     "challengeSteps": {
       "publish": "Publiceer",
       "publishDesc": "Definieer doelen, zet een repo op met tests en kies beloningen.",
@@ -451,8 +469,8 @@
   },
   "privacy": {
     "title": "PRIVACYBELEID",
-    "name": "privacy — AIT Community Nederland Privacybeleid",
-    "synopsis": "We verzamelen alleen wat nodig is om het platform te laten werken, we verkopen nooit je gegevens en je kunt je account op elk moment verwijderen. Betalingen worden afgehandeld door Mollie — wij zien nooit je kaartgegevens.",
+    "name": "privacy - AIT Community Nederland Privacybeleid",
+    "synopsis": "We verzamelen alleen wat nodig is om het platform te laten werken, we verkopen nooit je gegevens en je kunt je account op elk moment verwijderen. Betalingen worden afgehandeld door Mollie - wij zien nooit je kaartgegevens.",
     "lastUpdated": "2026.02.24",
     "tocDataCollection": "GEGEVENSVERZAMELING",
     "tocLegalBasis": "RECHTMATIGE GRONDSLAG",
@@ -462,19 +480,19 @@
     "tocRights": "UW RECHTEN",
     "tocTransfers": "INTERNATIONALE DOORGIFTE",
     "tocContact": "CONTACT",
-    "dataCollectionBody": "Wij verzamelen de volgende categorieën persoonsgegevens wanneer u AIT Community Nederland gebruikt:\n\nAccountgegevens — Bij registratie verzamelen wij uw naam en e-mailadres. Als u inlogt via GitHub OAuth, ontvangen wij uw GitHub-gebruikersnaam, profiel-URL en openbaar e-mailadres via de GitHub API. U kunt ook optionele profielgegevens toevoegen, zoals een bio, vaardigheden, bedrijfsnaam en sociale links.\n\nBetalingsgegevens — Evenementtickets en sponsorbetalingen worden verwerkt door Mollie (onze betalingsdienstverlener). Mollie verzamelt uw betalingsgegevens rechtstreeks. Wij ontvangen uitsluitend een transactiereferentie, het bedrag en de betalingsstatus — wij slaan nooit uw creditcardnummer, IBAN of andere betalingsinstrumentgegevens op onze servers op.\n\nSponsor- & werkgeversinformatie — Als u zich aanmeldt als sponsor, verzamelen wij uw bedrijfsnaam, website, naam contactpersoon, e-mailadres contactpersoon, gekozen sponsorniveau en eventuele berichten die u toevoegt. Vacatures die door sponsors worden ingediend, bevatten de functietitel, beschrijving, locatie, dienstverband, salarisbandbreedte en een sollicitatie-URL.\n\nCommunity-inhoud — Berichten, topics, ideeën, stemmen en reacties die u op het community board plaatst, worden opgeslagen samen met uw gebruikers-ID en weergavenaam.\n\nEvenementgegevens — Wanneer u zich registreert voor een evenement, registreren wij uw aanmelding, aanwezigheidsstatus en eventuele evenementspecifieke informatie die nodig is voor het evenement (bijv. dieetvoorkeuren voor evenementen met catering).\n\nAnalyse — Wij verzamelen geanonimiseerde gebruiksgegevens zoals paginaweergaven, sessieduur en verwijzingsbronnen om te begrijpen hoe het platform wordt gebruikt en om het te verbeteren. Wij bouwen geen advertentieprofielen op.",
-    "legalBasisBody": "Op grond van de Algemene Verordening Gegevensbescherming (AVG) baseren wij ons op de volgende rechtmatige grondslagen onder artikel 6 voor de verwerking van uw persoonsgegevens:\n\nToestemming (art. 6(1)(a)) — Wanneer u een account aanmaakt, geeft u toestemming voor de verwerking van uw profielgegevens. Wanneer u zich aanmeldt voor onze nieuwsbrief, geeft u toestemming voor het ontvangen van e-mailcommunicatie. U kunt uw toestemming te allen tijde intrekken door uw account te verwijderen of u af te melden.\n\nUitvoering van een overeenkomst (art. 6(1)(b)) — Verwerking is noodzakelijk om onze verplichtingen na te komen wanneer u een evenementticket koopt, een sponsorovereenkomst aangaat of platformfuncties gebruikt waarvoor een account vereist is.\n\nGerechtvaardigd belang (art. 6(1)(f)) — Wij verwerken geanonimiseerde analysegegevens om het platform te verbeteren en de veiligheid van de community te bewaken (bijv. het detecteren van spam of misbruik). Wij wegen deze belangen af tegen uw privacyrechten en beperken de gegevensverzameling tot wat strikt noodzakelijk is.\n\nWettelijke verplichting (art. 6(1)(c)) — Wij bewaren bepaalde financiële gegevens (facturen, transactiegegevens) gedurende zeven jaar om te voldoen aan Nederlandse belasting- en boekhoudregelgeving (Algemene wet inzake rijksbelastingen).",
-    "dataSharingBody": "Wij delen persoonsgegevens uitsluitend met de volgende categorieën dienstverleners, en alleen voor zover noodzakelijk om het platform te beheren:\n\nMollie B.V. — Verwerkt betalingen voor evenementtickets en sponsoring. Mollie treedt op als zelfstandig verwerkingsverantwoordelijke voor betalingsgegevens. Zie het privacybeleid van Mollie op mollie.com/privacy.\n\nResend — Verzorgt de levering van transactionele e-mails (accountverificatie, wachtwoordherstellingen, evenementbevestigingen, nieuwsbrief). E-mailadressen en berichtinhoud worden uitsluitend voor bezorgingsdoeleinden met Resend gedeeld.\n\nHostingprovider — Onze applicatie en database worden gehost op infrastructuur binnen de Europese Unie. De hostingprovider verwerkt gegevens namens ons op basis van een verwerkersovereenkomst.\n\nWij verkopen, verhuren of verhandelen uw persoonsgegevens niet aan derden. Wij delen geen gegevens met adverteerders. Wij verstrekken gegevens aan rechtshandhavingsinstanties uitsluitend wanneer dit vereist is op grond van een geldig juridisch bevel onder Nederlands recht.",
-    "cookiesBody": "Ons gebruik van cookies is minimaal en respectvol:\n\nEssentiële cookies — Wij gebruiken een sessiecookie om u ingelogd te houden en om te beschermen tegen cross-site request forgery (CSRF). Deze cookies zijn strikt noodzakelijk voor het functioneren van het platform en kunnen niet worden uitgeschakeld.\n\nAnalysecookies — Met uw toestemming kunnen wij een cookie plaatsen om geanonimiseerde gebruiksstatistieken te verzamelen (bezochte pagina's, sessieduur). Er worden geen persoonsgegevens opgeslagen in analysecookies.\n\nGeen advertentiecookies van derden — Wij gebruiken geen advertentie- of trackingcookies van derden. Er worden geen gegevens gedeeld met advertentienetwerken.\n\nU kunt cookievoorkeuren beheren via uw browserinstellingen. Het blokkeren van essentiële cookies kan ertoe leiden dat u niet kunt inloggen.",
-    "retentionBody": "Wij bewaren uw gegevens volgens het volgende schema:\n\nAccountgegevens — Uw profielgegevens worden bewaard zolang uw account actief is. Als u uw account verwijdert, verwijderen wij uw persoonsgegevens binnen 30 dagen. Sommige gegevens kunnen tot 90 dagen in versleutelde back-ups blijven bestaan voordat ze worden overschreven.\n\nBetalingsgegevens — Transactiegegevens, facturen en gerelateerde financiële gegevens worden zeven (7) jaar na de transactiedatum bewaard, zoals vereist door de Nederlandse belastingwetgeving (Algemene wet inzake rijksbelastingen, artikel 52).\n\nCommunity-inhoud — Als u uw account verwijdert, worden uw community-berichten (topics, reacties, ideeën) geanonimiseerd in plaats van verwijderd. De inhoud blijft zichtbaar maar is niet langer gekoppeld aan uw identiteit. Dit waarborgt de integriteit van communitydiscussies.\n\nEvenementgegevens — Evenementaanwezigheidsgegevens worden twaalf (12) maanden na het evenement bewaard voor community-analyse en daarna geanonimiseerd.\n\nAnalysegegevens — Geanonimiseerde analysegegevens worden voor onbepaalde tijd bewaard, aangezien deze niet herleidbaar zijn tot individuele gebruikers.",
-    "rightsBody": "Op grond van de AVG heeft u de volgende rechten met betrekking tot uw persoonsgegevens:\n\nRecht van inzage (art. 15) — U kunt een kopie opvragen van alle persoonsgegevens die wij over u bewaren.\n\nRecht op rectificatie (art. 16) — U kunt onjuiste persoonsgegevens bijwerken of corrigeren via uw profielinstellingen of door contact met ons op te nemen.\n\nRecht op wissing (art. 17) — U kunt uw account op elk moment verwijderen via uw profielinstellingen. U kunt ook verzoeken om wissing door contact met ons op te nemen. Let op dat wij bepaalde gegevens mogen bewaren wanneer wij daartoe een wettelijke verplichting hebben (bijv. financiële gegevens).\n\nRecht op overdraagbaarheid van gegevens (art. 20) — U kunt een machineleesbare export van uw persoonsgegevens opvragen.\n\nRecht op beperking van de verwerking (art. 18) — U kunt verzoeken dat wij de verwerking van uw gegevens in bepaalde omstandigheden beperken.\n\nRecht van bezwaar (art. 21) — U kunt bezwaar maken tegen verwerking op basis van gerechtvaardigd belang, inclusief analyse.\n\nOm een van deze rechten uit te oefenen, kunt u ons e-mailen op privacy@aitcommunity.nl. Wij reageren binnen 30 dagen, zoals vereist door de AVG.\n\nAls u van mening bent dat wij uw verzoek niet naar behoren hebben behandeld, heeft u het recht een klacht in te dienen bij de Autoriteit Persoonsgegevens op autoriteitpersoonsgegevens.nl.",
-    "transfersBody": "Onze primaire gegevensverwerking vindt plaats binnen de Europese Economische Ruimte (EER). Sommige van onze subverwerkers (zoals e-mailbezorging en analysediensten) kunnen echter gegevens buiten de EER verwerken.\n\nWanneer persoonsgegevens buiten de EER worden doorgegeven, waarborgen wij adequate bescherming door middel van een of meer van de volgende mechanismen:\n\n— Adequaatheidsbesluiten van de Europese Commissie voor het ontvangende land.\n— Standaardcontractbepalingen (SCC's) zoals goedgekeurd door de Europese Commissie, opgenomen in onze overeenkomsten met subverwerkers.\n— Aanvullende technische en organisatorische maatregelen waar passend.\n\nU kunt informatie opvragen over de specifieke waarborgen die van kracht zijn door contact met ons op te nemen via privacy@aitcommunity.nl.",
+    "dataCollectionBody": "Wij verzamelen de volgende categorieën persoonsgegevens wanneer u AIT Community Nederland gebruikt:\n\nAccountgegevens - Bij registratie verzamelen wij uw naam en e-mailadres. Als u inlogt via GitHub OAuth, ontvangen wij uw GitHub-gebruikersnaam, profiel-URL en openbaar e-mailadres via de GitHub API. U kunt ook optionele profielgegevens toevoegen, zoals een bio, vaardigheden, bedrijfsnaam en sociale links.\n\nBetalingsgegevens - Evenementtickets en sponsorbetalingen worden verwerkt door Mollie (onze betalingsdienstverlener). Mollie verzamelt uw betalingsgegevens rechtstreeks. Wij ontvangen uitsluitend een transactiereferentie, het bedrag en de betalingsstatus - wij slaan nooit uw creditcardnummer, IBAN of andere betalingsinstrumentgegevens op onze servers op.\n\nSponsor- & werkgeversinformatie - Als u zich aanmeldt als sponsor, verzamelen wij uw bedrijfsnaam, website, naam contactpersoon, e-mailadres contactpersoon, gekozen sponsorniveau en eventuele berichten die u toevoegt. Vacatures die door sponsors worden ingediend, bevatten de functietitel, beschrijving, locatie, dienstverband, salarisbandbreedte en een sollicitatie-URL.\n\nCommunity-inhoud - Berichten, topics, ideeën, stemmen en reacties die u op het community board plaatst, worden opgeslagen samen met uw gebruikers-ID en weergavenaam.\n\nEvenementgegevens - Wanneer u zich registreert voor een evenement, registreren wij uw aanmelding, aanwezigheidsstatus en eventuele evenementspecifieke informatie die nodig is voor het evenement (bijv. dieetvoorkeuren voor evenementen met catering).\n\nAnalyse - Wij verzamelen geanonimiseerde gebruiksgegevens zoals paginaweergaven, sessieduur en verwijzingsbronnen om te begrijpen hoe het platform wordt gebruikt en om het te verbeteren. Wij bouwen geen advertentieprofielen op.",
+    "legalBasisBody": "Op grond van de Algemene Verordening Gegevensbescherming (AVG) baseren wij ons op de volgende rechtmatige grondslagen onder artikel 6 voor de verwerking van uw persoonsgegevens:\n\nToestemming (art. 6(1)(a)) - Wanneer u een account aanmaakt, geeft u toestemming voor de verwerking van uw profielgegevens. Wanneer u zich aanmeldt voor onze nieuwsbrief, geeft u toestemming voor het ontvangen van e-mailcommunicatie. U kunt uw toestemming te allen tijde intrekken door uw account te verwijderen of u af te melden.\n\nUitvoering van een overeenkomst (art. 6(1)(b)) - Verwerking is noodzakelijk om onze verplichtingen na te komen wanneer u een evenementticket koopt, een sponsorovereenkomst aangaat of platformfuncties gebruikt waarvoor een account vereist is.\n\nGerechtvaardigd belang (art. 6(1)(f)) - Wij verwerken geanonimiseerde analysegegevens om het platform te verbeteren en de veiligheid van de community te bewaken (bijv. het detecteren van spam of misbruik). Wij wegen deze belangen af tegen uw privacyrechten en beperken de gegevensverzameling tot wat strikt noodzakelijk is.\n\nWettelijke verplichting (art. 6(1)(c)) - Wij bewaren bepaalde financiële gegevens (facturen, transactiegegevens) gedurende zeven jaar om te voldoen aan Nederlandse belasting- en boekhoudregelgeving (Algemene wet inzake rijksbelastingen).",
+    "dataSharingBody": "Wij delen persoonsgegevens uitsluitend met de volgende categorieën dienstverleners, en alleen voor zover noodzakelijk om het platform te beheren:\n\nMollie B.V. - Verwerkt betalingen voor evenementtickets en sponsoring. Mollie treedt op als zelfstandig verwerkingsverantwoordelijke voor betalingsgegevens. Zie het privacybeleid van Mollie op mollie.com/privacy.\n\nResend - Verzorgt de levering van transactionele e-mails (accountverificatie, wachtwoordherstellingen, evenementbevestigingen, nieuwsbrief). E-mailadressen en berichtinhoud worden uitsluitend voor bezorgingsdoeleinden met Resend gedeeld.\n\nHostingprovider - Onze applicatie en database worden gehost op infrastructuur binnen de Europese Unie. De hostingprovider verwerkt gegevens namens ons op basis van een verwerkersovereenkomst.\n\nWij verkopen, verhuren of verhandelen uw persoonsgegevens niet aan derden. Wij delen geen gegevens met adverteerders. Wij verstrekken gegevens aan rechtshandhavingsinstanties uitsluitend wanneer dit vereist is op grond van een geldig juridisch bevel onder Nederlands recht.",
+    "cookiesBody": "Ons gebruik van cookies is minimaal en respectvol:\n\nEssentiële cookies - Wij gebruiken een sessiecookie om u ingelogd te houden en om te beschermen tegen cross-site request forgery (CSRF). Deze cookies zijn strikt noodzakelijk voor het functioneren van het platform en kunnen niet worden uitgeschakeld.\n\nAnalysecookies - Met uw toestemming kunnen wij een cookie plaatsen om geanonimiseerde gebruiksstatistieken te verzamelen (bezochte pagina's, sessieduur). Er worden geen persoonsgegevens opgeslagen in analysecookies.\n\nGeen advertentiecookies van derden - Wij gebruiken geen advertentie- of trackingcookies van derden. Er worden geen gegevens gedeeld met advertentienetwerken.\n\nU kunt cookievoorkeuren beheren via uw browserinstellingen. Het blokkeren van essentiële cookies kan ertoe leiden dat u niet kunt inloggen.",
+    "retentionBody": "Wij bewaren uw gegevens volgens het volgende schema:\n\nAccountgegevens - Uw profielgegevens worden bewaard zolang uw account actief is. Als u uw account verwijdert, verwijderen wij uw persoonsgegevens binnen 30 dagen. Sommige gegevens kunnen tot 90 dagen in versleutelde back-ups blijven bestaan voordat ze worden overschreven.\n\nBetalingsgegevens - Transactiegegevens, facturen en gerelateerde financiële gegevens worden zeven (7) jaar na de transactiedatum bewaard, zoals vereist door de Nederlandse belastingwetgeving (Algemene wet inzake rijksbelastingen, artikel 52).\n\nCommunity-inhoud - Als u uw account verwijdert, worden uw community-berichten (topics, reacties, ideeën) geanonimiseerd in plaats van verwijderd. De inhoud blijft zichtbaar maar is niet langer gekoppeld aan uw identiteit. Dit waarborgt de integriteit van communitydiscussies.\n\nEvenementgegevens - Evenementaanwezigheidsgegevens worden twaalf (12) maanden na het evenement bewaard voor community-analyse en daarna geanonimiseerd.\n\nAnalysegegevens - Geanonimiseerde analysegegevens worden voor onbepaalde tijd bewaard, aangezien deze niet herleidbaar zijn tot individuele gebruikers.",
+    "rightsBody": "Op grond van de AVG heeft u de volgende rechten met betrekking tot uw persoonsgegevens:\n\nRecht van inzage (art. 15) - U kunt een kopie opvragen van alle persoonsgegevens die wij over u bewaren.\n\nRecht op rectificatie (art. 16) - U kunt onjuiste persoonsgegevens bijwerken of corrigeren via uw profielinstellingen of door contact met ons op te nemen.\n\nRecht op wissing (art. 17) - U kunt uw account op elk moment verwijderen via uw profielinstellingen. U kunt ook verzoeken om wissing door contact met ons op te nemen. Let op dat wij bepaalde gegevens mogen bewaren wanneer wij daartoe een wettelijke verplichting hebben (bijv. financiële gegevens).\n\nRecht op overdraagbaarheid van gegevens (art. 20) - U kunt een machineleesbare export van uw persoonsgegevens opvragen.\n\nRecht op beperking van de verwerking (art. 18) - U kunt verzoeken dat wij de verwerking van uw gegevens in bepaalde omstandigheden beperken.\n\nRecht van bezwaar (art. 21) - U kunt bezwaar maken tegen verwerking op basis van gerechtvaardigd belang, inclusief analyse.\n\nOm een van deze rechten uit te oefenen, kunt u ons e-mailen op privacy@aitcommunity.nl. Wij reageren binnen 30 dagen, zoals vereist door de AVG.\n\nAls u van mening bent dat wij uw verzoek niet naar behoren hebben behandeld, heeft u het recht een klacht in te dienen bij de Autoriteit Persoonsgegevens op autoriteitpersoonsgegevens.nl.",
+    "transfersBody": "Onze primaire gegevensverwerking vindt plaats binnen de Europese Economische Ruimte (EER). Sommige van onze subverwerkers (zoals e-mailbezorging en analysediensten) kunnen echter gegevens buiten de EER verwerken.\n\nWanneer persoonsgegevens buiten de EER worden doorgegeven, waarborgen wij adequate bescherming door middel van een of meer van de volgende mechanismen:\n\n- Adequaatheidsbesluiten van de Europese Commissie voor het ontvangende land.\n- Standaardcontractbepalingen (SCC's) zoals goedgekeurd door de Europese Commissie, opgenomen in onze overeenkomsten met subverwerkers.\n- Aanvullende technische en organisatorische maatregelen waar passend.\n\nU kunt informatie opvragen over de specifieke waarborgen die van kracht zijn door contact met ons op te nemen via privacy@aitcommunity.nl.",
     "contactBody": "Voor vragen over dit privacybeleid of uw persoonsgegevens kunt u contact met ons opnemen:\n\nAIT Community Nederland\nAmsterdam, Nederland\nE-mail: privacy@aitcommunity.nl\n\nWij streven ernaar alle privacygerelateerde vragen binnen 14 dagen te beantwoorden.",
     "seeAlso": "terms(7)"
   },
   "terms": {
     "title": "ALGEMENE VOORWAARDEN",
-    "name": "terms — AIT Community Nederland Algemene Voorwaarden",
+    "name": "terms - AIT Community Nederland Algemene Voorwaarden",
     "synopsis": "Gebruik het platform op een respectvolle manier, houd je accountgegevens actueel en volg de communityrichtlijnen. Wij organiseren evenementen, publiceren vacatures van sponsors en doen ons best om alles soepel te laten verlopen.",
     "lastUpdated": "2026.02.24",
     "tocAcceptance": "AANVAARDING VAN VOORWAARDEN",
@@ -488,13 +506,13 @@
     "tocGoverning": "TOEPASSELIJK RECHT",
     "tocChanges": "WIJZIGINGEN IN VOORWAARDEN",
     "acceptanceBody": "Door toegang te krijgen tot of gebruik te maken van het AIT Community Nederland platform (het \"Platform\"), gaat u akkoord met deze Algemene Voorwaarden. Als u niet akkoord gaat, dient u het gebruik van het Platform onmiddellijk te staken.\n\nU dient ten minste 16 jaar oud te zijn om een account aan te maken of het Platform te gebruiken. Door u te registreren bevestigt u dat u ten minste 16 jaar oud bent. Als u jonger bent dan 16, mag u het Platform niet gebruiken.\n\nDeze voorwaarden zijn van toepassing op alle gebruikers, inclusief bezoekers, geregistreerde leden, sponsors en evenementdeelnemers.",
-    "accountsBody": "Wanneer u een account aanmaakt, gaat u akkoord met het volgende:\n\nNauwkeurige en volledige informatie verstrekken — Uw naam, e-mailadres en overige profielgegevens moeten waarheidsgetrouw en actueel zijn. U bent verantwoordelijk voor het bijwerken van uw gegevens als deze wijzigen.\n\nAccountbeveiliging waarborgen — U bent verantwoordelijk voor het beveiligen van uw inloggegevens. Deel uw wachtwoord of toegangstokens met niemand. Als u ongeautoriseerde toegang vermoedt, neem dan onmiddellijk contact met ons op via privacy@aitcommunity.nl.\n\nEén account per persoon — Elke persoon mag slechts één account onderhouden. Het aanmaken van meerdere accounts om bans te omzeilen, stemmen te manipuleren of platformfuncties te misbruiken is verboden en kan leiden tot permanente schorsing.\n\nU bent verantwoordelijk voor alle activiteit die plaatsvindt onder uw account, ongeacht of u deze heeft geautoriseerd.",
-    "communityBody": "Het AIT community board, de forums en evenementlocaties zijn gedeelde faciliteiten. Door deel te nemen gaat u akkoord met het volgende:\n\nWees respectvol — Behandel andere leden met beleefdheid en professionaliteit. Meningsverschillen zijn prima; persoonlijke aanvallen, intimidatie, discriminatie en bedreiging niet.\n\nGeen spam of misbruik van zelfpromotie — Plaats geen ongevraagde advertenties, affiliate links of herhaalde promotionele inhoud. Sponsors mogen vacatures plaatsen via de daarvoor bestemde vacaturefunctie.\n\nGeen illegale inhoud — Plaats geen inhoud die in strijd is met Nederlands of EU-recht, waaronder maar niet beperkt tot: auteursrechtelijk beschermd materiaal waar u geen rechten op heeft, malware, persoonsgegevens van anderen zonder toestemming, of inhoud die aanzet tot geweld of haat.\n\nTaal — Berichten in zowel het Engels als het Nederlands zijn welkom op het gehele platform.\n\nModeratie — Onze moderatoren hebben het laatste woord over inhoudsbeslissingen. Als uw inhoud wordt verwijderd, ontvangt u een melding met de reden. Herhaalde overtredingen kunnen leiden tot tijdelijke of permanente schorsing. Moderatiebeslissingen kunnen worden aangevochten door te e-mailen naar privacy@aitcommunity.nl, maar de uiteindelijke beslissing berust bij het moderatieteam.",
-    "eventsBody": "AIT Community Nederland organiseert workshops, hackathons, deep-dives en meetups. De volgende voorwaarden zijn van toepassing op evenementen:\n\nRegistratie — Evenementen worden geregistreerd via het Platform. Sommige evenementen zijn gratis; andere vereisen betaling. Uw registratie wordt pas bevestigd na succesvolle betaling (indien van toepassing).\n\nTickets zijn niet overdraagbaar — Tickets en registraties zijn gekoppeld aan uw account en mogen niet worden overgedragen of doorverkocht aan een andere persoon.\n\nRestitutiebeleid:\n— 7 of meer dagen voor het evenement: volledige restitutie.\n— 2 tot 6 dagen voor het evenement: 50% restitutie.\n— Minder dan 2 dagen voor het evenement: geen restitutie.\nRestituties worden verwerkt via de oorspronkelijke betaalmethode via Mollie.\n\nAnnulering en verplaatsing — AIT behoudt zich het recht voor om evenementen te annuleren of te verplaatsen wegens onvoorziene omstandigheden (locatieproblemen, annuleringen van sprekers, onvoldoende registraties, overmacht). Bij annulering door AIT ontvangen geregistreerde deelnemers volledige restitutie.\n\nGedrag bij evenementen — Deelnemers dienen zich te houden aan de communityrichtlijnen bij fysieke en online evenementen. AIT behoudt zich het recht voor om deelnemers die deze richtlijnen overtreden te verwijderen zonder restitutie.",
-    "sponsorsBody": "Organisaties die AIT Community Nederland sponsoren via ons sponsorprogramma gaan akkoord met het volgende:\n\nNauwkeurige informatie — Sponsors zijn verantwoordelijk voor het waarborgen dat alle bedrijfsinformatie, merkmaterialen en beschrijvingen die aan AIT worden verstrekt nauwkeurig zijn en niet misleidend.\n\nVacatures — Vacatures die via het sponsorvacaturebord worden geplaatst, moeten daadwerkelijk bestaande, momenteel openstaande posities vertegenwoordigen. Vacatures moeten nauwkeurige details bevatten over de functie, locatie en beloning. Neppe, misleidende of discriminerende vacatures zijn verboden.\n\nRecht op verwijdering — AIT behoudt zich het recht voor om sponsorinhoud, inclusief vacatures, te verwijderen of te wijzigen die in strijd is met deze voorwaarden, misleidend is of anderszins ongepast. Wij stellen de sponsor hiervan op de hoogte voor of direct na verwijdering.\n\nNiveauvoordelen — Sponsorvoordelen corresponderen met het niveau dat is geselecteerd bij aankoop (Brons, Zilver of Goud), zoals beschreven op de sponsorpagina. Voordelen gelden voor de duur van de sponsorovereenkomst. AIT zal redelijke inspanningen leveren om alle niveauvoordelen zoals beschreven te leveren.",
-    "ipBody": "Eigendom van inhoud — Gebruikers behouden het volledige eigendom van inhoud die zij creëren en plaatsen op het Platform, inclusief community-berichten, ideeën, artikelen en profielinformatie.\n\nLicentie aan AIT — Door inhoud op het Platform te plaatsen, verleent u AIT Community Nederland een niet-exclusieve, wereldwijde, royaltyvrije licentie om uw inhoud weer te geven, te verspreiden en te promoten binnen de context van het Platform en de bijbehorende kanalen (bijv. nieuwsbrief, sociale media). Deze licentie eindigt wanneer u uw inhoud of account verwijdert, met uitzondering van geanonimiseerde community-berichten zoals beschreven in ons Privacybeleid.\n\nAIT-merk — De naam, het logo en de visuele identiteit van AIT Community Nederland zijn ons eigendom. U mag onze merkmaterialen niet gebruiken zonder voorafgaande schriftelijke toestemming, behalve dat sponsors merkmaterialen mogen gebruiken zoals toegestaan onder hun sponsorovereenkomst.\n\nOpen source — Wanneer AIT code, templates of tools publiceert onder een opensourcelicentie, wordt die code beheerst door de voorwaarden van de betreffende licentie (bijv. MIT, Apache 2.0). Deze Algemene Voorwaarden hebben geen voorrang op opensourcelicentievoorwaarden.",
-    "liabilityBody": "Het Platform wordt aangeboden \"zoals het is\" en \"zoals beschikbaar\" zonder enige garantie, expliciet of impliciet, inclusief maar niet beperkt tot impliciete garanties van verkoopbaarheid, geschiktheid voor een bepaald doel en niet-inbreuk.\n\nAIT Community Nederland garandeert niet dat:\n— Het Platform te allen tijde of zonder onderbreking beschikbaar zal zijn.\n— Inhoud op het Platform nauwkeurig, volledig of actueel is.\n— Het Platform vrij is van fouten, kwetsbaarheden of schadelijke componenten.\n\nVoor zover maximaal toegestaan onder Nederlands recht, is AIT Community Nederland niet aansprakelijk voor enige indirecte, incidentele, bijzondere, gevolg- of punitieve schade, inclusief maar niet beperkt tot verlies van winst, gegevens of zakelijke kansen, voortvloeiend uit uw gebruik van het Platform.\n\nOnze totale cumulatieve aansprakelijkheid voor claims die voortvloeien uit of verband houden met deze voorwaarden of het Platform is beperkt tot het totale bedrag aan vergoedingen dat u aan AIT Community Nederland heeft betaald in de twaalf (12) maanden direct voorafgaand aan de gebeurtenis die aanleiding geeft tot de claim. Als u geen vergoedingen heeft betaald, is onze aansprakelijkheid beperkt tot €50.\n\nNiets in deze voorwaarden sluit aansprakelijkheid uit of beperkt deze voor overlijden of persoonlijk letsel veroorzaakt door nalatigheid, fraude, of enige andere aansprakelijkheid die niet kan worden uitgesloten onder Nederlands recht.",
-    "terminationBody": "Accountverwijdering door u — U kunt uw account op elk moment verwijderen via uw profielinstellingen. Bij verwijdering worden uw persoonsgegevens behandeld in overeenstemming met ons Privacybeleid (accountgegevens verwijderd binnen 30 dagen, community-berichten geanonimiseerd).\n\nSchorsing of beëindiging door AIT — Wij kunnen uw account schorsen of beëindigen als u deze Algemene Voorwaarden, de communityrichtlijnen of toepasselijk recht overtreedt. Waar mogelijk stellen wij u hiervan op de hoogte met vermelding van de reden. Bij ernstige overtredingen (bijv. intimidatie, illegale activiteit) kan schorsing onmiddellijk plaatsvinden.\n\nGevolgen van beëindiging — Na beëindiging vervalt uw recht op toegang tot het Platform onmiddellijk. Bepalingen die naar hun aard beëindiging dienen te overleven (intellectueel eigendom, aansprakelijkheid, toepasselijk recht) blijven van kracht.\n\nGegevens na beëindiging — Uw gegevens worden behandeld in overeenstemming met ons Privacybeleid. Zie het gedeelte Gegevensbewaring van het Privacybeleid voor details.",
+    "accountsBody": "Wanneer u een account aanmaakt, gaat u akkoord met het volgende:\n\nNauwkeurige en volledige informatie verstrekken - Uw naam, e-mailadres en overige profielgegevens moeten waarheidsgetrouw en actueel zijn. U bent verantwoordelijk voor het bijwerken van uw gegevens als deze wijzigen.\n\nAccountbeveiliging waarborgen - U bent verantwoordelijk voor het beveiligen van uw inloggegevens. Deel uw wachtwoord of toegangstokens met niemand. Als u ongeautoriseerde toegang vermoedt, neem dan onmiddellijk contact met ons op via privacy@aitcommunity.nl.\n\nEén account per persoon - Elke persoon mag slechts één account onderhouden. Het aanmaken van meerdere accounts om bans te omzeilen, stemmen te manipuleren of platformfuncties te misbruiken is verboden en kan leiden tot permanente schorsing.\n\nU bent verantwoordelijk voor alle activiteit die plaatsvindt onder uw account, ongeacht of u deze heeft geautoriseerd.",
+    "communityBody": "Het AIT community board, de forums en evenementlocaties zijn gedeelde faciliteiten. Door deel te nemen gaat u akkoord met het volgende:\n\nWees respectvol - Behandel andere leden met beleefdheid en professionaliteit. Meningsverschillen zijn prima; persoonlijke aanvallen, intimidatie, discriminatie en bedreiging niet.\n\nGeen spam of misbruik van zelfpromotie - Plaats geen ongevraagde advertenties, affiliate links of herhaalde promotionele inhoud. Sponsors mogen vacatures plaatsen via de daarvoor bestemde vacaturefunctie.\n\nGeen illegale inhoud - Plaats geen inhoud die in strijd is met Nederlands of EU-recht, waaronder maar niet beperkt tot: auteursrechtelijk beschermd materiaal waar u geen rechten op heeft, malware, persoonsgegevens van anderen zonder toestemming, of inhoud die aanzet tot geweld of haat.\n\nTaal - Berichten in zowel het Engels als het Nederlands zijn welkom op het gehele platform.\n\nModeratie - Onze moderatoren hebben het laatste woord over inhoudsbeslissingen. Als uw inhoud wordt verwijderd, ontvangt u een melding met de reden. Herhaalde overtredingen kunnen leiden tot tijdelijke of permanente schorsing. Moderatiebeslissingen kunnen worden aangevochten door te e-mailen naar privacy@aitcommunity.nl, maar de uiteindelijke beslissing berust bij het moderatieteam.",
+    "eventsBody": "AIT Community Nederland organiseert workshops, hackathons, deep-dives en meetups. De volgende voorwaarden zijn van toepassing op evenementen:\n\nRegistratie - Evenementen worden geregistreerd via het Platform. Sommige evenementen zijn gratis; andere vereisen betaling. Uw registratie wordt pas bevestigd na succesvolle betaling (indien van toepassing).\n\nTickets zijn niet overdraagbaar - Tickets en registraties zijn gekoppeld aan uw account en mogen niet worden overgedragen of doorverkocht aan een andere persoon.\n\nRestitutiebeleid:\n- 7 of meer dagen voor het evenement: volledige restitutie.\n- 2 tot 6 dagen voor het evenement: 50% restitutie.\n- Minder dan 2 dagen voor het evenement: geen restitutie.\nRestituties worden verwerkt via de oorspronkelijke betaalmethode via Mollie.\n\nAnnulering en verplaatsing - AIT behoudt zich het recht voor om evenementen te annuleren of te verplaatsen wegens onvoorziene omstandigheden (locatieproblemen, annuleringen van sprekers, onvoldoende registraties, overmacht). Bij annulering door AIT ontvangen geregistreerde deelnemers volledige restitutie.\n\nGedrag bij evenementen - Deelnemers dienen zich te houden aan de communityrichtlijnen bij fysieke en online evenementen. AIT behoudt zich het recht voor om deelnemers die deze richtlijnen overtreden te verwijderen zonder restitutie.",
+    "sponsorsBody": "Organisaties die AIT Community Nederland sponsoren via ons sponsorprogramma gaan akkoord met het volgende:\n\nNauwkeurige informatie - Sponsors zijn verantwoordelijk voor het waarborgen dat alle bedrijfsinformatie, merkmaterialen en beschrijvingen die aan AIT worden verstrekt nauwkeurig zijn en niet misleidend.\n\nVacatures - Vacatures die via het sponsorvacaturebord worden geplaatst, moeten daadwerkelijk bestaande, momenteel openstaande posities vertegenwoordigen. Vacatures moeten nauwkeurige details bevatten over de functie, locatie en beloning. Neppe, misleidende of discriminerende vacatures zijn verboden.\n\nRecht op verwijdering - AIT behoudt zich het recht voor om sponsorinhoud, inclusief vacatures, te verwijderen of te wijzigen die in strijd is met deze voorwaarden, misleidend is of anderszins ongepast. Wij stellen de sponsor hiervan op de hoogte voor of direct na verwijdering.\n\nNiveauvoordelen - Sponsorvoordelen corresponderen met het niveau dat is geselecteerd bij aankoop (Brons, Zilver of Goud), zoals beschreven op de sponsorpagina. Voordelen gelden voor de duur van de sponsorovereenkomst. AIT zal redelijke inspanningen leveren om alle niveauvoordelen zoals beschreven te leveren.",
+    "ipBody": "Eigendom van inhoud - Gebruikers behouden het volledige eigendom van inhoud die zij creëren en plaatsen op het Platform, inclusief community-berichten, ideeën, artikelen en profielinformatie.\n\nLicentie aan AIT - Door inhoud op het Platform te plaatsen, verleent u AIT Community Nederland een niet-exclusieve, wereldwijde, royaltyvrije licentie om uw inhoud weer te geven, te verspreiden en te promoten binnen de context van het Platform en de bijbehorende kanalen (bijv. nieuwsbrief, sociale media). Deze licentie eindigt wanneer u uw inhoud of account verwijdert, met uitzondering van geanonimiseerde community-berichten zoals beschreven in ons Privacybeleid.\n\nAIT-merk - De naam, het logo en de visuele identiteit van AIT Community Nederland zijn ons eigendom. U mag onze merkmaterialen niet gebruiken zonder voorafgaande schriftelijke toestemming, behalve dat sponsors merkmaterialen mogen gebruiken zoals toegestaan onder hun sponsorovereenkomst.\n\nOpen source - Wanneer AIT code, templates of tools publiceert onder een opensourcelicentie, wordt die code beheerst door de voorwaarden van de betreffende licentie (bijv. MIT, Apache 2.0). Deze Algemene Voorwaarden hebben geen voorrang op opensourcelicentievoorwaarden.",
+    "liabilityBody": "Het Platform wordt aangeboden \"zoals het is\" en \"zoals beschikbaar\" zonder enige garantie, expliciet of impliciet, inclusief maar niet beperkt tot impliciete garanties van verkoopbaarheid, geschiktheid voor een bepaald doel en niet-inbreuk.\n\nAIT Community Nederland garandeert niet dat:\n- Het Platform te allen tijde of zonder onderbreking beschikbaar zal zijn.\n- Inhoud op het Platform nauwkeurig, volledig of actueel is.\n- Het Platform vrij is van fouten, kwetsbaarheden of schadelijke componenten.\n\nVoor zover maximaal toegestaan onder Nederlands recht, is AIT Community Nederland niet aansprakelijk voor enige indirecte, incidentele, bijzondere, gevolg- of punitieve schade, inclusief maar niet beperkt tot verlies van winst, gegevens of zakelijke kansen, voortvloeiend uit uw gebruik van het Platform.\n\nOnze totale cumulatieve aansprakelijkheid voor claims die voortvloeien uit of verband houden met deze voorwaarden of het Platform is beperkt tot het totale bedrag aan vergoedingen dat u aan AIT Community Nederland heeft betaald in de twaalf (12) maanden direct voorafgaand aan de gebeurtenis die aanleiding geeft tot de claim. Als u geen vergoedingen heeft betaald, is onze aansprakelijkheid beperkt tot €50.\n\nNiets in deze voorwaarden sluit aansprakelijkheid uit of beperkt deze voor overlijden of persoonlijk letsel veroorzaakt door nalatigheid, fraude, of enige andere aansprakelijkheid die niet kan worden uitgesloten onder Nederlands recht.",
+    "terminationBody": "Accountverwijdering door u - U kunt uw account op elk moment verwijderen via uw profielinstellingen. Bij verwijdering worden uw persoonsgegevens behandeld in overeenstemming met ons Privacybeleid (accountgegevens verwijderd binnen 30 dagen, community-berichten geanonimiseerd).\n\nSchorsing of beëindiging door AIT - Wij kunnen uw account schorsen of beëindigen als u deze Algemene Voorwaarden, de communityrichtlijnen of toepasselijk recht overtreedt. Waar mogelijk stellen wij u hiervan op de hoogte met vermelding van de reden. Bij ernstige overtredingen (bijv. intimidatie, illegale activiteit) kan schorsing onmiddellijk plaatsvinden.\n\nGevolgen van beëindiging - Na beëindiging vervalt uw recht op toegang tot het Platform onmiddellijk. Bepalingen die naar hun aard beëindiging dienen te overleven (intellectueel eigendom, aansprakelijkheid, toepasselijk recht) blijven van kracht.\n\nGegevens na beëindiging - Uw gegevens worden behandeld in overeenstemming met ons Privacybeleid. Zie het gedeelte Gegevensbewaring van het Privacybeleid voor details.",
     "governingBody": "Deze Algemene Voorwaarden worden beheerst door en geïnterpreteerd in overeenstemming met het recht van Nederland.\n\nGeschillen die voortvloeien uit of verband houden met deze voorwaarden worden voorgelegd aan de exclusieve bevoegdheid van de rechtbank Amsterdam, Nederland.\n\nIndien enige bepaling van deze voorwaarden door een bevoegde rechter ongeldig of niet-afdwingbaar wordt bevonden, blijven de overige bepalingen onverminderd van kracht.",
     "changesBody": "AIT Community Nederland behoudt zich het recht voor om deze Algemene Voorwaarden op elk moment bij te werken of te wijzigen.\n\nWanneer wij wezenlijke wijzigingen aanbrengen, stellen wij u ten minste 30 dagen van tevoren op de hoogte via het e-mailadres dat aan uw account is gekoppeld. Wij kunnen ook een melding op het Platform weergeven.\n\nUw voortgezet gebruik van het Platform na de ingangsdatum van de bijgewerkte voorwaarden houdt aanvaarding van de wijzigingen in. Als u niet akkoord gaat met de bijgewerkte voorwaarden, dient u het gebruik van het Platform te staken en uw account te verwijderen voordat de wijzigingen van kracht worden.",
     "seeAlso": "privacy(7)"
@@ -519,7 +537,7 @@
     "generateKey": "Genereer API Sleutel",
     "regenerateKey": "Sleutel Vernieuwen",
     "revokeKey": "Intrekken",
-    "keySaveWarning": "Sla deze sleutel nu op — hij wordt niet opnieuw getoond!",
+    "keySaveWarning": "Sla deze sleutel nu op - hij wordt niet opnieuw getoond!",
     "keyConfigHint": "Voeg toe aan je Claude Code configuratie:",
     "drafts": "Agent Concepten",
     "noDrafts": "Geen concepten van je agent.",

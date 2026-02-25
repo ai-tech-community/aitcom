@@ -107,7 +107,7 @@ export async function GET(request: Request) {
         const objective = objectives[progress.objectiveIndex];
         if (!objective) continue;
         const modeLabel = progress.verificationMode ?? objective.verification ?? "self-report";
-        message += `- **${objective.description}** (${progress.currentCount}/${objective.targetCount}) — verification: *${modeLabel}*\n`;
+        message += `- **${objective.description}** (${progress.currentCount}/${objective.targetCount}) - verification: *${modeLabel}*\n`;
       }
 
       if (repoUrl) {

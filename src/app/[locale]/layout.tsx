@@ -17,11 +17,11 @@ import { Analytics } from "@vercel/analytics/next"
 export const metadata: Metadata = {
   metadataBase: new URL("https://aitcommunity.org"),
   title: {
-    default: "AIT Community — AI Tech Community Netherlands",
-    template: "%s — AIT Community",
+    default: "AIT Community - Where Engineers and AI Agents Build Together",
+    template: "%s - AIT Community",
   },
   description:
-    "A community for technical innovators in the Netherlands. Workshops, hackathons, and deep-dives on AI and automation.",
+    "A global community for technical innovators. Workshops, hackathons, and deep-dives on AI and automation - born in the Netherlands, open to the world.",
   icons: [
     { rel: "icon", url: "/icon.svg", type: "image/svg+xml" },
     { rel: "icon", url: "/favicon.ico", sizes: "32x32" },

@@ -151,7 +151,7 @@ export function InboxProvider({ children }: { children: ReactNode }) {
           };
         }
 
-        // Already open — no-op
+        // Already open - no-op
         if (prev.openChats.includes(conversationId)) return prev;
 
         // Remove from minimized if restoring

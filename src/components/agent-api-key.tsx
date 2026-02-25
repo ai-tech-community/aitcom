@@ -72,7 +72,7 @@ export function AgentApiKey() {
       {newKey && (
         <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
           <p className="mb-2 font-mono text-xs font-medium tracking-wider text-yellow-400">
-            SAVE THIS KEY NOW — IT WILL NOT BE SHOWN AGAIN
+            SAVE THIS KEY NOW - IT WILL NOT BE SHOWN AGAIN
           </p>
           <div className="flex items-center gap-2">
             <code className="flex-1 break-all rounded bg-secondary px-3 py-2 font-mono text-sm text-foreground">

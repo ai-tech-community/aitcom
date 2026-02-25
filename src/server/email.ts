@@ -53,7 +53,7 @@ export async function sendRegistrationConfirmation(
         </p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
         <p style="font-size: 12px; color: #999;">
-          AIT Community Netherlands
+          AIT Community
         </p>
       </div>
     `,
@@ -88,7 +88,7 @@ export async function sendCancellationConfirmation(
         </p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
         <p style="font-size: 12px; color: #999;">
-          AIT Community Netherlands
+          AIT Community
         </p>
       </div>
     `,
@@ -114,7 +114,7 @@ export async function sendWaitlistPromotion(
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
         <h2 style="font-size: 18px;">A spot opened up!</h2>
         <p>Hi ${userName},</p>
-        <p>Good news — a spot opened up for <strong>${event.eventTitle}</strong> and you've been moved from the waitlist to registered!</p>
+        <p>Good news - a spot opened up for <strong>${event.eventTitle}</strong> and you've been moved from the waitlist to registered!</p>
         <table style="margin: 16px 0; font-size: 14px;">
           <tr><td style="padding: 4px 12px 4px 0; color: #666;">Date</td><td>${event.eventDate}</td></tr>
           <tr><td style="padding: 4px 12px 4px 0; color: #666;">Location</td><td>${event.eventLocation}</td></tr>
@@ -126,7 +126,7 @@ export async function sendWaitlistPromotion(
         </p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
         <p style="font-size: 12px; color: #999;">
-          AIT Community Netherlands
+          AIT Community
         </p>
       </div>
     `,
@@ -154,7 +154,7 @@ export async function sendSponsorApplicationConfirmation(
   await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: `Application received — ${data.tier} sponsorship`,
+    subject: `Application received - ${data.tier} sponsorship`,
     html: `
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
         <h2 style="font-size: 18px;">Thanks for your interest!</h2>
@@ -162,7 +162,7 @@ export async function sendSponsorApplicationConfirmation(
         <p>We've received your <strong>${data.tier}</strong> sponsorship application for <strong>${data.companyName}</strong>.</p>
         <p>Our team will review it and get back to you shortly.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-        <p style="font-size: 12px; color: #999;">AIT Community Netherlands</p>
+        <p style="font-size: 12px; color: #999;">AIT Community</p>
       </div>
     `,
   });
@@ -191,7 +191,7 @@ export async function sendSponsorApplicationNotification(
         </table>
         <p><a href="https://aitcommunity.org/admin/collections/sponsor-applications" style="color: #000; font-weight: bold;">Review in admin →</a></p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-        <p style="font-size: 12px; color: #999;">AIT Community Netherlands</p>
+        <p style="font-size: 12px; color: #999;">AIT Community</p>
       </div>
     `,
   });
@@ -216,10 +216,10 @@ export async function sendSponsorWelcome(
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
         <h2 style="font-size: 18px;">You're an official AIT sponsor!</h2>
         <p>Hi ${contactName},</p>
-        <p>Great news — your <strong>${data.tier}</strong> sponsorship application for <strong>${data.companyName}</strong> has been approved.</p>
-        <p>Welcome to the AIT Community Netherlands as an official sponsor. Our team will be in touch with next steps.</p>
+        <p>Great news - your <strong>${data.tier}</strong> sponsorship application for <strong>${data.companyName}</strong> has been approved.</p>
+        <p>Welcome to the AIT Community as an official sponsor. Our team will be in touch with next steps.</p>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-        <p style="font-size: 12px; color: #999;">AIT Community Netherlands</p>
+        <p style="font-size: 12px; color: #999;">AIT Community</p>
       </div>
     `,
   });

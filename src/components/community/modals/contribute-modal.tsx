@@ -24,10 +24,10 @@ export function ContributeModal({
   const cards = [
     {
       key: "speak" as const,
-      border: "border-orange-200 hover:border-orange-300",
-      badge: "bg-orange-50 text-orange-600",
+      border: "border-orange-200",
+      badge: "bg-orange-50 text-orange-400",
       href: null as string | null,
-      disabled: false,
+      disabled: true,
     },
     {
       key: "write" as const,
@@ -45,10 +45,10 @@ export function ContributeModal({
     },
     {
       key: "partner" as const,
-      border: "border-zinc-200 hover:border-zinc-300",
-      badge: "bg-zinc-100 text-zinc-600",
+      border: "border-zinc-200",
+      badge: "bg-zinc-100 text-zinc-400",
       href: null as string | null,
-      disabled: false,
+      disabled: true,
     },
   ];
 

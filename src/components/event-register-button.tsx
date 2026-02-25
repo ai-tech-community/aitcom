@@ -124,7 +124,7 @@ export function EventRegisterButton({
 
   // Not registered yet
   const priceLabel = isPaid
-    ? ` — €${((price ?? 0) / 100).toFixed(2)}`
+    ? ` - €${((price ?? 0) / 100).toFixed(2)}`
     : "";
 
   return (

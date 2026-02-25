@@ -25,7 +25,7 @@ export const inboxRouter = createTRPCRouter({
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * listConversations — paginated list of the user's conversations.
+   * listConversations - paginated list of the user's conversations.
    * Sorted by pinned first, then updatedAt desc. Includes last message,
    * other participants, agent info, and unread count.
    */
@@ -162,7 +162,7 @@ export const inboxRouter = createTRPCRouter({
               );
             unreadCount = unreadRow?.count ?? 0;
           } else {
-            // Never read — all messages not sent by the user as "human" are unread
+            // Never read - all messages not sent by the user as "human" are unread
             const [unreadRow] = await ctx.db
               .select({ count: sql<number>`count(*)::int` })
               .from(messages)
@@ -195,7 +195,7 @@ export const inboxRouter = createTRPCRouter({
     }),
 
   /**
-   * getMessages — paginated messages for a conversation.
+   * getMessages - paginated messages for a conversation.
    * Verifies user is a participant. Returns chronological order.
    * Fire-and-forget updates lastReadAt.
    */
@@ -268,7 +268,7 @@ export const inboxRouter = createTRPCRouter({
     }),
 
   /**
-   * sendMessage — human sends a message in a conversation.
+   * sendMessage - human sends a message in a conversation.
    * Verifies participant. Updates conversation.updatedAt.
    * Fire-and-forget updates sender's lastReadAt.
    */
@@ -334,7 +334,7 @@ export const inboxRouter = createTRPCRouter({
     }),
 
   /**
-   * startConversation — start a DM with another user.
+   * startConversation - start a DM with another user.
    * Cannot message yourself. Returns existing conversation if one exists.
    */
   startConversation: protectedProcedure
@@ -388,7 +388,7 @@ export const inboxRouter = createTRPCRouter({
     }),
 
   /**
-   * totalUnreadCount — sum of unread messages across all conversations.
+   * totalUnreadCount - sum of unread messages across all conversations.
    */
   totalUnreadCount: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
@@ -412,7 +412,7 @@ export const inboxRouter = createTRPCRouter({
   }),
 
   /**
-   * searchMembers — search for members by displayName or user.name.
+   * searchMembers - search for members by displayName or user.name.
    * Excludes current user. Only public profiles.
    */
   searchMembers: protectedProcedure
@@ -455,7 +455,7 @@ export const inboxRouter = createTRPCRouter({
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * agentCheckInbox — agent fetches recent human messages from their
+   * agentCheckInbox - agent fetches recent human messages from their
    * agent conversation.
    */
   agentCheckInbox: agentProcedure.query(async ({ ctx }) => {
@@ -503,7 +503,7 @@ export const inboxRouter = createTRPCRouter({
   }),
 
   /**
-   * agentSendMessage — agent sends a message to its owner.
+   * agentSendMessage - agent sends a message to its owner.
    * Creates the agent conversation if it doesn't exist.
    */
   agentSendMessage: agentProcedure
@@ -573,7 +573,7 @@ export const inboxRouter = createTRPCRouter({
     }),
 
   /**
-   * agentGetConversationHistory — agent fetches paginated conversation history.
+   * agentGetConversationHistory - agent fetches paginated conversation history.
    * Returns messages in chronological order.
    */
   agentGetConversationHistory: agentProcedure
@@ -633,7 +633,7 @@ export const inboxRouter = createTRPCRouter({
     }),
 
   /**
-   * agentGetOwnerDMs — agent reads owner's DM conversations.
+   * agentGetOwnerDMs - agent reads owner's DM conversations.
    * Requires canReadOwnerDMs permission on agent profile.
    */
   agentGetOwnerDMs: agentProcedure

@@ -1,6 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { ArrowUpRight, GitFork, Bot, Trophy } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { AsciiLandscape } from "@/components/ascii-landscape";
 import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
@@ -62,8 +62,8 @@ function StatItem({ label, value }: { label: string; value: string }) {
 
 export const metadata: Metadata = {
   ...buildOgMeta(
-    "AIT Community — AI Tech Community Netherlands",
-    "A community for technical innovators in the Netherlands. We foster collaboration through workshops, deep-dives, and hackathons focused on AI and automation.",
+    "AIT Community - Where Engineers and AI Agents Build Together",
+    "A global community for technical innovators. We foster collaboration through workshops, deep-dives, and hackathons focused on AI and automation - born in the Netherlands, open to the world.",
   ),
   alternates: buildAlternates(""),
 };
@@ -123,7 +123,7 @@ export default async function Home() {
           url: "https://aitcommunity.org",
           logo: "https://aitcommunity.org/logo.png",
           description:
-            "A community for technical innovators in the Netherlands. Workshops, hackathons, and deep-dives on AI and automation.",
+            "A global community where engineers and AI agents build together. Workshops, hackathons, and deep-dives on AI and automation - born in the Netherlands, open to the world.",
         }}
       />
       {/* Hero with ASCII Landscape */}
@@ -133,11 +133,7 @@ export default async function Home() {
           <GridMarkers />
           <div className="mt-4 space-y-0 sm:mt-8">
             <HeroTitle
-              greeting={
-                t("hero.title").split(" ").slice(0, 2).join(" ") === "AI Tech"
-                  ? "Welcome to"
-                  : t("hero.title").split(" ")[0]!
-              }
+              greeting="Welcome to"
               title={t("hero.title")}
             />
           </div>
@@ -165,70 +161,6 @@ export default async function Home() {
         <FeatureModals />
       </section>
 
-      {/* AI Challenges */}
-      <section className="px-6 py-12 sm:px-12">
-        <SectionLabel>/ {t("challengesLanding.title").toUpperCase()}</SectionLabel>
-
-        <div className="mt-8 max-w-3xl">
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            {t("challengesLanding.headline")}
-          </h2>
-          <p className="text-muted-foreground mt-4 text-base leading-relaxed sm:text-lg">
-            {t("challengesLanding.description")}
-          </p>
-        </div>
-
-        {/* 3-Step Flow */}
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
-          {[
-            { icon: GitFork, step: "01", key: "clone" as const },
-            { icon: Bot, step: "02", key: "solve" as const },
-            { icon: Trophy, step: "03", key: "ship" as const },
-          ].map(({ icon: Icon, step, key }) => (
-            <div
-              key={step}
-              className="border-border group relative overflow-hidden rounded-lg border p-6"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
-                  {step}
-                </span>
-                <Icon className="text-muted-foreground h-4 w-4" />
-              </div>
-              <h3 className="mt-3 text-lg font-bold">
-                {t(`challengesLanding.steps.${key}`)}
-              </h3>
-              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                {t(`challengesLanding.steps.${key}Desc`)}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* Value Props */}
-        <div className="mt-8 grid gap-6 sm:grid-cols-3">
-          {(["humanAi", "realProblems", "community"] as const).map((key) => (
-            <div key={key} className="space-y-2">
-              <h3 className="font-mono text-xs font-semibold tracking-wider">
-                {t(`challengesLanding.valueProps.${key}`)}
-              </h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                {t(`challengesLanding.valueProps.${key}Desc`)}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8">
-          <Link
-            href="/challenges"
-            className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
-          >
-            {t("challengesLanding.cta")} →
-          </Link>
-        </div>
-      </section>
-
       {/* Events Feed */}
       <section className="px-6 py-12 sm:px-12">
         <SectionLabel>/ {t("events.title").toUpperCase()}</SectionLabel>
@@ -239,7 +171,7 @@ export default async function Home() {
           </p>
         ) : (
           <>
-            {/* Table Header — desktop only */}
+            {/* Table Header - desktop only */}
             <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
               <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
                 / DATE
@@ -266,7 +198,7 @@ export default async function Home() {
                       : "border-border hover:bg-secondary/50"
                   }`}
                 >
-                  {/* Title — first on mobile */}
+                  {/* Title - first on mobile */}
                   <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
                     {event.title}
                   </span>
@@ -281,7 +213,7 @@ export default async function Home() {
                     <span className="font-mono text-[12px] sm:text-[13px]">
                       {formatDate(event.date)}
                     </span>
-                    {/* Type badge — inline on mobile */}
+                    {/* Type badge - inline on mobile */}
                     <span
                       className={`rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden ${
                         isHackathon
@@ -293,7 +225,7 @@ export default async function Home() {
                     </span>
                   </div>
 
-                  {/* Type badge — desktop only */}
+                  {/* Type badge - desktop only */}
                   <span
                     className={`hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline ${
                       isHackathon
@@ -329,13 +261,48 @@ export default async function Home() {
         )}
       </section>
 
-      {/* Sponsors Strip */}
-      {featuredSponsors.length > 0 && (
-        <section className="px-6 py-12 sm:px-12">
-          <SectionLabel>
-            / {t("sponsors.currentSponsors").toUpperCase()}
-          </SectionLabel>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-8">
+      {/* Why AI + Humans */}
+      <section className="px-6 py-12 sm:px-12">
+        <SectionLabel>/ {t("aiHumans.title").toUpperCase()}</SectionLabel>
+
+        <div className="mt-8 max-w-3xl">
+          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+            {t("aiHumans.headline")}
+          </h2>
+          <p className="text-muted-foreground mt-4 text-base leading-relaxed sm:text-lg">
+            {t("aiHumans.description")}
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-6 sm:grid-cols-3">
+          {(["creativity", "speed", "impact"] as const).map((key) => (
+            <div key={key} className="space-y-2">
+              <h3 className="font-mono text-xs font-semibold tracking-wider">
+                {t(`aiHumans.props.${key}`)}
+              </h3>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {t(`aiHumans.props.${key}Desc`)}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Sponsors */}
+      <section className="px-6 py-12 sm:px-12">
+        <SectionLabel>/ {t("sponsors.currentSponsors").toUpperCase()}</SectionLabel>
+
+        <div className="mt-8 max-w-3xl">
+          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+            {t("sponsorPitch.headline")}
+          </h2>
+          <p className="text-muted-foreground mt-3 text-sm leading-relaxed sm:text-base">
+            {t("sponsorPitch.description")}
+          </p>
+        </div>
+
+        {featuredSponsors.length > 0 && (
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-8">
             {featuredSponsors.map((sponsor) => {
               const logo =
                 typeof sponsor.logo === "object"
@@ -360,8 +327,17 @@ export default async function Home() {
               ) : null;
             })}
           </div>
-        </section>
-      )}
+        )}
+
+        <div className="mt-6 text-right">
+          <Link
+            href="/sponsors"
+            className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
+          >
+            {t("sponsorPitch.cta")} →
+          </Link>
+        </div>
+      </section>
 
       {/* CTA Cards */}
       <section className="px-6 py-12 sm:px-12">
@@ -370,7 +346,7 @@ export default async function Home() {
             {
               title: t("join.attend.title"),
               desc: t("join.attend.description"),
-              href: "/events" as const,
+              href: "/dashboard/agent" as const,
             },
             {
               title: t("join.challenge.title"),

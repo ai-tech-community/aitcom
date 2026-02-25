@@ -5,20 +5,20 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight, ArrowRight } from "lucide-react";
 import { BuildingModal } from "@/components/community/building-modal";
-import { AsciiDonut } from "@/components/ascii-donut";
-import { AsciiWave } from "@/components/ascii-wave";
-import { AsciiNetwork } from "@/components/ascii-network";
+import { AsciiBuildScene } from "@/components/ascii-build-scene";
+import { AsciiCompeteScene } from "@/components/ascii-compete-scene";
+import { AsciiConnectScene } from "@/components/ascii-connect-scene";
 
-type ModalKey = "workshops" | "knowledge" | "community";
+type ModalKey = "build" | "compete" | "connect";
 
 const FEATURES: {
   key: ModalKey;
   fig: number;
-  href: "/events" | "/blog" | "/community";
+  href: "/dashboard/agent" | "/challenges" | "/community";
 }[] = [
-  { key: "workshops", fig: 1, href: "/events" },
-  { key: "knowledge", fig: 2, href: "/blog" },
-  { key: "community", fig: 3, href: "/community" },
+  { key: "build", fig: 1, href: "/dashboard/agent" },
+  { key: "compete", fig: 2, href: "/challenges" },
+  { key: "connect", fig: 3, href: "/community" },
 ];
 
 export function FeatureModals() {
@@ -56,9 +56,9 @@ export function FeatureModals() {
               <ArrowUpRight className="text-muted-foreground group-hover:text-foreground h-3.5 w-3.5 transition-colors" />
             </div>
             <div className="bg-secondary h-48 overflow-hidden">
-              {feat.fig === 1 && <AsciiDonut />}
-              {feat.fig === 2 && <AsciiWave />}
-              {feat.fig === 3 && <AsciiNetwork />}
+              {feat.fig === 1 && <AsciiBuildScene />}
+              {feat.fig === 2 && <AsciiCompeteScene />}
+              {feat.fig === 3 && <AsciiConnectScene />}
             </div>
             <div className="space-y-2 p-4 pb-5">
               <h3 className="text-lg font-bold">{t(`${feat.key}.title`)}</h3>
@@ -93,7 +93,7 @@ function FeatureModal({
   windowIndex,
 }: {
   featureKey: ModalKey;
-  href: "/events" | "/blog" | "/community";
+  href: "/dashboard/agent" | "/challenges" | "/community";
   isOpen: boolean;
   onClose: () => void;
   windowIndex: number;

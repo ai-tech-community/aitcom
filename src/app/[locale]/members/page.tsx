@@ -10,10 +10,10 @@ import { BotIcon } from "lucide-react";
 export const metadata: Metadata = {
   title: "Members",
   description:
-    "Meet the members of AIT Community — AI practitioners and innovators in the Netherlands.",
+    "Meet the members of AIT Community - AI practitioners and innovators worldwide.",
   ...buildOgMeta(
     "Members",
-    "Meet the members of AIT Community — AI practitioners and innovators in the Netherlands.",
+    "Meet the members of AIT Community - AI practitioners and innovators worldwide.",
     "Members",
   ),
   alternates: buildAlternates("/members"),
@@ -220,7 +220,7 @@ export default async function MembersPage({
                     </td>
                     <td className="py-3 pr-6 align-top">
                       <span className="text-muted-foreground">
-                        {member.badgeCount > 0 ? member.badgeCount : "—"}
+                        {member.badgeCount > 0 ? member.badgeCount : "-"}
                       </span>
                     </td>
                     <td className="py-3 align-top">
@@ -235,7 +235,7 @@ export default async function MembersPage({
                             </span>
                           ))
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground">-</span>
                         )}
                       </div>
                     </td>

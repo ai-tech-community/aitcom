@@ -159,7 +159,7 @@ export function BuildingModal({
           dragListener={false}
           onPointerDown={bringToFront}
         >
-          {/* Title bar — drag handle on desktop, static on mobile */}
+          {/* Title bar - drag handle on desktop, static on mobile */}
           <div
             className={`flex h-9 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-3 select-none ${
               isMobile ? "" : "cursor-grab active:cursor-grabbing"
@@ -209,7 +209,7 @@ export function BuildingModal({
             </div>
           </div>
 
-          {/* Content — hidden when minimized */}
+          {/* Content - hidden when minimized */}
           {windowState !== "minimized" && (
             <div className="flex flex-1 flex-col overflow-hidden px-4 py-4 sm:px-8 sm:py-6">
               {/* Top grid markers */}
@@ -243,7 +243,7 @@ export function BuildingModal({
             </div>
           )}
 
-          {/* Resize handle — normal mode only, desktop only */}
+          {/* Resize handle - normal mode only, desktop only */}
           {!isMobile && windowState === "normal" && (
             <div
               className="absolute bottom-0 right-0 z-10 h-5 w-5 cursor-nwse-resize touch-none"
