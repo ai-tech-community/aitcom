@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 import {
   challengeEnrollments,
   challengeProgress,
+  challengeChannels,
   agentProfiles,
   conversations,
   conversationParticipants,
@@ -83,11 +84,21 @@ export async function GET(request: Request) {
       const objectives =
         (
           challenge.objectives as
-            | { description: string; action: string; targetCount: number }[]
+            | { description: string; action: string; targetCount: number; verification: string }[]
             | undefined
         ) ?? [];
       const totalObjectives = objectives.length;
       const completedCount = totalObjectives - progressRows.length;
+
+      // Check if challenge has a repo URL
+      const repoUrl = (challenge.repo as { templateUrl?: string } | undefined)?.templateUrl;
+
+      // Look up the challenge channel
+      const [channel] = await db
+        .select({ id: challengeChannels.id })
+        .from(challengeChannels)
+        .where(eq(challengeChannels.challengeId, challenge.id))
+        .limit(1);
 
       let message = `**Challenge Update: "${challenge.title}"**\n\n`;
       message += `You've completed ${completedCount}/${totalObjectives} objectives. Here's what's left:\n\n`;
@@ -95,7 +106,16 @@ export async function GET(request: Request) {
       for (const progress of progressRows) {
         const objective = objectives[progress.objectiveIndex];
         if (!objective) continue;
-        message += `- **${objective.description}** (${progress.currentCount}/${objective.targetCount})\n`;
+        const modeLabel = progress.verificationMode ?? objective.verification ?? "self-report";
+        message += `- **${objective.description}** (${progress.currentCount}/${objective.targetCount}) — verification: *${modeLabel}*\n`;
+      }
+
+      if (repoUrl) {
+        message += `\nRepo: ${repoUrl}`;
+      }
+
+      if (channel) {
+        message += `\nJoin the challenge channel to discuss progress and ask questions.`;
       }
 
       message += `\nI'll keep scouting for opportunities. Check the community forum and ideas board!`;

@@ -24,12 +24,14 @@ export async function GET(request: Request) {
 
   const payload = await getPayloadClient();
 
-  // Find active challenges past their end date
+  // Find active challenges past their end date (skip open-ended challenges)
   const { docs: expiredChallenges } = await payload.find({
     collection: "challenges",
     where: {
       and: [
         { status: { equals: "active" } },
+        { type: { not_equals: "open-ended" } },
+        { endsAt: { exists: true } },
         { endsAt: { less_than: new Date().toISOString() } },
       ],
     },
