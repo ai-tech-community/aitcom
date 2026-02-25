@@ -183,14 +183,14 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
         });
 
         const createdId = Number(created.id);
-        const slug = generateSlug(title);
+        const createdSlug = (created as { slug?: string }).slug;
         const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         dispatch({ type: "SAVE_SUCCESS", payload: { articleId: createdId, time } });
         if (showToast) showMessage(t("draftCreated"), "success");
 
         // Update URL so refresh loads the saved article instead of a blank editor
-        if (!initialData?.id) {
-          router.replace(`/blog/edit/${slug}`, { scroll: false });
+        if (!initialData?.id && createdSlug) {
+          router.replace(`/blog/edit/${createdSlug}`, { scroll: false });
         }
 
         return createdId;
