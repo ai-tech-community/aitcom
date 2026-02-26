@@ -63,7 +63,7 @@ export default async function JobsPage() {
                 href={job.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="border-border hover:border-foreground/30 flex items-center gap-4 rounded-lg border px-4 py-4 transition-colors"
+                className="border-border hover:border-foreground/30 flex items-center gap-3 rounded-lg border px-4 py-4 transition-colors sm:gap-4"
               >
                 {logo?.url && (
                   <Image
@@ -88,7 +88,7 @@ export default async function JobsPage() {
                     </span>
                   </div>
                 </div>
-                <span className="text-muted-foreground font-mono text-xs font-light">
+                <span className="text-muted-foreground hidden font-mono text-xs font-light sm:inline">
                   +
                 </span>
               </a>

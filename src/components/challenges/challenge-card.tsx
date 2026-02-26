@@ -72,9 +72,9 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
 
   return (
     <div className="rounded-lg border border-border p-4">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-medium text-foreground">
               <Link
                 href={`/challenges/${challenge.slug}`}
@@ -107,7 +107,7 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
                 : t("ended")}
           </span>
         </div>
-        <div className="text-right">
+        <div className="sm:text-right">
           {!isEnrolled ? (
             <Button
               size="sm"

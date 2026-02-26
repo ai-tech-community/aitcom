@@ -56,7 +56,7 @@ export function ChallengeList() {
     }`;
 
   return (
-    <div className="px-6 py-16 sm:px-12">
+    <div className="px-6 py-8 sm:px-12 sm:py-16">
       {/* Hero */}
       <div className="border-border border-b pb-4">
         <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
@@ -73,7 +73,7 @@ export function ChallengeList() {
       </div>
 
       {/* Tabs + Create (authenticated only) */}
-      <div className="mt-10 flex items-center justify-between">
+      <div className="mt-10 flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-2">
           <button
             onClick={() => setTab("active")}

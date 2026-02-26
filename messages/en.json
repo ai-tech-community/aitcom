@@ -409,6 +409,7 @@
     "progress": "Progress",
     "timeLeft": "{days}d left",
     "ended": "Ended",
+    "openEnded": "Open-ended",
     "objectives": "Objectives",
     "leaderboard": "Leaderboard",
     "rank": "Rank",

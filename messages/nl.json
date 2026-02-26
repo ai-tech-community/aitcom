@@ -409,6 +409,7 @@
     "progress": "Voortgang",
     "timeLeft": "{days}d over",
     "ended": "Afgelopen",
+    "openEnded": "Doorlopend",
     "objectives": "Doelen",
     "leaderboard": "Ranglijst",
     "rank": "Rang",

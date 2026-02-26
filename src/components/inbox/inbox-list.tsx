@@ -7,6 +7,7 @@ import {
   SearchIcon,
   ArrowLeftIcon,
   BotIcon,
+  XIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
@@ -89,8 +90,8 @@ export function InboxList() {
         "flex flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg",
         // Desktop / tablet: fixed size
         "w-80 max-h-125",
-        // Mobile: fullscreen overlay
-        "max-sm:fixed max-sm:inset-0 max-sm:z-50 max-sm:h-full max-sm:w-full max-sm:rounded-none",
+        // Mobile: fullscreen overlay (z-60 to sit above the sticky navbar at z-50)
+        "max-sm:fixed max-sm:inset-0 max-sm:z-60 max-sm:h-full max-sm:max-h-none max-sm:w-full max-sm:rounded-none max-sm:border-0",
       ].join(" ")}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -113,8 +114,11 @@ export function InboxList() {
                 type="button"
                 onClick={toggleList}
                 className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                aria-label={t("close")}
               >
-                <ChevronDownIcon className="h-4 w-4" />
+                {/* X on mobile (fullscreen), chevron on desktop (panel) */}
+                <XIcon className="h-4 w-4 sm:hidden" />
+                <ChevronDownIcon className="hidden h-4 w-4 sm:block" />
               </button>
             </div>
           </>

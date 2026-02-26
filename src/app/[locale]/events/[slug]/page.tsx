@@ -137,18 +137,20 @@ export default async function EventDetailPage({
       />
 
       {/* Meta line */}
-      <div className="text-muted-foreground flex flex-wrap items-center gap-3 font-mono text-xs tracking-wider">
+      <div className="text-muted-foreground flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider sm:gap-3">
         <span>{formatDate(event.date)}</span>
         {event.startTime && (
           <>
-            <span className="text-border">|</span>
+            <span className="text-border hidden sm:inline">|</span>
+            <span className="text-border sm:hidden">&middot;</span>
             <span>
               {event.startTime}
               {event.endTime ? ` – ${event.endTime}` : ""}
             </span>
           </>
         )}
-        <span className="text-border">|</span>
+        <span className="text-border hidden sm:inline">|</span>
+        <span className="text-border sm:hidden">&middot;</span>
         <span>{event.location}</span>
       </div>
 
