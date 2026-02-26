@@ -6,8 +6,8 @@ import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
-import { user } from "@/server/db/schema";
-import { count } from "drizzle-orm";
+import { user, memberProfiles } from "@/server/db/schema";
+import { count, eq } from "drizzle-orm";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
@@ -97,7 +97,7 @@ export default async function Home() {
 
   // Fetch real counts for stats ticker
   const [memberCount, eventCount, sponsorCount] = await Promise.all([
-    db.select({ value: count() }).from(user).then((r) => r[0]?.value ?? 0),
+    db.select({ value: count() }).from(memberProfiles).where(eq(memberProfiles.isPublic, true)).then((r) => r[0]?.value ?? 0),
     payload.find({ collection: "events", where: { status: { not_equals: "draft" } }, limit: 0 }).then((r) => r.totalDocs),
     payload.find({ collection: "sponsors", where: { status: { equals: "active" } }, limit: 0 }).then((r) => r.totalDocs),
   ]);
@@ -127,7 +127,7 @@ export default async function Home() {
         }}
       />
       {/* Hero with ASCII Landscape */}
-      <section className="relative min-h-[70vh] overflow-hidden">
+      <section className="relative min-h-[50vh] overflow-hidden sm:min-h-[70vh]">
         <AsciiLandscape />
         <div className="relative z-10 px-4 pt-8 pb-6 sm:px-12 sm:pt-16 sm:pb-12">
           <GridMarkers />
@@ -150,9 +150,7 @@ export default async function Home() {
         <StatItem label="EVENTS" value={String(eventCount)} />
         <StatItem label="WORKSHOPS" value={String(workshopCount)} />
         <StatItem label="HACKATHONS" value={String(hackathonCount)} />
-        <span className="col-span-2 sm:col-span-1">
-          <StatItem label="SPONSORS" value={String(sponsorCount)} />
-        </span>
+        <StatItem label="SPONSORS" value={String(sponsorCount)} />
       </div>
 
       {/* Featured Section */}

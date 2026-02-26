@@ -103,19 +103,33 @@ export default async function DashboardEventsPage() {
             <Link
               key={registration.id}
               href={`/events/${event.slug}`}
-              className="flex items-center border-b border-border px-4 py-3.5 transition-colors hover:bg-secondary/50"
+              className="flex flex-col gap-1.5 border-b border-border px-4 py-3.5 transition-colors hover:bg-secondary/50 sm:flex-row sm:items-center sm:gap-0"
             >
-              <div className="flex w-32 items-center gap-3">
+              {/* Title - first on mobile */}
+              <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
+                {event.title}
+              </span>
+
+              {/* Date + badges on mobile */}
+              <div className="flex items-center gap-3 sm:order-1 sm:w-32">
                 <div className="h-2 w-2 rounded-full bg-primary" />
-                <span className="font-mono text-[13px]">
+                <span className="font-mono text-[12px] sm:text-[13px]">
                   {formatDate(event.date)}
                 </span>
+                {/* Type + status inline on mobile */}
+                <span className="rounded border border-border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider text-muted-foreground sm:hidden">
+                  {typeLabels[event.type] ?? event.type}
+                </span>
+                <span className="rounded border border-dashed border-border px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground sm:hidden">
+                  {registration.status.toUpperCase()}
+                </span>
               </div>
-              <span className="flex-1 font-medium">{event.title}</span>
-              <span className="rounded border border-border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+
+              {/* Type badge - desktop only */}
+              <span className="hidden rounded border border-border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider text-muted-foreground sm:order-3 sm:inline">
                 {typeLabels[event.type] ?? event.type}
               </span>
-              <span className="ml-3 rounded border border-dashed border-border px-2 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground">
+              <span className="ml-3 hidden rounded border border-dashed border-border px-2 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground sm:order-4 sm:inline">
                 {registration.status.toUpperCase()}
               </span>
             </Link>

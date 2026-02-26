@@ -583,7 +583,7 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
         <LexicalComposer initialConfig={initialConfig}>
           <EditorBridge onReady={setEditorRef} />
           <RichTextPlugin
-            contentEditable={<ContentEditable className="min-h-[60vh] pl-14 text-sm leading-relaxed focus:outline-none" onKeyDown={handleEditorKeyDown} />}
+            contentEditable={<ContentEditable className="min-h-[60vh] pl-4 text-sm leading-relaxed focus:outline-none sm:pl-14" onKeyDown={handleEditorKeyDown} />}
             ErrorBoundary={LexicalErrorBoundary}
           />
           <HistoryPlugin />

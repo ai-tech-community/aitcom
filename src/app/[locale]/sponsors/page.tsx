@@ -75,7 +75,8 @@ export default async function SponsorsPage() {
             / {t("tiersTitle").toUpperCase()}
           </h2>
         </div>
-        <div className="mt-6 overflow-x-auto">
+        {/* Desktop table */}
+        <div className="mt-6 hidden overflow-x-auto sm:block">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-border border-b">
@@ -121,6 +122,40 @@ export default async function SponsorsPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile stacked cards */}
+        <div className="mt-6 space-y-3 sm:hidden">
+          {benefits.map((row) => (
+            <div key={row.key} className="border-border rounded-lg border p-3">
+              <p className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+                {t(row.key)}
+              </p>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {(["bronze", "silver", "gold"] as const).map((tier) => {
+                  const val = row[tier];
+                  const display = /^\d+$/.test(val)
+                    ? val
+                    : t(val as Parameters<typeof t>[0]);
+                  return (
+                    <div key={tier} className="text-center">
+                      <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+                        {t(
+                          `tier${tier.charAt(0).toUpperCase() + tier.slice(1)}` as
+                            | "tierGold"
+                            | "tierSilver"
+                            | "tierBronze",
+                        )}
+                      </span>
+                      <p className="mt-0.5 font-mono text-xs font-medium">
+                        {display}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -168,7 +203,7 @@ export default async function SponsorsPage() {
             {t("noSponsors")}
           </p>
         ) : (
-          <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-6 lg:grid-cols-4">
             {sortedSponsors.map((sponsor) => {
               const logo =
                 typeof sponsor.logo === "object" ? sponsor.logo : null;
@@ -178,7 +213,7 @@ export default async function SponsorsPage() {
                   href={sponsor.website ?? "#"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="border-border hover:border-foreground/30 flex flex-col items-center gap-3 rounded-lg border p-6 transition-colors"
+                  className="border-border hover:border-foreground/30 flex flex-col items-center gap-3 rounded-lg border p-3 transition-colors sm:p-6"
                 >
                   {logo?.url && (
                     <Image

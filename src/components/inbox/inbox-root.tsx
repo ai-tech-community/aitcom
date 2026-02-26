@@ -62,20 +62,22 @@ export function InboxRoot() {
         <InboxMobileView chatInfo={activeChatInfo} />
       )}
 
-      {/* Fixed bottom-right container for desktop/tablet */}
-      <div className="fixed bottom-4 right-4 z-40 flex items-end gap-2">
-        {/* Minimized chat pills */}
+      {/* Fixed bottom-right container for desktop/tablet.
+          On mobile when inbox list is open, bump to z-60 so it sits above the sticky navbar (z-50). */}
+      <div className={`fixed bottom-3 right-3 z-40 flex items-end gap-2 sm:bottom-4 sm:right-4${inbox.isListOpen ? " max-sm:z-60" : ""}`}>
+        {/* Minimized chat pills — hidden on mobile (mobile uses fullscreen activeChat) */}
         {inbox.minimizedChats.map((convId) => {
           const info = getConvInfo(convId);
           if (!info) return null;
           return (
-            <ChatWindowMinimized
-              key={convId}
-              conversationId={info.conversationId}
-              displayName={info.displayName}
-              image={info.image}
-              isAgent={info.isAgent}
-            />
+            <div key={convId} className="hidden sm:block">
+              <ChatWindowMinimized
+                conversationId={info.conversationId}
+                displayName={info.displayName}
+                image={info.image}
+                isAgent={info.isAgent}
+              />
+            </div>
           );
         })}
 

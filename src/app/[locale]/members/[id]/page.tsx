@@ -69,7 +69,7 @@ export default async function MemberProfilePage({
   return (
     <div className="mx-auto max-w-2xl px-6 py-16 sm:px-12">
       {/* Header */}
-      <div className="flex items-start gap-5">
+      <div className="flex items-start gap-3 sm:gap-5">
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- avatar URLs are dynamic external sources
           <img
@@ -98,7 +98,7 @@ export default async function MemberProfilePage({
           )}
           {/* XP progress */}
           <div className="mt-3 flex items-center gap-2">
-            <div className="bg-secondary h-1.5 w-32 rounded-full">
+            <div className="bg-secondary h-1.5 w-24 rounded-full sm:w-32">
               <div
                 className="bg-primary h-1.5 rounded-full"
                 style={{
