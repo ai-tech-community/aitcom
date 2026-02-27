@@ -9,13 +9,101 @@ import {
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 
+async function requireRulesAcceptance(userId: string) {
+  const payload = await getPayloadClient();
+  const rules = await payload.findGlobal({ slug: "community-rules" });
+
+  if (!rules.version) return;
+
+  const { docs } = await payload.find({
+    collection: "rules-acceptance",
+    where: {
+      and: [
+        { userId: { equals: userId } },
+        { rulesVersion: { equals: rules.version } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+  });
+
+  if (docs.length === 0) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "RULES_NOT_ACCEPTED",
+    });
+  }
+}
+
 export const communityRouter = createTRPCRouter({
   // ── Rules ──────────────────────────────────────────────────────────────────
 
-  getRules: publicProcedure.query(async () => {
+  getRules: publicProcedure.query(async ({ ctx }) => {
     const payload = await getPayloadClient();
     const rules = await payload.findGlobal({ slug: "community-rules" });
-    return rules;
+
+    const userId = ctx.session?.user?.id;
+    let hasAccepted = false;
+    let acceptedAt: string | null = null;
+
+    if (userId && rules.version) {
+      const { docs } = await payload.find({
+        collection: "rules-acceptance",
+        where: {
+          and: [
+            { userId: { equals: userId } },
+            { rulesVersion: { equals: rules.version } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+      });
+      if (docs.length > 0) {
+        hasAccepted = true;
+        acceptedAt = docs[0]!.acceptedAt;
+      }
+    }
+
+    return { ...rules, hasAccepted, acceptedAt };
+  }),
+
+  acceptRules: protectedProcedure.mutation(async ({ ctx }) => {
+    const payload = await getPayloadClient();
+    const rules = await payload.findGlobal({ slug: "community-rules" });
+
+    if (!rules.version) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Community rules have not been published yet.",
+      });
+    }
+
+    const { docs: existing } = await payload.find({
+      collection: "rules-acceptance",
+      where: {
+        and: [
+          { userId: { equals: ctx.session.user.id } },
+          { rulesVersion: { equals: rules.version } },
+        ],
+      },
+      limit: 1,
+      depth: 0,
+    });
+
+    if (existing.length > 0) {
+      return { alreadyAccepted: true };
+    }
+
+    await payload.create({
+      collection: "rules-acceptance",
+      data: {
+        userId: ctx.session.user.id,
+        rulesVersion: rules.version,
+        acceptedAt: new Date().toISOString(),
+      },
+    });
+
+    return { alreadyAccepted: false };
   }),
 
   // ── Ideas ──────────────────────────────────────────────────────────────────
@@ -67,6 +155,7 @@ export const communityRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
 
@@ -97,6 +186,7 @@ export const communityRouter = createTRPCRouter({
   toggleVote: protectedProcedure
     .input(z.object({ ideaId: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
       const userId = ctx.session.user.id;
 
@@ -194,6 +284,7 @@ export const communityRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
 
@@ -242,6 +333,7 @@ export const communityRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
 
       const thread = await payload.findByID({
