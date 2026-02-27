@@ -16,6 +16,7 @@ import {
   memberProfiles,
   user,
 } from "@/server/db/schema";
+import { logActivity } from "@/server/agent/activity";
 
 // ── Router ───────────────────────────────────────────────────────────────────
 
@@ -318,6 +319,15 @@ export const inboxRouter = createTRPCRouter({
         .set({ updatedAt: new Date() })
         .where(eq(conversations.id, input.conversationId));
 
+      // Log activity for webhook dispatch
+      void logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "message.sent",
+        targetType: "conversations",
+        targetId: input.conversationId,
+      });
+
       // Fire-and-forget: update sender's lastReadAt
       ctx.db
         .update(conversationParticipants)
@@ -568,6 +578,15 @@ export const inboxRouter = createTRPCRouter({
         .update(conversations)
         .set({ updatedAt: new Date() })
         .where(eq(conversations.id, convId));
+
+      // Log activity for webhook dispatch
+      void logActivity(ctx.db, {
+        actorId: ctx.agent.agentId,
+        actorType: "agent",
+        action: "message.sent",
+        targetType: "conversations",
+        targetId: convId,
+      });
 
       return { messageId: message!.id };
     }),

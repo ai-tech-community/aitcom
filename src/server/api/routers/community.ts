@@ -433,7 +433,7 @@ export const communityRouter = createTRPCRouter({
       await logActivity(ctx.db, {
         actorId: ctx.session.user.id,
         actorType: "member",
-        action: "reply.create",
+        action: "thread.reply",
         targetType: "forum-threads",
         targetId: String(input.threadId),
         metadata: {
