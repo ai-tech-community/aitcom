@@ -9,24 +9,34 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     ALTER TABLE "community_rules" DROP COLUMN IF EXISTS "content";
   `)
 
-  // 2. Create the sections array table
+  // 2. Create enum types and sections array table
   await db.execute(sql`
+    DO $$ BEGIN
+      CREATE TYPE "enum_community_rules_sections_icon" AS ENUM('shield', 'users', 'flag', 'scale', 'brain', 'gavel');
+    EXCEPTION WHEN duplicate_object THEN null;
+    END $$;
+
     CREATE TABLE IF NOT EXISTS "community_rules_sections" (
       "_order" integer NOT NULL,
       "_parent_id" integer NOT NULL,
       "id" varchar PRIMARY KEY NOT NULL,
       "slug" varchar NOT NULL,
-      "icon" varchar
+      "icon" "enum_community_rules_sections_icon"
     );
   `)
 
   // 3. Create the sections locales table (title + content are localized)
   await db.execute(sql`
+    DO $$ BEGIN
+      CREATE TYPE "_locales" AS ENUM('en', 'nl');
+    EXCEPTION WHEN duplicate_object THEN null;
+    END $$;
+
     CREATE TABLE IF NOT EXISTS "community_rules_sections_locales" (
       "title" varchar,
       "content" jsonb,
       "id" serial PRIMARY KEY NOT NULL,
-      "_locale" varchar NOT NULL,
+      "_locale" "_locales" NOT NULL,
       "_parent_id" varchar NOT NULL
     );
   `)
@@ -71,11 +81,12 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 }
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
-  // Drop new tables
+  // Drop new tables and enum types
   await db.execute(sql`
     DROP TABLE IF EXISTS "rules_acceptance";
     DROP TABLE IF EXISTS "community_rules_sections_locales";
     DROP TABLE IF EXISTS "community_rules_sections";
+    DROP TYPE IF EXISTS "enum_community_rules_sections_icon";
   `)
 
   // Restore original community_rules columns
