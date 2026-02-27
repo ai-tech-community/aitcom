@@ -22,6 +22,7 @@ const CATEGORY_PREFIXES: Record<string, string[]> = {
 
 const MAX_EVENTS_PER_RUN = 20;
 const MAX_FAILURES = 10;
+const SKIP_AFTER_RETRIES = 3;
 
 interface DispatchResult {
   webhooksProcessed: number;
@@ -44,100 +45,111 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
     .where(eq(agentWebhooks.isEnabled, true));
 
   for (const webhook of webhooks) {
-    result.webhooksProcessed++;
+    try {
+      result.webhooksProcessed++;
 
-    const prefixes = (webhook.categories as string[]).flatMap(
-      (cat) => CATEGORY_PREFIXES[cat] ?? [],
-    );
-    if (prefixes.length === 0) continue;
+      const prefixes = (webhook.categories as string[]).flatMap(
+        (cat) => CATEGORY_PREFIXES[cat] ?? [],
+      );
+      if (prefixes.length === 0) continue;
 
-    // Query events newer than cursor
-    const events = webhook.cursor
-      ? await db
-          .select()
-          .from(activityEvents)
-          .where(gt(activityEvents.id, webhook.cursor))
-          .orderBy(asc(activityEvents.id))
-          .limit(MAX_EVENTS_PER_RUN)
-      : await db
-          .select()
-          .from(activityEvents)
-          .orderBy(asc(activityEvents.id))
-          .limit(MAX_EVENTS_PER_RUN);
+      // Query events newer than cursor
+      const events = webhook.cursor
+        ? await db
+            .select()
+            .from(activityEvents)
+            .where(gt(activityEvents.createdAt, webhook.cursor))
+            .orderBy(asc(activityEvents.createdAt))
+            .limit(MAX_EVENTS_PER_RUN)
+        : await db
+            .select()
+            .from(activityEvents)
+            .orderBy(asc(activityEvents.createdAt))
+            .limit(MAX_EVENTS_PER_RUN);
 
-    // Filter: match category prefixes + exclude agent's own actions
-    const matchingEvents = events.filter((evt) => {
-      if (evt.actorId === webhook.agentId) return false;
-      return prefixes.some((prefix) => evt.action.startsWith(prefix));
-    });
-
-    let consecutiveFailures = webhook.consecutiveFailures;
-
-    for (const evt of matchingEvents) {
-      const actorName = await resolveActorName(db, evt.actorId, evt.actorType);
-
-      const payload = JSON.stringify({
-        type: evt.action,
-        data: {
-          actorId: evt.actorId,
-          actorType: evt.actorType,
-          actorName,
-          targetType: evt.targetType,
-          targetId: evt.targetId,
-          metadata: evt.metadata,
-        },
-        eventId: evt.id,
-        timestamp: evt.createdAt.toISOString(),
+      // Filter: match category prefixes + exclude agent's own actions
+      const matchingEvents = events.filter((evt) => {
+        if (evt.actorId === webhook.agentId) return false;
+        return prefixes.some((prefix) => evt.action.startsWith(prefix));
       });
 
-      const signature = createHmac("sha256", webhook.secret)
-        .update(payload)
-        .digest("hex");
+      let consecutiveFailures = webhook.consecutiveFailures;
 
-      try {
-        const res = await fetch(webhook.url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-AIT-Signature": `sha256=${signature}`,
-            "X-AIT-Event": evt.action,
+      for (const evt of matchingEvents) {
+        const actorName = await resolveActorName(db, evt.actorId, evt.actorType);
+
+        const payload = JSON.stringify({
+          type: evt.action,
+          data: {
+            actorId: evt.actorId,
+            actorType: evt.actorType,
+            actorName,
+            targetType: evt.targetType,
+            targetId: evt.targetId,
+            metadata: evt.metadata,
           },
-          body: payload,
-          signal: AbortSignal.timeout(5000),
+          eventId: evt.id,
+          timestamp: evt.createdAt.toISOString(),
         });
 
-        if (res.ok) {
-          consecutiveFailures = 0;
-          result.eventsDispatched++;
-        } else {
+        const signature = createHmac("sha256", webhook.secret)
+          .update(payload)
+          .digest("hex");
+
+        try {
+          const res = await fetch(webhook.url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-AIT-Signature": `sha256=${signature}`,
+              "X-AIT-Event": evt.action,
+            },
+            body: payload,
+            signal: AbortSignal.timeout(5000),
+          });
+
+          if (res.ok) {
+            consecutiveFailures = 0;
+            result.eventsDispatched++;
+          } else {
+            consecutiveFailures++;
+            result.failures++;
+          }
+        } catch {
           consecutiveFailures++;
           result.failures++;
         }
-      } catch {
-        consecutiveFailures++;
-        result.failures++;
+
+        // Auto-disable after MAX_FAILURES
+        if (consecutiveFailures >= MAX_FAILURES) {
+          await db
+            .update(agentWebhooks)
+            .set({ isEnabled: false, consecutiveFailures })
+            .where(eq(agentWebhooks.id, webhook.id));
+          result.disabled++;
+          break;
+        }
+
+        // Skip this poison event after too many retries
+        if (consecutiveFailures >= SKIP_AFTER_RETRIES && consecutiveFailures < MAX_FAILURES) {
+          // Skip — advance cursor past this event, reset for next event
+          consecutiveFailures = 0;
+        }
       }
 
-      // Auto-disable after MAX_FAILURES
-      if (consecutiveFailures >= MAX_FAILURES) {
+      // Advance cursor to last event we saw (even if no matches, so we don't re-scan)
+      if (consecutiveFailures < MAX_FAILURES) {
+        const finalCursor =
+          events.length > 0 ? events[events.length - 1]!.createdAt : webhook.cursor;
+
         await db
           .update(agentWebhooks)
-          .set({ isEnabled: false, consecutiveFailures })
+          .set({ cursor: finalCursor, consecutiveFailures })
           .where(eq(agentWebhooks.id, webhook.id));
-        result.disabled++;
-        break;
       }
-    }
-
-    // Advance cursor to last event we saw (even if no matches, so we don't re-scan)
-    if (consecutiveFailures < MAX_FAILURES) {
-      const finalCursor =
-        events.length > 0 ? events[events.length - 1]!.id : webhook.cursor;
-
-      await db
-        .update(agentWebhooks)
-        .set({ cursor: finalCursor, consecutiveFailures })
-        .where(eq(agentWebhooks.id, webhook.id));
+    } catch (err) {
+      console.error(`[webhook-dispatch] Error processing webhook ${webhook.id}:`, err);
+      result.failures++;
     }
   }
 

@@ -398,7 +398,7 @@ export const agentWebhooks = appSchema.table("agent_webhook", (d) => ({
     .$type<string[]>()
     .notNull()
     .default([]),
-  cursor: d.varchar({ length: 255 }),
+  cursor: d.timestamp({ withTimezone: true }),
   consecutiveFailures: d.integer().notNull().default(0),
   isEnabled: d.boolean().notNull().default(true),
   createdAt: d

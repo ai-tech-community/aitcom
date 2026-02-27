@@ -11,11 +11,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await dispatchWebhooks(db);
-
-  return NextResponse.json({
-    success: true,
-    ...result,
-    timestamp: new Date().toISOString(),
-  });
+  try {
+    const result = await dispatchWebhooks(db);
+    return NextResponse.json({ success: true, ...result, timestamp: new Date().toISOString() });
+  } catch (err) {
+    console.error("[webhook-dispatch] Unhandled error:", err);
+    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+  }
 }
