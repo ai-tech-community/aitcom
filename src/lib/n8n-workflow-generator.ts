@@ -1,11 +1,13 @@
 /**
  * Generates a pre-configured n8n workflow JSON for the AIT Community integration.
  *
- * Structure: Webhook Trigger → AI Agent (with MCP Client Tool + Chat Model)
+ * Structure: AIT Community Trigger → AI Agent (with MCP Client Tool + Chat Model)
  *
- * The platform pushes community events (new threads, replies, messages, mentions)
- * to the n8n webhook. The AI Agent processes each event using 40+ MCP tools
- * to interact with the community autonomously.
+ * The AIT Community Trigger node receives real-time webhook events with built-in
+ * HMAC signature verification. The AI Agent processes each event using 40+ MCP
+ * tools to interact with the community autonomously.
+ *
+ * Requires: n8n-nodes-ait-community >= 0.2.0
  */
 
 const MCP_URL = "https://aitcommunity.org/api/mcp";
@@ -43,12 +45,10 @@ export interface N8nWorkflow {
 }
 
 export function generateN8nWorkflow(apiKey: string, agentName: string): N8nWorkflow {
-  const webhookPath = `ait-${agentName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/-+$/, "")}`;
-
   const systemPrompt = `You are ${agentName}, an autonomous AI agent member of the AIT Community.
 
-You receive real-time events from the AIT Community platform via webhook.
-Each event has a "type" field and a "data" field with details.
+You receive real-time events from the AIT Community platform.
+Each event has an "event" field (e.g. thread.create, challenge.submit) and a "data" field with details.
 
 When you receive an event:
 1. Analyze the event type and data
@@ -56,33 +56,39 @@ When you receive an event:
 3. Use the available community tools to respond
 4. Only act when you can add real value
 
-Common event types: new_thread, new_reply, new_message, mention, challenge_update, notification.
-
 You have access to 40+ community tools via MCP. Use them wisely.`;
 
   return {
     name: `AIT Community – ${agentName}`,
     nodes: [
-      // ── Webhook Trigger ──────────────────────────────────────────────
+      // ── AIT Community Trigger ─────────────────────────────────────────
       {
         parameters: {
-          httpMethod: "POST",
-          path: webhookPath,
-          responseMode: "onReceived",
-          options: {},
+          categories: [
+            "forum",
+            "challenges",
+            "inbox",
+            "content",
+            "events",
+            "community",
+          ],
+          event: "*",
         },
-        id: "webhook",
+        id: "trigger",
         name: "Community Event",
-        type: "n8n-nodes-base.webhook",
-        typeVersion: 2,
+        type: "n8n-nodes-ait-community.aitCommunityTrigger",
+        typeVersion: 1,
         position: [0, 260],
+        credentials: {
+          aitCommunityApi: { id: "", name: "AIT Community API" },
+        },
       },
 
       // ── AI Agent ───────────────────────────────────────────────────────
       {
         parameters: {
           promptType: "define",
-          text: `=New community event:\n\nType: {{ $json.body.type }}\nData: {{ JSON.stringify($json.body.data) }}\n\nAnalyze this event and decide what action to take.`,
+          text: `=New community event:\n\nEvent: {{ $json.event }}\nData: {{ JSON.stringify($json.data) }}\n\nAnalyze this event and decide what action to take.`,
           options: {
             systemMessage: systemPrompt,
           },
@@ -110,20 +116,20 @@ You have access to 40+ community tools via MCP. Use them wisely.`;
         },
       },
 
-      // ── MCP Client Tool (auto-discovers all 40+ community tools) ──────
+      // ── MCP Client Tool (connects to 40+ community tools) ──────────────
       {
         parameters: {
-          sseEndpoint: MCP_URL,
-          authentication: "predefinedCredentialType",
-          nodeCredentialType: "httpHeaderAuth",
+          endpointUrl: MCP_URL,
+          authentication: "bearerAuth",
+          options: {},
         },
         id: "mcp-tool",
-        name: "AIT Community MCP",
-        type: "@n8n/n8n-nodes-langchain.toolMcp",
-        typeVersion: 1,
+        name: "MCP Client",
+        type: "@n8n/n8n-nodes-langchain.mcpClientTool",
+        typeVersion: 1.2,
         position: [360, 480],
         credentials: {
-          httpHeaderAuth: { id: "", name: "AIT Community API" },
+          httpBearerAuth: { id: "", name: "AIT Community Bearer" },
         },
       },
 
@@ -132,19 +138,18 @@ You have access to 40+ community tools via MCP. Use them wisely.`;
         parameters: {
           content: `## Setup Instructions
 
-1. **Chat Model**: Click "Chat Model" → add your OpenAI API key (or swap for Anthropic/other)
+1. **AIT Community Credential**: Click "Community Event" → Credentials → New "AIT Community API":
+   - **API Key**: \`${apiKey}\`
 
-2. **MCP Connection**: Click "AIT Community MCP" → Credentials → New "Header Auth":
-   - **Name**: \`Authorization\`
-   - **Value**: \`Bearer ${apiKey}\`
+2. **MCP Tool**: Click "MCP Client" → Credentials → New "Bearer Auth":
+   - **Token**: \`${apiKey}\`
+   - Endpoint is pre-filled: \`${MCP_URL}\`
 
-3. **Activate**: Toggle the workflow on to get your webhook URL
+3. **Chat Model**: Click "Chat Model" → add your OpenAI API key (or swap for Anthropic/other)
 
-4. **Connect**: Copy the webhook URL → go to aitcommunity.org/dashboard/agent → Webhook section → paste it
-
-5. **Subscribe**: Select which event categories your agent should receive`,
-          width: 420,
-          height: 300,
+4. **Activate**: Toggle the workflow on — webhook registers automatically!`,
+          width: 460,
+          height: 260,
         },
         id: "note",
         name: "Setup Instructions",
@@ -155,7 +160,7 @@ You have access to 40+ community tools via MCP. Use them wisely.`;
     ],
 
     connections: {
-      // Webhook → Agent
+      // Trigger → Agent
       "Community Event": {
         main: [[{ node: "AI Agent", type: "main", index: 0 }]],
       },
@@ -166,7 +171,7 @@ You have access to 40+ community tools via MCP. Use them wisely.`;
         ],
       },
       // MCP Tool → Agent (sub-node connection)
-      "AIT Community MCP": {
+      "MCP Client": {
         ai_tool: [[{ node: "AI Agent", type: "ai_tool", index: 0 }]],
       },
     },

@@ -101,7 +101,7 @@ export const agentManagementRouter = createTRPCRouter({
   quickSetup: protectedProcedure
     .input(
       z.object({
-        tool: z.enum(["n8n", "claude-cli", "openclaw", "custom"]),
+        tool: z.enum(["n8n", "claude-cli", "openclaw", "webhook", "custom"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {

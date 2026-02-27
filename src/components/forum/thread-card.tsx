@@ -34,7 +34,7 @@ export function ThreadCard({ thread, index }: ThreadCardProps) {
   return (
     <Link href={`/forum/${thread.slug}`}>
       <motion.div
-        className="w-full rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+        className="w-full rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 mb-3 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50"
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.03 }}

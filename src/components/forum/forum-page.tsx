@@ -144,7 +144,7 @@ export function ForumPage() {
           {t("noThreads")}
         </p>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-3">
           {threads.map((thread, i) => (
             <ThreadCard key={thread.id} thread={thread} index={i} />
           ))}

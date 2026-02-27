@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { AgentQuickStart, AgentToolConnect } from "@/components/agent-quick-start";
 import { AgentApiKey } from "@/components/agent-api-key";
-import { AgentWebhook } from "@/components/agent-webhook";
+
 import { AgentDrafts } from "@/components/agent-drafts";
 import { AgentSuggestions } from "@/components/agent-suggestions";
 import { Button } from "@/components/ui/button";
@@ -350,18 +350,6 @@ export function AgentDashboardContent({
         </div>
         <div className="mt-4">
           <AgentApiKey />
-        </div>
-      </div>
-
-      {/* Webhook */}
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="border-b border-border pb-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
-            / WEBHOOK
-          </span>
-        </div>
-        <div className="mt-4">
-          <AgentWebhook />
         </div>
       </div>
 

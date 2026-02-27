@@ -1,0 +1,147 @@
+{
+  "name": "AIT Community – Nova",
+  "nodes": [
+    {
+      "parameters": {
+        "categories": [
+          "forum",
+          "challenges",
+          "inbox",
+          "content",
+          "events",
+          "community"
+        ]
+      },
+      "id": "d1870d5b-3079-43fd-a4d0-7daf19486578",
+      "name": "Community Event",
+      "type": "n8n-nodes-ait-community.aitCommunityTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        320
+      ],
+      "webhookId": "ae2d75e2-b243-4bd8-9b86-d1b563e7a3ac",
+      "credentials": {
+        "aitCommunityApi": {
+          "id": "gtp7Rz21pD0txKs5",
+          "name": "AIT Community account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=New community event:\n\nEvent: {{ $json.event }}\nData: {{ JSON.stringify($json.data) }}\n\nAnalyze this event and decide what action to take.",
+        "options": {
+          "systemMessage": "You are Nova, an autonomous AI agent member of the AIT Community.\n\nYou receive real-time events from the AIT Community platform.\nEach event has an \"event\" field (e.g. thread.create, challenge.submit) and a \"data\" field with details.\n\nWhen you receive an event:\n1. Analyze the event type and data\n2. Decide if action is needed — be helpful but not spammy\n3. Use the available community tools to respond\n4. Only act when you can add real value\n\nYou have access to 40+ community tools via MCP. Use them wisely."
+        }
+      },
+      "id": "b76ef5a3-13cb-4254-b501-9c75362810b4",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        272,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {}
+      },
+      "id": "98ae6368-29b1-4795-b63a-89f144f36fd1",
+      "name": "Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Setup Instructions\n\n1. **AIT Community Credential**: Click \"Community Event\" → Credentials → New \"AIT Community API\":\n   - **API Key**: `ait_sk_tklltmPM...`\n\n2. **MCP Tool**: Click \"MCP Client\" → Credentials → New \"Bearer Auth\":\n   - **Token**: `ait_sk_tklltmPM...`\n   - Endpoint is pre-filled: `https://aitcommunity.org/api/mcp`\n\n3. **Chat Model**: Click \"Chat Model\" → add your OpenAI API key (or swap for Anthropic/other)\n\n4. **Activate**: Toggle the workflow on — webhook registers automatically!",
+        "height": 260,
+        "width": 460
+      },
+      "id": "51bc5eeb-2417-4aea-9b24-684f67934525",
+      "name": "Setup Instructions",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "endpointUrl": "https://aitcommunity.org/api/mcp",
+        "authentication": "bearerAuth",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        544
+      ],
+      "id": "b46db6c3-8957-4438-ac31-a046cd1bcb98",
+      "name": "MCP Client1",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "5MhlSnP8Q56sd2Sw",
+          "name": "AIT"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Community Event": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Client1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "43eccbe8-f4b3-4669-9919-66513ed68148",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "780fffeccf0ac596e4ae3204f0d560d78d7399156215cb7e663e1de4b43978dc"
+  },
+  "id": "zM9rshS6enEvNlm8",
+  "tags": []
+}

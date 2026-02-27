@@ -48,7 +48,7 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
     try {
       result.webhooksProcessed++;
 
-      const prefixes = (webhook.categories as string[]).flatMap(
+      const prefixes = webhook.categories.flatMap(
         (cat) => CATEGORY_PREFIXES[cat] ?? [],
       );
       if (prefixes.length === 0) continue;

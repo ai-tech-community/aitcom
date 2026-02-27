@@ -107,7 +107,6 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
           href="/forum"
           className="font-mono text-xs tracking-wider text-zinc-400 transition-colors hover:text-zinc-600"
         >
-          <ArrowLeft className="mr-1 inline h-3 w-3" />
           {t("backToForum")}
         </Link>
         <p className="mt-8 font-mono text-xs text-zinc-400">
@@ -124,8 +123,7 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
         href="/forum"
         className="font-mono text-xs tracking-wider text-zinc-400 transition-colors hover:text-zinc-600"
       >
-        <ArrowLeft className="mr-1 inline h-3 w-3" />
-        {t("backToForum")}
+         {t("backToForum")}
       </Link>
 
       {/* Thread header */}
