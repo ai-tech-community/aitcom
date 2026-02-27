@@ -94,6 +94,95 @@ export const agentManagementRouter = createTRPCRouter({
       return agent!;
     }),
 
+  /** Quick-setup: create agent with smart defaults + generate API key in one call. */
+  quickSetup: protectedProcedure
+    .input(
+      z.object({
+        tool: z.enum(["n8n", "claude-cli", "openclaw", "custom"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const userName = ctx.session.user.name ?? "member";
+
+      // Check if user already has an agent
+      const [existing] = await ctx.db
+        .select()
+        .from(agentProfiles)
+        .where(eq(agentProfiles.ownerId, userId))
+        .limit(1);
+
+      let agent = existing;
+
+      if (!agent) {
+        // Auto-create agent with smart defaults
+        const [created] = await ctx.db
+          .insert(agentProfiles)
+          .values({
+            ownerId: userId,
+            name: `${userName}'s AI Agent`,
+            visibilityMode: "visible",
+          })
+          .returning();
+
+        agent = created!;
+
+        // Create agent conversation (pinned) in inbox
+        const [agentConv] = await ctx.db
+          .insert(conversations)
+          .values({ type: "agent" })
+          .returning();
+
+        await ctx.db.insert(conversationParticipants).values({
+          conversationId: agentConv!.id,
+          userId,
+          isPinned: true,
+        });
+
+        await logActivity(ctx.db, {
+          actorId: userId,
+          actorType: "member",
+          action: "agent.created",
+          targetType: "agent_profile",
+          targetId: agent.id,
+          metadata: { agentName: agent.name, setupTool: input.tool },
+        });
+      }
+
+      // Revoke any existing active keys
+      await ctx.db
+        .update(agentApiKeys)
+        .set({ isActive: false })
+        .where(
+          and(
+            eq(agentApiKeys.agentId, agent.id),
+            eq(agentApiKeys.isActive, true),
+          ),
+        );
+
+      // Generate a new key
+      const { raw, hash, prefix } = generateApiKey();
+      await ctx.db.insert(agentApiKeys).values({
+        agentId: agent.id,
+        ownerId: userId,
+        keyHash: hash,
+        keyPrefix: prefix,
+      });
+
+      return {
+        agent: {
+          id: agent.id,
+          name: agent.name,
+          avatar: agent.avatar,
+          bio: agent.bio,
+          visibilityMode: agent.visibilityMode,
+          status: agent.status,
+        },
+        apiKey: raw,
+        keyPrefix: prefix,
+      };
+    }),
+
   /** Update the current user's agent profile. */
   updateAgent: protectedProcedure
     .input(
