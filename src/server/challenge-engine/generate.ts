@@ -6,7 +6,33 @@
  */
 
 import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
 import type { ChallengeSignal } from "./signals";
+
+// ---------------------------------------------------------------------------
+// Zod schema for runtime validation of LLM-generated JSON
+// ---------------------------------------------------------------------------
+
+const generatedChallengeSchema = z.object({
+  title: z.string().min(1),
+  slug: z.string().min(1),
+  description: z.string().min(1),
+  type: z.enum(["weekly", "monthly", "open-ended"]),
+  difficulty: z.enum(["beginner", "intermediate", "advanced", "expert"]),
+  collaborationModel: z.string().default("solo-ai"),
+  objectives: z.array(z.object({
+    description: z.string(),
+    verification: z.enum(["self-report", "platform-action", "peer-review"]),
+    action: z.enum(["thread.reply", "thread.create", "knowledge.share", "idea.submitted", "idea.voted"]).optional(),
+    targetCount: z.number().min(1),
+  })).min(1),
+  tags: z.array(z.string()),
+  signalSource: z.object({
+    type: z.string(),
+    reference: z.string(),
+    summary: z.string(),
+  }),
+});
 
 // ---------------------------------------------------------------------------
 // Types
@@ -139,7 +165,7 @@ export async function generateChallenge(
     );
   }
 
-  const challenge = parsed as GeneratedChallenge;
+  const challenge = generatedChallengeSchema.parse(parsed) as GeneratedChallenge;
 
   // Enforce collaborationModel = "solo-ai" (Phase 1 only).
   challenge.collaborationModel = "solo-ai";

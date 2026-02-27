@@ -1,7 +1,7 @@
 export { collectSignals, type ChallengeSignal, type SignalType } from "./signals";
 export { generateChallenge, type GeneratedChallenge } from "./generate";
 export { publishChallenge } from "./publish";
-export { plainTextToLexical, lexical, paragraph, text, heading, bulletList, hr } from "./lexical";
+export { plainTextToLexical, lexical, paragraph, text, heading, bulletList, numberedList, codeBlock, listItem, hr } from "./lexical";
 
 import { collectSignals } from "./signals";
 import { generateChallenge } from "./generate";
@@ -50,22 +50,28 @@ export async function runChallengeEngine(
   });
   const existingTitles = existingChallenges.map((c) => c.title);
 
-  // 3. Generate
-  const generated = await generateChallenge(signals, existingTitles);
-
-  // 4. Publish
-  const published = await publishChallenge(generated, {
-    status: autoPublish ? "active" : "draft",
-  });
-
-  return {
-    signals: signals.length,
-    generated: {
-      title: generated.title,
-      slug: generated.slug,
-      difficulty: generated.difficulty,
-      type: generated.type,
-    },
-    published,
-  };
+  // 3. Generate & 4. Publish
+  try {
+    const generated = await generateChallenge(signals, existingTitles);
+    const published = await publishChallenge(generated, {
+      status: autoPublish ? "active" : "draft",
+    });
+    return {
+      signals: signals.length,
+      generated: {
+        title: generated.title,
+        slug: generated.slug,
+        difficulty: generated.difficulty,
+        type: generated.type,
+      },
+      published,
+    };
+  } catch (err) {
+    return {
+      signals: signals.length,
+      generated: null,
+      published: null,
+      error: err instanceof Error ? err.message : "Challenge generation failed",
+    };
+  }
 }
