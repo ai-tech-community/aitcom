@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { api } from "@/trpc/react";
 import { LexicalRenderer } from "@/lib/lexical";
 import { BuildingModal } from "../building-modal";
@@ -39,10 +39,11 @@ export function RulesModal({
   windowIndex,
 }: RulesModalProps) {
   const t = useTranslations("community.rules");
-  const { data, isLoading } = api.community.getRules.useQuery(undefined, {
-    enabled: isOpen,
-    staleTime: 5 * 60 * 1000,
-  });
+  const locale = useLocale() as "en" | "nl";
+  const { data, isLoading } = api.community.getRules.useQuery(
+    { locale },
+    { enabled: isOpen, staleTime: 5 * 60 * 1000 },
+  );
 
   const utils = api.useUtils();
   const acceptMutation = api.community.acceptRules.useMutation({

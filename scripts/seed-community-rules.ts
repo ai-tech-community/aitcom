@@ -266,6 +266,7 @@ const nlSections = [
 
 // ── Seed ──────────────────────────────────────────────────────────────────
 
+// Step 1: Seed EN (creates sections with IDs)
 console.log("Seeding community rules (EN)...");
 await payload.updateGlobal({
   slug: "community-rules",
@@ -278,14 +279,24 @@ await payload.updateGlobal({
 });
 console.log("✓ EN rules seeded");
 
+// Step 2: Fetch back to get Payload-generated section IDs
+const saved = await payload.findGlobal({ slug: "community-rules", locale: "en" });
+const sectionIdBySlug = new Map(saved.sections.map((s) => [s.slug, s.id]));
+
+// Step 3: Seed NL with matching section IDs so Payload updates in-place
 console.log("Seeding community rules (NL)...");
+const nlSectionsWithIds = nlSections.map((s) => ({
+  ...s,
+  id: sectionIdBySlug.get(s.slug),
+}));
+
 await payload.updateGlobal({
   slug: "community-rules",
   locale: "nl",
   data: {
     version: 1,
     effectiveDate: new Date().toISOString(),
-    sections: nlSections,
+    sections: nlSectionsWithIds,
   },
 });
 console.log("✓ NL rules seeded");

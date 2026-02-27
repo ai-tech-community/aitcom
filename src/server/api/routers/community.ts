@@ -38,9 +38,14 @@ async function requireRulesAcceptance(userId: string) {
 export const communityRouter = createTRPCRouter({
   // ── Rules ──────────────────────────────────────────────────────────────────
 
-  getRules: publicProcedure.query(async ({ ctx }) => {
+  getRules: publicProcedure
+    .input(z.object({ locale: z.enum(["en", "nl"]).optional() }).optional())
+    .query(async ({ ctx, input }) => {
     const payload = await getPayloadClient();
-    const rules = await payload.findGlobal({ slug: "community-rules" });
+    const rules = await payload.findGlobal({
+      slug: "community-rules",
+      locale: input?.locale ?? "en",
+    });
 
     const userId = ctx.session?.user?.id;
     let hasAccepted = false;
