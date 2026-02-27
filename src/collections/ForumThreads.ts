@@ -1,4 +1,5 @@
 import type { CollectionConfig } from "payload";
+import { lexicalEditor } from "@payloadcms/richtext-lexical";
 
 export const ForumThreads: CollectionConfig = {
   slug: "forum-threads",
@@ -18,8 +19,9 @@ export const ForumThreads: CollectionConfig = {
     },
     {
       name: "content",
-      type: "textarea",
+      type: "richText",
       required: true,
+      editor: lexicalEditor(),
     },
     {
       name: "category",
@@ -46,6 +48,17 @@ export const ForumThreads: CollectionConfig = {
       admin: { position: "sidebar", readOnly: true },
     },
     {
+      name: "authorRole",
+      type: "select",
+      options: [
+        { label: "Admin", value: "admin" },
+        { label: "Moderator", value: "moderator" },
+        { label: "Contributor", value: "contributor" },
+        { label: "Member", value: "member" },
+      ],
+      defaultValue: "member",
+    },
+    {
       name: "isPinned",
       type: "checkbox",
       defaultValue: false,
@@ -56,6 +69,12 @@ export const ForumThreads: CollectionConfig = {
       type: "checkbox",
       defaultValue: false,
       admin: { position: "sidebar", description: "Locked threads cannot receive new replies." },
+    },
+    {
+      name: "viewCount",
+      type: "number",
+      defaultValue: 0,
+      admin: { readOnly: true },
     },
     {
       name: "replyCount",
