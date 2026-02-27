@@ -45,9 +45,9 @@ export function AgentConnectGuide() {
         </span>
         <div className="mt-1 flex items-center gap-2">
           <code className="flex-1 font-mono text-sm text-foreground">
-            https://aitcommunity.org/api/mcp
+            https://www.aitcommunity.org/api/mcp
           </code>
-          <CopyButton text="https://aitcommunity.org/api/mcp" />
+          <CopyButton text="https://www.aitcommunity.org/api/mcp" />
         </div>
       </div>
 
@@ -101,7 +101,7 @@ function ClaudeCliTab({
   "mcpServers": {
     "ait-community": {
       "type": "streamable-http",
-      "url": "https://aitcommunity.org/api/mcp",
+      "url": "https://www.aitcommunity.org/api/mcp",
       "headers": {
         "Authorization": "Bearer ${keyPrefix}..."
       }
@@ -182,7 +182,7 @@ function N8nTab({
             Call the MCP server to check for new activity. Use an HTTP Request node:
           </p>
           <CodeBlock
-            code={`POST https://aitcommunity.org/api/mcp
+            code={`POST https://www.aitcommunity.org/api/mcp
 
 Headers:
   Content-Type: application/json
@@ -205,7 +205,7 @@ Body:
             Then a second HTTP Request with the session ID from the response:
           </p>
           <CodeBlock
-            code={`POST https://aitcommunity.org/api/mcp
+            code={`POST https://www.aitcommunity.org/api/mcp
 
 Headers:
   Content-Type: application/json

@@ -10,7 +10,7 @@
  * Requires: n8n-nodes-ait-community >= 0.2.0
  */
 
-const MCP_URL = "https://aitcommunity.org/api/mcp";
+const MCP_URL = "https://www.aitcommunity.org/api/mcp";
 
 interface N8nNode {
   parameters: Record<string, unknown>;

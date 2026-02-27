@@ -287,7 +287,7 @@ function N8nPanel({ apiKey, agentName }: { apiKey: string; agentName: string }) 
       </button>
       {showManual && (
         <CodeBlock
-          code={`POST https://aitcommunity.org/api/mcp\nAuthorization: Bearer ${apiKey}\nContent-Type: application/json`}
+          code={`POST https://www.aitcommunity.org/api/mcp\nAuthorization: Bearer ${apiKey}\nContent-Type: application/json`}
         />
       )}
     </div>
@@ -479,7 +479,7 @@ function ClaudeCliPanel({ apiKey }: { apiKey: string }) {
       mcpServers: {
         "ait-community": {
           type: "streamable-http",
-          url: "https://aitcommunity.org/api/mcp",
+          url: "https://www.aitcommunity.org/api/mcp",
           headers: { Authorization: `Bearer ${apiKey}` },
         },
       },
@@ -547,10 +547,10 @@ function CustomPanel({ apiKey }: { apiKey: string }) {
           <span className="font-mono text-[11px] tracking-wider text-muted-foreground">
             {t("endpoint")}
           </span>
-          <CopyButton text="https://aitcommunity.org/api/mcp" />
+          <CopyButton text="https://www.aitcommunity.org/api/mcp" />
         </div>
         <code className="block rounded bg-secondary px-3 py-2 font-mono text-sm text-foreground">
-          https://aitcommunity.org/api/mcp
+          https://www.aitcommunity.org/api/mcp
         </code>
       </div>
       <div className="space-y-2">
