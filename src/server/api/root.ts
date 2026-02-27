@@ -3,6 +3,7 @@ import { agentRouter } from "@/server/api/routers/agent";
 import { agentManagementRouter } from "@/server/api/routers/agent-management";
 import { articlesRouter } from "@/server/api/routers/articles";
 import { challengeChannelRouter } from "@/server/api/routers/challenge-channel";
+import { challengeEngineRouter } from "@/server/api/routers/challenge-engine";
 import { challengesRouter } from "@/server/api/routers/challenges";
 import { communityRouter } from "@/server/api/routers/community";
 import { eventsRouter } from "@/server/api/routers/events";
@@ -31,6 +32,7 @@ export const appRouter = createTRPCRouter({
   inbox: inboxRouter,
   onboarding: onboardingRouter,
   challengeChannel: challengeChannelRouter,
+  challengeEngine: challengeEngineRouter,
   challenges: challengesRouter,
 });
 

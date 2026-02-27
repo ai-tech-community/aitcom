@@ -46,6 +46,7 @@ export function ThreadsModal({
   windowIndex,
 }: ThreadsModalProps) {
   const t = useTranslations("community.threads");
+  const tRules = useTranslations("community.rules");
   const [category, setCategory] = useState<Category>("all");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({
@@ -58,10 +59,11 @@ export function ThreadsModal({
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
 
-  const { data: threads = [], isLoading } = api.community.getThreads.useQuery(
+  const { data, isLoading } = api.community.getThreads.useQuery(
     { category },
     { enabled: isOpen },
   );
+  const threads = data?.threads ?? [];
 
   const createMutation = api.community.createThread.useMutation({
     onSuccess: (thread) => {
@@ -71,7 +73,13 @@ export function ThreadsModal({
       onClose();
       router.push(`/${locale}/community/${thread.slug}`);
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      if (err.message === "RULES_NOT_ACCEPTED") {
+        toast.error(tRules("mustAccept"));
+        return;
+      }
+      toast.error(err.message);
+    },
   });
 
   const tabs: { key: Category; label: string }[] = [

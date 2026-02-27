@@ -44,6 +44,31 @@ export async function logActivity(
 }
 
 /**
+ * Enrich metadata with challenge collaboration model.
+ * Call this when logging challenge-related activities.
+ */
+export async function enrichChallengeMetadata(
+  challengeId: number,
+  metadata: Record<string, unknown> = {},
+): Promise<Record<string, unknown>> {
+  try {
+    const payload = await getPayloadClient();
+    const challenge = await payload.findByID({
+      collection: "challenges",
+      id: challengeId,
+      depth: 0,
+    });
+    return {
+      ...metadata,
+      collaborationModel: challenge?.collaborationModel ?? "solo-ai",
+      generatedBy: challenge?.generatedBy ?? "human",
+    };
+  } catch {
+    return metadata;
+  }
+}
+
+/**
  * Check if a member's platform action advances any "platform-action" objectives.
  * Other verification modes (test, self-report, peer-review) are handled by
  * explicit MCP tool calls in the challenges/agent routers.

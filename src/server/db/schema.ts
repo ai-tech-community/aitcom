@@ -376,6 +376,49 @@ export const agentApiKeysRelations = relations(agentApiKeys, ({ one }) => ({
   }),
 }));
 
+// Agent webhooks (per-agent webhook configuration for event delivery)
+export const agentWebhooks = appSchema.table("agent_webhook", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  agentId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => agentProfiles.id),
+  ownerId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => user.id),
+  url: d.text().notNull(),
+  secret: d.varchar({ length: 128 }).notNull(),
+  categories: d
+    .json()
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+  cursor: d.timestamp({ withTimezone: true }),
+  consecutiveFailures: d.integer().notNull().default(0),
+  isEnabled: d.boolean().notNull().default(true),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));
+
+export const agentWebhooksRelations = relations(agentWebhooks, ({ one }) => ({
+  agent: one(agentProfiles, {
+    fields: [agentWebhooks.agentId],
+    references: [agentProfiles.id],
+  }),
+  owner: one(user, {
+    fields: [agentWebhooks.ownerId],
+    references: [user.id],
+  }),
+}));
+
 // Agent drafts (content drafts created by agents, pending human review)
 export const agentDrafts = appSchema.table("agent_draft", (d) => ({
   id: d

@@ -7,98 +7,17 @@
  */
 import { getPayload } from "payload";
 import config from "@payload-config";
+import {
+  text,
+  paragraph,
+  heading,
+  bulletList,
+  numberedList,
+  hr,
+  lexical,
+} from "@/server/challenge-engine/lexical";
 
 const payload = await getPayload({ config });
-
-// ── Lexical helpers ─────────────────────────────────────────────────────────
-
-type LexicalNode = { type: string; version: number; [k: string]: unknown };
-
-function text(t: string, format = 0): LexicalNode {
-  return { type: "text", text: t, version: 1, format };
-}
-function paragraph(...children: LexicalNode[]): LexicalNode {
-  return {
-    type: "paragraph",
-    version: 1,
-    format: "",
-    indent: 0,
-    direction: "ltr",
-    children,
-  };
-}
-function heading(tag: string, ...children: LexicalNode[]): LexicalNode {
-  return {
-    type: "heading",
-    tag,
-    version: 1,
-    format: "",
-    indent: 0,
-    direction: "ltr",
-    children,
-  };
-}
-function codeBlock(language: string, code: string): LexicalNode {
-  const uid = Math.random().toString(36).slice(2, 11);
-  return {
-    type: "block",
-    version: 2,
-    format: "",
-    fields: { id: uid, blockName: "", blockType: "Code", language, code },
-  };
-}
-function listItem(t: string, value: number): LexicalNode {
-  return {
-    type: "listitem",
-    version: 1,
-    value,
-    indent: 0,
-    format: "",
-    direction: "ltr",
-    children: [text(t)],
-  };
-}
-function bulletList(...items: string[]): LexicalNode {
-  return {
-    type: "list",
-    version: 1,
-    listType: "bullet",
-    tag: "ul",
-    start: 1,
-    format: "",
-    indent: 0,
-    direction: "ltr",
-    children: items.map((t, i) => listItem(t, i + 1)),
-  };
-}
-function numberedList(...items: string[]): LexicalNode {
-  return {
-    type: "list",
-    version: 1,
-    listType: "number",
-    tag: "ol",
-    start: 1,
-    format: "",
-    indent: 0,
-    direction: "ltr",
-    children: items.map((t, i) => listItem(t, i + 1)),
-  };
-}
-function hr(): LexicalNode {
-  return { type: "horizontalrule", version: 1 };
-}
-function lexical(...children: LexicalNode[]) {
-  return {
-    root: {
-      type: "root",
-      version: 1,
-      direction: "ltr" as const,
-      format: "" as const,
-      indent: 0,
-      children,
-    },
-  };
-}
 
 // ── Check for existing challenge ────────────────────────────────────────────
 

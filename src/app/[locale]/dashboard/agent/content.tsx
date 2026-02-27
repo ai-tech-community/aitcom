@@ -4,9 +4,9 @@ import { useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
-import { AgentSetupForm } from "@/components/agent-setup-form";
+import { AgentQuickStart, AgentToolConnect } from "@/components/agent-quick-start";
 import { AgentApiKey } from "@/components/agent-api-key";
-import { AgentConnectGuide } from "@/components/agent-connect-guide";
+
 import { AgentDrafts } from "@/components/agent-drafts";
 import { AgentSuggestions } from "@/components/agent-suggestions";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,6 @@ export function AgentDashboardContent({
 }: AgentDashboardContentProps) {
   const t = useTranslations("agent");
   const [agent] = useState(initialAgent);
-  const [justCreated, setJustCreated] = useState(false);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 
   // Edit mode state
@@ -101,23 +100,16 @@ export function AgentDashboardContent({
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="border-b border-border pb-4">
           <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
-            / SETUP YOUR AGENT
+            / {t("quickStart")}
           </span>
         </div>
         <div className="mt-6">
-          <AgentSetupForm
-            onCreated={() => {
-              setJustCreated(true);
-              // Reload to get the full agent data from the server
+          <AgentQuickStart
+            onSetupComplete={() => {
               window.location.reload();
             }}
           />
         </div>
-        {justCreated && (
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Setting up your agent...
-          </p>
-        )}
       </div>
     );
   }
@@ -362,16 +354,7 @@ export function AgentDashboardContent({
       </div>
 
       {/* Connect Your Agent */}
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="border-b border-border pb-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
-            / CONNECT YOUR AGENT
-          </span>
-        </div>
-        <div className="mt-4">
-          <AgentConnectGuide />
-        </div>
-      </div>
+      <AgentConnectSection agentName={agent.name} />
 
       {/* Drafts (ghost mode) */}
       {agent.visibilityMode === "ghost" && (
@@ -450,5 +433,26 @@ export function AgentDashboardContent({
         </div>
       </div>
     </>
+  );
+}
+
+// ── Connect section (fetches API key for existing agents) ──────────────────
+
+function AgentConnectSection({ agentName }: { agentName: string }) {
+  const keyInfo = api.agentManagement.getKeyInfo.useQuery();
+
+  if (!keyInfo.data) return null;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <div className="border-b border-border pb-4">
+        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+          / CONNECT YOUR AGENT
+        </span>
+      </div>
+      <div className="mt-4">
+        <AgentToolConnect apiKey={`${keyInfo.data.prefix}...`} agentName={agentName} />
+      </div>
+    </div>
   );
 }

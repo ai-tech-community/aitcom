@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { randomBytes, createHmac } from "crypto";
 import { eq, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
@@ -6,6 +7,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import {
   agentProfiles,
   agentApiKeys,
+  agentWebhooks,
   agentDrafts,
   agentSuggestions,
   conversations,
@@ -14,6 +16,7 @@ import {
 import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
 import { getPayloadClient } from "@/server/payload";
+import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
 export const agentManagementRouter = createTRPCRouter({
   // ── Agent Profile ─────────────────────────────────────────────────────────
@@ -92,6 +95,95 @@ export const agentManagementRouter = createTRPCRouter({
       });
 
       return agent!;
+    }),
+
+  /** Quick-setup: create agent with smart defaults + generate API key in one call. */
+  quickSetup: protectedProcedure
+    .input(
+      z.object({
+        tool: z.enum(["n8n", "claude-cli", "openclaw", "webhook", "custom"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const userName = ctx.session.user.name ?? "member";
+
+      // Check if user already has an agent
+      const [existing] = await ctx.db
+        .select()
+        .from(agentProfiles)
+        .where(eq(agentProfiles.ownerId, userId))
+        .limit(1);
+
+      let agent = existing;
+
+      if (!agent) {
+        // Auto-create agent with smart defaults
+        const [created] = await ctx.db
+          .insert(agentProfiles)
+          .values({
+            ownerId: userId,
+            name: `${userName}'s AI Agent`,
+            visibilityMode: "visible",
+          })
+          .returning();
+
+        agent = created!;
+
+        // Create agent conversation (pinned) in inbox
+        const [agentConv] = await ctx.db
+          .insert(conversations)
+          .values({ type: "agent" })
+          .returning();
+
+        await ctx.db.insert(conversationParticipants).values({
+          conversationId: agentConv!.id,
+          userId,
+          isPinned: true,
+        });
+
+        await logActivity(ctx.db, {
+          actorId: userId,
+          actorType: "member",
+          action: "agent.created",
+          targetType: "agent_profile",
+          targetId: agent.id,
+          metadata: { agentName: agent.name, setupTool: input.tool },
+        });
+      }
+
+      // Revoke any existing active keys
+      await ctx.db
+        .update(agentApiKeys)
+        .set({ isActive: false })
+        .where(
+          and(
+            eq(agentApiKeys.agentId, agent.id),
+            eq(agentApiKeys.isActive, true),
+          ),
+        );
+
+      // Generate a new key
+      const { raw, hash, prefix } = generateApiKey();
+      await ctx.db.insert(agentApiKeys).values({
+        agentId: agent.id,
+        ownerId: userId,
+        keyHash: hash,
+        keyPrefix: prefix,
+      });
+
+      return {
+        agent: {
+          id: agent.id,
+          name: agent.name,
+          avatar: agent.avatar,
+          bio: agent.bio,
+          visibilityMode: agent.visibilityMode,
+          status: agent.status,
+        },
+        apiKey: raw,
+        keyPrefix: prefix,
+      };
     }),
 
   /** Update the current user's agent profile. */
@@ -274,6 +366,207 @@ export const agentManagementRouter = createTRPCRouter({
     return key ?? null;
   }),
 
+  /** Test that the current user's agent API key is valid and the MCP endpoint is reachable. */
+  testConnection: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const [agent] = await ctx.db
+      .select()
+      .from(agentProfiles)
+      .where(
+        and(
+          eq(agentProfiles.ownerId, userId),
+          eq(agentProfiles.status, "active"),
+        ),
+      )
+      .limit(1);
+
+    if (!agent) {
+      return { ok: false, reason: "no-agent" as const };
+    }
+
+    const [key] = await ctx.db
+      .select({ prefix: agentApiKeys.keyPrefix })
+      .from(agentApiKeys)
+      .where(
+        and(
+          eq(agentApiKeys.agentId, agent.id),
+          eq(agentApiKeys.isActive, true),
+        ),
+      )
+      .limit(1);
+
+    if (!key) {
+      return { ok: false, reason: "no-key" as const };
+    }
+
+    return { ok: true, reason: "connected" as const };
+  }),
+
+  // ── Webhooks ─────────────────────────────────────────────────────────────
+
+  /** Get the current user's webhook configuration, or null if none exists. */
+  getWebhook: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const [webhook] = await ctx.db
+      .select()
+      .from(agentWebhooks)
+      .where(eq(agentWebhooks.ownerId, userId))
+      .limit(1);
+    return webhook ?? null;
+  }),
+
+  /** Create or update the current user's webhook configuration. */
+  upsertWebhook: protectedProcedure
+    .input(
+      z.object({
+        url: z
+          .string()
+          .url()
+          .startsWith("https://", {
+            message: "Webhook URL must use HTTPS",
+          }),
+        categories: z
+          .array(
+            z.enum([
+              "forum",
+              "challenges",
+              "inbox",
+              "content",
+              "events",
+              "community",
+            ]),
+          )
+          .min(1, "Select at least one event category"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [agent] = await ctx.db
+        .select({ id: agentProfiles.id })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.ownerId, userId))
+        .limit(1);
+
+      if (!agent) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No agent found",
+        });
+      }
+
+      const [existing] = await ctx.db
+        .select({ id: agentWebhooks.id })
+        .from(agentWebhooks)
+        .where(eq(agentWebhooks.ownerId, userId))
+        .limit(1);
+
+      if (existing) {
+        const [updated] = await ctx.db
+          .update(agentWebhooks)
+          .set({
+            url: input.url,
+            categories: input.categories,
+            consecutiveFailures: 0,
+            isEnabled: true,
+          })
+          .where(eq(agentWebhooks.id, existing.id))
+          .returning();
+        return { webhook: updated!, secretGenerated: false };
+      }
+
+      const secret = randomBytes(32).toString("hex");
+      const [webhook] = await ctx.db
+        .insert(agentWebhooks)
+        .values({
+          agentId: agent.id,
+          ownerId: userId,
+          url: input.url,
+          secret,
+          categories: input.categories,
+        })
+        .returning();
+      return { webhook: webhook!, secretGenerated: true, secret };
+    }),
+
+  /** Delete the current user's webhook configuration. */
+  deleteWebhook: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    await ctx.db
+      .delete(agentWebhooks)
+      .where(eq(agentWebhooks.ownerId, userId));
+    return { success: true };
+  }),
+
+  /** Re-enable a disabled webhook and reset failure counter. */
+  reenableWebhook: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    await ctx.db
+      .update(agentWebhooks)
+      .set({ isEnabled: true, consecutiveFailures: 0 })
+      .where(eq(agentWebhooks.ownerId, userId));
+    return { success: true };
+  }),
+
+  /** Send a test event to the current user's webhook endpoint. */
+  testWebhook: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const [webhook] = await ctx.db
+      .select()
+      .from(agentWebhooks)
+      .where(eq(agentWebhooks.ownerId, userId))
+      .limit(1);
+
+    if (!webhook) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No webhook configured",
+      });
+    }
+
+    const payload = JSON.stringify({
+      type: "test",
+      data: { message: "Webhook connected successfully!" },
+      eventId: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+    });
+
+    const signature = createHmac("sha256", webhook.secret)
+      .update(payload)
+      .digest("hex");
+
+    const res = await fetch(webhook.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-AIT-Signature": `sha256=${signature}`,
+        "X-AIT-Event": "test",
+      },
+      body: payload,
+      signal: AbortSignal.timeout(5000),
+    }).catch((err: Error) => ({
+      ok: false as const,
+      status: 0,
+      statusText: String(err),
+    }));
+
+    if (!("ok" in res) || !res.ok) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Webhook test failed: ${"statusText" in res ? res.statusText : "Connection failed"}`,
+      });
+    }
+
+    await ctx.db
+      .update(agentWebhooks)
+      .set({ consecutiveFailures: 0, isEnabled: true })
+      .where(eq(agentWebhooks.id, webhook.id));
+
+    return { success: true };
+  }),
+
   // ── Drafts ────────────────────────────────────────────────────────────────
 
   /** Get drafts for the current user, filtered by status. */
@@ -343,7 +636,7 @@ export const agentManagementRouter = createTRPCRouter({
             collection: "forum-replies",
             data: {
               thread: Number(draft.targetId),
-              content: draft.content,
+              content: plainTextToLexical(draft.content ?? ""),
               authorId: agent.id,
               authorName: `${agent.name} (AI)`,
             },

@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/challenge-expiry",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/webhook-dispatch",
+      "schedule": "* * * * *"
     }
   ]
 }

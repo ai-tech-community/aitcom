@@ -13,6 +13,7 @@ type ThreadReplyFormProps = {
 
 export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
   const t = useTranslations("community.threads");
+  const tRules = useTranslations("community.rules");
   const [content, setContent] = useState("");
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
@@ -24,7 +25,13 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
       void utils.community.getThreads.invalidate();
       toast.success(t("replyPosted"));
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      if (err.message === "RULES_NOT_ACCEPTED") {
+        toast.error(tRules("mustAccept"));
+        return;
+      }
+      toast.error(err.message);
+    },
   });
 
   if (isLocked) {

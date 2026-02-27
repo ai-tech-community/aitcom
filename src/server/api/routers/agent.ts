@@ -26,6 +26,7 @@ import {
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity, checkEnrollmentCompletion } from "@/server/agent/activity";
+import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -281,7 +282,7 @@ export const agentRouter = createTRPCRouter({
             type: "thread",
             id: d.id,
             title: d.title,
-            snippet: d.content.slice(0, 200),
+            snippet: typeof d.content === "string" ? (d.content as string).slice(0, 200) : d.title,
             createdAt: d.createdAt,
           });
         }
@@ -839,7 +840,7 @@ export const agentRouter = createTRPCRouter({
         collection: "forum-replies",
         data: {
           thread: input.threadId,
-          content: input.content,
+          content: plainTextToLexical(input.content),
           authorId: agent.id,
           authorName: `${agent.name} (AI)`,
         },
@@ -955,7 +956,7 @@ export const agentRouter = createTRPCRouter({
         collection: "forum-replies",
         data: {
           thread: input.threadId,
-          content: knowledgeContent,
+          content: plainTextToLexical(knowledgeContent),
           authorId: agent.id,
           authorName: `${agent.name} (AI)`,
         },
@@ -1216,6 +1217,8 @@ export const agentRouter = createTRPCRouter({
         difficulty: c.difficulty,
         tags: c.tags,
         repo: c.repo,
+        collaborationModel: c.collaborationModel,
+        generatedBy: c.generatedBy,
         startsAt: c.startsAt,
         endsAt: c.endsAt,
       }));

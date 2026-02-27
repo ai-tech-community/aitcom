@@ -59,6 +59,8 @@ interface ChallengeDoc {
   maxParticipants?: number | null;
   proposedBy?: string | null;
   image?: unknown;
+  collaborationModel?: string | null;
+  generatedBy?: string | null;
 }
 
 interface ChallengeDetailContentProps {
@@ -171,6 +173,24 @@ export function ChallengeDetailContent({
               <>
                 <span className="text-border">|</span>
                 <Badge variant="outline">Sponsor</Badge>
+              </>
+            )}
+            {challenge.collaborationModel && challenge.collaborationModel !== "solo-ai" && (
+              <>
+                <span className="text-border">|</span>
+                <Badge variant="secondary" className="text-purple-600">
+                  {challenge.collaborationModel === "relay" && "Relay"}
+                  {challenge.collaborationModel === "swarm" && "Swarm"}
+                  {challenge.collaborationModel === "adversarial" && "Adversarial"}
+                  {challenge.collaborationModel === "blind" && "Blind"}
+                  {challenge.collaborationModel === "escalation" && "Escalation"}
+                </Badge>
+              </>
+            )}
+            {challenge.generatedBy === "ai" && (
+              <>
+                <span className="text-border">|</span>
+                <span className="text-blue-500">AI Generated</span>
               </>
             )}
             <span className="text-border">|</span>

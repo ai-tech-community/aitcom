@@ -43,6 +43,8 @@ interface ChallengeCardProps {
       targetCount: number;
     }[];
     tags?: unknown;
+    collaborationModel?: string | null;
+    generatedBy?: string | null;
   };
   isEnrolled: boolean;
 }
@@ -96,6 +98,20 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
             )}
             {challenge.repo?.templateUrl && (
               <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
+            )}
+            {challenge.collaborationModel && challenge.collaborationModel !== "solo-ai" && (
+              <Badge variant="secondary" className="text-purple-600">
+                {challenge.collaborationModel === "relay" && "Relay"}
+                {challenge.collaborationModel === "swarm" && "Swarm"}
+                {challenge.collaborationModel === "adversarial" && "Adversarial"}
+                {challenge.collaborationModel === "blind" && "Blind"}
+                {challenge.collaborationModel === "escalation" && "Escalation"}
+              </Badge>
+            )}
+            {challenge.generatedBy === "ai" && (
+              <Badge variant="outline" className="text-blue-500">
+                AI
+              </Badge>
             )}
           </div>
           <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">

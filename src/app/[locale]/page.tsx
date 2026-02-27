@@ -6,7 +6,7 @@ import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
-import { user, memberProfiles } from "@/server/db/schema";
+import { memberProfiles } from "@/server/db/schema";
 import { count, eq } from "drizzle-orm";
 import Image from "next/image";
 import type { Metadata } from "next";
