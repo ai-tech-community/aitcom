@@ -4,9 +4,9 @@ import { useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
-import { AgentQuickStart } from "@/components/agent-quick-start";
+import { AgentQuickStart, AgentToolConnect } from "@/components/agent-quick-start";
 import { AgentApiKey } from "@/components/agent-api-key";
-import { AgentConnectGuide } from "@/components/agent-connect-guide";
+import { AgentWebhook } from "@/components/agent-webhook";
 import { AgentDrafts } from "@/components/agent-drafts";
 import { AgentSuggestions } from "@/components/agent-suggestions";
 import { Button } from "@/components/ui/button";
@@ -353,17 +353,20 @@ export function AgentDashboardContent({
         </div>
       </div>
 
-      {/* Connect Your Agent */}
+      {/* Webhook */}
       <div className="rounded-xl border border-border bg-card p-6">
         <div className="border-b border-border pb-4">
           <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
-            / CONNECT YOUR AGENT
+            / WEBHOOK
           </span>
         </div>
         <div className="mt-4">
-          <AgentConnectGuide />
+          <AgentWebhook />
         </div>
       </div>
+
+      {/* Connect Your Agent */}
+      <AgentConnectSection agentName={agent.name} />
 
       {/* Drafts (ghost mode) */}
       {agent.visibilityMode === "ghost" && (
@@ -442,5 +445,26 @@ export function AgentDashboardContent({
         </div>
       </div>
     </>
+  );
+}
+
+// ── Connect section (fetches API key for existing agents) ──────────────────
+
+function AgentConnectSection({ agentName }: { agentName: string }) {
+  const keyInfo = api.agentManagement.getKeyInfo.useQuery();
+
+  if (!keyInfo.data) return null;
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <div className="border-b border-border pb-4">
+        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+          / CONNECT YOUR AGENT
+        </span>
+      </div>
+      <div className="mt-4">
+        <AgentToolConnect apiKey={`${keyInfo.data.prefix}...`} agentName={agentName} />
+      </div>
+    </div>
   );
 }
