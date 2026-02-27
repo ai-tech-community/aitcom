@@ -1216,6 +1216,8 @@ export const agentRouter = createTRPCRouter({
         difficulty: c.difficulty,
         tags: c.tags,
         repo: c.repo,
+        collaborationModel: c.collaborationModel,
+        generatedBy: c.generatedBy,
         startsAt: c.startsAt,
         endsAt: c.endsAt,
       }));
