@@ -3,13 +3,13 @@
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { RulesModal } from "./modals/rules-modal";
 import { IdeasModal } from "./modals/ideas-modal";
-import { ThreadsModal } from "./modals/threads-modal";
 import { ContributeModal } from "./modals/contribute-modal";
 
-type ModalKey = "rules" | "ideas" | "threads" | "contribute";
+type ModalKey = "rules" | "ideas" | "contribute";
 
 const dotVariants = {
   hidden: { opacity: 0, scale: 0 },
@@ -31,7 +31,7 @@ export function CommunityBoard() {
   // Set of open modals - multiple can be open at once
   const [openModals, setOpenModals] = useState<Set<ModalKey>>(new Set());
   const t = useTranslations("community");
-  const locale = useLocale();
+  const router = useRouter();
 
   const openModal = useCallback((key: ModalKey) => {
     setOpenModals((prev) => new Set(prev).add(key));
@@ -62,10 +62,11 @@ export function CommunityBoard() {
       left: "58%",
     },
     {
-      key: "threads" as ModalKey,
+      key: "threads" as const,
       label: t("threads.building"),
       top: "12%",
       left: "34%",
+      href: "/forum" as const,
     },
     {
       key: "contribute" as ModalKey,
@@ -116,7 +117,9 @@ export function CommunityBoard() {
               variants={dotVariants}
               whileHover={{ scale: 1.2 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => openModal(spot.key)}
+              onClick={() =>
+                spot.href ? router.push(spot.href) : openModal(spot.key)
+              }
               aria-label={spot.label}
             >
               {/* Outer pulse ring */}
@@ -148,14 +151,6 @@ export function CommunityBoard() {
         title={t("ideas.title")}
         subtitle={t("ideas.subtitle")}
         windowIndex={openList.indexOf("ideas")}
-      />
-      <ThreadsModal
-        isOpen={openModals.has("threads")}
-        onClose={() => closeModal("threads")}
-        title={t("threads.title")}
-        subtitle={t("threads.subtitle")}
-        locale={locale}
-        windowIndex={openList.indexOf("threads")}
       />
       <ContributeModal
         isOpen={openModals.has("contribute")}
