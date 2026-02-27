@@ -1,43 +1,43 @@
 import { getPayloadClient } from "@/server/payload";
-import type { GeneratedChallenge } from "./generate";
+import type { ChallengeProposal } from "./generate";
 import { plainTextToLexical } from "./lexical";
 
 /**
- * Publish a generated challenge to Payload CMS.
+ * Publish a challenge proposal to Payload CMS.
  * Returns the created challenge ID and slug.
  */
 export async function publishChallenge(
-  generated: GeneratedChallenge,
-  options: { status?: "draft" | "active" } = {},
+  proposal: ChallengeProposal,
+  options: { status?: "draft" | "active"; creatorId?: string } = {},
 ): Promise<{ id: number; slug: string }> {
   const payload = await getPayloadClient();
-  const { status = "draft" } = options;
+  const { status = "draft", creatorId = "agent" } = options;
 
   // Check for duplicate slug
   const existing = await payload.find({
     collection: "challenges",
-    where: { slug: { equals: generated.slug } },
+    where: { slug: { equals: proposal.slug } },
     limit: 1,
   });
 
   const slug = existing.docs.length > 0
-    ? `${generated.slug}-${Date.now()}`
-    : generated.slug;
+    ? `${proposal.slug}-${Date.now()}`
+    : proposal.slug;
 
   const challenge = await payload.create({
     collection: "challenges",
     data: {
-      title: generated.title,
+      title: proposal.title,
       slug,
-      description: plainTextToLexical(generated.description),
-      type: generated.type,
+      description: plainTextToLexical(proposal.description),
+      type: proposal.type,
       status,
-      difficulty: generated.difficulty,
+      difficulty: proposal.difficulty,
       publishedBy: "member",
-      creatorId: "system-ai",
+      creatorId,
       generatedBy: "ai",
-      collaborationModel: generated.collaborationModel,
-      objectives: generated.objectives.map((obj) => ({
+      collaborationModel: proposal.collaborationModel,
+      objectives: proposal.objectives.map((obj) => ({
         description: obj.description,
         verification: obj.verification,
         action: obj.action,
@@ -46,8 +46,8 @@ export async function publishChallenge(
       rewards: {
         xpReward: 0, // Auto-calculated by the system
       },
-      tags: generated.tags,
-      signalSource: generated.signalSource,
+      tags: proposal.tags,
+      signalSource: proposal.signalSource,
       maxParticipants: 0,
       rankingMode: "collaboration",
     },

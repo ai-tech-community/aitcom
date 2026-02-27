@@ -1,51 +1,37 @@
 /**
- * Generate an AI challenge from community signals.
+ * Show community signals that could inspire challenges.
  * Run with: pnpm payload run scripts/generate-challenge.ts
  *
- * Options (via env vars):
- *   AUTO_PUBLISH=true   — publish as active (default: draft)
- *   DAY_WINDOW=14       — look back N days for signals (default: 14)
+ * The actual challenge generation is now done by member AI agents
+ * via the "propose-challenge" MCP tool.
  */
 import { getPayload } from "payload";
 import config from "@payload-config";
 
-// Initialize Payload so getPayloadClient() works
 await getPayload({ config });
 
-// Dynamic import after Payload is initialized
-const { runChallengeEngine } = await import("@/server/challenge-engine");
+const { collectSignals } = await import("@/server/challenge-engine/signals");
 
-const autoPublish = process.env.AUTO_PUBLISH === "true";
 const dayWindow = parseInt(process.env.DAY_WINDOW ?? "14", 10);
 
-console.log("Challenge Engine starting...");
-console.log("  autoPublish:", autoPublish);
+console.log("Scanning community signals...");
 console.log("  dayWindow:", dayWindow, "days");
 console.log();
 
-const result = await runChallengeEngine({ autoPublish, dayWindow });
+const signals = await collectSignals(dayWindow);
 
-if (result.error) {
-  console.error("Engine error:", result.error);
-  process.exit(1);
-}
-
-console.log("Signals detected:", result.signals);
-console.log();
-
-if (result.generated) {
-  console.log("Generated challenge:");
-  console.log("  Title:", result.generated.title);
-  console.log("  Slug:", result.generated.slug);
-  console.log("  Type:", result.generated.type);
-  console.log("  Difficulty:", result.generated.difficulty);
-}
-
-if (result.published) {
-  console.log();
-  console.log("Published:");
-  console.log("  ID:", result.published.id);
-  console.log("  Status:", autoPublish ? "active" : "draft (review in Payload admin)");
+if (signals.length === 0) {
+  console.log("No signals found.");
+} else {
+  console.log(`Found ${signals.length} signals:\n`);
+  for (const signal of signals) {
+    console.log(`  [${signal.type}] (relevance: ${signal.relevanceScore.toFixed(2)})`);
+    console.log(`    ${signal.summary}`);
+    console.log(`    ref: ${signal.reference}`);
+    console.log();
+  }
+  console.log("Agents can use these signals via the 'get-community-signals' MCP tool");
+  console.log("and propose challenges via the 'propose-challenge' MCP tool.");
 }
 
 console.log("\nDone!");

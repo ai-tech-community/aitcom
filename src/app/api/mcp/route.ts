@@ -28,7 +28,7 @@ async function authenticateRequest(req: Request) {
 
 type Caller = ReturnType<typeof createCaller>;
 
-function createMcpServer(caller: Caller) {
+function createMcpServer(caller: Caller, keyData: { ownerId: string; agentId: string }) {
   const server = new McpServer({
     name: "aitcommunity",
     version: "0.3.0",
@@ -402,6 +402,65 @@ function createMcpServer(caller: Caller) {
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   });
 
+  // ── Challenge engine tools ──────────────────────────────────────────────
+
+  server.registerTool("get-community-signals", {
+    description: "Get current community signals — trending topics, member requests, activity patterns, and insight gaps. Use these signals to propose relevant challenges.",
+    inputSchema: {
+      dayWindow: z.number().min(1).max(90).default(14).describe("Look back N days for signals."),
+      limit: z.number().min(1).max(20).default(10).describe("Max signals to return."),
+    },
+  }, async ({ dayWindow, limit }) => {
+    const { collectSignals } = await import("@/server/challenge-engine/signals");
+    const signals = await collectSignals(dayWindow);
+    return { content: [{ type: "text" as const, text: JSON.stringify(signals.slice(0, limit), null, 2) }] };
+  });
+
+  server.registerTool("propose-challenge", {
+    description: "Propose a new AI-generated community challenge. Observe community signals first with get-community-signals, then design a challenge and submit it here. The challenge will be created as a draft for admin review.",
+    inputSchema: {
+      title: z.string().min(1).max(200).describe("Challenge title (concise, action-oriented)."),
+      slug: z.string().min(1).max(80).regex(/^[a-z0-9-]+$/).describe("URL-friendly slug (lowercase, hyphens)."),
+      description: z.string().min(1).max(5000).describe("Challenge description (2-4 paragraphs explaining the why)."),
+      type: z.enum(["weekly", "monthly", "open-ended"]).describe("Challenge duration type."),
+      difficulty: z.enum(["beginner", "intermediate", "advanced", "expert"]).describe("Difficulty level."),
+      collaborationModel: z.enum(["solo-ai", "relay", "swarm", "adversarial", "blind", "escalation"]).default("solo-ai").describe("Human-AI collaboration model."),
+      objectives: z.array(z.object({
+        description: z.string().describe("What needs to be done."),
+        verification: z.enum(["self-report", "platform-action", "peer-review"]).describe("How completion is verified."),
+        action: z.enum(["thread.reply", "thread.create", "knowledge.share", "idea.submitted", "idea.voted"]).optional().describe("Platform action (only for platform-action verification)."),
+        targetCount: z.number().min(1).max(100).describe("How many times this must be completed."),
+      })).min(1).max(10).describe("Challenge objectives (1-10)."),
+      tags: z.array(z.string().min(1).max(50)).min(1).max(10).describe("Tags for discovery."),
+      signalSource: z.object({
+        type: z.enum(["community-thread", "member-request", "external", "insight-gap"]).describe("Signal type."),
+        reference: z.string().describe("Signal reference (thread ID, URL, etc.)."),
+        summary: z.string().max(500).describe("Why this challenge was proposed."),
+      }).optional().describe("What community signal inspired this challenge."),
+    },
+  }, async (input) => {
+    const { validateProposal } = await import("@/server/challenge-engine/generate");
+    const { publishChallenge } = await import("@/server/challenge-engine/publish");
+
+    const proposal = validateProposal(input);
+    const result = await publishChallenge(proposal, {
+      status: "draft",
+      creatorId: keyData.ownerId,
+    });
+
+    return {
+      content: [{
+        type: "text" as const,
+        text: JSON.stringify({
+          success: true,
+          message: `Challenge "${proposal.title}" proposed successfully and awaiting admin review.`,
+          challengeId: result.id,
+          slug: result.slug,
+        }, null, 2),
+      }],
+    };
+  });
+
   return server;
 }
 
@@ -421,7 +480,7 @@ async function handleMcpRequest(req: Request): Promise<Response> {
   const caller = createCaller(ctx);
 
   // Create a stateless MCP server + transport per request
-  const server = createMcpServer(caller);
+  const server = createMcpServer(caller, keyData);
   const transport = new WebStandardStreamableHTTPServerTransport({
     enableJsonResponse: true,
   });
