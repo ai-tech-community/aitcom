@@ -385,7 +385,7 @@ export const communityRouter = createTRPCRouter({
         action: "thread.create",
         targetType: "forum-threads",
         targetId: String(thread.id),
-        metadata: { title: input.title, category: input.category },
+        metadata: { title: input.title, category: input.category, slug },
       });
 
       await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.FORUM_THREAD_CREATE);
@@ -436,7 +436,11 @@ export const communityRouter = createTRPCRouter({
         action: "reply.create",
         targetType: "forum-threads",
         targetId: String(input.threadId),
-        metadata: { threadTitle: thread.title },
+        metadata: {
+          threadTitle: thread.title,
+          threadSlug: thread.slug,
+          threadAuthorId: thread.authorId,
+        },
       });
 
       await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.FORUM_REPLY_CREATE);
