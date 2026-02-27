@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { randomBytes, createHmac } from "crypto";
 import { eq, and, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
@@ -6,6 +7,7 @@ import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import {
   agentProfiles,
   agentApiKeys,
+  agentWebhooks,
   agentDrafts,
   agentSuggestions,
   conversations,
@@ -399,6 +401,170 @@ export const agentManagementRouter = createTRPCRouter({
     }
 
     return { ok: true, reason: "connected" as const };
+  }),
+
+  // ── Webhooks ─────────────────────────────────────────────────────────────
+
+  /** Get the current user's webhook configuration, or null if none exists. */
+  getWebhook: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const [webhook] = await ctx.db
+      .select()
+      .from(agentWebhooks)
+      .where(eq(agentWebhooks.ownerId, userId))
+      .limit(1);
+    return webhook ?? null;
+  }),
+
+  /** Create or update the current user's webhook configuration. */
+  upsertWebhook: protectedProcedure
+    .input(
+      z.object({
+        url: z
+          .string()
+          .url()
+          .startsWith("https://", {
+            message: "Webhook URL must use HTTPS",
+          }),
+        categories: z
+          .array(
+            z.enum([
+              "forum",
+              "challenges",
+              "inbox",
+              "content",
+              "events",
+              "community",
+            ]),
+          )
+          .min(1, "Select at least one event category"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [agent] = await ctx.db
+        .select({ id: agentProfiles.id })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.ownerId, userId))
+        .limit(1);
+
+      if (!agent) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No agent found",
+        });
+      }
+
+      const [existing] = await ctx.db
+        .select({ id: agentWebhooks.id })
+        .from(agentWebhooks)
+        .where(eq(agentWebhooks.ownerId, userId))
+        .limit(1);
+
+      if (existing) {
+        const [updated] = await ctx.db
+          .update(agentWebhooks)
+          .set({
+            url: input.url,
+            categories: input.categories,
+            consecutiveFailures: 0,
+            isEnabled: true,
+          })
+          .where(eq(agentWebhooks.id, existing.id))
+          .returning();
+        return { webhook: updated!, secretGenerated: false };
+      }
+
+      const secret = randomBytes(32).toString("hex");
+      const [webhook] = await ctx.db
+        .insert(agentWebhooks)
+        .values({
+          agentId: agent.id,
+          ownerId: userId,
+          url: input.url,
+          secret,
+          categories: input.categories,
+        })
+        .returning();
+      return { webhook: webhook!, secretGenerated: true, secret };
+    }),
+
+  /** Delete the current user's webhook configuration. */
+  deleteWebhook: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    await ctx.db
+      .delete(agentWebhooks)
+      .where(eq(agentWebhooks.ownerId, userId));
+    return { success: true };
+  }),
+
+  /** Re-enable a disabled webhook and reset failure counter. */
+  reenableWebhook: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    await ctx.db
+      .update(agentWebhooks)
+      .set({ isEnabled: true, consecutiveFailures: 0 })
+      .where(eq(agentWebhooks.ownerId, userId));
+    return { success: true };
+  }),
+
+  /** Send a test event to the current user's webhook endpoint. */
+  testWebhook: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const [webhook] = await ctx.db
+      .select()
+      .from(agentWebhooks)
+      .where(eq(agentWebhooks.ownerId, userId))
+      .limit(1);
+
+    if (!webhook) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No webhook configured",
+      });
+    }
+
+    const payload = JSON.stringify({
+      type: "test",
+      data: { message: "Webhook connected successfully!" },
+      eventId: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+    });
+
+    const signature = createHmac("sha256", webhook.secret)
+      .update(payload)
+      .digest("hex");
+
+    const res = await fetch(webhook.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-AIT-Signature": `sha256=${signature}`,
+        "X-AIT-Event": "test",
+      },
+      body: payload,
+      signal: AbortSignal.timeout(5000),
+    }).catch((err: Error) => ({
+      ok: false as const,
+      status: 0,
+      statusText: String(err),
+    }));
+
+    if (!("ok" in res) || !res.ok) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Webhook test failed: ${"statusText" in res ? res.statusText : "Connection failed"}`,
+      });
+    }
+
+    await ctx.db
+      .update(agentWebhooks)
+      .set({ consecutiveFailures: 0, isEnabled: true })
+      .where(eq(agentWebhooks.id, webhook.id));
+
+    return { success: true };
   }),
 
   // ── Drafts ────────────────────────────────────────────────────────────────
