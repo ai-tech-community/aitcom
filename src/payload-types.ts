@@ -80,6 +80,7 @@ export interface Config {
     sponsors: Sponsor;
     'sponsor-applications': SponsorApplication;
     jobs: Job;
+    'rules-acceptance': RulesAcceptance;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -101,6 +102,7 @@ export interface Config {
     sponsors: SponsorsSelect<false> | SponsorsSelect<true>;
     'sponsor-applications': SponsorApplicationsSelect<false> | SponsorApplicationsSelect<true>;
     jobs: JobsSelect<false> | JobsSelect<true>;
+    'rules-acceptance': RulesAcceptanceSelect<false> | RulesAcceptanceSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -614,6 +616,23 @@ export interface Job {
   createdAt: string;
 }
 /**
+ * Tracks which users have accepted which version of the community rules.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rules-acceptance".
+ */
+export interface RulesAcceptance {
+  id: number;
+  /**
+   * Better Auth user ID (UUID).
+   */
+  userId: string;
+  rulesVersion: number;
+  acceptedAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
@@ -715,6 +734,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'jobs';
         value: number | Job;
+      } | null)
+    | ({
+        relationTo: 'rules-acceptance';
+        value: number | RulesAcceptance;
       } | null)
     | ({
         relationTo: 'users';
@@ -1050,6 +1073,17 @@ export interface JobsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rules-acceptance_select".
+ */
+export interface RulesAcceptanceSelect<T extends boolean = true> {
+  userId?: T;
+  rulesVersion?: T;
+  acceptedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
@@ -1120,21 +1154,41 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
  */
 export interface CommunityRule {
   id: number;
-  content: {
-    root: {
-      type: string;
-      children: {
-        type: any;
+  /**
+   * Increment when rules change to require re-acceptance from users.
+   */
+  version: number;
+  /**
+   * When this version of the rules takes effect.
+   */
+  effectiveDate: string;
+  /**
+   * Structured rule sections with table-of-contents support.
+   */
+  sections: {
+    title: string;
+    /**
+     * URL-friendly identifier for anchor links (e.g. 'respect-others').
+     */
+    slug: string;
+    icon?: ('shield' | 'users' | 'flag' | 'scale' | 'brain' | 'gavel') | null;
+    content: {
+      root: {
+        type: string;
+        children: {
+          type: any;
+          version: number;
+          [k: string]: unknown;
+        }[];
+        direction: ('ltr' | 'rtl') | null;
+        format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+        indent: number;
         version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
+      };
+      [k: string]: unknown;
     };
-    [k: string]: unknown;
-  };
+    id?: string | null;
+  }[];
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -1143,7 +1197,17 @@ export interface CommunityRule {
  * via the `definition` "community-rules_select".
  */
 export interface CommunityRulesSelect<T extends boolean = true> {
-  content?: T;
+  version?: T;
+  effectiveDate?: T;
+  sections?:
+    | T
+    | {
+        title?: T;
+        slug?: T;
+        icon?: T;
+        content?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
