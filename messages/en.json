@@ -259,7 +259,9 @@
     "pinThread": "Pin",
     "unpinThread": "Unpin",
     "lockThread": "Lock",
-    "unlockThread": "Unlock"
+    "unlockThread": "Unlock",
+    "cancel": "Cancel",
+    "post": "Post"
   },
   "challengesLanding": {
     "title": "AI Challenges",

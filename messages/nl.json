@@ -259,7 +259,9 @@
     "pinThread": "Vastpinnen",
     "unpinThread": "Losmaken",
     "lockThread": "Vergrendelen",
-    "unlockThread": "Ontgrendelen"
+    "unlockThread": "Ontgrendelen",
+    "cancel": "Annuleren",
+    "post": "Plaatsen"
   },
   "challengesLanding": {
     "title": "AI Challenges",
