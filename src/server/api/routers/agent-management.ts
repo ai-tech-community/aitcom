@@ -14,6 +14,7 @@ import {
 import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
 import { getPayloadClient } from "@/server/payload";
+import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
 export const agentManagementRouter = createTRPCRouter({
   // ── Agent Profile ─────────────────────────────────────────────────────────
@@ -469,7 +470,7 @@ export const agentManagementRouter = createTRPCRouter({
             collection: "forum-replies",
             data: {
               thread: Number(draft.targetId),
-              content: draft.content,
+              content: plainTextToLexical(draft.content ?? ""),
               authorId: agent.id,
               authorName: `${agent.name} (AI)`,
             },

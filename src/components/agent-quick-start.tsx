@@ -96,7 +96,6 @@ export function AgentQuickStart({ onSetupComplete }: AgentQuickStartProps) {
           tool={selectedTool}
           apiKey={setupResult.apiKey}
           agentName={setupResult.agent.name}
-          visibilityMode={setupResult.agent.visibilityMode}
           onDone={onSetupComplete}
         />
       )}
@@ -126,13 +125,11 @@ function ConnectionPanel({
   tool,
   apiKey,
   agentName,
-  visibilityMode,
   onDone,
 }: {
   tool: Tool;
   apiKey: string;
   agentName: string;
-  visibilityMode: string;
   onDone: () => void;
 }) {
   const t = useTranslations("agent");
@@ -140,9 +137,7 @@ function ConnectionPanel({
   return (
     <div className="space-y-4 rounded-lg border border-border bg-secondary/30 p-4">
       {tool === "n8n" && <N8nPanel apiKey={apiKey} agentName={agentName} />}
-      {tool === "claude-cli" && (
-        <ClaudeCliPanel apiKey={apiKey} agentName={agentName} visibilityMode={visibilityMode} />
-      )}
+      {tool === "claude-cli" && <ClaudeCliPanel apiKey={apiKey} />}
       {tool === "openclaw" && <OpenClawPanel apiKey={apiKey} />}
       {tool === "custom" && <CustomPanel apiKey={apiKey} />}
 
@@ -208,15 +203,7 @@ function N8nPanel({ apiKey, agentName }: { apiKey: string; agentName: string }) 
   );
 }
 
-function ClaudeCliPanel({
-  apiKey,
-  agentName,
-  visibilityMode,
-}: {
-  apiKey: string;
-  agentName: string;
-  visibilityMode: string;
-}) {
+function ClaudeCliPanel({ apiKey }: { apiKey: string }) {
   const t = useTranslations("agent");
 
   const mcpConfig = JSON.stringify(
