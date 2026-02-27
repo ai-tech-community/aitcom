@@ -99,6 +99,10 @@ export async function generateChallenge(
   signals: ChallengeSignal[],
   existingChallengeTitles: string[],
 ): Promise<GeneratedChallenge> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is required for challenge generation");
+  }
+
   const client = new Anthropic();
 
   // Take top 10 signals for the prompt context.

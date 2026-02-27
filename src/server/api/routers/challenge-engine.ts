@@ -12,7 +12,12 @@ export const challengeEngineRouter = createTRPCRouter({
         .object({ dayWindow: z.number().min(1).max(90).default(14) })
         .optional(),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const adminIds = process.env.CHALLENGE_ENGINE_ADMIN_IDS?.split(",") ?? [];
+      if (!adminIds.includes(ctx.session.user.id)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+
       const signals = await collectSignals(input?.dayWindow ?? 14);
       return { signals, count: signals.length };
     }),
@@ -27,7 +32,12 @@ export const challengeEngineRouter = createTRPCRouter({
         })
         .optional(),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const adminIds = process.env.CHALLENGE_ENGINE_ADMIN_IDS?.split(",") ?? [];
+      if (!adminIds.includes(ctx.session.user.id)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Admin access required" });
+      }
+
       const result = await runChallengeEngine({
         autoPublish: input?.autoPublish ?? false,
         dayWindow: input?.dayWindow ?? 14,
