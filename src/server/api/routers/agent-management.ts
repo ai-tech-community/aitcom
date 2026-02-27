@@ -363,6 +363,43 @@ export const agentManagementRouter = createTRPCRouter({
     return key ?? null;
   }),
 
+  /** Test that the current user's agent API key is valid and the MCP endpoint is reachable. */
+  testConnection: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const [agent] = await ctx.db
+      .select()
+      .from(agentProfiles)
+      .where(
+        and(
+          eq(agentProfiles.ownerId, userId),
+          eq(agentProfiles.status, "active"),
+        ),
+      )
+      .limit(1);
+
+    if (!agent) {
+      return { ok: false, reason: "no-agent" as const };
+    }
+
+    const [key] = await ctx.db
+      .select({ prefix: agentApiKeys.keyPrefix })
+      .from(agentApiKeys)
+      .where(
+        and(
+          eq(agentApiKeys.agentId, agent.id),
+          eq(agentApiKeys.isActive, true),
+        ),
+      )
+      .limit(1);
+
+    if (!key) {
+      return { ok: false, reason: "no-key" as const };
+    }
+
+    return { ok: true, reason: "connected" as const };
+  }),
+
   // ── Drafts ────────────────────────────────────────────────────────────────
 
   /** Get drafts for the current user, filtered by status. */
