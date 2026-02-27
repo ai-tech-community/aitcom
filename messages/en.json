@@ -632,6 +632,8 @@
     "generateKey": "Generate API Key",
     "regenerateKey": "Regenerate Key",
     "revokeKey": "Revoke",
+    "showKey": "Show",
+    "hideKey": "Hide",
     "keySaveWarning": "Save this key now - it won't be shown again!",
     "keyConfigHint": "Add to your Claude Code config:",
     "drafts": "Agent Drafts",

@@ -632,6 +632,8 @@
     "generateKey": "Genereer API Sleutel",
     "regenerateKey": "Sleutel Vernieuwen",
     "revokeKey": "Intrekken",
+    "showKey": "Tonen",
+    "hideKey": "Verbergen",
     "keySaveWarning": "Sla deze sleutel nu op - hij wordt niet opnieuw getoond!",
     "keyConfigHint": "Voeg toe aan je Claude Code configuratie:",
     "drafts": "Agent Concepten",

@@ -1,19 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 
 export function AgentApiKey() {
-  const [newKey, setNewKey] = useState<string | null>(null);
+  const t = useTranslations("agent");
+  const [showKey, setShowKey] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [fullKey, setFullKey] = useState<string | null>(null);
 
   const keyInfo = api.agentManagement.getKeyInfo.useQuery();
   const utils = api.useUtils();
 
   const generateKey = api.agentManagement.generateKey.useMutation({
     onSuccess: (data) => {
-      setNewKey(data.key);
+      setFullKey(data.key);
+      setShowKey(true);
       setCopied(false);
       void utils.agentManagement.getKeyInfo.invalidate();
     },
@@ -21,14 +25,16 @@ export function AgentApiKey() {
 
   const revokeKey = api.agentManagement.revokeKey.useMutation({
     onSuccess: () => {
-      setNewKey(null);
+      setFullKey(null);
+      setShowKey(false);
       void utils.agentManagement.getKeyInfo.invalidate();
     },
   });
 
   const handleCopy = async () => {
-    if (!newKey) return;
-    await navigator.clipboard.writeText(newKey);
+    const text = fullKey ?? keyInfo.data?.prefix ?? "";
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -37,30 +43,52 @@ export function AgentApiKey() {
 
   return (
     <div className="space-y-4">
-      {/* Current key info */}
       {keyInfo.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading key info...</p>
       ) : keyInfo.data ? (
-        <div className="flex items-center justify-between rounded border border-border bg-secondary px-4 py-3">
-          <div>
-            <span className="font-mono text-sm text-foreground">
-              {keyInfo.data.prefix}...
-            </span>
-            <span className="ml-3 text-xs text-muted-foreground">
-              {keyInfo.data.lastUsedAt
-                ? `Last used ${new Date(keyInfo.data.lastUsedAt).toLocaleDateString()}`
-                : "Never used"}
-            </span>
+        <div className="rounded border border-border bg-secondary px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <code className="break-all font-mono text-sm text-foreground">
+                {showKey && fullKey ? fullKey : `${keyInfo.data.prefix}...`}
+              </code>
+              <span className="ml-3 text-xs text-muted-foreground">
+                {keyInfo.data.lastUsedAt
+                  ? `Last used ${new Date(keyInfo.data.lastUsedAt).toLocaleDateString()}`
+                  : "Never used"}
+              </span>
+            </div>
+            <div className="ml-3 flex items-center gap-2">
+              {fullKey && (
+                <button
+                  type="button"
+                  onClick={() => setShowKey(!showKey)}
+                  className="font-mono text-[10px] tracking-wider text-muted-foreground hover:text-foreground"
+                >
+                  {showKey ? t("hideKey") : t("showKey")}
+                </button>
+              )}
+              {fullKey && (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={handleCopy}
+                  className="font-mono text-[11px] tracking-wider"
+                >
+                  {copied ? "Copied!" : "Copy"}
+                </Button>
+              )}
+              <Button
+                variant="destructive"
+                size="xs"
+                onClick={() => revokeKey.mutate()}
+                disabled={revokeKey.isPending}
+                className="font-mono text-[11px] tracking-wider"
+              >
+                {revokeKey.isPending ? "..." : t("revokeKey")}
+              </Button>
+            </div>
           </div>
-          <Button
-            variant="destructive"
-            size="xs"
-            onClick={() => revokeKey.mutate()}
-            disabled={revokeKey.isPending}
-            className="font-mono text-[11px] tracking-wider"
-          >
-            {revokeKey.isPending ? "Revoking..." : "Revoke"}
-          </Button>
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
@@ -68,29 +96,6 @@ export function AgentApiKey() {
         </p>
       )}
 
-      {/* New key warning box */}
-      {newKey && (
-        <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
-          <p className="mb-2 font-mono text-xs font-medium tracking-wider text-yellow-400">
-            SAVE THIS KEY NOW - IT WILL NOT BE SHOWN AGAIN
-          </p>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 break-all rounded bg-secondary px-3 py-2 font-mono text-sm text-foreground">
-              {newKey}
-            </code>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopy}
-              className="shrink-0 font-mono text-[11px] tracking-wider"
-            >
-              {copied ? "Copied!" : "Copy"}
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Generate / Regenerate button */}
       <Button
         variant="outline"
         className="w-full font-mono text-xs tracking-wider"
@@ -100,8 +105,8 @@ export function AgentApiKey() {
         {generateKey.isPending
           ? "Generating..."
           : hasExistingKey
-            ? "Regenerate Key"
-            : "Generate API Key"}
+            ? t("regenerateKey")
+            : t("generateKey")}
       </Button>
     </div>
   );
