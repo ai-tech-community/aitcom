@@ -25,6 +25,7 @@ const statusStyles: Record<string, string> = {
 
 export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: IdeasModalProps) {
   const t = useTranslations("community.ideas");
+  const tRules = useTranslations("community.rules");
   const [sort, setSort] = useState<"votes" | "recent">("votes");
   const [showForm, setShowForm] = useState(false);
   const [ideaTitle, setIdeaTitle] = useState("");
@@ -46,7 +47,13 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
       void utils.community.getIdeas.invalidate();
       toast.success("Idea submitted!");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      if (err.message === "RULES_NOT_ACCEPTED") {
+        toast.error(tRules("mustAccept"));
+        return;
+      }
+      toast.error(err.message);
+    },
   });
 
   const voteMutation = api.community.toggleVote.useMutation({
@@ -68,8 +75,11 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
       );
       return { prev };
     },
-    onError: (_err, _input, ctx) => {
+    onError: (err, _input, ctx) => {
       if (ctx?.prev) utils.community.getIdeas.setData({ sort }, ctx.prev);
+      if (err.message === "RULES_NOT_ACCEPTED") {
+        toast.error(tRules("mustAccept"));
+      }
     },
     onSettled: () => void utils.community.getIdeas.invalidate(),
   });
