@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { toast } from "sonner";
+import { MarkdownToolbar } from "./markdown-toolbar";
 
 // ---------------------------------------------------------------------------
 // Component
@@ -18,6 +19,7 @@ type ReplyFormProps = {
 export function ReplyForm({ threadId, isLocked }: ReplyFormProps) {
   const t = useTranslations("forum");
   const tRules = useTranslations("community.rules");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [content, setContent] = useState("");
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
@@ -63,15 +65,22 @@ export function ReplyForm({ threadId, isLocked }: ReplyFormProps) {
       }}
       className="mt-6 space-y-3"
     >
-      <textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder={t("replyPlaceholder")}
-        maxLength={10000}
-        rows={3}
-        required
-        className="w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300"
-      />
+      <div>
+        <MarkdownToolbar
+          textareaRef={textareaRef}
+          onUpdate={(v) => setContent(v)}
+        />
+        <textarea
+          ref={textareaRef}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder={t("replyPlaceholder")}
+          maxLength={10000}
+          rows={3}
+          required
+          className="w-full resize-none rounded-b-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300"
+        />
+      </div>
       <div className="flex justify-end">
         <button
           type="submit"

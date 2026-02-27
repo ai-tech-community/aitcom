@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import { MarkdownToolbar } from "./markdown-toolbar";
 
 type Category = "general" | "question" | "showcase" | "job";
 
@@ -16,6 +17,7 @@ export function CreateThreadForm() {
   const router = useRouter();
   const { data: session } = authClient.useSession();
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [form, setForm] = useState({
     title: "",
     content: "",
@@ -105,14 +107,19 @@ export function CreateThreadForm() {
           <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
             {t("contentLabel")}
           </label>
+          <MarkdownToolbar
+            textareaRef={textareaRef}
+            onUpdate={(v) => setForm({ ...form, content: v })}
+          />
           <textarea
+            ref={textareaRef}
             value={form.content}
             onChange={(e) => setForm({ ...form, content: e.target.value })}
             placeholder={t("contentPlaceholder")}
             maxLength={10000}
             rows={8}
             required
-            className="w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
+            className="w-full resize-none rounded-b-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
           />
         </div>
 
