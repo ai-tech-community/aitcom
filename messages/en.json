@@ -140,7 +140,14 @@
     "rules": {
       "title": "Community Rules",
       "building": "The Constitution",
-      "subtitle": "How we work together"
+      "subtitle": "How we work together",
+      "accept": "I have read and accept these community rules",
+      "accepted": "You accepted the rules on {date}",
+      "versionLabel": "Version {version}",
+      "mustAccept": "Please review and accept the community rules before participating.",
+      "toc": "Table of Contents",
+      "loading": "Loading rules...",
+      "empty": "Community rules are being written. Check back soon."
     },
     "ideas": {
       "title": "Ideas & Voting",

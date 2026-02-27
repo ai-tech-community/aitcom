@@ -140,7 +140,14 @@
     "rules": {
       "title": "Community Regels",
       "building": "De Grondwet",
-      "subtitle": "Hoe we samenwerken"
+      "subtitle": "Hoe we samenwerken",
+      "accept": "Ik heb de communityregels gelezen en ga akkoord",
+      "accepted": "Je hebt de regels geaccepteerd op {date}",
+      "versionLabel": "Versie {version}",
+      "mustAccept": "Lees en accepteer de communityregels voordat je deelneemt.",
+      "toc": "Inhoudsopgave",
+      "loading": "Regels laden...",
+      "empty": "De communityregels worden geschreven. Kom snel terug."
     },
     "ideas": {
       "title": "Ideeën & Stemmen",
