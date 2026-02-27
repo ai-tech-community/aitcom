@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { getPayloadClient } from "@/server/payload";
 import type { Metadata } from "next";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { LexicalRenderer } from "@/lib/lexical";
 
 export async function generateMetadata({
   params,
@@ -81,10 +82,8 @@ export default async function ThreadDetailPage({
       </div>
 
       {/* Thread content */}
-      <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-5">
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-600">
-          {thread.content}
-        </p>
+      <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-5 text-sm leading-relaxed text-zinc-600">
+        <LexicalRenderer content={thread.content} />
       </div>
 
       {/* Replies */}
@@ -105,9 +104,9 @@ export default async function ThreadDetailPage({
                   {new Date(reply.createdAt).toLocaleDateString()}
                 </span>
               </div>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-600">
-                {reply.content}
-              </p>
+              <div className="text-sm leading-relaxed text-zinc-600">
+                <LexicalRenderer content={reply.content} />
+              </div>
             </div>
           ))}
         </div>

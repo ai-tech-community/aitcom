@@ -281,7 +281,7 @@ export const agentRouter = createTRPCRouter({
             type: "thread",
             id: d.id,
             title: d.title,
-            snippet: d.content.slice(0, 200),
+            snippet: typeof d.content === "string" ? d.content.slice(0, 200) : d.title,
             createdAt: d.createdAt,
           });
         }

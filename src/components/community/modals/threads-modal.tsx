@@ -59,10 +59,11 @@ export function ThreadsModal({
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
 
-  const { data: threads = [], isLoading } = api.community.getThreads.useQuery(
+  const { data, isLoading } = api.community.getThreads.useQuery(
     { category },
     { enabled: isOpen },
   );
+  const threads = data?.threads ?? [];
 
   const createMutation = api.community.createThread.useMutation({
     onSuccess: (thread) => {

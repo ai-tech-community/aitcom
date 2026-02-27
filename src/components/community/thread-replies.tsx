@@ -2,6 +2,7 @@
 
 import { api } from "@/trpc/react";
 import type { ForumReply } from "@/payload-types";
+import { LexicalRenderer } from "@/lib/lexical";
 
 type ThreadRepliesProps = {
   threadId: number;
@@ -32,9 +33,9 @@ export function ThreadReplies({ threadId, initialReplies }: ThreadRepliesProps) 
                 {new Date(reply.createdAt).toLocaleDateString()}
               </span>
             </div>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-600">
-              {reply.content}
-            </p>
+            <div className="text-sm leading-relaxed text-zinc-600">
+              <LexicalRenderer content={reply.content} />
+            </div>
           </div>
         ))}
       </div>

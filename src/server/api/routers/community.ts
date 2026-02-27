@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import type { Where } from "payload";
 
 import {
   createTRPCRouter,
@@ -8,6 +9,7 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
+import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 
 async function requireRulesAcceptance(userId: string) {
   const payload = await getPayloadClient();
@@ -256,35 +258,95 @@ export const communityRouter = createTRPCRouter({
   getThreads: publicProcedure
     .input(
       z.object({
-        category: z
-          .enum(["all", "general", "question", "showcase", "job"])
-          .default("all"),
+        category: z.enum(["all", "general", "question", "showcase", "job"]).default("all"),
+        search: z.string().max(200).optional(),
+        sort: z.enum(["newest", "mostReplied", "trending", "lastActive"]).default("newest"),
+        limit: z.number().min(1).max(50).default(20),
+        page: z.number().min(1).default(1),
       }),
     )
     .query(async ({ input }) => {
       const payload = await getPayloadClient();
 
-      const where =
-        input.category === "all"
-          ? undefined
-          : { category: { equals: input.category } };
+      const conditions: Where[] = [];
 
-      const { docs } = await payload.find({
+      if (input.category !== "all") {
+        conditions.push({ category: { equals: input.category } });
+      }
+
+      if (input.search) {
+        conditions.push({
+          or: [
+            { title: { like: input.search } },
+          ],
+        });
+      }
+
+      const where = conditions.length > 0 ? { and: conditions } : undefined;
+
+      const sortMap: Record<string, string> = {
+        newest: "-createdAt",
+        mostReplied: "-replyCount",
+        trending: "-viewCount",
+        lastActive: "-lastActivityAt",
+      };
+
+      const result = await payload.find({
         collection: "forum-threads",
         where,
-        sort: "-isPinned,-lastActivityAt",
-        limit: 30,
+        sort: `-isPinned,${sortMap[input.sort] ?? "-createdAt"}`,
+        limit: input.limit,
+        page: input.page,
         depth: 0,
       });
 
-      return docs;
+      return {
+        threads: result.docs,
+        totalPages: result.totalPages,
+        totalDocs: result.totalDocs,
+        page: result.page,
+        hasNextPage: result.hasNextPage,
+      };
+    }),
+
+  getThread: publicProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ input }) => {
+      const payload = await getPayloadClient();
+      const result = await payload.find({
+        collection: "forum-threads",
+        where: { slug: { equals: input.slug } },
+        limit: 1,
+        depth: 0,
+      });
+      if (result.docs.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+      }
+      return result.docs[0]!;
+    }),
+
+  incrementViewCount: publicProcedure
+    .input(z.object({ threadId: z.number() }))
+    .mutation(async ({ input }) => {
+      const payload = await getPayloadClient();
+      const thread = await payload.findByID({
+        collection: "forum-threads",
+        id: input.threadId,
+        depth: 0,
+      });
+      await payload.update({
+        collection: "forum-threads",
+        id: input.threadId,
+        data: { viewCount: (thread.viewCount ?? 0) + 1 },
+      });
+      return { ok: true };
     }),
 
   createThread: protectedProcedure
     .input(
       z.object({
         title: z.string().min(3).max(255),
-        content: z.string().min(10).max(10000),
+        content: z.any(),
         category: z.enum(["general", "question", "showcase", "job"]),
       }),
     )
@@ -309,6 +371,7 @@ export const communityRouter = createTRPCRouter({
           category: input.category,
           authorId: ctx.session.user.id,
           authorName: userName,
+          authorRole: "member",
           isPinned: false,
           isLocked: false,
           replyCount: 0,
@@ -325,6 +388,8 @@ export const communityRouter = createTRPCRouter({
         metadata: { title: input.title, category: input.category },
       });
 
+      await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.FORUM_THREAD_CREATE);
+
       return thread;
     }),
 
@@ -334,7 +399,7 @@ export const communityRouter = createTRPCRouter({
     .input(
       z.object({
         threadId: z.number(),
-        content: z.string().min(1).max(10000),
+        content: z.any(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -361,15 +426,7 @@ export const communityRouter = createTRPCRouter({
           content: input.content,
           authorId: ctx.session.user.id,
           authorName: ctx.session.user.name ?? "member",
-        },
-      });
-
-      await payload.update({
-        collection: "forum-threads",
-        id: input.threadId,
-        data: {
-          replyCount: (thread.replyCount ?? 0) + 1,
-          lastActivityAt: new Date().toISOString(),
+          authorRole: "member",
         },
       });
 
@@ -381,6 +438,13 @@ export const communityRouter = createTRPCRouter({
         targetId: String(input.threadId),
         metadata: { threadTitle: thread.title },
       });
+
+      await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.FORUM_REPLY_CREATE);
+
+      // Award XP to thread author for receiving a reply
+      if (thread.authorId !== ctx.session.user.id) {
+        await awardXp(ctx.db, thread.authorId, XP_AMOUNTS.FORUM_RECEIVE_REPLY);
+      }
 
       return reply;
     }),
@@ -403,5 +467,31 @@ export const communityRouter = createTRPCRouter({
       });
 
       return docs;
+    }),
+
+  // ── Admin ─────────────────────────────────────────────────────────────────
+
+  pinThread: protectedProcedure
+    .input(z.object({ threadId: z.number(), isPinned: z.boolean() }))
+    .mutation(async ({ input }) => {
+      const payload = await getPayloadClient();
+      await payload.update({
+        collection: "forum-threads",
+        id: input.threadId,
+        data: { isPinned: input.isPinned },
+      });
+      return { ok: true };
+    }),
+
+  lockThread: protectedProcedure
+    .input(z.object({ threadId: z.number(), isLocked: z.boolean() }))
+    .mutation(async ({ input }) => {
+      const payload = await getPayloadClient();
+      await payload.update({
+        collection: "forum-threads",
+        id: input.threadId,
+        data: { isLocked: input.isLocked },
+      });
+      return { ok: true };
     }),
 });
