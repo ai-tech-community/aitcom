@@ -79,7 +79,7 @@ export function ForumPage() {
       </div>
 
       {/* Search + New Thread */}
-      <div className="mb-5 flex items-center gap-3">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
           <input
@@ -115,7 +115,7 @@ export function ForumPage() {
           <select
             value={sort}
             onChange={(e) => handleSortChange(e.target.value as Sort)}
-            className="rounded border border-zinc-200 bg-white px-2 py-1 font-mono text-[10px] text-zinc-600 focus:border-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300"
+            className="w-full rounded border border-zinc-200 bg-white px-2 py-1 font-mono text-[10px] text-zinc-600 focus:border-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300 sm:w-auto"
           >
             <option value="newest">{t("sortNewest")}</option>
             <option value="mostReplied">{t("sortMostReplied")}</option>

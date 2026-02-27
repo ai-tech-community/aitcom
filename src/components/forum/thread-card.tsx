@@ -60,7 +60,7 @@ export function ThreadCard({ thread, index }: ThreadCardProps) {
             {t("replies", { count: thread.replyCount ?? 0 })}
           </span>
           {(thread.viewCount ?? 0) > 0 && (
-            <span className="flex items-center gap-1 font-mono text-[9px] text-zinc-400">
+            <span className="hidden items-center gap-1 font-mono text-[9px] text-zinc-400 sm:flex">
               <Eye className="h-2.5 w-2.5" />
               {t("views", { count: thread.viewCount ?? 0 })}
             </span>

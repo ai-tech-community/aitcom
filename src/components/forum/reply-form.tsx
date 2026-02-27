@@ -63,7 +63,7 @@ export function ReplyForm({ threadId, isLocked }: ReplyFormProps) {
         if (!content.trim()) return;
         replyMutation.mutate({ threadId, content: content.trim() });
       }}
-      className="mt-6 space-y-3"
+      className="sticky bottom-0 border-t border-zinc-200 bg-white p-4 sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:mt-6 sm:space-y-3"
     >
       <div>
         <MarkdownToolbar

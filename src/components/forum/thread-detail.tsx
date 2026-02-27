@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 import { api } from "@/trpc/react";
+import { authClient } from "@/server/better-auth/client";
 import { Link } from "@/i18n/navigation";
 import { LexicalRenderer } from "@/lib/lexical";
 import { RoleBadge } from "@/components/forum/role-badge";
@@ -41,6 +42,8 @@ type ThreadDetailProps = {
 export function ThreadDetail({ slug }: ThreadDetailProps) {
   const t = useTranslations("forum");
   const viewCountedRef = useRef(false);
+  const { data: session } = authClient.useSession();
+  const utils = api.useUtils();
 
   const { data: thread, isLoading: threadLoading } =
     api.community.getThread.useQuery({ slug });
@@ -52,6 +55,20 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
     );
 
   const incrementView = api.community.incrementViewCount.useMutation();
+
+  const pinMutation = api.community.pinThread.useMutation({
+    onSuccess: () => void utils.community.getThread.invalidate({ slug }),
+  });
+
+  const lockMutation = api.community.lockThread.useMutation({
+    onSuccess: () => void utils.community.getThread.invalidate({ slug }),
+  });
+
+  const isAuthor = !!(
+    session?.user?.id &&
+    thread?.authorId &&
+    session.user.id === thread.authorId
+  );
 
   // Increment view count once on mount when thread loads
   useEffect(() => {
@@ -65,7 +82,7 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
   // Loading state
   if (threadLoading) {
     return (
-      <div className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-12 sm:py-8">
         <Link
           href="/forum"
           className="font-mono text-xs tracking-wider text-zinc-400 transition-colors hover:text-zinc-600"
@@ -85,7 +102,7 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
   // Thread not found (should not happen due to server-side check, but just in case)
   if (!thread) {
     return (
-      <div className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
+      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-12 sm:py-8">
         <Link
           href="/forum"
           className="font-mono text-xs tracking-wider text-zinc-400 transition-colors hover:text-zinc-600"
@@ -101,7 +118,7 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-12 sm:py-8">
       {/* Back link */}
       <Link
         href="/forum"
@@ -137,6 +154,34 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
             </>
           )}
         </div>
+
+        {/* Admin actions */}
+        {isAuthor && (
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={() =>
+                pinMutation.mutate({
+                  threadId: thread.id,
+                  isPinned: !thread.isPinned,
+                })
+              }
+              className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-100"
+            >
+              {thread.isPinned ? t("unpinThread") : t("pinThread")}
+            </button>
+            <button
+              onClick={() =>
+                lockMutation.mutate({
+                  threadId: thread.id,
+                  isLocked: !thread.isLocked,
+                })
+              }
+              className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-100"
+            >
+              {thread.isLocked ? t("unlockThread") : t("lockThread")}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Thread content */}
