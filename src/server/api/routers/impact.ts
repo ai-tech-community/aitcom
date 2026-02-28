@@ -369,24 +369,32 @@ export const impactRouter = createTRPCRouter({
         : null;
       const sinceStr = since ? toDateStr(since) : undefined;
 
-      // ------- Query aggregate tables -------
-      const [coreRows, mixRows, expRows] = await Promise.all([
-        ctx.db
-          .select()
-          .from(dailyCoreMetrics)
-          .where(sinceStr ? gte(dailyCoreMetrics.date, sinceStr) : undefined)
-          .orderBy(dailyCoreMetrics.date),
-        ctx.db
-          .select()
-          .from(dailyCollabMix)
-          .where(sinceStr ? gte(dailyCollabMix.date, sinceStr) : undefined)
-          .orderBy(dailyCollabMix.date),
-        ctx.db
-          .select()
-          .from(dailyExperimentalMetrics)
-          .where(sinceStr ? gte(dailyExperimentalMetrics.date, sinceStr) : undefined)
-          .orderBy(desc(dailyExperimentalMetrics.date)),
-      ]);
+      // ------- Query aggregate tables (fall back if tables don't exist yet) -------
+      let coreRows: (typeof dailyCoreMetrics.$inferSelect)[] = [];
+      let mixRows: (typeof dailyCollabMix.$inferSelect)[] = [];
+      let expRows: (typeof dailyExperimentalMetrics.$inferSelect)[] = [];
+
+      try {
+        [coreRows, mixRows, expRows] = await Promise.all([
+          ctx.db
+            .select()
+            .from(dailyCoreMetrics)
+            .where(sinceStr ? gte(dailyCoreMetrics.date, sinceStr) : undefined)
+            .orderBy(dailyCoreMetrics.date),
+          ctx.db
+            .select()
+            .from(dailyCollabMix)
+            .where(sinceStr ? gte(dailyCollabMix.date, sinceStr) : undefined)
+            .orderBy(dailyCollabMix.date),
+          ctx.db
+            .select()
+            .from(dailyExperimentalMetrics)
+            .where(sinceStr ? gte(dailyExperimentalMetrics.date, sinceStr) : undefined)
+            .orderBy(desc(dailyExperimentalMetrics.date)),
+        ]);
+      } catch {
+        // Tables may not exist yet (pre-migration); fall through to raw fallback
+      }
 
       // ------- Fallback: if no aggregate data yet, use raw queries -------
       if (coreRows.length === 0) {
@@ -573,18 +581,26 @@ export const impactRouter = createTRPCRouter({
       const since = days ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : null;
       const sinceStr = since ? toDateStr(since) : undefined;
 
-      // Read daily aggregate rows
-      const [coreRows, mixRows, expRows] = await Promise.all([
-        ctx.db.select().from(dailyCoreMetrics)
-          .where(sinceStr ? gte(dailyCoreMetrics.date, sinceStr) : undefined)
-          .orderBy(dailyCoreMetrics.date),
-        ctx.db.select().from(dailyCollabMix)
-          .where(sinceStr ? gte(dailyCollabMix.date, sinceStr) : undefined)
-          .orderBy(dailyCollabMix.date),
-        ctx.db.select().from(dailyExperimentalMetrics)
-          .where(sinceStr ? gte(dailyExperimentalMetrics.date, sinceStr) : undefined)
-          .orderBy(dailyExperimentalMetrics.date),
-      ]);
+      // Read daily aggregate rows (fall back gracefully if tables don't exist yet)
+      let coreRows: (typeof dailyCoreMetrics.$inferSelect)[] = [];
+      let mixRows: (typeof dailyCollabMix.$inferSelect)[] = [];
+      let expRows: (typeof dailyExperimentalMetrics.$inferSelect)[] = [];
+
+      try {
+        [coreRows, mixRows, expRows] = await Promise.all([
+          ctx.db.select().from(dailyCoreMetrics)
+            .where(sinceStr ? gte(dailyCoreMetrics.date, sinceStr) : undefined)
+            .orderBy(dailyCoreMetrics.date),
+          ctx.db.select().from(dailyCollabMix)
+            .where(sinceStr ? gte(dailyCollabMix.date, sinceStr) : undefined)
+            .orderBy(dailyCollabMix.date),
+          ctx.db.select().from(dailyExperimentalMetrics)
+            .where(sinceStr ? gte(dailyExperimentalMetrics.date, sinceStr) : undefined)
+            .orderBy(dailyExperimentalMetrics.date),
+        ]);
+      } catch {
+        // Tables may not exist yet (pre-migration)
+      }
 
       // Per-metric confidence: low if N < 30 data points
       const dataPoints = coreRows.length;
