@@ -391,7 +391,8 @@
     "agent": "Agent",
     "events": "Events",
     "challenges": "Challenges",
-    "settings": "Settings"
+    "settings": "Settings",
+    "impact": "Impact"
   },
   "activity": {
     "personal": "My Activity",

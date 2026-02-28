@@ -391,7 +391,8 @@
     "agent": "Agent",
     "events": "Evenementen",
     "challenges": "Uitdagingen",
-    "settings": "Instellingen"
+    "settings": "Instellingen",
+    "impact": "Impact"
   },
   "activity": {
     "personal": "Mijn Activiteit",
