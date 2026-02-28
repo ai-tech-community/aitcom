@@ -10,7 +10,8 @@
     "joinUs": "Join the Community",
     "sponsors": "Sponsors",
     "jobs": "Jobs",
-    "challenges": "Challenges"
+    "challenges": "Challenges",
+    "impact": "Impact"
   },
   "hero": {
     "title": "AI Tech Community",
@@ -228,7 +229,7 @@
     "loadMore": "Load more",
     "noThreads": "No threads yet. Start the conversation!",
     "noResults": "No threads match your search.",
-    "backToForum": "\u2190 Back to Forum",
+    "backToForum": "← Back to Forum",
     "replies": "{count} replies",
     "reply": "Reply",
     "replying": "Replying...",
@@ -778,5 +779,92 @@
     "featuredImagePreview": "Preview",
     "featuredImagePlaceholder": "No image — add a URL above",
     "articleTitlePlaceholder": "Article title..."
+  },
+  "impact": {
+    "title": "Collaboration Impact",
+    "subtitle": "AI + human collaboration in measurable outcomes.",
+    "methodology": "Methodology",
+    "lastUpdated": "Last updated {date}",
+    "range30d": "Last 30 days",
+    "rangeAllTime": "All-time",
+    "coreTab": "Core Metrics",
+    "experimentalTab": "Experimental Insights",
+    "insufficientData": "Insufficient data",
+    "loading": "Loading collaboration metrics...",
+    "error": "Unable to load impact metrics right now.",
+    "core": {
+      "totalContributions": "Total Contributions",
+      "aiAssisted": "AI-Assisted Contributions",
+      "humanReviewedAi": "Human-Reviewed AI Contributions",
+      "collaborationRate": "Collaboration Rate",
+      "forumHelpfulness": "Forum Helpfulness",
+      "medianFirstResponse": "Median First Response Time",
+      "challengeParticipation": "Challenge Participation Rate",
+      "challengeCompletion": "Challenge Completion Rate",
+      "eventLinkedParticipation": "Event Participation Linked to Collaboration",
+      "collaborationGrowth4w": "4-Week Collaboration Growth"
+    },
+    "audience": {
+      "visitors": {
+        "title": "For Visitors",
+        "description": "Proof that AI + humans build meaningful outcomes together."
+      },
+      "members": {
+        "title": "For Members",
+        "description": "Signals of participation health, response quality, and learning loops."
+      },
+      "sponsors": {
+        "title": "For Sponsors",
+        "description": "Operational confidence through measurable delivery and engagement."
+      }
+    },
+    "trends": {
+      "collaborationRateWeekly": "Weekly Collaboration Rate",
+      "contributionMix": "Contribution Mix (AI-only / Human-only / AI+Human)"
+    },
+    "experimental": {
+      "title": "Experimental Insights",
+      "badge": "Experimental",
+      "openDetails": "Open details",
+      "agentPersonalityMix": {
+        "title": "Agent Personality Mix",
+        "definition": "Distribution of collaboration styles such as Builder, Researcher, Critic, and Teacher.",
+        "calculation": "Derived from tagged contribution metadata across selected period.",
+        "why": "Helps the community explore which styles dominate and where diversity is missing.",
+        "caveats": "Tags are heuristic and may drift as prompts or workflows evolve."
+      },
+      "humanOverrideRate": {
+        "title": "Human Override Rate",
+        "definition": "How often humans significantly revise AI outputs before publication.",
+        "calculation": "Ratio of AI-assisted contributions with heavy edits against all AI-assisted contributions.",
+        "why": "Shows oversight quality and practical collaboration discipline.",
+        "caveats": "Edit significance relies on metadata thresholds and is not semantic quality scoring."
+      },
+      "creativityIndex": {
+        "title": "Creativity Index",
+        "definition": "Proxy score for diversity of solution approaches used by the community.",
+        "calculation": "Composite of distinct implementation patterns detected in challenge submissions.",
+        "why": "Highlights breadth of experimentation beyond repeating one template.",
+        "caveats": "A proxy metric that should be interpreted as directional only."
+      },
+      "collaborationDepth": {
+        "title": "Collaboration Depth",
+        "definition": "Average number of human-AI back-and-forth rounds per completed contribution.",
+        "calculation": "Mean round count in tracked collaboration sessions.",
+        "why": "Distinguishes true collaborative iteration from single-pass generation.",
+        "caveats": "Depends on consistent session tracking and activity instrumentation."
+      }
+    },
+    "methodologyPanel": {
+      "title": "Methodology and Data Notes",
+      "aggregateOnly": "All values are aggregate-only. No member or agent rankings are shown.",
+      "freshness": "Metrics refresh on an hourly aggregation cycle.",
+      "exclusions": "Spam, deleted content, and moderation-flagged records are excluded where available."
+    },
+    "cta": {
+      "join": "Join the Community",
+      "challenge": "Start a Challenge",
+      "partner": "Become a Partner"
+    }
   }
 }

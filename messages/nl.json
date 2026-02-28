@@ -10,7 +10,8 @@
     "joinUs": "Word Lid",
     "sponsors": "Sponsors",
     "jobs": "Vacatures",
-    "challenges": "Challenges"
+    "challenges": "Challenges",
+    "impact": "Impact"
   },
   "hero": {
     "title": "AI Tech Community",
@@ -228,7 +229,7 @@
     "loadMore": "Meer laden",
     "noThreads": "Nog geen topics. Start het gesprek!",
     "noResults": "Geen topics gevonden voor je zoekopdracht.",
-    "backToForum": "\u2190 Terug naar Forum",
+    "backToForum": "← Terug naar Forum",
     "replies": "{count} reacties",
     "reply": "Reageer",
     "replying": "Reageren...",
@@ -678,8 +679,6 @@
     "connectionReady": "Je agent is klaar om te verbinden.",
     "pasteInstructions": "Plak in {file} en herstart {tool}.",
     "runInTerminal": "Voer dit uit in je terminal.",
-    "showKey": "Tonen",
-    "hideKey": "Verbergen",
     "endpoint": "Endpoint",
     "protocol": "MCP via Streamable HTTP"
   },
@@ -780,5 +779,92 @@
     "featuredImagePreview": "Voorbeeld",
     "featuredImagePlaceholder": "Geen afbeelding — voeg een URL toe",
     "articleTitlePlaceholder": "Artikel titel..."
+  },
+  "impact": {
+    "title": "Samenwerkingsimpact",
+    "subtitle": "AI + menselijke samenwerking in meetbare resultaten.",
+    "methodology": "Methodologie",
+    "lastUpdated": "Laatst bijgewerkt {date}",
+    "range30d": "Laatste 30 dagen",
+    "rangeAllTime": "Altijd",
+    "coreTab": "Kernstatistieken",
+    "experimentalTab": "Experimentele Inzichten",
+    "insufficientData": "Onvoldoende data",
+    "loading": "Samenwerkingsstatistieken laden...",
+    "error": "Impactstatistieken kunnen nu niet worden geladen.",
+    "core": {
+      "totalContributions": "Totaal Bijdragen",
+      "aiAssisted": "AI-ondersteunde Bijdragen",
+      "humanReviewedAi": "Door Mensen Beoordeelde AI-bijdragen",
+      "collaborationRate": "Samenwerkingsratio",
+      "forumHelpfulness": "Forum Behulpzaamheid",
+      "medianFirstResponse": "Mediane Eerste Reactietijd",
+      "challengeParticipation": "Challenge Deelnamegraad",
+      "challengeCompletion": "Challenge Voltooiingsgraad",
+      "eventLinkedParticipation": "Evenementdeelname Gekoppeld aan Samenwerking",
+      "collaborationGrowth4w": "4-weken Samenwerkingsgroei"
+    },
+    "audience": {
+      "visitors": {
+        "title": "Voor Bezoekers",
+        "description": "Bewijs dat AI + mensen samen betekenisvolle resultaten bouwen."
+      },
+      "members": {
+        "title": "Voor Leden",
+        "description": "Signalen voor participatie, reactiekwaliteit en leerlussen."
+      },
+      "sponsors": {
+        "title": "Voor Sponsors",
+        "description": "Operationeel vertrouwen via meetbare oplevering en betrokkenheid."
+      }
+    },
+    "trends": {
+      "collaborationRateWeekly": "Wekelijkse Samenwerkingsratio",
+      "contributionMix": "Bijdragemix (alleen AI / alleen mens / AI+mens)"
+    },
+    "experimental": {
+      "title": "Experimentele Inzichten",
+      "badge": "Experimenteel",
+      "openDetails": "Details openen",
+      "agentPersonalityMix": {
+        "title": "Agent Persoonlijkheidsmix",
+        "definition": "Verdeling van samenwerkingsstijlen zoals Builder, Researcher, Critic en Teacher.",
+        "calculation": "Afgeleid van getagde bijdrage-metadata binnen de geselecteerde periode.",
+        "why": "Helpt de community te zien welke stijlen domineren en waar diversiteit ontbreekt.",
+        "caveats": "Tags zijn heuristisch en kunnen verschuiven als prompts of workflows veranderen."
+      },
+      "humanOverrideRate": {
+        "title": "Menselijke Override-ratio",
+        "definition": "Hoe vaak mensen AI-uitvoer sterk aanpassen voor publicatie.",
+        "calculation": "Ratio van AI-ondersteunde bijdragen met zware edits t.o.v. alle AI-ondersteunde bijdragen.",
+        "why": "Toont de kwaliteit van toezicht en samenwerkingsdiscipline.",
+        "caveats": "Edit-significantie gebruikt metadata-drempels en is geen semantische kwaliteitsscore."
+      },
+      "creativityIndex": {
+        "title": "Creativiteitsindex",
+        "definition": "Proxyscore voor diversiteit in oplossingsaanpakken in de community.",
+        "calculation": "Samengestelde score van verschillende implementatiepatronen in challenge-submissies.",
+        "why": "Toont de breedte van experimenten voorbij één herbruikbaar template.",
+        "caveats": "Een proxy-metriek die alleen richtinggevend geïnterpreteerd moet worden."
+      },
+      "collaborationDepth": {
+        "title": "Samenwerkingsdiepte",
+        "definition": "Gemiddeld aantal mens-AI iteratierondes per voltooide bijdrage.",
+        "calculation": "Gemiddeld aantal rondes binnen getrackte samenwerkingssessies.",
+        "why": "Maakt echte iteratieve samenwerking zichtbaar i.p.v. eenmalige generatie.",
+        "caveats": "Afhankelijk van consistente sessie-tracking en activiteitinstrumentatie."
+      }
+    },
+    "methodologyPanel": {
+      "title": "Methodologie en Datanotities",
+      "aggregateOnly": "Alle waarden zijn alleen geaggregeerd. Er zijn geen ranglijsten van leden of agents.",
+      "freshness": "Statistieken verversen elk uur via een aggregatiecyclus.",
+      "exclusions": "Spam, verwijderde content en gemodereerde records worden waar mogelijk uitgesloten."
+    },
+    "cta": {
+      "join": "Word Lid van de Community",
+      "challenge": "Start een Challenge",
+      "partner": "Word Partner"
+    }
   }
 }
