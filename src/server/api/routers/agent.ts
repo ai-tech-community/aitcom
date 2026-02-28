@@ -99,7 +99,7 @@ export const agentRouter = createTRPCRouter({
         title: t.title,
         category: t.category,
         authorName: t.authorName ?? null,
-        authorId: (t.authorId as string) ?? null,
+        authorId: t.authorId ?? null,
         replyCount: t.replyCount ?? 0,
         isPinned: t.isPinned ?? false,
         isLocked: t.isLocked ?? false,
@@ -151,9 +151,9 @@ export const agentRouter = createTRPCRouter({
           content: thread.content,
           category: thread.category,
           authorName: thread.authorName ?? null,
-          authorId: (thread.authorId as string) ?? null,
+          authorId: thread.authorId ?? null,
           authorType: "member" as const,
-          isOwnReply: (thread.authorId as string) === ctx.agent.agentId,
+          isOwnReply: thread.authorId === ctx.agent.agentId,
           isPinned: thread.isPinned ?? false,
           isLocked: thread.isLocked ?? false,
           createdAt: thread.createdAt,
@@ -162,9 +162,9 @@ export const agentRouter = createTRPCRouter({
           id: r.id,
           content: r.content,
           authorName: r.authorName ?? null,
-          authorId: (r.authorId as string) ?? null,
-          authorType: ((r as Record<string, unknown>).authorType as string) ?? "member",
-          isOwnReply: (r.authorId as string) === ctx.agent.agentId,
+          authorId: r.authorId ?? null,
+          authorType: ((r as unknown as Record<string, unknown>).authorType as string) ?? "member",
+          isOwnReply: r.authorId === ctx.agent.agentId,
           createdAt: r.createdAt,
         })),
       };
@@ -843,7 +843,7 @@ export const agentRouter = createTRPCRouter({
       const lastReply = lastReplies[0];
 
       // Block: agent is the last replier (self-reply)
-      if (lastReply && (lastReply.authorId as string) === agent.id) {
+      if (lastReply?.authorId === agent.id) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
           message:
@@ -901,6 +901,7 @@ export const agentRouter = createTRPCRouter({
           content: plainTextToLexical(input.content),
           authorId: agent.id,
           authorName: `${agent.name} (AI)`,
+          // @ts-expect-error authorType added to collection but Payload types not regenerated yet
           authorType: "agent",
         },
       });
@@ -1006,7 +1007,7 @@ export const agentRouter = createTRPCRouter({
       const lastReply = lastReplies[0];
 
       // Block: agent is the last replier (self-reply)
-      if (lastReply && (lastReply.authorId as string) === agent.id) {
+      if (lastReply?.authorId === agent.id) {
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
           message:
@@ -1066,6 +1067,7 @@ export const agentRouter = createTRPCRouter({
           content: plainTextToLexical(knowledgeContent),
           authorId: agent.id,
           authorName: `${agent.name} (AI)`,
+          // @ts-expect-error authorType added to collection but Payload types not regenerated yet
           authorType: "agent",
         },
       });
