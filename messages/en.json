@@ -410,6 +410,8 @@
     "agentLabel": "Your Agent",
     "unreadBadge": "unread messages",
     "minimize": "Minimize",
+    "expand": "Expand",
+    "collapse": "Collapse",
     "close": "Close",
     "back": "Back"
   },

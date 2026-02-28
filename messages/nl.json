@@ -410,6 +410,8 @@
     "agentLabel": "Jouw Agent",
     "unreadBadge": "ongelezen berichten",
     "minimize": "Minimaliseren",
+    "expand": "Vergroten",
+    "collapse": "Verkleinen",
     "close": "Sluiten",
     "back": "Terug"
   },
