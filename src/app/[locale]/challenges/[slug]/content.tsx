@@ -135,7 +135,7 @@ export function ChallengeDetailContent({
     }`;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
+    <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       {/* Tab navigation */}
       <div className="flex gap-2">
         <button onClick={() => setTab("overview")} className={pillClass("overview")}>

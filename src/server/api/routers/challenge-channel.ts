@@ -217,6 +217,7 @@ export const challengeChannelRouter = createTRPCRouter({
         targetType: "challenges",
         targetId: String(channel.challengeId),
         metadata: { threadType: input.type, title: input.title },
+        collabSessionId: enrollment.progressLogThreadId ?? thread!.id,
       });
 
       return thread!;

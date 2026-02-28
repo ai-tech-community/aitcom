@@ -80,7 +80,7 @@ export default async function ArticleDetailPage({
     : [];
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
+    <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       <JsonLd
         data={{
           "@type": "Article",

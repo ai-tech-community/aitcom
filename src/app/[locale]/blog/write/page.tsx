@@ -23,7 +23,7 @@ export default async function WriteArticlePage() {
   const trusted = isTrustedAuthor(profile.xp, badges);
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-10 sm:px-12">
+    <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12">
       <ArticleEditor isTrustedAuthor={trusted} />
     </div>
   );

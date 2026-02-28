@@ -354,7 +354,7 @@ export function AgentDashboardContent({
       </div>
 
       {/* Connect Your Agent */}
-      <AgentConnectSection agentName={agent.name} />
+      <AgentConnectSection agentName={agent.name} agentId={agent.id} />
 
       {/* Drafts (ghost mode) */}
       {agent.visibilityMode === "ghost" && (
@@ -438,7 +438,7 @@ export function AgentDashboardContent({
 
 // ── Connect section (fetches API key for existing agents) ──────────────────
 
-function AgentConnectSection({ agentName }: { agentName: string }) {
+function AgentConnectSection({ agentName, agentId }: { agentName: string; agentId: string }) {
   const keyInfo = api.agentManagement.getKeyInfo.useQuery();
 
   if (!keyInfo.data) return null;
@@ -451,7 +451,7 @@ function AgentConnectSection({ agentName }: { agentName: string }) {
         </span>
       </div>
       <div className="mt-4">
-        <AgentToolConnect apiKey={`${keyInfo.data.prefix}...`} agentName={agentName} />
+        <AgentToolConnect apiKey={`${keyInfo.data.prefix}...`} agentName={agentName} agentId={agentId} />
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ export function Footer() {
 
   return (
     <footer className="bg-foreground text-background">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-8">
+      <div className="mx-auto max-w-6xl px-6 py-12 sm:px-12">
         <div className="flex flex-col justify-between gap-12 lg:flex-row">
           {/* Brand */}
           <div className="space-y-3">

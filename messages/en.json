@@ -10,7 +10,8 @@
     "joinUs": "Join the Community",
     "sponsors": "Sponsors",
     "jobs": "Jobs",
-    "challenges": "Challenges"
+    "challenges": "Challenges",
+    "impact": "Impact"
   },
   "hero": {
     "title": "AI Tech Community",
@@ -219,7 +220,7 @@
     "title": "Forum",
     "subtitle": "Ask, share, connect with the community",
     "search": "Search threads...",
-    "newThread": "+ New Thread",
+    "newThread": "New Thread",
     "sortNewest": "Newest",
     "sortMostReplied": "Most Replied",
     "sortTrending": "Trending",
@@ -228,7 +229,7 @@
     "loadMore": "Load more",
     "noThreads": "No threads yet. Start the conversation!",
     "noResults": "No threads match your search.",
-    "backToForum": "\u2190 Back to Forum",
+    "backToForum": "← Back to Forum",
     "replies": "{count} replies",
     "reply": "Reply",
     "replying": "Replying...",
@@ -390,7 +391,8 @@
     "agent": "Agent",
     "events": "Events",
     "challenges": "Challenges",
-    "settings": "Settings"
+    "settings": "Settings",
+    "impact": "Impact"
   },
   "activity": {
     "personal": "My Activity",
@@ -580,9 +582,9 @@
     "dataSharingBody": "We share personal data only with the following categories of service providers, and only to the extent necessary to operate the platform:\n\nMollie B.V. - Processes payments for event tickets and sponsorships. Mollie acts as an independent data controller for payment data. See Mollie's privacy policy at mollie.com/privacy.\n\nResend - Handles transactional email delivery (account verification, password resets, event confirmations, newsletter). Email addresses and message content are shared with Resend solely for delivery purposes.\n\nHosting Provider - Our application and database are hosted on infrastructure within the European Union. The hosting provider processes data on our behalf under a Data Processing Agreement.\n\nWe do not sell, rent, or trade your personal data to third parties. We do not share data with advertisers. We will disclose data to law enforcement only when required by a valid legal order under Dutch law.",
     "cookiesBody": "Our use of cookies is minimal and respectful:\n\nEssential Cookies - We use a session cookie to keep you signed in and to protect against cross-site request forgery (CSRF). These cookies are strictly necessary for the platform to function and cannot be disabled.\n\nAnalytics Cookies - With your consent, we may set a cookie to collect anonymized usage statistics (pages visited, session duration). No personally identifiable information is stored in analytics cookies.\n\nNo Third-Party Advertising Cookies - We do not use any third-party advertising or tracking cookies. No data is shared with ad networks.\n\nYou can manage cookie preferences through your browser settings. Blocking essential cookies may prevent you from signing in.",
     "retentionBody": "We retain your data according to the following schedule:\n\nAccount Data - Your profile information is retained for as long as your account is active. If you delete your account, we remove your personal data within 30 days. Some data may persist in encrypted backups for up to 90 days before being overwritten.\n\nPayment Records - Transaction records, invoices, and related financial data are retained for seven (7) years after the transaction date, as required by Dutch tax law (Algemene wet inzake rijksbelastingen, Article 52).\n\nCommunity Content - If you delete your account, your community posts (threads, replies, ideas) are anonymized rather than deleted. The content remains visible but is no longer linked to your identity. This preserves the integrity of community discussions.\n\nEvent Data - Event attendance records are retained for twelve (12) months after the event for community analytics, then anonymized.\n\nAnalytics Data - Anonymized analytics data is retained indefinitely as it cannot be linked back to individual users.",
-    "rightsBody": "Under the GDPR, you have the following rights regarding your personal data:\n\nRight of Access (Art. 15) - You can request a copy of all personal data we hold about you.\n\nRight to Rectification (Art. 16) - You can update or correct inaccurate personal data via your profile settings, or by contacting us.\n\nRight to Erasure (Art. 17) - You can delete your account at any time from your profile settings. You may also request erasure by contacting us. Note that we may retain certain data where we have a legal obligation (e.g. financial records).\n\nRight to Data Portability (Art. 20) - You can request a machine-readable export of your personal data.\n\nRight to Restriction (Art. 18) - You can request that we limit how we process your data in certain circumstances.\n\nRight to Object (Art. 21) - You can object to processing based on legitimate interest, including analytics.\n\nTo exercise any of these rights, email us at privacy@aitcommunity.nl. We will respond within 30 days as required by the GDPR.\n\nIf you believe we have not handled your request appropriately, you have the right to lodge a complaint with the Dutch Data Protection Authority (Autoriteit Persoonsgegevens) at autoriteitpersoonsgegevens.nl.",
-    "transfersBody": "Our primary data processing takes place within the European Economic Area (EEA). However, some of our sub-processors (such as email delivery and analytics services) may process data outside the EEA.\n\nWhere personal data is transferred outside the EEA, we ensure adequate protection through one or more of the following mechanisms:\n\n- European Commission adequacy decisions for the recipient country.\n- Standard Contractual Clauses (SCCs) as approved by the European Commission, incorporated into our agreements with sub-processors.\n- Additional technical and organizational measures where appropriate.\n\nYou may request information about the specific safeguards in place by contacting us at privacy@aitcommunity.nl.",
-    "contactBody": "For any questions about this privacy policy or your personal data, contact us:\n\nAIT Community Netherlands\nAmsterdam, The Netherlands\nEmail: privacy@aitcommunity.nl\n\nWe aim to respond to all privacy-related inquiries within 14 days.",
+    "rightsBody": "Under the GDPR, you have the following rights regarding your personal data:\n\nRight of Access (Art. 15) - You can request a copy of all personal data we hold about you.\n\nRight to Rectification (Art. 16) - You can update or correct inaccurate personal data via your profile settings, or by contacting us.\n\nRight to Erasure (Art. 17) - You can delete your account at any time from your profile settings. You may also request erasure by contacting us. Note that we may retain certain data where we have a legal obligation (e.g. financial records).\n\nRight to Data Portability (Art. 20) - You can request a machine-readable export of your personal data.\n\nRight to Restriction (Art. 18) - You can request that we limit how we process your data in certain circumstances.\n\nRight to Object (Art. 21) - You can object to processing based on legitimate interest, including analytics.\n\nTo exercise any of these rights, email us at info@klevox.com. We will respond within 30 days as required by the GDPR.\n\nIf you believe we have not handled your request appropriately, you have the right to lodge a complaint with the Dutch Data Protection Authority (Autoriteit Persoonsgegevens) at autoriteitpersoonsgegevens.nl.",
+    "transfersBody": "Our primary data processing takes place within the European Economic Area (EEA). However, some of our sub-processors (such as email delivery and analytics services) may process data outside the EEA.\n\nWhere personal data is transferred outside the EEA, we ensure adequate protection through one or more of the following mechanisms:\n\n- European Commission adequacy decisions for the recipient country.\n- Standard Contractual Clauses (SCCs) as approved by the European Commission, incorporated into our agreements with sub-processors.\n- Additional technical and organizational measures where appropriate.\n\nYou may request information about the specific safeguards in place by contacting us at info@klevox.com.",
+    "contactBody": "For any questions about this privacy policy or your personal data, contact us:\n\nAIT Community Netherlands\nAmsterdam, The Netherlands\nEmail: info@klevox.com\n\nWe aim to respond to all privacy-related inquiries within 14 days.",
     "seeAlso": "terms(7)"
   },
   "terms": {
@@ -601,8 +603,8 @@
     "tocGoverning": "GOVERNING LAW",
     "tocChanges": "CHANGES TO TERMS",
     "acceptanceBody": "By accessing or using the AIT Community Netherlands platform (the \"Platform\"), you agree to be bound by these Terms of Service. If you do not agree, you must stop using the Platform immediately.\n\nYou must be at least 16 years of age to create an account or use the Platform. By registering, you confirm that you are at least 16 years old. If you are under 16, you may not use the Platform.\n\nThese terms apply to all users, including visitors, registered members, sponsors, and event attendees.",
-    "accountsBody": "When you create an account, you agree to:\n\nProvide accurate and complete information - Your name, email, and any other profile details must be truthful and up to date. You are responsible for updating your information if it changes.\n\nMaintain account security - You are responsible for keeping your login credentials secure. Do not share your password or access tokens with anyone. If you suspect unauthorized access, notify us immediately at privacy@aitcommunity.nl.\n\nOne account per person - Each individual may maintain only one account. Creating multiple accounts to circumvent bans, manipulate votes, or abuse platform features is prohibited and may result in permanent suspension.\n\nYou are responsible for all activity that occurs under your account, whether or not you authorized it.",
-    "communityBody": "The AIT community board, forums, and event spaces are shared resources. By participating, you agree to:\n\nBe respectful - Treat other members with courtesy and professionalism. Disagreements are fine; personal attacks, harassment, discrimination, and intimidation are not.\n\nNo spam or self-promotion abuse - Do not post unsolicited advertisements, affiliate links, or repetitive promotional content. Sponsors may post job listings through the designated jobs feature.\n\nNo illegal content - Do not post content that violates Dutch or EU law, including but not limited to: copyrighted material you don't have rights to, malware, personal data of others without consent, or content that incites violence or hatred.\n\nLanguage - Posts in both English and Dutch are welcome across the platform.\n\nModeration - Our moderators have final say on content decisions. If your content is removed, you will be notified with a reason. Repeated violations may result in temporary or permanent suspension. Moderator decisions may be appealed by emailing privacy@aitcommunity.nl, but the final decision rests with the moderation team.",
+    "accountsBody": "When you create an account, you agree to:\n\nProvide accurate and complete information - Your name, email, and any other profile details must be truthful and up to date. You are responsible for updating your information if it changes.\n\nMaintain account security - You are responsible for keeping your login credentials secure. Do not share your password or access tokens with anyone. If you suspect unauthorized access, notify us immediately at info@klevox.com.\n\nOne account per person - Each individual may maintain only one account. Creating multiple accounts to circumvent bans, manipulate votes, or abuse platform features is prohibited and may result in permanent suspension.\n\nYou are responsible for all activity that occurs under your account, whether or not you authorized it.",
+    "communityBody": "The AIT community board, forums, and event spaces are shared resources. By participating, you agree to:\n\nBe respectful - Treat other members with courtesy and professionalism. Disagreements are fine; personal attacks, harassment, discrimination, and intimidation are not.\n\nNo spam or self-promotion abuse - Do not post unsolicited advertisements, affiliate links, or repetitive promotional content. Sponsors may post job listings through the designated jobs feature.\n\nNo illegal content - Do not post content that violates Dutch or EU law, including but not limited to: copyrighted material you don't have rights to, malware, personal data of others without consent, or content that incites violence or hatred.\n\nLanguage - Posts in both English and Dutch are welcome across the platform.\n\nModeration - Our moderators have final say on content decisions. If your content is removed, you will be notified with a reason. Repeated violations may result in temporary or permanent suspension. Moderator decisions may be appealed by emailing info@klevox.com, but the final decision rests with the moderation team.",
     "eventsBody": "AIT Community Netherlands organizes workshops, hackathons, deep-dives, and meetups. The following terms apply to events:\n\nRegistration - Events are registered through the Platform. Some events are free; others require payment. Your registration is confirmed only after successful payment (if applicable).\n\nTickets are non-transferable - Tickets and registrations are tied to your account and may not be transferred or resold to another person.\n\nRefund Policy:\n- 7 or more days before the event: full refund.\n- 2 to 6 days before the event: 50% refund.\n- Less than 2 days before the event: no refund.\nRefunds are processed via the original payment method through Mollie.\n\nCancellation and Rescheduling - AIT reserves the right to cancel or reschedule events due to unforeseen circumstances (venue issues, speaker cancellations, insufficient registrations, force majeure). In case of cancellation by AIT, registered attendees will receive a full refund.\n\nConduct at Events - Attendees must adhere to the community guidelines at in-person and online events. AIT reserves the right to remove attendees who violate these guidelines without refund.",
     "sponsorsBody": "Organizations that sponsor AIT Community Netherlands through our sponsorship program agree to the following:\n\nAccurate Information - Sponsors are responsible for ensuring all company information, branding assets, and descriptions provided to AIT are accurate and not misleading.\n\nJob Listings - Jobs posted through the sponsor job board must represent genuine, currently open positions. Listings must include accurate details about the role, location, and compensation. Fake, misleading, or discriminatory job listings are prohibited.\n\nRemoval Rights - AIT reserves the right to remove or modify any sponsor content, including job listings, that violates these terms, is misleading, or is otherwise inappropriate. We will notify the sponsor before or promptly after removal.\n\nTier Benefits - Sponsorship benefits correspond to the tier selected at the time of purchase (Bronze, Silver, or Gold), as described on the sponsorship page. Benefits apply for the duration of the sponsorship agreement. AIT will make reasonable efforts to deliver all tier benefits as described.",
     "ipBody": "Content Ownership - Users retain full ownership of content they create and post on the Platform, including community posts, ideas, articles, and profile information.\n\nLicense to AIT - By posting content on the Platform, you grant AIT Community Netherlands a non-exclusive, worldwide, royalty-free license to display, distribute, and promote your content within the context of the Platform and its associated channels (e.g. newsletter, social media). This license ends when you delete your content or account, except for anonymized community posts as described in our Privacy Policy.\n\nAIT Branding - The AIT Community Netherlands name, logo, and visual identity are our property. You may not use our branding without prior written permission, except sponsors may use branding as permitted under their sponsorship agreement.\n\nOpen Source - Where AIT publishes code, templates, or tools under an open-source license, that code is governed by the terms of its respective license (e.g. MIT, Apache 2.0). These Terms of Service do not override open-source license terms.",
@@ -632,8 +634,6 @@
     "generateKey": "Generate API Key",
     "regenerateKey": "Regenerate Key",
     "revokeKey": "Revoke",
-    "showKey": "Show",
-    "hideKey": "Hide",
     "keySaveWarning": "Save this key now - it won't be shown again!",
     "keyConfigHint": "Add to your Claude Code config:",
     "drafts": "Agent Drafts",
@@ -780,5 +780,147 @@
     "featuredImagePreview": "Preview",
     "featuredImagePlaceholder": "No image — add a URL above",
     "articleTitlePlaceholder": "Article title..."
+  },
+  "impact": {
+    "title": "Collaboration Impact",
+    "subtitle": "AI + human collaboration in measurable outcomes.",
+    "methodology": "Methodology",
+    "lastUpdated": "Last updated {date}",
+    "range30d": "Last 30 days",
+    "rangeAllTime": "All-time",
+    "coreTab": "Core Metrics",
+    "experimentalTab": "Experimental Insights",
+    "insufficientData": "Insufficient data",
+    "loading": "Loading collaboration metrics...",
+    "error": "Unable to load impact metrics right now.",
+    "core": {
+      "totalContributions": "Total Contributions",
+      "aiAssisted": "AI-Assisted Contributions",
+      "humanReviewedAi": "Human-Reviewed AI Contributions",
+      "collaborationRate": "Collaboration Rate",
+      "forumHelpfulness": "Forum Helpfulness",
+      "medianFirstResponse": "Median First Response Time",
+      "challengeParticipation": "Challenge Participation Rate",
+      "challengeCompletion": "Challenge Completion Rate",
+      "eventLinkedParticipation": "Event Participation Linked to Collaboration",
+      "collaborationGrowth4w": "4-Week Collaboration Growth"
+    },
+    "audience": {
+      "visitors": {
+        "title": "For Visitors",
+        "description": "Proof that AI + humans build meaningful outcomes together.",
+        "stats": {
+          "momentum": "Collaboration Momentum",
+          "outcomes": "Completed Challenges"
+        }
+      },
+      "members": {
+        "title": "For Members",
+        "description": "Signals of participation health, response quality, and learning loops.",
+        "stats": {
+          "responseHealth": "Response Health",
+          "answeredThreads": "Answered Threads"
+        }
+      },
+      "sponsors": {
+        "title": "For Sponsors",
+        "description": "Operational confidence through measurable delivery and engagement.",
+        "stats": {
+          "deliveryRate": "Delivery Rate",
+          "activeBuilders": "Active Builders"
+        }
+      }
+    },
+    "trends": {
+      "collaborationRateWeekly": "Weekly Collaboration Rate",
+      "contributionMix": "Contribution Mix (AI-only / Human-only / AI+Human)"
+    },
+    "experimental": {
+      "title": "Experimental Insights",
+      "badge": "Experimental",
+      "openDetails": "Open details",
+      "agentPersonalityMix": {
+        "title": "Agent Personality Mix",
+        "definition": "Distribution of collaboration styles such as Builder, Researcher, Critic, and Teacher.",
+        "calculation": "Derived from tagged contribution metadata across selected period.",
+        "why": "Helps the community explore which styles dominate and where diversity is missing.",
+        "caveats": "Tags are heuristic and may drift as prompts or workflows evolve."
+      },
+      "humanOverrideRate": {
+        "title": "Human Override Rate",
+        "definition": "How often humans significantly revise AI outputs before publication.",
+        "calculation": "Ratio of AI-assisted contributions with heavy edits against all AI-assisted contributions.",
+        "why": "Shows oversight quality and practical collaboration discipline.",
+        "caveats": "Edit significance relies on metadata thresholds and is not semantic quality scoring."
+      },
+      "creativityIndex": {
+        "title": "Creativity Index",
+        "definition": "Proxy score for diversity of solution approaches used by the community.",
+        "calculation": "Composite of distinct implementation patterns detected in challenge submissions.",
+        "why": "Highlights breadth of experimentation beyond repeating one template.",
+        "caveats": "A proxy metric that should be interpreted as directional only."
+      },
+      "collaborationDepth": {
+        "title": "Collaboration Depth",
+        "definition": "Average number of human-AI back-and-forth rounds per completed contribution.",
+        "calculation": "Mean round count in tracked collaboration sessions.",
+        "why": "Distinguishes true collaborative iteration from single-pass generation.",
+        "caveats": "Depends on consistent session tracking and activity instrumentation."
+      },
+      "ideaToImplTime": {
+        "title": "Idea-to-Implementation Time",
+        "definition": "Median time from challenge creation to first solution submission.",
+        "calculation": "Median of (submittedAt - challenge.createdAt) for completed enrollments.",
+        "why": "Tracks how quickly the community turns ideas into working implementations.",
+        "caveats": "Only measures challenges with submissions; open-ended challenges are excluded."
+      },
+      "crossPersonalityPairing": {
+        "title": "Cross-Personality Pairing",
+        "definition": "Most frequent combinations of collaboration styles within sessions.",
+        "calculation": "For each session, collect distinct personality labels and count pair frequencies.",
+        "why": "Reveals which style combinations are most productive.",
+        "caveats": "Depends on personality label accuracy and session tracking completeness."
+      },
+      "reuseRatio": {
+        "title": "Template Reuse Ratio",
+        "definition": "Ratio of template-based solutions to total solutions submitted.",
+        "calculation": "Count of events with templateBased=true divided by total solution events.",
+        "why": "Shows balance between reusing proven patterns and creating novel approaches.",
+        "caveats": "Template detection relies on metadata flags set during submission."
+      },
+      "learningLoop": {
+        "title": "Learning Loop Signal",
+        "definition": "Whether the community's solution approval rate is improving, stable, or declining.",
+        "calculation": "Compares 4-week approval rate against the previous 4 weeks; >5% delta = improving/declining.",
+        "why": "Indicates whether the community is learning from feedback and iterating.",
+        "caveats": "Small sample sizes can cause volatility; treat as directional."
+      },
+      "improving": "Improving",
+      "stable": "Stable",
+      "declining": "Declining",
+      "rounds": "rounds",
+      "days": "days"
+    },
+    "methodologyPanel": {
+      "title": "Methodology and Data Notes",
+      "aggregateOnly": "All values are aggregate-only. No member or agent rankings are shown.",
+      "freshness": "Metrics refresh on an hourly aggregation cycle.",
+      "exclusions": "Spam, deleted content, and moderation-flagged records are excluded where available."
+    },
+    "cta": {
+      "join": "Join the Community",
+      "challenge": "Start a Challenge",
+      "partner": "Become a Partner"
+    },
+    "qa": {
+      "title": "Impact Data Quality",
+      "subtitle": "Internal dashboard for verifying metric accuracy.",
+      "timeRange7d": "Last 7 days",
+      "timeRange90d": "Last 90 days",
+      "rawVsAggregated": "Raw vs Aggregated Comparison",
+      "anomalies": "Anomaly Detection",
+      "dataQuality": "Data Quality Score",
+      "reAggregate": "Re-aggregate"
+    }
   }
 }

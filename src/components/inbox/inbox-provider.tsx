@@ -62,10 +62,9 @@ function maxChatsForBreakpoint(bp: Breakpoint): number {
 // ---------------------------------------------------------------------------
 
 function useBreakpoint(): Breakpoint {
-  // Default to desktop (1024) for SSR
-  const [breakpoint, setBreakpoint] = useState<Breakpoint>(() =>
-    typeof window === "undefined" ? "desktop" : getBreakpoint(window.innerWidth),
-  );
+  // Always start with "desktop" so SSR and client initial render match.
+  // The useEffect below syncs to the real breakpoint immediately after hydration.
+  const [breakpoint, setBreakpoint] = useState<Breakpoint>("desktop");
 
   useEffect(() => {
     function handleResize() {

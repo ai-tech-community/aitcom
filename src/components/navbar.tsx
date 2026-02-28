@@ -19,6 +19,7 @@ const navLinks = [
   { href: "/events", key: "events", shortcut: "E" },
   { href: "/members", key: "members", shortcut: "M" },
   { href: "/blog", key: "blog", shortcut: "B" },
+  { href: "/impact", key: "impact", shortcut: "I" },
   { href: "/forum", key: "forum", shortcut: "F" },
   { href: "/community", key: "community", shortcut: "C" },
   { href: "/challenges", key: "challenges", shortcut: "G" },

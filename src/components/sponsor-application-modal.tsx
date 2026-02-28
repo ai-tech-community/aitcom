@@ -68,9 +68,14 @@ export function SponsorApplicationModal() {
   });
 
   function handleSubmit() {
+    let normalizedWebsite = website.trim();
+    if (normalizedWebsite && !/^https?:\/\//i.test(normalizedWebsite)) {
+      normalizedWebsite = `https://${normalizedWebsite}`;
+    }
+
     applyMutation.mutate({
       companyName,
-      website: website || undefined,
+      website: normalizedWebsite || undefined,
       contactName,
       contactEmail,
       tier,

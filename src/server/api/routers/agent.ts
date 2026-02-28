@@ -99,6 +99,7 @@ export const agentRouter = createTRPCRouter({
         title: t.title,
         category: t.category,
         authorName: t.authorName ?? null,
+        authorId: t.authorId ?? null,
         replyCount: t.replyCount ?? 0,
         isPinned: t.isPinned ?? false,
         isLocked: t.isLocked ?? false,
@@ -150,6 +151,9 @@ export const agentRouter = createTRPCRouter({
           content: thread.content,
           category: thread.category,
           authorName: thread.authorName ?? null,
+          authorId: thread.authorId ?? null,
+          authorType: "member" as const,
+          isOwnReply: thread.authorId === ctx.agent.agentId,
           isPinned: thread.isPinned ?? false,
           isLocked: thread.isLocked ?? false,
           createdAt: thread.createdAt,
@@ -158,6 +162,9 @@ export const agentRouter = createTRPCRouter({
           id: r.id,
           content: r.content,
           authorName: r.authorName ?? null,
+          authorId: r.authorId ?? null,
+          authorType: ((r as unknown as Record<string, unknown>).authorType as string) ?? "member",
+          isOwnReply: r.authorId === ctx.agent.agentId,
           createdAt: r.createdAt,
         })),
       };
@@ -418,6 +425,7 @@ export const agentRouter = createTRPCRouter({
         title: string;
         targetType: string | null;
         targetId: string | null;
+        actorType: string;
         relevance: string;
         createdAt: string;
       }[] = [];
@@ -487,6 +495,7 @@ export const agentRouter = createTRPCRouter({
             title,
             targetType: event.targetType,
             targetId: event.targetId,
+            actorType: event.actorType,
             relevance,
             createdAt: event.createdAt.toISOString(),
           });
@@ -532,6 +541,7 @@ export const agentRouter = createTRPCRouter({
             title: `Owner message: ${msg.content.slice(0, 80)}${msg.content.length > 80 ? "..." : ""}`,
             targetType: "inbox",
             targetId: agentConv.id,
+            actorType: "member",
             relevance: "Direct message from owner",
             createdAt: msg.createdAt.toISOString(),
           });
@@ -818,6 +828,54 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
+      // ── Self-loop prevention ──────────────────────────────────────────
+      const cooldownMinutes = agent.replyCooldownMinutes ?? 30;
+
+      // Fetch the last reply on this thread
+      const { docs: lastReplies } = await payload.find({
+        collection: "forum-replies",
+        where: { thread: { equals: input.threadId } },
+        sort: "-createdAt",
+        limit: 1,
+        depth: 0,
+      });
+
+      const lastReply = lastReplies[0];
+
+      // Block: agent is the last replier (self-reply)
+      if (lastReply?.authorId === agent.id) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message:
+            "You already posted the most recent reply on this thread. Wait for others to respond.",
+        });
+      }
+
+      // Block: agent replied to this thread within cooldown window
+      const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000).toISOString();
+      const { docs: recentOwnReplies } = await payload.find({
+        collection: "forum-replies",
+        where: {
+          and: [
+            { thread: { equals: input.threadId } },
+            { authorId: { equals: agent.id } },
+            { createdAt: { greater_than: cooldownCutoff } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+      });
+
+      if (recentOwnReplies.length > 0) {
+        const nextAllowed = new Date(
+          new Date(recentOwnReplies[0]!.createdAt).getTime() + cooldownMinutes * 60 * 1000,
+        );
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Cooldown active. You can reply to this thread again after ${nextAllowed.toISOString()}.`,
+        });
+      }
+
       // Ghost mode: save as draft
       if (agent.visibilityMode === "ghost") {
         const [draft] = await ctx.db
@@ -843,6 +901,7 @@ export const agentRouter = createTRPCRouter({
           content: plainTextToLexical(input.content),
           authorId: agent.id,
           authorName: `${agent.name} (AI)`,
+          authorType: "agent",
         },
       });
 
@@ -872,6 +931,7 @@ export const agentRouter = createTRPCRouter({
         targetType: "forum-threads",
         targetId: String(input.threadId),
         metadata: { agentName: agent.name },
+        collabSessionId: String(input.threadId),
       });
 
       return { mode: "visible" as const, posted: true };
@@ -932,6 +992,54 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
+      // ── Self-loop prevention ──────────────────────────────────────────
+      const cooldownMinutes = agent.replyCooldownMinutes ?? 30;
+
+      // Fetch the last reply on this thread
+      const { docs: lastReplies } = await payload.find({
+        collection: "forum-replies",
+        where: { thread: { equals: input.threadId } },
+        sort: "-createdAt",
+        limit: 1,
+        depth: 0,
+      });
+
+      const lastReply = lastReplies[0];
+
+      // Block: agent is the last replier (self-reply)
+      if (lastReply?.authorId === agent.id) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message:
+            "You already posted the most recent reply on this thread. Wait for others to respond.",
+        });
+      }
+
+      // Block: agent replied to this thread within cooldown window
+      const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000).toISOString();
+      const { docs: recentOwnReplies } = await payload.find({
+        collection: "forum-replies",
+        where: {
+          and: [
+            { thread: { equals: input.threadId } },
+            { authorId: { equals: agent.id } },
+            { createdAt: { greater_than: cooldownCutoff } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+      });
+
+      if (recentOwnReplies.length > 0) {
+        const nextAllowed = new Date(
+          new Date(recentOwnReplies[0]!.createdAt).getTime() + cooldownMinutes * 60 * 1000,
+        );
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Cooldown active. You can reply to this thread again after ${nextAllowed.toISOString()}.`,
+        });
+      }
+
       // Ghost mode: save as draft with knowledge_share type
       if (agent.visibilityMode === "ghost") {
         const [draft] = await ctx.db
@@ -959,6 +1067,7 @@ export const agentRouter = createTRPCRouter({
           content: plainTextToLexical(knowledgeContent),
           authorId: agent.id,
           authorName: `${agent.name} (AI)`,
+          authorType: "agent",
         },
       });
 
@@ -988,6 +1097,7 @@ export const agentRouter = createTRPCRouter({
         targetType: "forum-threads",
         targetId: String(input.threadId),
         metadata: { agentName: agent.name },
+        collabSessionId: String(input.threadId),
       });
 
       return { mode: "visible" as const, posted: true };
@@ -1396,6 +1506,7 @@ export const agentRouter = createTRPCRouter({
         }
       }
       // Create progress-log thread
+      let progressLogThreadId: string | undefined;
       if (channel) {
         const profile = await ctx.db
           .select({ displayName: memberProfiles.displayName })
@@ -1415,6 +1526,7 @@ export const agentRouter = createTRPCRouter({
           })
           .returning();
         if (thread) {
+          progressLogThreadId = thread.id;
           await ctx.db
             .update(challengeEnrollments)
             .set({ progressLogThreadId: thread.id })
@@ -1428,6 +1540,7 @@ export const agentRouter = createTRPCRouter({
         targetType: "challenges",
         targetId: String(input.challengeId),
         metadata: { title: challenge.title, ownerId },
+        collabSessionId: progressLogThreadId,
       });
       return { enrolled: true, enrollmentId: enrollment.id };
     }),
@@ -1615,6 +1728,7 @@ export const agentRouter = createTRPCRouter({
         .select({
           visibilityMode: agentProfiles.visibilityMode,
           name: agentProfiles.name,
+          replyCooldownMinutes: agentProfiles.replyCooldownMinutes,
         })
         .from(agentProfiles)
         .where(eq(agentProfiles.id, ctx.agent.agentId))
@@ -1639,6 +1753,33 @@ export const agentRouter = createTRPCRouter({
           drafted: true,
           message: "Saved as draft for owner review",
         };
+      }
+
+      // ── Self-loop prevention for challenge channels ─────────────────
+      const cooldownMinutes = agent?.replyCooldownMinutes ?? 30;
+      const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000);
+
+      const [recentOwnReply] = await ctx.db
+        .select({ id: challengeReplies.id, createdAt: challengeReplies.createdAt })
+        .from(challengeReplies)
+        .where(
+          and(
+            eq(challengeReplies.authorId, ctx.agent.ownerId),
+            eq(challengeReplies.authorType, "agent"),
+            sql`${challengeReplies.createdAt} > ${cooldownCutoff}`,
+          ),
+        )
+        .orderBy(desc(challengeReplies.createdAt))
+        .limit(1);
+
+      if (recentOwnReply) {
+        const nextAllowed = new Date(
+          new Date(recentOwnReply.createdAt).getTime() + cooldownMinutes * 60 * 1000,
+        );
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Cooldown active. You can post to this challenge channel again after ${nextAllowed.toISOString()}.`,
+        });
       }
 
       // Find enrollment's progress-log thread or create new thread

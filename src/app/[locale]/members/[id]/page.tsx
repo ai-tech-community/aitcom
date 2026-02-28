@@ -67,7 +67,7 @@ export default async function MemberProfilePage({
   const xpProgress = xpForNextLevel(profile.xp);
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-16 sm:px-12">
+    <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       {/* Header */}
       <div className="flex items-start gap-3 sm:gap-5">
         {avatarUrl ? (

@@ -325,6 +325,7 @@ export const agentProfiles = appSchema.table("agent_profile", (d) => ({
     .notNull(),
   lastActiveAt: d.timestamp({ withTimezone: true }),
   canReadOwnerDMs: d.boolean().default(true).notNull(),
+  replyCooldownMinutes: d.integer().notNull().default(30),
   updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 }));
 
@@ -400,6 +401,7 @@ export const agentWebhooks = appSchema.table("agent_webhook", (d) => ({
     .default([]),
   cursor: d.timestamp({ withTimezone: true }),
   consecutiveFailures: d.integer().notNull().default(0),
+  consecutiveAgentEvents: d.integer().notNull().default(0),
   isEnabled: d.boolean().notNull().default(true),
   createdAt: d
     .timestamp({ withTimezone: true })
@@ -487,6 +489,8 @@ export const activityEvents = appSchema.table(
     targetType: d.varchar({ length: 50 }),
     targetId: d.varchar({ length: 255 }),
     metadata: d.json().$type<Record<string, unknown>>(),
+    collabSessionId: d.varchar("collab_session_id", { length: 255 }),
+    contextType: d.varchar("context_type", { length: 30 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -496,8 +500,47 @@ export const activityEvents = appSchema.table(
     index("activity_events_actor_idx").on(t.actorId),
     index("activity_events_action_idx").on(t.action),
     index("activity_events_created_idx").on(t.createdAt),
+    index("activity_events_session_idx").on(t.collabSessionId),
   ],
 );
+
+// Aggregate tables for impact analytics
+export const dailyCoreMetrics = appSchema.table("daily_core_metrics", (d) => ({
+  date: d.date().notNull().primaryKey(),
+  totalContributions: d.integer().notNull().default(0),
+  aiAssisted: d.integer().notNull().default(0),
+  humanReviewed: d.integer().notNull().default(0),
+  collaborationRate: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
+  forumHelpfulness: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
+  medianResponseMinutes: d.integer(),
+  challengeParticipation: d.integer().notNull().default(0),
+  challengeCompletion: d.integer().notNull().default(0),
+  eventParticipation: d.integer().notNull().default(0),
+  growth4w: d.numeric({ precision: 6, scale: 1 }).notNull().default("0"),
+  computedAt: d.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}));
+
+export const dailyExperimentalMetrics = appSchema.table("daily_experimental_metrics", (d) => ({
+  date: d.date().notNull().primaryKey(),
+  personalityDistribution: d.json().$type<Record<string, number>>().notNull().default({}),
+  overrideRate: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
+  creativityIndex: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
+  collaborationDepth: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
+  ideaToImplMedianMinutes: d.integer(),
+  topPairings: d.json().$type<Array<{ pair: [string, string]; count: number }>>().notNull().default([]),
+  reuseRatio: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
+  learningLoopSignal: d.varchar("learning_loop_signal", { length: 20 }).$type<"improving" | "stable" | "declining">().notNull().default("stable"),
+  learningLoopData: d.json().$type<Record<string, number>>().notNull().default({}),
+  computedAt: d.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}));
+
+export const dailyCollabMix = appSchema.table("daily_collab_mix", (d) => ({
+  date: d.date().notNull().primaryKey(),
+  aiOnly: d.integer().notNull().default(0),
+  humanOnly: d.integer().notNull().default(0),
+  collaborative: d.integer().notNull().default(0),
+  computedAt: d.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}));
 
 // Challenge enrollments (member joins a challenge)
 export const challengeEnrollments = appSchema.table(

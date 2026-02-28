@@ -244,6 +244,7 @@ export const challengesRouter = createTRPCRouter({
       }
 
       // Create progress-log thread for this participant
+      let progressLogThreadId: string | undefined;
       if (channel) {
         const profile = await ctx.db
           .select({ displayName: memberProfiles.displayName })
@@ -267,6 +268,7 @@ export const challengesRouter = createTRPCRouter({
 
         // Store thread reference on enrollment
         if (progressLogThread) {
+          progressLogThreadId = progressLogThread.id;
           await ctx.db
             .update(challengeEnrollments)
             .set({ progressLogThreadId: progressLogThread.id })
@@ -281,7 +283,11 @@ export const challengesRouter = createTRPCRouter({
         action: "challenge.enrolled",
         targetType: "challenges",
         targetId: String(challengeId),
-        metadata: { title: challenge.title },
+        collabSessionId: progressLogThreadId,
+        metadata: {
+          title: challenge.title,
+          collaborationModel: challenge.collaborationModel ?? undefined,
+        },
       });
 
       return enrollment;
@@ -317,6 +323,7 @@ export const challengesRouter = createTRPCRouter({
       // Log activity
       const payload = await getPayloadClient();
       let title = "Challenge";
+      let collaborationModel: string | undefined;
       try {
         const challenge = await payload.findByID({
           collection: "challenges",
@@ -324,6 +331,7 @@ export const challengesRouter = createTRPCRouter({
           depth: 0,
         });
         title = challenge.title;
+        collaborationModel = challenge.collaborationModel ?? undefined;
       } catch {
         // use fallback title
       }
@@ -334,7 +342,8 @@ export const challengesRouter = createTRPCRouter({
         action: "challenge.abandoned",
         targetType: "challenges",
         targetId: String(challengeId),
-        metadata: { title },
+        collabSessionId: updated.progressLogThreadId ?? undefined,
+        metadata: { title, collaborationModel },
       });
 
       return { success: true };
@@ -689,7 +698,10 @@ export const challengesRouter = createTRPCRouter({
         action: "challenge.proposed",
         targetType: "challenges",
         targetId: String(challenge.id),
-        metadata: { title: input.title },
+        metadata: {
+          title: input.title,
+          collaborationModel: challenge.collaborationModel ?? undefined,
+        },
       });
 
       return challenge;
@@ -807,7 +819,10 @@ export const challengesRouter = createTRPCRouter({
         action: "challenge.created",
         targetType: "challenges",
         targetId: String(challenge.id),
-        metadata: { title: input.title },
+        metadata: {
+          title: input.title,
+          collaborationModel: challenge.collaborationModel ?? undefined,
+        },
       });
 
       return challenge;
@@ -888,7 +903,8 @@ export const challengesRouter = createTRPCRouter({
         action: "challenge.solution_submitted",
         targetType: "challenges",
         targetId: String(input.challengeId),
-        metadata: { title: input.title },
+        collabSessionId: enrollment.progressLogThreadId ?? undefined,
+        metadata: { title: input.title, templateBased: false },
       });
 
       return thread!;
@@ -983,9 +999,12 @@ export const challengesRouter = createTRPCRouter({
           : "challenge.solution_rejected",
         targetType: "challenges",
         targetId: String(input.challengeId),
+        collabSessionId: enrollment.progressLogThreadId ?? undefined,
         metadata: {
           participantUserId: input.participantUserId,
           objectiveIndex: input.objectiveIndex,
+          editSignificance: input.approved ? "minor" : "rejection",
+          collaborationModel: challenge.collaborationModel ?? undefined,
         },
       });
 

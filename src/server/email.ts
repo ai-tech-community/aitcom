@@ -13,7 +13,7 @@ export function getResend(): Resend | null {
   return resendInstance;
 }
 
-const FROM_EMAIL = "AIT Community <noreply@aitcommunity.nl>";
+const FROM_EMAIL = "AIT Community <noreply@mailer.klevox.com>";
 
 interface EventEmailData {
   eventTitle: string;
@@ -179,7 +179,7 @@ export async function sendSponsorApplicationNotification(
 
   await resend.emails.send({
     from: FROM_EMAIL,
-    to: "team@aitcommunity.nl",
+    to: "info@mailer.klevox.com>",
     subject: `New sponsor application: ${data.companyName} (${data.tier})`,
     html: `
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">

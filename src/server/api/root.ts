@@ -9,6 +9,7 @@ import { communityRouter } from "@/server/api/routers/community";
 import { eventsRouter } from "@/server/api/routers/events";
 import { membersRouter } from "@/server/api/routers/members";
 import { inboxRouter } from "@/server/api/routers/inbox";
+import { impactRouter } from "@/server/api/routers/impact";
 import { onboardingRouter } from "@/server/api/routers/onboarding";
 import { postRouter } from "@/server/api/routers/post";
 import { sponsorsRouter } from "@/server/api/routers/sponsors";
@@ -30,6 +31,7 @@ export const appRouter = createTRPCRouter({
   agent: agentRouter,
   activity: activityRouter,
   inbox: inboxRouter,
+  impact: impactRouter,
   onboarding: onboardingRouter,
   challengeChannel: challengeChannelRouter,
   challengeEngine: challengeEngineRouter,
