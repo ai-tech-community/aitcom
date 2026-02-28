@@ -135,7 +135,7 @@ function renderDuration(value: unknown, suffix?: string) {
   return (
     <p className="mt-2 flex items-baseline gap-1.5">
       <span className="text-2xl font-bold text-zinc-900">{display}</span>
-      {suffix ? (
+      {suffix && display !== "-" ? (
         <span className="text-sm text-zinc-500">{suffix}</span>
       ) : null}
     </p>

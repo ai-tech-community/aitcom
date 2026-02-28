@@ -11,7 +11,7 @@ export default async function DashboardLayout({
   if (!session?.user) redirect("/auth/signin");
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-8">
+    <div className="mx-auto max-w-6xl px-6 py-8 sm:px-12">
       <h1 className="text-3xl font-extrabold tracking-tight">Dashboard</h1>
       <p className="mt-2 text-muted-foreground">
         Welcome back, {session.user.name ?? session.user.email}

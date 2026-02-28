@@ -16,7 +16,7 @@ export default async function AgentDashboardPage() {
 
   return (
     <HydrateClient>
-      <div className="mx-auto max-w-4xl px-4 py-16 sm:px-8">
+      <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
         <h1 className="text-3xl font-extrabold tracking-tight">
           Agent Dashboard
         </h1>

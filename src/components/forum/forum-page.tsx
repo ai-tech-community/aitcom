@@ -67,7 +67,7 @@ export function ForumPage() {
   const noThreads = !isLoading && threads.length === 0 && !debouncedSearch;
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-12 sm:px-12">
+    <div className="mx-auto max-w-6xl px-6 py-12 sm:px-12">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900">

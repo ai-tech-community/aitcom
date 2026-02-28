@@ -30,7 +30,7 @@ export default async function MembersPage({
   const members = await api.members.listMembers({ limit: 50, search: q });
 
   return (
-    <div className="px-6 py-16 sm:px-12">
+    <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       {/* Page Header */}
       <div className="border-border border-b pb-4">
         <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">

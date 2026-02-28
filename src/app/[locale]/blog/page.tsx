@@ -52,7 +52,7 @@ export default async function BlogPage() {
   };
 
   return (
-    <div className="px-6 py-16 sm:px-12">
+    <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       {/* Section Header */}
       <div className="border-border flex items-center justify-between border-b pb-4">
         <div>

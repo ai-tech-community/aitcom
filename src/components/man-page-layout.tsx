@@ -20,7 +20,7 @@ export function ManPageLayout({
   const tag = `${pageName.toUpperCase()}(${section})`;
 
   return (
-    <article className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-8">
+    <article className="mx-auto w-full max-w-6xl px-6 py-12 sm:px-12">
       {/* Header */}
       <div className="text-muted-foreground border-border flex items-center justify-between border-b pb-3 font-mono text-xs tracking-wider">
         <span>{tag}</span>

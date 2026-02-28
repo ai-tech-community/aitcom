@@ -330,7 +330,6 @@ async function computeFromRawEvents(
           key: "ideaToImplTime",
           displayType: "duration" as const,
           value: null,
-          suffix: "days",
         },
         {
           key: "crossPersonalityPairing",
@@ -480,12 +479,14 @@ export const impactRouter = createTRPCRouter({
         .map((r) => r.ideaToImplMedianMinutes)
         .filter((v): v is number => v != null)
         .sort((a, b) => a - b);
-      const medianIdeaToImpl =
+      const medianIdeaToImplMinutes =
         implMinutes.length === 0
           ? null
-          : Number(
-              ((implMinutes[Math.floor(implMinutes.length / 2)] ?? 0) / 1440).toFixed(1),
-            );
+          : implMinutes[Math.floor(implMinutes.length / 2)] ?? null;
+      const medianIdeaToImpl =
+        medianIdeaToImplMinutes != null
+          ? Number((medianIdeaToImplMinutes / 1440).toFixed(1))
+          : null;
 
       // Weekly active contributors (distinct actors in the last 7 days)
       const weeklyActiveRows = await ctx.db
@@ -574,8 +575,7 @@ export const impactRouter = createTRPCRouter({
             {
               key: "ideaToImplTime",
               displayType: "duration" as const,
-              value: medianIdeaToImpl,
-              suffix: "days",
+              value: medianIdeaToImplMinutes,
             },
             {
               key: "crossPersonalityPairing",

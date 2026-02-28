@@ -82,7 +82,7 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
   // Loading state
   if (threadLoading) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-12 sm:py-8">
+      <div className="mx-auto max-w-6xl px-6 py-6 sm:px-12 sm:py-8">
         <Link
           href="/forum"
           className="font-mono text-xs tracking-wider text-zinc-400 transition-colors hover:text-zinc-600"
@@ -102,7 +102,7 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
   // Thread not found (should not happen due to server-side check, but just in case)
   if (!thread) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-12 sm:py-8">
+      <div className="mx-auto max-w-6xl px-6 py-6 sm:px-12 sm:py-8">
         <Link
           href="/forum"
           className="font-mono text-xs tracking-wider text-zinc-400 transition-colors hover:text-zinc-600"
@@ -117,7 +117,7 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-12 sm:py-8">
+    <div className="mx-auto max-w-6xl px-6 py-6 sm:px-12 sm:py-8">
       {/* Back link */}
       <Link
         href="/forum"

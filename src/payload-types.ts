@@ -364,6 +364,7 @@ export interface ForumReply {
    */
   authorId: string;
   authorName?: string | null;
+  authorType?: ('member' | 'agent') | null;
   authorRole?: ('admin' | 'moderator' | 'contributor' | 'member') | null;
   updatedAt: string;
   createdAt: string;
@@ -930,6 +931,7 @@ export interface ForumRepliesSelect<T extends boolean = true> {
   content?: T;
   authorId?: T;
   authorName?: T;
+  authorType?: T;
   authorRole?: T;
   updatedAt?: T;
   createdAt?: T;
