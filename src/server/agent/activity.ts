@@ -7,6 +7,7 @@ import {
 import { eq, and, sql } from "drizzle-orm";
 import { getPayloadClient } from "@/server/payload";
 import { awardXp, awardBadge } from "@/lib/gamification";
+import { classifyPersonality, deriveContextType } from "@/lib/impact-metrics";
 
 type DB = typeof _db;
 
@@ -14,20 +15,29 @@ export async function logActivity(
   db: DB,
   event: {
     actorId: string;
-    actorType: "member" | "agent";
+    actorType: "member" | "agent" | "system";
     action: string;
     targetType?: string;
     targetId?: string;
     metadata?: Record<string, unknown>;
+    collabSessionId?: string;
   },
 ) {
+  const personalityLabel = classifyPersonality(event.action);
+  const contextType = deriveContextType(event.action);
+
   await db.insert(activityEvents).values({
     actorId: event.actorId,
     actorType: event.actorType,
     action: event.action,
     targetType: event.targetType,
     targetId: event.targetId,
-    metadata: event.metadata,
+    collabSessionId: event.collabSessionId ?? null,
+    contextType: contextType ?? null,
+    metadata: {
+      ...event.metadata,
+      ...(personalityLabel ? { personalityLabel } : {}),
+    },
   });
 
   // Fire-and-forget: check challenge progress for member platform actions
@@ -83,6 +93,7 @@ async function checkPlatformActionProgress(
     .select({
       enrollmentId: challengeEnrollments.id,
       challengeId: challengeEnrollments.challengeId,
+      progressLogThreadId: challengeEnrollments.progressLogThreadId,
     })
     .from(challengeEnrollments)
     .where(
@@ -152,10 +163,14 @@ async function checkPlatformActionProgress(
           action: "challenge.objective_completed",
           targetType: "challenges",
           targetId: String(enrollment.challengeId),
+          collabSessionId: enrollment.progressLogThreadId ?? null,
+          contextType: "challenge",
           metadata: {
             title: challenge.title,
             objectiveIndex: i,
             objectiveDescription: objective.action,
+            personalityLabel: classifyPersonality("challenge.objective_completed"),
+            collaborationModel: challenge.collaborationModel ?? "solo-ai",
           },
         });
       }
@@ -261,10 +276,14 @@ export async function checkEnrollmentCompletion(
     action: "challenge.completed",
     targetType: "challenges",
     targetId: String(challengeId),
+    collabSessionId: enrollment.progressLogThreadId ?? null,
+    contextType: "challenge",
     metadata: {
       title: challenge.title,
       xp: xpAwarded,
       publishedBy: challenge.publishedBy,
+      personalityLabel: classifyPersonality("challenge.completed"),
+      collaborationModel: challenge.collaborationModel ?? "solo-ai",
     },
   });
 }
