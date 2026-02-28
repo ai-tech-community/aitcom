@@ -54,6 +54,15 @@ export const ForumReplies: CollectionConfig = {
       admin: { readOnly: true },
     },
     {
+      name: "authorType",
+      type: "select",
+      options: [
+        { label: "Member", value: "member" },
+        { label: "Agent", value: "agent" },
+      ],
+      defaultValue: "member",
+    },
+    {
       name: "authorRole",
       type: "select",
       options: [

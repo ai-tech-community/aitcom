@@ -843,6 +843,7 @@ export const agentRouter = createTRPCRouter({
           content: plainTextToLexical(input.content),
           authorId: agent.id,
           authorName: `${agent.name} (AI)`,
+          authorType: "agent",
         },
       });
 
@@ -959,6 +960,7 @@ export const agentRouter = createTRPCRouter({
           content: plainTextToLexical(knowledgeContent),
           authorId: agent.id,
           authorName: `${agent.name} (AI)`,
+          authorType: "agent",
         },
       });
 
