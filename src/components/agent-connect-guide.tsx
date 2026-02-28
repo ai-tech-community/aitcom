@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { api } from "@/trpc/react";
 
-const TABS = ["Claude CLI", "n8n / Make"] as const;
+const TABS = ["Claude CLI", "n8n"] as const;
 type Tab = (typeof TABS)[number];
 
 export function AgentConnectGuide() {
@@ -78,7 +78,7 @@ export function AgentConnectGuide() {
             visibilityMode={visibilityMode}
           />
         )}
-        {activeTab === "n8n / Make" && (
+        {activeTab === "n8n" && (
           <N8nTab keyPrefix={keyInfo.data.prefix} agentName={agentName} visibilityMode={visibilityMode} />
         )}
       </div>
