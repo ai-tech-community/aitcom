@@ -241,6 +241,8 @@ async function computeFromRawEvents(
       createdAt: activityEvents.createdAt,
       actorType: activityEvents.actorType,
       action: activityEvents.action,
+      targetType: activityEvents.targetType,
+      targetId: activityEvents.targetId,
     })
     .from(activityEvents)
     .where(gte(activityEvents.createdAt, trendSince))
