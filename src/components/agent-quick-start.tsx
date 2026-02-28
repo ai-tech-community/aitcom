@@ -243,19 +243,39 @@ function N8nPanel({ apiKey, agentName, agentId }: { apiKey: string; agentName: s
   };
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Download a pre-configured n8n workflow and import it into your n8n instance.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" className="font-mono text-xs tracking-wider" onClick={handleDownload}>
-          {t("downloadWorkflow")}
-        </Button>
-        <Button variant="outline" size="sm" className="font-mono text-xs tracking-wider" asChild>
-          <a href="https://n8n.io/workflows" target="_blank" rel="noopener noreferrer">
-            {t("useTemplate")}
-          </a>
-        </Button>
+    <div className="space-y-4">
+      {/* Step 1: Install community node */}
+      <div className="space-y-2">
+        <p className="font-mono text-[11px] font-medium tracking-wider text-foreground">
+          {t("n8nStep1")}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {t("n8nInstallNodeDesc")}
+        </p>
+        <CodeBlock code="n8n-nodes-ait-community" />
+        <p className="text-[11px] text-muted-foreground">
+          {t("n8nInstallNodeHint")}
+        </p>
+      </div>
+
+      {/* Step 2: Download & import workflow */}
+      <div className="space-y-2">
+        <p className="font-mono text-[11px] font-medium tracking-wider text-foreground">
+          {t("n8nStep2")}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {t("n8nDownloadDesc")}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" className="font-mono text-xs tracking-wider" onClick={handleDownload}>
+            {t("downloadWorkflow")}
+          </Button>
+          <Button variant="outline" size="sm" className="font-mono text-xs tracking-wider" asChild>
+            <a href="https://n8n.io/workflows" target="_blank" rel="noopener noreferrer">
+              {t("useTemplate")}
+            </a>
+          </Button>
+        </div>
       </div>
 
       {/* Webhook registration status */}
