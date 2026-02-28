@@ -29,17 +29,30 @@ export function TrendPanels({
         <h3 className="font-mono text-[11px] uppercase tracking-widest text-zinc-600">
           {labels.collaborationRateWeekly}
         </h3>
-        <div className="mt-4 flex h-40 items-end gap-2">
-          {weeklyCollaboration.map((entry) => (
-            <div key={entry.label} className="flex flex-1 flex-col items-center gap-2">
-              <div
-                className="w-full rounded-sm bg-zinc-900/70"
-                style={{ height: `${Math.max(6, (entry.value / maxCollab) * 100)}%` }}
-              />
-              <span className="font-mono text-[9px] uppercase text-zinc-500">{entry.label}</span>
-            </div>
-          ))}
-        </div>
+        {weeklyCollaboration.every((entry) => entry.value === 0) ? (
+          <div className="mt-4 flex h-40 items-center justify-center">
+            <p className="font-mono text-xs text-zinc-400">No collaboration data yet</p>
+          </div>
+        ) : (
+          <div className="mt-4 flex h-40 items-end gap-2">
+            {weeklyCollaboration.map((entry) => (
+              <div key={entry.label} className="flex flex-1 flex-col items-center gap-1">
+                <span className="font-mono text-[9px] text-zinc-500">
+                  {entry.value > 0 ? `${Math.round(entry.value)}%` : ""}
+                </span>
+                <div
+                  className="w-full rounded-sm bg-zinc-900/70"
+                  style={{
+                    height: `${entry.value === 0 ? 0 : Math.max(10, (entry.value / maxCollab) * 100)}%`,
+                  }}
+                />
+                <span className="font-mono text-[9px] uppercase text-zinc-500">
+                  {entry.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </article>
 
       <article className="rounded-lg border border-zinc-200 bg-white/80 p-4">
