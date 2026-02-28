@@ -37,6 +37,8 @@ export function toWeeklyBuckets(
     createdAt: Date;
     actorType: string;
     action: string;
+    targetType: string | null;
+    targetId: string | null;
   }>,
   weeks = 8,
 ): Bucket[] {
@@ -56,23 +58,63 @@ export function toWeeklyBuckets(
     });
   }
 
+  // --- Pass 1: find collaborative targets per weekly bucket ---
+  // A target is collaborative if both "agent" and "member" acted on it in the same week.
+  const weekTargetActors = new Map<string, Map<string, Set<string>>>();
   for (const row of rows) {
-    const wk = startOfWeek(new Date(row.createdAt));
-    const bucket = map.get(wk.toISOString());
-    if (!bucket) continue;
+    if (!row.targetType || !row.targetId) continue;
+    const wk = startOfWeek(new Date(row.createdAt)).toISOString();
+    if (!map.has(wk)) continue;
 
-    const isCollaborativeAction =
-      row.action.startsWith("challenge.") ||
-      row.action.startsWith("thread.") ||
-      row.action.startsWith("article.");
-
-    if (isCollaborativeAction) {
-      bucket.collaborative += 1;
-      continue;
+    let targets = weekTargetActors.get(wk);
+    if (!targets) {
+      targets = new Map();
+      weekTargetActors.set(wk, targets);
     }
 
-    if (row.actorType === "agent") bucket.aiOnly += 1;
-    else bucket.humanOnly += 1;
+    const targetKey = `${row.targetType}:${row.targetId}`;
+    let actors = targets.get(targetKey);
+    if (!actors) {
+      actors = new Set();
+      targets.set(targetKey, actors);
+    }
+    actors.add(row.actorType);
+  }
+
+  // Build set of collaborative target keys per week
+  const collabTargets = new Map<string, Set<string>>();
+  for (const [wk, targets] of weekTargetActors) {
+    const collabSet = new Set<string>();
+    for (const [targetKey, actors] of targets) {
+      if (actors.has("agent") && actors.has("member")) {
+        collabSet.add(targetKey);
+      }
+    }
+    if (collabSet.size > 0) collabTargets.set(wk, collabSet);
+  }
+
+  // --- Pass 2: classify each event ---
+  for (const row of rows) {
+    const wk = startOfWeek(new Date(row.createdAt));
+    const wkKey = wk.toISOString();
+    const bucket = map.get(wkKey);
+    if (!bucket) continue;
+
+    const targetKey = row.targetType && row.targetId
+      ? `${row.targetType}:${row.targetId}`
+      : null;
+
+    const isCollab = targetKey
+      ? collabTargets.get(wkKey)?.has(targetKey) ?? false
+      : false;
+
+    if (isCollab) {
+      bucket.collaborative += 1;
+    } else if (row.actorType === "agent") {
+      bucket.aiOnly += 1;
+    } else {
+      bucket.humanOnly += 1;
+    }
   }
 
   return [...map.values()];
