@@ -305,19 +305,46 @@ async function computeFromRawEvents(
       items: [
         {
           key: "agentPersonalityMix",
-          value: aiAssisted,
+          displayType: "distribution" as const,
+          value: {} as Record<string, number>,
         },
         {
           key: "humanOverrideRate",
+          displayType: "percentage" as const,
           value: clampRate(safePercent(humanReviewedAi, Math.max(aiAssisted, 1))),
         },
         {
           key: "creativityIndex",
+          displayType: "percentage" as const,
           value: clampRate(safePercent(challengeCompleted, Math.max(challengeParticipation, 1))),
         },
         {
           key: "collaborationDepth",
+          displayType: "number" as const,
           value: Number((humanReviewedAi / Math.max(challengeCompleted, 1)).toFixed(1)),
+          suffix: "rounds",
+        },
+        {
+          key: "ideaToImplTime",
+          displayType: "duration" as const,
+          value: null,
+          suffix: "days",
+        },
+        {
+          key: "crossPersonalityPairing",
+          displayType: "pairings" as const,
+          value: [],
+        },
+        {
+          key: "reuseRatio",
+          displayType: "percentage" as const,
+          value: 0,
+        },
+        {
+          key: "learningLoop",
+          displayType: "trend" as const,
+          value: "stable",
+          data: {},
         },
       ],
     },

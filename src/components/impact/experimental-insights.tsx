@@ -273,6 +273,7 @@ export function ExperimentalInsights({
               <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
                 {detail.title}
               </p>
+              <p className="mt-1 text-xs text-zinc-500">{detail.definition}</p>
               {renderMetricValue(item)}
               <Dialog>
                 <DialogTrigger asChild>
