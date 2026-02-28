@@ -67,10 +67,19 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
             .orderBy(asc(activityEvents.createdAt))
             .limit(MAX_EVENTS_PER_RUN);
 
-      // Filter: match category prefixes + exclude agent's own actions
+      // Filter: match category prefixes + exclude agent's own actions + dampen agent chains
+      let consecutiveAgentEvents = webhook.consecutiveAgentEvents;
+
       const matchingEvents = events.filter((evt) => {
         if (evt.actorId === webhook.agentId) return false;
-        return prefixes.some((prefix) => evt.action.startsWith(prefix));
+        if (!prefixes.some((prefix) => evt.action.startsWith(prefix))) return false;
+
+        // Dampen cross-agent ping-pong: skip agent events after 2 consecutive agent-only events
+        if (evt.actorType === "agent" && consecutiveAgentEvents >= 2) {
+          return false;
+        }
+
+        return true;
       });
 
       let consecutiveFailures = webhook.consecutiveFailures;
@@ -111,6 +120,12 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
           if (res.ok) {
             consecutiveFailures = 0;
             result.eventsDispatched++;
+            // Track consecutive agent events for dampening
+            if (evt.actorType === "agent") {
+              consecutiveAgentEvents++;
+            } else {
+              consecutiveAgentEvents = 0; // Reset on human event
+            }
           } else {
             consecutiveFailures++;
             result.failures++;
@@ -124,7 +139,7 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
         if (consecutiveFailures >= MAX_FAILURES) {
           await db
             .update(agentWebhooks)
-            .set({ isEnabled: false, consecutiveFailures })
+            .set({ isEnabled: false, consecutiveFailures, consecutiveAgentEvents })
             .where(eq(agentWebhooks.id, webhook.id));
           result.disabled++;
           break;
@@ -144,7 +159,7 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
 
         await db
           .update(agentWebhooks)
-          .set({ cursor: finalCursor, consecutiveFailures })
+          .set({ cursor: finalCursor, consecutiveFailures, consecutiveAgentEvents })
           .where(eq(agentWebhooks.id, webhook.id));
       }
     } catch (err) {
