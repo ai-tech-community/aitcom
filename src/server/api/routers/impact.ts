@@ -2,7 +2,7 @@ import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { clampRate, safeDelta, safePercent, toWeeklyBuckets } from "@/lib/impact-metrics";
-import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
 import {
   activityEvents,
   challengeEnrollments,
@@ -559,6 +559,115 @@ export const impactRouter = createTRPCRouter({
           ],
         },
         lastUpdatedAt: now.toISOString(),
+      };
+    }),
+
+  getQADetails: protectedProcedure
+    .input(z.object({
+      range: z.enum(["7d", "30d", "90d", "all"]).default("30d"),
+    }))
+    .query(async ({ ctx, input }) => {
+      // Compute since date based on range
+      const rangeDays = { "7d": 7, "30d": 30, "90d": 90, all: null } as const;
+      const days = rangeDays[input.range];
+      const since = days ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : null;
+      const sinceStr = since ? toDateStr(since) : undefined;
+
+      // Read daily aggregate rows
+      const [coreRows, mixRows, expRows] = await Promise.all([
+        ctx.db.select().from(dailyCoreMetrics)
+          .where(sinceStr ? gte(dailyCoreMetrics.date, sinceStr) : undefined)
+          .orderBy(dailyCoreMetrics.date),
+        ctx.db.select().from(dailyCollabMix)
+          .where(sinceStr ? gte(dailyCollabMix.date, sinceStr) : undefined)
+          .orderBy(dailyCollabMix.date),
+        ctx.db.select().from(dailyExperimentalMetrics)
+          .where(sinceStr ? gte(dailyExperimentalMetrics.date, sinceStr) : undefined)
+          .orderBy(dailyExperimentalMetrics.date),
+      ]);
+
+      // Per-metric confidence: low if N < 30 data points
+      const dataPoints = coreRows.length;
+      const confidence = dataPoints < 30 ? "low" : "ok";
+
+      // Daily sparkline data
+      const sparklines = {
+        totalContributions: coreRows.map(r => ({ date: r.date, value: r.totalContributions })),
+        collaborationRate: coreRows.map(r => ({ date: r.date, value: Number(r.collaborationRate) })),
+        forumHelpfulness: coreRows.map(r => ({ date: r.date, value: Number(r.forumHelpfulness) })),
+        collabMix: mixRows.map(r => ({ date: r.date, aiOnly: r.aiOnly, humanOnly: r.humanOnly, collaborative: r.collaborative })),
+        overrideRate: expRows.map(r => ({ date: r.date, value: Number(r.overrideRate) })),
+        creativityIndex: expRows.map(r => ({ date: r.date, value: Number(r.creativityIndex) })),
+      };
+
+      // Aggregated metrics summary (same as getOverview but simpler)
+      const totalContributions = coreRows.reduce((s, r) => s + r.totalContributions, 0);
+      const aiAssisted = coreRows.reduce((s, r) => s + r.aiAssisted, 0);
+      const humanReviewed = coreRows.reduce((s, r) => s + r.humanReviewed, 0);
+      const latestCore = coreRows.length > 0 ? coreRows[coreRows.length - 1]! : null;
+      const latestExp = expRows.length > 0 ? expRows[expRows.length - 1]! : null;
+
+      // Admin-only: data quality metrics
+      // Check user role from session. The user object should have a `role` field.
+      const isAdmin = (ctx.session.user as { role?: string }).role === "admin";
+
+      let admin = null;
+      if (isAdmin) {
+        // Data quality: % of events with enriched metadata
+        const totalEvents = extractCount(
+          await ctx.db.select({ count: sql<number>`count(*)::int` })
+            .from(activityEvents)
+            .where(since ? gte(activityEvents.createdAt, since) : undefined),
+        );
+
+        const withSessionId = extractCount(
+          await ctx.db.select({ count: sql<number>`count(*)::int` })
+            .from(activityEvents)
+            .where(
+              since
+                ? and(gte(activityEvents.createdAt, since), sql`${activityEvents.collabSessionId} IS NOT NULL`)
+                : sql`${activityEvents.collabSessionId} IS NOT NULL`,
+            ),
+        );
+
+        const withPersonality = extractCount(
+          await ctx.db.select({ count: sql<number>`count(*)::int` })
+            .from(activityEvents)
+            .where(
+              since
+                ? and(gte(activityEvents.createdAt, since), sql`${activityEvents.metadata}->>'personalityLabel' IS NOT NULL`)
+                : sql`${activityEvents.metadata}->>'personalityLabel' IS NOT NULL`,
+            ),
+        );
+
+        admin = {
+          dataQuality: {
+            totalEvents,
+            withSessionId: safePercent(withSessionId, Math.max(totalEvents, 1)),
+            withPersonality: safePercent(withPersonality, Math.max(totalEvents, 1)),
+          },
+          aggregateRows: {
+            core: coreRows.length,
+            mix: mixRows.length,
+            experimental: expRows.length,
+          },
+        };
+      }
+
+      return {
+        confidence,
+        dataPoints,
+        metrics: {
+          totalContributions,
+          aiAssisted,
+          humanReviewed,
+          collaborationRate: latestCore ? Number(latestCore.collaborationRate) : 0,
+          forumHelpfulness: latestCore ? Number(latestCore.forumHelpfulness) : 0,
+          personalityDistribution: latestExp?.personalityDistribution ?? {},
+          learningLoopSignal: latestExp?.learningLoopSignal ?? "stable",
+        },
+        sparklines,
+        admin,
       };
     }),
 });
