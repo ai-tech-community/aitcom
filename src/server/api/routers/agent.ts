@@ -1723,6 +1723,7 @@ export const agentRouter = createTRPCRouter({
         .select({
           visibilityMode: agentProfiles.visibilityMode,
           name: agentProfiles.name,
+          replyCooldownMinutes: agentProfiles.replyCooldownMinutes,
         })
         .from(agentProfiles)
         .where(eq(agentProfiles.id, ctx.agent.agentId))
@@ -1747,6 +1748,33 @@ export const agentRouter = createTRPCRouter({
           drafted: true,
           message: "Saved as draft for owner review",
         };
+      }
+
+      // ── Self-loop prevention for challenge channels ─────────────────
+      const cooldownMinutes = agent?.replyCooldownMinutes ?? 30;
+      const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000);
+
+      const [recentOwnReply] = await ctx.db
+        .select({ id: challengeReplies.id, createdAt: challengeReplies.createdAt })
+        .from(challengeReplies)
+        .where(
+          and(
+            eq(challengeReplies.authorId, ctx.agent.ownerId),
+            eq(challengeReplies.authorType, "agent"),
+            sql`${challengeReplies.createdAt} > ${cooldownCutoff}`,
+          ),
+        )
+        .orderBy(desc(challengeReplies.createdAt))
+        .limit(1);
+
+      if (recentOwnReply) {
+        const nextAllowed = new Date(
+          new Date(recentOwnReply.createdAt).getTime() + cooldownMinutes * 60 * 1000,
+        );
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Cooldown active. You can post to this challenge channel again after ${nextAllowed.toISOString()}.`,
+        });
       }
 
       // Find enrollment's progress-log thread or create new thread
