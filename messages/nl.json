@@ -807,15 +807,27 @@
     "audience": {
       "visitors": {
         "title": "Voor Bezoekers",
-        "description": "Bewijs dat AI + mensen samen betekenisvolle resultaten bouwen."
+        "description": "Bewijs dat AI + mensen samen betekenisvolle resultaten bouwen.",
+        "stats": {
+          "momentum": "Samenwerkingsmomentum",
+          "outcomes": "Voltooide Challenges"
+        }
       },
       "members": {
         "title": "Voor Leden",
-        "description": "Signalen voor participatie, reactiekwaliteit en leerlussen."
+        "description": "Signalen voor participatie, reactiekwaliteit en leerlussen.",
+        "stats": {
+          "responseHealth": "Reactiegezondheid",
+          "answeredThreads": "Beantwoorde Threads"
+        }
       },
       "sponsors": {
         "title": "Voor Sponsors",
-        "description": "Operationeel vertrouwen via meetbare oplevering en betrokkenheid."
+        "description": "Operationeel vertrouwen via meetbare oplevering en betrokkenheid.",
+        "stats": {
+          "deliveryRate": "Opleveringsratio",
+          "activeBuilders": "Actieve Bouwers"
+        }
       }
     },
     "trends": {
@@ -853,7 +865,40 @@
         "calculation": "Gemiddeld aantal rondes binnen getrackte samenwerkingssessies.",
         "why": "Maakt echte iteratieve samenwerking zichtbaar i.p.v. eenmalige generatie.",
         "caveats": "Afhankelijk van consistente sessie-tracking en activiteitinstrumentatie."
-      }
+      },
+      "ideaToImplTime": {
+        "title": "Idee-naar-Implementatie Tijd",
+        "definition": "Mediane tijd van challenge-aanmaak tot eerste oplossing-indiening.",
+        "calculation": "Mediaan van (submittedAt - challenge.createdAt) voor voltooide inschrijvingen.",
+        "why": "Volgt hoe snel de community ideeën omzet in werkende implementaties.",
+        "caveats": "Meet alleen challenges met indieningen; open challenges zijn uitgesloten."
+      },
+      "crossPersonalityPairing": {
+        "title": "Kruispersoonlijkheidskoppeling",
+        "definition": "Meest voorkomende combinaties van samenwerkingsstijlen binnen sessies.",
+        "calculation": "Per sessie worden unieke persoonlijkheidslabels verzameld en paarcombinaties geteld.",
+        "why": "Onthult welke stijlcombinaties het meest productief zijn.",
+        "caveats": "Afhankelijk van nauwkeurigheid van persoonlijkheidslabels en sessie-tracking."
+      },
+      "reuseRatio": {
+        "title": "Template Hergebruik Ratio",
+        "definition": "Verhouding van template-gebaseerde oplossingen tot totaal ingediende oplossingen.",
+        "calculation": "Aantal events met templateBased=true gedeeld door totaal solution events.",
+        "why": "Toont balans tussen hergebruik van bewezen patronen en nieuwe aanpakken.",
+        "caveats": "Template-detectie is afhankelijk van metadata-vlaggen bij indiening."
+      },
+      "learningLoop": {
+        "title": "Leerlus Signaal",
+        "definition": "Of de goedkeuringsratio van community-oplossingen verbetert, stabiel is of daalt.",
+        "calculation": "Vergelijkt 4-weken goedkeuringsratio met de vorige 4 weken; >5% verschil = verbetering/daling.",
+        "why": "Geeft aan of de community leert van feedback en itereert.",
+        "caveats": "Kleine steekproeven kunnen volatiliteit veroorzaken; beschouw als richtinggevend."
+      },
+      "improving": "Verbeterend",
+      "stable": "Stabiel",
+      "declining": "Dalend",
+      "rounds": "rondes",
+      "days": "dagen"
     },
     "methodologyPanel": {
       "title": "Methodologie en Datanotities",
@@ -865,6 +910,16 @@
       "join": "Word Lid van de Community",
       "challenge": "Start een Challenge",
       "partner": "Word Partner"
+    },
+    "qa": {
+      "title": "Impact Datakwaliteit",
+      "subtitle": "Intern dashboard voor verificatie van metrieknauwkeurigheid.",
+      "timeRange7d": "Laatste 7 dagen",
+      "timeRange90d": "Laatste 90 dagen",
+      "rawVsAggregated": "Ruw vs Geaggregeerd Vergelijking",
+      "anomalies": "Anomalie Detectie",
+      "dataQuality": "Datakwaliteitsscore",
+      "reAggregate": "Opnieuw aggregeren"
     }
   }
 }

@@ -807,15 +807,27 @@
     "audience": {
       "visitors": {
         "title": "For Visitors",
-        "description": "Proof that AI + humans build meaningful outcomes together."
+        "description": "Proof that AI + humans build meaningful outcomes together.",
+        "stats": {
+          "momentum": "Collaboration Momentum",
+          "outcomes": "Completed Challenges"
+        }
       },
       "members": {
         "title": "For Members",
-        "description": "Signals of participation health, response quality, and learning loops."
+        "description": "Signals of participation health, response quality, and learning loops.",
+        "stats": {
+          "responseHealth": "Response Health",
+          "answeredThreads": "Answered Threads"
+        }
       },
       "sponsors": {
         "title": "For Sponsors",
-        "description": "Operational confidence through measurable delivery and engagement."
+        "description": "Operational confidence through measurable delivery and engagement.",
+        "stats": {
+          "deliveryRate": "Delivery Rate",
+          "activeBuilders": "Active Builders"
+        }
       }
     },
     "trends": {
@@ -853,7 +865,40 @@
         "calculation": "Mean round count in tracked collaboration sessions.",
         "why": "Distinguishes true collaborative iteration from single-pass generation.",
         "caveats": "Depends on consistent session tracking and activity instrumentation."
-      }
+      },
+      "ideaToImplTime": {
+        "title": "Idea-to-Implementation Time",
+        "definition": "Median time from challenge creation to first solution submission.",
+        "calculation": "Median of (submittedAt - challenge.createdAt) for completed enrollments.",
+        "why": "Tracks how quickly the community turns ideas into working implementations.",
+        "caveats": "Only measures challenges with submissions; open-ended challenges are excluded."
+      },
+      "crossPersonalityPairing": {
+        "title": "Cross-Personality Pairing",
+        "definition": "Most frequent combinations of collaboration styles within sessions.",
+        "calculation": "For each session, collect distinct personality labels and count pair frequencies.",
+        "why": "Reveals which style combinations are most productive.",
+        "caveats": "Depends on personality label accuracy and session tracking completeness."
+      },
+      "reuseRatio": {
+        "title": "Template Reuse Ratio",
+        "definition": "Ratio of template-based solutions to total solutions submitted.",
+        "calculation": "Count of events with templateBased=true divided by total solution events.",
+        "why": "Shows balance between reusing proven patterns and creating novel approaches.",
+        "caveats": "Template detection relies on metadata flags set during submission."
+      },
+      "learningLoop": {
+        "title": "Learning Loop Signal",
+        "definition": "Whether the community's solution approval rate is improving, stable, or declining.",
+        "calculation": "Compares 4-week approval rate against the previous 4 weeks; >5% delta = improving/declining.",
+        "why": "Indicates whether the community is learning from feedback and iterating.",
+        "caveats": "Small sample sizes can cause volatility; treat as directional."
+      },
+      "improving": "Improving",
+      "stable": "Stable",
+      "declining": "Declining",
+      "rounds": "rounds",
+      "days": "days"
     },
     "methodologyPanel": {
       "title": "Methodology and Data Notes",
@@ -865,6 +910,16 @@
       "join": "Join the Community",
       "challenge": "Start a Challenge",
       "partner": "Become a Partner"
+    },
+    "qa": {
+      "title": "Impact Data Quality",
+      "subtitle": "Internal dashboard for verifying metric accuracy.",
+      "timeRange7d": "Last 7 days",
+      "timeRange90d": "Last 90 days",
+      "rawVsAggregated": "Raw vs Aggregated Comparison",
+      "anomalies": "Anomaly Detection",
+      "dataQuality": "Data Quality Score",
+      "reAggregate": "Re-aggregate"
     }
   }
 }
