@@ -369,43 +369,22 @@ export async function GET(request: Request) {
     const overrideRate = clampRate(safePercent(overrideCount, totalAiEvents));
 
     // --- creativityIndex ---
-    // Count distinct collaboration models among completed challenge enrollments today
-    const completedEnrollmentsToday = await db
-      .select({ challengeId: challengeEnrollments.challengeId })
-      .from(challengeEnrollments)
+    // Count distinct (collaborationModel, action) pairs from activity events metadata
+    // for completed challenge events today. Max combos ≈ 6 models × 5 actions = 30.
+    const creativityRows = await db
+      .select({
+        pair: sql<string>`DISTINCT ${activityEvents.metadata}->>'collaborationModel' || '|' || ${activityEvents.action}`,
+      })
+      .from(activityEvents)
       .where(
         and(
-          eq(challengeEnrollments.status, "completed"),
-          gte(challengeEnrollments.enrolledAt, start),
-          sql`${challengeEnrollments.enrolledAt} < ${end.toISOString()}`,
+          todayWhere,
+          sql`${activityEvents.metadata}->>'collaborationModel' IS NOT NULL`,
+          sql`${activityEvents.action} LIKE 'challenge.%'`,
         ),
       );
-
-    let creativityIndex = 0;
-    if (completedEnrollmentsToday.length > 0) {
-      const challengeIds = [
-        ...new Set(completedEnrollmentsToday.map((e) => e.challengeId)),
-      ];
-      // Query challenges from Payload to get collaboration models
-      const { docs: challenges } = await payload.find({
-        collection: "challenges",
-        where: { id: { in: challengeIds.join(",") } },
-        limit: challengeIds.length,
-        depth: 0,
-      });
-      const models = new Set(
-        challenges
-          .map(
-            (c) =>
-              (c as unknown as Record<string, unknown>).collaborationModel as
-                | string
-                | undefined,
-          )
-          .filter(Boolean),
-      );
-      // Normalize to 0-100 scale (cap at 10 distinct models = 100)
-      creativityIndex = clampRate(Math.min(models.size * 10, 100));
-    }
+    const distinctPairs = creativityRows.filter((r) => r.pair).length;
+    const creativityIndex = clampRate((distinctPairs / 30) * 100);
 
     // --- collaborationDepth ---
     // For sessions with completion events today, count events per session, return median
@@ -450,30 +429,50 @@ export async function GET(request: Request) {
     }
 
     // --- ideaToImplMedianMinutes ---
-    const completedWithTimes = await db
+    // Median of (submittedAt - challenge.createdAt) for enrollments submitted today
+    const submittedToday = await db
       .select({
-        enrolledAt: challengeEnrollments.enrolledAt,
-        completedAt: challengeEnrollments.completedAt,
+        challengeId: challengeEnrollments.challengeId,
+        submittedAt: challengeEnrollments.submittedAt,
       })
       .from(challengeEnrollments)
       .where(
         and(
-          sql`${challengeEnrollments.completedAt} IS NOT NULL`,
-          gte(challengeEnrollments.completedAt, start),
-          sql`${challengeEnrollments.completedAt} < ${end.toISOString()}`,
+          sql`${challengeEnrollments.submittedAt} IS NOT NULL`,
+          gte(challengeEnrollments.submittedAt, start),
+          sql`${challengeEnrollments.submittedAt} < ${end.toISOString()}`,
         ),
       );
 
-    const implMinutes = completedWithTimes
-      .map((r) => {
-        if (!r.enrolledAt || !r.completedAt) return null;
-        const diff =
-          new Date(r.completedAt).getTime() - new Date(r.enrolledAt).getTime();
-        if (diff < 0) return null;
-        return Math.round(diff / 60000);
-      })
-      .filter((v): v is number => v !== null);
-    const ideaToImplMedianMinutes = median(implMinutes);
+    let ideaToImplMedianMinutes: number | null = null;
+    if (submittedToday.length > 0) {
+      const challengeIds = [
+        ...new Set(submittedToday.map((e) => e.challengeId)),
+      ];
+      const { docs: challengeDocs } = await payload.find({
+        collection: "challenges",
+        where: { id: { in: challengeIds.join(",") } },
+        limit: challengeIds.length,
+        depth: 0,
+      });
+      const challengeCreatedMap = new Map<number, Date>();
+      for (const c of challengeDocs) {
+        if (c.createdAt) challengeCreatedMap.set(c.id, new Date(c.createdAt));
+      }
+
+      const implMinutes = submittedToday
+        .map((r) => {
+          if (!r.submittedAt) return null;
+          const challengeCreated = challengeCreatedMap.get(r.challengeId);
+          if (!challengeCreated) return null;
+          const diff =
+            new Date(r.submittedAt).getTime() - challengeCreated.getTime();
+          if (diff < 0) return null;
+          return Math.round(diff / 60000);
+        })
+        .filter((v): v is number => v !== null);
+      ideaToImplMedianMinutes = median(implMinutes);
+    }
 
     // --- topPairings ---
     // For each session today, collect personality labels and generate pairs
