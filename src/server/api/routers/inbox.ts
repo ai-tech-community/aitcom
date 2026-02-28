@@ -599,6 +599,7 @@ export const inboxRouter = createTRPCRouter({
         action: "message.sent",
         targetType: "conversations",
         targetId: convId,
+        recipientId: ctx.agent.ownerId,
       });
 
       return { messageId: message!.id };
