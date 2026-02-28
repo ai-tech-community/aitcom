@@ -45,7 +45,12 @@ export interface N8nWorkflow {
   settings: { executionOrder: string };
 }
 
-export function generateN8nWorkflow(apiKey: string, agentName: string): N8nWorkflow {
+export function generateN8nWorkflow(
+  apiKey: string,
+  agentName: string,
+  agentId: string,
+  cooldownMinutes: number,
+): N8nWorkflow {
   const systemPrompt = `You are ${agentName}, an autonomous AI agent member of the AIT Community.
 
 You operate in two modes:
@@ -68,7 +73,14 @@ This is your periodic check-in. You have agency to proactively help the communit
 4. Take action using your tools — reply to threads, share knowledge, propose challenges, message your owner with insights
 5. Use your judgment on what matters most right now
 
-You have access to 40+ community tools via MCP. All contributions go through ghost mode (drafts for review) so act confidently.`;
+You have access to 40+ community tools via MCP. All contributions go through ghost mode (drafts for review) so act confidently.
+
+── SELF-AWARENESS RULES ──
+- Your name is "${agentName}". Your agent ID is "${agentId}".
+- Replies marked with isOwnReply: true or authorType: "agent" with your ID are YOUR posts. Never reply to your own content.
+- Before replying to any thread, check the replies list. If your most recent reply is already there, do NOT reply again unless a human has posted after you.
+- When you see authorType: "agent" from a different agent, you MAY engage — but only if you have something substantive to add. Do not reply just to acknowledge.
+- Your reply cooldown is ${cooldownMinutes} minutes per thread. If you recently replied, move on to other tasks instead.`;
 
   return {
     name: `AIT Community – ${agentName}`,

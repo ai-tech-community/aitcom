@@ -10,14 +10,18 @@ import { generateN8nWorkflow } from "@/lib/n8n-workflow-generator";
 
 type Tool = "n8n" | "claude-cli" | "openclaw" | "webhook" | "custom";
 
+/** Default reply cooldown injected into generated n8n workflow system prompts */
+const DEFAULT_COOLDOWN_MINUTES = 15;
+
 // ── Shared tool picker + connection panels (used by QuickStart AND existing agent view) ──
 
 interface AgentToolConnectProps {
   apiKey: string;
   agentName: string;
+  agentId: string;
 }
 
-export function AgentToolConnect({ apiKey, agentName }: AgentToolConnectProps) {
+export function AgentToolConnect({ apiKey, agentName, agentId }: AgentToolConnectProps) {
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
 
   return (
@@ -28,7 +32,7 @@ export function AgentToolConnect({ apiKey, agentName }: AgentToolConnectProps) {
       {/* Connection Panel */}
       {selectedTool && (
         <div className="space-y-4 rounded-lg border border-border bg-secondary/30 p-4">
-          {selectedTool === "n8n" && <N8nPanel apiKey={apiKey} agentName={agentName} />}
+          {selectedTool === "n8n" && <N8nPanel apiKey={apiKey} agentName={agentName} agentId={agentId} />}
           {selectedTool === "claude-cli" && <ClaudeCliPanel apiKey={apiKey} />}
           {selectedTool === "openclaw" && <OpenClawPanel apiKey={apiKey} />}
           {selectedTool === "webhook" && <WebhookPanel />}
@@ -158,6 +162,7 @@ export function AgentQuickStart({ onSetupComplete }: AgentQuickStartProps) {
           tool={selectedTool}
           apiKey={setupResult.apiKey}
           agentName={setupResult.agent.name}
+          agentId={setupResult.agent.id}
           onDone={onSetupComplete}
         />
       )}
@@ -187,18 +192,20 @@ function ConnectionPanel({
   tool,
   apiKey,
   agentName,
+  agentId,
   onDone,
 }: {
   tool: Tool;
   apiKey: string;
   agentName: string;
+  agentId: string;
   onDone: () => void;
 }) {
   const t = useTranslations("agent");
 
   return (
     <div className="space-y-4 rounded-lg border border-border bg-secondary/30 p-4">
-      {tool === "n8n" && <N8nPanel apiKey={apiKey} agentName={agentName} />}
+      {tool === "n8n" && <N8nPanel apiKey={apiKey} agentName={agentName} agentId={agentId} />}
       {tool === "claude-cli" && <ClaudeCliPanel apiKey={apiKey} />}
       {tool === "openclaw" && <OpenClawPanel apiKey={apiKey} />}
       {tool === "custom" && <CustomPanel apiKey={apiKey} />}
@@ -219,13 +226,13 @@ function ConnectionPanel({
   );
 }
 
-function N8nPanel({ apiKey, agentName }: { apiKey: string; agentName: string }) {
+function N8nPanel({ apiKey, agentName, agentId }: { apiKey: string; agentName: string; agentId: string }) {
   const t = useTranslations("agent");
   const [showManual, setShowManual] = useState(false);
   const { data: webhook } = api.agentManagement.getWebhook.useQuery();
 
   const handleDownload = () => {
-    const workflow = generateN8nWorkflow(apiKey, agentName);
+    const workflow = generateN8nWorkflow(apiKey, agentName, agentId, DEFAULT_COOLDOWN_MINUTES);
     const blob = new Blob([JSON.stringify(workflow, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
