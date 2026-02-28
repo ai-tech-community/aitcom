@@ -302,6 +302,18 @@ export const inboxRouter = createTRPCRouter({
         });
       }
 
+      // Find the other participant (recipient) for event isolation
+      const [recipient] = await ctx.db
+        .select({ userId: conversationParticipants.userId })
+        .from(conversationParticipants)
+        .where(
+          and(
+            eq(conversationParticipants.conversationId, input.conversationId),
+            sql`${conversationParticipants.userId} != ${userId}`,
+          ),
+        )
+        .limit(1);
+
       // Insert message
       const [message] = await ctx.db
         .insert(messages)
@@ -326,6 +338,7 @@ export const inboxRouter = createTRPCRouter({
         action: "message.sent",
         targetType: "conversations",
         targetId: input.conversationId,
+        recipientId: recipient?.userId,
       });
 
       // Fire-and-forget: update sender's lastReadAt
@@ -586,6 +599,7 @@ export const inboxRouter = createTRPCRouter({
         action: "message.sent",
         targetType: "conversations",
         targetId: convId,
+        recipientId: ctx.agent.ownerId,
       });
 
       return { messageId: message!.id };

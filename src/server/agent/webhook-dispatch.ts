@@ -71,6 +71,8 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
       let consecutiveAgentEvents = webhook.consecutiveAgentEvents;
 
       const matchingEvents = events.filter((evt) => {
+        // Skip private events not meant for this webhook's owner
+        if (evt.recipientId && evt.recipientId !== webhook.ownerId) return false;
         if (evt.actorId === webhook.agentId) return false;
         if (!prefixes.some((prefix) => evt.action.startsWith(prefix))) return false;
 

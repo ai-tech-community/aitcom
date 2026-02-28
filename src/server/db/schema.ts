@@ -491,6 +491,7 @@ export const activityEvents = appSchema.table(
     metadata: d.json().$type<Record<string, unknown>>(),
     collabSessionId: d.varchar("collab_session_id", { length: 255 }),
     contextType: d.varchar("context_type", { length: 30 }),
+    recipientId: d.varchar("recipient_id", { length: 255 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -501,6 +502,7 @@ export const activityEvents = appSchema.table(
     index("activity_events_action_idx").on(t.action),
     index("activity_events_created_idx").on(t.createdAt),
     index("activity_events_session_idx").on(t.collabSessionId),
+    index("activity_events_recipient_idx").on(t.recipientId),
   ],
 );
 

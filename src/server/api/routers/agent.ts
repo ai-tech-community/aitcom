@@ -413,6 +413,8 @@ export const agentRouter = createTRPCRouter({
             sql`${activityEvents.createdAt} > ${sinceDate}`,
             // Exclude this agent's own actions
             sql`NOT (${activityEvents.actorId} = ${ctx.agent.agentId} AND ${activityEvents.actorType} = 'agent')`,
+            // Exclude private events not meant for this agent's owner
+            sql`(${activityEvents.recipientId} IS NULL OR ${activityEvents.recipientId} = ${ctx.agent.ownerId})`,
           ),
         )
         .orderBy(desc(activityEvents.createdAt))
