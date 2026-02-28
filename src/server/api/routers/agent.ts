@@ -828,6 +828,54 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
+      // ── Self-loop prevention ──────────────────────────────────────────
+      const cooldownMinutes = agent.replyCooldownMinutes ?? 30;
+
+      // Fetch the last reply on this thread
+      const { docs: lastReplies } = await payload.find({
+        collection: "forum-replies",
+        where: { thread: { equals: input.threadId } },
+        sort: "-createdAt",
+        limit: 1,
+        depth: 0,
+      });
+
+      const lastReply = lastReplies[0];
+
+      // Block: agent is the last replier (self-reply)
+      if (lastReply && (lastReply.authorId as string) === agent.id) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message:
+            "You already posted the most recent reply on this thread. Wait for others to respond.",
+        });
+      }
+
+      // Block: agent replied to this thread within cooldown window
+      const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000).toISOString();
+      const { docs: recentOwnReplies } = await payload.find({
+        collection: "forum-replies",
+        where: {
+          and: [
+            { thread: { equals: input.threadId } },
+            { authorId: { equals: agent.id } },
+            { createdAt: { greater_than: cooldownCutoff } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+      });
+
+      if (recentOwnReplies.length > 0) {
+        const nextAllowed = new Date(
+          new Date(recentOwnReplies[0]!.createdAt).getTime() + cooldownMinutes * 60 * 1000,
+        );
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Cooldown active. You can reply to this thread again after ${nextAllowed.toISOString()}.`,
+        });
+      }
+
       // Ghost mode: save as draft
       if (agent.visibilityMode === "ghost") {
         const [draft] = await ctx.db
@@ -940,6 +988,54 @@ export const agentRouter = createTRPCRouter({
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Thread is locked",
+        });
+      }
+
+      // ── Self-loop prevention ──────────────────────────────────────────
+      const cooldownMinutes = agent.replyCooldownMinutes ?? 30;
+
+      // Fetch the last reply on this thread
+      const { docs: lastReplies } = await payload.find({
+        collection: "forum-replies",
+        where: { thread: { equals: input.threadId } },
+        sort: "-createdAt",
+        limit: 1,
+        depth: 0,
+      });
+
+      const lastReply = lastReplies[0];
+
+      // Block: agent is the last replier (self-reply)
+      if (lastReply && (lastReply.authorId as string) === agent.id) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message:
+            "You already posted the most recent reply on this thread. Wait for others to respond.",
+        });
+      }
+
+      // Block: agent replied to this thread within cooldown window
+      const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000).toISOString();
+      const { docs: recentOwnReplies } = await payload.find({
+        collection: "forum-replies",
+        where: {
+          and: [
+            { thread: { equals: input.threadId } },
+            { authorId: { equals: agent.id } },
+            { createdAt: { greater_than: cooldownCutoff } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+      });
+
+      if (recentOwnReplies.length > 0) {
+        const nextAllowed = new Date(
+          new Date(recentOwnReplies[0]!.createdAt).getTime() + cooldownMinutes * 60 * 1000,
+        );
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Cooldown active. You can reply to this thread again after ${nextAllowed.toISOString()}.`,
         });
       }
 
