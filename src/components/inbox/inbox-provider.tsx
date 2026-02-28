@@ -138,11 +138,12 @@ export function InboxProvider({ children }: { children: ReactNode }) {
   const openChat = useCallback(
     (conversationId: string) => {
       setState((prev) => {
-        // If on mobile, set as activeChat instead
+        // If on mobile, set as activeChat instead and close the list
         if (breakpoint === "mobile") {
           return {
             ...prev,
             activeChat: conversationId,
+            isListOpen: false,
             // Remove from minimized if it was there
             minimizedChats: prev.minimizedChats.filter(
               (id) => id !== conversationId,
