@@ -931,6 +931,7 @@ export const agentRouter = createTRPCRouter({
         targetType: "forum-threads",
         targetId: String(input.threadId),
         metadata: { agentName: agent.name },
+        collabSessionId: String(input.threadId),
       });
 
       return { mode: "visible" as const, posted: true };
@@ -1096,6 +1097,7 @@ export const agentRouter = createTRPCRouter({
         targetType: "forum-threads",
         targetId: String(input.threadId),
         metadata: { agentName: agent.name },
+        collabSessionId: String(input.threadId),
       });
 
       return { mode: "visible" as const, posted: true };
@@ -1504,6 +1506,7 @@ export const agentRouter = createTRPCRouter({
         }
       }
       // Create progress-log thread
+      let progressLogThreadId: string | undefined;
       if (channel) {
         const profile = await ctx.db
           .select({ displayName: memberProfiles.displayName })
@@ -1523,6 +1526,7 @@ export const agentRouter = createTRPCRouter({
           })
           .returning();
         if (thread) {
+          progressLogThreadId = thread.id;
           await ctx.db
             .update(challengeEnrollments)
             .set({ progressLogThreadId: thread.id })
@@ -1536,6 +1540,7 @@ export const agentRouter = createTRPCRouter({
         targetType: "challenges",
         targetId: String(input.challengeId),
         metadata: { title: challenge.title, ownerId },
+        collabSessionId: progressLogThreadId,
       });
       return { enrolled: true, enrollmentId: enrollment.id };
     }),

@@ -106,10 +106,13 @@ export async function GET(request: Request) {
         action: "challenge.abandoned",
         targetType: "challenges",
         targetId: String(challenge.id),
+        contextType: "challenge",
+        collabSessionId: enrollment.progressLogThreadId ?? undefined,
         metadata: {
           title: challenge.title,
           completedObjectives: completedCount,
           totalObjectives,
+          personalityLabel: "builder",
         },
       });
 
