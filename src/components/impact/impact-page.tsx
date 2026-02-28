@@ -164,6 +164,34 @@ export function ImpactPage() {
                 why: t("experimental.collaborationDepth.why"),
                 caveats: t("experimental.collaborationDepth.caveats"),
               },
+              ideaToImplTime: {
+                title: t("experimental.ideaToImplTime.title"),
+                definition: t("experimental.ideaToImplTime.definition"),
+                calculation: t("experimental.ideaToImplTime.calculation"),
+                why: t("experimental.ideaToImplTime.why"),
+                caveats: t("experimental.ideaToImplTime.caveats"),
+              },
+              crossPersonalityPairing: {
+                title: t("experimental.crossPersonalityPairing.title"),
+                definition: t("experimental.crossPersonalityPairing.definition"),
+                calculation: t("experimental.crossPersonalityPairing.calculation"),
+                why: t("experimental.crossPersonalityPairing.why"),
+                caveats: t("experimental.crossPersonalityPairing.caveats"),
+              },
+              reuseRatio: {
+                title: t("experimental.reuseRatio.title"),
+                definition: t("experimental.reuseRatio.definition"),
+                calculation: t("experimental.reuseRatio.calculation"),
+                why: t("experimental.reuseRatio.why"),
+                caveats: t("experimental.reuseRatio.caveats"),
+              },
+              learningLoop: {
+                title: t("experimental.learningLoop.title"),
+                definition: t("experimental.learningLoop.definition"),
+                calculation: t("experimental.learningLoop.calculation"),
+                why: t("experimental.learningLoop.why"),
+                caveats: t("experimental.learningLoop.caveats"),
+              },
             }}
             values={data.experimental.items}
           />
