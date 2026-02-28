@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import Image from "next/image";
-import { BotIcon, ChevronDownIcon, XIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, Maximize2Icon, Minimize2Icon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
@@ -58,6 +58,7 @@ export function ChatWindow({
   const { data: session } = authClient.useSession();
   const t = useTranslations("inbox");
   const utils = api.useUtils();
+  const [expanded, setExpanded] = useState(false);
 
   // ── Data fetching ───────────────────────────────────────────────────────
 
@@ -93,7 +94,7 @@ export function ChatWindow({
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-112.5 w-80 flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg">
+    <div className={`flex flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg transition-all duration-200 ${expanded ? "h-150 w-120" : "h-112.5 w-80"}`}>
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
         {/* Avatar */}
@@ -125,6 +126,18 @@ export function ChatWindow({
         </span>
 
         {/* Actions */}
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+          aria-label={expanded ? t("collapse") : t("expand")}
+        >
+          {expanded ? (
+            <Minimize2Icon className="h-4 w-4" />
+          ) : (
+            <Maximize2Icon className="h-4 w-4" />
+          )}
+        </button>
         <button
           type="button"
           onClick={() => minimizeChat(conversationId)}
@@ -179,7 +192,7 @@ export function ChatWindow({
       )}
 
       {/* ── Input area ────────────────────────────────────────────────── */}
-      <div className="border-t border-border">
+      <div className="border-t border-border **:data-[slot=input-group]:border-0 **:data-[slot=input-group]:shadow-none **:data-[slot=input-group]:rounded-none">
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputTextarea
             placeholder={t("placeholder")}
