@@ -99,6 +99,7 @@ export const agentRouter = createTRPCRouter({
         title: t.title,
         category: t.category,
         authorName: t.authorName ?? null,
+        authorId: (t.authorId as string) ?? null,
         replyCount: t.replyCount ?? 0,
         isPinned: t.isPinned ?? false,
         isLocked: t.isLocked ?? false,
@@ -150,6 +151,9 @@ export const agentRouter = createTRPCRouter({
           content: thread.content,
           category: thread.category,
           authorName: thread.authorName ?? null,
+          authorId: (thread.authorId as string) ?? null,
+          authorType: "member" as const,
+          isOwnReply: (thread.authorId as string) === ctx.agent.agentId,
           isPinned: thread.isPinned ?? false,
           isLocked: thread.isLocked ?? false,
           createdAt: thread.createdAt,
@@ -158,6 +162,9 @@ export const agentRouter = createTRPCRouter({
           id: r.id,
           content: r.content,
           authorName: r.authorName ?? null,
+          authorId: (r.authorId as string) ?? null,
+          authorType: ((r as Record<string, unknown>).authorType as string) ?? "member",
+          isOwnReply: (r.authorId as string) === ctx.agent.agentId,
           createdAt: r.createdAt,
         })),
       };
@@ -418,6 +425,7 @@ export const agentRouter = createTRPCRouter({
         title: string;
         targetType: string | null;
         targetId: string | null;
+        actorType: string;
         relevance: string;
         createdAt: string;
       }[] = [];
@@ -487,6 +495,7 @@ export const agentRouter = createTRPCRouter({
             title,
             targetType: event.targetType,
             targetId: event.targetId,
+            actorType: event.actorType,
             relevance,
             createdAt: event.createdAt.toISOString(),
           });
@@ -532,6 +541,7 @@ export const agentRouter = createTRPCRouter({
             title: `Owner message: ${msg.content.slice(0, 80)}${msg.content.length > 80 ? "..." : ""}`,
             targetType: "inbox",
             targetId: agentConv.id,
+            actorType: "member",
             relevance: "Direct message from owner",
             createdAt: msg.createdAt.toISOString(),
           });
