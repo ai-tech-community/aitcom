@@ -83,7 +83,7 @@ export function QADashboard() {
   ];
 
   const personalityEntries = Object.entries(
-    data.metrics.personalityDistribution as Record<string, number>,
+    data.metrics.personalityDistribution,
   );
   const personalityMax = Math.max(...personalityEntries.map(([, v]) => v), 1);
 

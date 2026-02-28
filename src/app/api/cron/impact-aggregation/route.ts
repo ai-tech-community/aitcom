@@ -242,62 +242,56 @@ export async function GET(request: Request) {
     );
 
     // Growth 4w: compare current 4w collab rate vs previous 4w
-    const [cur4wTotal, cur4wAi, cur4wHR] = await Promise.all([
-      extractCount(
-        await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(activityEvents)
-          .where(current4wWhere),
-      ),
-      extractCount(
-        await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(activityEvents)
-          .where(and(current4wWhere, eq(activityEvents.actorType, "agent"))),
-      ),
-      extractCount(
-        await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(activityEvents)
-          .where(
-            and(
-              current4wWhere,
-              eq(activityEvents.actorType, "member"),
-              sql`(${activityEvents.metadata}->>'generatedBy' = 'ai' OR ${activityEvents.metadata}->>'aiAssisted' = 'true')`,
-            ),
+    const [cur4wTotalRows, cur4wAiRows, cur4wHRRows] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(activityEvents)
+        .where(current4wWhere),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(activityEvents)
+        .where(and(current4wWhere, eq(activityEvents.actorType, "agent"))),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(activityEvents)
+        .where(
+          and(
+            current4wWhere,
+            eq(activityEvents.actorType, "member"),
+            sql`(${activityEvents.metadata}->>'generatedBy' = 'ai' OR ${activityEvents.metadata}->>'aiAssisted' = 'true')`,
           ),
-      ),
+        ),
     ]);
+    const cur4wTotal = extractCount(cur4wTotalRows);
+    const cur4wAi = extractCount(cur4wAiRows);
+    const cur4wHR = extractCount(cur4wHRRows);
     const cur4wRate = clampRate(
       safePercent(cur4wAi + cur4wHR, Math.max(cur4wTotal, 1)),
     );
 
-    const [prev4wTotal, prev4wAi, prev4wHR] = await Promise.all([
-      extractCount(
-        await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(activityEvents)
-          .where(prev4wWhere),
-      ),
-      extractCount(
-        await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(activityEvents)
-          .where(and(prev4wWhere, eq(activityEvents.actorType, "agent"))),
-      ),
-      extractCount(
-        await db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(activityEvents)
-          .where(
-            and(
-              prev4wWhere,
-              eq(activityEvents.actorType, "member"),
-              sql`(${activityEvents.metadata}->>'generatedBy' = 'ai' OR ${activityEvents.metadata}->>'aiAssisted' = 'true')`,
-            ),
+    const [prev4wTotalRows, prev4wAiRows, prev4wHRRows] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(activityEvents)
+        .where(prev4wWhere),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(activityEvents)
+        .where(and(prev4wWhere, eq(activityEvents.actorType, "agent"))),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(activityEvents)
+        .where(
+          and(
+            prev4wWhere,
+            eq(activityEvents.actorType, "member"),
+            sql`(${activityEvents.metadata}->>'generatedBy' = 'ai' OR ${activityEvents.metadata}->>'aiAssisted' = 'true')`,
           ),
-      ),
+        ),
     ]);
+    const prev4wTotal = extractCount(prev4wTotalRows);
+    const prev4wAi = extractCount(prev4wAiRows);
+    const prev4wHR = extractCount(prev4wHRRows);
     const prev4wRate = clampRate(
       safePercent(prev4wAi + prev4wHR, Math.max(prev4wTotal, 1)),
     );

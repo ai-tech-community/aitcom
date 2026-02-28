@@ -500,8 +500,8 @@ export const impactRouter = createTRPCRouter({
           members: {
             responseHealth: medianFirstResponse,
             answeredThreads: Math.round(forumHelpfulness),
-            personalityDistribution: (latestExp?.personalityDistribution ?? {}) as Record<string, number>,
-            learningLoopSignal: (latestExp?.learningLoopSignal ?? "stable") as string,
+            personalityDistribution: latestExp?.personalityDistribution ?? {},
+            learningLoopSignal: latestExp?.learningLoopSignal ?? "stable",
           },
           sponsors: {
             deliveryRate: challengeCompletionRate,
