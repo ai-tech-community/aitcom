@@ -40,14 +40,6 @@ function todayRange(): { start: Date; end: Date; dateStr: string } {
   return { start, end, dateStr };
 }
 
-function isCollaborativeAction(action: string): boolean {
-  return (
-    action.startsWith("challenge.") ||
-    action.startsWith("thread.") ||
-    action.startsWith("article.")
-  );
-}
-
 /**
  * Generate unique pair combinations from an array of labels and count them.
  */
@@ -305,16 +297,42 @@ export async function GET(request: Request) {
       .select({
         actorType: activityEvents.actorType,
         action: activityEvents.action,
+        targetType: activityEvents.targetType,
+        targetId: activityEvents.targetId,
       })
       .from(activityEvents)
       .where(todayWhere);
 
+    // Pass 1: find targets with both agent + member activity
+    const targetActors = new Map<string, Set<string>>();
+    for (const ev of todayEvents) {
+      if (!ev.targetType || !ev.targetId) continue;
+      const key = `${ev.targetType}:${ev.targetId}`;
+      let actors = targetActors.get(key);
+      if (!actors) {
+        actors = new Set();
+        targetActors.set(key, actors);
+      }
+      actors.add(ev.actorType);
+    }
+
+    const collabTargetKeys = new Set<string>();
+    for (const [key, actors] of targetActors) {
+      if (actors.has("agent") && actors.has("member")) {
+        collabTargetKeys.add(key);
+      }
+    }
+
+    // Pass 2: classify
     let aiOnly = 0;
     let humanOnly = 0;
     let collaborative = 0;
 
     for (const ev of todayEvents) {
-      if (isCollaborativeAction(ev.action)) {
+      const key = ev.targetType && ev.targetId
+        ? `${ev.targetType}:${ev.targetId}`
+        : null;
+      if (key && collabTargetKeys.has(key)) {
         collaborative++;
       } else if (ev.actorType === "agent") {
         aiOnly++;
