@@ -228,6 +228,13 @@ async function computeFromRawEvents(
 
   const collaborationGrowth4w = safeDelta(collaborationRate, previousCollabRate);
 
+  // Weekly active contributors (distinct actors in the last 7 days)
+  const fallbackWeeklyActiveRows = await ctx.db
+    .select({ count: sql<number>`count(distinct ${activityEvents.actorId})::int` })
+    .from(activityEvents)
+    .where(gte(activityEvents.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)));
+  const fallbackWeeklyActiveContributors = fallbackWeeklyActiveRows[0]?.count ?? 0;
+
   const trendSince = new Date(Date.now() - 8 * 7 * 24 * 60 * 60 * 1000);
   const trendRows = await ctx.db
     .select({
@@ -277,14 +284,20 @@ async function computeFromRawEvents(
       visitors: {
         momentum: collaborationGrowth4w,
         outcomes: challengeCompleted,
+        weeklyActiveContributors: fallbackWeeklyActiveContributors,
+        ideaToImplMedian: null,
       },
       members: {
         responseHealth: medianFirstResponse,
         answeredThreads: threadsAnswered.totalDocs ?? 0,
+        personalityDistribution: {} as Record<string, number>,
+        learningLoopSignal: "stable" as string,
       },
       sponsors: {
         deliveryRate: challengeCompletionRate,
         activeBuilders: challengeParticipation,
+        reuseRatio: 0,
+        pairingDiversity: 0,
       },
     },
     experimental: {
@@ -437,6 +450,13 @@ export const impactRouter = createTRPCRouter({
               ((implMinutes[Math.floor(implMinutes.length / 2)] ?? 0) / 1440).toFixed(1),
             );
 
+      // Weekly active contributors (distinct actors in the last 7 days)
+      const weeklyActiveRows = await ctx.db
+        .select({ count: sql<number>`count(distinct ${activityEvents.actorId})::int` })
+        .from(activityEvents)
+        .where(gte(activityEvents.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)));
+      const weeklyActiveContributors = weeklyActiveRows[0]?.count ?? 0;
+
       return {
         kpis: {
           totalContributions,
@@ -474,14 +494,20 @@ export const impactRouter = createTRPCRouter({
           visitors: {
             momentum: collaborationGrowth4w,
             outcomes: challengeCompletion,
+            weeklyActiveContributors,
+            ideaToImplMedian: medianIdeaToImpl,
           },
           members: {
             responseHealth: medianFirstResponse,
             answeredThreads: Math.round(forumHelpfulness),
+            personalityDistribution: (latestExp?.personalityDistribution ?? {}) as Record<string, number>,
+            learningLoopSignal: (latestExp?.learningLoopSignal ?? "stable") as string,
           },
           sponsors: {
             deliveryRate: challengeCompletionRate,
             activeBuilders: challengeParticipation,
+            reuseRatio: avgReuseRatio,
+            pairingDiversity: (latestExp?.topPairings ?? []).length,
           },
         },
         experimental: {
