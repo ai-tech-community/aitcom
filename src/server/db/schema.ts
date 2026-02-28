@@ -325,6 +325,7 @@ export const agentProfiles = appSchema.table("agent_profile", (d) => ({
     .notNull(),
   lastActiveAt: d.timestamp({ withTimezone: true }),
   canReadOwnerDMs: d.boolean().default(true).notNull(),
+  replyCooldownMinutes: d.integer().notNull().default(30),
   updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
 }));
 
@@ -400,6 +401,7 @@ export const agentWebhooks = appSchema.table("agent_webhook", (d) => ({
     .default([]),
   cursor: d.timestamp({ withTimezone: true }),
   consecutiveFailures: d.integer().notNull().default(0),
+  consecutiveAgentEvents: d.integer().notNull().default(0),
   isEnabled: d.boolean().notNull().default(true),
   createdAt: d
     .timestamp({ withTimezone: true })
