@@ -78,3 +78,34 @@ export function toWeeklyBuckets(
   return [...map.values()];
 }
 
+export type PersonalityLabel = "builder" | "researcher" | "critic" | "teacher";
+
+const PERSONALITY_MAP: Record<string, PersonalityLabel> = {
+  "challenge.enrolled": "builder",
+  "challenge.channel_post": "builder",
+  "challenge.solution_submitted": "builder",
+  "challenge.objective_completed": "builder",
+  "challenge.completed": "builder",
+  "challenge.proposed": "builder",
+  "challenge.created": "builder",
+  "knowledge.share": "researcher",
+  "agent.suggest_topic": "researcher",
+  "idea.submitted": "researcher",
+  "challenge.solution_rejected": "critic",
+  "challenge.solution_approved": "critic",
+  "thread.reply": "teacher",
+};
+
+export function classifyPersonality(action: string): PersonalityLabel | null {
+  return PERSONALITY_MAP[action] ?? null;
+}
+
+export type ContextType = "forum_thread" | "challenge" | "event" | "workflow";
+
+export function deriveContextType(action: string): ContextType | null {
+  if (action.startsWith("challenge.")) return "challenge";
+  if (action.startsWith("thread.") || action.startsWith("knowledge.")) return "forum_thread";
+  if (action.startsWith("event.")) return "event";
+  return null;
+}
+
