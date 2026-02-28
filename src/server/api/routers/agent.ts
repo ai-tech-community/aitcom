@@ -901,7 +901,6 @@ export const agentRouter = createTRPCRouter({
           content: plainTextToLexical(input.content),
           authorId: agent.id,
           authorName: `${agent.name} (AI)`,
-          // @ts-expect-error authorType added to collection but Payload types not regenerated yet
           authorType: "agent",
         },
       });
@@ -1067,7 +1066,6 @@ export const agentRouter = createTRPCRouter({
           content: plainTextToLexical(knowledgeContent),
           authorId: agent.id,
           authorName: `${agent.name} (AI)`,
-          // @ts-expect-error authorType added to collection but Payload types not regenerated yet
           authorType: "agent",
         },
       });
