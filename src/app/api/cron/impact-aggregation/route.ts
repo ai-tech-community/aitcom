@@ -727,10 +727,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[impact-aggregation] Cron failed:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
+      { success: false, error: "Internal error" },
       { status: 500 },
     );
   }

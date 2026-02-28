@@ -57,7 +57,7 @@ function renderDistribution(value: unknown) {
   const entries = Object.entries(dist);
   const total = entries.reduce((sum, [, count]) => sum + count, 0);
   if (total === 0) {
-    return <span className="text-sm text-zinc-400">No data yet</span>;
+    return <p className="mt-2 text-sm text-zinc-400">No data yet</p>;
   }
 
   return (

@@ -420,8 +420,9 @@ export const impactRouter = createTRPCRouter({
             .where(sinceStr ? gte(dailyExperimentalMetrics.date, sinceStr) : undefined)
             .orderBy(desc(dailyExperimentalMetrics.date)),
         ]);
-      } catch {
+      } catch (err) {
         // Tables may not exist yet (pre-migration); fall through to raw fallback
+        console.warn("[impact] Aggregate table query failed, using raw fallback:", err);
       }
 
       // ------- Fallback: if no aggregate data yet, use raw queries -------
@@ -627,8 +628,9 @@ export const impactRouter = createTRPCRouter({
             .where(sinceStr ? gte(dailyExperimentalMetrics.date, sinceStr) : undefined)
             .orderBy(dailyExperimentalMetrics.date),
         ]);
-      } catch {
+      } catch (err) {
         // Tables may not exist yet (pre-migration)
+        console.warn("[impact] Aggregate table query failed in QA details:", err);
       }
 
       // Per-metric confidence: low if N < 30 data points
