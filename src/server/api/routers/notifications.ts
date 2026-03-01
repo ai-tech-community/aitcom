@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, isNull, isNotNull, desc, lt } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc, lt, sql } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { notifications } from "@/server/db/schema";
 
@@ -41,11 +41,11 @@ export const notificationsRouter = createTRPCRouter({
    */
   unreadCount: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
-    const rows = await ctx.db
-      .select({ id: notifications.id })
+    const [row] = await ctx.db
+      .select({ count: sql<number>`count(*)::int` })
       .from(notifications)
       .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
-    return { count: rows.length };
+    return { count: row?.count ?? 0 };
   }),
 
   /**
