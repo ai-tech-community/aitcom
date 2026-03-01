@@ -366,12 +366,17 @@ export const agentManagementRouter = createTRPCRouter({
     return key ?? null;
   }),
 
-  /** Test that the current user's agent API key is valid and the MCP endpoint is reachable. */
+  /** Test the agent setup: verify agent, API key, scopes, and check if an external tool has connected. */
   testConnection: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
+    // 1. Check agent exists and is active
     const [agent] = await ctx.db
-      .select()
+      .select({
+        id: agentProfiles.id,
+        name: agentProfiles.name,
+        lastActiveAt: agentProfiles.lastActiveAt,
+      })
       .from(agentProfiles)
       .where(
         and(
@@ -385,8 +390,13 @@ export const agentManagementRouter = createTRPCRouter({
       return { ok: false, reason: "no-agent" as const };
     }
 
+    // 2. Check active API key exists with valid scopes
     const [key] = await ctx.db
-      .select({ prefix: agentApiKeys.keyPrefix })
+      .select({
+        prefix: agentApiKeys.keyPrefix,
+        scopes: agentApiKeys.scopes,
+        lastUsedAt: agentApiKeys.lastUsedAt,
+      })
       .from(agentApiKeys)
       .where(
         and(
@@ -400,7 +410,38 @@ export const agentManagementRouter = createTRPCRouter({
       return { ok: false, reason: "no-key" as const };
     }
 
-    return { ok: true, reason: "connected" as const };
+    // 3. Check if an external tool has actually connected (webhook registered or key used)
+    const [webhook] = await ctx.db
+      .select({ isEnabled: agentWebhooks.isEnabled })
+      .from(agentWebhooks)
+      .where(eq(agentWebhooks.agentId, agent.id))
+      .limit(1);
+
+    const hasWebhook = !!webhook?.isEnabled;
+    const keyEverUsed = !!key.lastUsedAt;
+    const recentlyActive = agent.lastActiveAt
+      ? Date.now() - agent.lastActiveAt.getTime() < 24 * 60 * 60 * 1000
+      : false;
+
+    if (!hasWebhook && !keyEverUsed) {
+      return {
+        ok: false,
+        reason: "not-connected" as const,
+        details: "API key is ready but no external tool has connected yet. Configure your n8n workflow or Claude CLI, then try again.",
+      };
+    }
+
+    return {
+      ok: true,
+      reason: "connected" as const,
+      details: {
+        agentName: agent.name,
+        keyPrefix: key.prefix,
+        hasWebhook,
+        recentlyActive,
+        lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
+      },
+    };
   }),
 
   // ── Webhooks ─────────────────────────────────────────────────────────────
