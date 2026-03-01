@@ -168,6 +168,20 @@ export function ChatWindow({
       ) : (
         <Conversation className="flex-1">
           <ConversationContent className="gap-4 p-3">
+            {isAgent && messages.length === 0 && !messagesQuery.isLoading && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+                <BotIcon className="h-8 w-8 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Connect your bot to start chatting.
+                </p>
+                <a
+                  href="/dashboard/agent"
+                  className="text-xs text-primary underline-offset-4 hover:underline"
+                >
+                  Generate an API key to get started
+                </a>
+              </div>
+            )}
             {messages.map((msg, idx) => {
               const isUser =
                 msg.senderId === currentUserId &&
