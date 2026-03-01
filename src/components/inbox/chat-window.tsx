@@ -23,6 +23,7 @@ import {
   PromptInputFooter,
   PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input";
+import { Link } from "@/i18n/navigation";
 import { useInbox } from "./inbox-provider";
 
 // ---------------------------------------------------------------------------
@@ -174,12 +175,12 @@ export function ChatWindow({
                 <p className="text-sm text-muted-foreground">
                   Connect your bot to start chatting.
                 </p>
-                <a
+                <Link
                   href="/dashboard/agent"
                   className="text-xs text-primary underline-offset-4 hover:underline"
                 >
                   Generate an API key to get started
-                </a>
+                </Link>
               </div>
             )}
             {messages.map((msg, idx) => {
