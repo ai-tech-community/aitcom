@@ -377,6 +377,28 @@ export const agentApiKeysRelations = relations(agentApiKeys, ({ one }) => ({
   }),
 }));
 
+// System notifications (platform-generated alerts, separate from agent inbox)
+export const notifications = appSchema.table("notification", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  userId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => user.id),
+  type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest"
+  title: d.varchar({ length: 255 }).notNull(),
+  content: d.text().notNull(),
+  metadata: d.json().$type<Record<string, unknown>>().default({}),
+  readAt: d.timestamp({ withTimezone: true }),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
 // Agent webhooks (per-agent webhook configuration for event delivery)
 export const agentWebhooks = appSchema.table("agent_webhook", (d) => ({
   id: d
