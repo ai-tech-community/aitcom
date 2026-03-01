@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   DecoratorNode,
   type LexicalEditor,
@@ -47,14 +47,21 @@ function ImageComponent({
   editor: LexicalEditor;
 }) {
   const [currentSrc, setCurrentSrc] = useState(src);
+  const [prevSrc, setPrevSrc] = useState(src);
   const [currentAlt, setCurrentAlt] = useState(alt);
+  const [prevAlt, setPrevAlt] = useState(alt);
   const [imgError, setImgError] = useState(false);
 
-  useEffect(() => {
+  // Sync with external prop changes (e.g., undo/redo) — update during render instead of useEffect
+  if (src !== prevSrc) {
+    setPrevSrc(src);
     setCurrentSrc(src);
-    setCurrentAlt(alt);
     setImgError(false);
-  }, [src, alt]);
+  }
+  if (alt !== prevAlt) {
+    setPrevAlt(alt);
+    setCurrentAlt(alt);
+  }
 
   const updateNode = useCallback(
     (newSrc: string, newAlt: string) => {

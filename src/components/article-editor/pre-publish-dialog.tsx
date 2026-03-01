@@ -85,8 +85,8 @@ export function PrePublishDialog({
             <p className="text-muted-foreground text-sm">{t("outlineEmpty")}</p>
           ) : (
             <ul className="space-y-1 text-sm">
-              {outline.map((heading, index) => (
-                <li key={`${heading.text}-${index}`} className={`text-muted-foreground ${heading.tag === "h3" ? "ml-4" : ""}`}>
+              {outline.map((heading) => (
+                <li key={`${heading.tag}-${heading.text}`} className={`text-muted-foreground ${heading.tag === "h3" ? "ml-4" : ""}`}>
                   <span className="font-mono text-xs">{heading.tag.toUpperCase()}</span>{" "}
                   {heading.text}
                 </li>

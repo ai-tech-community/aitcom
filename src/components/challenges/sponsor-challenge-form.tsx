@@ -445,7 +445,7 @@ export function SponsorChallengeForm({
           <div className="space-y-4">
             {objectives.map((obj, index) => (
               <div
-                key={index}
+                key={obj.description || `objective-${index}`}
                 className="rounded-lg border border-border p-4 space-y-3"
               >
                 <div className="flex items-center justify-between">

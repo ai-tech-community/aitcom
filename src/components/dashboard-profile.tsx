@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { ProfileEditForm } from "./profile-edit-form";
@@ -96,11 +97,12 @@ export function DashboardProfile({
         <div className="mt-4 flex items-start gap-4">
           {/* Avatar */}
           {avatarUrl && !imgError ? (
-            // eslint-disable-next-line @next/next/no-img-element -- avatar URL is dynamic external source
-            <img
+            <Image
               src={avatarUrl}
               alt={profile.displayName}
               className="h-12 w-12 rounded-full"
+              width={48}
+              height={48}
               onError={() => setImgError(true)}
             />
           ) : (

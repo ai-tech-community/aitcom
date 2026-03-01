@@ -70,7 +70,7 @@ function AlignIcon({ align }: { align: AlignType }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
       {lines.map(([x, w], i) => (
-        <line key={i} x1={x} y1={2 + i * 3.5} x2={x + w} y2={2 + i * 3.5} />
+        <line key={`${x}-${w}-${i}`} x1={x} y1={2 + i * 3.5} x2={x + w} y2={2 + i * 3.5} />
       ))}
     </svg>
   );

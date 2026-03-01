@@ -49,13 +49,20 @@ function CodeBlockComponent({
   editor: LexicalEditor;
 }) {
   const [currentCode, setCurrentCode] = useState(code);
+  const [prevCode, setPrevCode] = useState(code);
   const [currentLang, setCurrentLang] = useState(language);
+  const [prevLang, setPrevLang] = useState(language);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
+  // Sync with external prop changes (e.g., undo/redo) — update during render instead of useEffect
+  if (code !== prevCode) {
+    setPrevCode(code);
     setCurrentCode(code);
+  }
+  if (language !== prevLang) {
+    setPrevLang(language);
     setCurrentLang(language);
-  }, [code, language]);
+  }
 
   const updateNode = useCallback(
     (newCode: string, newLang: string) => {

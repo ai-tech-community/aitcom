@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Image from "next/image";
-import { motion } from "framer-motion";
+import { LazyMotion, domAnimation, m } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { RulesModal } from "./modals/rules-modal";
@@ -77,7 +77,7 @@ export function CommunityBoard() {
   ];
 
   return (
-    <>
+    <LazyMotion features={domAnimation}>
       {/* Full viewport town map */}
       <div className="relative min-h-screen w-full overflow-hidden">
         {/* Background image fills entire viewport */}
@@ -86,6 +86,7 @@ export function CommunityBoard() {
           alt="Community town square"
           fill
           className="object-cover"
+          sizes="100vw"
           priority
         />
 
@@ -103,14 +104,14 @@ export function CommunityBoard() {
         </div>
 
         {/* Dot markers on buildings */}
-        <motion.div
+        <m.div
           className="absolute inset-0 z-10"
           variants={containerVariants}
           initial="hidden"
           animate="visible"
         >
           {hotspots.map((spot) => (
-            <motion.button
+            <m.button
               key={spot.key}
               className="group absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer"
               style={{ top: spot.top, left: spot.left }}
@@ -132,9 +133,9 @@ export function CommunityBoard() {
               <span className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-zinc-900 shadow backdrop-blur-sm sm:mt-2 sm:rounded-md sm:px-3 sm:py-1.5 sm:text-xs sm:opacity-0 sm:shadow-lg sm:transition-opacity sm:group-hover:opacity-100">
                 {spot.label}
               </span>
-            </motion.button>
+            </m.button>
           ))}
-        </motion.div>
+        </m.div>
       </div>
 
       {/* Modals - all rendered, each independently open/closed */}
@@ -159,6 +160,6 @@ export function CommunityBoard() {
         subtitle={t("contribute.subtitle")}
         windowIndex={openList.indexOf("contribute")}
       />
-    </>
+    </LazyMotion>
   );
 }

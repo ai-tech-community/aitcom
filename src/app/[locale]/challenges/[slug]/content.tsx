@@ -286,7 +286,7 @@ export function ChallengeDetailContent({
               <ol className="mt-4 space-y-3">
                 {challenge.objectives.map((obj, i) => (
                   <li
-                    key={i}
+                    key={obj.description}
                     className="flex items-start gap-3 rounded border border-dashed border-border px-4 py-3"
                   >
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary font-mono text-xs font-medium text-muted-foreground">

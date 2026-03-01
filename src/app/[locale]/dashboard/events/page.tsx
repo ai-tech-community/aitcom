@@ -35,26 +35,25 @@ interface PayloadEvent {
 }
 
 export default async function DashboardEventsPage() {
-  const session = await getSession();
+  const [session, locale] = await Promise.all([getSession(), getLocale()]);
   if (!session?.user) redirect("/auth/signin");
 
-  const locale = await getLocale();
-
-  const registrations = await db
-    .select()
-    .from(eventRegistrations)
-    .where(
-      and(
-        eq(eventRegistrations.userId, session.user.id),
-        inArray(eventRegistrations.status, [
-          "registered",
-          "waitlisted",
-          "attended",
-        ]),
+  const [registrations, payload] = await Promise.all([
+    db
+      .select()
+      .from(eventRegistrations)
+      .where(
+        and(
+          eq(eventRegistrations.userId, session.user.id),
+          inArray(eventRegistrations.status, [
+            "registered",
+            "waitlisted",
+            "attended",
+          ]),
+        ),
       ),
-    );
-
-  const payload = await getPayload({ config });
+    getPayload({ config }),
+  ]);
   const eventsWithReg = (
     await Promise.all(
       registrations.map(async (reg) => {

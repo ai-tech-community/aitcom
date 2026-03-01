@@ -7,7 +7,7 @@ import {
   useRef,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import { LazyMotion, domAnimation, m, AnimatePresence, useDragControls } from "framer-motion";
 import { Terminal, Minus, Maximize2, Minimize2, X } from "lucide-react";
 
 function useIsMobile() {
@@ -122,9 +122,10 @@ export function BuildingModal({
   const offset = windowIndex * STACK_OFFSET;
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
+    <LazyMotion features={domAnimation}>
+      <AnimatePresence>
+        {isOpen && (
+          <m.div
           ref={containerRef}
           className={`fixed flex flex-col overflow-hidden border border-zinc-200 bg-white shadow-2xl ${
             isMobile
@@ -263,8 +264,9 @@ export function BuildingModal({
               </svg>
             </div>
           )}
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </m.div>
+        )}
+      </AnimatePresence>
+    </LazyMotion>
   );
 }
