@@ -70,7 +70,7 @@ export function ChallengeProgress({
         const isReviewed = isPeerReview && progress?.reviewedBy;
 
         return (
-          <div key={index} className="flex items-center gap-2">
+          <div key={objective.description} className="flex items-center gap-2">
             <div className="flex-1">
               <div className="flex items-center justify-between text-xs">
                 <span

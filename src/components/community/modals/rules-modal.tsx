@@ -65,8 +65,8 @@ export function RulesModal({
     >
       {isLoading && (
         <div className="space-y-3 py-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-4 animate-pulse rounded bg-zinc-100" />
+          {[1, 2, 3, 4].map((n) => (
+            <div key={n} className="h-4 animate-pulse rounded bg-zinc-100" />
           ))}
         </div>
       )}

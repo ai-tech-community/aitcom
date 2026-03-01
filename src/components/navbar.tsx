@@ -14,6 +14,7 @@ import { LanguageSwitcher } from "./language-switcher";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/server/better-auth/client";
 import { AitLogo } from "@/components/ait-logo";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 const navLinks = [
   { href: "/events", key: "events", shortcut: "E" },
@@ -120,6 +121,7 @@ export function Navbar() {
               >
                 [D] DASHBOARD
               </Link>
+              <NotificationBell />
               <button
                 onClick={() =>
                   authClient.signOut().then(() => window.location.reload())
@@ -142,6 +144,7 @@ export function Navbar() {
         {/* Mobile Menu */}
         <div className="flex items-center gap-2 md:hidden">
           <LanguageSwitcher />
+          {session?.user && <NotificationBell />}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger
               className="text-muted-foreground hover:text-foreground rounded p-1.5"

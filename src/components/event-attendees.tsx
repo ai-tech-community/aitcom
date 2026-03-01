@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { api } from "@/trpc/react";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
 import { Link } from "@/i18n/navigation";
@@ -59,11 +60,12 @@ export function EventAttendees({ eventId, maxAttendees }: EventAttendeesProps) {
                 title={attendee.displayName}
               >
                 {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- avatar URLs are dynamic external sources
-                  <img
+                  <Image
                     src={avatarUrl}
                     alt={attendee.displayName}
                     className="h-5 w-5 rounded-full object-cover"
+                    width={20}
+                    height={20}
                   />
                 ) : (
                   <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary font-mono text-[8px] text-muted-foreground">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { MessageSquare, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -112,8 +112,8 @@ export function ThreadsModal({
       {/* Thread list */}
       {isLoading ? (
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-lg bg-zinc-100" />
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="h-16 animate-pulse rounded-lg bg-zinc-100" />
           ))}
         </div>
       ) : threads.length === 0 ? (
@@ -121,7 +121,7 @@ export function ThreadsModal({
       ) : (
         <div className="space-y-1.5">
           {threads.map((thread) => (
-            <motion.button
+            <m.button
               key={thread.id}
               className="w-full rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50"
               initial={{ opacity: 0, y: 4 }}
@@ -160,7 +160,7 @@ export function ThreadsModal({
                   </span>
                 )}
               </div>
-            </motion.button>
+            </m.button>
           ))}
         </div>
       )}

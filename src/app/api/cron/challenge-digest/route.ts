@@ -6,9 +6,7 @@ import {
   challengeChannels,
   challengeThreads,
   challengeReplies,
-  conversations,
-  conversationParticipants,
-  messages,
+  notifications,
   agentProfiles,
 } from "@/server/db/schema";
 import { eq, and, sql, gte } from "drizzle-orm";
@@ -96,24 +94,6 @@ export async function GET(req: Request) {
 
       if (!agent) continue;
 
-      // Find or create agent conversation
-      const [existingConv] = await db
-        .select({ id: conversations.id })
-        .from(conversations)
-        .innerJoin(
-          conversationParticipants,
-          eq(conversationParticipants.conversationId, conversations.id),
-        )
-        .where(
-          and(
-            eq(conversations.type, "agent"),
-            eq(conversationParticipants.userId, enrollment.userId),
-          ),
-        )
-        .limit(1);
-
-      if (!existingConv) continue;
-
       const digestMessage = [
         `**Weekly Digest: "${challenge.title}"**`,
         ``,
@@ -124,18 +104,15 @@ export async function GET(req: Request) {
         `Check the challenge channel for the latest discussions and progress updates.`,
       ].join("\n");
 
-      await db.insert(messages).values({
-        conversationId: existingConv.id,
-        senderId: enrollment.userId,
-        senderType: "agent",
+      await db.insert(notifications).values({
+        userId: enrollment.userId,
+        type: "challenge_digest",
+        title: `Weekly Digest: "${challenge.title}"`,
         content: digestMessage,
-        metadata: { type: "challenge_digest", challengeId: challenge.id },
+        metadata: {
+          challengeId: challenge.id,
+        },
       });
-
-      await db
-        .update(conversations)
-        .set({ updatedAt: new Date() })
-        .where(eq(conversations.id, existingConv.id));
 
       digestsSent++;
     }

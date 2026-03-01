@@ -36,7 +36,7 @@ export function OnboardingQuestions({ onComplete }: { onComplete: () => void }) 
 
   const handleNext = () => {
     if (step < 2) {
-      setStep(step + 1);
+      setStep((prev) => prev + 1);
     } else if (intent && experience) {
       const allInterests = customInterest.trim()
         ? [...interests, customInterest.trim()]
@@ -66,11 +66,11 @@ export function OnboardingQuestions({ onComplete }: { onComplete: () => void }) 
     <div className="mx-auto max-w-lg">
       {/* Progress indicator */}
       <div className="mb-8 flex items-center justify-center gap-2">
-        {[0, 1, 2].map((i) => (
+        {[0, 1, 2].map((n) => (
           <div
-            key={i}
+            key={n}
             className={`h-1.5 w-12 rounded-full transition-colors ${
-              i <= step ? "bg-primary" : "bg-secondary"
+              n <= step ? "bg-primary" : "bg-secondary"
             }`}
           />
         ))}

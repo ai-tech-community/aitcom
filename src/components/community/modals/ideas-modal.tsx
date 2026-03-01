@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { ChevronUp, Lightbulb } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
@@ -106,8 +106,8 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
       {/* Ideas list */}
       {isLoading ? (
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-14 animate-pulse rounded-lg bg-zinc-100" />
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="h-14 animate-pulse rounded-lg bg-zinc-100" />
           ))}
         </div>
       ) : ideas.length === 0 ? (
@@ -115,7 +115,7 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
       ) : (
         <div className="space-y-2">
           {ideas.map((idea) => (
-            <motion.div
+            <m.div
               key={idea.id}
               className="flex items-start gap-3 rounded-lg border border-zinc-200 bg-zinc-50/50 p-3"
               initial={{ opacity: 0, y: 4 }}
@@ -160,7 +160,7 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
                   </span>
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           ))}
         </div>
       )}

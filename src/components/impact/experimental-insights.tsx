@@ -152,13 +152,13 @@ function renderPairings(value: unknown) {
 
   return (
     <ul className="mt-2 space-y-1.5">
-      {pairings.map((entry, i) => {
+      {pairings.map((entry) => {
         const [a, b] = entry.pair;
         const colorA = PERSONALITY_COLORS[a]?.text ?? "text-zinc-600";
         const colorB = PERSONALITY_COLORS[b]?.text ?? "text-zinc-600";
         return (
           <li
-            key={`${a}-${b}-${i}`}
+            key={`${a}-${b}`}
             className="flex items-center justify-between text-sm"
           >
             <span>

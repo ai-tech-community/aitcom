@@ -6,9 +6,7 @@ import {
   challengeProgress,
   challengeChannels,
   agentProfiles,
-  conversations,
-  conversationParticipants,
-  messages,
+  notifications,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 
@@ -120,54 +118,16 @@ export async function GET(request: Request) {
 
       message += `\nI'll keep scouting for opportunities. Check the community forum and ideas board!`;
 
-      // Find or create agent conversation
-      const [existingConv] = await db
-        .select({ id: conversations.id })
-        .from(conversations)
-        .innerJoin(
-          conversationParticipants,
-          eq(conversationParticipants.conversationId, conversations.id),
-        )
-        .where(
-          and(
-            eq(conversations.type, "agent"),
-            eq(conversationParticipants.userId, enrollment.userId),
-          ),
-        )
-        .limit(1);
-
-      let convId: string;
-      if (existingConv) {
-        convId = existingConv.id;
-      } else {
-        const [newConv] = await db
-          .insert(conversations)
-          .values({ type: "agent" })
-          .returning();
-        await db.insert(conversationParticipants).values({
-          conversationId: newConv!.id,
-          userId: enrollment.userId,
-          isPinned: true,
-        });
-        convId = newConv!.id;
-      }
-
-      // Send the advisory message
-      await db.insert(messages).values({
-        conversationId: convId,
-        senderId: enrollment.userId,
-        senderType: "agent",
+      await db.insert(notifications).values({
+        userId: enrollment.userId,
+        type: "challenge_advisory",
+        title: `Challenge Update: "${challenge.title}"`,
         content: message,
         metadata: {
-          type: "challenge_advisory",
           challengeId: challenge.id,
+          enrollmentId: enrollment.enrollmentId,
         },
       });
-
-      await db
-        .update(conversations)
-        .set({ updatedAt: new Date() })
-        .where(eq(conversations.id, convId));
 
       advisorySent++;
     }

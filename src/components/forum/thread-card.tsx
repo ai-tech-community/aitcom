@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { LazyMotion, domAnimation, m } from "framer-motion";
 import { MessageSquare, Eye } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -32,13 +32,14 @@ export function ThreadCard({ thread, index }: ThreadCardProps) {
   const t = useTranslations("forum");
 
   return (
-    <Link href={`/forum/${thread.slug}`}>
-      <motion.div
-        className="w-full rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 mb-3 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50"
-        initial={{ opacity: 0, y: 4 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.03 }}
-      >
+    <LazyMotion features={domAnimation}>
+      <Link href={`/forum/${thread.slug}`}>
+        <m.div
+          className="w-full rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 mb-3 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.03 }}
+        >
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm font-medium leading-snug text-zinc-900">
             {thread.isPinned && (
@@ -75,7 +76,8 @@ export function ThreadCard({ thread, index }: ThreadCardProps) {
             </span>
           )}
         </div>
-      </motion.div>
-    </Link>
+        </m.div>
+      </Link>
+    </LazyMotion>
   );
 }

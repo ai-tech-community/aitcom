@@ -32,7 +32,7 @@ export function AgentDashboardContent({
   initialAgent,
 }: AgentDashboardContentProps) {
   const t = useTranslations("agent");
-  const [agent] = useState(initialAgent);
+  const agent = initialAgent;
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 
   // Edit mode state

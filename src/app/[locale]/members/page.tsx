@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { api } from "@/trpc/server";
@@ -24,8 +25,7 @@ export default async function MembersPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  const t = await getTranslations("members");
-  const { q } = await searchParams;
+  const [t, { q }] = await Promise.all([getTranslations("members"), searchParams]);
 
   const members = await api.members.listMembers({ limit: 50, search: q });
 
@@ -69,11 +69,12 @@ export default async function MembersPage({
                   {rank}
                 </span>
                 {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- avatar URLs are dynamic external sources
-                  <img
+                  <Image
                     src={avatarUrl}
                     alt={member.profile.displayName}
                     className="mt-0.5 h-7 w-7 shrink-0 rounded-full object-cover"
+                    width={28}
+                    height={28}
                   />
                 ) : (
                   <div className="bg-secondary text-muted-foreground mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-[9px]">
@@ -176,11 +177,12 @@ export default async function MembersPage({
                         className="flex items-start gap-2"
                       >
                         {avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element -- avatar URLs are dynamic external sources
-                          <img
+                          <Image
                             src={avatarUrl}
                             alt={member.profile.displayName}
                             className="mt-0.5 h-6 w-6 shrink-0 rounded-full object-cover"
+                            width={24}
+                            height={24}
                           />
                         ) : (
                           <div className="bg-secondary text-muted-foreground mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px]">

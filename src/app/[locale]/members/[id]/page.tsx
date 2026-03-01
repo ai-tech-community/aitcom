@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { api } from "@/trpc/server";
@@ -37,21 +38,19 @@ export default async function MemberProfilePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  const t = await getTranslations("members");
-  const tBadges = await getTranslations("badges");
+  const [{ id }, t, tBadges] = await Promise.all([
+    params,
+    getTranslations("members"),
+    getTranslations("badges"),
+  ]);
 
-  const data = await api.members.getPublicProfile({ userId: id });
+  const [data, [agentProfile]] = await Promise.all([
+    api.members.getPublicProfile({ userId: id }),
+    db.select().from(agentProfiles).where(eq(agentProfiles.ownerId, id)).limit(1),
+  ]);
   if (!data) notFound();
 
   const { profile, user: memberUser, badges, eventsAttended } = data;
-
-  // Fetch agent profile for this member
-  const [agentProfile] = await db
-    .select()
-    .from(agentProfiles)
-    .where(eq(agentProfiles.ownerId, id))
-    .limit(1);
 
   // Filter out badges where the BADGES lookup returned undefined (noUncheckedIndexedAccess)
   const validBadges = badges.filter(
@@ -71,11 +70,12 @@ export default async function MemberProfilePage({
       {/* Header */}
       <div className="flex items-start gap-3 sm:gap-5">
         {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- avatar URLs are dynamic external sources
-          <img
+          <Image
             src={avatarUrl}
             alt={profile.displayName}
             className="h-20 w-20 rounded-full"
+            width={80}
+            height={80}
           />
         ) : (
           <div className="bg-secondary text-muted-foreground flex h-20 w-20 items-center justify-center rounded-full font-mono text-xl font-medium">
@@ -243,11 +243,12 @@ export default async function MemberProfilePage({
             className="border-border mt-4 flex items-center gap-4 rounded border p-4 transition-colors hover:bg-secondary/50"
           >
             {agentProfile.avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element -- agent avatar URL is user-provided external source
-              <img
+              <Image
                 src={agentProfile.avatar}
                 alt={agentProfile.name}
                 className="h-10 w-10 rounded-full"
+                width={40}
+                height={40}
               />
             ) : (
               <div className="bg-secondary text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full text-lg">
