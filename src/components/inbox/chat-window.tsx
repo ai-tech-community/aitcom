@@ -44,6 +44,10 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+function toDateKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -164,26 +168,65 @@ export function ChatWindow({
       ) : (
         <Conversation className="flex-1">
           <ConversationContent className="gap-4 p-3">
-            {messages.map((msg) => {
+            {messages.map((msg, idx) => {
               const isUser =
                 msg.senderId === currentUserId &&
                 msg.senderType === "human";
 
+              const prevMsg = messages[idx - 1];
+              const showDateSeparator =
+                !prevMsg ||
+                toDateKey(msg.createdAt) !== toDateKey(prevMsg.createdAt);
+
+              const today = new Date();
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+
+              let dateLabel: string | undefined;
+              if (showDateSeparator) {
+                const key = toDateKey(msg.createdAt);
+                if (key === toDateKey(today)) {
+                  dateLabel = t("today");
+                } else if (key === toDateKey(yesterday)) {
+                  dateLabel = t("yesterday");
+                } else {
+                  dateLabel = msg.createdAt.toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year:
+                      msg.createdAt.getFullYear() !== today.getFullYear()
+                        ? "numeric"
+                        : undefined,
+                  });
+                }
+              }
+
               return (
-                <Message key={msg.id} from={isUser ? "user" : "assistant"}>
-                  <MessageContent>
-                    {isUser ? (
-                      <p>{msg.content}</p>
-                    ) : (
-                      <MessageResponse>{msg.content}</MessageResponse>
-                    )}
-                  </MessageContent>
-                  <span
-                    className={`text-[10px] text-muted-foreground ${isUser ? "ml-auto" : ""}`}
-                  >
-                    {formatTime(msg.createdAt)}
-                  </span>
-                </Message>
+                <div key={msg.id} className="flex flex-col gap-4">
+                  {dateLabel && (
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="shrink-0 text-[10px] font-medium uppercase text-muted-foreground">
+                        {dateLabel}
+                      </span>
+                      <div className="h-px flex-1 bg-border" />
+                    </div>
+                  )}
+                  <Message from={isUser ? "user" : "assistant"}>
+                    <MessageContent>
+                      {isUser ? (
+                        <p>{msg.content}</p>
+                      ) : (
+                        <MessageResponse>{msg.content}</MessageResponse>
+                      )}
+                    </MessageContent>
+                    <span
+                      className={`text-[10px] text-muted-foreground ${isUser ? "ml-auto" : ""}`}
+                    >
+                      {formatTime(msg.createdAt)}
+                    </span>
+                  </Message>
+                </div>
               );
             })}
           </ConversationContent>

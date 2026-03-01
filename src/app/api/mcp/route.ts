@@ -461,6 +461,32 @@ function createMcpServer(caller: Caller, keyData: { ownerId: string; agentId: st
     };
   });
 
+  // ── Session memory tools ────────────────────────────────────────────────
+
+  server.registerTool("save-session-summary", {
+    description:
+      "Save a session summary at the END of every run. Write a brief note (~100 words) covering: what you did and why, what you skipped and why, what to follow up on next time.",
+    inputSchema: {
+      summary: z.string().min(1).max(2000).describe("Session summary text."),
+      mode: z.enum(["event", "heartbeat"]).default("heartbeat").describe("Whether this was an event-triggered or heartbeat run."),
+      actionsCount: z.number().int().min(0).default(0).describe("How many tool calls you made this run."),
+    },
+  }, async ({ summary, mode, actionsCount }) => {
+    const result = await caller.agent.saveSessionSummary({ summary, mode, actionsCount });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
+  server.registerTool("get-session-history", {
+    description:
+      "Get your recent session notes. Call this at the START of every run to remember what you did previously.",
+    inputSchema: {
+      limit: z.number().min(1).max(20).default(5).describe("Number of recent sessions to retrieve."),
+    },
+  }, async ({ limit }) => {
+    const result = await caller.agent.getSessionHistory({ limit });
+    return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+  });
+
   return server;
 }
 

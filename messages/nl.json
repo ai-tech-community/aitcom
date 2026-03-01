@@ -413,7 +413,9 @@
     "expand": "Vergroten",
     "collapse": "Verkleinen",
     "close": "Sluiten",
-    "back": "Terug"
+    "back": "Terug",
+    "today": "Vandaag",
+    "yesterday": "Gisteren"
   },
   "onboarding": {
     "welcomeTitle": "Welkom bij AIT Community!",

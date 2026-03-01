@@ -421,6 +421,42 @@ export const agentWebhooksRelations = relations(agentWebhooks, ({ one }) => ({
   }),
 }));
 
+// Agent session logs (rolling memory for cross-run context)
+export const agentSessionLogs = appSchema.table(
+  "agent_session_log",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    agentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => agentProfiles.id),
+    summary: d.text().notNull(),
+    mode: d.varchar({ length: 20 }).notNull().default("heartbeat"),
+    actionsCount: d.integer().notNull().default(0),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("agent_session_logs_agent_created_idx").on(t.agentId, t.createdAt),
+  ],
+);
+
+export const agentSessionLogsRelations = relations(
+  agentSessionLogs,
+  ({ one }) => ({
+    agent: one(agentProfiles, {
+      fields: [agentSessionLogs.agentId],
+      references: [agentProfiles.id],
+    }),
+  }),
+);
+
 // Agent drafts (content drafts created by agents, pending human review)
 export const agentDrafts = appSchema.table("agent_draft", (d) => ({
   id: d
