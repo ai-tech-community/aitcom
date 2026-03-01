@@ -11,17 +11,31 @@ export function NotificationPanel({ onClose }: Props) {
   const utils = api.useUtils();
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // Fix 3: Stable onClose ref to avoid re-registering listener on every render
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        onClose();
+        onCloseRef.current();
       }
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
+  }, []);
 
-  const { data, isLoading, fetchNextPage, hasNextPage } =
+  // Fix 4: Escape key handler
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if (e.key === "Escape") onCloseRef.current();
+    }
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
+  // Fix 1: Destructure isFetchingNextPage
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     api.notifications.list.useInfiniteQuery(
       { limit: 20 },
       {
@@ -76,27 +90,33 @@ export function NotificationPanel({ onClose }: Props) {
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <span className="text-sm font-semibold">Notifications</span>
         <div className="flex gap-1">
+          {/* Fix 2: disabled={markRead.isPending} */}
           <button
             type="button"
             title="Mark all read"
             onClick={() => markRead.mutate({})}
-            className="rounded p-1 text-muted-foreground hover:bg-muted"
+            disabled={markRead.isPending}
+            className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-50"
           >
             <CheckCheckIcon className="h-4 w-4" />
           </button>
+          {/* Fix 2: disabled={deleteAllRead.isPending} */}
           <button
             type="button"
             title="Clear read"
             onClick={() => deleteAllRead.mutate()}
-            className="rounded p-1 text-muted-foreground hover:bg-muted"
+            disabled={deleteAllRead.isPending}
+            className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-50"
           >
             <BellOffIcon className="h-4 w-4" />
           </button>
+          {/* Fix 2: disabled={deleteAll.isPending} */}
           <button
             type="button"
             title="Clear all"
             onClick={() => deleteAll.mutate()}
-            className="rounded p-1 text-muted-foreground hover:bg-muted"
+            disabled={deleteAll.isPending}
+            className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-50"
           >
             <Trash2Icon className="h-4 w-4" />
           </button>
@@ -147,29 +167,35 @@ export function NotificationPanel({ onClose }: Props) {
             {/* Per-row actions */}
             <div className="flex shrink-0 flex-col gap-1 opacity-0 group-hover:opacity-100">
               {n.readAt ? (
+                /* Fix 2: disabled={markUnread.isPending} */
                 <button
                   type="button"
                   title="Mark unread"
                   onClick={() => markUnread.mutate({ id: n.id })}
-                  className="rounded p-0.5 text-muted-foreground hover:bg-muted"
+                  disabled={markUnread.isPending}
+                  className="rounded p-0.5 text-muted-foreground hover:bg-muted disabled:opacity-50"
                 >
                   <BellOffIcon className="h-3 w-3" />
                 </button>
               ) : (
+                /* Fix 2: disabled={markRead.isPending} */
                 <button
                   type="button"
                   title="Mark read"
                   onClick={() => markRead.mutate({ id: n.id })}
-                  className="rounded p-0.5 text-muted-foreground hover:bg-muted"
+                  disabled={markRead.isPending}
+                  className="rounded p-0.5 text-muted-foreground hover:bg-muted disabled:opacity-50"
                 >
                   <CheckCheckIcon className="h-3 w-3" />
                 </button>
               )}
+              {/* Fix 2: disabled={del.isPending} */}
               <button
                 type="button"
                 title="Delete"
                 onClick={() => del.mutate({ id: n.id })}
-                className="rounded p-0.5 text-muted-foreground hover:bg-muted"
+                disabled={del.isPending}
+                className="rounded p-0.5 text-muted-foreground hover:bg-muted disabled:opacity-50"
               >
                 <Trash2Icon className="h-3 w-3" />
               </button>
@@ -177,13 +203,15 @@ export function NotificationPanel({ onClose }: Props) {
           </div>
         ))}
 
+        {/* Fix 1: isFetchingNextPage state on Load more button */}
         {hasNextPage && (
           <button
             type="button"
             onClick={() => void fetchNextPage()}
-            className="w-full py-2 text-center text-xs text-muted-foreground hover:bg-muted"
+            disabled={isFetchingNextPage}
+            className="w-full py-2 text-center text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
           >
-            Load more
+            {isFetchingNextPage ? "Loading..." : "Load more"}
           </button>
         )}
       </div>
