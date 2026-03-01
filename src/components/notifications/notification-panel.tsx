@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { CheckCheckIcon, Trash2Icon, BellOffIcon } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Spinner } from "@/components/ui/spinner";
+import { Link } from "@/i18n/navigation";
 
 type Props = { onClose: () => void };
 
@@ -88,7 +89,16 @@ export function NotificationPanel({ onClose }: Props) {
     >
       {/* Header toolbar */}
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <span className="text-sm font-semibold">Notifications</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold">Notifications</span>
+          <Link
+            href="/dashboard/notifications"
+            onClick={onClose}
+            className="text-[10px] text-muted-foreground underline-offset-4 hover:underline"
+          >
+            View all
+          </Link>
+        </div>
         <div className="flex gap-1">
           {/* Fix 2: disabled={markRead.isPending} */}
           <button
