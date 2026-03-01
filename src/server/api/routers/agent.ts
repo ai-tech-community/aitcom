@@ -12,6 +12,7 @@ import {
   agentProfiles,
   agentDrafts,
   agentSuggestions,
+  agentSessionLogs,
   memberProfiles,
   activityEvents,
   conversations,
@@ -2013,5 +2014,72 @@ export const agentRouter = createTRPCRouter({
       });
 
       return { yaml: lines.join("\n") };
+    }),
+
+  saveSessionSummary: agentProcedure
+    .input(
+      z.object({
+        summary: z.string().min(1).max(2000),
+        mode: z.enum(["event", "heartbeat"]).default("heartbeat"),
+        actionsCount: z.number().int().min(0).default(0),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+
+      // Insert new session log
+      await ctx.db.insert(agentSessionLogs).values({
+        agentId: ctx.agent.agentId,
+        summary: input.summary,
+        mode: input.mode,
+        actionsCount: input.actionsCount,
+      });
+
+      // Rolling cleanup: keep only last 20 logs per agent
+      const logs = await ctx.db
+        .select({ id: agentSessionLogs.id })
+        .from(agentSessionLogs)
+        .where(eq(agentSessionLogs.agentId, ctx.agent.agentId))
+        .orderBy(desc(agentSessionLogs.createdAt))
+        .limit(100);
+
+      if (logs.length > 20) {
+        const idsToDelete = logs.slice(20).map((l) => l.id);
+        await ctx.db
+          .delete(agentSessionLogs)
+          .where(
+            and(
+              eq(agentSessionLogs.agentId, ctx.agent.agentId),
+              sql`${agentSessionLogs.id} IN (${sql.join(idsToDelete.map((id) => sql`${id}`), sql`, `)})`,
+            ),
+          );
+      }
+
+      return { saved: true };
+    }),
+
+  getSessionHistory: agentProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(20).default(5),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+
+      const logs = await ctx.db
+        .select({
+          summary: agentSessionLogs.summary,
+          mode: agentSessionLogs.mode,
+          actionsCount: agentSessionLogs.actionsCount,
+          createdAt: agentSessionLogs.createdAt,
+        })
+        .from(agentSessionLogs)
+        .where(eq(agentSessionLogs.agentId, ctx.agent.agentId))
+        .orderBy(desc(agentSessionLogs.createdAt))
+        .limit(input.limit);
+
+      // Return in chronological order (oldest first)
+      return logs.reverse();
     }),
 });
