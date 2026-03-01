@@ -4,9 +4,7 @@ import { getPayloadClient } from "@/server/payload";
 import {
   challengeEnrollments,
   challengeProgress,
-  conversations,
-  conversationParticipants,
-  messages,
+  notifications,
   memberProfiles,
 } from "@/server/db/schema";
 import { eq, and, sql, isNull } from "drizzle-orm";
@@ -96,24 +94,6 @@ export async function GET(req: Request) {
 
     const nameList = names.map((n) => n.displayName).join(", ");
 
-    // Find creator's agent conversation
-    const [conv] = await db
-      .select({ id: conversations.id })
-      .from(conversations)
-      .innerJoin(
-        conversationParticipants,
-        eq(conversationParticipants.conversationId, conversations.id),
-      )
-      .where(
-        and(
-          eq(conversations.type, "agent"),
-          eq(conversationParticipants.userId, creatorId),
-        ),
-      )
-      .limit(1);
-
-    if (!conv) continue;
-
     const reminderMessage = [
       `**Review Reminder: "${challenge.title}"**`,
       ``,
@@ -123,18 +103,15 @@ export async function GET(req: Request) {
       `Please review their solutions in the challenge channel.`,
     ].join("\n");
 
-    await db.insert(messages).values({
-      conversationId: conv.id,
-      senderId: creatorId,
-      senderType: "agent",
+    await db.insert(notifications).values({
+      userId: creatorId,
+      type: "stale_review_reminder",
+      title: "Peer Review Reminder",
       content: reminderMessage,
-      metadata: { type: "stale_review_reminder", challengeId },
+      metadata: {
+        challengeId,
+      },
     });
-
-    await db
-      .update(conversations)
-      .set({ updatedAt: new Date() })
-      .where(eq(conversations.id, conv.id));
 
     remindersSent++;
   }
