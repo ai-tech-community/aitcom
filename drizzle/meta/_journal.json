@@ -15,6 +15,13 @@
       "when": 1772358447547,
       "tag": "0001_add_notifications_table",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1772358675974,
+      "tag": "0002_add_notification_index",
+      "breakpoints": true
     }
   ]
 }
