@@ -1,6 +1,8 @@
 "use client";
 
 import { CheckCheckIcon, Trash2Icon, BellOffIcon } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { api } from "@/trpc/react";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -121,9 +123,11 @@ export function NotificationsPageContent() {
             {/* Full content — no truncation */}
             <div className="flex-1 min-w-0 space-y-1">
               <p className="text-sm font-medium">{n.title}</p>
-              <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-                {n.content}
-              </p>
+              <div className="space-y-1 text-sm text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_a]:text-primary [&_a]:underline [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {n.content}
+                </ReactMarkdown>
+              </div>
               <p className="text-[10px] text-muted-foreground">
                 {new Date(n.createdAt).toLocaleString()}
               </p>

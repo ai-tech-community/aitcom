@@ -166,7 +166,11 @@ export function NotificationPanel({ onClose }: Props) {
               >
                 <p className="truncate text-sm font-medium">{n.title}</p>
                 <p className="line-clamp-2 text-xs text-muted-foreground">
-                  {n.content}
+                  {n.content
+                    .replace(/\*\*(.*?)\*\*/g, "$1")
+                    .replace(/\*(.*?)\*/g, "$1")
+                    .replace(/^[-*]\s/gm, "")
+                    .replace(/#{1,6}\s/g, "")}
                 </p>
                 <p className="mt-1 text-[10px] text-muted-foreground">
                   {new Date(n.createdAt).toLocaleDateString()}
