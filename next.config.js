@@ -30,6 +30,10 @@ const config = {
         protocol: "https",
         hostname: "avatars.githubusercontent.com",
       },
+      {
+        protocol: "https",
+        hostname: `${process.env.S3_BUCKET}.s3.${process.env.S3_REGION ?? "eu-central-1"}.amazonaws.com`,
+      },
     ],
   },
 };
