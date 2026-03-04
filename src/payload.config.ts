@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import path from "path";
 import { buildConfig } from "payload";
 import { postgresAdapter } from "@payloadcms/db-postgres";
+import { s3Storage } from "@payloadcms/storage-s3";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import sharp from "sharp";
 import { resendAdapter } from '@payloadcms/email-resend'
@@ -87,6 +88,29 @@ export default buildConfig({
     },
   ],
   globals: [CommunityRules],
+  plugins: [
+    s3Storage({
+      collections: {
+        media: {
+          generateFileURL: ({ filename, prefix }) => {
+            const bucket = process.env.S3_BUCKET ?? '';
+            const region = process.env.S3_REGION ?? 'eu-central-1';
+            const key = prefix ? `${prefix}/${filename}` : filename;
+            return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+          },
+        },
+      },
+      acl: 'public-read',
+      bucket: process.env.S3_BUCKET ?? '',
+      config: {
+        credentials: {
+          accessKeyId: process.env.S3_ACCESS_KEY_ID ?? '',
+          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? '',
+        },
+        region: process.env.S3_REGION ?? 'eu-central-1',
+      },
+    }),
+  ],
   editor: lexicalEditor(),
   db: postgresAdapter({
     pool: { connectionString: payloadDatabaseUrl },
