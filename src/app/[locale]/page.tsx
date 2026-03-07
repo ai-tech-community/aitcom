@@ -12,6 +12,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
+import { getSession } from "@/server/better-auth/server";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -69,8 +70,11 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const locale = await getLocale();
-  const t = await getTranslations();
+  const [locale, t, session] = await Promise.all([
+    getLocale(),
+    getTranslations(),
+    getSession(),
+  ]);
 
   const payload = await getPayloadClient();
   const { docs: events } = await payload.find({
@@ -344,7 +348,7 @@ export default async function Home() {
             {
               title: t("join.attend.title"),
               desc: t("join.attend.description"),
-              href: "/dashboard/agent" as const,
+              href: session?.user ? ("/dashboard/agent" as const) : ("/community" as const),
             },
             {
               title: t("join.challenge.title"),

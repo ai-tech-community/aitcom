@@ -1,3 +1,5 @@
+import { formatDurationMinutes } from "@/lib/impact-display";
+
 type AudienceBlocksProps = {
   labels: {
     visitorsTitle: string;
@@ -72,7 +74,7 @@ export function AudienceBlocks({ labels, data }: AudienceBlocksProps) {
         <div className="mt-3 space-y-1 font-mono text-xs text-zinc-700">
           <p>
             Response Health:{" "}
-            {data.members.responseHealth === null ? "-" : `${data.members.responseHealth}m`}
+            {formatDurationMinutes(data.members.responseHealth)}
           </p>
           <p>Answered Threads: {data.members.answeredThreads}</p>
           <p>

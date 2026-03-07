@@ -7,6 +7,7 @@ import {
   BarChartIcon,
   BotIcon,
   CalendarIcon,
+  BellIcon,
   SettingsIcon,
   TrophyIcon,
 } from "lucide-react";
@@ -17,7 +18,8 @@ const tabs = [
   { path: "/dashboard/agent", icon: BotIcon, labelKey: "agent" },
   { path: "/challenges", icon: TrophyIcon, labelKey: "challenges" },
   { path: "/dashboard/events", icon: CalendarIcon, labelKey: "events" },
-  { path: "/dashboard/impact", icon: BarChartIcon, labelKey: "impact" },
+  { path: "/dashboard/notifications", icon: BellIcon, labelKey: "notifications" },
+  { path: "/dashboard/impact", icon: BarChartIcon, labelKey: "qa" },
   { path: "/dashboard/settings", icon: SettingsIcon, labelKey: "settings" },
 ] as const;
 

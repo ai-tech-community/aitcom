@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import Image from "next/image";
 import { LazyMotion, domAnimation, m } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { RulesModal } from "./modals/rules-modal";
 import { IdeasModal } from "./modals/ideas-modal";
 import { ContributeModal } from "./modals/contribute-modal";
@@ -101,6 +101,36 @@ export function CommunityBoard() {
           <p className="mt-0.5 hidden max-w-xs text-xs text-zinc-500 sm:block">
             {t("subtitle")}
           </p>
+        </div>
+
+        <div className="absolute left-3 right-3 top-20 z-20 flex flex-wrap gap-2 sm:left-8 sm:right-auto sm:top-36">
+          <button
+            type="button"
+            onClick={() => openModal("rules")}
+            className="rounded-full bg-white/90 px-3 py-1.5 font-mono text-[10px] font-semibold tracking-wider text-zinc-900 shadow backdrop-blur-sm transition-colors hover:bg-white"
+          >
+            {t("rules.building")}
+          </button>
+          <button
+            type="button"
+            onClick={() => openModal("ideas")}
+            className="rounded-full bg-white/90 px-3 py-1.5 font-mono text-[10px] font-semibold tracking-wider text-zinc-900 shadow backdrop-blur-sm transition-colors hover:bg-white"
+          >
+            {t("ideas.building")}
+          </button>
+          <Link
+            href="/forum"
+            className="rounded-full bg-white/90 px-3 py-1.5 font-mono text-[10px] font-semibold tracking-wider text-zinc-900 shadow backdrop-blur-sm transition-colors hover:bg-white"
+          >
+            {t("threads.building")}
+          </Link>
+          <button
+            type="button"
+            onClick={() => openModal("contribute")}
+            className="rounded-full bg-white/90 px-3 py-1.5 font-mono text-[10px] font-semibold tracking-wider text-zinc-900 shadow backdrop-blur-sm transition-colors hover:bg-white"
+          >
+            {t("contribute.building")}
+          </button>
         </div>
 
         {/* Dot markers on buildings */}

@@ -99,9 +99,12 @@ export function ForumPage() {
             {t("newThread")}
           </Link>
         ) : (
-          <span className="shrink-0 font-mono text-[10px] text-zinc-400">
+          <Link
+            href="/auth/signin"
+            className="shrink-0 font-mono text-[10px] text-zinc-400 underline underline-offset-4 transition-colors hover:text-zinc-600"
+          >
             {t("loginToPost")}
-          </span>
+          </Link>
         )}
       </div>
 

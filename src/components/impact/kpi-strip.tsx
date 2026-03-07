@@ -1,3 +1,5 @@
+import { formatDurationMinutes } from "@/lib/impact-display";
+
 type KpiStripProps = {
   labels: {
     totalContributions: string;
@@ -38,7 +40,7 @@ export function KpiStrip({ labels, values }: KpiStripProps) {
     { label: labels.forumHelpfulness, value: formatPercent(values.forumHelpfulness) },
     {
       label: labels.medianFirstResponse,
-      value: values.medianFirstResponse === null ? "-" : `${values.medianFirstResponse}m`,
+      value: formatDurationMinutes(values.medianFirstResponse),
     },
     { label: labels.challengeParticipation, value: formatPercent(values.challengeParticipationRate) },
     { label: labels.challengeCompletion, value: formatPercent(values.challengeCompletionRate) },
@@ -60,4 +62,3 @@ export function KpiStrip({ labels, values }: KpiStripProps) {
     </section>
   );
 }
-

@@ -379,6 +379,7 @@
     "bio": "Bio",
     "skills": "Vaardigheden (kommagescheiden)",
     "company": "Bedrijf",
+    "quickLinks": "Snelle links",
     "linkedinUrl": "LinkedIn URL",
     "githubUrl": "GitHub URL",
     "websiteUrl": "Website URL",
@@ -391,8 +392,11 @@
     "agent": "Agent",
     "events": "Evenementen",
     "challenges": "Uitdagingen",
+    "onboarding": "Onboarding",
+    "notifications": "Meldingen",
     "settings": "Instellingen",
-    "impact": "Impact"
+    "impact": "Impact",
+    "qa": "QA"
   },
   "activity": {
     "personal": "Mijn Activiteit",
