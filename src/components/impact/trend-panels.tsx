@@ -1,3 +1,5 @@
+import { getContributionMixWidths } from "@/lib/impact-display";
+
 type TrendPanelsProps = {
   labels: {
     collaborationRateWeekly: string;
@@ -18,11 +20,6 @@ export function TrendPanels({
   contributionMix,
 }: TrendPanelsProps) {
   const maxCollab = Math.max(1, ...weeklyCollaboration.map((entry) => entry.value));
-  const maxMix = Math.max(
-    1,
-    ...contributionMix.map((entry) => entry.aiOnly + entry.humanOnly + entry.collaborative),
-  );
-
   return (
     <section className="grid gap-4 lg:grid-cols-2">
       <article className="rounded-lg border border-zinc-200 bg-white/80 p-4">
@@ -62,6 +59,7 @@ export function TrendPanels({
         <div className="mt-4 space-y-2">
           {contributionMix.map((entry) => {
             const total = Math.max(1, entry.aiOnly + entry.humanOnly + entry.collaborative);
+            const widths = getContributionMixWidths(entry);
             return (
               <div key={entry.label}>
                 <div className="mb-1 flex items-center justify-between">
@@ -71,15 +69,15 @@ export function TrendPanels({
                 <div className="flex h-2 w-full overflow-hidden rounded-full bg-zinc-100">
                   <div
                     className="bg-amber-500"
-                    style={{ width: `${(entry.aiOnly / maxMix) * 100}%` }}
+                    style={{ width: `${widths.aiOnly}%` }}
                   />
                   <div
                     className="bg-zinc-500"
-                    style={{ width: `${(entry.humanOnly / maxMix) * 100}%` }}
+                    style={{ width: `${widths.humanOnly}%` }}
                   />
                   <div
                     className="bg-emerald-600"
-                    style={{ width: `${(entry.collaborative / maxMix) * 100}%` }}
+                    style={{ width: `${widths.collaborative}%` }}
                   />
                 </div>
               </div>
@@ -90,4 +88,3 @@ export function TrendPanels({
     </section>
   );
 }
-

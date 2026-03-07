@@ -379,6 +379,7 @@
     "bio": "Bio",
     "skills": "Skills (comma-separated)",
     "company": "Company",
+    "quickLinks": "Quick links",
     "linkedinUrl": "LinkedIn URL",
     "githubUrl": "GitHub URL",
     "websiteUrl": "Website URL",
@@ -391,8 +392,11 @@
     "agent": "Agent",
     "events": "Events",
     "challenges": "Challenges",
+    "onboarding": "Onboarding",
+    "notifications": "Notifications",
     "settings": "Settings",
-    "impact": "Impact"
+    "impact": "Impact",
+    "qa": "QA"
   },
   "activity": {
     "personal": "My Activity",

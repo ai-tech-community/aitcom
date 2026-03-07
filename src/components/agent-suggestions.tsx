@@ -63,7 +63,7 @@ export function AgentSuggestions() {
             <div className="flex shrink-0 items-center gap-2">
               {suggestion.type === "topic" && (
                 <Link
-                  href="/community"
+                  href="/forum/new"
                   className="font-mono text-[11px] tracking-wider text-primary underline underline-offset-4 hover:text-primary/80"
                 >
                   Create Thread

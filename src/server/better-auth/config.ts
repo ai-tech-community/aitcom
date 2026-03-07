@@ -3,9 +3,30 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 import { env } from "@/env";
 import { db } from "@/server/db";
+import {
+  resolveBetterAuthBaseUrl,
+  resolveTrustedOrigins,
+} from "./base-url";
 
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL ?? process.env.BETTER_AUTH_BASE_URL,
+  baseURL: resolveBetterAuthBaseUrl({
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    BETTER_AUTH_BASE_URL: process.env.BETTER_AUTH_BASE_URL,
+    NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
+    NODE_ENV: env.NODE_ENV,
+    PORT: process.env.PORT,
+  }),
+  trustedOrigins: (request) =>
+    resolveTrustedOrigins(
+      {
+        BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+        BETTER_AUTH_BASE_URL: process.env.BETTER_AUTH_BASE_URL,
+        NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
+        NODE_ENV: env.NODE_ENV,
+        PORT: process.env.PORT,
+      },
+      request,
+    ),
   database: drizzleAdapter(db, {
     provider: "pg",
   }),

@@ -91,16 +91,8 @@ export default buildConfig({
   plugins: [
     s3Storage({
       collections: {
-        media: {
-          generateFileURL: ({ filename, prefix }) => {
-            const bucket = process.env.S3_BUCKET ?? '';
-            const region = process.env.S3_REGION ?? 'eu-central-1';
-            const key = prefix ? `${prefix}/${filename}` : filename;
-            return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
-          },
-        },
+        media: true,
       },
-      acl: 'public-read',
       bucket: process.env.S3_BUCKET ?? '',
       config: {
         credentials: {
