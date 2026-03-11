@@ -10,6 +10,7 @@ import {
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
 async function requireRulesAcceptance(userId: string) {
   const payload = await getPayloadClient();
@@ -346,7 +347,7 @@ export const communityRouter = createTRPCRouter({
     .input(
       z.object({
         title: z.string().min(3).max(255),
-        content: z.any(),
+        content: z.string().min(1).max(10000),
         category: z.enum(["general", "question", "showcase", "job"]),
       }),
     )
@@ -399,7 +400,7 @@ export const communityRouter = createTRPCRouter({
     .input(
       z.object({
         threadId: z.number(),
-        content: z.any(),
+        content: z.string().min(1).max(10000),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -423,7 +424,7 @@ export const communityRouter = createTRPCRouter({
         collection: "forum-replies",
         data: {
           thread: input.threadId,
-          content: input.content,
+          content: plainTextToLexical(input.content),
           authorId: ctx.session.user.id,
           authorName: ctx.session.user.name ?? "member",
           authorRole: "member",
