@@ -368,7 +368,7 @@ export const communityRouter = createTRPCRouter({
         data: {
           title: input.title,
           slug,
-          content: input.content,
+          content: plainTextToLexical(input.content),
           category: input.category,
           authorId: ctx.session.user.id,
           authorName: userName,
