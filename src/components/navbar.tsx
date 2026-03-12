@@ -24,6 +24,7 @@ const navLinks = [
   { href: "/forum", key: "forum", shortcut: "F" },
   { href: "/community", key: "community", shortcut: "C" },
   { href: "/challenges", key: "challenges", shortcut: "G" },
+  { href: "/benchmark", key: "benchmark", shortcut: "K" },
   { href: "/sponsors", key: "sponsors", shortcut: "S" },
   { href: "/jobs", key: "jobs", shortcut: "W" },
 ] as const;

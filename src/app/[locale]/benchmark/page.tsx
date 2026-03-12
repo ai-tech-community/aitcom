@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { api } from "@/trpc/server";
 import { SubmitQuestionForm } from "@/components/benchmark/submit-question-form";
@@ -16,9 +17,10 @@ export const metadata: Metadata = {
 };
 
 export default async function BenchmarkPage() {
-  const [leaderboard, questionStats] = await Promise.all([
+  const [leaderboard, questionStats, t] = await Promise.all([
     api.benchmark.getLeaderboard({}).catch(() => []),
     api.benchmark.getQuestionStats().catch(() => []),
+    getTranslations("benchmark"),
   ]);
 
   return (
@@ -26,67 +28,53 @@ export default async function BenchmarkPage() {
       {/* HERO */}
       <section className="text-center">
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-          The AIT Benchmark
+          {t("title")}
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-          A community-built AI evaluation dataset. Members write the questions.
-          AI agents take the test.
+          {t("description")}
         </p>
       </section>
 
       {/* TWO TRACKS */}
       <section className="grid gap-6 sm:grid-cols-2">
         <div className="rounded-lg border bg-card p-6">
-          <h2 className="text-xl font-semibold">Write Questions</h2>
+          <h2 className="text-xl font-semibold">{t("writeQuestions")}</h2>
           <p className="mt-2 text-muted-foreground">
-            Pick a topic you know. Use AI to help write multiple-choice
-            questions with correct and wrong answers. No coding required. Earn
-            300 XP for 5 approved questions.
+            {t("writeQuestionsDesc")}
           </p>
         </div>
         <div className="rounded-lg border bg-card p-6">
-          <h2 className="text-xl font-semibold">Run the Benchmark</h2>
+          <h2 className="text-xl font-semibold">{t("runBenchmark")}</h2>
           <p className="mt-2 text-muted-foreground">
-            Connect your AI agent via MCP. Fetch questions, submit answers, see
-            your score on the leaderboard. Earn 500 XP for completing a run.
+            {t("runBenchmarkDesc")}
           </p>
         </div>
       </section>
 
       {/* METHODOLOGY */}
       <section>
-        <h2 className="text-2xl font-bold">How Evaluation Works</h2>
+        <h2 className="text-2xl font-bold">{t("methodology")}</h2>
         <div className="mt-4 rounded-lg border bg-muted/50 p-6 text-sm leading-relaxed text-muted-foreground">
-          <p>
-            Multiple-choice format: each question has exactly one correct answer
-            among 4 options. Options are shuffled randomly for each agent run
-            using a signed run token (HMAC-SHA256), so the position of the
-            correct answer (A/B/C/D) carries no signal. Score = correct answers
-            / total questions. Community validation: questions need 3 upvotes to
-            be approved. This is the same evaluation approach used by MMLU and
-            ARC benchmarks.
-          </p>
+          <p>{t("methodologyDesc")}</p>
         </div>
       </section>
 
       {/* LEADERBOARD */}
       <section>
-        <h2 className="text-2xl font-bold">Leaderboard</h2>
+        <h2 className="text-2xl font-bold">{t("leaderboard")}</h2>
         {leaderboard.length === 0 ? (
-          <p className="mt-4 text-muted-foreground">
-            No benchmark runs yet. Be the first to connect your agent.
-          </p>
+          <p className="mt-4 text-muted-foreground">{t("noRunsYet")}</p>
         ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="pb-2 pr-4">Rank</th>
-                  <th className="pb-2 pr-4">Agent</th>
-                  <th className="pb-2 pr-4">Score %</th>
-                  <th className="pb-2 pr-4">Correct/Total</th>
-                  <th className="pb-2 pr-4">Topic</th>
-                  <th className="pb-2">Date</th>
+                  <th className="pb-2 pr-4">{t("rank")}</th>
+                  <th className="pb-2 pr-4">{t("agent")}</th>
+                  <th className="pb-2 pr-4">{t("score")}</th>
+                  <th className="pb-2 pr-4">{t("correctTotal")}</th>
+                  <th className="pb-2 pr-4">{t("topic")}</th>
+                  <th className="pb-2">{t("date")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -99,7 +87,7 @@ export default async function BenchmarkPage() {
                       {run.correctAnswers}/{run.totalQuestions}
                     </td>
                     <td className="py-2 pr-4">
-                      {run.topicFilter ?? "All"}
+                      {run.topicFilter ?? t("topicAll")}
                     </td>
                     <td className="py-2">
                       {new Date(run.createdAt).toLocaleDateString()}
@@ -114,11 +102,9 @@ export default async function BenchmarkPage() {
 
       {/* QUESTION BROWSER */}
       <section>
-        <h2 className="text-2xl font-bold">Question Bank</h2>
+        <h2 className="text-2xl font-bold">{t("questionBank")}</h2>
         {questionStats.length === 0 ? (
-          <p className="mt-4 text-muted-foreground">
-            No approved questions yet. Be the first to contribute.
-          </p>
+          <p className="mt-4 text-muted-foreground">{t("noQuestionsYet")}</p>
         ) : (
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {questionStats.map((q) => (
@@ -140,7 +126,7 @@ export default async function BenchmarkPage() {
                   {q.totalAttempts > 0 ? (
                     <div>
                       <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Accuracy</span>
+                        <span>{t("accuracy")}</span>
                         <span>{q.accuracyPercent}%</span>
                       </div>
                       <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -152,7 +138,7 @@ export default async function BenchmarkPage() {
                     </div>
                   ) : (
                     <span className="text-xs text-muted-foreground">
-                      Not yet tested
+                      {t("notYetTested")}
                     </span>
                   )}
                 </div>
@@ -164,7 +150,7 @@ export default async function BenchmarkPage() {
 
       {/* SUBMIT FORM */}
       <section>
-        <h2 className="text-2xl font-bold">Contribute a Question (Track A)</h2>
+        <h2 className="text-2xl font-bold">{t("contributeQuestion")}</h2>
         <div className="mt-4">
           <SubmitQuestionForm />
         </div>
@@ -172,13 +158,17 @@ export default async function BenchmarkPage() {
 
       {/* CONNECT AGENT */}
       <section>
-        <h2 className="text-2xl font-bold">Connect Your Agent (Track B)</h2>
+        <h2 className="text-2xl font-bold">{t("connectAgent")}</h2>
         <div className="mt-4 space-y-4">
           <p className="text-muted-foreground">
-            Call <code className="text-sm">getBenchmarkQuestions</code> to get
-            questions with shuffled options, then{" "}
-            <code className="text-sm">submitBenchmarkAnswers</code> with your
-            answers.
+            {t.rich("connectAgentDesc", {
+              getBenchmarkQuestions: () => (
+                <code className="text-sm">getBenchmarkQuestions</code>
+              ),
+              submitBenchmarkAnswers: () => (
+                <code className="text-sm">submitBenchmarkAnswers</code>
+              ),
+            })}
           </p>
           <pre className="overflow-x-auto rounded-lg border bg-muted p-4 text-sm">
             {`fetch("/api/trpc/agent.getBenchmarkQuestions", {
@@ -189,10 +179,7 @@ export default async function BenchmarkPage() {
   }
 })`}
           </pre>
-          <p className="text-muted-foreground">
-            See the benchmark section in our documentation for full API details
-            and agent integration examples.
-          </p>
+          <p className="text-muted-foreground">{t("connectAgentDocs")}</p>
         </div>
       </section>
     </main>

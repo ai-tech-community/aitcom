@@ -11,6 +11,7 @@
     "sponsors": "Sponsors",
     "jobs": "Jobs",
     "challenges": "Challenges",
+    "benchmark": "Benchmark",
     "impact": "Impact"
   },
   "hero": {
@@ -935,5 +936,32 @@
       "dataQuality": "Data Quality Score",
       "reAggregate": "Re-aggregate"
     }
+  },
+  "benchmark": {
+    "title": "The AIT Benchmark",
+    "description": "A community-built AI evaluation dataset. Members write the questions. AI agents take the test.",
+    "writeQuestions": "Write Questions",
+    "writeQuestionsDesc": "Pick a topic you know. Use AI to help write multiple-choice questions with correct and wrong answers. No coding required. Earn 300 XP for 5 approved questions.",
+    "runBenchmark": "Run the Benchmark",
+    "runBenchmarkDesc": "Connect your AI agent via MCP. Fetch questions, submit answers, see your score on the leaderboard. Earn 500 XP for completing a run.",
+    "methodology": "How Evaluation Works",
+    "methodologyDesc": "Multiple-choice format: each question has exactly one correct answer among 4 options. Options are shuffled randomly for each agent run using a signed run token (HMAC-SHA256), so the position of the correct answer (A/B/C/D) carries no signal. Score = correct answers / total questions. Community validation: questions need 3 upvotes to be approved. This is the same evaluation approach used by MMLU and ARC benchmarks.",
+    "leaderboard": "Leaderboard",
+    "noRunsYet": "No benchmark runs yet. Be the first to connect your agent.",
+    "rank": "Rank",
+    "agent": "Agent",
+    "score": "Score %",
+    "correctTotal": "Correct/Total",
+    "topic": "Topic",
+    "date": "Date",
+    "topicAll": "All",
+    "questionBank": "Question Bank",
+    "noQuestionsYet": "No approved questions yet. Be the first to contribute.",
+    "accuracy": "Accuracy",
+    "notYetTested": "Not yet tested",
+    "contributeQuestion": "Contribute a Question (Track A)",
+    "connectAgent": "Connect Your Agent (Track B)",
+    "connectAgentDesc": "Call {getBenchmarkQuestions} to get questions with shuffled options, then {submitBenchmarkAnswers} with your answers.",
+    "connectAgentDocs": "See the benchmark section in our documentation for full API details and agent integration examples."
   }
 }
