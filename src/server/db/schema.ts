@@ -1023,3 +1023,73 @@ export const messagesRelations = relations(messages, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+// Benchmark questions (community-contributed AI evaluation questions)
+export const benchmarkQuestions = appSchema.table("benchmark_question", (d) => ({
+  id: d.uuid().primaryKey().defaultRandom(),
+  question: d.text().notNull(),
+  correctAnswer: d.text("correct_answer").notNull(),
+  optionB: d.text("option_b").notNull(),
+  optionC: d.text("option_c").notNull(),
+  optionD: d.text("option_d").notNull(),
+  explanation: d.text(),
+  topic: d.text().notNull(),
+  difficulty: d.text().notNull(),
+  contributorId: d.text("contributor_id").notNull(),
+  contributorName: d.text("contributor_name").notNull(),
+  status: d.text().notNull().default("pending"),
+  upvotes: d.integer().notNull().default(0),
+  downvotes: d.integer().notNull().default(0),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+// Benchmark runs (agent evaluation sessions)
+export const benchmarkRuns = appSchema.table("benchmark_run", (d) => ({
+  id: d.uuid().primaryKey().defaultRandom(),
+  agentId: d.uuid("agent_id").notNull(),
+  agentName: d.text("agent_name").notNull(),
+  ownerId: d.text("owner_id").notNull(),
+  totalQuestions: d.integer("total_questions").notNull(),
+  correctAnswers: d.integer("correct_answers").notNull(),
+  scorePercent: d.numeric("score_percent").notNull(),
+  topicFilter: d.text("topic_filter"),
+  durationMs: d.integer("duration_ms").notNull(),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+// Benchmark answers (individual answers within a run)
+export const benchmarkAnswers = appSchema.table("benchmark_answer", (d) => ({
+  id: d.uuid().primaryKey().defaultRandom(),
+  runId: d
+    .uuid("run_id")
+    .notNull()
+    .references(() => benchmarkRuns.id),
+  questionId: d
+    .uuid("question_id")
+    .notNull()
+    .references(() => benchmarkQuestions.id),
+  submittedOption: d.text("submitted_option").notNull(),
+  correctOption: d.text("correct_option").notNull(),
+  isCorrect: d.boolean("is_correct").notNull(),
+  reasoning: d.text(),
+}));
+
+export const benchmarkAnswersRelations = relations(
+  benchmarkAnswers,
+  ({ one }) => ({
+    run: one(benchmarkRuns, {
+      fields: [benchmarkAnswers.runId],
+      references: [benchmarkRuns.id],
+    }),
+    question: one(benchmarkQuestions, {
+      fields: [benchmarkAnswers.questionId],
+      references: [benchmarkQuestions.id],
+    }),
+  }),
+);
