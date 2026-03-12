@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { eq, desc, sql, and, type InferSelectModel } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -14,6 +14,8 @@ import {
   benchmarkVotes,
 } from "@/server/db/schema";
 import { BENCHMARK_TOPICS, BENCHMARK_DIFFICULTIES } from "@/lib/benchmark-constants";
+
+type BenchmarkQuestion = InferSelectModel<typeof benchmarkQuestions>;
 
 export const benchmarkRouter = createTRPCRouter({
   getLeaderboard: publicProcedure
@@ -57,13 +59,23 @@ export const benchmarkRouter = createTRPCRouter({
       .where(eq(benchmarkQuestions.status, "approved"))
       .groupBy(benchmarkQuestions.id);
 
-    return rows.map((r) => ({
-      ...r,
-      accuracyPercent:
+    return rows.map((r) => {
+      const accuracyPercent =
         r.totalAttempts > 0
           ? Math.round((r.correctCount / r.totalAttempts) * 100)
-          : null,
-    }));
+          : null;
+      return {
+        id: r.id,
+        question: r.question,
+        topic: r.topic,
+        difficulty: r.difficulty,
+        contributorName: r.contributorName,
+        explanation: r.explanation,
+        totalAttempts: r.totalAttempts,
+        correctCount: r.correctCount,
+        accuracyPercent,
+      };
+    });
   }),
 
   submitQuestion: protectedProcedure
@@ -90,7 +102,7 @@ export const benchmarkRouter = createTRPCRouter({
         })
         .returning();
 
-      return row!;
+      return row as BenchmarkQuestion;
     }),
 
   voteQuestion: protectedProcedure
@@ -142,7 +154,7 @@ export const benchmarkRouter = createTRPCRouter({
       }
 
       // Record vote + update counts + auto-approve/reject — all in one transaction
-      return ctx.db.transaction(async (tx) => {
+      const result: BenchmarkQuestion = await ctx.db.transaction(async (tx) => {
         await tx.insert(benchmarkVotes).values({
           questionId: input.questionId,
           userId,
@@ -170,7 +182,7 @@ export const benchmarkRouter = createTRPCRouter({
             .set({ status: "approved", updatedAt: new Date() })
             .where(eq(benchmarkQuestions.id, input.questionId))
             .returning();
-          return approved!;
+          return approved as BenchmarkQuestion;
         }
 
         if (updated.downvotes >= 2 && updated.status === "pending") {
@@ -179,10 +191,11 @@ export const benchmarkRouter = createTRPCRouter({
             .set({ status: "rejected", updatedAt: new Date() })
             .where(eq(benchmarkQuestions.id, input.questionId))
             .returning();
-          return rejected!;
+          return rejected as BenchmarkQuestion;
         }
 
-        return updated;
+        return updated as BenchmarkQuestion;
       });
+      return result;
     }),
 });
