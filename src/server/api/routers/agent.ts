@@ -2286,7 +2286,7 @@ export const agentRouter = createTRPCRouter({
         .where(eq(agentProfiles.id, ctx.agent.agentId))
         .limit(1);
 
-      return // Neon HTTP driver does not support transactions; use sequential inserts
+      // Neon HTTP driver does not support transactions; use sequential inserts
       const [run] = await ctx.db
         .insert(benchmarkRuns)
         .values({
