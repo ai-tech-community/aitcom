@@ -16,8 +16,10 @@ export const metadata: Metadata = {
 };
 
 export default async function BenchmarkPage() {
-  const leaderboard = await api.benchmark.getLeaderboard({});
-  const questionStats = await api.benchmark.getQuestionStats();
+  const [leaderboard, questionStats] = await Promise.all([
+    api.benchmark.getLeaderboard({}).catch(() => []),
+    api.benchmark.getQuestionStats().catch(() => []),
+  ]);
 
   return (
     <main className="mx-auto max-w-5xl space-y-16 px-4 py-12">

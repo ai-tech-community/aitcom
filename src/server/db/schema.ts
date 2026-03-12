@@ -1025,59 +1025,122 @@ export const messagesRelations = relations(messages, ({ one }) => ({
 }));
 
 // Benchmark questions (community-contributed AI evaluation questions)
-export const benchmarkQuestions = appSchema.table("benchmark_question", (d) => ({
-  id: d.uuid().primaryKey().defaultRandom(),
-  question: d.text().notNull(),
-  correctAnswer: d.text("correct_answer").notNull(),
-  optionB: d.text("option_b").notNull(),
-  optionC: d.text("option_c").notNull(),
-  optionD: d.text("option_d").notNull(),
-  explanation: d.text(),
-  topic: d.text().notNull(),
-  difficulty: d.text().notNull(),
-  contributorId: d.text("contributor_id").notNull(),
-  contributorName: d.text("contributor_name").notNull(),
-  status: d.text().notNull().default("pending"),
-  upvotes: d.integer().notNull().default(0),
-  downvotes: d.integer().notNull().default(0),
-  createdAt: d
-    .timestamp({ withTimezone: true })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-}));
+export const benchmarkQuestions = appSchema.table(
+  "benchmark_question",
+  (d) => ({
+    id: d.uuid().primaryKey().defaultRandom(),
+    question: d.text().notNull(),
+    correctAnswer: d.text("correct_answer").notNull(),
+    optionB: d.text("option_b").notNull(),
+    optionC: d.text("option_c").notNull(),
+    optionD: d.text("option_d").notNull(),
+    explanation: d.text(),
+    topic: d.text().notNull(),
+    difficulty: d.text().notNull(),
+    contributorId: d
+      .text("contributor_id")
+      .notNull()
+      .references(() => user.id),
+    contributorName: d.text("contributor_name").notNull(),
+    status: d.text().notNull().default("pending"),
+    upvotes: d.integer().notNull().default(0),
+    downvotes: d.integer().notNull().default(0),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("benchmark_question_status_idx").on(t.status),
+    index("benchmark_question_topic_idx").on(t.topic),
+    index("benchmark_question_contributor_idx").on(t.contributorId),
+  ],
+);
 
 // Benchmark runs (agent evaluation sessions)
-export const benchmarkRuns = appSchema.table("benchmark_run", (d) => ({
-  id: d.uuid().primaryKey().defaultRandom(),
-  agentId: d.uuid("agent_id").notNull(),
-  agentName: d.text("agent_name").notNull(),
-  ownerId: d.text("owner_id").notNull(),
-  totalQuestions: d.integer("total_questions").notNull(),
-  correctAnswers: d.integer("correct_answers").notNull(),
-  scorePercent: d.numeric("score_percent").notNull(),
-  topicFilter: d.text("topic_filter"),
-  durationMs: d.integer("duration_ms").notNull(),
-  createdAt: d
-    .timestamp({ withTimezone: true })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-}));
+export const benchmarkRuns = appSchema.table(
+  "benchmark_run",
+  (d) => ({
+    id: d.uuid().primaryKey().defaultRandom(),
+    agentId: d.uuid("agent_id").notNull(),
+    agentName: d.text("agent_name").notNull(),
+    ownerId: d.text("owner_id").notNull(),
+    totalQuestions: d.integer("total_questions").notNull(),
+    correctAnswers: d.integer("correct_answers").notNull(),
+    scorePercent: d.numeric("score_percent").notNull(),
+    topicFilter: d.text("topic_filter"),
+    durationMs: d.integer("duration_ms").notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("benchmark_run_agent_idx").on(t.agentId),
+    index("benchmark_run_score_idx").on(t.scorePercent),
+    index("benchmark_run_topic_idx").on(t.topicFilter),
+  ],
+);
 
 // Benchmark answers (individual answers within a run)
-export const benchmarkAnswers = appSchema.table("benchmark_answer", (d) => ({
-  id: d.uuid().primaryKey().defaultRandom(),
-  runId: d
-    .uuid("run_id")
-    .notNull()
-    .references(() => benchmarkRuns.id),
-  questionId: d
-    .uuid("question_id")
-    .notNull()
-    .references(() => benchmarkQuestions.id),
-  submittedOption: d.text("submitted_option").notNull(),
-  correctOption: d.text("correct_option").notNull(),
-  isCorrect: d.boolean("is_correct").notNull(),
-  reasoning: d.text(),
+export const benchmarkAnswers = appSchema.table(
+  "benchmark_answer",
+  (d) => ({
+    id: d.uuid().primaryKey().defaultRandom(),
+    runId: d
+      .uuid("run_id")
+      .notNull()
+      .references(() => benchmarkRuns.id),
+    questionId: d
+      .uuid("question_id")
+      .notNull()
+      .references(() => benchmarkQuestions.id),
+    submittedOption: d.text("submitted_option").notNull(),
+    correctOption: d.text("correct_option").notNull(),
+    isCorrect: d.boolean("is_correct").notNull(),
+    reasoning: d.text(),
+  }),
+  (t) => [
+    index("benchmark_answer_run_idx").on(t.runId),
+    index("benchmark_answer_question_idx").on(t.questionId),
+  ],
+);
+
+// Benchmark votes — prevents duplicate voting (one vote per user per question)
+export const benchmarkVotes = appSchema.table(
+  "benchmark_vote",
+  (d) => ({
+    id: d.uuid().primaryKey().defaultRandom(),
+    questionId: d
+      .uuid("question_id")
+      .notNull()
+      .references(() => benchmarkQuestions.id),
+    userId: d.text("user_id").notNull().references(() => user.id),
+    vote: d.text().notNull(), // 'up' | 'down'
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("benchmark_vote_user_question_idx").on(t.userId, t.questionId),
+  ],
+);
+
+export const benchmarkQuestionsRelations = relations(
+  benchmarkQuestions,
+  ({ many }) => ({
+    answers: many(benchmarkAnswers),
+    votes: many(benchmarkVotes),
+  }),
+);
+
+export const benchmarkRunsRelations = relations(benchmarkRuns, ({ many }) => ({
+  answers: many(benchmarkAnswers),
 }));
 
 export const benchmarkAnswersRelations = relations(
@@ -1093,3 +1156,10 @@ export const benchmarkAnswersRelations = relations(
     }),
   }),
 );
+
+export const benchmarkVotesRelations = relations(benchmarkVotes, ({ one }) => ({
+  question: one(benchmarkQuestions, {
+    fields: [benchmarkVotes.questionId],
+    references: [benchmarkQuestions.id],
+  }),
+}));

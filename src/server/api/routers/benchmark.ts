@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 import {
   createTRPCRouter,
@@ -10,23 +11,41 @@ import {
   benchmarkQuestions,
   benchmarkRuns,
   benchmarkAnswers,
+  benchmarkVotes,
 } from "@/server/db/schema";
+
+// Shared enums — must match submit-question-form.tsx and agent endpoints
+export const BENCHMARK_TOPICS = [
+  "typescript",
+  "llm-concepts",
+  "mcp",
+  "cloud-architecture",
+  "ai-agents",
+  "security",
+  "open",
+] as const;
+
+export const BENCHMARK_DIFFICULTIES = [
+  "beginner",
+  "intermediate",
+  "advanced",
+] as const;
 
 export const benchmarkRouter = createTRPCRouter({
   getLeaderboard: publicProcedure
     .input(z.object({ topic: z.string().optional() }))
     .query(async ({ ctx, input }) => {
-      const query = ctx.db
-        .select()
-        .from(benchmarkRuns)
-        .orderBy(desc(benchmarkRuns.scorePercent))
-        .limit(50);
-
+      const conditions = [];
       if (input.topic) {
-        return query.where(eq(benchmarkRuns.topicFilter, input.topic));
+        conditions.push(eq(benchmarkRuns.topicFilter, input.topic));
       }
 
-      return query;
+      return ctx.db
+        .select()
+        .from(benchmarkRuns)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(benchmarkRuns.scorePercent))
+        .limit(50);
     }),
 
   getQuestionStats: publicProcedure.query(async ({ ctx }) => {
@@ -36,8 +55,10 @@ export const benchmarkRouter = createTRPCRouter({
         question: benchmarkQuestions.question,
         topic: benchmarkQuestions.topic,
         difficulty: benchmarkQuestions.difficulty,
-        totalAnswers: sql<number>`count(${benchmarkAnswers.id})`.as(
-          "total_answers",
+        contributorName: benchmarkQuestions.contributorName,
+        explanation: benchmarkQuestions.explanation,
+        totalAttempts: sql<number>`count(${benchmarkAnswers.id})`.as(
+          "total_attempts",
         ),
         correctCount:
           sql<number>`count(${benchmarkAnswers.id}) filter (where ${benchmarkAnswers.isCorrect} = true)`.as(
@@ -55,43 +76,30 @@ export const benchmarkRouter = createTRPCRouter({
     return rows.map((r) => ({
       ...r,
       accuracyPercent:
-        r.totalAnswers > 0
-          ? Math.round((r.correctCount / r.totalAnswers) * 100)
-          : 0,
+        r.totalAttempts > 0
+          ? Math.round((r.correctCount / r.totalAttempts) * 100)
+          : null,
     }));
   }),
 
   submitQuestion: protectedProcedure
     .input(
       z.object({
-        question: z.string().min(1),
+        question: z.string().min(10),
         correctAnswer: z.string().min(1),
         optionB: z.string().min(1),
         optionC: z.string().min(1),
         optionD: z.string().min(1),
         explanation: z.string().optional(),
-        topic: z.enum([
-          "reasoning",
-          "knowledge",
-          "coding",
-          "safety",
-          "creativity",
-        ]),
-        difficulty: z.enum(["easy", "medium", "hard"]),
+        topic: z.enum(BENCHMARK_TOPICS),
+        difficulty: z.enum(BENCHMARK_DIFFICULTIES),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const [row] = await ctx.db
         .insert(benchmarkQuestions)
         .values({
-          question: input.question,
-          correctAnswer: input.correctAnswer,
-          optionB: input.optionB,
-          optionC: input.optionC,
-          optionD: input.optionD,
-          explanation: input.explanation,
-          topic: input.topic,
-          difficulty: input.difficulty,
+          ...input,
           status: "pending",
           contributorId: ctx.session.user.id,
           contributorName: ctx.session.user.name ?? "member",
@@ -109,40 +117,70 @@ export const benchmarkRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const column =
-        input.vote === "up"
-          ? benchmarkQuestions.upvotes
-          : benchmarkQuestions.downvotes;
+      const userId = ctx.session.user.id;
 
-      const [updated] = await ctx.db
-        .update(benchmarkQuestions)
-        .set({
-          [input.vote === "up" ? "upvotes" : "downvotes"]: sql`${column} + 1`,
-        })
-        .where(eq(benchmarkQuestions.id, input.questionId))
-        .returning();
+      // Check for duplicate vote — uniqueIndex enforces this at DB level but we
+      // want a friendly error instead of a constraint violation
+      const existing = await ctx.db
+        .select({ id: benchmarkVotes.id })
+        .from(benchmarkVotes)
+        .where(
+          and(
+            eq(benchmarkVotes.userId, userId),
+            eq(benchmarkVotes.questionId, input.questionId),
+          ),
+        )
+        .limit(1);
 
-      if (!updated) return updated;
-
-      // Auto-approve/reject based on vote thresholds
-      if (updated.upvotes >= 3 && updated.status !== "approved") {
-        const [approved] = await ctx.db
-          .update(benchmarkQuestions)
-          .set({ status: "approved" })
-          .where(eq(benchmarkQuestions.id, input.questionId))
-          .returning();
-        return approved!;
+      if (existing.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "You have already voted on this question.",
+        });
       }
 
-      if (updated.downvotes >= 2 && updated.status !== "rejected") {
-        const [rejected] = await ctx.db
+      // Record vote + update counts + auto-approve/reject — all in one transaction
+      return ctx.db.transaction(async (tx) => {
+        await tx.insert(benchmarkVotes).values({
+          questionId: input.questionId,
+          userId,
+          vote: input.vote,
+        });
+
+        const [updated] = await tx
           .update(benchmarkQuestions)
-          .set({ status: "rejected" })
+          .set(
+            input.vote === "up"
+              ? { upvotes: sql`${benchmarkQuestions.upvotes} + 1`, updatedAt: new Date() }
+              : { downvotes: sql`${benchmarkQuestions.downvotes} + 1`, updatedAt: new Date() },
+          )
           .where(eq(benchmarkQuestions.id, input.questionId))
           .returning();
-        return rejected!;
-      }
 
-      return updated;
+        if (!updated) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Question not found." });
+        }
+
+        // Auto-approve / auto-reject based on thresholds
+        if (updated.upvotes >= 3 && updated.status === "pending") {
+          const [approved] = await tx
+            .update(benchmarkQuestions)
+            .set({ status: "approved", updatedAt: new Date() })
+            .where(eq(benchmarkQuestions.id, input.questionId))
+            .returning();
+          return approved!;
+        }
+
+        if (updated.downvotes >= 2 && updated.status === "pending") {
+          const [rejected] = await tx
+            .update(benchmarkQuestions)
+            .set({ status: "rejected", updatedAt: new Date() })
+            .where(eq(benchmarkQuestions.id, input.questionId))
+            .returning();
+          return rejected!;
+        }
+
+        return updated;
+      });
     }),
 });
