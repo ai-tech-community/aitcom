@@ -24,7 +24,12 @@ import {
   challengeChannels,
   challengeThreads,
   challengeReplies,
+  benchmarkQuestions,
+  benchmarkRuns,
+  benchmarkAnswers,
 } from "@/server/db/schema";
+import { BENCHMARK_TOPICS, BENCHMARK_DIFFICULTIES } from "@/lib/benchmark-constants";
+import { createHmac } from "crypto";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity, checkEnrollmentCompletion } from "@/server/agent/activity";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
@@ -2081,5 +2086,273 @@ export const agentRouter = createTRPCRouter({
 
       // Return in chronological order (oldest first)
       return logs.reverse();
+    }),
+
+  // ── Benchmark endpoints ──────────────────────────────────────────────────────
+
+  getBenchmarkQuestions: agentProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(20),
+        topic: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+
+      const conditions = [eq(benchmarkQuestions.status, "approved")];
+      if (input.topic) {
+        conditions.push(eq(benchmarkQuestions.topic, input.topic));
+      }
+
+      const questions = await ctx.db
+        .select()
+        .from(benchmarkQuestions)
+        .where(and(...conditions))
+        .limit(input.limit);
+
+      if (questions.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No approved questions found for the given filters.",
+        });
+      }
+
+      // Shuffle options per question using Fisher-Yates, record mapping
+      const mappings: Record<string, string> = {}; // questionId -> correctOption (A|B|C|D)
+
+      const shuffledQuestions = questions.map((q) => {
+        const pool = [
+          { label: "correct", text: q.correctAnswer },
+          { label: "B", text: q.optionB },
+          { label: "C", text: q.optionC },
+          { label: "D", text: q.optionD },
+        ];
+        // Fisher-Yates shuffle
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+        }
+        const letters = ["A", "B", "C", "D"] as const;
+        const options: Record<string, string> = {};
+        let correctLetter = "A";
+        pool.forEach((item, idx) => {
+          const letter = letters[idx]!;
+          options[letter] = item.text;
+          if (item.label === "correct") correctLetter = letter;
+        });
+        mappings[q.id] = correctLetter;
+        return { id: q.id, question: q.question, options };
+      });
+
+      // Sign the mappings with HMAC so they can't be tampered with
+      const secret = process.env.BENCHMARK_SECRET;
+      if (!secret) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Benchmark system is not configured.",
+        });
+      }
+      const payload = JSON.stringify({
+        mappings,
+        agentId: ctx.agent.agentId,
+        topicFilter: input.topic ?? null,
+        timestamp: Date.now(),
+      });
+      const signature = createHmac("sha256", secret)
+        .update(payload)
+        .digest("hex");
+      const runToken = Buffer.from(
+        JSON.stringify({ payload, signature }),
+      ).toString("base64");
+
+      return { runToken, questions: shuffledQuestions };
+    }),
+
+  submitBenchmarkAnswers: agentProcedure
+    .input(
+      z.object({
+        runToken: z.string(),
+        answers: z.array(
+          z.object({
+            questionId: z.string().uuid(),
+            option: z.enum(["A", "B", "C", "D"]),
+            reasoning: z.string().optional(),
+          }),
+        ),
+        durationMs: z.number().int().min(0),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+
+      // Decode and verify run token
+      let tokenData: {
+        mappings: Record<string, string>;
+        agentId: string;
+        topicFilter: string | null;
+        timestamp: number;
+      };
+      try {
+        const decoded = JSON.parse(
+          Buffer.from(input.runToken, "base64").toString("utf8"),
+        ) as { payload: string; signature: string };
+        const secret = process.env.BENCHMARK_SECRET;
+        if (!secret) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Benchmark system is not configured.",
+          });
+        }
+        const expectedSig = createHmac("sha256", secret)
+          .update(decoded.payload)
+          .digest("hex");
+        if (expectedSig !== decoded.signature) {
+          throw new Error("Signature mismatch");
+        }
+        tokenData = JSON.parse(decoded.payload) as typeof tokenData;
+      } catch {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Invalid or tampered run token.",
+        });
+      }
+
+      // Verify this token was issued for this agent
+      if (tokenData.agentId !== ctx.agent.agentId) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Run token was issued for a different agent.",
+        });
+      }
+
+      // Token expiry: 2 hours
+      if (Date.now() - tokenData.timestamp > 2 * 60 * 60 * 1000) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Run token has expired. Request a new set of questions.",
+        });
+      }
+
+      // Rate limit: 1 run per agent per topicFilter per 24h
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recentRuns = await ctx.db
+        .select({ id: benchmarkRuns.id })
+        .from(benchmarkRuns)
+        .where(
+          and(
+            eq(benchmarkRuns.agentId, ctx.agent.agentId),
+            tokenData.topicFilter
+              ? eq(benchmarkRuns.topicFilter, tokenData.topicFilter)
+              : sql`${benchmarkRuns.topicFilter} is null`,
+            sql`${benchmarkRuns.createdAt} > ${oneDayAgo}`,
+          ),
+        )
+        .limit(1);
+
+      if (recentRuns.length > 0) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message:
+            "You have already submitted a benchmark run for this topic in the last 24 hours.",
+        });
+      }
+
+      // Score answers
+      const scored = input.answers.map((a) => {
+        const correctOption = tokenData.mappings[a.questionId];
+        if (!correctOption) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Question ${a.questionId} was not part of this run.`,
+          });
+        }
+        return {
+          questionId: a.questionId,
+          submittedOption: a.option,
+          correctOption,
+          isCorrect: a.option === correctOption,
+          reasoning: a.reasoning,
+        };
+      });
+
+      const correctCount = scored.filter((s) => s.isCorrect).length;
+      const scorePercent = (correctCount / scored.length) * 100;
+
+      // Look up agent name
+      const [agentRow] = await ctx.db
+        .select({ name: agentProfiles.name })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.id, ctx.agent.agentId))
+        .limit(1);
+
+      return ctx.db.transaction(async (tx) => {
+        const [run] = await tx
+          .insert(benchmarkRuns)
+          .values({
+            agentId: ctx.agent.agentId,
+            agentName: agentRow?.name ?? "Unknown Agent",
+            ownerId: ctx.agent.ownerId,
+            totalQuestions: scored.length,
+            correctAnswers: correctCount,
+            scorePercent: scorePercent.toFixed(2),
+            topicFilter: tokenData.topicFilter,
+            durationMs: input.durationMs,
+          })
+          .returning();
+
+        await tx.insert(benchmarkAnswers).values(
+          scored.map((s) => ({
+            runId: run!.id,
+            questionId: s.questionId,
+            submittedOption: s.submittedOption,
+            correctOption: s.correctOption,
+            isCorrect: s.isCorrect,
+            reasoning: s.reasoning,
+          })),
+        );
+
+        return {
+          runId: run!.id,
+          correct: correctCount,
+          total: scored.length,
+          score: parseFloat(scorePercent.toFixed(2)),
+        };
+      });
+    }),
+
+  submitBenchmarkQuestion: agentProcedure
+    .input(
+      z.object({
+        question: z.string().min(10),
+        correctAnswer: z.string().min(1),
+        optionB: z.string().min(1),
+        optionC: z.string().min(1),
+        optionD: z.string().min(1),
+        explanation: z.string().optional(),
+        topic: z.enum(BENCHMARK_TOPICS),
+        difficulty: z.enum(BENCHMARK_DIFFICULTIES),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+
+      const [agentRow] = await ctx.db
+        .select({ name: agentProfiles.name })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.id, ctx.agent.agentId))
+        .limit(1);
+
+      const [row] = await ctx.db
+        .insert(benchmarkQuestions)
+        .values({
+          ...input,
+          status: "pending",
+          contributorId: ctx.agent.ownerId,
+          contributorName: agentRow?.name ?? "Agent",
+        })
+        .returning();
+
+      return { questionId: row!.id };
     }),
 });
