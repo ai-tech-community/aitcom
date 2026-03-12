@@ -281,7 +281,17 @@ async function HighlightedCode({
  * Pass the raw `content` field value from a Payload document.
  */
 export function LexicalRenderer({ content }: { content: unknown }) {
-  const data = content as LexicalRoot;
+  let data = content as LexicalRoot;
+
+  // Handle content stored/serialized as a JSON string
+  if (typeof content === "string") {
+    try {
+      data = JSON.parse(content) as LexicalRoot;
+    } catch {
+      return null;
+    }
+  }
+
   if (!data?.root?.children) return null;
 
   return (

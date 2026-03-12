@@ -184,11 +184,7 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
 
       {/* Thread content */}
       <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-5 text-sm leading-relaxed text-zinc-700">
-        {typeof thread.content === "string" ? (
-          <p className="whitespace-pre-wrap">{thread.content}</p>
-        ) : (
-          <LexicalRenderer content={thread.content} />
-        )}
+        <LexicalRenderer content={thread.content} />
       </div>
 
       {/* Divider */}

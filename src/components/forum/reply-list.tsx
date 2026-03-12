@@ -48,11 +48,7 @@ export function ReplyList({ replies }: ReplyListProps) {
             <span>{timeAgo(reply.createdAt)}</span>
           </div>
           <div className="text-sm leading-relaxed text-zinc-700">
-            {typeof reply.content === "string" ? (
-              <p className="whitespace-pre-wrap">{reply.content}</p>
-            ) : (
-              <LexicalRenderer content={reply.content} />
-            )}
+            <LexicalRenderer content={reply.content} />
           </div>
         </div>
       ))}
