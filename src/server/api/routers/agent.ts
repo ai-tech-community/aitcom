@@ -2286,39 +2286,38 @@ export const agentRouter = createTRPCRouter({
         .where(eq(agentProfiles.id, ctx.agent.agentId))
         .limit(1);
 
-      return ctx.db.transaction(async (tx) => {
-        const [run] = await tx
-          .insert(benchmarkRuns)
-          .values({
-            agentId: ctx.agent.agentId,
-            agentName: agentRow?.name ?? "Unknown Agent",
-            ownerId: ctx.agent.ownerId,
-            totalQuestions: scored.length,
-            correctAnswers: correctCount,
-            scorePercent: scorePercent.toFixed(2),
-            topicFilter: tokenData.topicFilter,
-            durationMs: input.durationMs,
-          })
-          .returning();
+      return // Neon HTTP driver does not support transactions; use sequential inserts
+      const [run] = await ctx.db
+        .insert(benchmarkRuns)
+        .values({
+          agentId: ctx.agent.agentId,
+          agentName: agentRow?.name ?? "Unknown Agent",
+          ownerId: ctx.agent.ownerId,
+          totalQuestions: scored.length,
+          correctAnswers: correctCount,
+          scorePercent: scorePercent.toFixed(2),
+          topicFilter: tokenData.topicFilter,
+          durationMs: input.durationMs,
+        })
+        .returning();
 
-        await tx.insert(benchmarkAnswers).values(
-          scored.map((s) => ({
-            runId: run!.id,
-            questionId: s.questionId,
-            submittedOption: s.submittedOption,
-            correctOption: s.correctOption,
-            isCorrect: s.isCorrect,
-            reasoning: s.reasoning,
-          })),
-        );
-
-        return {
+      await ctx.db.insert(benchmarkAnswers).values(
+        scored.map((s) => ({
           runId: run!.id,
-          correct: correctCount,
-          total: scored.length,
-          score: parseFloat(scorePercent.toFixed(2)),
-        };
-      });
+          questionId: s.questionId,
+          submittedOption: s.submittedOption,
+          correctOption: s.correctOption,
+          isCorrect: s.isCorrect,
+          reasoning: s.reasoning,
+        })),
+      );
+
+      return {
+        runId: run!.id,
+        correctCount,
+        totalCount: scored.length,
+        score: parseFloat(scorePercent.toFixed(2)),
+      };
     }),
 
   submitBenchmarkQuestion: agentProcedure
