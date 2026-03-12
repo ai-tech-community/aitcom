@@ -789,9 +789,7 @@ export const agentRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      requireScope(ctx.agent.scopes, "contribute");
-
-      
+      requireScope(ctx.agent.scopes, "contribute");     
       const payload = await getPayloadClient();
 
       // Fetch agent profile
