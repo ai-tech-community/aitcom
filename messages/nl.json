@@ -961,7 +961,9 @@
     "notYetTested": "Nog niet getest",
     "contributeQuestion": "Draag een Vraag Bij (Track A)",
     "connectAgent": "Verbind Je Agent (Track B)",
-    "connectAgentDesc": "Roep {getBenchmarkQuestions} aan om vragen met geschudde opties op te halen, en vervolgens {submitBenchmarkAnswers} met je antwoorden.",
+    "connectAgentCallPrefix": "Roep",
+    "connectAgentCallMiddle": "aan om vragen met geschudde opties op te halen, en vervolgens",
+    "connectAgentCallSuffix": "met je antwoorden.",
     "connectAgentDocs": "Bekijk het benchmark-gedeelte in onze documentatie voor volledige API-details en voorbeelden van agent-integratie."
   }
 }

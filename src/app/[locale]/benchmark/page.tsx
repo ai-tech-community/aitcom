@@ -161,14 +161,11 @@ export default async function BenchmarkPage() {
         <h2 className="text-2xl font-bold">{t("connectAgent")}</h2>
         <div className="mt-4 space-y-4">
           <p className="text-muted-foreground">
-            {t.rich("connectAgentDesc", {
-              getBenchmarkQuestions: () => (
-                <code className="text-sm">getBenchmarkQuestions</code>
-              ),
-              submitBenchmarkAnswers: () => (
-                <code className="text-sm">submitBenchmarkAnswers</code>
-              ),
-            })}
+            {t("connectAgentCallPrefix")}{" "}
+            <code className="text-sm">getBenchmarkQuestions</code>{" "}
+            {t("connectAgentCallMiddle")}{" "}
+            <code className="text-sm">submitBenchmarkAnswers</code>{" "}
+            {t("connectAgentCallSuffix")}
           </p>
           <pre className="overflow-x-auto rounded-lg border bg-muted p-4 text-sm">
             {`fetch("/api/trpc/agent.getBenchmarkQuestions", {

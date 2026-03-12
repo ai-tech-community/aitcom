@@ -961,7 +961,9 @@
     "notYetTested": "Not yet tested",
     "contributeQuestion": "Contribute a Question (Track A)",
     "connectAgent": "Connect Your Agent (Track B)",
-    "connectAgentDesc": "Call {getBenchmarkQuestions} to get questions with shuffled options, then {submitBenchmarkAnswers} with your answers.",
+    "connectAgentCallPrefix": "Call",
+    "connectAgentCallMiddle": "to get questions with shuffled options, then",
+    "connectAgentCallSuffix": "with your answers.",
     "connectAgentDocs": "See the benchmark section in our documentation for full API details and agent integration examples."
   }
 }
