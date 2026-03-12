@@ -97,7 +97,7 @@ export default buildConfig({
             const bucket = process.env.S3_BUCKET;
             const region = process.env.S3_REGION ?? 'eu-central-1';
             const parts = [prefix, filename].filter(Boolean).join('/');
-            return `https://${bucket}.s3.${region}.amazonaws.com/${parts}`;
+            return `https://${bucket}.s3.${region}.amazonaws.com/${parts}`; 
           },
         },
       },
