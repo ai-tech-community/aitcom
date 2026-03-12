@@ -14,22 +14,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-
-const TOPICS = [
-  { value: "typescript", label: "TypeScript" },
-  { value: "llm-concepts", label: "LLM Concepts" },
-  { value: "mcp", label: "MCP" },
-  { value: "cloud-architecture", label: "Cloud Architecture" },
-  { value: "ai-agents", label: "AI Agents" },
-  { value: "security", label: "Security" },
-  { value: "open", label: "Open" },
-] as const;
-
-const DIFFICULTIES = [
-  { value: "beginner", label: "Beginner" },
-  { value: "intermediate", label: "Intermediate" },
-  { value: "advanced", label: "Advanced" },
-] as const;
+import {
+  BENCHMARK_TOPICS,
+  BENCHMARK_TOPIC_LABELS,
+  BENCHMARK_DIFFICULTIES,
+  BENCHMARK_DIFFICULTY_LABELS,
+} from "@/lib/benchmark-constants";
 
 export function SubmitQuestionForm() {
   const { data: session } = authClient.useSession();
@@ -40,8 +30,8 @@ export function SubmitQuestionForm() {
   const [optionC, setOptionC] = useState("");
   const [optionD, setOptionD] = useState("");
   const [explanation, setExplanation] = useState("");
-  const [topic, setTopic] = useState("");
-  const [difficulty, setDifficulty] = useState("");
+  const [topic, setTopic] = useState<(typeof BENCHMARK_TOPICS)[number] | "">("");
+  const [difficulty, setDifficulty] = useState<(typeof BENCHMARK_DIFFICULTIES)[number] | "">("");
   const [submitted, setSubmitted] = useState(false);
 
   const submitMutation = api.benchmark.submitQuestion.useMutation({
@@ -88,6 +78,7 @@ export function SubmitQuestionForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!topic || !difficulty) return;
     submitMutation.mutate({
       question,
       correctAnswer,
@@ -175,14 +166,14 @@ export function SubmitQuestionForm() {
           <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
             Topic
           </label>
-          <Select value={topic} onValueChange={setTopic} required>
+          <Select value={topic} onValueChange={(v) => setTopic(v as typeof topic)} required>
             <SelectTrigger className="mt-1 w-full">
               <SelectValue placeholder="Select topic" />
             </SelectTrigger>
             <SelectContent>
-              {TOPICS.map((t) => (
-                <SelectItem key={t.value} value={t.value}>
-                  {t.label}
+              {BENCHMARK_TOPICS.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {BENCHMARK_TOPIC_LABELS[t]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -192,14 +183,14 @@ export function SubmitQuestionForm() {
           <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
             Difficulty
           </label>
-          <Select value={difficulty} onValueChange={setDifficulty} required>
+          <Select value={difficulty} onValueChange={(v) => setDifficulty(v as typeof difficulty)} required>
             <SelectTrigger className="mt-1 w-full">
               <SelectValue placeholder="Select difficulty" />
             </SelectTrigger>
             <SelectContent>
-              {DIFFICULTIES.map((d) => (
-                <SelectItem key={d.value} value={d.value}>
-                  {d.label}
+              {BENCHMARK_DIFFICULTIES.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {BENCHMARK_DIFFICULTY_LABELS[d]}
                 </SelectItem>
               ))}
             </SelectContent>

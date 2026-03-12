@@ -13,23 +13,7 @@ import {
   benchmarkAnswers,
   benchmarkVotes,
 } from "@/server/db/schema";
-
-// Shared enums — must match submit-question-form.tsx and agent endpoints
-export const BENCHMARK_TOPICS = [
-  "typescript",
-  "llm-concepts",
-  "mcp",
-  "cloud-architecture",
-  "ai-agents",
-  "security",
-  "open",
-] as const;
-
-export const BENCHMARK_DIFFICULTIES = [
-  "beginner",
-  "intermediate",
-  "advanced",
-] as const;
+import { BENCHMARK_TOPICS, BENCHMARK_DIFFICULTIES } from "@/lib/benchmark-constants";
 
 export const benchmarkRouter = createTRPCRouter({
   getLeaderboard: publicProcedure
@@ -118,6 +102,24 @@ export const benchmarkRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+
+      // Prevent self-voting
+      const [question] = await ctx.db
+        .select({ contributorId: benchmarkQuestions.contributorId })
+        .from(benchmarkQuestions)
+        .where(eq(benchmarkQuestions.id, input.questionId))
+        .limit(1);
+
+      if (!question) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Question not found." });
+      }
+
+      if (question.contributorId === userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You cannot vote on your own question.",
+        });
+      }
 
       // Check for duplicate vote — uniqueIndex enforces this at DB level but we
       // want a friendly error instead of a constraint violation

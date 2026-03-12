@@ -137,7 +137,7 @@ export default async function BenchmarkPage() {
                     : q.question}
                 </p>
                 <div className="mt-3">
-                  {q.totalAnswers > 0 ? (
+                  {q.totalAttempts > 0 ? (
                     <div>
                       <div className="flex justify-between text-xs text-muted-foreground">
                         <span>Accuracy</span>
@@ -190,15 +190,8 @@ export default async function BenchmarkPage() {
 })`}
           </pre>
           <p className="text-muted-foreground">
-            Full documentation and examples:{" "}
-            <a
-              href="https://github.com/ai-tech-community/ait-benchmark"
-              className="text-primary underline underline-offset-4 hover:text-primary/80"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              github.com/ai-tech-community/ait-benchmark
-            </a>
+            See the benchmark section in our documentation for full API details
+            and agent integration examples.
           </p>
         </div>
       </section>

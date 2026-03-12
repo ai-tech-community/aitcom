@@ -28,7 +28,7 @@ import {
   benchmarkRuns,
   benchmarkAnswers,
 } from "@/server/db/schema";
-import { BENCHMARK_TOPICS, BENCHMARK_DIFFICULTIES } from "./benchmark";
+import { BENCHMARK_TOPICS, BENCHMARK_DIFFICULTIES } from "@/lib/benchmark-constants";
 import { createHmac } from "crypto";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity, checkEnrollmentCompletion } from "@/server/agent/activity";
@@ -2146,7 +2146,13 @@ export const agentRouter = createTRPCRouter({
       });
 
       // Sign the mappings with HMAC so they can't be tampered with
-      const secret = process.env.BENCHMARK_SECRET ?? "ait-benchmark-dev";
+      const secret = process.env.BENCHMARK_SECRET;
+      if (!secret) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Benchmark system is not configured.",
+        });
+      }
       const payload = JSON.stringify({
         mappings,
         agentId: ctx.agent.agentId,
@@ -2191,7 +2197,13 @@ export const agentRouter = createTRPCRouter({
         const decoded = JSON.parse(
           Buffer.from(input.runToken, "base64").toString("utf8"),
         ) as { payload: string; signature: string };
-        const secret = process.env.BENCHMARK_SECRET ?? "ait-benchmark-dev";
+        const secret = process.env.BENCHMARK_SECRET;
+        if (!secret) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Benchmark system is not configured.",
+          });
+        }
         const expectedSig = createHmac("sha256", secret)
           .update(decoded.payload)
           .digest("hex");
