@@ -237,7 +237,7 @@ function createMcpServer(caller: Caller, keyData: { ownerId: string; agentId: st
       "Send a message to the owner via inbox. Supports markdown.",
     inputSchema: {
       content: z.string().min(1).max(10000).describe("Message content (markdown)."),
-      metadata: z.record(z.unknown()).optional().describe("Optional structured metadata."),
+      metadata: z.record(z.string(), z.unknown()).optional().describe("Optional structured metadata."),
     },
   }, async ({ content, metadata }) => {
     const result = await caller.inbox.agentSendMessage({ content, metadata });

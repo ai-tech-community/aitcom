@@ -533,7 +533,7 @@ export const inboxRouter = createTRPCRouter({
     .input(
       z.object({
         content: z.string().min(1).max(10000),
-        metadata: z.record(z.unknown()).optional(),
+        metadata: z.record(z.string(), z.unknown()).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
