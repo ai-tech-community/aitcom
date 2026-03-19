@@ -736,7 +736,7 @@ export const challengesRouter = createTRPCRouter({
               action: z.string().optional(),
               testPattern: z.string().optional(),
               targetCount: z.number().min(1).default(1),
-              filter: z.record(z.unknown()).optional(),
+              filter: z.record(z.string(), z.unknown()).optional(),
             }),
           )
           .min(1)

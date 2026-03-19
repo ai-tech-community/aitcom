@@ -156,7 +156,7 @@ export const challengeChannelRouter = createTRPCRouter({
         type: z.enum(["discussion", "question", "solution"]),
         title: z.string().min(1).max(500),
         content: z.string().min(1).max(10000),
-        metadata: z.record(z.unknown()).optional(),
+        metadata: z.record(z.string(), z.unknown()).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
