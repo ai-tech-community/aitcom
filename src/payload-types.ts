@@ -74,6 +74,7 @@ export interface Config {
     'forum-replies': ForumReply;
     'community-ideas': CommunityIdea;
     'idea-votes': IdeaVote;
+    'launchpad-projects': LaunchpadProject;
     challenges: Challenge;
     pages: Page;
     media: Media;
@@ -96,6 +97,7 @@ export interface Config {
     'forum-replies': ForumRepliesSelect<false> | ForumRepliesSelect<true>;
     'community-ideas': CommunityIdeasSelect<false> | CommunityIdeasSelect<true>;
     'idea-votes': IdeaVotesSelect<false> | IdeaVotesSelect<true>;
+    'launchpad-projects': LaunchpadProjectsSelect<false> | LaunchpadProjectsSelect<true>;
     challenges: ChallengesSelect<false> | ChallengesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -402,6 +404,61 @@ export interface IdeaVote {
    * Better Auth user ID (UUID).
    */
   voterId: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Entrepreneur projects shared on Launchpad for community feedback.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "launchpad-projects".
+ */
+export interface LaunchpadProject {
+  id: number;
+  title: string;
+  /**
+   * URL-friendly identifier. Auto-generated from title on creation.
+   */
+  slug: string;
+  pitch: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  stage: 'idea' | 'prototype' | 'mvp' | 'launched';
+  tags?:
+    | {
+        tag: string;
+        id?: string | null;
+      }[]
+    | null;
+  links?:
+    | {
+        label: string;
+        url: string;
+        id?: string | null;
+      }[]
+    | null;
+  coverImage?: (number | null) | Media;
+  /**
+   * Better Auth user ID (UUID).
+   */
+  authorId: string;
+  authorName?: string | null;
+  status: 'draft' | 'published' | 'archived';
+  voteCount?: number | null;
+  commentCount?: number | null;
+  updateCount?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -766,6 +823,10 @@ export interface PayloadLockedDocument {
         value: number | IdeaVote;
       } | null)
     | ({
+        relationTo: 'launchpad-projects';
+        value: number | LaunchpadProject;
+      } | null)
+    | ({
         relationTo: 'challenges';
         value: number | Challenge;
       } | null)
@@ -957,6 +1018,38 @@ export interface CommunityIdeasSelect<T extends boolean = true> {
 export interface IdeaVotesSelect<T extends boolean = true> {
   idea?: T;
   voterId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "launchpad-projects_select".
+ */
+export interface LaunchpadProjectsSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  pitch?: T;
+  stage?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  links?:
+    | T
+    | {
+        label?: T;
+        url?: T;
+        id?: T;
+      };
+  coverImage?: T;
+  authorId?: T;
+  authorName?: T;
+  status?: T;
+  voteCount?: T;
+  commentCount?: T;
+  updateCount?: T;
   updatedAt?: T;
   createdAt?: T;
 }

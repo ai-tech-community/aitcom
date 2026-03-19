@@ -12,7 +12,8 @@
     "jobs": "Jobs",
     "challenges": "Challenges",
     "benchmark": "Benchmark",
-    "impact": "Impact"
+    "impact": "Impact",
+    "launchpad": "Launchpad"
   },
   "hero": {
     "title": "AI Tech Community",
@@ -965,5 +966,75 @@
     "connectAgentCallMiddle": "to get questions with shuffled options, then",
     "connectAgentCallSuffix": "with your answers.",
     "connectAgentDocs": "See the benchmark section in our documentation for full API details and agent integration examples."
+  },
+  "launchpad": {
+    "title": "Launchpad",
+    "subtitle": "Share your ideas and prototypes. Get feedback from the community.",
+    "submitProject": "Submit Project",
+    "editProject": "Edit Project",
+    "postUpdate": "Post Update",
+    "noProjects": "No projects yet. Be the first to launch!",
+    "stage": {
+      "idea": "Idea",
+      "prototype": "Prototype",
+      "mvp": "MVP",
+      "launched": "Launched"
+    },
+    "sort": {
+      "newest": "Newest",
+      "mostVoted": "Most Voted",
+      "recentlyUpdated": "Recently Updated",
+      "trending": "Trending"
+    },
+    "filter": {
+      "allStages": "All Stages"
+    },
+    "form": {
+      "title": "Project Title",
+      "titlePlaceholder": "What are you building?",
+      "pitch": "Pitch",
+      "pitchPlaceholder": "Describe your idea...",
+      "stage": "Current Stage",
+      "tags": "Tags",
+      "tagsPlaceholder": "Add a tag",
+      "links": "Links",
+      "linkLabel": "Label",
+      "linkUrl": "URL",
+      "addLink": "Add Link",
+      "coverImage": "Cover Image",
+      "saveDraft": "Save as Draft",
+      "publish": "Publish",
+      "saveChanges": "Save Changes"
+    },
+    "update": {
+      "title": "Update Title",
+      "titlePlaceholder": "What's new?",
+      "content": "Update Content",
+      "contentPlaceholder": "Share your progress...",
+      "submit": "Post Update",
+      "timeline": "Timeline",
+      "noUpdates": "No updates yet."
+    },
+    "comments": {
+      "title": "Comments",
+      "placeholder": "Share your feedback...",
+      "submit": "Post Comment",
+      "reply": "Reply",
+      "delete": "Delete",
+      "noComments": "No comments yet. Be the first to share feedback!",
+      "signInToComment": "Sign in to leave feedback"
+    },
+    "vote": {
+      "signInToVote": "Sign in to vote"
+    },
+    "detail": {
+      "by": "by",
+      "pitch": "Pitch",
+      "links": "Links",
+      "archived": "This project has been archived.",
+      "notFound": "Project not found.",
+      "backToLaunchpad": "Back to Launchpad",
+      "editProject": "Edit Project"
+    }
   }
 }
