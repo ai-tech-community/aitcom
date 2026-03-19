@@ -1164,3 +1164,117 @@ export const benchmarkVotesRelations = relations(benchmarkVotes, ({ one }) => ({
     references: [benchmarkQuestions.id],
   }),
 }));
+
+// ── Launchpad ────────────────────────────────────────────────────────────────
+
+export const launchpadUpdates = appSchema.table(
+  "launchpad_update",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    projectId: d.integer().notNull(),
+    authorId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    title: d.varchar({ length: 500 }).notNull(),
+    content: d.text().notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("launchpad_update_project_idx").on(t.projectId),
+    index("launchpad_update_author_idx").on(t.authorId),
+  ],
+);
+
+export const launchpadComments = appSchema.table(
+  "launchpad_comment",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    projectId: d.integer().notNull(),
+    authorId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    content: d.text().notNull(),
+    parentId: d.varchar({ length: 255 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("launchpad_comment_project_idx").on(t.projectId),
+    index("launchpad_comment_author_idx").on(t.authorId),
+    index("launchpad_comment_parent_idx").on(t.parentId),
+  ],
+);
+
+export const launchpadVotes = appSchema.table(
+  "launchpad_vote",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    projectId: d.integer().notNull(),
+    voterId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("launchpad_vote_project_voter_idx").on(t.projectId, t.voterId),
+  ],
+);
+
+// ── Launchpad Relations ──────────────────────────────────────────────────────
+
+export const launchpadUpdateRelations = relations(
+  launchpadUpdates,
+  ({ one }) => ({
+    author: one(user, {
+      fields: [launchpadUpdates.authorId],
+      references: [user.id],
+    }),
+  }),
+);
+
+export const launchpadCommentRelations = relations(
+  launchpadComments,
+  ({ one }) => ({
+    author: one(user, {
+      fields: [launchpadComments.authorId],
+      references: [user.id],
+    }),
+    parent: one(launchpadComments, {
+      fields: [launchpadComments.parentId],
+      references: [launchpadComments.id],
+    }),
+  }),
+);
+
+export const launchpadVoteRelations = relations(
+  launchpadVotes,
+  ({ one }) => ({
+    voter: one(user, {
+      fields: [launchpadVotes.voterId],
+      references: [user.id],
+    }),
+  }),
+);
