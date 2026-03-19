@@ -1,5 +1,6 @@
 import { activityRouter } from "@/server/api/routers/activity";
 import { benchmarkRouter } from "@/server/api/routers/benchmark";
+import { launchpadRouter } from "@/server/api/routers/launchpad";
 import { agentRouter } from "@/server/api/routers/agent";
 import { agentManagementRouter } from "@/server/api/routers/agent-management";
 import { articlesRouter } from "@/server/api/routers/articles";
@@ -40,6 +41,7 @@ export const appRouter = createTRPCRouter({
   challengeEngine: challengeEngineRouter,
   challenges: challengesRouter,
   benchmark: benchmarkRouter,
+  launchpad: launchpadRouter,
 });
 
 // export type definition of API
