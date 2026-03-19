@@ -23,6 +23,7 @@ const navLinks = [
   { href: "/impact", key: "impact", shortcut: "I" },
   { href: "/forum", key: "forum", shortcut: "F" },
   { href: "/community", key: "community", shortcut: "C" },
+  { href: "/launchpad", key: "launchpad", shortcut: "L" },
   { href: "/challenges", key: "challenges", shortcut: "G" },
   { href: "/benchmark", key: "benchmark", shortcut: "K" },
   { href: "/sponsors", key: "sponsors", shortcut: "S" },
