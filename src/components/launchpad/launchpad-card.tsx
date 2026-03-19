@@ -16,8 +16,8 @@ type LaunchpadCardProps = {
     title: string;
     slug: string;
     stage: string;
-    tags?: Array<{ tag: string; id?: string }>;
-    coverImage?: { url?: string } | number | null;
+    tags?: Array<{ tag: string; id?: string | null }> | null;
+    coverImage?: { url?: string | null } | number | null;
     authorName?: string | null;
     voteCount?: number | null;
     commentCount?: number | null;

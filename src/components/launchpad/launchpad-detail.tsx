@@ -143,7 +143,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
             className={`font-mono text-[9px] font-semibold uppercase tracking-wider rounded border px-1.5 py-0.5 ${stageStyles[project.stage] ?? stageStyles.idea}`}
             variant="outline"
           >
-            {t(`stage.${project.stage as "idea" | "prototype" | "mvp" | "launched"}`)}
+            {t(`stage.${project.stage}`)}
           </Badge>
           {isAuthor && (
             <Link

@@ -83,7 +83,7 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
       setTitle(project.title ?? "");
       setPitch(lexicalToPlainText(project.pitch));
       setStage(
-        (project.stage as "idea" | "prototype" | "mvp" | "launched") ?? "idea",
+        project.stage ?? "idea",
       );
       setTags(
         Array.isArray(project.tags)
