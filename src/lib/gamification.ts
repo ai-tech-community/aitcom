@@ -145,6 +145,12 @@ export const BADGES: Record<string, BadgeDefinition> = {
     description: "Published your first tutorial",
     icon: "🎓",
   },
+  first_launch: {
+    slug: "first_launch",
+    name: "First Launch",
+    description: "Published your first project on Launchpad",
+    icon: "🚀",
+  },
 };
 
 // --- XP Amounts ---
@@ -167,6 +173,11 @@ export const XP_AMOUNTS = {
   FORUM_THREAD_CREATE: 10,
   FORUM_REPLY_CREATE: 5,
   FORUM_RECEIVE_REPLY: 3,
+  LAUNCHPAD_PROJECT_CREATE: 15,
+  LAUNCHPAD_UPDATE_POST: 10,
+  LAUNCHPAD_COMMENT_CREATE: 5,
+  LAUNCHPAD_RECEIVE_VOTE: 3,
+  LAUNCHPAD_RECEIVE_COMMENT: 3,
 } as const;
 
 // --- Leveling ---
