@@ -22,6 +22,7 @@ import { Sponsors } from "./collections/Sponsors";
 import { SponsorApplications } from "./collections/SponsorApplications";
 import { Jobs } from "./collections/Jobs";
 import { RulesAcceptance } from "./collections/RulesAcceptance";
+import { LaunchpadProjects } from "./collections/LaunchpadProjects";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
   if (!connectionString) {
@@ -65,6 +66,7 @@ export default buildConfig({
     ForumReplies,
     CommunityIdeas,
     IdeaVotes,
+    LaunchpadProjects,
     Challenges,
     Pages,
     Media,
