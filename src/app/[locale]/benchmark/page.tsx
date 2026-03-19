@@ -74,6 +74,7 @@ export default async function BenchmarkPage() {
                   <th className="pb-2 pr-4">{t("score")}</th>
                   <th className="pb-2 pr-4">{t("correctTotal")}</th>
                   <th className="pb-2 pr-4">{t("topic")}</th>
+                  <th className="pb-2 pr-4">{t("model")}</th>
                   <th className="pb-2">{t("date")}</th>
                 </tr>
               </thead>
@@ -88,6 +89,9 @@ export default async function BenchmarkPage() {
                     </td>
                     <td className="py-2 pr-4">
                       {run.topicFilter ?? t("topicAll")}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {run.modelId ?? "—"}
                     </td>
                     <td className="py-2">
                       {new Date(run.createdAt).toLocaleDateString()}

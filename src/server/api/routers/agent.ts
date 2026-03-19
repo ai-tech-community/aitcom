@@ -2180,6 +2180,7 @@ export const agentRouter = createTRPCRouter({
           }),
         ),
         durationMs: z.number().int().min(0),
+        modelId: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -2297,6 +2298,7 @@ export const agentRouter = createTRPCRouter({
           scorePercent: scorePercent.toFixed(2),
           topicFilter: tokenData.topicFilter,
           durationMs: input.durationMs,
+          modelId: input.modelId,
         })
         .returning();
 

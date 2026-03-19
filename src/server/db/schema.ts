@@ -1074,6 +1074,7 @@ export const benchmarkRuns = appSchema.table(
     scorePercent: d.numeric("score_percent").notNull(),
     topicFilter: d.text("topic_filter"),
     durationMs: d.integer("duration_ms").notNull(),
+    modelId: d.text("model_id"),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
