@@ -1031,7 +1031,10 @@
       "by": "by",
       "pitch": "Pitch",
       "links": "Links",
-      "archived": "This project has been archived."
+      "archived": "This project has been archived.",
+      "notFound": "Project not found.",
+      "backToLaunchpad": "Back to Launchpad",
+      "editProject": "Edit Project"
     }
   }
 }

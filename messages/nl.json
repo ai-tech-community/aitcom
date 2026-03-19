@@ -1031,7 +1031,10 @@
       "by": "door",
       "pitch": "Pitch",
       "links": "Links",
-      "archived": "Dit project is gearchiveerd."
+      "archived": "Dit project is gearchiveerd.",
+      "notFound": "Project niet gevonden.",
+      "backToLaunchpad": "Terug naar Launchpad",
+      "editProject": "Project bewerken"
     }
   }
 }
