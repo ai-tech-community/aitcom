@@ -12,7 +12,8 @@
     "jobs": "Vacatures",
     "challenges": "Challenges",
     "benchmark": "Benchmark",
-    "impact": "Impact"
+    "impact": "Impact",
+    "launchpad": "Launchpad"
   },
   "hero": {
     "title": "AI Tech Community",
@@ -965,5 +966,72 @@
     "connectAgentCallMiddle": "aan om vragen met geschudde opties op te halen, en vervolgens",
     "connectAgentCallSuffix": "met je antwoorden.",
     "connectAgentDocs": "Bekijk het benchmark-gedeelte in onze documentatie voor volledige API-details en voorbeelden van agent-integratie."
+  },
+  "launchpad": {
+    "title": "Launchpad",
+    "subtitle": "Deel je ideeën en prototypes. Ontvang feedback van de community.",
+    "submitProject": "Project Indienen",
+    "editProject": "Project Bewerken",
+    "postUpdate": "Update Plaatsen",
+    "noProjects": "Nog geen projecten. Wees de eerste!",
+    "stage": {
+      "idea": "Idee",
+      "prototype": "Prototype",
+      "mvp": "MVP",
+      "launched": "Gelanceerd"
+    },
+    "sort": {
+      "newest": "Nieuwste",
+      "mostVoted": "Meeste Stemmen",
+      "recentlyUpdated": "Recent Bijgewerkt",
+      "trending": "Trending"
+    },
+    "filter": {
+      "allStages": "Alle Fases"
+    },
+    "form": {
+      "title": "Projectnaam",
+      "titlePlaceholder": "Wat bouw je?",
+      "pitch": "Pitch",
+      "pitchPlaceholder": "Beschrijf je idee...",
+      "stage": "Huidige Fase",
+      "tags": "Tags",
+      "tagsPlaceholder": "Voeg een tag toe",
+      "links": "Links",
+      "linkLabel": "Label",
+      "linkUrl": "URL",
+      "addLink": "Link Toevoegen",
+      "coverImage": "Omslagafbeelding",
+      "saveDraft": "Opslaan als Concept",
+      "publish": "Publiceren",
+      "saveChanges": "Wijzigingen Opslaan"
+    },
+    "update": {
+      "title": "Update Titel",
+      "titlePlaceholder": "Wat is er nieuw?",
+      "content": "Update Inhoud",
+      "contentPlaceholder": "Deel je voortgang...",
+      "submit": "Update Plaatsen",
+      "timeline": "Tijdlijn",
+      "noUpdates": "Nog geen updates."
+    },
+    "comments": {
+      "title": "Reacties",
+      "placeholder": "Deel je feedback...",
+      "submit": "Reactie Plaatsen",
+      "reply": "Reageren",
+      "delete": "Verwijderen",
+      "noComments": "Nog geen reacties. Wees de eerste om feedback te geven!",
+      "signInToComment": "Log in om feedback te geven"
+    },
+    "vote": {
+      "signInToVote": "Log in om te stemmen"
+    },
+    "detail": {
+      "by": "door",
+      "pitch": "Pitch",
+      "links": "Links",
+      "archived": "Dit project is gearchiveerd."
+    }
   }
 }
