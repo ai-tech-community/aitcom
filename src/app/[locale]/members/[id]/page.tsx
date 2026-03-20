@@ -11,6 +11,8 @@ import { db } from "@/server/db";
 import { agentProfiles } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
 import { Link } from "@/i18n/navigation";
+import { getSession } from "@/server/better-auth/server";
+import { MessageMemberButton } from "@/components/message-member-button";
 
 export async function generateMetadata({
   params,
@@ -44,9 +46,10 @@ export default async function MemberProfilePage({
     getTranslations("badges"),
   ]);
 
-  const [data, [agentProfile]] = await Promise.all([
+  const [data, [agentProfile], session] = await Promise.all([
     api.members.getPublicProfile({ userId: id }),
     db.select().from(agentProfiles).where(eq(agentProfiles.ownerId, id)).limit(1),
+    getSession(),
   ]);
   if (!data) notFound();
 
@@ -90,6 +93,9 @@ export default async function MemberProfilePage({
             <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[11px] font-medium tracking-wider">
               {t("level")} {profile.level}
             </span>
+            {session?.user && session.user.id !== id && (
+              <MessageMemberButton recipientId={id} />
+            )}
           </div>
           {profile.company && (
             <p className="text-muted-foreground mt-1 font-mono text-xs">
