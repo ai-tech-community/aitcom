@@ -62,9 +62,9 @@ export default async function LocaleLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <TRPCReactProvider>
             <Navbar />
-            <main className="min-h-screen to-background bg-linear-to-b from-orange-50/60 via-amber-50/30">{children}</main>
-            <Footer />
             <InboxProvider>
+              <main className="min-h-screen to-background bg-linear-to-b from-orange-50/60 via-amber-50/30">{children}</main>
+              <Footer />
               <InboxRoot />
             </InboxProvider>
             <Toaster position="bottom-right" offset={60} />
