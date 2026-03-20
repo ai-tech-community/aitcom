@@ -78,55 +78,20 @@ export const onboardingRouter = createTRPCRouter({
       const intentToPath =
         input.intent === "hiring" ? "networking" : input.intent === "all" ? "learning" : input.intent;
 
-      // Check if profile exists
-      const [existing] = await ctx.db
-        .select({ userId: memberProfiles.userId })
-        .from(memberProfiles)
-        .where(eq(memberProfiles.userId, userId))
-        .limit(1);
-
-      if (existing) {
-        await ctx.db
-          .update(memberProfiles)
-          .set({
-            onboardingIntent: intentToPath,
-            interests: input.interests,
-            experienceLevel: input.experienceLevel,
-          })
-          .where(eq(memberProfiles.userId, userId));
-      } else {
-        // Create a minimal profile with onboarding data
-        const userName = ctx.session.user.name ?? ctx.session.user.email.split("@")[0]!;
-        await ctx.db.insert(memberProfiles).values({
-          userId,
-          displayName: userName,
+      await ctx.db
+        .update(memberProfiles)
+        .set({
           onboardingIntent: intentToPath,
           interests: input.interests,
           experienceLevel: input.experienceLevel,
-        });
-      }
+        })
+        .where(eq(memberProfiles.userId, userId));
 
       return { success: true };
     }),
 
   /** Skip onboarding (use generic checklist). */
   skipIntent: protectedProcedure.mutation(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
-
-    const [existing] = await ctx.db
-      .select({ userId: memberProfiles.userId })
-      .from(memberProfiles)
-      .where(eq(memberProfiles.userId, userId))
-      .limit(1);
-
-    if (!existing) {
-      const userName = ctx.session.user.name ?? ctx.session.user.email.split("@")[0]!;
-      await ctx.db.insert(memberProfiles).values({
-        userId,
-        displayName: userName,
-      });
-    }
-
     return { success: true };
   }),
 
