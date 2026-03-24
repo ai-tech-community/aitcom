@@ -9,6 +9,9 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
+import { sendForumReplyNotification } from "@/server/email";
+import { eq } from "drizzle-orm";
+import { user as userTable } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
@@ -449,6 +452,22 @@ export const communityRouter = createTRPCRouter({
       // Award XP to thread author for receiving a reply
       if (thread.authorId !== ctx.session.user.id) {
         await awardXp(ctx.db, thread.authorId, XP_AMOUNTS.FORUM_RECEIVE_REPLY);
+
+        // Send forum reply notification email (non-blocking)
+        const [threadAuthor] = await ctx.db
+          .select({ email: userTable.email, name: userTable.name })
+          .from(userTable)
+          .where(eq(userTable.id, thread.authorId))
+          .limit(1);
+        if (threadAuthor?.email) {
+          sendForumReplyNotification(
+            threadAuthor.email,
+            threadAuthor.name ?? threadAuthor.email.split("@")[0]!,
+            ctx.session.user.name ?? "Someone",
+            thread.title ?? "your thread",
+            thread.slug ?? String(input.threadId),
+          ).catch(() => {});
+        }
       }
 
       return reply;

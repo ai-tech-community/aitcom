@@ -6,6 +6,7 @@ import { db } from "@/server/db";
 import { memberProfiles } from "@/server/db/schema";
 import { checkEarlyAdopterBadge } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
+import { sendMemberWelcome } from "@/server/email";
 import {
   resolveBetterAuthBaseUrl,
   resolveTrustedOrigins,
@@ -51,6 +52,7 @@ export const auth = betterAuth({
             targetId: user.id,
             metadata: { displayName },
           });
+          await sendMemberWelcome(user.email, displayName).catch(() => {/* non-blocking */});
         },
       },
     },
