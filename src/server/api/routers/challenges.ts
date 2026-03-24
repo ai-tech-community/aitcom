@@ -909,21 +909,23 @@ export const challengesRouter = createTRPCRouter({
       });
 
       // Send submission confirmation email (non-blocking)
-      const payload = await getPayloadClient();
-      const challenge = await payload.findByID({
-        collection: "challenges",
-        id: input.challengeId,
-        depth: 0,
-      });
       const userEmail = ctx.session.user.email;
-      const displayName = ctx.session.user.name ?? userEmail?.split("@")[0] ?? "there";
       if (userEmail) {
-        sendChallengeSubmissionConfirmation(
-          userEmail,
-          displayName,
-          challenge.title,
-          challenge.slug ?? String(input.challengeId),
-        ).catch(() => {});
+        const displayName = ctx.session.user.name ?? userEmail.split("@")[0] ?? "there";
+        void (async () => {
+          const payload = await getPayloadClient();
+          const challenge = await payload.findByID({
+            collection: "challenges",
+            id: input.challengeId,
+            depth: 0,
+          });
+          await sendChallengeSubmissionConfirmation(
+            userEmail,
+            displayName,
+            challenge.title,
+            challenge.slug ?? String(input.challengeId),
+          );
+        })().catch(() => { /* non-blocking */ });
       }
 
       return thread!;

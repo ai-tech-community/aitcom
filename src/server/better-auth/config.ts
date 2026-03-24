@@ -52,7 +52,7 @@ export const auth = betterAuth({
             targetId: user.id,
             metadata: { displayName },
           });
-          await sendMemberWelcome(user.email, displayName).catch(() => {/* non-blocking */});
+          sendMemberWelcome(user.email, displayName).catch(() => { /* non-blocking */ });
         },
       },
     },

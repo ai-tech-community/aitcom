@@ -466,7 +466,7 @@ export const communityRouter = createTRPCRouter({
             ctx.session.user.name ?? "Someone",
             thread.title ?? "your thread",
             thread.slug ?? String(input.threadId),
-          ).catch(() => {});
+          ).catch(() => { /* non-blocking */ });
         }
       }
 
