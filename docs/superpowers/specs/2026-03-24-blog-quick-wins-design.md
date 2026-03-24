@@ -45,10 +45,10 @@
 ### Behavior
 
 - New Next.js Route Handler at `src/app/feed.xml/route.ts`.
-- `GET` handler queries Payload for latest 20 published & approved articles, sorted by `-publishedAt`.
+- `GET` handler queries Payload for latest 20 articles using the same compound filter as the blog index: `status = "published" AND (authorType != "member" OR reviewStatus = "approved")`. This ensures admin-authored articles (which have no `reviewStatus`) are included. Sorted by `-publishedAt`.
 - Hard-codes `locale: "en"` for content (single English-language feed). If multi-locale feeds are needed later, we can add per-locale routes.
 - Generates RSS 2.0 XML via string template with Dublin Core namespace for author names.
-- Each `<item>` includes: `<title>`, `<link>` (absolute URL), `<pubDate>` (RFC 822 format), `<description>` (first ~200 words from Lexical JSON), `<dc:creator>` (author name — RSS `<author>` expects email, `dc:creator` accepts plain names), `<category>` (article type).
+- Each `<item>` includes: `<title>`, `<link>` (absolute URL), `<pubDate>` (RFC 822 format), `<description>` (first ~200 words from Lexical JSON), `<dc:creator>` (author name, fallback to "AIT Community" when `authorName` is empty/null — RSS `<author>` expects email, `dc:creator` accepts plain names), `<category>` (article type).
 - All text content (titles, descriptions) is XML-escaped via a shared `escapeXml()` utility that escapes `&`, `<`, `>`, `"`, `'`.
 - Returns `Response` with `Content-Type: application/xml; charset=utf-8`.
 - Sets `Cache-Control: public, max-age=3600, s-maxage=3600` header (1 hour cache).
