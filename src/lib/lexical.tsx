@@ -1,4 +1,5 @@
 import React from "react";
+import { slugify } from "@/lib/text-utils";
 
 type LexicalNode = {
   type: string;
@@ -18,14 +19,70 @@ type LexicalRoot = {
   root?: { children?: LexicalNode[] };
 };
 
-function extractPlainText(nodes: LexicalNode[]): string {
+export function extractPlainText(nodes: LexicalNode[]): string {
   return nodes
     .map((n) => {
       if (typeof n.text === "string") return n.text;
       if (n.children?.length) return extractPlainText(n.children);
       return "";
     })
-    .join("");
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Estimate reading time in minutes from Lexical JSON content.
+ * Uses 200 WPM average reading speed.
+ */
+export function estimateReadingTime(content: unknown): number {
+  const data = typeof content === "string"
+    ? (JSON.parse(content) as LexicalRoot)
+    : (content as LexicalRoot);
+
+  if (!data?.root?.children) return 1;
+
+  const text = extractPlainText(data.root.children);
+  const wordCount = text.split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(wordCount / 200));
+}
+
+export type Heading = { text: string; slug: string; level: 2 | 3 };
+
+/**
+ * Extract H2/H3 headings from Lexical JSON content with deduplicated slugs.
+ * Used for table of contents and anchor link generation.
+ */
+export function extractHeadings(content: unknown): Heading[] {
+  const data = typeof content === "string"
+    ? (JSON.parse(content) as LexicalRoot)
+    : (content as LexicalRoot);
+
+  if (!data?.root?.children) return [];
+
+  const slugMap = new Map<string, number>();
+  const headings: Heading[] = [];
+
+  for (const node of data.root.children) {
+    if (
+      node.type === "heading" &&
+      (node.tag === "h2" || node.tag === "h3")
+    ) {
+      const text = extractPlainText(node.children ?? []);
+      const baseSlug = slugify(text);
+      const count = slugMap.get(baseSlug) ?? 0;
+      const slug = count === 0 ? baseSlug : `${baseSlug}-${count}`;
+      slugMap.set(baseSlug, count + 1);
+
+      headings.push({
+        text,
+        slug,
+        level: node.tag === "h2" ? 2 : 3,
+      });
+    }
+  }
+
+  return headings;
 }
 
 function renderText(node: LexicalNode): React.ReactNode {
