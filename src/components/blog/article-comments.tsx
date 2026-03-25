@@ -11,6 +11,7 @@ import {
   AvatarFallback,
 } from "@/components/ui/avatar";
 import { Link } from "@/i18n/navigation";
+import { RulesModal } from "@/components/community/modals/rules-modal";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -64,12 +65,14 @@ function CommentForm({
   placeholder,
   onSuccess,
   onCancel,
+  onRulesRequired,
 }: {
   articleId: number;
   parentId?: number;
   placeholder: string;
   onSuccess: () => void;
   onCancel?: () => void;
+  onRulesRequired: () => void;
 }) {
   const t = useTranslations("blog.comments");
   const [content, setContent] = useState("");
@@ -84,7 +87,7 @@ function CommentForm({
     },
     onError: (err) => {
       if (err.message === "RULES_NOT_ACCEPTED") {
-        toast.error(t("toast.rulesRequired"));
+        onRulesRequired();
         return;
       }
       toast.error(t("toast.error"));
@@ -144,11 +147,13 @@ function CommentItem({
   replies,
   articleId,
   currentUserId,
+  onRulesRequired,
 }: {
   comment: Comment;
   replies: Comment[];
   articleId: number;
   currentUserId?: string;
+  onRulesRequired: () => void;
 }) {
   const t = useTranslations("blog.comments");
   const [showReplyForm, setShowReplyForm] = useState(false);
@@ -232,6 +237,7 @@ function CommentItem({
             onCancel={() => {
               setShowReplyForm(false);
             }}
+            onRulesRequired={onRulesRequired}
           />
         </div>
       )}
@@ -294,7 +300,9 @@ export function ArticleComments({
   currentUserId,
 }: ArticleCommentsProps) {
   const t = useTranslations("blog.comments");
+  const tRules = useTranslations("community.rules");
   const { data: session } = authClient.useSession();
+  const [showRulesModal, setShowRulesModal] = useState(false);
 
   const { data: comments } = api.comments.list.useQuery(
     { articleId },
@@ -327,6 +335,7 @@ export function ArticleComments({
           articleId={articleId}
           placeholder={t("placeholder")}
           onSuccess={() => undefined}
+          onRulesRequired={() => setShowRulesModal(true)}
         />
       ) : (
         <p className="text-muted-foreground font-mono text-xs">
@@ -350,10 +359,19 @@ export function ArticleComments({
               replies={repliesMap.get(comment.id) ?? []}
               articleId={articleId}
               currentUserId={currentUserId}
+              onRulesRequired={() => setShowRulesModal(true)}
             />
           ))}
         </div>
       )}
+
+      {/* Rules acceptance modal */}
+      <RulesModal
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+        title={tRules("title")}
+        subtitle={tRules("subtitle")}
+      />
     </div>
   );
 }
