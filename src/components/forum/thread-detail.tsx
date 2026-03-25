@@ -1,14 +1,22 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
 import { LexicalRenderer } from "@/lib/lexical";
 import { RoleBadge } from "@/components/forum/role-badge";
 import { ReplyList } from "@/components/forum/reply-list";
 import { ReplyForm } from "@/components/forum/reply-form";
+import { authClient } from "@/server/better-auth/client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -45,6 +53,12 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
   const utils = api.useUtils();
   const canModerate = memberRole === "owner" || memberRole === "admin" || memberRole === "moderator";
 
+  const { data: session } = authClient.useSession();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+
   const { data: thread, isLoading: threadLoading } =
     api.forum.getThread.useQuery({ slug });
 
@@ -63,6 +77,27 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
   const lockMutation = api.forum.lockThread.useMutation({
     onSuccess: () => void utils.forum.getThread.invalidate({ slug }),
   });
+
+  const editMutation = api.forum.editThread.useMutation({
+    onSuccess: () => {
+      toast.success(t("threadEdited"));
+      setIsEditing(false);
+      void utils.forum.getThread.invalidate({ slug });
+    },
+  });
+
+  const deleteMutation = api.forum.deleteThread.useMutation({
+    onSuccess: () => {
+      toast.success(t("threadDeleted"));
+      void utils.forum.getThread.invalidate({ slug });
+    },
+  });
+
+  const isAuthor = !!(
+    session?.user?.id &&
+    thread?.authorId &&
+    session.user.id === thread.authorId
+  );
 
   // Increment view count once on mount when thread loads
   useEffect(() => {
@@ -138,6 +173,9 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
           </span>
           <span>&middot;</span>
           <span>{timeAgo(thread.createdAt)}</span>
+          {thread.isEdited && (
+            <span className="italic text-zinc-400">({t("edited")})</span>
+          )}
           {thread.authorName && (
             <>
               <span>&middot;</span>
@@ -147,31 +185,64 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
           )}
         </div>
 
-        {/* Admin actions */}
-        {canModerate && (
-          <div className="mt-3 flex gap-2">
-            <button
-              onClick={() =>
-                pinMutation.mutate({
-                  threadId: thread.id,
-                  isPinned: !thread.isPinned,
-                })
-              }
-              className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-100"
-            >
-              {thread.isPinned ? t("unpinThread") : t("pinThread")}
-            </button>
-            <button
-              onClick={() =>
-                lockMutation.mutate({
-                  threadId: thread.id,
-                  isLocked: !thread.isLocked,
-                })
-              }
-              className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-100"
-            >
-              {thread.isLocked ? t("unlockThread") : t("lockThread")}
-            </button>
+        {/* Actions menu */}
+        {(canModerate || isAuthor) && !thread.isDeleted && (
+          <div className="mt-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500 hover:bg-zinc-100">
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {canModerate && (
+                  <>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        pinMutation.mutate({
+                          threadId: thread.id,
+                          isPinned: !thread.isPinned,
+                        })
+                      }
+                    >
+                      {thread.isPinned ? t("unpinThread") : t("pinThread")}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() =>
+                        lockMutation.mutate({
+                          threadId: thread.id,
+                          isLocked: !thread.isLocked,
+                        })
+                      }
+                    >
+                      {thread.isLocked ? t("unlockThread") : t("lockThread")}
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {isAuthor && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setEditTitle(thread.title);
+                      setEditContent("");
+                      setIsEditing(true);
+                    }}
+                  >
+                    <Pencil className="mr-2 h-3.5 w-3.5" />
+                    {t("edit")}
+                  </DropdownMenuItem>
+                )}
+                {(isAuthor || canModerate) && (
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => {
+                      if (window.confirm(t("deleteThreadConfirm")))
+                        deleteMutation.mutate({ threadId: thread.id });
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-3.5 w-3.5" />
+                    {t("delete")}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
       </div>
@@ -183,9 +254,50 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
       )}
 
       {/* Thread content */}
-      <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-5 text-sm leading-relaxed text-zinc-700">
-        <LexicalRenderer content={thread.content} />
-      </div>
+      {thread.isDeleted ? (
+        <div className="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-5 text-center text-sm italic text-zinc-400">
+          {t("threadDeletedMessage")}
+        </div>
+      ) : isEditing ? (
+        <div className="mt-6 space-y-3">
+          <input
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm font-medium"
+          />
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            rows={6}
+            className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() =>
+                editMutation.mutate({
+                  threadId: thread.id,
+                  title: editTitle,
+                  content: editContent,
+                })
+              }
+              disabled={editMutation.isPending}
+              className="bg-primary text-primary-foreground rounded-md px-4 py-1.5 text-xs font-semibold"
+            >
+              {t("save")}
+            </button>
+            <button
+              onClick={() => setIsEditing(false)}
+              className="rounded-md border px-4 py-1.5 text-xs"
+            >
+              {t("cancel")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-5 text-sm leading-relaxed text-zinc-700">
+          <LexicalRenderer content={thread.content} />
+        </div>
+      )}
 
       {/* Divider */}
       <div className="my-8 border-t border-zinc-200" />
@@ -205,7 +317,12 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
           ))}
         </div>
       ) : (
-        <ReplyList replies={replies} />
+        <ReplyList
+          replies={replies}
+          currentUserId={session?.user?.id}
+          memberRole={memberRole}
+          threadSlug={slug}
+        />
       )}
 
       {/* Reply form */}
