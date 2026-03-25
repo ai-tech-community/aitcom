@@ -44,7 +44,7 @@ export default function CommunityLayout({
   );
   const membershipStatus = (membership?.status as "active" | "pending_approval" | "invited" | null) ?? null;
 
-  const memberRole = membership?.status === "active" ? (membership.role as "owner" | "admin" | "moderator" | "member") : null;
+  const memberRole = membership?.status === "active" ? membership.role : null;
 
   return (
     <div className="flex flex-col">
