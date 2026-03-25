@@ -19,11 +19,12 @@
 ### UI
 
 - A search `<form>` rendered between the section header and the table header.
-- Uses native `<form action="/blog" method="get">` with an `<input name="q">` — zero JS, standard HTML form submission.
-- The input is pre-filled with the current `q` value when a search is active.
+- The form omits the `action` attribute so it submits to the current URL, which preserves the locale prefix (e.g., `/en/blog`). Uses `method="get"`.
+- The input has `name="q"`, `maxLength={200}`, and is pre-filled with the current `q` value when a search is active.
 - Styled as a minimal mono input: `border-border bg-transparent font-mono text-sm` with a `/ SEARCH` placeholder.
-- When a search is active, show a "clear" link (`x`) next to the input that navigates back to `/blog` (or `/blog?tag=X` if a tag filter is also active).
+- When a search is active, show a "clear" `<Link>` (using `@/i18n/navigation`) that navigates back to `/blog` (or `/blog?tag=X` if a tag filter is also active).
 - The form preserves `tag` param if present via a hidden `<input type="hidden" name="tag" value={tag}>`, so search + tag filter compose correctly.
+- The form has no hidden `page` input, so submitting naturally resets to page 1.
 
 ### Pagination Integration
 
@@ -34,7 +35,7 @@
 
 - `blog.search.placeholder` — "SEARCH..."
 - `blog.search.clear` — "CLEAR"
-- `blog.search.noResults` — "No articles match your search."
+- `blog.search.noResults` — "No articles match your search." (shown when `q` or `tag` is present and results are empty; use existing `blog.noArticles` when there are simply no published articles at all)
 
 ### Files Changed
 
@@ -48,13 +49,14 @@
 ### Behavior
 
 - Blog index reads `?tag=<tagname>` from search params.
-- If `tag` is present, adds a Payload `where` condition: `tags.tag` `equals` the tag value (exact match, case-sensitive — tags are stored lowercase).
+- If `tag` is present, adds a Payload `where` condition: `tags.tag` `like` the tag value (case-insensitive substring match via Payload's `like` operator). This handles mixed-case tags since the Articles collection has no schema-level lowercase enforcement.
 - Combines with search (`q`) and pagination (`page`) — all three are independent URL params that compose together.
 
 ### UI on Blog Index
 
-- When a tag filter is active, show an active filter pill below the search bar: a highlighted tag badge with an `x` clear link.
+- When a tag filter is active, show an active filter pill below the search bar: a highlighted tag badge with an `x` clear `<Link>` (using `@/i18n/navigation`).
 - The clear link navigates to `/blog` (preserving `q` if present, dropping `tag`).
+- If `?tag=nonexistent` results in zero articles, show the `blog.search.noResults` message with the active filter pill and clear link so the user can easily remove the filter.
 - The active filter pill uses the existing dashed-border tag styling but with a filled/highlighted state (`bg-foreground/10`).
 
 ### Tag Links on Article Detail
@@ -83,11 +85,11 @@
 - All are plain `<a>` tags with pre-built share URLs — zero JS, no third-party scripts or tracking.
 - **Twitter/X:** `https://twitter.com/intent/tweet?url={encodedUrl}&text={encodedTitle}`
 - **LinkedIn:** `https://www.linkedin.com/sharing/share-offsite/?url={encodedUrl}`
-- **Copy link:** Plain `<a href={articleUrl}>` labeled "LINK" — users right-click to copy. No clipboard API needed (would require client JS).
+- **Copy link:** Plain `<a href={articleUrl}>` labeled "LINK" with `title="Right-click to copy link"` — users right-click to copy. No clipboard API needed (would require client JS).
 
 ### URL Construction
 
-- Article URL: `https://aitcommunity.org/en/blog/${slug}` (hardcoded to `en` locale, consistent with RSS feed approach).
+- Article URL: `https://aitcommunity.org/en/blog/${slug}` (hardcoded to `en` locale, consistent with RSS feed approach). The base URL `https://aitcommunity.org` matches the `metadataBase` configured in `src/app/[locale]/layout.tsx`.
 - Title and URL are URI-encoded via `encodeURIComponent()`.
 
 ### UI
@@ -116,9 +118,22 @@
 ### Behavior
 
 - On the article detail page, after the sharing section, query Payload for related articles.
-- **Tag-based matching:** Query articles where `tags.tag` is `in` the current article's tag list. Exclude the current article by `id`. Apply the same published + approved filter as the blog index.
-- Payload returns up to 10 candidates. Sort in-memory by shared tag count (descending), then by `publishedAt` (descending). Take the top 3.
-- **Fallback:** If fewer than 3 tag-matched results, run a secondary query for recent published articles (excluding the current article and already-matched IDs), sorted by `-publishedAt`, to pad to 3 total.
+- **Tag-based matching:** Query Payload with the following `where` clause:
+  ```
+  and: [
+    { status: { equals: "published" } },
+    { or: [
+      { authorType: { not_equals: "member" } },
+      { reviewStatus: { equals: "approved" } },
+    ]},
+    { id: { not_equals: currentArticle.id } },
+    { or: currentArticle.tags.map(t => ({ "tags.tag": { equals: t } })) },
+  ]
+  ```
+  Limit: 10, sort: `-publishedAt`.
+- Sort the 10 candidates in-memory by shared tag count (descending), then by `publishedAt` (descending). Take the top 3.
+- **Fallback:** If fewer than 3 tag-matched results, run a secondary query with the same published+approved filter, excluding the current article and already-matched IDs, sorted by `-publishedAt`, with `limit: 3 - matchedCount`. Merge results.
+- Note: Both queries return the full `content` field (needed for `estimateReadingTime` on the cards). This is acceptable for up to 13 articles total.
 - **No tags:** If the current article has no tags, skip the tag query entirely and show 3 recent articles.
 - If no articles exist at all (e.g., single-article blog), hide the section entirely.
 
@@ -160,7 +175,14 @@ This is efficient because we limit the Payload query to 10 results and the in-me
 
 All features that add URL params (`q`, `tag`, `page`) must compose correctly. Helper approach:
 - Build a small `buildBlogUrl(params: { q?: string; tag?: string; page?: number }): string` utility that constructs `/blog?...` with only non-empty params.
-- Used by: pagination links, search form hidden inputs, tag filter clear link, active filter pill clear link.
+- This returns locale-less paths (e.g., `/blog?tag=ai`). All callers must use it with the `<Link>` component from `@/i18n/navigation`, which automatically prepends the locale prefix.
+- Used by: pagination links, tag filter clear link, active filter pill clear link.
+
+### Locale-Aware URL Strategy
+
+- All internal navigation uses `<Link>` from `@/i18n/navigation` — never raw `<a>` for internal paths.
+- The search `<form>` omits the `action` attribute so it posts to the current URL (which already has the locale prefix).
+- External share URLs (Twitter, LinkedIn) use the hardcoded `https://aitcommunity.org/en/blog/...` base (consistent with RSS feed).
 
 ### Files Changed (Shared)
 
