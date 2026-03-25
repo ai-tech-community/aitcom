@@ -130,6 +130,7 @@ export const communitiesRouter = createTRPCRouter({
         cursor: z
           .object({ joinedAt: z.string().datetime(), userId: z.string() })
           .nullish(),
+        status: z.enum(["active", "pending_approval", "banned"]).default("active"),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -164,7 +165,7 @@ export const communitiesRouter = createTRPCRouter({
 
       const conditions = [
         eq(communityMemberships.communityId, community.id),
-        eq(communityMemberships.status, "active"),
+        eq(communityMemberships.status, input.status),
       ];
 
       // Keyset pagination: (joinedAt, userId) descending
@@ -868,6 +869,58 @@ export const communitiesRouter = createTRPCRouter({
       });
 
       return { success: true };
+    }),
+
+  /** Unban a member (deletes the banned row so they can rejoin) */
+  unbanMember: communityProcedure
+    .input(z.object({ slug: z.string(), userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole || ctx.communityRole === "member" || ctx.communityRole === "moderator") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const deleted = await ctx.db
+        .delete(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, ctx.community.id),
+            eq(communityMemberships.userId, input.userId),
+            eq(communityMemberships.status, "banned"),
+          ),
+        )
+        .returning();
+
+      if (deleted.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No banned member found" });
+      }
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.member_unbanned",
+        targetType: "community",
+        targetId: ctx.community.id,
+        recipientId: input.userId,
+      });
+
+      return { success: true };
+    }),
+
+  /** List invite links for a community */
+  getInviteLinks: communityProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx }) => {
+      if (!ctx.communityRole || ctx.communityRole === "member" || ctx.communityRole === "moderator") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const invites = await ctx.db
+        .select()
+        .from(communityInvites)
+        .where(eq(communityInvites.communityId, ctx.community.id))
+        .orderBy(desc(communityInvites.createdAt));
+
+      return invites;
     }),
 
   /** Create an invite link */
