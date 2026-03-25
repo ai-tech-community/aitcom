@@ -43,7 +43,7 @@ export default function CommunitySettingsLayout({
     <div className="flex flex-col gap-6 md:flex-row md:gap-8">
       <SettingsSidebar
         slug={slug}
-        memberRole={myMembership.role as "owner" | "admin" | "moderator" | "member"}
+        memberRole={myMembership.role}
       />
       <div className="min-w-0 flex-1">{children}</div>
     </div>

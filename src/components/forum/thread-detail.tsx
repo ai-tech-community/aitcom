@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowLeft } from "lucide-react";
 import { api } from "@/trpc/react";
-import { authClient } from "@/server/better-auth/client";
 import { Link } from "@/i18n/navigation";
 import { LexicalRenderer } from "@/lib/lexical";
 import { RoleBadge } from "@/components/forum/role-badge";
@@ -43,7 +42,6 @@ type ThreadDetailProps = {
 export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
   const t = useTranslations("forum");
   const viewCountedRef = useRef(false);
-  const { data: session } = authClient.useSession();
   const utils = api.useUtils();
   const canModerate = memberRole === "owner" || memberRole === "admin" || memberRole === "moderator";
 
@@ -65,12 +63,6 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
   const lockMutation = api.forum.lockThread.useMutation({
     onSuccess: () => void utils.forum.getThread.invalidate({ slug }),
   });
-
-  const isAuthor = !!(
-    session?.user?.id &&
-    thread?.authorId &&
-    session.user.id === thread.authorId
-  );
 
   // Increment view count once on mount when thread loads
   useEffect(() => {

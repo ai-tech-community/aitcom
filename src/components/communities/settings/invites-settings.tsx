@@ -67,7 +67,7 @@ export function InvitesSettings({ slug }: InvitesSettingsProps) {
 
   const copyLink = (code: string) => {
     const link = `${window.location.origin}/invite/${code}`;
-    navigator.clipboard.writeText(link);
+    void navigator.clipboard.writeText(link);
     toast.success(t("linkCopied"));
   };
 

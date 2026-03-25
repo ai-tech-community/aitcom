@@ -24,7 +24,7 @@ export default function CommunityForumPage({
   return (
     <ForumPage
       communitySlug={slug}
-      memberRole={memberRole as "owner" | "admin" | "moderator" | "member" | null}
+      memberRole={memberRole}
     />
   );
 }
