@@ -20,13 +20,16 @@ New Payload collection at `src/collections/Comments.ts`.
 | `parentId` | number | no | ID of parent comment (null = top-level, set = reply) |
 | `content` | textarea | yes | Plain text comment body, max 5000 characters |
 | `authorId` | text | yes | User ID from better-auth |
-| `authorName` | text | no | Display name snapshot at comment time |
+| `authorName` | text | no | Display name snapshot at comment time (set to `ctx.session.user.name`) |
 
 **Configuration:**
 - No versioning or drafts (comments are simple, no edit workflow)
 - No localization (comments are user-generated in whatever language the user writes)
 - Admin panel: `useAsTitle: "content"`, default columns: `content`, `articleId`, `authorName`, `createdAt`
-- Payload auto-generates `id`, `createdAt`, `updatedAt`
+- Payload auto-generates `id` (integer), `createdAt`, `updatedAt`
+- Access: `read: () => true` (comments are publicly visible), create/update/delete restricted to admin panel (tRPC handles public-facing auth)
+
+**Note on ID types:** Payload uses integer auto-increment IDs, unlike the launchpad comments which use UUID strings via Drizzle. All comment IDs in this feature are `number` type.
 
 **Indexes (via Payload):**
 - `articleId` — for fetching all comments on an article
@@ -56,12 +59,13 @@ New tRPC router at `src/server/api/routers/comments.ts`. Registered in `src/serv
 
 **`create` (protected procedure):**
 - Input: `{ articleId: z.number(), content: z.string().min(1).max(5000), parentId: z.number().optional() }`
+- Calls `requireRulesAcceptance(ctx.session.user.id)` first (consistent with all community write actions)
 - Validations:
-  1. Article exists and is published (`status === "published"`)
+  1. Article exists and is published (`status === "published"`) — the `beforeChange` hook ensures only approved member articles get `status: "published"`, so no separate `reviewStatus` check needed
   2. If `parentId` provided: parent comment exists, belongs to same `articleId`, and is a top-level comment (`parentId === null`). This enforces one-level threading — no replying to replies.
-- Creates comment via `payload.create({ collection: "comments", data: { ... } })`
-- Awards +5 XP via `awardXp(db, userId, XP_AMOUNTS.COMMENT_POSTED)`
-- Logs activity via `logActivity(db, { action: "comment.created", targetType: "articles", targetId: articleId })`
+- Creates comment via `payload.create({ collection: "comments", data: { articleId, content, parentId: parentId ?? null, authorId: ctx.session.user.id, authorName: ctx.session.user.name ?? null } })`
+- Awards +5 XP via `awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.ARTICLE_COMMENT_CREATE)` — note: router needs both `ctx.db` (Drizzle) for XP/activity and `payload` (CMS) for comment CRUD
+- Logs activity: `logActivity(ctx.db, { actorId: ctx.session.user.id, actorType: "member", action: "comment.created", targetType: "articles", targetId: String(input.articleId), metadata: { articleTitle: article.title } })` — reuse the `article` object fetched during validation
 - Returns the created comment
 
 **`delete` (protected procedure):**
@@ -110,9 +114,10 @@ type Comment = {
 - On error: shows error toast
 
 **`CommentItem`** — single comment with actions
-- Renders: avatar (initials fallback via existing `Avatar` component), author name, time ago, comment content
+- Renders: avatar (initials-only, no user images — blog comments use `authorName` snapshots without image lookup), author name, time ago, comment content
 - Reply button: toggles inline `CommentForm` with `parentId` set
-- Delete button: visible only to comment author, shows confirm dialog, uses `api.comments.delete.useMutation()`
+- Delete button: visible only to comment author, uses `window.confirm(t("comments.deleteConfirm"))` for confirmation, then `api.comments.delete.useMutation()`
+- On `RULES_NOT_ACCEPTED` error from `create`: show specific toast message directing user to accept community rules
 - Renders replies indented below (if top-level comment)
 
 ### Data Flow
@@ -161,7 +166,7 @@ const { docs: comments, totalDocs: commentCount } = await payload.find({
 ```
 
 **Get session:**
-Use better-auth server-side session to get current user ID. Check existing patterns in the codebase for server-side session access (e.g., `auth.api.getSession()` or via headers).
+Use better-auth server-side session: `import { getSession } from "@/server/better-auth/server"` then `const session = await getSession()`. This pattern is already used in `my-articles/page.tsx`, `write/page.tsx`, and `dashboard/page.tsx`.
 
 **Comment count in meta line:**
 Add comment count to the article's meta line (next to date, type badge, author):
@@ -186,13 +191,13 @@ After the related articles section, render:
 
 ### XP Award
 
-- Add `COMMENT_POSTED: 5` to `XP_AMOUNTS` in `src/lib/gamification.ts`
-- Called in the `create` mutation: `awardXp(db, userId, XP_AMOUNTS.COMMENT_POSTED)`
+- Add `ARTICLE_COMMENT_CREATE: 5` to `XP_AMOUNTS` in `src/lib/gamification.ts` (follows domain-prefixed naming convention: `LAUNCHPAD_COMMENT_CREATE`, `FORUM_THREAD_CREATE`, etc.)
+- Called in the `create` mutation: `awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.ARTICLE_COMMENT_CREATE)`
 - No XP deduction on delete (XP is earned, not lost)
 
 ### Activity Logging
 
-- On comment creation: `logActivity(db, { actorId, actorType: "member", action: "comment.created", targetType: "articles", targetId: String(articleId), metadata: { articleTitle } })`
+- On comment creation: `logActivity(ctx.db, { actorId: ctx.session.user.id, actorType: "member", action: "comment.created", targetType: "articles", targetId: String(input.articleId), metadata: { articleTitle: article.title } })`
 - No activity log on delete
 
 ### Badges
@@ -213,8 +218,13 @@ After the related articles section, render:
 | `blog.comments.reply` | "REPLY" | "REAGEREN" |
 | `blog.comments.delete` | "Delete" | "Verwijderen" |
 | `blog.comments.deleteConfirm` | "Are you sure?" | "Weet je het zeker?" |
-| `blog.comments.count` | "{count} COMMENTS" | "{count} REACTIES" |
+| `blog.comments.cancel` | "CANCEL" | "ANNULEREN" |
+| `blog.comments.count` | "{count, plural, one {# COMMENT} other {# COMMENTS}}" | "{count, plural, one {# REACTIE} other {# REACTIES}}" |
 | `blog.comments.empty` | "No comments yet. Be the first!" | "Nog geen reacties. Wees de eerste!" |
+| `blog.comments.toast.posted` | "Comment posted!" | "Reactie geplaatst!" |
+| `blog.comments.toast.deleted` | "Comment deleted." | "Reactie verwijderd." |
+| `blog.comments.toast.error` | "Something went wrong." | "Er ging iets mis." |
+| `blog.comments.toast.rulesRequired` | "You must accept the community rules first." | "Je moet eerst de communityregels accepteren." |
 
 ---
 
@@ -228,9 +238,9 @@ After the related articles section, render:
 | `src/server/api/root.ts` | Modify | Register commentsRouter |
 | `src/components/blog/article-comments.tsx` | Create | Client component: comment UI |
 | `src/app/[locale]/blog/[slug]/page.tsx` | Modify | Fetch comments, render section, comment count |
-| `src/lib/gamification.ts` | Modify | Add COMMENT_POSTED XP constant |
-| `messages/en.json` | Modify | Add 10 comment i18n keys |
-| `messages/nl.json` | Modify | Add 10 comment i18n keys |
+| `src/lib/gamification.ts` | Modify | Add ARTICLE_COMMENT_CREATE XP constant |
+| `messages/en.json` | Modify | Add 14 comment i18n keys |
+| `messages/nl.json` | Modify | Add 14 comment i18n keys |
 
 ---
 
@@ -239,7 +249,7 @@ After the related articles section, render:
 - Editing comments (post once, delete if needed)
 - Rich text in comments (plain text only)
 - Markdown rendering in comments
-- Comment notifications (email or inbox)
+- Comment notifications (email, inbox, or in-app — no notification to article author when someone comments)
 - Comment upvotes/reactions
 - Comment badges for gamification
 - Paginating comments (limit 100 per article is sufficient)
