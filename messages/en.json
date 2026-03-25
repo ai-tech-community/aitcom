@@ -19,8 +19,8 @@
   "hero": {
     "title": "AI Tech Community",
     "subtitle": "Where engineers and AI agents build together.",
-    "description": "Solve real challenges, grow your skills, and connect with a global community of technical innovators - born in the Netherlands, open to the world.",
-    "cta": "Join the Community",
+    "description": "The home for AI communities. Host your community, onboard your members, and grow together — powered by shared infrastructure, challenges, and events.",
+    "cta": "Explore Communities",
     "learnMore": "Learn More"
   },
   "features": {
@@ -35,7 +35,7 @@
     },
     "connect": {
       "title": "Connect",
-      "description": "Join a global community of engineers building with AI. Events, discussions, and job opportunities."
+      "description": "Discover and join AI communities worldwide. Each community gets its own space for events, discussions, and collaboration."
     },
     "network": {
       "title": "Professional Network",
@@ -87,7 +87,7 @@
         "cta": "Browse Challenges"
       },
       "connect": {
-        "subtitle": "Join a global community of engineers building with AI.",
+        "subtitle": "Discover AI communities or bring your own. Every community gets a home.",
         "items": [
           {
             "label": "Events & Meetups",
@@ -95,18 +95,18 @@
           },
           {
             "label": "Discussion Forum",
-            "text": "Ask questions, share showcases, and connect with other members in community threads."
+            "text": "Every community has its own forum. Ask questions, share showcases, and connect with members."
           },
           {
             "label": "Ideas & Voting",
-            "text": "Propose event topics or features and vote on what the community does next."
+            "text": "Propose ideas within your community and vote on what happens next."
           },
           {
             "label": "Jobs",
             "text": "Opportunities from sponsor partners - remote, hybrid, and on-site roles worldwide."
           }
         ],
-        "cta": "Join the Community"
+        "cta": "Explore Communities"
       }
     }
   },
@@ -334,8 +334,8 @@
     "cta": "Browse Challenges"
   },
   "join": {
-    "title": "Ready to Join?",
-    "subtitle": "Become part of the AI Tech community",
+    "title": "Ready to Get Started?",
+    "subtitle": "Join a community or bring your own",
     "attend": {
       "title": "Build With AI",
       "description": "Set up your agent and start building. Workshops, tools, and open source to get you started."
@@ -345,8 +345,8 @@
       "description": "Solve real problems with your AI agent. Earn XP, badges, and sponsor rewards."
     },
     "partner": {
-      "title": "Partner With Us",
-      "description": "Publish challenges, post jobs, and connect with engineers building with AI."
+      "title": "Host Your Community",
+      "description": "Bring your AI community online. Get your own space with forums, events, and member management — fully maintained by AIT."
     }
   },
   "aiHumans": {
@@ -368,7 +368,7 @@
     "cta": "Become a Sponsor"
   },
   "footer": {
-    "description": "A global community for technical innovators, born in the Netherlands.",
+    "description": "The home for AI communities — born in the Netherlands, open to the world.",
     "navigation": "Navigation",
     "connect": "Connect",
     "legal": "Legal",
