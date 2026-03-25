@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { eq, and, sql, asc } from "drizzle-orm";
+import { eq, and, isNull, sql, asc } from "drizzle-orm";
 
 import {
   createTRPCRouter,
   protectedProcedure,
   publicProcedure,
 } from "@/server/api/trpc";
-import { eventRegistrations, memberProfiles, user } from "@/server/db/schema";
+import { eventRegistrations, memberProfiles, user, communities, communityMemberships } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
@@ -17,6 +17,8 @@ import {
 } from "@/server/email";
 import { getMollie } from "@/server/mollie";
 import { env } from "@/env";
+import { TRPCError } from "@trpc/server";
+import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -352,5 +354,109 @@ export const eventsRouter = createTRPCRouter({
         displayName: row.displayName ?? row.name ?? "Anonymous",
         image: row.image,
       }));
+    }),
+
+  /**
+   * Get published events for a community.
+   */
+  getCommunityEvents: publicProcedure
+    .input(z.object({ communitySlug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        columns: { id: true },
+      });
+      if (!community) return [];
+
+      const payload = await getPayloadClient();
+      const { docs } = await payload.find({
+        collection: "events",
+        where: {
+          and: [
+            { status: { equals: "published" } },
+            { communityId: { equals: community.id } },
+          ],
+        },
+        sort: "date",
+        draft: false,
+      });
+
+      return docs;
+    }),
+
+  /**
+   * Create a new event within a community.
+   * Only community owners/admins can create events.
+   */
+  createEvent: protectedProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        title: z.string().min(3).max(255),
+        description: z.string().max(5000).optional(),
+        type: z.enum(["workshop", "hackathon", "deep_dive", "meetup"]),
+        date: z.string(),
+        startTime: z.string().optional(),
+        endTime: z.string().optional(),
+        location: z.string().min(1).max(255),
+        maxAttendees: z.number().min(1).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Resolve community and check admin/owner role
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+      }
+
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (membership?.status !== "active" || (membership.role !== "owner" && membership.role !== "admin")) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only community admins can create events" });
+      }
+
+      const baseSlug = input.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 80);
+      const slug = `${baseSlug}-${Date.now()}`;
+
+      const payload = await getPayloadClient();
+      const event = await payload.create({
+        collection: "events",
+        data: {
+          title: input.title,
+          slug,
+          description: input.description ? plainTextToLexical(input.description) : plainTextToLexical(""),
+          type: input.type,
+          date: input.date,
+          startTime: input.startTime ?? undefined,
+          endTime: input.endTime ?? undefined,
+          location: input.location,
+          maxAttendees: input.maxAttendees ?? undefined,
+          status: "published",
+          communityId: community.id,
+        },
+      });
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "event.create",
+        targetType: "event",
+        targetId: String(event.id),
+        metadata: { title: input.title, communitySlug: input.communitySlug },
+      });
+
+      return event;
     }),
 });

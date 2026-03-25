@@ -1,26 +1,21 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Users, Settings } from "lucide-react";
+import { Users } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Link } from "@/i18n/navigation";
 import { JoinButton } from "./join-button";
 import type { RouterOutputs } from "@/trpc/react";
 
 type Community = RouterOutputs["communities"]["getBySlug"];
 type MembershipStatus = "active" | "pending_approval" | "invited" | null;
-type MemberRole = "owner" | "admin" | "moderator" | "member" | null;
 
 interface CommunityHeaderProps {
   community: Community;
   membershipStatus: MembershipStatus;
-  memberRole?: MemberRole;
 }
 
-export function CommunityHeader({ community, membershipStatus, memberRole }: CommunityHeaderProps) {
+export function CommunityHeader({ community, membershipStatus }: CommunityHeaderProps) {
   const t = useTranslations("communities.profile");
-  const tManage = useTranslations("communities.manage");
 
   const initials = community.name
     .split(" ")
@@ -52,24 +47,10 @@ export function CommunityHeader({ community, membershipStatus, memberRole }: Com
                   {community.memberCount} {t("members")}
                 </span>
               </div>
-
-              {community.description ? (
-                <p className="text-muted-foreground mt-1 max-w-xl text-sm">
-                  {community.description}
-                </p>
-              ) : null}
             </div>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            {(memberRole === "owner" || memberRole === "admin") && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/dashboard/communities/${community.slug}/manage/settings` as never}>
-                  <Settings className="mr-1.5 size-4" />
-                  {tManage("title")}
-                </Link>
-              </Button>
-            )}
             <JoinButton
               slug={community.slug}
               joinPolicy={community.joinPolicy}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { ChevronUp, Lightbulb } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
@@ -13,7 +13,12 @@ const statusStyles: Record<string, string> = {
   rejected: "text-zinc-400 border-zinc-200 bg-zinc-50",
 };
 
-export default function CommunityIdeasPage() {
+export default function CommunityIdeasPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = use(params);
   const t = useTranslations("community.ideas");
   const tRules = useTranslations("community.rules");
   const [sort, setSort] = useState<"votes" | "recent">("votes");
@@ -26,6 +31,7 @@ export default function CommunityIdeasPage() {
 
   const { data: ideas = [], isLoading } = api.forum.getIdeas.useQuery({
     sort,
+    communitySlug: slug,
   });
 
   const submitMutation = api.forum.submitIdea.useMutation({
@@ -48,8 +54,8 @@ export default function CommunityIdeasPage() {
   const voteMutation = api.forum.toggleVote.useMutation({
     onMutate: async ({ ideaId }) => {
       await utils.forum.getIdeas.cancel();
-      const prev = utils.forum.getIdeas.getData({ sort });
-      utils.forum.getIdeas.setData({ sort }, (old) =>
+      const prev = utils.forum.getIdeas.getData({ sort, communitySlug: slug });
+      utils.forum.getIdeas.setData({ sort, communitySlug: slug }, (old) =>
         old?.map((idea) =>
           idea.id === ideaId
             ? {
@@ -65,7 +71,7 @@ export default function CommunityIdeasPage() {
       return { prev };
     },
     onError: (err, _input, ctx) => {
-      if (ctx?.prev) utils.forum.getIdeas.setData({ sort }, ctx.prev);
+      if (ctx?.prev) utils.forum.getIdeas.setData({ sort, communitySlug: slug }, ctx.prev);
       if (err.message === "RULES_NOT_ACCEPTED") {
         toast.error(tRules("mustAccept"));
       }
@@ -175,6 +181,7 @@ export default function CommunityIdeasPage() {
               submitMutation.mutate({
                 title: ideaTitle,
                 description: ideaDesc || undefined,
+                communitySlug: slug,
               });
             }}
             className="space-y-3"

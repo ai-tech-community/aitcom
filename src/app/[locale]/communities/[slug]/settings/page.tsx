@@ -6,7 +6,7 @@ import { api } from "@/trpc/react";
 import { SettingsForm } from "@/components/communities/manage/settings-form";
 import { Spinner } from "@/components/ui/spinner";
 
-export default function ManageSettingsPage({
+export default function CommunitySettingsPage({
   params,
 }: {
   params: Promise<{ slug: string; locale: string }>;

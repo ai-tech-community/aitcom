@@ -91,7 +91,7 @@ export const onboardingRouter = createTRPCRouter({
     }),
 
   /** Skip onboarding (use generic checklist). */
-  skipIntent: protectedProcedure.mutation(async ({ ctx }) => {
+  skipIntent: protectedProcedure.mutation(async ({ ctx: _ctx }) => {
     return { success: true };
   }),
 

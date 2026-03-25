@@ -6,5 +6,5 @@ export default async function ManageCommunityPage({
   params: Promise<{ slug: string; locale: string }>;
 }) {
   const { slug, locale } = await params;
-  redirect(`/${locale}/dashboard/communities/${slug}/manage/settings`);
+  redirect(`/${locale}/communities/${slug}/settings`);
 }

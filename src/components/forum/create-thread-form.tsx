@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { toast } from "sonner";
@@ -15,6 +16,8 @@ export function CreateThreadForm() {
   const t = useTranslations("forum");
   const tRules = useTranslations("community.rules");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const communitySlug = searchParams.get("community") ?? undefined;
   const { data: session } = authClient.useSession();
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -64,7 +67,7 @@ export function CreateThreadForm() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          createMutation.mutate(form);
+          createMutation.mutate({ ...form, communitySlug });
         }}
         className="space-y-4"
       >

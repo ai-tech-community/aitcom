@@ -10,8 +10,8 @@ import {
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { sendForumReplyNotification } from "@/server/email";
-import { eq } from "drizzle-orm";
-import { user as userTable } from "@/server/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
+import { user as userTable, communities } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
@@ -123,13 +123,26 @@ export const forumRouter = createTRPCRouter({
     .input(
       z.object({
         sort: z.enum(["votes", "recent"]).default("votes"),
+        communitySlug: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
 
+      let where: Where | undefined;
+      if (input.communitySlug) {
+        const community = await ctx.db.query.communities.findFirst({
+          where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+          columns: { id: true },
+        });
+        if (community) {
+          where = { communityId: { equals: community.id } };
+        }
+      }
+
       const { docs } = await payload.find({
         collection: "community-ideas",
+        where,
         sort: input.sort === "votes" ? "-voteCount" : "-createdAt",
         limit: 50,
         depth: 0,
@@ -163,12 +176,22 @@ export const forumRouter = createTRPCRouter({
       z.object({
         title: z.string().min(3).max(100),
         description: z.string().max(500).optional(),
+        communitySlug: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
+
+      let communityId: string | undefined;
+      if (input.communitySlug) {
+        const community = await ctx.db.query.communities.findFirst({
+          where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+          columns: { id: true },
+        });
+        communityId = community?.id;
+      }
 
       const idea = await payload.create({
         collection: "community-ideas",
@@ -179,6 +202,7 @@ export const forumRouter = createTRPCRouter({
           authorName: userName,
           status: "open",
           voteCount: 0,
+          ...(communityId ? { communityId } : {}),
         },
       });
 
@@ -267,12 +291,23 @@ export const forumRouter = createTRPCRouter({
         sort: z.enum(["newest", "mostReplied", "trending", "lastActive"]).default("newest"),
         limit: z.number().min(1).max(50).default(20),
         page: z.number().min(1).default(1),
+        communitySlug: z.string().optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
 
       const conditions: Where[] = [];
+
+      if (input.communitySlug) {
+        const community = await ctx.db.query.communities.findFirst({
+          where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+          columns: { id: true },
+        });
+        if (community) {
+          conditions.push({ communityId: { equals: community.id } });
+        }
+      }
 
       if (input.category !== "all") {
         conditions.push({ category: { equals: input.category } });
@@ -352,12 +387,22 @@ export const forumRouter = createTRPCRouter({
         title: z.string().min(3).max(255),
         content: z.string().min(1).max(10000),
         category: z.enum(["general", "question", "showcase", "job"]),
+        communitySlug: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
+
+      let communityId: string | undefined;
+      if (input.communitySlug) {
+        const community = await ctx.db.query.communities.findFirst({
+          where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+          columns: { id: true },
+        });
+        communityId = community?.id;
+      }
 
       const baseSlug = input.title
         .toLowerCase()
@@ -380,6 +425,7 @@ export const forumRouter = createTRPCRouter({
           isLocked: false,
           replyCount: 0,
           lastActivityAt: new Date().toISOString(),
+          ...(communityId ? { communityId } : {}),
         },
       });
 

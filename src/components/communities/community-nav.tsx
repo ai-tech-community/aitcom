@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 interface CommunityNavProps {
   slug: string;
+  memberRole?: "owner" | "admin" | "moderator" | "member" | null;
 }
 
 interface NavItem {
@@ -13,19 +14,20 @@ interface NavItem {
   href: string;
 }
 
-export function CommunityNav({ slug }: CommunityNavProps) {
+export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   const t = useTranslations("communities.profile");
   const pathname = usePathname();
 
   const basePath = `/communities/${slug}`;
+  const isAdminOrOwner = memberRole === "owner" || memberRole === "admin";
 
   const navItems: NavItem[] = [
     { key: "overview", href: basePath },
     { key: "forum", href: `${basePath}/forum` },
     { key: "events", href: `${basePath}/events` },
     { key: "ideas", href: `${basePath}/ideas` },
-    { key: "challenges", href: `${basePath}/challenges` },
     { key: "members", href: `${basePath}/members` },
+    ...(isAdminOrOwner ? [{ key: "settings", href: `${basePath}/settings` }] : []),
   ];
 
   return (
@@ -49,7 +51,7 @@ export function CommunityNav({ slug }: CommunityNavProps) {
                     : "text-muted-foreground hover:text-foreground border-transparent hover:border-border",
                 )}
               >
-                {t(item.key as "overview" | "forum" | "events" | "ideas" | "challenges" | "members")}
+                {t(item.key as "overview" | "forum" | "events" | "ideas" | "members" | "settings")}
               </Link>
             );
           })}

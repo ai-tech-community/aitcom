@@ -23,6 +23,6 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   );
 }
 
-export async function down({ db }: MigrateDownArgs): Promise<void> {
+export async function down({ db: _db }: MigrateDownArgs): Promise<void> {
   // No-op: we don't want to delete profiles that may have been updated since backfill.
 }

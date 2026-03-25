@@ -34,6 +34,10 @@ type BuildingModalProps = {
   children: React.ReactNode;
 };
 
+// Module-level counter for stacking modals. Stays below 50 so that
+// portaled UI (Select / Popover at z-50) always renders above modals.
+let topZ = 40;
+
 const DEFAULT_WIDTH = 640;
 const DEFAULT_HEIGHT = 480;
 const STACK_OFFSET = 30;
@@ -108,13 +112,12 @@ export function BuildingModal({
     [size],
   );
 
-  // Bring window to front on click
+  // Bring window to front on click (keep z-index < 50 so portaled
+  // dropdowns at z-50 always render above the modal)
   const bringToFront = useCallback(() => {
     if (containerRef.current) {
-      // Bump z-index above siblings
-      containerRef.current.style.zIndex = String(
-        50 + Date.now() % 1000,
-      );
+      topZ = topZ >= 49 ? 41 : topZ + 1;
+      containerRef.current.style.zIndex = String(topZ);
     }
   }, []);
 
@@ -129,12 +132,12 @@ export function BuildingModal({
           ref={containerRef}
           className={`fixed flex flex-col overflow-hidden border border-zinc-200 bg-white shadow-2xl ${
             isMobile
-              ? "inset-0 z-50 rounded-none"
+              ? "inset-0 z-40 rounded-none"
               : windowState === "maximized"
-                ? "inset-0 z-50 rounded-none"
+                ? "inset-0 z-40 rounded-none"
                 : windowState === "minimized"
-                  ? "bottom-0 z-50 w-72 rounded-b-none rounded-t-lg"
-                  : "z-50 rounded-lg"
+                  ? "bottom-0 z-40 w-72 rounded-b-none rounded-t-lg"
+                  : "z-40 rounded-lg"
           }`}
           style={
             isMobile

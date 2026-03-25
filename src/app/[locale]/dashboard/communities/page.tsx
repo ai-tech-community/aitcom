@@ -76,7 +76,7 @@ export default function MyCommunities() {
                       <Button variant="outline" size="sm" asChild>
                         <Link
                           href={
-                            `/dashboard/communities/${m.slug}/manage/settings` as never
+                            `/communities/${m.slug}/settings` as never
                           }
                         >
                           <Settings className="mr-1 size-3.5" />

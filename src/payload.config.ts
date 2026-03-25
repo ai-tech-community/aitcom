@@ -106,7 +106,7 @@ export default buildConfig({
         },
       },
       bucket: process.env.S3_BUCKET ?? '',
-      acl: 'public-read',
+      acl: undefined,
       config: {
         credentials: {
           accessKeyId: process.env.S3_ACCESS_KEY_ID ?? '',
