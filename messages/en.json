@@ -160,6 +160,25 @@
     },
     "related": {
       "title": "RELATED"
+    },
+    "comments": {
+      "title": "COMMENTS",
+      "signIn": "Sign in to comment",
+      "placeholder": "Write a comment...",
+      "replyPlaceholder": "Write a reply...",
+      "submit": "POST",
+      "reply": "REPLY",
+      "delete": "Delete",
+      "deleteConfirm": "Are you sure?",
+      "cancel": "CANCEL",
+      "count": "{count, plural, one {# COMMENT} other {# COMMENTS}}",
+      "empty": "No comments yet. Be the first!",
+      "toast": {
+        "posted": "Comment posted!",
+        "deleted": "Comment deleted.",
+        "error": "Something went wrong.",
+        "rulesRequired": "You must accept the community rules first."
+      }
     }
   },
   "community": {

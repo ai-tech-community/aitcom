@@ -160,6 +160,25 @@
     },
     "related": {
       "title": "GERELATEERD"
+    },
+    "comments": {
+      "title": "REACTIES",
+      "signIn": "Log in om te reageren",
+      "placeholder": "Schrijf een reactie...",
+      "replyPlaceholder": "Schrijf een antwoord...",
+      "submit": "PLAATSEN",
+      "reply": "REAGEREN",
+      "delete": "Verwijderen",
+      "deleteConfirm": "Weet je het zeker?",
+      "cancel": "ANNULEREN",
+      "count": "{count, plural, one {# REACTIE} other {# REACTIES}}",
+      "empty": "Nog geen reacties. Wees de eerste!",
+      "toast": {
+        "posted": "Reactie geplaatst!",
+        "deleted": "Reactie verwijderd.",
+        "error": "Er ging iets mis.",
+        "rulesRequired": "Je moet eerst de communityregels accepteren."
+      }
     }
   },
   "community": {
