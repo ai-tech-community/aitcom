@@ -16,7 +16,12 @@ export function useRulesModal() {
   return useContext(RulesContext);
 }
 
-export function RulesProvider({ children }: { children: React.ReactNode }) {
+interface RulesProviderProps {
+  children: React.ReactNode;
+  communitySlug?: string;
+}
+
+export function RulesProvider({ children, communitySlug }: RulesProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const t = useTranslations("community.rules");
 
@@ -30,6 +35,7 @@ export function RulesProvider({ children }: { children: React.ReactNode }) {
         onClose={() => setIsOpen(false)}
         title={t("title")}
         subtitle={t("subtitle")}
+        communitySlug={communitySlug}
       />
     </RulesContext.Provider>
   );
