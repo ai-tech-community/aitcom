@@ -9,6 +9,8 @@ import type { Where } from "payload";
 import { LexicalRenderer, extractHeadings, estimateReadingTime } from "@/lib/lexical";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
+import { getSession } from "@/server/better-auth/server";
+import { ArticleComments } from "@/components/blog/article-comments";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -155,6 +157,18 @@ export default async function ArticleDetailPage({
     relatedArticles = [...relatedArticles, ...recent];
   }
 
+  // Fetch comments
+  const { docs: comments, totalDocs: commentCount } = await payload.find({
+    collection: "comments",
+    where: { articleId: { equals: article.id } },
+    sort: "createdAt",
+    limit: 100,
+    depth: 0,
+  });
+
+  // Get session for current user
+  const session = await getSession();
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       <JsonLd
@@ -202,6 +216,8 @@ export default async function ArticleDetailPage({
             <span>by {article.authorName}</span>
           </>
         )}
+        <span className="text-border">|</span>
+        <span>{t("comments.count", { count: commentCount })}</span>
       </div>
 
       {/* Title */}
@@ -333,6 +349,20 @@ export default async function ArticleDetailPage({
           </div>
         </div>
       )}
+
+      {/* Comments */}
+      <ArticleComments
+        articleId={article.id}
+        initialComments={comments.map((doc) => ({
+          id: doc.id,
+          content: doc.content,
+          parentId: doc.parentId ?? null,
+          createdAt: doc.createdAt,
+          authorId: doc.authorId,
+          authorName: doc.authorName ?? null,
+        }))}
+        currentUserId={session?.user?.id}
+      />
     </div>
   );
 }
