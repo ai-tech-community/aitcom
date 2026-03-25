@@ -79,6 +79,23 @@ export const ForumReplies: CollectionConfig = {
       index: true,
       admin: { position: "sidebar" },
     },
+    {
+      name: "isDeleted",
+      type: "checkbox",
+      defaultValue: false,
+      admin: { position: "sidebar" },
+    },
+    {
+      name: "isEdited",
+      type: "checkbox",
+      defaultValue: false,
+      admin: { position: "sidebar", readOnly: true },
+    },
+    {
+      name: "editedAt",
+      type: "date",
+      admin: { position: "sidebar", readOnly: true },
+    },
   ],
   timestamps: true,
 };
