@@ -1,11 +1,17 @@
 "use client";
 
 import { use, useState } from "react";
-import { ChevronUp, Lightbulb } from "lucide-react";
+import { ChevronUp, Lightbulb, MoreHorizontal, Check, X, RotateCcw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const statusStyles: Record<string, string> = {
   open: "text-zinc-500 border-zinc-200",
@@ -28,6 +34,13 @@ export default function CommunityIdeasPage({
 
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
+
+  const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
+    undefined,
+    { enabled: !!session?.user },
+  );
+  const membership = myCommunities?.find((c) => c.slug === slug);
+  const isAdminOrOwner = membership?.role === "owner" || membership?.role === "admin";
 
   const { data: ideas = [], isLoading } = api.forum.getIdeas.useQuery({
     sort,
@@ -77,6 +90,13 @@ export default function CommunityIdeasPage({
       }
     },
     onSettled: () => void utils.forum.getIdeas.invalidate(),
+  });
+
+  const statusMutation = api.forum.updateIdeaStatus.useMutation({
+    onSuccess: () => {
+      void utils.forum.getIdeas.invalidate();
+      toast.success(t("statusChanged"));
+    },
   });
 
   return (
@@ -153,6 +173,45 @@ export default function CommunityIdeasPage({
                         ? t("statusImplemented")
                         : t("statusRejected")}
                   </span>
+                  {isAdminOrOwner && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="rounded p-0.5 hover:bg-zinc-100">
+                        <MoreHorizontal className="h-3.5 w-3.5 text-zinc-400" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        {idea.status !== "implemented" && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              statusMutation.mutate({ ideaId: idea.id, status: "implemented" })
+                            }
+                          >
+                            <Check className="mr-2 h-3.5 w-3.5" />
+                            {t("markImplemented")}
+                          </DropdownMenuItem>
+                        )}
+                        {idea.status !== "rejected" && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              statusMutation.mutate({ ideaId: idea.id, status: "rejected" })
+                            }
+                          >
+                            <X className="mr-2 h-3.5 w-3.5" />
+                            {t("markRejected")}
+                          </DropdownMenuItem>
+                        )}
+                        {idea.status !== "open" && (
+                          <DropdownMenuItem
+                            onClick={() =>
+                              statusMutation.mutate({ ideaId: idea.id, status: "open" })
+                            }
+                          >
+                            <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                            {t("reopen")}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </div>
             </div>
