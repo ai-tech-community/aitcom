@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Input } from "@/components/ui/input";
 import { CommunityCard } from "./community-card";
+import { CreateCommunityDialog } from "./create-community-dialog";
 
 const DEBOUNCE_MS = 300;
 
@@ -39,10 +40,11 @@ export function CommunitiesDirectory() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       {/* Section Header */}
-      <div className="border-border border-b pb-4">
+      <div className="border-border flex items-center justify-between border-b pb-4">
         <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / {t("directory.title").toUpperCase()}
         </h1>
+        <CreateCommunityDialog />
       </div>
 
       {/* Search */}
