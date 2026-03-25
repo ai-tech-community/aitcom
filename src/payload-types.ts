@@ -75,6 +75,7 @@ export interface Config {
     'community-ideas': CommunityIdea;
     'idea-votes': IdeaVote;
     'launchpad-projects': LaunchpadProject;
+    comments: Comment;
     challenges: Challenge;
     pages: Page;
     media: Media;
@@ -98,6 +99,7 @@ export interface Config {
     'community-ideas': CommunityIdeasSelect<false> | CommunityIdeasSelect<true>;
     'idea-votes': IdeaVotesSelect<false> | IdeaVotesSelect<true>;
     'launchpad-projects': LaunchpadProjectsSelect<false> | LaunchpadProjectsSelect<true>;
+    comments: CommentsSelect<false> | CommentsSelect<true>;
     challenges: ChallengesSelect<false> | ChallengesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -459,6 +461,20 @@ export interface LaunchpadProject {
   voteCount?: number | null;
   commentCount?: number | null;
   updateCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "comments".
+ */
+export interface Comment {
+  id: number;
+  articleId: number;
+  parentId?: number | null;
+  content: string;
+  authorId: string;
+  authorName?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -827,6 +843,10 @@ export interface PayloadLockedDocument {
         value: number | LaunchpadProject;
       } | null)
     | ({
+        relationTo: 'comments';
+        value: number | Comment;
+      } | null)
+    | ({
         relationTo: 'challenges';
         value: number | Challenge;
       } | null)
@@ -1050,6 +1070,19 @@ export interface LaunchpadProjectsSelect<T extends boolean = true> {
   voteCount?: T;
   commentCount?: T;
   updateCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "comments_select".
+ */
+export interface CommentsSelect<T extends boolean = true> {
+  articleId?: T;
+  parentId?: T;
+  content?: T;
+  authorId?: T;
+  authorName?: T;
   updatedAt?: T;
   createdAt?: T;
 }
