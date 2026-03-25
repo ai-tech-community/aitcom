@@ -7,7 +7,7 @@ import {
   useRef,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { LazyMotion, domAnimation, m, AnimatePresence, useDragControls } from "framer-motion";
+import { LazyMotion, domMax, m, AnimatePresence, useDragControls } from "framer-motion";
 import { Terminal, Minus, Maximize2, Minimize2, X } from "lucide-react";
 
 function useIsMobile() {
@@ -122,7 +122,7 @@ export function BuildingModal({
   const offset = windowIndex * STACK_OFFSET;
 
   return (
-    <LazyMotion features={domAnimation}>
+    <LazyMotion features={domMax}>
       <AnimatePresence>
         {isOpen && (
           <m.div
@@ -163,7 +163,7 @@ export function BuildingModal({
           {/* Title bar - drag handle on desktop, static on mobile */}
           <div
             className={`flex h-9 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-3 select-none ${
-              isMobile ? "" : "cursor-grab active:cursor-grabbing"
+              isMobile ? "" : "cursor-grab touch-none active:cursor-grabbing"
             }`}
             onPointerDown={(e) => {
               if (!isMobile && windowState === "normal") dragControls.start(e);

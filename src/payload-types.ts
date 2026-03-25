@@ -184,6 +184,7 @@ export interface Event {
   image?: (number | null) | Media;
   speakers?: (number | Speaker)[] | null;
   status: 'draft' | 'published' | 'cancelled' | 'completed';
+  communityId?: string | null;
   updatedAt: string;
   createdAt: string;
   _status?: ('draft' | 'published') | null;
@@ -336,6 +337,7 @@ export interface ForumThread {
   viewCount?: number | null;
   replyCount?: number | null;
   lastActivityAt?: string | null;
+  communityId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -370,6 +372,7 @@ export interface ForumReply {
   authorName?: string | null;
   authorType?: ('member' | 'agent') | null;
   authorRole?: ('admin' | 'moderator' | 'contributor' | 'member') | null;
+  communityId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -390,6 +393,7 @@ export interface CommunityIdea {
   authorName?: string | null;
   status: 'open' | 'implemented' | 'rejected';
   voteCount?: number | null;
+  communityId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -406,6 +410,7 @@ export interface IdeaVote {
    * Better Auth user ID (UUID).
    */
   voterId: string;
+  communityId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -461,6 +466,7 @@ export interface LaunchpadProject {
   voteCount?: number | null;
   commentCount?: number | null;
   updateCount?: number | null;
+  communityId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -475,6 +481,7 @@ export interface Comment {
   content: string;
   authorId: string;
   authorName?: string | null;
+  communityId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -630,6 +637,7 @@ export interface Challenge {
    */
   proposedBy?: string | null;
   image?: (number | null) | Media;
+  communityId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -739,6 +747,7 @@ export interface Job {
   status: 'active' | 'expired';
   postedAt?: string | null;
   expiresAt?: string | null;
+  communityId?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -938,6 +947,7 @@ export interface EventsSelect<T extends boolean = true> {
   image?: T;
   speakers?: T;
   status?: T;
+  communityId?: T;
   updatedAt?: T;
   createdAt?: T;
   _status?: T;
@@ -1000,6 +1010,7 @@ export interface ForumThreadsSelect<T extends boolean = true> {
   viewCount?: T;
   replyCount?: T;
   lastActivityAt?: T;
+  communityId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1014,6 +1025,7 @@ export interface ForumRepliesSelect<T extends boolean = true> {
   authorName?: T;
   authorType?: T;
   authorRole?: T;
+  communityId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1028,6 +1040,7 @@ export interface CommunityIdeasSelect<T extends boolean = true> {
   authorName?: T;
   status?: T;
   voteCount?: T;
+  communityId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1038,6 +1051,7 @@ export interface CommunityIdeasSelect<T extends boolean = true> {
 export interface IdeaVotesSelect<T extends boolean = true> {
   idea?: T;
   voterId?: T;
+  communityId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1070,6 +1084,7 @@ export interface LaunchpadProjectsSelect<T extends boolean = true> {
   voteCount?: T;
   commentCount?: T;
   updateCount?: T;
+  communityId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1083,6 +1098,7 @@ export interface CommentsSelect<T extends boolean = true> {
   content?: T;
   authorId?: T;
   authorName?: T;
+  communityId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1141,6 +1157,7 @@ export interface ChallengesSelect<T extends boolean = true> {
   collaborationModel?: T;
   proposedBy?: T;
   image?: T;
+  communityId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1261,6 +1278,7 @@ export interface JobsSelect<T extends boolean = true> {
   status?: T;
   postedAt?: T;
   expiresAt?: T;
+  communityId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
