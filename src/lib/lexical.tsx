@@ -96,7 +96,7 @@ function renderText(node: LexicalNode): React.ReactNode {
   return el;
 }
 
-function renderNode(node: LexicalNode, idx: number): React.ReactNode {
+function renderNode(node: LexicalNode, idx: number, slugMap: Map<string, number>): React.ReactNode {
   switch (node.type) {
     case "text":
       return <React.Fragment key={idx}>{renderText(node)}</React.Fragment>;
@@ -153,13 +153,13 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
 
       return (
         <p key={idx} className="mb-4 leading-relaxed">
-          {node.children?.map((c, i) => renderNode(c, i))}
+          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
         </p>
       );
     }
 
     case "heading": {
-      const Tag = (node.tag ?? "h2") as keyof React.JSX.IntrinsicElements;
+      const Tag = (node.tag ?? "h2") as "h2" | "h3" | "h4" | "h5" | "h6";
       const headingClass: Record<string, string> = {
         h1: "mt-8 mb-4 text-3xl font-bold tracking-tight",
         h2: "mt-8 mb-3 text-2xl font-bold tracking-tight",
@@ -168,9 +168,22 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
         h5: "mt-4 mb-2 font-semibold",
         h6: "mt-4 mb-2 font-medium text-muted-foreground",
       };
+      const text = extractPlainText(node.children ?? []);
+      const baseSlug = slugify(text);
+      const count = slugMap.get(baseSlug) ?? 0;
+      const slug = count === 0 ? baseSlug : `${baseSlug}-${count}`;
+      slugMap.set(baseSlug, count + 1);
+
       return (
-        <Tag key={idx} className={headingClass[node.tag ?? "h2"]}>
-          {node.children?.map((c, i) => renderNode(c, i))}
+        <Tag key={idx} id={slug} className={`group ${headingClass[node.tag ?? "h2"]}`}>
+          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
+          <a
+            href={`#${slug}`}
+            aria-label="Link to this section"
+            className="text-muted-foreground ml-2 opacity-0 transition-opacity group-hover:opacity-100"
+          >
+            #
+          </a>
         </Tag>
       );
     }
@@ -185,7 +198,7 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
             : "list-disc";
       return (
         <Tag key={idx} className={`mb-4 pl-6 ${listClass}`}>
-          {node.children?.map((c, i) => renderNode(c, i))}
+          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
         </Tag>
       );
     }
@@ -193,7 +206,7 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
     case "listitem":
       return (
         <li key={idx} className="mb-1">
-          {node.children?.map((c, i) => renderNode(c, i))}
+          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
         </li>
       );
 
@@ -203,7 +216,7 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
           key={idx}
           className="border-primary/40 text-muted-foreground my-4 border-l-4 pl-4 italic"
         >
-          {node.children?.map((c, i) => renderNode(c, i))}
+          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
         </blockquote>
       );
 
@@ -255,7 +268,7 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
           rel={newTab ? "noopener noreferrer" : undefined}
           className="text-primary underline underline-offset-4 hover:opacity-80"
         >
-          {node.children?.map((c, i) => renderNode(c, i))}
+          {node.children?.map((c, i) => renderNode(c, i, slugMap))}
         </a>
       );
     }
@@ -287,7 +300,7 @@ function renderNode(node: LexicalNode, idx: number): React.ReactNode {
       if (node.children?.length) {
         return (
           <React.Fragment key={idx}>
-            {node.children.map((c, i) => renderNode(c, i))}
+            {node.children.map((c, i) => renderNode(c, i, slugMap))}
           </React.Fragment>
         );
       }
@@ -351,9 +364,10 @@ export function LexicalRenderer({ content }: { content: unknown }) {
 
   if (!data?.root?.children) return null;
 
+  const slugMap = new Map<string, number>();
   return (
     <div className="text-foreground leading-7">
-      {data.root.children.map((node, i) => renderNode(node, i))}
+      {data.root.children.map((node, i) => renderNode(node, i, slugMap))}
     </div>
   );
 }
