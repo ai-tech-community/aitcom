@@ -12,9 +12,10 @@ type MembershipStatus = "active" | "pending_approval" | "invited" | null;
 interface CommunityHeaderProps {
   community: Community;
   membershipStatus: MembershipStatus;
+  memberRole?: "owner" | "admin" | "moderator" | "member" | null;
 }
 
-export function CommunityHeader({ community, membershipStatus }: CommunityHeaderProps) {
+export function CommunityHeader({ community, membershipStatus, memberRole }: CommunityHeaderProps) {
   const t = useTranslations("communities.profile");
 
   const initials = community.name
@@ -55,6 +56,7 @@ export function CommunityHeader({ community, membershipStatus }: CommunityHeader
               slug={community.slug}
               joinPolicy={community.joinPolicy}
               membershipStatus={membershipStatus}
+              memberRole={memberRole}
             />
           </div>
         </div>

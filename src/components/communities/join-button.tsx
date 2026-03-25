@@ -16,9 +16,10 @@ interface JoinButtonProps {
   slug: string;
   joinPolicy: JoinPolicy;
   membershipStatus: MembershipStatus;
+  memberRole?: "owner" | "admin" | "moderator" | "member" | null;
 }
 
-export function JoinButton({ slug, joinPolicy, membershipStatus }: JoinButtonProps) {
+export function JoinButton({ slug, joinPolicy, membershipStatus, memberRole }: JoinButtonProps) {
   const t = useTranslations("communities.profile");
   const { data: session } = authClient.useSession();
   const router = useRouter();
@@ -88,6 +89,11 @@ export function JoinButton({ slug, joinPolicy, membershipStatus }: JoinButtonPro
         {t("pending")}
       </Button>
     );
+  }
+
+  // Owners cannot leave their community
+  if (membershipStatus === "active" && memberRole === "owner") {
+    return null;
   }
 
   // Active member: show leave button
