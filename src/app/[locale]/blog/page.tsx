@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
+import type { Where } from "payload";
 import { Link } from "@/i18n/navigation";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { estimateReadingTime } from "@/lib/lexical";
+import { buildBlogUrl } from "@/lib/blog-utils";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -38,20 +40,39 @@ export default async function BlogPage({
   const rawPage = typeof params.page === "string" ? parseInt(params.page, 10) : 1;
   const requestedPage = Number.isFinite(rawPage) && rawPage >= 1 ? rawPage : 1;
 
+  const q = typeof params.q === "string" ? params.q.trim() : "";
+  const tag = typeof params.tag === "string" ? params.tag.trim() : "";
+
+  // Build where conditions
+  const conditions: Where[] = [
+    { status: { equals: "published" } },
+    {
+      or: [
+        { authorType: { not_equals: "member" } },
+        { reviewStatus: { equals: "approved" } },
+      ],
+    },
+  ];
+
+  // Search: title or tags match query
+  if (q) {
+    conditions.push({
+      or: [
+        { title: { like: q } },
+        { "tags.tag": { like: q } },
+      ],
+    });
+  }
+
+  // Tag filter
+  if (tag) {
+    conditions.push({ "tags.tag": { like: tag } });
+  }
+
   const payload = await getPayloadClient();
   const result = await payload.find({
     collection: "articles",
-    where: {
-      and: [
-        { status: { equals: "published" } },
-        {
-          or: [
-            { authorType: { not_equals: "member" } },
-            { reviewStatus: { equals: "approved" } },
-          ],
-        },
-      ],
-    },
+    where: { and: conditions },
     sort: "-publishedAt",
     locale: locale as "en" | "nl",
     draft: false,
@@ -63,11 +84,12 @@ export default async function BlogPage({
 
   // Redirect to last page if requested page exceeds total (show last page, not empty results)
   if (requestedPage > totalPages && totalPages > 0) {
-    redirect(`/blog?page=${totalPages}`);
+    redirect(buildBlogUrl({ q: q || undefined, tag: tag || undefined, page: totalPages }));
   }
 
   const page = Math.min(requestedPage, Math.max(1, totalPages));
   const articles = result.docs;
+  const hasFilters = !!(q || tag);
 
   // Type label map using i18n keys for proper localization
   const typeLabels: Record<string, string> = {
@@ -103,8 +125,50 @@ export default async function BlogPage({
         </div>
       </div>
 
+      {/* Search + Filter Bar */}
+      <div className="mt-4 space-y-2">
+        <form method="get" className="flex items-center gap-2">
+          {tag && <input type="hidden" name="tag" value={tag} />}
+          <input
+            name="q"
+            type="text"
+            defaultValue={q}
+            maxLength={200}
+            placeholder={`/ ${t("search.placeholder")}`}
+            className="border-border bg-transparent text-foreground placeholder:text-muted-foreground w-full rounded border px-3 py-1.5 font-mono text-sm tracking-wider outline-none focus:ring-1 focus:ring-current"
+          />
+          {q && (
+            <Link
+              href={buildBlogUrl({ tag: tag || undefined })}
+              className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
+            >
+              {t("search.clear")}
+            </Link>
+          )}
+        </form>
+
+        {tag && (
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+              {t("filter.activeTag")}
+            </span>
+            <span className="bg-foreground/10 border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-[10px] tracking-wider">
+              {tag}
+            </span>
+            <Link
+              href={buildBlogUrl({ q: q || undefined })}
+              className="text-muted-foreground hover:text-foreground font-mono text-[10px] transition-colors"
+            >
+              ×
+            </Link>
+          </div>
+        )}
+      </div>
+
       {articles.length === 0 ? (
-        <p className="text-muted-foreground mt-12 text-center">{t("noArticles")}</p>
+        <p className="text-muted-foreground mt-12 text-center">
+          {hasFilters ? t("search.noResults") : t("noArticles")}
+        </p>
       ) : (
         <>
           {/* Table Header - desktop only */}
@@ -174,7 +238,7 @@ export default async function BlogPage({
             <div className="mt-8 flex items-center justify-center gap-6 font-mono text-xs tracking-wider">
               {page > 1 ? (
                 <Link
-                  href={`/blog?page=${page - 1}`}
+                  href={buildBlogUrl({ q: q || undefined, tag: tag || undefined, page: page - 1 })}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   ← {t("pagination.prev")}
@@ -189,7 +253,7 @@ export default async function BlogPage({
 
               {page < totalPages ? (
                 <Link
-                  href={`/blog?page=${page + 1}`}
+                  href={buildBlogUrl({ q: q || undefined, tag: tag || undefined, page: page + 1 })}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {t("pagination.next")} →
