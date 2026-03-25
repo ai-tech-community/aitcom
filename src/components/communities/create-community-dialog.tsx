@@ -16,13 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { BuildingModal } from "@/components/community/building-modal";
 import { Loader2, Plus } from "lucide-react";
 
 export function CreateCommunityDialog() {
@@ -65,19 +59,25 @@ export function CreateCommunityDialog() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" className="font-mono text-xs">
-          <Plus className="mr-1.5 h-3.5 w-3.5" />
-          {t("title")}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="font-mono text-sm tracking-wider">
-            / {t("title").toUpperCase()}
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Button
+        size="sm"
+        className="font-mono text-xs"
+        onClick={() => setOpen(true)}
+      >
+        <Plus className="mr-1.5 h-3.5 w-3.5" />
+        {t("title")}
+      </Button>
+
+      <BuildingModal
+        isOpen={open}
+        onClose={() => {
+          setOpen(false);
+          resetForm();
+        }}
+        title={t("title")}
+        subtitle={t("name")}
+      >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label className="font-mono text-xs">{t("name")}</Label>
@@ -148,7 +148,7 @@ export function CreateCommunityDialog() {
             {t("submit")}
           </Button>
         </form>
-      </DialogContent>
-    </Dialog>
+      </BuildingModal>
+    </>
   );
 }
