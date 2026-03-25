@@ -1,6 +1,7 @@
 import type { SlashCommand } from "./types";
 import { SLASH_COMMANDS } from "./types";
 import type { SerializedEditorState } from "@payloadcms/richtext-lexical/lexical";
+import { slugify } from "@/lib/text-utils";
 
 export function extractPlainText(nodes: unknown): string {
   if (!Array.isArray(nodes)) return "";
@@ -72,13 +73,7 @@ export function filterSlashCommands(query: string): SlashCommand[] {
 }
 
 export function generateSlug(title: string): string {
-  return title
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
+  return slugify(title);
 }
 
 export function preprocessEditorState(content: SerializedEditorState | undefined): string | undefined {
