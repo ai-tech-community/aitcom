@@ -43,6 +43,12 @@ export const IdeaVotes: CollectionConfig = {
       required: true,
       admin: { description: "Better Auth user ID (UUID)." },
     },
+    {
+      name: "communityId",
+      type: "text",
+      index: true,
+      admin: { position: "sidebar" },
+    },
   ],
   timestamps: true,
 };

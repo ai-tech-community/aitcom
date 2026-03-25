@@ -342,6 +342,12 @@ export const Challenges: CollectionConfig = {
       },
     },
     { name: "image", type: "upload", relationTo: "media" },
+    {
+      name: "communityId",
+      type: "text",
+      index: true,
+      admin: { position: "sidebar" },
+    },
   ],
   timestamps: true,
 };
