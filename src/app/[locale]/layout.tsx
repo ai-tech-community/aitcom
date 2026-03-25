@@ -12,6 +12,7 @@ import { Footer } from "@/components/footer";
 import { Toaster } from "sonner";
 import { InboxProvider } from "@/components/inbox/inbox-provider";
 import { InboxRoot } from "@/components/inbox/inbox-root";
+import { RulesProvider } from "@/components/community/rules-provider";
 import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
@@ -66,13 +67,15 @@ export default async function LocaleLayout({
       <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <TRPCReactProvider>
-            <Navbar />
-            <InboxProvider>
-              <main className="min-h-screen to-background bg-linear-to-b from-orange-50/60 via-amber-50/30">{children}</main>
-              <Footer />
-              <InboxRoot />
-            </InboxProvider>
-            <Toaster position="bottom-right" offset={60} />
+            <RulesProvider>
+              <Navbar />
+              <InboxProvider>
+                <main className="min-h-screen to-background bg-linear-to-b from-orange-50/60 via-amber-50/30">{children}</main>
+                <Footer />
+                <InboxRoot />
+              </InboxProvider>
+              <Toaster position="bottom-right" offset={60} />
+            </RulesProvider>
           </TRPCReactProvider>
         </NextIntlClientProvider>
         <Analytics />

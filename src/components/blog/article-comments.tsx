@@ -11,7 +11,7 @@ import {
   AvatarFallback,
 } from "@/components/ui/avatar";
 import { Link } from "@/i18n/navigation";
-import { RulesModal } from "@/components/community/modals/rules-modal";
+import { useRulesModal } from "@/components/community/rules-provider";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -300,9 +300,8 @@ export function ArticleComments({
   currentUserId,
 }: ArticleCommentsProps) {
   const t = useTranslations("blog.comments");
-  const tRules = useTranslations("community.rules");
   const { data: session } = authClient.useSession();
-  const [showRulesModal, setShowRulesModal] = useState(false);
+  const { openRulesModal } = useRulesModal();
 
   const { data: comments } = api.comments.list.useQuery(
     { articleId },
@@ -335,7 +334,7 @@ export function ArticleComments({
           articleId={articleId}
           placeholder={t("placeholder")}
           onSuccess={() => undefined}
-          onRulesRequired={() => setShowRulesModal(true)}
+          onRulesRequired={openRulesModal}
         />
       ) : (
         <p className="text-muted-foreground font-mono text-xs">
@@ -359,19 +358,11 @@ export function ArticleComments({
               replies={repliesMap.get(comment.id) ?? []}
               articleId={articleId}
               currentUserId={currentUserId}
-              onRulesRequired={() => setShowRulesModal(true)}
+              onRulesRequired={openRulesModal}
             />
           ))}
         </div>
       )}
-
-      {/* Rules acceptance modal */}
-      <RulesModal
-        isOpen={showRulesModal}
-        onClose={() => setShowRulesModal(false)}
-        title={tRules("title")}
-        subtitle={tRules("subtitle")}
-      />
     </div>
   );
 }
