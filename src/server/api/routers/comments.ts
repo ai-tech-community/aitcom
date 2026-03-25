@@ -9,25 +9,35 @@ import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 
-async function requireRulesAcceptance(userId: string) {
+async function requireRulesAcceptance(userId: string, communityId?: string) {
+  if (!communityId) return;
+
   const payload = await getPayloadClient();
-  const rules = await payload.findGlobal({ slug: "community-rules" });
-
-  if (!rules.version) return;
-
   const { docs } = await payload.find({
+    collection: "community-rules",
+    where: { communityId: { equals: communityId } },
+    limit: 1,
+    depth: 0,
+  });
+
+  if (docs.length === 0) return;
+
+  const rules = docs[0]!;
+
+  const { docs: acceptanceDocs } = await payload.find({
     collection: "rules-acceptance",
     where: {
       and: [
         { userId: { equals: userId } },
         { rulesVersion: { equals: rules.version } },
+        { communityId: { equals: communityId } },
       ],
     },
     limit: 1,
     depth: 0,
   });
 
-  if (docs.length === 0) {
+  if (acceptanceDocs.length === 0) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "RULES_NOT_ACCEPTED",

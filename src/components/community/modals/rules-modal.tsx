@@ -29,6 +29,7 @@ type RulesModalProps = {
   title: string;
   subtitle: string;
   windowIndex?: number;
+  communitySlug?: string;
 };
 
 export function RulesModal({
@@ -37,11 +38,12 @@ export function RulesModal({
   title,
   subtitle,
   windowIndex,
+  communitySlug,
 }: RulesModalProps) {
   const t = useTranslations("community.rules");
   const locale = useLocale() as "en" | "nl";
   const { data, isLoading } = api.forum.getRules.useQuery(
-    { locale },
+    { communitySlug: communitySlug ?? "ait", locale },
     { enabled: isOpen, staleTime: 5 * 60 * 1000 },
   );
 
@@ -52,7 +54,8 @@ export function RulesModal({
     },
   });
 
-  const sections = data?.sections ?? [];
+  const rules = data?.rules;
+  const sections = rules?.sections ?? [];
   const hasAccepted = data?.hasAccepted ?? false;
 
   return (
@@ -124,13 +127,13 @@ export function RulesModal({
 
           {/* Version & Acceptance Footer */}
           <div className="mt-4 border-t border-zinc-100 pt-4">
-            {data.version && (
+            {rules?.version && (
               <p className="mb-2 font-mono text-[10px] text-zinc-400">
-                {t("versionLabel", { version: data.version })}
+                {t("versionLabel", { version: rules.version })}
               </p>
             )}
 
-            {hasAccepted && data.acceptedAt ? (
+            {hasAccepted && data?.acceptedAt ? (
               <div className="flex items-center gap-2 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
                 <Check className="h-4 w-4" />
                 {t("accepted", {
@@ -139,7 +142,7 @@ export function RulesModal({
               </div>
             ) : (
               <button
-                onClick={() => acceptMutation.mutate()}
+                onClick={() => acceptMutation.mutate({ communitySlug: communitySlug ?? "ait" })}
                 disabled={acceptMutation.isPending}
                 className="w-full rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
               >

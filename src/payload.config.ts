@@ -76,6 +76,7 @@ export default buildConfig({
     SponsorApplications,
     Jobs,
     RulesAcceptance,
+    CommunityRules,
     {
       slug: "users",
       auth: true,
@@ -91,7 +92,6 @@ export default buildConfig({
       ],
     },
   ],
-  globals: [CommunityRules],
   plugins: [
     s3Storage({
       collections: {

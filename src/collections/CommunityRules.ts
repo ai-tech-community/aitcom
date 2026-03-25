@@ -1,13 +1,20 @@
-import type { GlobalConfig } from "payload";
+import type { CollectionConfig } from "payload";
 
-export const CommunityRules: GlobalConfig = {
+export const CommunityRules: CollectionConfig = {
   slug: "community-rules",
-  label: "Community Rules",
   admin: {
-    description:
-      "The community code of conduct displayed on the Community board.",
+    useAsTitle: "communityId",
+    defaultColumns: ["communityId", "version", "effectiveDate"],
+    description: "Per-community rules / code of conduct.",
   },
   fields: [
+    {
+      name: "communityId",
+      type: "text",
+      required: true,
+      index: true,
+      admin: { description: "Drizzle community UUID." },
+    },
     {
       name: "version",
       type: "number",
@@ -15,8 +22,7 @@ export const CommunityRules: GlobalConfig = {
       required: true,
       defaultValue: 1,
       admin: {
-        description:
-          "Increment when rules change to require re-acceptance from users.",
+        description: "Increment when rules change to require re-acceptance from users.",
       },
     },
     {
@@ -26,10 +32,7 @@ export const CommunityRules: GlobalConfig = {
       required: true,
       admin: {
         description: "When this version of the rules takes effect.",
-        date: {
-          pickerAppearance: "dayOnly",
-          displayFormat: "d MMM yyyy",
-        },
+        date: { pickerAppearance: "dayOnly", displayFormat: "d MMM yyyy" },
       },
     },
     {
@@ -38,25 +41,15 @@ export const CommunityRules: GlobalConfig = {
       label: "Sections",
       required: true,
       minRows: 1,
-      admin: {
-        description: "Structured rule sections with table-of-contents support.",
-      },
+      admin: { description: "Structured rule sections with table-of-contents support." },
       fields: [
-        {
-          name: "title",
-          type: "text",
-          label: "Title",
-          required: true,
-          localized: true,
-        },
+        { name: "title", type: "text", label: "Title", required: true, localized: true },
         {
           name: "slug",
           type: "text",
           label: "Slug",
           required: true,
-          admin: {
-            description: "URL-friendly identifier for anchor links (e.g. 'respect-others').",
-          },
+          admin: { description: "URL-friendly identifier for anchor links (e.g. 'respect-others')." },
         },
         {
           name: "icon",
@@ -71,13 +64,7 @@ export const CommunityRules: GlobalConfig = {
             { label: "Gavel", value: "gavel" },
           ],
         },
-        {
-          name: "content",
-          type: "richText",
-          label: "Content",
-          required: true,
-          localized: true,
-        },
+        { name: "content", type: "richText", label: "Content", required: true, localized: true },
       ],
     },
   ],

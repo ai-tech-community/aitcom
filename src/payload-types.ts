@@ -83,6 +83,7 @@ export interface Config {
     'sponsor-applications': SponsorApplication;
     jobs: Job;
     'rules-acceptance': RulesAcceptance;
+    'community-rules': CommunityRule;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -107,6 +108,7 @@ export interface Config {
     'sponsor-applications': SponsorApplicationsSelect<false> | SponsorApplicationsSelect<true>;
     jobs: JobsSelect<false> | JobsSelect<true>;
     'rules-acceptance': RulesAcceptanceSelect<false> | RulesAcceptanceSelect<true>;
+    'community-rules': CommunityRulesSelect<false> | CommunityRulesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -117,12 +119,8 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'nl') | ('en' | 'nl')[];
-  globals: {
-    'community-rules': CommunityRule;
-  };
-  globalsSelect: {
-    'community-rules': CommunityRulesSelect<false> | CommunityRulesSelect<true>;
-  };
+  globals: {};
+  globalsSelect: {};
   locale: 'en' | 'nl';
   user: User;
   jobs: {
@@ -764,7 +762,61 @@ export interface RulesAcceptance {
    */
   userId: string;
   rulesVersion: number;
+  /**
+   * Drizzle community UUID.
+   */
+  communityId: string;
   acceptedAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Per-community rules / code of conduct.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-rules".
+ */
+export interface CommunityRule {
+  id: number;
+  /**
+   * Drizzle community UUID.
+   */
+  communityId: string;
+  /**
+   * Increment when rules change to require re-acceptance from users.
+   */
+  version: number;
+  /**
+   * When this version of the rules takes effect.
+   */
+  effectiveDate: string;
+  /**
+   * Structured rule sections with table-of-contents support.
+   */
+  sections: {
+    title: string;
+    /**
+     * URL-friendly identifier for anchor links (e.g. 'respect-others').
+     */
+    slug: string;
+    icon?: ('shield' | 'users' | 'flag' | 'scale' | 'brain' | 'gavel') | null;
+    content: {
+      root: {
+        type: string;
+        children: {
+          type: any;
+          version: number;
+          [k: string]: unknown;
+        }[];
+        direction: ('ltr' | 'rtl') | null;
+        format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+        indent: number;
+        version: number;
+      };
+      [k: string]: unknown;
+    };
+    id?: string | null;
+  }[];
   updatedAt: string;
   createdAt: string;
 }
@@ -882,6 +934,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'rules-acceptance';
         value: number | RulesAcceptance;
+      } | null)
+    | ({
+        relationTo: 'community-rules';
+        value: number | CommunityRule;
       } | null)
     | ({
         relationTo: 'users';
@@ -1289,7 +1345,28 @@ export interface JobsSelect<T extends boolean = true> {
 export interface RulesAcceptanceSelect<T extends boolean = true> {
   userId?: T;
   rulesVersion?: T;
+  communityId?: T;
   acceptedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-rules_select".
+ */
+export interface CommunityRulesSelect<T extends boolean = true> {
+  communityId?: T;
+  version?: T;
+  effectiveDate?: T;
+  sections?:
+    | T
+    | {
+        title?: T;
+        slug?: T;
+        icon?: T;
+        content?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1356,72 +1433,6 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
   batch?: T;
   updatedAt?: T;
   createdAt?: T;
-}
-/**
- * The community code of conduct displayed on the Community board.
- *
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "community-rules".
- */
-export interface CommunityRule {
-  id: number;
-  /**
-   * Increment when rules change to require re-acceptance from users.
-   */
-  version: number;
-  /**
-   * When this version of the rules takes effect.
-   */
-  effectiveDate: string;
-  /**
-   * Structured rule sections with table-of-contents support.
-   */
-  sections: {
-    title: string;
-    /**
-     * URL-friendly identifier for anchor links (e.g. 'respect-others').
-     */
-    slug: string;
-    icon?: ('shield' | 'users' | 'flag' | 'scale' | 'brain' | 'gavel') | null;
-    content: {
-      root: {
-        type: string;
-        children: {
-          type: any;
-          version: number;
-          [k: string]: unknown;
-        }[];
-        direction: ('ltr' | 'rtl') | null;
-        format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-        indent: number;
-        version: number;
-      };
-      [k: string]: unknown;
-    };
-    id?: string | null;
-  }[];
-  updatedAt?: string | null;
-  createdAt?: string | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "community-rules_select".
- */
-export interface CommunityRulesSelect<T extends boolean = true> {
-  version?: T;
-  effectiveDate?: T;
-  sections?:
-    | T
-    | {
-        title?: T;
-        slug?: T;
-        icon?: T;
-        content?: T;
-        id?: T;
-      };
-  updatedAt?: T;
-  createdAt?: T;
-  globalType?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

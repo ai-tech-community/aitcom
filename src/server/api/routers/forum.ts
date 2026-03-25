@@ -11,29 +11,39 @@ import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { sendForumReplyNotification } from "@/server/email";
 import { and, eq, isNull } from "drizzle-orm";
-import { user as userTable, communities } from "@/server/db/schema";
+import { user as userTable, communities, communityMemberships } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
-async function requireRulesAcceptance(userId: string) {
+async function requireRulesAcceptance(userId: string, communityId?: string) {
+  if (!communityId) return;
+
   const payload = await getPayloadClient();
-  const rules = await payload.findGlobal({ slug: "community-rules" });
-
-  if (!rules.version) return;
-
   const { docs } = await payload.find({
+    collection: "community-rules",
+    where: { communityId: { equals: communityId } },
+    limit: 1,
+    depth: 0,
+  });
+
+  if (docs.length === 0) return;
+
+  const rules = docs[0]!;
+
+  const { docs: acceptanceDocs } = await payload.find({
     collection: "rules-acceptance",
     where: {
       and: [
         { userId: { equals: userId } },
         { rulesVersion: { equals: rules.version } },
+        { communityId: { equals: communityId } },
       ],
     },
     limit: 1,
     depth: 0,
   });
 
-  if (docs.length === 0) {
+  if (acceptanceDocs.length === 0) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
       message: "RULES_NOT_ACCEPTED",
@@ -45,77 +55,118 @@ export const forumRouter = createTRPCRouter({
   // ── Rules ──────────────────────────────────────────────────────────────────
 
   getRules: publicProcedure
-    .input(z.object({ locale: z.enum(["en", "nl"]).optional() }).optional())
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        locale: z.enum(["en", "nl"]).optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
-    const payload = await getPayloadClient();
-    const rules = await payload.findGlobal({
-      slug: "community-rules",
-      locale: input?.locale ?? "en",
-    });
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        columns: { id: true },
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
 
-    const userId = ctx.session?.user?.id;
-    let hasAccepted = false;
-    let acceptedAt: string | null = null;
-
-    if (userId && rules.version) {
+      const payload = await getPayloadClient();
       const { docs } = await payload.find({
+        collection: "community-rules",
+        where: { communityId: { equals: community.id } },
+        locale: input.locale ?? "en",
+        limit: 1,
+        depth: 0,
+      });
+
+      if (docs.length === 0) {
+        return { rules: null, hasAccepted: true, acceptedAt: null };
+      }
+
+      const rules = docs[0]!;
+      const userId = ctx.session?.user?.id;
+      let hasAccepted = false;
+      let acceptedAt: string | null = null;
+
+      if (userId && rules.version) {
+        const { docs: acceptanceDocs } = await payload.find({
+          collection: "rules-acceptance",
+          where: {
+            and: [
+              { userId: { equals: userId } },
+              { rulesVersion: { equals: rules.version } },
+              { communityId: { equals: community.id } },
+            ],
+          },
+          limit: 1,
+          depth: 0,
+        });
+        if (acceptanceDocs.length > 0) {
+          hasAccepted = true;
+          acceptedAt = acceptanceDocs[0]!.acceptedAt;
+        }
+      }
+
+      return { rules, hasAccepted, acceptedAt };
+    }),
+
+  acceptRules: protectedProcedure
+    .input(z.object({ communitySlug: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        columns: { id: true },
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      const payload = await getPayloadClient();
+      const { docs } = await payload.find({
+        collection: "community-rules",
+        where: { communityId: { equals: community.id } },
+        limit: 1,
+        depth: 0,
+      });
+
+      if (docs.length === 0) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "No rules exist for this community.",
+        });
+      }
+
+      const rules = docs[0]!;
+
+      const { docs: existing } = await payload.find({
         collection: "rules-acceptance",
         where: {
           and: [
-            { userId: { equals: userId } },
+            { userId: { equals: ctx.session.user.id } },
             { rulesVersion: { equals: rules.version } },
+            { communityId: { equals: community.id } },
           ],
         },
         limit: 1,
         depth: 0,
       });
-      if (docs.length > 0) {
-        hasAccepted = true;
-        acceptedAt = docs[0]!.acceptedAt;
+
+      if (existing.length > 0) {
+        return { alreadyAccepted: true };
       }
-    }
 
-    return { ...rules, hasAccepted, acceptedAt };
-  }),
-
-  acceptRules: protectedProcedure.mutation(async ({ ctx }) => {
-    const payload = await getPayloadClient();
-    const rules = await payload.findGlobal({ slug: "community-rules" });
-
-    if (!rules.version) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message: "Community rules have not been published yet.",
+      await payload.create({
+        collection: "rules-acceptance",
+        data: {
+          userId: ctx.session.user.id,
+          rulesVersion: rules.version,
+          communityId: community.id,
+          acceptedAt: new Date().toISOString(),
+        },
       });
-    }
 
-    const { docs: existing } = await payload.find({
-      collection: "rules-acceptance",
-      where: {
-        and: [
-          { userId: { equals: ctx.session.user.id } },
-          { rulesVersion: { equals: rules.version } },
-        ],
-      },
-      limit: 1,
-      depth: 0,
-    });
-
-    if (existing.length > 0) {
-      return { alreadyAccepted: true };
-    }
-
-    await payload.create({
-      collection: "rules-acceptance",
-      data: {
-        userId: ctx.session.user.id,
-        rulesVersion: rules.version,
-        acceptedAt: new Date().toISOString(),
-      },
-    });
-
-    return { alreadyAccepted: false };
-  }),
+      return { alreadyAccepted: false };
+    }),
 
   // ── Ideas ──────────────────────────────────────────────────────────────────
 
@@ -180,10 +231,6 @@ export const forumRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await requireRulesAcceptance(ctx.session.user.id);
-      const payload = await getPayloadClient();
-      const userName = ctx.session.user.name ?? "member";
-
       let communityId: string | undefined;
       if (input.communitySlug) {
         const community = await ctx.db.query.communities.findFirst({
@@ -192,6 +239,9 @@ export const forumRouter = createTRPCRouter({
         });
         communityId = community?.id;
       }
+      await requireRulesAcceptance(ctx.session.user.id, communityId);
+      const payload = await getPayloadClient();
+      const userName = ctx.session.user.name ?? "member";
 
       const idea = await payload.create({
         collection: "community-ideas",
@@ -221,9 +271,15 @@ export const forumRouter = createTRPCRouter({
   toggleVote: protectedProcedure
     .input(z.object({ ideaId: z.number() }))
     .mutation(async ({ ctx, input }) => {
-      await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
       const userId = ctx.session.user.id;
+
+      const idea = await payload.findByID({
+        collection: "community-ideas",
+        id: input.ideaId,
+        depth: 0,
+      });
+      await requireRulesAcceptance(ctx.session.user.id, idea.communityId ?? undefined);
 
       const { docs: existingVotes } = await payload.find({
         collection: "idea-votes",
@@ -234,12 +290,6 @@ export const forumRouter = createTRPCRouter({
           ],
         },
         limit: 1,
-        depth: 0,
-      });
-
-      const idea = await payload.findByID({
-        collection: "community-ideas",
-        id: input.ideaId,
         depth: 0,
       });
 
@@ -391,10 +441,6 @@ export const forumRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await requireRulesAcceptance(ctx.session.user.id);
-      const payload = await getPayloadClient();
-      const userName = ctx.session.user.name ?? "member";
-
       let communityId: string | undefined;
       if (input.communitySlug) {
         const community = await ctx.db.query.communities.findFirst({
@@ -403,6 +449,9 @@ export const forumRouter = createTRPCRouter({
         });
         communityId = community?.id;
       }
+      await requireRulesAcceptance(ctx.session.user.id, communityId);
+      const payload = await getPayloadClient();
+      const userName = ctx.session.user.name ?? "member";
 
       const baseSlug = input.title
         .toLowerCase()
@@ -453,7 +502,6 @@ export const forumRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await requireRulesAcceptance(ctx.session.user.id);
       const payload = await getPayloadClient();
 
       const thread = await payload.findByID({
@@ -461,6 +509,7 @@ export const forumRouter = createTRPCRouter({
         id: input.threadId,
         depth: 0,
       });
+      await requireRulesAcceptance(ctx.session.user.id, thread.communityId ?? undefined);
 
       if (thread.isLocked) {
         throw new TRPCError({
@@ -563,5 +612,114 @@ export const forumRouter = createTRPCRouter({
         data: { isLocked: input.isLocked },
       });
       return { ok: true };
+    }),
+
+  /** Create or update community rules (admin/owner only) */
+  upsertRules: protectedProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        sections: z.array(
+          z.object({
+            title: z.string().min(1).max(200),
+            slug: z.string().min(1).max(100),
+            icon: z.enum(["shield", "users", "flag", "scale", "brain", "gavel"]).optional(),
+            content: z.any(),
+          }),
+        ).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        columns: { id: true },
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, ctx.session.user.id),
+          eq(communityMemberships.status, "active"),
+        ),
+      });
+      if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const payload = await getPayloadClient();
+      const { docs } = await payload.find({
+        collection: "community-rules",
+        where: { communityId: { equals: community.id } },
+        limit: 1,
+        depth: 0,
+      });
+
+      if (docs.length === 0) {
+        const created = await payload.create({
+          collection: "community-rules",
+          data: {
+            communityId: community.id,
+            version: 1,
+            effectiveDate: new Date().toISOString(),
+            sections: input.sections,
+          },
+        });
+        return created;
+      }
+
+      const existing = docs[0]!;
+      const updated = await payload.update({
+        collection: "community-rules",
+        id: existing.id,
+        data: {
+          version: (existing.version ?? 0) + 1,
+          effectiveDate: new Date().toISOString(),
+          sections: input.sections,
+        },
+      });
+      return updated;
+    }),
+
+  /** Update idea status (admin/owner only) */
+  updateIdeaStatus: protectedProcedure
+    .input(
+      z.object({
+        ideaId: z.number(),
+        status: z.enum(["open", "implemented", "rejected"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const idea = await payload.findByID({
+        collection: "community-ideas",
+        id: input.ideaId,
+        depth: 0,
+      });
+
+      if (!idea.communityId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Idea has no community" });
+      }
+
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, idea.communityId),
+          eq(communityMemberships.userId, ctx.session.user.id),
+          eq(communityMemberships.status, "active"),
+        ),
+      });
+      if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      await payload.update({
+        collection: "community-ideas",
+        id: input.ideaId,
+        data: { status: input.status },
+      });
+
+      return { success: true };
     }),
 });
