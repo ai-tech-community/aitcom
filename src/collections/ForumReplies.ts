@@ -73,6 +73,12 @@ export const ForumReplies: CollectionConfig = {
       ],
       defaultValue: "member",
     },
+    {
+      name: "communityId",
+      type: "text",
+      index: true,
+      admin: { position: "sidebar" },
+    },
   ],
   timestamps: true,
 };

@@ -24,11 +24,11 @@ export function ReplyForm({ threadId, isLocked }: ReplyFormProps) {
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
 
-  const replyMutation = api.community.addReply.useMutation({
+  const replyMutation = api.forum.addReply.useMutation({
     onSuccess: () => {
       setContent("");
-      void utils.community.getReplies.invalidate({ threadId });
-      void utils.community.getThreads.invalidate();
+      void utils.forum.getReplies.invalidate({ threadId });
+      void utils.forum.getThreads.invalidate();
       toast.success(t("replyPosted"));
     },
     onError: (err) => {

@@ -46,22 +46,22 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
   const utils = api.useUtils();
 
   const { data: thread, isLoading: threadLoading } =
-    api.community.getThread.useQuery({ slug });
+    api.forum.getThread.useQuery({ slug });
 
   const { data: replies = [], isLoading: repliesLoading } =
-    api.community.getReplies.useQuery(
+    api.forum.getReplies.useQuery(
       { threadId: thread?.id ?? 0 },
       { enabled: !!thread },
     );
 
-  const incrementView = api.community.incrementViewCount.useMutation();
+  const incrementView = api.forum.incrementViewCount.useMutation();
 
-  const pinMutation = api.community.pinThread.useMutation({
-    onSuccess: () => void utils.community.getThread.invalidate({ slug }),
+  const pinMutation = api.forum.pinThread.useMutation({
+    onSuccess: () => void utils.forum.getThread.invalidate({ slug }),
   });
 
-  const lockMutation = api.community.lockThread.useMutation({
-    onSuccess: () => void utils.community.getThread.invalidate({ slug }),
+  const lockMutation = api.forum.lockThread.useMutation({
+    onSuccess: () => void utils.forum.getThread.invalidate({ slug }),
   });
 
   const isAuthor = !!(

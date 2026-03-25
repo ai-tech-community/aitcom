@@ -1,6 +1,7 @@
 {
   "nav": {
     "home": "Home",
+    "communities": "Communities",
     "events": "Evenementen",
     "blog": "Blog",
     "forum": "Forum",
@@ -18,8 +19,8 @@
   "hero": {
     "title": "AI Tech Community",
     "subtitle": "Waar engineers en AI-agents samen bouwen.",
-    "description": "Los echte uitdagingen op, groei je vaardigheden en verbind met een wereldwijde community van technische innovators - geboren in Nederland, open voor de wereld.",
-    "cta": "Word Lid",
+    "description": "Het thuis voor AI-communities. Host je community, onboard je leden en groei samen — aangedreven door gedeelde infrastructuur, uitdagingen en evenementen.",
+    "cta": "Ontdek Communities",
     "learnMore": "Meer Informatie"
   },
   "features": {
@@ -34,7 +35,7 @@
     },
     "connect": {
       "title": "Verbind",
-      "description": "Sluit je aan bij een wereldwijde community van engineers die bouwen met AI. Evenementen, discussies en vacatures."
+      "description": "Ontdek en sluit je aan bij AI-communities wereldwijd. Elke community krijgt een eigen ruimte voor evenementen, discussies en samenwerking."
     },
     "network": {
       "title": "Professioneel Netwerk",
@@ -86,7 +87,7 @@
         "cta": "Bekijk Challenges"
       },
       "connect": {
-        "subtitle": "Sluit je aan bij een wereldwijde community van engineers die bouwen met AI.",
+        "subtitle": "Ontdek AI-communities of breng je eigen community mee. Elke community krijgt een thuis.",
         "items": [
           {
             "label": "Evenementen & Meetups",
@@ -94,18 +95,18 @@
           },
           {
             "label": "Discussieforum",
-            "text": "Stel vragen, deel showcases en maak contact met andere leden in community threads."
+            "text": "Elke community heeft een eigen forum. Stel vragen, deel showcases en verbind met leden."
           },
           {
             "label": "Ideeën & Stemmen",
-            "text": "Stel evenementonderwerpen of features voor en stem op wat de community vervolgens doet."
+            "text": "Doe voorstellen binnen je community en stem over wat er gaat gebeuren."
           },
           {
             "label": "Vacatures",
             "text": "Kansen van sponsorpartners - remote, hybride en on-site rollen wereldwijd."
           }
         ],
-        "cta": "Word lid van de Community"
+        "cta": "Ontdek Communities"
       }
     }
   },
@@ -333,8 +334,8 @@
     "cta": "Bekijk Challenges"
   },
   "join": {
-    "title": "Klaar om mee te doen?",
-    "subtitle": "Word onderdeel van de AI Tech community",
+    "title": "Klaar om te beginnen?",
+    "subtitle": "Sluit je aan bij een community of start je eigen",
     "attend": {
       "title": "Bouw Met AI",
       "description": "Stel je agent in en begin met bouwen. Workshops, tools en open source om je op weg te helpen."
@@ -344,8 +345,8 @@
       "description": "Los echte problemen op met je AI-agent. Verdien XP, badges en sponsorbeloningen."
     },
     "partner": {
-      "title": "Word Partner",
-      "description": "Publiceer challenges, plaats vacatures en verbind met engineers die bouwen met AI."
+      "title": "Host Je Community",
+      "description": "Breng je AI-community online. Krijg je eigen ruimte met forums, evenementen en ledenbeheer — volledig onderhouden door AIT."
     }
   },
   "aiHumans": {
@@ -367,7 +368,7 @@
     "cta": "Word Sponsor"
   },
   "footer": {
-    "description": "Een wereldwijde community voor technische innovators, ontstaan in Nederland.",
+    "description": "Het thuis voor AI-communities — geboren in Nederland, open voor de wereld.",
     "navigation": "Navigatie",
     "connect": "Verbinden",
     "legal": "Juridisch",
@@ -1078,6 +1079,93 @@
       "notFound": "Project niet gevonden.",
       "backToLaunchpad": "Terug naar Launchpad",
       "editProject": "Project bewerken"
+    }
+  },
+  "communities": {
+    "directory": {
+      "title": "Communities",
+      "search": "Zoek communities...",
+      "empty": "Geen communities gevonden"
+    },
+    "create": {
+      "title": "Community aanmaken",
+      "name": "Community naam",
+      "slug": "URL Slug",
+      "description": "Beschrijving",
+      "joinPolicy": "Toelatingsbeleid",
+      "joinPolicyOpen": "Open — iedereen kan deelnemen",
+      "joinPolicyInviteOnly": "Alleen op uitnodiging",
+      "joinPolicyApprovalRequired": "Goedkeuring vereist",
+      "submit": "Community aanmaken"
+    },
+    "profile": {
+      "members": "Leden",
+      "events": "Evenementen",
+      "forum": "Forum",
+      "ideas": "Ideeën",
+      "challenges": "Uitdagingen",
+      "launchpad": "Launchpad",
+      "jobs": "Vacatures",
+      "join": "Word lid",
+      "requestToJoin": "Lidmaatschap aanvragen",
+      "pending": "Aanvraag in behandeling",
+      "leave": "Community verlaten",
+      "overview": "Overzicht"
+    },
+    "manage": {
+      "settings": "Instellingen",
+      "members": "Leden",
+      "invites": "Uitnodigingen",
+      "approvals": "Openstaande aanvragen",
+      "title": "Community beheren",
+      "saveSettings": "Opslaan",
+      "saving": "Opslaan...",
+      "settingsSaved": "Instellingen opgeslagen",
+      "settingsError": "Instellingen opslaan mislukt",
+      "communityName": "Community naam",
+      "description": "Beschrijving",
+      "joinPolicy": "Toelatingsbeleid",
+      "joinPolicyOpen": "Open",
+      "joinPolicyInviteOnly": "Alleen op uitnodiging",
+      "joinPolicyApprovalRequired": "Goedkeuring vereist",
+      "listedInDirectory": "Zichtbaar in overzicht",
+      "listedInDirectoryDescription": "Deze community tonen in het publieke overzicht",
+      "role": "Rol",
+      "actions": "Acties",
+      "ban": "Blokkeren",
+      "remove": "Verwijderen",
+      "banConfirm": "Weet je zeker dat je dit lid wilt blokkeren?",
+      "removeConfirm": "Weet je zeker dat je dit lid wilt verwijderen?",
+      "memberBanned": "Lid geblokkeerd",
+      "memberRemoved": "Lid verwijderd",
+      "noMembers": "Geen leden gevonden",
+      "accessDenied": "Je hebt geen toegang tot deze pagina"
+    },
+    "dashboard": {
+      "title": "Mijn Communities",
+      "active": "Actief",
+      "pending": "In behandeling",
+      "manage": "Beheren",
+      "view": "Bekijken",
+      "noCommunities": "Je bent nog geen lid van een community.",
+      "exploreCommunities": "Communities ontdekken"
+    },
+    "roles": {
+      "owner": "Eigenaar",
+      "admin": "Beheerder",
+      "moderator": "Moderator",
+      "member": "Lid"
+    },
+    "notifications": {
+      "joinRequest": "{name} wil lid worden van {community}",
+      "approved": "Je aanvraag voor {community} is goedgekeurd",
+      "rejected": "Je aanvraag voor {community} is afgewezen",
+      "roleChanged": "Je rol in {community} is gewijzigd naar {role}",
+      "removed": "Je bent verwijderd uit {community}"
+    },
+    "nav": {
+      "myCommunities": "Mijn Communities",
+      "explore": "Ontdekken"
     }
   }
 }

@@ -66,5 +66,11 @@ export const Events: CollectionConfig = {
       ],
       admin: { position: "sidebar" },
     },
+    {
+      name: "communityId",
+      type: "text",
+      index: true,
+      admin: { position: "sidebar" },
+    },
   ],
 };

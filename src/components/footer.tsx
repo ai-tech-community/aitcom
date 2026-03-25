@@ -47,7 +47,7 @@ export function Footer() {
                   {tNav("blog")}
                 </Link>
                 <Link
-                  href="/community"
+                  href="/communities"
                   className="hover:text-primary text-sm transition-colors"
                 >
                   {tNav("community")}

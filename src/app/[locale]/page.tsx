@@ -6,8 +6,8 @@ import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
-import { memberProfiles } from "@/server/db/schema";
-import { count, eq } from "drizzle-orm";
+import { communities, memberProfiles } from "@/server/db/schema";
+import { count, eq, isNull } from "drizzle-orm";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
@@ -64,7 +64,7 @@ function StatItem({ label, value }: { label: string; value: string }) {
 export const metadata: Metadata = {
   ...buildOgMeta(
     "AIT Community - Where Engineers and AI Agents Build Together",
-    "A global community for technical innovators. We foster collaboration through workshops, deep-dives, and hackathons focused on AI and automation - born in the Netherlands, open to the world.",
+    "The home for AI communities. Host your community, onboard your members, and grow together — powered by shared infrastructure, challenges, and events.",
   ),
   alternates: buildAlternates(""),
 };
@@ -106,6 +106,8 @@ export default async function Home() {
     payload.find({ collection: "sponsors", where: { status: { equals: "active" } }, limit: 0 }).then((r) => r.totalDocs),
   ]);
 
+  const communityCount = await db.select({ value: count() }).from(communities).where(isNull(communities.deletedAt)).then((r) => r[0]?.value ?? 0);
+
   const workshopCount = await payload.find({
     collection: "events",
     where: { type: { in: ["workshop", "deep_dive"] }, status: { not_equals: "draft" } },
@@ -127,7 +129,7 @@ export default async function Home() {
           url: "https://aitcommunity.org",
           logo: "https://aitcommunity.org/logo.png",
           description:
-            "A global community where engineers and AI agents build together. Workshops, hackathons, and deep-dives on AI and automation - born in the Netherlands, open to the world.",
+            "The home for AI communities. Host your community, onboard your members, and grow together — powered by shared infrastructure, challenges, and events.",
         }}
       />
       {/* Hero with ASCII Landscape */}
@@ -150,6 +152,7 @@ export default async function Home() {
 
       {/* Stats Ticker */}
       <div className="border-border grid grid-cols-2 gap-y-1 border-y px-4 py-3 sm:flex sm:items-center sm:gap-y-0 sm:overflow-x-auto sm:px-0 sm:py-2.5">
+        <StatItem label="COMMUNITIES" value={String(communityCount)} />
         <StatItem label="MEMBERS" value={String(memberCount)} />
         <StatItem label="EVENTS" value={String(eventCount)} />
         <StatItem label="WORKSHOPS" value={String(workshopCount)} />
@@ -348,7 +351,7 @@ export default async function Home() {
             {
               title: t("join.attend.title"),
               desc: t("join.attend.description"),
-              href: session?.user ? ("/dashboard/agent" as const) : ("/community" as const),
+              href: session?.user ? ("/dashboard/agent" as const) : ("/communities" as const),
             },
             {
               title: t("join.challenge.title"),

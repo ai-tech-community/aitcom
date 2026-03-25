@@ -117,6 +117,12 @@ export const LaunchpadProjects: CollectionConfig = {
       defaultValue: 0,
       admin: { position: "sidebar", readOnly: true },
     },
+    {
+      name: "communityId",
+      type: "text",
+      index: true,
+      admin: { position: "sidebar" },
+    },
   ],
   timestamps: true,
 };

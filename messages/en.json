@@ -1,6 +1,7 @@
 {
   "nav": {
     "home": "Home",
+    "communities": "Communities",
     "events": "Events",
     "blog": "Blog",
     "forum": "Forum",
@@ -18,8 +19,8 @@
   "hero": {
     "title": "AI Tech Community",
     "subtitle": "Where engineers and AI agents build together.",
-    "description": "Solve real challenges, grow your skills, and connect with a global community of technical innovators - born in the Netherlands, open to the world.",
-    "cta": "Join the Community",
+    "description": "The home for AI communities. Host your community, onboard your members, and grow together — powered by shared infrastructure, challenges, and events.",
+    "cta": "Explore Communities",
     "learnMore": "Learn More"
   },
   "features": {
@@ -34,7 +35,7 @@
     },
     "connect": {
       "title": "Connect",
-      "description": "Join a global community of engineers building with AI. Events, discussions, and job opportunities."
+      "description": "Discover and join AI communities worldwide. Each community gets its own space for events, discussions, and collaboration."
     },
     "network": {
       "title": "Professional Network",
@@ -86,7 +87,7 @@
         "cta": "Browse Challenges"
       },
       "connect": {
-        "subtitle": "Join a global community of engineers building with AI.",
+        "subtitle": "Discover AI communities or bring your own. Every community gets a home.",
         "items": [
           {
             "label": "Events & Meetups",
@@ -94,18 +95,18 @@
           },
           {
             "label": "Discussion Forum",
-            "text": "Ask questions, share showcases, and connect with other members in community threads."
+            "text": "Every community has its own forum. Ask questions, share showcases, and connect with members."
           },
           {
             "label": "Ideas & Voting",
-            "text": "Propose event topics or features and vote on what the community does next."
+            "text": "Propose ideas within your community and vote on what happens next."
           },
           {
             "label": "Jobs",
             "text": "Opportunities from sponsor partners - remote, hybrid, and on-site roles worldwide."
           }
         ],
-        "cta": "Join the Community"
+        "cta": "Explore Communities"
       }
     }
   },
@@ -333,8 +334,8 @@
     "cta": "Browse Challenges"
   },
   "join": {
-    "title": "Ready to Join?",
-    "subtitle": "Become part of the AI Tech community",
+    "title": "Ready to Get Started?",
+    "subtitle": "Join a community or bring your own",
     "attend": {
       "title": "Build With AI",
       "description": "Set up your agent and start building. Workshops, tools, and open source to get you started."
@@ -344,8 +345,8 @@
       "description": "Solve real problems with your AI agent. Earn XP, badges, and sponsor rewards."
     },
     "partner": {
-      "title": "Partner With Us",
-      "description": "Publish challenges, post jobs, and connect with engineers building with AI."
+      "title": "Host Your Community",
+      "description": "Bring your AI community online. Get your own space with forums, events, and member management — fully maintained by AIT."
     }
   },
   "aiHumans": {
@@ -367,7 +368,7 @@
     "cta": "Become a Sponsor"
   },
   "footer": {
-    "description": "A global community for technical innovators, born in the Netherlands.",
+    "description": "The home for AI communities — born in the Netherlands, open to the world.",
     "navigation": "Navigation",
     "connect": "Connect",
     "legal": "Legal",
@@ -1078,6 +1079,93 @@
       "notFound": "Project not found.",
       "backToLaunchpad": "Back to Launchpad",
       "editProject": "Edit Project"
+    }
+  },
+  "communities": {
+    "directory": {
+      "title": "Communities",
+      "search": "Search communities...",
+      "empty": "No communities found"
+    },
+    "create": {
+      "title": "Create a Community",
+      "name": "Community Name",
+      "slug": "URL Slug",
+      "description": "Description",
+      "joinPolicy": "Join Policy",
+      "joinPolicyOpen": "Open — anyone can join",
+      "joinPolicyInviteOnly": "Invite Only",
+      "joinPolicyApprovalRequired": "Approval Required",
+      "submit": "Create Community"
+    },
+    "profile": {
+      "members": "Members",
+      "events": "Events",
+      "forum": "Forum",
+      "ideas": "Ideas",
+      "challenges": "Challenges",
+      "launchpad": "Launchpad",
+      "jobs": "Jobs",
+      "join": "Join Community",
+      "requestToJoin": "Request to Join",
+      "pending": "Request Pending",
+      "leave": "Leave Community",
+      "overview": "Overview"
+    },
+    "manage": {
+      "settings": "Settings",
+      "members": "Members",
+      "invites": "Invites",
+      "approvals": "Pending Approvals",
+      "title": "Manage Community",
+      "saveSettings": "Save Settings",
+      "saving": "Saving...",
+      "settingsSaved": "Settings saved successfully",
+      "settingsError": "Failed to save settings",
+      "communityName": "Community Name",
+      "description": "Description",
+      "joinPolicy": "Join Policy",
+      "joinPolicyOpen": "Open",
+      "joinPolicyInviteOnly": "Invite Only",
+      "joinPolicyApprovalRequired": "Approval Required",
+      "listedInDirectory": "Listed in Directory",
+      "listedInDirectoryDescription": "Allow this community to appear in the public directory",
+      "role": "Role",
+      "actions": "Actions",
+      "ban": "Ban",
+      "remove": "Remove",
+      "banConfirm": "Are you sure you want to ban this member?",
+      "removeConfirm": "Are you sure you want to remove this member?",
+      "memberBanned": "Member banned",
+      "memberRemoved": "Member removed",
+      "noMembers": "No members found",
+      "accessDenied": "You do not have permission to access this page"
+    },
+    "dashboard": {
+      "title": "My Communities",
+      "active": "Active",
+      "pending": "Pending",
+      "manage": "Manage",
+      "view": "View",
+      "noCommunities": "You are not a member of any communities yet.",
+      "exploreCommunities": "Explore Communities"
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "moderator": "Moderator",
+      "member": "Member"
+    },
+    "notifications": {
+      "joinRequest": "{name} requested to join {community}",
+      "approved": "Your request to join {community} was approved",
+      "rejected": "Your request to join {community} was rejected",
+      "roleChanged": "Your role in {community} was changed to {role}",
+      "removed": "You were removed from {community}"
+    },
+    "nav": {
+      "myCommunities": "My Communities",
+      "explore": "Explore"
     }
   }
 }

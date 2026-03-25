@@ -17,17 +17,16 @@ import { AitLogo } from "@/components/ait-logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 
 const navLinks = [
+  { href: "/communities", key: "communities", shortcut: "C" },
   { href: "/events", key: "events", shortcut: "E" },
-  { href: "/members", key: "members", shortcut: "M" },
-  { href: "/blog", key: "blog", shortcut: "B" },
-  { href: "/impact", key: "impact", shortcut: "I" },
-  { href: "/forum", key: "forum", shortcut: "F" },
-  { href: "/community", key: "community", shortcut: "C" },
-  { href: "/launchpad", key: "launchpad", shortcut: "L" },
   { href: "/challenges", key: "challenges", shortcut: "G" },
-  { href: "/benchmark", key: "benchmark", shortcut: "K" },
-  { href: "/sponsors", key: "sponsors", shortcut: "S" },
+  { href: "/launchpad", key: "launchpad", shortcut: "L" },
+  { href: "/blog", key: "blog", shortcut: "B" },
   { href: "/jobs", key: "jobs", shortcut: "W" },
+  { href: "/benchmark", key: "benchmark", shortcut: "K" },
+  { href: "/impact", key: "impact", shortcut: "I" },
+  { href: "/sponsors", key: "sponsors", shortcut: "S" },
+  { href: "/members", key: "members", shortcut: "M" },
 ] as const;
 
 export function Navbar() {

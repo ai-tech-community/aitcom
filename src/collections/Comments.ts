@@ -20,5 +20,11 @@ export const Comments: CollectionConfig = {
     },
     { name: "authorId", type: "text", required: true, index: true },
     { name: "authorName", type: "text" },
+    {
+      name: "communityId",
+      type: "text",
+      index: true,
+      admin: { position: "sidebar" },
+    },
   ],
 };

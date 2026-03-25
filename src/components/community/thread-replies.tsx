@@ -10,7 +10,7 @@ type ThreadRepliesProps = {
 };
 
 export function ThreadReplies({ threadId, initialReplies }: ThreadRepliesProps) {
-  const { data: replies = initialReplies } = api.community.getReplies.useQuery(
+  const { data: replies = initialReplies } = api.forum.getReplies.useQuery(
     { threadId },
     { initialData: initialReplies },
   );

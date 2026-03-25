@@ -22,6 +22,7 @@ export async function logActivity(
     metadata?: Record<string, unknown>;
     collabSessionId?: string;
     recipientId?: string;
+    communityId?: string;
   },
 ) {
   const personalityLabel = classifyPersonality(event.action);
@@ -36,6 +37,7 @@ export async function logActivity(
     collabSessionId: event.collabSessionId ?? null,
     contextType: contextType ?? null,
     recipientId: event.recipientId ?? null,
+    communityId: event.communityId,
     metadata: {
       ...event.metadata,
       ...(personalityLabel ? { personalityLabel } : {}),

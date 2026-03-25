@@ -4,10 +4,22 @@ import { routing } from "./i18n/routing";
 
 const intlMiddleware = createMiddleware(routing);
 
-const protectedPaths = ["/dashboard"];
+const protectedPaths = ["/dashboard", "/join"];
 
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Redirect old /community/* routes to /communities/ait/forum/*
+  const communityMatch = /^\/([a-z]{2})\/community(?:\/(.*))?$/.exec(pathname);
+  if (communityMatch) {
+    const locale = communityMatch[1];
+    const rest = communityMatch[2] ? `/${communityMatch[2]}` : "";
+    return NextResponse.redirect(
+      new URL(`/${locale}/communities/ait/forum${rest}`, request.url),
+      301,
+    );
+  }
+
   const pathWithoutLocale = pathname.replace(/^\/(en|nl)/, "") || "/";
   const isProtected = protectedPaths.some((p) =>
     pathWithoutLocale.startsWith(p),

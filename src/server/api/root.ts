@@ -1,4 +1,5 @@
 import { activityRouter } from "@/server/api/routers/activity";
+import { communitiesRouter } from "@/server/api/routers/communities";
 import { commentsRouter } from "@/server/api/routers/comments";
 import { benchmarkRouter } from "@/server/api/routers/benchmark";
 import { launchpadRouter } from "@/server/api/routers/launchpad";
@@ -8,7 +9,7 @@ import { articlesRouter } from "@/server/api/routers/articles";
 import { challengeChannelRouter } from "@/server/api/routers/challenge-channel";
 import { challengeEngineRouter } from "@/server/api/routers/challenge-engine";
 import { challengesRouter } from "@/server/api/routers/challenges";
-import { communityRouter } from "@/server/api/routers/community";
+import { forumRouter } from "@/server/api/routers/forum";
 import { eventsRouter } from "@/server/api/routers/events";
 import { membersRouter } from "@/server/api/routers/members";
 import { inboxRouter } from "@/server/api/routers/inbox";
@@ -28,7 +29,7 @@ export const appRouter = createTRPCRouter({
   post: postRouter,
   events: eventsRouter,
   members: membersRouter,
-  community: communityRouter,
+  forum: forumRouter,
   sponsors: sponsorsRouter,
   articles: articlesRouter,
   agentManagement: agentManagementRouter,
@@ -44,6 +45,7 @@ export const appRouter = createTRPCRouter({
   benchmark: benchmarkRouter,
   launchpad: launchpadRouter,
   comments: commentsRouter,
+  communities: communitiesRouter,
 });
 
 // export type definition of API
