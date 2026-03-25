@@ -136,7 +136,14 @@
     "article": "Article",
     "tutorial": "Tutorial",
     "talkRecording": "Talk Recording",
-    "backToBlog": "← Back to blog"
+    "backToBlog": "← Back to blog",
+    "pagination": {
+      "prev": "PREV",
+      "next": "NEXT"
+    },
+    "readingTime": "{minutes} MIN",
+    "tableOfContents": "CONTENTS",
+    "rssFeed": "RSS"
   },
   "community": {
     "title": "Community",

@@ -136,7 +136,14 @@
     "article": "Artikel",
     "tutorial": "Tutorial",
     "talkRecording": "Lezing opname",
-    "backToBlog": "← Terug naar blog"
+    "backToBlog": "← Terug naar blog",
+    "pagination": {
+      "prev": "VORIGE",
+      "next": "VOLGENDE"
+    },
+    "readingTime": "{minutes} MIN",
+    "tableOfContents": "INHOUD",
+    "rssFeed": "RSS"
   },
   "community": {
     "title": "Community",
