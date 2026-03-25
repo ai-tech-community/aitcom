@@ -22,6 +22,9 @@ The community backend has ~10 fully implemented tRPC procedures with no correspo
 - Thread/reply editing, event editing, ownership transfer UI (Batch 2)
 - Jobs and Launchpad (intentionally global, not community-scoped)
 
+### Important data model change
+7. Convert global `CommunityRules` to per-community collection with admin editing UI
+
 ## 1. Settings Page Redesign
 
 ### Current state
@@ -39,11 +42,12 @@ Convert `/communities/[slug]/settings` into a layout with sidebar navigation.
 /communities/[slug]/settings/general   → existing SettingsForm
 /communities/[slug]/settings/members   → member management (replaces manage/members)
 /communities/[slug]/settings/invites   → invite link management (new)
+/communities/[slug]/settings/rules     → community rules editor (new)
 ```
 
 **Layout (`settings/layout.tsx`):**
 - Left sidebar (w-48, hidden on mobile → hamburger or top tabs on mobile)
-- Sidebar items: General, Members, Invites
+- Sidebar items: General, Members, Invites, Rules
 - "Ownership" item only shown if user role is `owner`. Do NOT create the ownership page in this batch — just add the sidebar link pointing to `/settings/ownership` (which will 404 until Batch 2). This signals the feature is coming without building it prematurely.
 - Content area fills remaining space
 - Access control: only `owner` or `admin` roles can access
@@ -129,7 +133,95 @@ Convert `/communities/[slug]/settings` into a layout with sidebar navigation.
    ```
    Return all invites (including expired/used-up) so admins have full visibility. Mark expired/maxed as inactive in the UI.
 
-## 4. Forum Thread Moderation
+## 4. Per-Community Rules
+
+### Current state (broken)
+
+`CommunityRules` is a Payload **Global** (singleton) — one set of rules for the entire platform. `RulesAcceptance` tracks acceptance per user+version but has no `communityId`. The `getRules`/`acceptRules` procedures in the forum router fetch the global, not per-community rules. This means all communities share the same rules, which defeats the purpose of multi-tenancy.
+
+### Data model changes
+
+**Convert `CommunityRules` from GlobalConfig to CollectionConfig:**
+
+Current (`src/collections/CommunityRules.ts`): `GlobalConfig` with fields: version, effectiveDate, sections[].
+New: `CollectionConfig` with the same fields **plus** `communityId` (text, required, indexed).
+
+Fields to keep: `version`, `effectiveDate`, `sections[]` (with title, slug, icon, content — all localized fields stay localized).
+Fields to add: `communityId` (text, required, indexed) — links to the Drizzle `communities` table by ID.
+
+Each community gets its own rules document. If a community has no rules document, forum/idea submission is allowed without acceptance (rules are optional per community).
+
+**Update `RulesAcceptance`:**
+
+Add `communityId` (text, required, indexed) to track which community's rules were accepted. The unique constraint becomes: userId + rulesVersion + communityId.
+
+### Settings UI
+
+**Page:** `/communities/[slug]/settings/rules`
+**Component:** `src/components/communities/settings/rules-settings.tsx`
+
+**Rules editor:**
+- Shows current rules version and effective date (if rules exist for this community)
+- Section list: each section shows title, icon, and a rich text content field
+- Admin can:
+  - **Add section** — append a new section with title, slug (auto-generated from title), icon select, rich text content
+  - **Edit section** — inline editing of title, icon, content
+  - **Remove section** — delete a section with confirmation
+  - **Reorder sections** — drag handle or up/down buttons
+- **Publish** button: increments version number, sets effectiveDate to now, saves to Payload. This forces all members to re-accept.
+- If no rules exist yet: show empty state with "Create Rules" button that creates the initial document
+
+Keep it simple — no draft/preview system. The admin edits directly and publishes.
+
+For the rich text editor: reuse whatever rich text component is already used in the forum's create-thread-form (likely Payload's lexical editor or a simple textarea with markdown).
+
+### Backend changes
+
+1. **Convert `CommunityRules` collection:**
+   - Change from `GlobalConfig` to `CollectionConfig`
+   - Add `communityId` field
+   - Update `payload.config.ts`: move from `globals` array to `collections` array
+
+2. **Update `RulesAcceptance` collection:**
+   - Add `communityId` field (text, required, indexed)
+
+3. **Update `getRules` procedure:**
+   ```
+   Input: { communitySlug: string, locale?: "en" | "nl" }
+   ```
+   - Look up community by slug to get ID
+   - Query `community-rules` collection filtered by `communityId`
+   - If no rules document exists, return `{ rules: null, hasAccepted: true }` (no rules = no acceptance needed)
+   - If rules exist, check `rules-acceptance` for userId + version + communityId
+
+4. **Update `acceptRules` procedure:**
+   ```
+   Input: { communitySlug: string }
+   ```
+   - Look up community rules by communityId
+   - Create `rules-acceptance` record with communityId
+
+5. **New `upsertRules` procedure (in communities or forum router):**
+   ```
+   Input: { slug: string, sections: Array<{ title, slug, icon, content }> }
+   Auth: communityProcedure, admin/owner only
+   Action:
+     - If no rules doc exists for this community: create one (version: 1, effectiveDate: now)
+     - If rules doc exists: update sections, increment version, set effectiveDate to now
+   ```
+
+6. **Update guards in `createThread`, `addReply`, `submitIdea`, `toggleVote`:**
+   - These currently check global rules. Update to check community-specific rules.
+   - If no rules exist for the community, skip the acceptance check.
+
+### Migration
+
+The existing global rules data needs to be handled:
+- If there's meaningful content in the global: create a migration that copies it as the rules for each existing community
+- If the global is just a placeholder: delete it and let each community create their own
+- Remove the global from `payload.config.ts`
+
+## 5. Forum Thread Moderation
 
 ### Thread card changes (`src/components/forum/thread-card.tsx`)
 
@@ -151,7 +243,7 @@ Convert `/communities/[slug]/settings` into a layout with sidebar navigation.
 
 The forum page (`src/components/forum/forum-page.tsx`) needs to accept and pass `memberRole` to each `ThreadCard`.
 
-## 5. Idea Status Management
+## 6. Idea Status Management
 
 ### Idea card changes (`/communities/[slug]/ideas/page.tsx`)
 
@@ -175,7 +267,7 @@ The forum page (`src/components/forum/forum-page.tsx`) needs to accept and pass 
 
 The ideas page needs access to the current user's community role. It can get this from `getMyCommunities` (same pattern as the settings page).
 
-## 6. Route Cleanup
+## 7. Route Cleanup
 
 ### Delete these files/directories:
 - `src/app/[locale]/dashboard/communities/[slug]/manage/settings/page.tsx`
@@ -200,14 +292,20 @@ The ideas page needs access to the current user's community role. It can get thi
 | `src/components/communities/settings/settings-sidebar.tsx` | Sidebar nav component |
 | `src/components/communities/settings/members-settings.tsx` | Members tab content |
 | `src/components/communities/settings/invites-settings.tsx` | Invites management content |
+| `src/app/[locale]/communities/[slug]/settings/rules/page.tsx` | Rules editor page |
+| `src/components/communities/settings/rules-settings.tsx` | Rules editor content |
 
 ## Modified Files Summary
 
 | File | Change |
 |------|--------|
 | `src/app/[locale]/communities/[slug]/settings/page.tsx` | Convert to redirect to `/settings/general` |
-| `src/server/api/routers/communities.ts` | Add `status` param to `getMembers`, add `unbanMember`, add `getInviteLinks` |
-| `src/server/api/routers/forum.ts` | Add `updateIdeaStatus` procedure |
+| `src/server/api/routers/communities.ts` | Add `status` param to `getMembers`, add `unbanMember`, add `getInviteLinks`, add `upsertRules` |
+| `src/server/api/routers/forum.ts` | Add `updateIdeaStatus`, update `getRules`/`acceptRules` to per-community, update guards |
+| `src/collections/CommunityRules.ts` | Convert from GlobalConfig to CollectionConfig, add `communityId` |
+| `src/collections/RulesAcceptance.ts` | Add `communityId` field |
+| `src/payload.config.ts` | Move CommunityRules from globals to collections |
+| `src/components/community/rules-provider.tsx` | Pass communitySlug, update to use per-community rules |
 | `src/components/forum/thread-card.tsx` | Add kebab menu for pin/lock |
 | `src/components/forum/forum-page.tsx` | Accept and pass `memberRole` prop |
 | `src/components/forum/thread-detail.tsx` | Locked thread banner, kebab menu |
@@ -229,6 +327,7 @@ The ideas page needs access to the current user's community role. It can get thi
 communities.settings.sidebar.general
 communities.settings.sidebar.members
 communities.settings.sidebar.invites
+communities.settings.sidebar.rules
 communities.settings.sidebar.ownership
 communities.settings.members.activeTab
 communities.settings.members.pendingTab
@@ -270,4 +369,18 @@ community.ideas.markImplemented
 community.ideas.markRejected
 community.ideas.reopen
 community.ideas.statusChanged
+communities.settings.rules.title
+communities.settings.rules.empty
+communities.settings.rules.create
+communities.settings.rules.publish
+communities.settings.rules.publishConfirm
+communities.settings.rules.published
+communities.settings.rules.addSection
+communities.settings.rules.removeSection
+communities.settings.rules.removeSectionConfirm
+communities.settings.rules.sectionTitle
+communities.settings.rules.sectionContent
+communities.settings.rules.sectionIcon
+communities.settings.rules.currentVersion
+communities.settings.rules.effectiveDate
 ```
