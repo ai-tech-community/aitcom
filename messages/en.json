@@ -1138,7 +1138,8 @@
       "removeConfirm": "Are you sure you want to remove this member?",
       "memberBanned": "Member banned",
       "memberRemoved": "Member removed",
-      "noMembers": "No members found"
+      "noMembers": "No members found",
+      "accessDenied": "You do not have permission to access this page"
     },
     "dashboard": {
       "title": "My Communities",

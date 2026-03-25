@@ -4,7 +4,7 @@ import { routing } from "./i18n/routing";
 
 const intlMiddleware = createMiddleware(routing);
 
-const protectedPaths = ["/dashboard"];
+const protectedPaths = ["/dashboard", "/join"];
 
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

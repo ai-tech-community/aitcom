@@ -1138,7 +1138,8 @@
       "removeConfirm": "Weet je zeker dat je dit lid wilt verwijderen?",
       "memberBanned": "Lid geblokkeerd",
       "memberRemoved": "Lid verwijderd",
-      "noMembers": "Geen leden gevonden"
+      "noMembers": "Geen leden gevonden",
+      "accessDenied": "Je hebt geen toegang tot deze pagina"
     },
     "dashboard": {
       "title": "Mijn Communities",

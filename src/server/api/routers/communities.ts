@@ -1,6 +1,6 @@
 // src/server/api/routers/communities.ts
 import { z } from "zod";
-import { and, eq, gt, isNull, ilike, sql, desc, count } from "drizzle-orm";
+import { and, eq, isNull, ilike, sql, desc, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
@@ -360,6 +360,14 @@ export const communitiesRouter = createTRPCRouter({
         }
         if (existing.status === "pending_approval") {
           throw new TRPCError({ code: "CONFLICT", message: "Request already pending" });
+        }
+        if (existing.status === "invited") {
+          // Already invited — update to pending_approval since they're requesting via the approval flow
+          await ctx.db
+            .update(communityMemberships)
+            .set({ status: "pending_approval" })
+            .where(eq(communityMemberships.id, existing.id));
+          return { success: true };
         }
       }
 

@@ -241,15 +241,3 @@ export const communityProcedure = t.procedure
   .use(timingMiddleware)
   .use(communityAuth);
 
-/**
- * Community procedure that requires active membership.
- * Use for procedures where non-members should be rejected outright.
- */
-export const communityMemberProcedure = communityProcedure.use(async ({ ctx, next }) => {
-  if (!ctx.communityRole) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Membership required" });
-  }
-  return next({
-    ctx: { ...ctx, communityRole: ctx.communityRole },
-  });
-});

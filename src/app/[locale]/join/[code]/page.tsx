@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use, useEffect, useRef } from "react";
 import { api } from "@/trpc/react";
 import { useRouter } from "@/i18n/navigation";
 import { Loader2 } from "lucide-react";
@@ -13,6 +13,8 @@ export default function JoinByInvitePage({
   const { code } = use(params);
   const router = useRouter();
 
+  const hasFired = useRef(false);
+
   const mutation = api.communities.acceptInvite.useMutation({
     onSuccess: (data) => {
       router.replace(`/communities/${data.communitySlug}`);
@@ -20,6 +22,8 @@ export default function JoinByInvitePage({
   });
 
   useEffect(() => {
+    if (hasFired.current) return;
+    hasFired.current = true;
     mutation.mutate({ code });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);

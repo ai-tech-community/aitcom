@@ -24,6 +24,13 @@ export default function ManageMembersPage({
   const tRoles = useTranslations("communities.roles");
   const utils = api.useUtils();
 
+  const { data: myCommunities, isLoading: isLoadingRole } =
+    api.communities.getMyCommunities.useQuery();
+
+  const myMembership = myCommunities?.find((c) => c.slug === slug);
+  const isAdminOrOwner =
+    myMembership?.role === "owner" || myMembership?.role === "admin";
+
   const { data: membersData, isLoading } =
     api.communities.getMembers.useQuery({ slug, limit: 50 });
 
@@ -53,10 +60,20 @@ export default function ManageMembersPage({
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingRole) {
     return (
       <div className="flex items-center justify-center py-16">
         <Spinner className="size-6" />
+      </div>
+    );
+  }
+
+  if (!isAdminOrOwner) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <p className="text-muted-foreground text-sm">
+          {t("accessDenied")}
+        </p>
       </div>
     );
   }
