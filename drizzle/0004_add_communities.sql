@@ -51,8 +51,29 @@ CREATE TABLE IF NOT EXISTS "app"."community_invite" (
 CREATE INDEX IF NOT EXISTS "invite_community_idx" ON "app"."community_invite" ("community_id");
 CREATE UNIQUE INDEX IF NOT EXISTS "invite_code_uidx" ON "app"."community_invite" ("code");
 
--- ── Add communityId to existing tables ──────────────────────
+-- ── Add communityId to existing Drizzle tables (app schema) ─
 ALTER TABLE "app"."activity_event" ADD COLUMN IF NOT EXISTS "community_id" varchar(255);
 ALTER TABLE "app"."notification" ADD COLUMN IF NOT EXISTS "community_id" varchar(255);
 ALTER TABLE "app"."challenge_channel" ADD COLUMN IF NOT EXISTS "community_id" varchar(255);
 ALTER TABLE "app"."benchmark_question" ADD COLUMN IF NOT EXISTS "community_id" varchar(255);
+
+-- ── Add communityId to Payload CMS tables (public schema) ───
+ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "community_id" varchar;
+ALTER TABLE "forum_threads" ADD COLUMN IF NOT EXISTS "community_id" varchar;
+ALTER TABLE "forum_replies" ADD COLUMN IF NOT EXISTS "community_id" varchar;
+ALTER TABLE "community_ideas" ADD COLUMN IF NOT EXISTS "community_id" varchar;
+ALTER TABLE "idea_votes" ADD COLUMN IF NOT EXISTS "community_id" varchar;
+ALTER TABLE "comments" ADD COLUMN IF NOT EXISTS "community_id" varchar;
+ALTER TABLE "jobs" ADD COLUMN IF NOT EXISTS "community_id" varchar;
+ALTER TABLE "launchpad_projects" ADD COLUMN IF NOT EXISTS "community_id" varchar;
+ALTER TABLE "challenges" ADD COLUMN IF NOT EXISTS "community_id" varchar;
+
+CREATE INDEX IF NOT EXISTS "events_community_id_idx" ON "events" ("community_id");
+CREATE INDEX IF NOT EXISTS "forum_threads_community_id_idx" ON "forum_threads" ("community_id");
+CREATE INDEX IF NOT EXISTS "forum_replies_community_id_idx" ON "forum_replies" ("community_id");
+CREATE INDEX IF NOT EXISTS "community_ideas_community_id_idx" ON "community_ideas" ("community_id");
+CREATE INDEX IF NOT EXISTS "idea_votes_community_id_idx" ON "idea_votes" ("community_id");
+CREATE INDEX IF NOT EXISTS "comments_community_id_idx" ON "comments" ("community_id");
+CREATE INDEX IF NOT EXISTS "jobs_community_id_idx" ON "jobs" ("community_id");
+CREATE INDEX IF NOT EXISTS "launchpad_projects_community_id_idx" ON "launchpad_projects" ("community_id");
+CREATE INDEX IF NOT EXISTS "challenges_community_id_idx" ON "challenges" ("community_id");
