@@ -326,7 +326,7 @@ export function ArticleComments({
         <CommentForm
           articleId={articleId}
           placeholder={t("placeholder")}
-          onSuccess={() => {}}
+          onSuccess={() => undefined}
         />
       ) : (
         <p className="text-muted-foreground font-mono text-xs">
