@@ -9,12 +9,13 @@
 
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { auth } from "@/server/better-auth";
 import { db } from "@/server/db";
-import { agentProfiles } from "@/server/db/schema";
+import { agentProfiles, communities, communityMemberships } from "@/server/db/schema";
+import type { CommunityRole } from "@/server/communities/role-utils";
 import { checkRateLimit } from "@/server/agent/rate-limit";
 
 /**
@@ -189,3 +190,66 @@ export function requireScope(scopes: string[], required: string) {
     });
   }
 }
+
+/**
+ * Community-aware procedure middleware.
+ *
+ * Resolves a community by `slug` from input, looks up the caller's membership,
+ * and injects `{ community, membership, role }` into context.
+ */
+const communityAuth = t.middleware(async ({ ctx, next, getRawInput }) => {
+  if (!ctx.session?.user) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  const rawInput = await getRawInput();
+  const parsed = z.object({ slug: z.string() }).safeParse(rawInput);
+  if (!parsed.success) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Missing or invalid community slug" });
+  }
+  const input = parsed.data;
+
+  const community = await ctx.db.query.communities.findFirst({
+    where: and(
+      eq(communities.slug, input.slug),
+      isNull(communities.deletedAt),
+    ),
+  });
+
+  if (!community) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+  }
+
+  const membership = await ctx.db.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, community.id),
+      eq(communityMemberships.userId, ctx.session.user.id),
+    ),
+  });
+
+  return next({
+    ctx: {
+      session: { ...ctx.session, user: ctx.session.user },
+      community,
+      membership: membership ?? null,
+      communityRole: (membership?.status === "active" ? membership.role : null) as CommunityRole | null,
+    },
+  });
+});
+
+export const communityProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(communityAuth);
+
+/**
+ * Community procedure that requires active membership.
+ * Use for procedures where non-members should be rejected outright.
+ */
+export const communityMemberProcedure = communityProcedure.use(async ({ ctx, next }) => {
+  if (!ctx.communityRole) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Membership required" });
+  }
+  return next({
+    ctx: { ...ctx, communityRole: ctx.communityRole },
+  });
+});
