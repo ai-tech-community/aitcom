@@ -14,14 +14,31 @@ export default function ManageSettingsPage({
   const { slug } = use(params);
   const t = useTranslations("communities.manage");
 
+  const { data: myCommunities, isLoading: isLoadingRole } =
+    api.communities.getMyCommunities.useQuery();
+
+  const myMembership = myCommunities?.find((c) => c.slug === slug);
+  const isAdminOrOwner =
+    myMembership?.role === "owner" || myMembership?.role === "admin";
+
   const { data: community, isLoading } = api.communities.getBySlug.useQuery({
     slug,
   });
 
-  if (isLoading) {
+  if (isLoading || isLoadingRole) {
     return (
       <div className="flex items-center justify-center py-16">
         <Spinner className="size-6" />
+      </div>
+    );
+  }
+
+  if (!isAdminOrOwner) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <p className="text-muted-foreground text-sm">
+          {t("accessDenied")}
+        </p>
       </div>
     );
   }
@@ -40,6 +57,7 @@ export default function ManageSettingsPage({
       </div>
 
       <SettingsForm
+        key={slug}
         slug={slug}
         initialData={{
           name: community.name,

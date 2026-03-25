@@ -29,7 +29,7 @@ export function CommunityNav({ slug }: CommunityNavProps) {
   ];
 
   return (
-    <div className="border-b bg-white/40">
+    <div className="border-b bg-background/40">
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label="Community navigation">
           {navItems.map((item) => {

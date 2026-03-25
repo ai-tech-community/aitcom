@@ -1,5 +1,6 @@
 "use client";
 import { use } from "react";
+import Image from "next/image";
 import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,7 @@ export default function CommunityMembersPage({ params }: { params: Promise<{ slu
             <div key={member.userId} className="flex items-center justify-between rounded-lg border p-3">
               <div className="flex items-center gap-3">
                 {member.image ? (
-                  <img src={member.image} alt={member.displayName ?? ""} className="h-10 w-10 rounded-full" />
+                  <Image src={member.image} alt={member.displayName ?? ""} width={40} height={40} className="h-10 w-10 rounded-full" />
                 ) : (
                   <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-full font-bold">
                     {(member.displayName ?? "?")[0]}

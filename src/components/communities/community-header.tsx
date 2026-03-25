@@ -25,7 +25,7 @@ export function CommunityHeader({ community, membershipStatus }: CommunityHeader
     .toUpperCase();
 
   return (
-    <div className="border-b bg-white/60 backdrop-blur-sm">
+    <div className="border-b bg-background/60 backdrop-blur-sm">
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">

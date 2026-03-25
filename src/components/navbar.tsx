@@ -26,6 +26,7 @@ const navLinks = [
   { href: "/benchmark", key: "benchmark", shortcut: "K" },
   { href: "/impact", key: "impact", shortcut: "I" },
   { href: "/sponsors", key: "sponsors", shortcut: "S" },
+  { href: "/members", key: "members", shortcut: "M" },
 ] as const;
 
 export function Navbar() {
