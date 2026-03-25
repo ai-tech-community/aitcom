@@ -555,4 +555,425 @@ export const communitiesRouter = createTRPCRouter({
 
     return memberships;
   }),
+
+  // ─── Admin Procedures ─────────────────────────────────────────────
+
+  /** Update community settings (admin+) */
+  updateSettings: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        name: z.string().min(2).max(100).optional(),
+        description: z.string().max(500).optional(),
+        logoUrl: z.string().url().optional().nullable(),
+        joinPolicy: z.enum(["open", "invite_only", "approval_required"]).optional(),
+        isListedInDirectory: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Only owner/admin can change settings
+      if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const updates: Record<string, unknown> = {};
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.description !== undefined) updates.description = input.description;
+      if (input.logoUrl !== undefined) updates.logoUrl = input.logoUrl;
+      if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
+      if (input.isListedInDirectory !== undefined) updates.isListedInDirectory = input.isListedInDirectory;
+
+      // Note: slug is NOT auto-updated on name change to avoid breaking
+      // existing URLs and bookmarks. Slug is set once at community creation.
+
+      const [updated] = await ctx.db
+        .update(communities)
+        .set(updates)
+        .where(eq(communities.id, ctx.community.id))
+        .returning();
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.settings_updated",
+        targetType: "community",
+        targetId: ctx.community.id,
+        metadata: updates,
+      });
+
+      return updated!;
+    }),
+
+  /** Approve a pending membership request */
+  approveRequest: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        userId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole || ctx.communityRole === "member") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const [updated] = await ctx.db
+        .update(communityMemberships)
+        .set({ status: "active" })
+        .where(
+          and(
+            eq(communityMemberships.communityId, ctx.community.id),
+            eq(communityMemberships.userId, input.userId),
+            eq(communityMemberships.status, "pending_approval"),
+          ),
+        )
+        .returning();
+
+      if (!updated) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No pending request found" });
+      }
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.member_approved",
+        targetType: "community",
+        targetId: ctx.community.id,
+        recipientId: input.userId,
+      });
+
+      return { success: true };
+    }),
+
+  /** Reject a pending membership request */
+  rejectRequest: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        userId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole || ctx.communityRole === "member") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const deleted = await ctx.db
+        .delete(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, ctx.community.id),
+            eq(communityMemberships.userId, input.userId),
+            eq(communityMemberships.status, "pending_approval"),
+          ),
+        )
+        .returning();
+
+      if (deleted.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No pending request found" });
+      }
+
+      return { success: true };
+    }),
+
+  /** Change a member's role */
+  setMemberRole: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        userId: z.string(),
+        role: z.enum(["admin", "moderator", "member"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const target = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, ctx.community.id),
+          eq(communityMemberships.userId, input.userId),
+          eq(communityMemberships.status, "active"),
+        ),
+      });
+
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      // Check hierarchy: actor must outrank target's current AND new role
+      if (
+        !canManageRole(ctx.communityRole, target.role as CommunityRole) ||
+        !canManageRole(ctx.communityRole, input.role)
+      ) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
+      }
+
+      await ctx.db
+        .update(communityMemberships)
+        .set({ role: input.role })
+        .where(eq(communityMemberships.id, target.id));
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.role_changed",
+        targetType: "community",
+        targetId: ctx.community.id,
+        recipientId: input.userId,
+        metadata: { from: target.role, to: input.role },
+      });
+
+      return { success: true };
+    }),
+
+  /** Transfer ownership to another active member (owner only) */
+  transferOwnership: communityProcedure
+    .input(z.object({ slug: z.string(), userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.communityRole !== "owner") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only owners can transfer ownership" });
+      }
+
+      if (input.userId === ctx.session.user.id) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot transfer to yourself" });
+      }
+
+      const target = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, ctx.community.id),
+          eq(communityMemberships.userId, input.userId),
+          eq(communityMemberships.status, "active"),
+        ),
+      });
+
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Target user is not an active member" });
+      }
+
+      // Promote target to owner, demote self to admin (atomic via transaction)
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(communityMemberships)
+          .set({ role: "owner" })
+          .where(eq(communityMemberships.id, target.id));
+
+        await tx
+          .update(communityMemberships)
+          .set({ role: "admin" })
+          .where(
+            and(
+              eq(communityMemberships.communityId, ctx.community.id),
+              eq(communityMemberships.userId, ctx.session.user.id),
+            ),
+          );
+      });
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.ownership_transferred",
+        targetType: "community",
+        targetId: ctx.community.id,
+        recipientId: input.userId,
+      });
+
+      return { success: true };
+    }),
+
+  /** Ban a member */
+  banMember: communityProcedure
+    .input(z.object({ slug: z.string(), userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const target = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, ctx.community.id),
+          eq(communityMemberships.userId, input.userId),
+        ),
+      });
+
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      if (!canManageRole(ctx.communityRole, target.role as CommunityRole)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      await ctx.db
+        .update(communityMemberships)
+        .set({ status: "banned" })
+        .where(eq(communityMemberships.id, target.id));
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.member_banned",
+        targetType: "community",
+        targetId: ctx.community.id,
+        recipientId: input.userId,
+      });
+
+      return { success: true };
+    }),
+
+  /** Remove a member */
+  removeMember: communityProcedure
+    .input(z.object({ slug: z.string(), userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const target = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, ctx.community.id),
+          eq(communityMemberships.userId, input.userId),
+          eq(communityMemberships.status, "active"),
+        ),
+      });
+
+      if (!target) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      if (!canManageRole(ctx.communityRole, target.role as CommunityRole)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      await ctx.db
+        .delete(communityMemberships)
+        .where(eq(communityMemberships.id, target.id));
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.member_removed",
+        targetType: "community",
+        targetId: ctx.community.id,
+        recipientId: input.userId,
+      });
+
+      return { success: true };
+    }),
+
+  /** Create an invite link */
+  createInviteLink: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        maxUses: z.number().int().positive().optional(),
+        expiresInDays: z.number().int().positive().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole || ctx.communityRole === "member") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const code = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+      const expiresAt = input.expiresInDays
+        ? new Date(Date.now() + input.expiresInDays * 86400000)
+        : null;
+
+      const [invite] = await ctx.db
+        .insert(communityInvites)
+        .values({
+          communityId: ctx.community.id,
+          code,
+          createdBy: ctx.session.user.id,
+          maxUses: input.maxUses ?? null,
+          expiresAt,
+        })
+        .returning();
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.invite_created",
+        targetType: "community",
+        targetId: ctx.community.id,
+      });
+
+      return invite!;
+    }),
+
+  /** Revoke an invite link */
+  revokeInviteLink: communityProcedure
+    .input(z.object({ slug: z.string(), inviteId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole || ctx.communityRole === "member") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const deleted = await ctx.db
+        .delete(communityInvites)
+        .where(
+          and(
+            eq(communityInvites.id, input.inviteId),
+            eq(communityInvites.communityId, ctx.community.id),
+          ),
+        )
+        .returning();
+
+      if (deleted.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      return { success: true };
+    }),
+
+  /** Invite a member directly by userId */
+  inviteMember: communityProcedure
+    .input(z.object({ slug: z.string(), userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole || ctx.communityRole === "member") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      // Check user exists
+      const targetUser = await ctx.db.query.user.findFirst({
+        where: eq(user.id, input.userId),
+      });
+      if (!targetUser) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      }
+
+      const existing = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, ctx.community.id),
+          eq(communityMemberships.userId, input.userId),
+        ),
+      });
+
+      if (existing?.status === "active") {
+        throw new TRPCError({ code: "CONFLICT", message: "Already a member" });
+      }
+
+      if (existing?.status === "banned") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User is banned" });
+      }
+
+      if (existing) {
+        await ctx.db
+          .update(communityMemberships)
+          .set({ status: "invited", invitedBy: ctx.session.user.id })
+          .where(eq(communityMemberships.id, existing.id));
+      } else {
+        await ctx.db.insert(communityMemberships).values({
+          communityId: ctx.community.id,
+          userId: input.userId,
+          role: "member",
+          status: "invited",
+          invitedBy: ctx.session.user.id,
+        });
+      }
+
+      return { success: true };
+    }),
 });
