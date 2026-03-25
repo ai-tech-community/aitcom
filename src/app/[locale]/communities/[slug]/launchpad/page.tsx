@@ -1,12 +1,7 @@
 "use client";
-import { useTranslations } from "next-intl";
+
+import { LaunchpadListing } from "@/components/launchpad/launchpad-listing";
 
 export default function CommunityLaunchpadPage() {
-  const t = useTranslations("communities.profile");
-  return (
-    <div>
-      <h2 className="text-xl font-semibold">{t("launchpad")}</h2>
-      <p className="text-muted-foreground mt-2">Coming soon.</p>
-    </div>
-  );
+  return <LaunchpadListing />;
 }
