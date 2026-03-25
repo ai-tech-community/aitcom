@@ -8,6 +8,18 @@ const protectedPaths = ["/dashboard"];
 
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Redirect old /community/* routes to /communities/ait/forum/*
+  const communityMatch = pathname.match(/^\/([a-z]{2})\/community(?:\/(.*))?$/);
+  if (communityMatch) {
+    const locale = communityMatch[1];
+    const rest = communityMatch[2] ? `/${communityMatch[2]}` : "";
+    return NextResponse.redirect(
+      new URL(`/${locale}/communities/ait/forum${rest}`, request.url),
+      301,
+    );
+  }
+
   const pathWithoutLocale = pathname.replace(/^\/(en|nl)/, "") || "/";
   const isProtected = protectedPaths.some((p) =>
     pathWithoutLocale.startsWith(p),
