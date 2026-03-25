@@ -138,7 +138,7 @@ export default buildConfig({
     "dev-secret-change-me",
   sharp,
   email: resendAdapter({
-    defaultFromAddress: 'info@mailer.klevox.com',
+    defaultFromAddress: 'info@mailer.aitcommunity.org',
     defaultFromName: 'AI Tech Community',
     apiKey: process.env.RESEND_API_KEY ?? '',
   }),

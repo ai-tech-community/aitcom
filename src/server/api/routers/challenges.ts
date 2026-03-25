@@ -12,6 +12,7 @@ import {
 const challengeIdInputSchema = z.object({ challengeId: z.number() });
 import { getPayloadClient } from "@/server/payload";
 import { logActivity, checkEnrollmentCompletion } from "@/server/agent/activity";
+import { sendChallengeSubmissionConfirmation } from "@/server/email";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import {
   challengeEnrollments,
@@ -906,6 +907,26 @@ export const challengesRouter = createTRPCRouter({
         collabSessionId: enrollment.progressLogThreadId ?? undefined,
         metadata: { title: input.title, templateBased: false },
       });
+
+      // Send submission confirmation email (non-blocking)
+      const userEmail = ctx.session.user.email;
+      if (userEmail) {
+        const displayName = ctx.session.user.name ?? userEmail.split("@")[0] ?? "there";
+        void (async () => {
+          const payload = await getPayloadClient();
+          const challenge = await payload.findByID({
+            collection: "challenges",
+            id: input.challengeId,
+            depth: 0,
+          });
+          await sendChallengeSubmissionConfirmation(
+            userEmail,
+            displayName,
+            challenge.title,
+            challenge.slug ?? String(input.challengeId),
+          );
+        })().catch(() => { /* non-blocking */ });
+      }
 
       return thread!;
     }),

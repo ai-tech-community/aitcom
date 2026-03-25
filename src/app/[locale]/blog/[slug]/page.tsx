@@ -5,7 +5,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { LexicalRenderer } from "@/lib/lexical";
+import { LexicalRenderer, extractHeadings } from "@/lib/lexical";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 
@@ -78,6 +78,9 @@ export default async function ArticleDetailPage({
   const tags = Array.isArray(article.tags)
     ? (article.tags as { id?: string; tag: string }[]).map((t) => t.tag)
     : [];
+
+  const headings = extractHeadings(article.content);
+  const showToc = headings.length >= 2;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -159,9 +162,37 @@ export default async function ArticleDetailPage({
         </div>
       )}
 
-      {/* Content */}
-      <div className="border-border mt-8 border-t pt-8">
-        <LexicalRenderer content={article.content} />
+      {/* Content area */}
+      <div className={`border-border mt-8 border-t pt-8 ${showToc ? "flex gap-8" : ""}`}>
+        {/* Article content */}
+        <div className={showToc ? "min-w-0 flex-1" : ""}>
+          <LexicalRenderer content={article.content} />
+        </div>
+
+        {/* Table of Contents sidebar */}
+        {showToc && (
+          <aside className="hidden w-64 shrink-0 lg:block">
+            <nav className="sticky top-24">
+              <h2 className="text-muted-foreground mb-3 font-mono text-xs font-medium tracking-wider">
+                / {t("tableOfContents")}
+              </h2>
+              <ul className="space-y-1.5">
+                {headings.map((heading) => (
+                  <li key={heading.slug}>
+                    <a
+                      href={`#${heading.slug}`}
+                      className={`text-muted-foreground hover:text-foreground block font-mono text-sm transition-colors ${
+                        heading.level === 3 ? "pl-3" : ""
+                      }`}
+                    >
+                      {heading.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </aside>
+        )}
       </div>
     </div>
   );
