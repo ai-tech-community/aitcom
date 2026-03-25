@@ -143,7 +143,24 @@
     },
     "readingTime": "{minutes} MIN",
     "tableOfContents": "CONTENTS",
-    "rssFeed": "RSS"
+    "rssFeed": "RSS",
+    "search": {
+      "placeholder": "SEARCH...",
+      "clear": "CLEAR",
+      "noResults": "No articles match your search."
+    },
+    "filter": {
+      "activeTag": "TAG:"
+    },
+    "share": {
+      "title": "SHARE",
+      "twitter": "X",
+      "linkedin": "LINKEDIN",
+      "copyLink": "LINK"
+    },
+    "related": {
+      "title": "RELATED"
+    }
   },
   "community": {
     "title": "Community",

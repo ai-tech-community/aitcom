@@ -143,7 +143,24 @@
     },
     "readingTime": "{minutes} MIN",
     "tableOfContents": "INHOUD",
-    "rssFeed": "RSS"
+    "rssFeed": "RSS",
+    "search": {
+      "placeholder": "ZOEKEN...",
+      "clear": "WISSEN",
+      "noResults": "Geen artikelen gevonden."
+    },
+    "filter": {
+      "activeTag": "TAG:"
+    },
+    "share": {
+      "title": "DELEN",
+      "twitter": "X",
+      "linkedin": "LINKEDIN",
+      "copyLink": "LINK"
+    },
+    "related": {
+      "title": "GERELATEERD"
+    }
   },
   "community": {
     "title": "Community",
