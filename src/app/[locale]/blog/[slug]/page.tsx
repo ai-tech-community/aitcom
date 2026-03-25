@@ -195,6 +195,38 @@ export default async function ArticleDetailPage({
           </aside>
         )}
       </div>
+
+      {/* Share */}
+      <div className="mt-8">
+        <h2 className="text-muted-foreground mb-3 font-mono text-xs font-medium tracking-wider">
+          / {t("share.title")}
+        </h2>
+        <div className="flex items-center gap-2">
+          <a
+            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(`https://aitcommunity.org/en/blog/${slug}`)}&text=${encodeURIComponent(article.title)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border-border text-muted-foreground hover:text-foreground rounded border px-3 py-1 font-mono text-xs tracking-wider transition-colors"
+          >
+            {t("share.twitter")}
+          </a>
+          <a
+            href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`https://aitcommunity.org/en/blog/${slug}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border-border text-muted-foreground hover:text-foreground rounded border px-3 py-1 font-mono text-xs tracking-wider transition-colors"
+          >
+            {t("share.linkedin")}
+          </a>
+          <a
+            href={`https://aitcommunity.org/en/blog/${slug}`}
+            title="Right-click to copy link"
+            className="border-border text-muted-foreground hover:text-foreground rounded border px-3 py-1 font-mono text-xs tracking-wider transition-colors"
+          >
+            {t("share.copyLink")}
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
