@@ -459,4 +459,129 @@ export const eventsRouter = createTRPCRouter({
 
       return event;
     }),
+
+  /** Update an event (admin/owner only) */
+  updateEvent: protectedProcedure
+    .input(
+      z.object({
+        eventId: z.number(),
+        communitySlug: z.string(),
+        title: z.string().min(3).max(255).optional(),
+        description: z.string().max(5000).optional(),
+        type: z.enum(["workshop", "hackathon", "deep_dive", "meetup"]).optional(),
+        date: z.string().optional(),
+        startTime: z.string().optional(),
+        endTime: z.string().optional(),
+        location: z.string().min(1).max(255).optional(),
+        maxAttendees: z.number().min(1).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+      }
+
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (membership?.status !== "active" || (membership.role !== "owner" && membership.role !== "admin")) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only community admins can update events" });
+      }
+
+      const payload = await getPayloadClient();
+
+      const data: Record<string, unknown> = {};
+      if (input.title !== undefined) data.title = input.title;
+      if (input.description !== undefined) data.description = plainTextToLexical(input.description);
+      if (input.type !== undefined) data.type = input.type;
+      if (input.date !== undefined) data.date = input.date;
+      if (input.startTime !== undefined) data.startTime = input.startTime;
+      if (input.endTime !== undefined) data.endTime = input.endTime;
+      if (input.location !== undefined) data.location = input.location;
+      if (input.maxAttendees !== undefined) data.maxAttendees = input.maxAttendees;
+
+      const event = await payload.update({
+        collection: "events",
+        id: input.eventId,
+        data,
+      });
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "event.update",
+        targetType: "event",
+        targetId: String(input.eventId),
+        metadata: { title: event.title, communitySlug: input.communitySlug },
+      });
+
+      return event;
+    }),
+
+  /** Cancel an event and all registrations (admin/owner only) */
+  cancelEvent: protectedProcedure
+    .input(
+      z.object({
+        eventId: z.number(),
+        communitySlug: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+      }
+
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (membership?.status !== "active" || (membership.role !== "owner" && membership.role !== "admin")) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only community admins can cancel events" });
+      }
+
+      // Set event status to cancelled
+      const payload = await getPayloadClient();
+      await payload.update({
+        collection: "events",
+        id: input.eventId,
+        data: { status: "cancelled" },
+      });
+
+      // Bulk-cancel all active registrations
+      await ctx.db
+        .update(eventRegistrations)
+        .set({ status: "cancelled" })
+        .where(
+          and(
+            eq(eventRegistrations.eventId, input.eventId),
+            sql`${eventRegistrations.status} IN ('registered', 'waitlisted')`,
+          ),
+        );
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "event.cancel",
+        targetType: "event",
+        targetId: String(input.eventId),
+        metadata: { communitySlug: input.communitySlug },
+      });
+
+      return { success: true };
+    }),
 });
