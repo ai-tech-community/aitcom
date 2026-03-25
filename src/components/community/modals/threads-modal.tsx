@@ -59,17 +59,17 @@ export function ThreadsModal({
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
 
-  const { data, isLoading } = api.community.getThreads.useQuery(
+  const { data, isLoading } = api.forum.getThreads.useQuery(
     { category },
     { enabled: isOpen },
   );
   const threads = data?.threads ?? [];
 
-  const createMutation = api.community.createThread.useMutation({
+  const createMutation = api.forum.createThread.useMutation({
     onSuccess: (thread) => {
       setShowForm(false);
       setForm({ title: "", content: "", category: "general" });
-      void utils.community.getThreads.invalidate();
+      void utils.forum.getThreads.invalidate();
       onClose();
       router.push(`/${locale}/community/${thread.slug}`);
     },

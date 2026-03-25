@@ -41,7 +41,7 @@ async function requireRulesAcceptance(userId: string) {
   }
 }
 
-export const communityRouter = createTRPCRouter({
+export const forumRouter = createTRPCRouter({
   // ── Rules ──────────────────────────────────────────────────────────────────
 
   getRules: publicProcedure

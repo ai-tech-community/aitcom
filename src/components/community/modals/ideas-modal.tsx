@@ -34,17 +34,17 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
 
-  const { data: ideas = [], isLoading } = api.community.getIdeas.useQuery(
+  const { data: ideas = [], isLoading } = api.forum.getIdeas.useQuery(
     { sort },
     { enabled: isOpen },
   );
 
-  const submitMutation = api.community.submitIdea.useMutation({
+  const submitMutation = api.forum.submitIdea.useMutation({
     onSuccess: () => {
       setIdeaTitle("");
       setIdeaDesc("");
       setShowForm(false);
-      void utils.community.getIdeas.invalidate();
+      void utils.forum.getIdeas.invalidate();
       toast.success("Idea submitted!");
     },
     onError: (err) => {
@@ -56,11 +56,11 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
     },
   });
 
-  const voteMutation = api.community.toggleVote.useMutation({
+  const voteMutation = api.forum.toggleVote.useMutation({
     onMutate: async ({ ideaId }) => {
-      await utils.community.getIdeas.cancel();
-      const prev = utils.community.getIdeas.getData({ sort });
-      utils.community.getIdeas.setData({ sort }, (old) =>
+      await utils.forum.getIdeas.cancel();
+      const prev = utils.forum.getIdeas.getData({ sort });
+      utils.forum.getIdeas.setData({ sort }, (old) =>
         old?.map((idea) =>
           idea.id === ideaId
             ? {
@@ -76,12 +76,12 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
       return { prev };
     },
     onError: (err, _input, ctx) => {
-      if (ctx?.prev) utils.community.getIdeas.setData({ sort }, ctx.prev);
+      if (ctx?.prev) utils.forum.getIdeas.setData({ sort }, ctx.prev);
       if (err.message === "RULES_NOT_ACCEPTED") {
         toast.error(tRules("mustAccept"));
       }
     },
-    onSettled: () => void utils.community.getIdeas.invalidate(),
+    onSettled: () => void utils.forum.getIdeas.invalidate(),
   });
 
   return (

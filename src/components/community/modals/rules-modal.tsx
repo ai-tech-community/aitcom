@@ -40,15 +40,15 @@ export function RulesModal({
 }: RulesModalProps) {
   const t = useTranslations("community.rules");
   const locale = useLocale() as "en" | "nl";
-  const { data, isLoading } = api.community.getRules.useQuery(
+  const { data, isLoading } = api.forum.getRules.useQuery(
     { locale },
     { enabled: isOpen, staleTime: 5 * 60 * 1000 },
   );
 
   const utils = api.useUtils();
-  const acceptMutation = api.community.acceptRules.useMutation({
+  const acceptMutation = api.forum.acceptRules.useMutation({
     onSuccess: () => {
-      void utils.community.getRules.invalidate();
+      void utils.forum.getRules.invalidate();
     },
   });
 

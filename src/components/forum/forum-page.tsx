@@ -53,7 +53,7 @@ export function ForumPage() {
     setPage(1);
   }, []);
 
-  const { data, isLoading } = api.community.getThreads.useQuery({
+  const { data, isLoading } = api.forum.getThreads.useQuery({
     category,
     sort,
     search: debouncedSearch || undefined,

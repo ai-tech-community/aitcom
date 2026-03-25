@@ -24,7 +24,7 @@ export function CreateThreadForm() {
     category: "general" as Category,
   });
 
-  const createMutation = api.community.createThread.useMutation({
+  const createMutation = api.forum.createThread.useMutation({
     onSuccess: (thread) => {
       toast.success(t("threadCreated"));
       router.push(`/forum/${thread.slug}`);
