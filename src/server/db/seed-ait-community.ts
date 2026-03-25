@@ -14,10 +14,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { asc, eq } from "drizzle-orm";
 
 import * as schema from "./schema";
-import {
-  communities,
-  communityMemberships,
-} from "./communities-schema";
+import { communities, communityMemberships } from "./schema";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
