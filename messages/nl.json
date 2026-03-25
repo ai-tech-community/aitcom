@@ -1079,5 +1079,61 @@
       "backToLaunchpad": "Terug naar Launchpad",
       "editProject": "Project bewerken"
     }
+  },
+  "communities": {
+    "directory": {
+      "title": "Communities",
+      "search": "Zoek communities...",
+      "empty": "Geen communities gevonden"
+    },
+    "create": {
+      "title": "Community aanmaken",
+      "name": "Community naam",
+      "slug": "URL Slug",
+      "description": "Beschrijving",
+      "joinPolicy": "Toelatingsbeleid",
+      "joinPolicyOpen": "Open — iedereen kan deelnemen",
+      "joinPolicyInviteOnly": "Alleen op uitnodiging",
+      "joinPolicyApprovalRequired": "Goedkeuring vereist",
+      "submit": "Community aanmaken"
+    },
+    "profile": {
+      "members": "Leden",
+      "events": "Evenementen",
+      "forum": "Forum",
+      "ideas": "Ideeën",
+      "challenges": "Uitdagingen",
+      "launchpad": "Launchpad",
+      "jobs": "Vacatures",
+      "join": "Word lid",
+      "requestToJoin": "Lidmaatschap aanvragen",
+      "pending": "Aanvraag in behandeling",
+      "leave": "Community verlaten",
+      "overview": "Overzicht"
+    },
+    "manage": {
+      "settings": "Instellingen",
+      "members": "Leden",
+      "invites": "Uitnodigingen",
+      "approvals": "Openstaande aanvragen",
+      "title": "Community beheren"
+    },
+    "roles": {
+      "owner": "Eigenaar",
+      "admin": "Beheerder",
+      "moderator": "Moderator",
+      "member": "Lid"
+    },
+    "notifications": {
+      "joinRequest": "{name} wil lid worden van {community}",
+      "approved": "Je aanvraag voor {community} is goedgekeurd",
+      "rejected": "Je aanvraag voor {community} is afgewezen",
+      "roleChanged": "Je rol in {community} is gewijzigd naar {role}",
+      "removed": "Je bent verwijderd uit {community}"
+    },
+    "nav": {
+      "myCommunities": "Mijn Communities",
+      "explore": "Ontdekken"
+    }
   }
 }

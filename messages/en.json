@@ -1079,5 +1079,61 @@
       "backToLaunchpad": "Back to Launchpad",
       "editProject": "Edit Project"
     }
+  },
+  "communities": {
+    "directory": {
+      "title": "Communities",
+      "search": "Search communities...",
+      "empty": "No communities found"
+    },
+    "create": {
+      "title": "Create a Community",
+      "name": "Community Name",
+      "slug": "URL Slug",
+      "description": "Description",
+      "joinPolicy": "Join Policy",
+      "joinPolicyOpen": "Open — anyone can join",
+      "joinPolicyInviteOnly": "Invite Only",
+      "joinPolicyApprovalRequired": "Approval Required",
+      "submit": "Create Community"
+    },
+    "profile": {
+      "members": "Members",
+      "events": "Events",
+      "forum": "Forum",
+      "ideas": "Ideas",
+      "challenges": "Challenges",
+      "launchpad": "Launchpad",
+      "jobs": "Jobs",
+      "join": "Join Community",
+      "requestToJoin": "Request to Join",
+      "pending": "Request Pending",
+      "leave": "Leave Community",
+      "overview": "Overview"
+    },
+    "manage": {
+      "settings": "Settings",
+      "members": "Members",
+      "invites": "Invites",
+      "approvals": "Pending Approvals",
+      "title": "Manage Community"
+    },
+    "roles": {
+      "owner": "Owner",
+      "admin": "Admin",
+      "moderator": "Moderator",
+      "member": "Member"
+    },
+    "notifications": {
+      "joinRequest": "{name} requested to join {community}",
+      "approved": "Your request to join {community} was approved",
+      "rejected": "Your request to join {community} was rejected",
+      "roleChanged": "Your role in {community} was changed to {role}",
+      "removed": "You were removed from {community}"
+    },
+    "nav": {
+      "myCommunities": "My Communities",
+      "explore": "Explore"
+    }
   }
 }
