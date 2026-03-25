@@ -16,9 +16,10 @@ const PAGE_SIZE = 20;
 
 interface ForumPageProps {
   communitySlug?: string;
+  memberRole?: "owner" | "admin" | "moderator" | "member" | null;
 }
 
-export function ForumPage({ communitySlug }: ForumPageProps = {}) {
+export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
   const t = useTranslations("forum");
   const { data: session } = authClient.useSession();
 
@@ -158,7 +159,7 @@ export function ForumPage({ communitySlug }: ForumPageProps = {}) {
       ) : (
         <div className="space-y-3">
           {threads.map((thread, i) => (
-            <ThreadCard key={thread.id} thread={thread} index={i} />
+            <ThreadCard key={thread.id} thread={thread} index={i} memberRole={memberRole} />
           ))}
         </div>
       )}

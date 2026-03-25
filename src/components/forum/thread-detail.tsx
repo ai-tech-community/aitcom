@@ -37,13 +37,15 @@ function timeAgo(date: string | null | undefined): string {
 
 type ThreadDetailProps = {
   slug: string;
+  memberRole?: "owner" | "admin" | "moderator" | "member" | null;
 };
 
-export function ThreadDetail({ slug }: ThreadDetailProps) {
+export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
   const t = useTranslations("forum");
   const viewCountedRef = useRef(false);
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
+  const canModerate = memberRole === "owner" || memberRole === "admin" || memberRole === "moderator";
 
   const { data: thread, isLoading: threadLoading } =
     api.forum.getThread.useQuery({ slug });
@@ -154,7 +156,7 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
         </div>
 
         {/* Admin actions */}
-        {isAuthor && (
+        {canModerate && (
           <div className="mt-3 flex gap-2">
             <button
               onClick={() =>
@@ -181,6 +183,12 @@ export function ThreadDetail({ slug }: ThreadDetailProps) {
           </div>
         )}
       </div>
+
+      {thread.isLocked && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-sm text-amber-700">
+          {t("threadLocked")}
+        </div>
+      )}
 
       {/* Thread content */}
       <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-5 text-sm leading-relaxed text-zinc-700">
