@@ -26,6 +26,11 @@ export const metadata: Metadata = {
     { rel: "icon", url: "/icon.svg", type: "image/svg+xml" },
     { rel: "icon", url: "/favicon.ico", sizes: "32x32" },
   ],
+  alternates: {
+    types: {
+      "application/rss+xml": "/feed.xml",
+    },
+  },
 };
 
 const geist = Geist({
