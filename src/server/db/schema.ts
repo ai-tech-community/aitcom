@@ -395,6 +395,7 @@ export const notifications = appSchema.table(
     content: d.text().notNull(),
     metadata: d.json().$type<Record<string, unknown>>().default({}).notNull(),
     readAt: d.timestamp({ withTimezone: true }),
+    communityId: d.varchar("community_id", { length: 255 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -563,6 +564,7 @@ export const activityEvents = appSchema.table(
     collabSessionId: d.varchar("collab_session_id", { length: 255 }),
     contextType: d.varchar("context_type", { length: 30 }),
     recipientId: d.varchar("recipient_id", { length: 255 }),
+    communityId: d.varchar("community_id", { length: 255 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -759,6 +761,7 @@ export const challengeChannels = appSchema.table(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     challengeId: d.integer().notNull().unique(), // One channel per challenge
+    communityId: d.varchar("community_id", { length: 255 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -1053,6 +1056,7 @@ export const benchmarkQuestions = appSchema.table(
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
+    communityId: d.varchar("community_id", { length: 255 }),
   }),
   (t) => [
     index("benchmark_question_status_idx").on(t.status),
@@ -1278,3 +1282,13 @@ export const launchpadVoteRelations = relations(
     }),
   }),
 );
+
+// ── Communities (multi-tenancy) ─────────────────────────────
+export {
+  communities,
+  communityMemberships,
+  communityInvites,
+  communityRelations,
+  communityMembershipRelations,
+  communityInviteRelations,
+} from "./communities-schema";
