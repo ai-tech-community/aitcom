@@ -5,7 +5,8 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
-import { LexicalRenderer, extractHeadings } from "@/lib/lexical";
+import type { Where } from "payload";
+import { LexicalRenderer, extractHeadings, estimateReadingTime } from "@/lib/lexical";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 
@@ -81,6 +82,78 @@ export default async function ArticleDetailPage({
 
   const headings = extractHeadings(article.content);
   const showToc = headings.length >= 2;
+
+  // Fetch related articles
+  const payload = await getPayloadClient();
+  const publishedFilter: Where[] = [
+    { status: { equals: "published" } },
+    {
+      or: [
+        { authorType: { not_equals: "member" } },
+        { reviewStatus: { equals: "approved" } },
+      ],
+    },
+  ];
+
+  let relatedArticles: (typeof article)[] = [];
+
+  if (tags.length > 0) {
+    // Query articles sharing at least one tag
+    const { docs: tagMatched } = await payload.find({
+      collection: "articles",
+      where: {
+        and: [
+          ...publishedFilter,
+          { id: { not_equals: article.id } },
+          {
+            or: tags.map((tagName) => ({ "tags.tag": { equals: tagName } })),
+          },
+        ],
+      },
+      sort: "-publishedAt",
+      locale: locale as "en" | "nl",
+      draft: false,
+      limit: 10,
+    });
+
+    // Sort by number of shared tags (descending), then by publishedAt
+    const tagSet = new Set(tags);
+    relatedArticles = tagMatched
+      .map((a) => {
+        const aTags = Array.isArray(a.tags)
+          ? (a.tags as { tag: string }[]).map((tagObj) => tagObj.tag)
+          : [];
+        const sharedCount = aTags.filter((tagStr) => tagSet.has(tagStr)).length;
+        return { article: a, sharedCount };
+      })
+      .sort((a, b) => {
+        if (b.sharedCount !== a.sharedCount) return b.sharedCount - a.sharedCount;
+        const aDate = a.article.publishedAt ?? "";
+        const bDate = b.article.publishedAt ?? "";
+        return bDate.localeCompare(aDate);
+      })
+      .slice(0, 3)
+      .map((r) => r.article);
+  }
+
+  // Pad with recent articles if fewer than 3
+  if (relatedArticles.length < 3) {
+    const excludeIds = [article.id, ...relatedArticles.map((a) => a.id)];
+    const { docs: recent } = await payload.find({
+      collection: "articles",
+      where: {
+        and: [
+          ...publishedFilter,
+          ...excludeIds.map((id) => ({ id: { not_equals: id } })),
+        ],
+      },
+      sort: "-publishedAt",
+      locale: locale as "en" | "nl",
+      draft: false,
+      limit: 3 - relatedArticles.length,
+    });
+    relatedArticles = [...relatedArticles, ...recent];
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -227,6 +300,39 @@ export default async function ArticleDetailPage({
           </a>
         </div>
       </div>
+
+      {/* Related Articles */}
+      {relatedArticles.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-muted-foreground mb-3 font-mono text-xs font-medium tracking-wider">
+            / {t("related.title")}
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {relatedArticles.map((related) => (
+              <Link
+                key={related.id}
+                href={`/blog/${related.slug}`}
+                className="border-border hover:bg-secondary/50 rounded border p-4 transition-colors"
+              >
+                <span className="text-sm font-medium leading-snug">
+                  {related.title}
+                </span>
+                <div className="text-muted-foreground mt-2 flex items-center gap-2 font-mono text-[10px] tracking-wider">
+                  <span className="border-border rounded border px-1.5 py-0.5 font-medium">
+                    {typeLabels[related.type] ?? related.type}
+                  </span>
+                  {related.publishedAt && (
+                    <span>{formatDate(related.publishedAt)}</span>
+                  )}
+                  <span>
+                    {t("readingTime", { minutes: estimateReadingTime(related.content) })}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
