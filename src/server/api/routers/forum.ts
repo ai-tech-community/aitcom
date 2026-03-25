@@ -348,6 +348,7 @@ export const forumRouter = createTRPCRouter({
       const payload = await getPayloadClient();
 
       const conditions: Where[] = [];
+      conditions.push({ isDeleted: { not_equals: true } });
 
       if (input.communitySlug) {
         const community = await ctx.db.query.communities.findFirst({
@@ -612,6 +613,224 @@ export const forumRouter = createTRPCRouter({
         data: { isLocked: input.isLocked },
       });
       return { ok: true };
+    }),
+
+  /** Edit a thread (author or admin/mod) */
+  editThread: protectedProcedure
+    .input(
+      z.object({
+        threadId: z.number(),
+        title: z.string().min(3).max(255),
+        content: z.string().min(1).max(10000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const thread = await payload.findByID({
+        collection: "forum-threads",
+        id: input.threadId,
+        depth: 0,
+      });
+
+      if (thread.isDeleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Thread has been deleted" });
+      }
+
+      const isAuthor = thread.authorId === ctx.session.user.id;
+      let canEdit = isAuthor;
+
+      if (!canEdit && thread.communityId) {
+        const membership = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, thread.communityId),
+            eq(communityMemberships.userId, ctx.session.user.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        });
+        if (membership && (membership.role === "owner" || membership.role === "admin" || membership.role === "moderator")) {
+          canEdit = true;
+        }
+      }
+
+      if (!canEdit) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      await payload.update({
+        collection: "forum-threads",
+        id: input.threadId,
+        data: {
+          title: input.title,
+          content: plainTextToLexical(input.content),
+          isEdited: true,
+          editedAt: new Date().toISOString(),
+        },
+      });
+
+      return { success: true };
+    }),
+
+  /** Soft-delete a thread (author or admin/mod) */
+  deleteThread: protectedProcedure
+    .input(z.object({ threadId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const thread = await payload.findByID({
+        collection: "forum-threads",
+        id: input.threadId,
+        depth: 0,
+      });
+
+      if (thread.isDeleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Thread already deleted" });
+      }
+
+      const isAuthor = thread.authorId === ctx.session.user.id;
+      let canDelete = isAuthor;
+
+      if (!canDelete && thread.communityId) {
+        const membership = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, thread.communityId),
+            eq(communityMemberships.userId, ctx.session.user.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        });
+        if (membership && (membership.role === "owner" || membership.role === "admin" || membership.role === "moderator")) {
+          canDelete = true;
+        }
+      }
+
+      if (!canDelete) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      await payload.update({
+        collection: "forum-threads",
+        id: input.threadId,
+        data: {
+          isDeleted: true,
+          content: plainTextToLexical(""),
+          authorName: null,
+        },
+      });
+
+      return { success: true };
+    }),
+
+  /** Edit a reply (author or admin/mod) */
+  editReply: protectedProcedure
+    .input(
+      z.object({
+        replyId: z.number(),
+        content: z.string().min(1).max(10000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const reply = await payload.findByID({
+        collection: "forum-replies",
+        id: input.replyId,
+        depth: 0,
+      });
+
+      if (reply.isDeleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Reply has been deleted" });
+      }
+
+      const isAuthor = reply.authorId === ctx.session.user.id;
+      let canEdit = isAuthor;
+
+      if (!canEdit && reply.communityId) {
+        const membership = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, reply.communityId),
+            eq(communityMemberships.userId, ctx.session.user.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        });
+        if (membership && (membership.role === "owner" || membership.role === "admin" || membership.role === "moderator")) {
+          canEdit = true;
+        }
+      }
+
+      if (!canEdit) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      await payload.update({
+        collection: "forum-replies",
+        id: input.replyId,
+        data: {
+          content: plainTextToLexical(input.content),
+          isEdited: true,
+          editedAt: new Date().toISOString(),
+        },
+      });
+
+      return { success: true };
+    }),
+
+  /** Soft-delete a reply (author or admin/mod) */
+  deleteReply: protectedProcedure
+    .input(z.object({ replyId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const reply = await payload.findByID({
+        collection: "forum-replies",
+        id: input.replyId,
+        depth: 0,
+      });
+
+      if (reply.isDeleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Reply already deleted" });
+      }
+
+      const isAuthor = reply.authorId === ctx.session.user.id;
+      let canDelete = isAuthor;
+
+      if (!canDelete && reply.communityId) {
+        const membership = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, reply.communityId),
+            eq(communityMemberships.userId, ctx.session.user.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        });
+        if (membership && (membership.role === "owner" || membership.role === "admin" || membership.role === "moderator")) {
+          canDelete = true;
+        }
+      }
+
+      if (!canDelete) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const threadId = typeof reply.thread === "object" ? reply.thread.id : reply.thread;
+
+      await payload.update({
+        collection: "forum-replies",
+        id: input.replyId,
+        data: {
+          isDeleted: true,
+          content: plainTextToLexical(""),
+          authorName: null,
+        },
+      });
+
+      // Decrement thread reply count
+      const thread = await payload.findByID({
+        collection: "forum-threads",
+        id: threadId,
+        depth: 0,
+      });
+      await payload.update({
+        collection: "forum-threads",
+        id: threadId,
+        data: { replyCount: Math.max(0, (thread.replyCount ?? 0) - 1) },
+      });
+
+      return { success: true };
     }),
 
   /** Create or update community rules (admin/owner only) */

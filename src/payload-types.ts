@@ -336,6 +336,9 @@ export interface ForumThread {
   replyCount?: number | null;
   lastActivityAt?: string | null;
   communityId?: string | null;
+  isDeleted?: boolean | null;
+  isEdited?: boolean | null;
+  editedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -371,6 +374,9 @@ export interface ForumReply {
   authorType?: ('member' | 'agent') | null;
   authorRole?: ('admin' | 'moderator' | 'contributor' | 'member') | null;
   communityId?: string | null;
+  isDeleted?: boolean | null;
+  isEdited?: boolean | null;
+  editedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1067,6 +1073,9 @@ export interface ForumThreadsSelect<T extends boolean = true> {
   replyCount?: T;
   lastActivityAt?: T;
   communityId?: T;
+  isDeleted?: T;
+  isEdited?: T;
+  editedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1082,6 +1091,9 @@ export interface ForumRepliesSelect<T extends boolean = true> {
   authorType?: T;
   authorRole?: T;
   communityId?: T;
+  isDeleted?: T;
+  isEdited?: T;
+  editedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
