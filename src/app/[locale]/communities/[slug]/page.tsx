@@ -102,7 +102,7 @@ export default function CommunityOverviewPage({
                         {member.displayName ?? "Member"}
                       </p>
                       <Badge variant="secondary" className="mt-0.5 text-xs">
-                        {tRoles(member.role as "owner" | "admin" | "moderator" | "member")}
+                        {tRoles(member.role)}
                       </Badge>
                     </div>
                   </div>

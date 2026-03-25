@@ -62,10 +62,7 @@ export default function ManageSettingsPage({
         initialData={{
           name: community.name,
           description: community.description,
-          joinPolicy: community.joinPolicy as
-            | "open"
-            | "invite_only"
-            | "approval_required",
+          joinPolicy: community.joinPolicy,
           isListedInDirectory: community.isListedInDirectory,
         }}
       />

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canManageRole, ROLE_HIERARCHY, type CommunityRole } from "./role-utils";
+import { canManageRole, ROLE_HIERARCHY } from "./role-utils";
 
 describe("ROLE_HIERARCHY", () => {
   it("ranks owner highest", () => {

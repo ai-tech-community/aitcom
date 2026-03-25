@@ -68,9 +68,7 @@ export default function MyCommunities() {
                       </p>
                     ) : null}
                     <Badge variant="secondary" className="mt-1 text-xs">
-                      {tRoles(
-                        m.role as "owner" | "admin" | "moderator" | "member",
-                      )}
+                      {tRoles(m.role)}
                     </Badge>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">

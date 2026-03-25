@@ -10,7 +10,7 @@ export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Redirect old /community/* routes to /communities/ait/forum/*
-  const communityMatch = pathname.match(/^\/([a-z]{2})\/community(?:\/(.*))?$/);
+  const communityMatch = /^\/([a-z]{2})\/community(?:\/(.*))?$/.exec(pathname);
   if (communityMatch) {
     const locale = communityMatch[1];
     const rest = communityMatch[2] ? `/${communityMatch[2]}` : "";
