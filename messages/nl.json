@@ -137,7 +137,13 @@
     "eventMaxAttendees": "Max deelnemers",
     "eventCreated": "Evenement succesvol aangemaakt",
     "eventCreateError": "Evenement aanmaken mislukt",
-    "creating": "Aanmaken..."
+    "creating": "Aanmaken...",
+    "editEvent": "Evenement bewerken",
+    "cancelEvent": "Evenement annuleren",
+    "cancelEventConfirm": "Dit evenement annuleren? Alle registraties worden geannuleerd.",
+    "eventUpdated": "Evenement bijgewerkt",
+    "eventCancelled": "Evenement geannuleerd",
+    "cancelled": "GEANNULEERD"
   },
   "blog": {
     "title": "Blog",
@@ -329,7 +335,20 @@
     "lock": "Vergrendelen",
     "unlock": "Ontgrendelen",
     "cancel": "Annuleren",
-    "post": "Plaatsen"
+    "post": "Plaatsen",
+    "edit": "Bewerken",
+    "delete": "Verwijderen",
+    "deleteThreadConfirm": "Dit onderwerp verwijderen? De inhoud wordt verwijderd maar reacties blijven behouden.",
+    "deleteReplyConfirm": "Deze reactie verwijderen? De inhoud wordt verwijderd.",
+    "threadDeletedMessage": "[Dit onderwerp is verwijderd]",
+    "replyDeletedMessage": "[Dit antwoord is verwijderd]",
+    "edited": "bewerkt",
+    "editing": "Bewerken...",
+    "save": "Opslaan",
+    "threadEdited": "Onderwerp bijgewerkt",
+    "replyEdited": "Reactie bijgewerkt",
+    "threadDeleted": "Onderwerp verwijderd",
+    "replyDeleted": "Reactie verwijderd"
   },
   "challengesLanding": {
     "title": "AI Challenges",
@@ -1241,6 +1260,17 @@
         "effectiveDate": "Van kracht sinds {date}",
         "saveDraft": "Concept opslaan",
         "saved": "Regels opgeslagen"
+      },
+      "ownership": {
+        "title": "Eigenaarschap overdragen",
+        "description": "Draag het eigenaarschap van deze community over aan een ander actief lid.",
+        "warning": "Deze actie zal je degraderen naar beheerder. De nieuwe eigenaar heeft volledige controle over de community.",
+        "selectMember": "Selecteer nieuwe eigenaar",
+        "transfer": "Eigenaarschap overdragen",
+        "confirmTitle": "Eigenaarschap overdragen",
+        "confirmDescription": "Eigenaarschap overdragen aan {name}? Je wordt gedegradeerd naar beheerder. Dit kan niet ongedaan worden gemaakt.",
+        "confirmButton": "Overdracht bevestigen",
+        "transferred": "Eigenaarschap overgedragen"
       }
     },
     "dashboard": {

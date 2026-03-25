@@ -137,7 +137,13 @@
     "eventMaxAttendees": "Max Attendees",
     "eventCreated": "Event created successfully",
     "eventCreateError": "Failed to create event",
-    "creating": "Creating..."
+    "creating": "Creating...",
+    "editEvent": "Edit Event",
+    "cancelEvent": "Cancel Event",
+    "cancelEventConfirm": "Cancel this event? All registrations will be cancelled.",
+    "eventUpdated": "Event updated",
+    "eventCancelled": "Event cancelled",
+    "cancelled": "CANCELLED"
   },
   "blog": {
     "title": "Blog",
@@ -329,7 +335,20 @@
     "lock": "Lock",
     "unlock": "Unlock",
     "cancel": "Cancel",
-    "post": "Post"
+    "post": "Post",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteThreadConfirm": "Delete this thread? The content will be removed but replies will remain.",
+    "deleteReplyConfirm": "Delete this reply? The content will be removed.",
+    "threadDeletedMessage": "[This thread has been deleted]",
+    "replyDeletedMessage": "[This reply has been deleted]",
+    "edited": "edited",
+    "editing": "Editing...",
+    "save": "Save",
+    "threadEdited": "Thread updated",
+    "replyEdited": "Reply updated",
+    "threadDeleted": "Thread deleted",
+    "replyDeleted": "Reply deleted"
   },
   "challengesLanding": {
     "title": "AI Challenges",
@@ -1241,6 +1260,17 @@
         "effectiveDate": "Effective since {date}",
         "saveDraft": "Save draft",
         "saved": "Rules saved"
+      },
+      "ownership": {
+        "title": "Transfer Ownership",
+        "description": "Transfer this community's ownership to another active member.",
+        "warning": "This action will demote you to admin. The new owner will have full control of the community.",
+        "selectMember": "Select new owner",
+        "transfer": "Transfer Ownership",
+        "confirmTitle": "Transfer Ownership",
+        "confirmDescription": "Transfer ownership to {name}? You will be demoted to admin. This cannot be undone.",
+        "confirmButton": "Confirm Transfer",
+        "transferred": "Ownership transferred"
       }
     },
     "dashboard": {
