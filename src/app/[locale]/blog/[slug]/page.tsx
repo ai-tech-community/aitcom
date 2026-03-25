@@ -138,12 +138,13 @@ export default async function ArticleDetailPage({
       {tags.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-1.5">
           {tags.map((tag) => (
-            <span
+            <Link
               key={tag}
-              className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-[10px] tracking-wider"
+              href={`/blog?tag=${encodeURIComponent(tag)}`}
+              className="border-border text-muted-foreground hover:text-foreground cursor-pointer rounded border border-dashed px-1.5 py-0.5 font-mono text-[10px] tracking-wider transition-colors"
             >
               {tag}
-            </span>
+            </Link>
           ))}
         </div>
       )}
