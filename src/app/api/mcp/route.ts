@@ -1,14 +1,17 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { z } from "zod/v3";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/server/db";
+import { agentProfiles } from "@/server/db/schema";
 import { validateApiKey } from "@/server/agent/api-key";
-import { checkRateLimit } from "@/server/agent/rate-limit";
+import { checkRateLimit, checkRegistrationRateLimit } from "@/server/agent/rate-limit";
 import { createCaller } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 import { registerCommunityTools } from "./community-tools";
 import { registerFeedTools } from "./feed-tools";
+import { registerRegistrationTools } from "./registration-tools";
 
 // ── Auth helper ─────────────────────────────────────────────────────────────
 
@@ -493,6 +496,44 @@ function createMcpServer(caller: Caller, keyData: { ownerId: string | null; agen
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   });
 
+  // ── Claim status tool ─────────────────────────────────────────────────
+
+  server.registerTool("check-claim-status", {
+    description: "Check if your owner has claimed you yet.",
+  }, async () => {
+    const [agent] = await db
+      .select({
+        status: agentProfiles.status,
+        ownerId: agentProfiles.ownerId,
+        claimToken: agentProfiles.claimToken,
+        claimTokenExpiresAt: agentProfiles.claimTokenExpiresAt,
+      })
+      .from(agentProfiles)
+      .where(eq(agentProfiles.id, keyData.agentId))
+      .limit(1);
+
+    if (!agent) {
+      return { content: [{ type: "text" as const, text: JSON.stringify({ error: "Agent not found" }) }] };
+    }
+
+    const claimed = agent.ownerId !== null;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.aitcommunity.org";
+
+    return {
+      content: [{
+        type: "text" as const,
+        text: JSON.stringify({
+          claimed,
+          status: agent.status,
+          ...(claimed ? {} : {
+            claim_url: agent.claimToken ? `${baseUrl}/claim/${agent.claimToken}` : null,
+            expires_at: agent.claimTokenExpiresAt?.toISOString() ?? null,
+          }),
+        }, null, 2),
+      }],
+    };
+  });
+
   // ── Community & Feed tools (domain modules) ────────────────────────────
   registerCommunityTools(server, caller, keyData);
   registerFeedTools(server, caller, keyData);
@@ -500,29 +541,54 @@ function createMcpServer(caller: Caller, keyData: { ownerId: string | null; agen
   return server;
 }
 
+// ── Registration-only MCP server ─────────────────────────────────────────────
+
+function createRegistrationMcpServer() {
+  const server = new McpServer({
+    name: "aitcommunity-registration",
+    version: "0.1.0",
+  });
+  registerRegistrationTools(server);
+  return server;
+}
+
 // ── Route handlers ──────────────────────────────────────────────────────────
 
 async function handleMcpRequest(req: Request): Promise<Response> {
   const keyData = await authenticateRequest(req);
-  if (!keyData) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
+
+  if (keyData) {
+    const ctx = await createTRPCContext({ headers: req.headers });
+    const caller = createCaller(ctx);
+    const server = createMcpServer(caller, keyData);
+    const transport = new WebStandardStreamableHTTPServerTransport({
+      enableJsonResponse: true,
     });
+    await server.connect(transport);
+    return transport.handleRequest(req);
   }
 
-  // Create tRPC context with the original headers (carries the Authorization)
-  const ctx = await createTRPCContext({ headers: req.headers });
-  const caller = createCaller(ctx);
+  // Unauthenticated — registration tools only
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown";
+  const regLimit = checkRegistrationRateLimit(ip);
+  if (!regLimit.allowed) {
+    return new Response(
+      JSON.stringify({ error: "Rate limit exceeded. Try again later." }),
+      {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
 
-  // Create a stateless MCP server + transport per request
-  const server = createMcpServer(caller, keyData);
+  const server = createRegistrationMcpServer();
   const transport = new WebStandardStreamableHTTPServerTransport({
     enableJsonResponse: true,
   });
-
   await server.connect(transport);
-
   return transport.handleRequest(req);
 }
 
