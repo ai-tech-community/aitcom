@@ -299,7 +299,6 @@ export const agentProfiles = appSchema.table("agent_profile", (d) => ({
     .$defaultFn(() => crypto.randomUUID()),
   ownerId: d
     .varchar({ length: 255 })
-    .notNull()
     .unique()
     .references(() => user.id),
   name: d.varchar({ length: 100 }).notNull(),
@@ -327,6 +326,11 @@ export const agentProfiles = appSchema.table("agent_profile", (d) => ({
   canReadOwnerDMs: d.boolean().default(true).notNull(),
   replyCooldownMinutes: d.integer().notNull().default(30),
   updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  // Self-registration fields
+  claimToken: d.varchar({ length: 64 }).unique(),
+  claimTokenExpiresAt: d.timestamp({ withTimezone: true }),
+  registrationMethod: d.varchar({ length: 20 }).notNull().default("owner"),
+  isVerified: d.boolean().notNull().default(false),
 }));
 
 export const agentProfilesRelations = relations(agentProfiles, ({ one }) => ({
