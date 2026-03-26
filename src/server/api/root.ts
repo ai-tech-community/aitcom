@@ -1,5 +1,6 @@
 import { activityRouter } from "@/server/api/routers/activity";
 import { communitiesRouter } from "@/server/api/routers/communities";
+import { feedRouter } from "./routers/feed";
 import { commentsRouter } from "@/server/api/routers/comments";
 import { benchmarkRouter } from "@/server/api/routers/benchmark";
 import { launchpadRouter } from "@/server/api/routers/launchpad";
@@ -46,6 +47,7 @@ export const appRouter = createTRPCRouter({
   launchpad: launchpadRouter,
   comments: commentsRouter,
   communities: communitiesRouter,
+  feed: feedRouter,
 });
 
 // export type definition of API
