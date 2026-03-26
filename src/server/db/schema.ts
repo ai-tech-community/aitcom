@@ -1302,6 +1302,11 @@ export const communities = appSchema.table(
       .default("open")
       .$type<"open" | "invite_only" | "approval_required">(),
     isListedInDirectory: d.boolean().notNull().default(false),
+    feedPostPolicy: d
+      .varchar({ length: 30 })
+      .notNull()
+      .default("all_members")
+      .$type<"all_members" | "admins_only">(),
     createdBy: d
       .varchar({ length: 255 })
       .notNull()

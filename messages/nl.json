@@ -1182,6 +1182,9 @@
       "joinPolicyOpen": "Open",
       "joinPolicyInviteOnly": "Alleen op uitnodiging",
       "joinPolicyApprovalRequired": "Goedkeuring vereist",
+      "feedPostPolicy": "Wie mag posten in de feed",
+      "feedPolicyAllMembers": "Alle leden",
+      "feedPolicyAdminsOnly": "Alleen beheerders",
       "listedInDirectory": "Zichtbaar in overzicht",
       "listedInDirectoryDescription": "Deze community tonen in het publieke overzicht",
       "role": "Rol",
@@ -1193,10 +1196,7 @@
       "memberBanned": "Lid geblokkeerd",
       "memberRemoved": "Lid verwijderd",
       "noMembers": "Geen leden gevonden",
-      "accessDenied": "Je hebt geen toegang tot deze pagina",
-      "feedPostPolicy": "Wie kan berichten plaatsen",
-      "feedPolicyAllMembers": "Alle leden",
-      "feedPolicyAdminsOnly": "Alleen beheerders en moderators"
+      "accessDenied": "Je hebt geen toegang tot deze pagina"
     },
     "settings": {
       "sidebar": {

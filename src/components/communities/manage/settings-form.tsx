@@ -27,6 +27,7 @@ interface SettingsFormProps {
     logoUrl: string | null;
     joinPolicy: "open" | "invite_only" | "approval_required";
     isListedInDirectory: boolean;
+    feedPostPolicy: "all_members" | "admins_only";
   };
 }
 
@@ -47,6 +48,7 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
   const [isListedInDirectory, setIsListedInDirectory] = useState(
     initialData.isListedInDirectory,
   );
+  const [feedPostPolicy, setFeedPostPolicy] = useState<"all_members" | "admins_only">(initialData.feedPostPolicy);
 
   const updateMutation = api.communities.updateSettings.useMutation({
     onSuccess: () => {
@@ -96,6 +98,7 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
       logoUrl: logoUrl ?? null,
       joinPolicy,
       isListedInDirectory,
+      feedPostPolicy,
     });
   };
 
@@ -205,6 +208,22 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
             <SelectItem value="approval_required">
               {t("joinPolicyApprovalRequired")}
             </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="feedPostPolicy">{t("feedPostPolicy")}</Label>
+        <Select
+          value={feedPostPolicy}
+          onValueChange={(v) => setFeedPostPolicy(v as "all_members" | "admins_only")}
+        >
+          <SelectTrigger id="feedPostPolicy">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all_members">{t("feedPolicyAllMembers")}</SelectItem>
+            <SelectItem value="admins_only">{t("feedPolicyAdminsOnly")}</SelectItem>
           </SelectContent>
         </Select>
       </div>

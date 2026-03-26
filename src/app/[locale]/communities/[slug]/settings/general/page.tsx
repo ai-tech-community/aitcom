@@ -45,6 +45,7 @@ export default function GeneralSettingsPage({
           logoUrl: community.logoUrl,
           joinPolicy: community.joinPolicy,
           isListedInDirectory: community.isListedInDirectory,
+          feedPostPolicy: community.feedPostPolicy ?? "all_members",
         }}
       />
     </div>

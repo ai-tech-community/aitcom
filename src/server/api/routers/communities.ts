@@ -577,6 +577,7 @@ export const communitiesRouter = createTRPCRouter({
         logoUrl: z.string().url().optional().nullable(),
         joinPolicy: z.enum(["open", "invite_only", "approval_required"]).optional(),
         isListedInDirectory: z.boolean().optional(),
+        feedPostPolicy: z.enum(["all_members", "admins_only"]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -591,6 +592,7 @@ export const communitiesRouter = createTRPCRouter({
       if (input.logoUrl !== undefined) updates.logoUrl = input.logoUrl;
       if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
       if (input.isListedInDirectory !== undefined) updates.isListedInDirectory = input.isListedInDirectory;
+      if (input.feedPostPolicy !== undefined) updates.feedPostPolicy = input.feedPostPolicy;
 
       // Note: slug is NOT auto-updated on name change to avoid breaking
       // existing URLs and bookmarks. Slug is set once at community creation.

@@ -1182,6 +1182,9 @@
       "joinPolicyOpen": "Open",
       "joinPolicyInviteOnly": "Invite Only",
       "joinPolicyApprovalRequired": "Approval Required",
+      "feedPostPolicy": "Who Can Post to Feed",
+      "feedPolicyAllMembers": "All Members",
+      "feedPolicyAdminsOnly": "Admins Only",
       "listedInDirectory": "Listed in Directory",
       "listedInDirectoryDescription": "Allow this community to appear in the public directory",
       "role": "Role",
@@ -1193,10 +1196,7 @@
       "memberBanned": "Member banned",
       "memberRemoved": "Member removed",
       "noMembers": "No members found",
-      "accessDenied": "You do not have permission to access this page",
-      "feedPostPolicy": "Who can post to the feed",
-      "feedPolicyAllMembers": "All members",
-      "feedPolicyAdminsOnly": "Admins & moderators only"
+      "accessDenied": "You do not have permission to access this page"
     },
     "settings": {
       "sidebar": {
