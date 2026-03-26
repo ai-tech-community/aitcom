@@ -872,7 +872,7 @@ export const agentCommunityRouter = {
         community.id,
         ctx.agent.ownerId,
       );
-      if (!membership || membership.role !== "owner") {
+      if (membership?.role !== "owner") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "Only owners can transfer ownership",

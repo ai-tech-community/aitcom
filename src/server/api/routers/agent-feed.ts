@@ -98,7 +98,7 @@ export const agentFeedRouter = {
       }
 
       const { docs } = await payload.find({
-        collection: "feed-posts" as any,
+        collection: "feed-posts",
         where: whereClause as Parameters<typeof payload.find>[0]["where"],
         sort: "-createdAt",
         limit: input.limit + 1,
@@ -111,7 +111,7 @@ export const agentFeedRouter = {
       const nextCursor =
         hasMore && posts.length > 0
           ? {
-              createdAt: posts[posts.length - 1]!.createdAt as string,
+              createdAt: posts[posts.length - 1]!.createdAt,
               id: posts[posts.length - 1]!.id,
             }
           : undefined;
@@ -119,12 +119,12 @@ export const agentFeedRouter = {
       return {
         posts: posts.map((p) => ({
           id: p.id,
-          content: (p as any).content ?? "",
-          imageUrl: (p as any).imageUrl ?? null,
-          authorId: (p as any).authorId ?? null,
-          authorName: (p as any).authorName ?? null,
-          likeCount: (p as any).likeCount ?? 0,
-          commentCount: (p as any).commentCount ?? 0,
+          content: p.content ?? "",
+          imageUrl: p.imageUrl ?? null,
+          authorId: p.authorId ?? null,
+          authorName: p.authorName ?? null,
+          likeCount: p.likeCount ?? 0,
+          commentCount: p.commentCount ?? 0,
           createdAt: p.createdAt,
         })),
         nextCursor,
@@ -145,7 +145,7 @@ export const agentFeedRouter = {
       const payload = await getPayloadClient();
 
       const { docs } = await payload.find({
-        collection: "feed-comments" as any,
+        collection: "feed-comments",
         where: {
           and: [
             { post: { equals: input.postId } },
@@ -159,9 +159,9 @@ export const agentFeedRouter = {
 
       return docs.map((c) => ({
         id: c.id,
-        content: (c as any).content ?? "",
-        authorId: (c as any).authorId ?? null,
-        authorName: (c as any).authorName ?? null,
+        content: c.content ?? "",
+        authorId: c.authorId ?? null,
+        authorName: c.authorName ?? null,
         createdAt: c.createdAt,
       }));
     }),
@@ -226,7 +226,7 @@ export const agentFeedRouter = {
       const payload = await getPayloadClient();
 
       const post = await payload.create({
-        collection: "feed-posts" as any,
+        collection: "feed-posts",
         data: {
           content: input.content,
           imageUrl: input.imageUrl ?? undefined,
@@ -267,7 +267,7 @@ export const agentFeedRouter = {
       let post;
       try {
         post = await payload.findByID({
-          collection: "feed-posts" as any,
+          collection: "feed-posts",
           id: input.postId,
           depth: 0,
         });
@@ -275,13 +275,12 @@ export const agentFeedRouter = {
         throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
       }
 
-      if (!post || (post as any).isDeleted) {
+      if (!post || post.isDeleted) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
       }
 
       // Verify owner is an active member of the post's community
-      const communityId = (post as any).communityId as string;
-      await requireActiveMembership(ctx.db, communityId, ctx.agent.ownerId);
+      await requireActiveMembership(ctx.db, post.communityId, ctx.agent.ownerId);
 
       // Fetch agent profile for ghost mode check and name
       const [agent] = await ctx.db
@@ -317,21 +316,21 @@ export const agentFeedRouter = {
 
       // Visible mode: post directly
       const comment = await payload.create({
-        collection: "feed-comments" as any,
+        collection: "feed-comments",
         data: {
           post: input.postId,
           content: input.content,
           authorId: ctx.agent.ownerId,
           authorName: `${agent.name} (AI)`,
-          communityId,
+          communityId: post.communityId,
         },
       });
 
       // Increment comment count on the post
       await payload.update({
-        collection: "feed-posts" as any,
+        collection: "feed-posts",
         id: input.postId,
-        data: { commentCount: ((post as any).commentCount ?? 0) + 1 },
+        data: { commentCount: (post.commentCount ?? 0) + 1 },
       });
 
       await logActivity(ctx.db, {
@@ -358,7 +357,7 @@ export const agentFeedRouter = {
       let post;
       try {
         post = await payload.findByID({
-          collection: "feed-posts" as any,
+          collection: "feed-posts",
           id: input.postId,
           depth: 0,
         });
@@ -366,17 +365,16 @@ export const agentFeedRouter = {
         throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
       }
 
-      if (!post || (post as any).isDeleted) {
+      if (!post || post.isDeleted) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
       }
 
       // Verify owner is an active member of the post's community
-      const communityId = (post as any).communityId as string;
-      await requireActiveMembership(ctx.db, communityId, ctx.agent.ownerId);
+      await requireActiveMembership(ctx.db, post.communityId, ctx.agent.ownerId);
 
       // Check for existing like
       const { docs: existingLikes } = await payload.find({
-        collection: "feed-likes" as any,
+        collection: "feed-likes",
         where: {
           and: [
             { post: { equals: input.postId } },
@@ -390,26 +388,26 @@ export const agentFeedRouter = {
       if (existingLikes.length > 0) {
         // Unlike: remove existing like
         await payload.delete({
-          collection: "feed-likes" as any,
+          collection: "feed-likes",
           id: existingLikes[0]!.id,
         });
         await payload.update({
-          collection: "feed-posts" as any,
+          collection: "feed-posts",
           id: input.postId,
-          data: { likeCount: Math.max(0, ((post as any).likeCount ?? 0) - 1) },
+          data: { likeCount: Math.max(0, (post.likeCount ?? 0) - 1) },
         });
 
         return { liked: false };
       } else {
         // Like: create new like
         await payload.create({
-          collection: "feed-likes" as any,
+          collection: "feed-likes",
           data: { post: input.postId, userId: ctx.agent.ownerId },
         });
         await payload.update({
-          collection: "feed-posts" as any,
+          collection: "feed-posts",
           id: input.postId,
-          data: { likeCount: ((post as any).likeCount ?? 0) + 1 },
+          data: { likeCount: (post.likeCount ?? 0) + 1 },
         });
 
         await logActivity(ctx.db, {
