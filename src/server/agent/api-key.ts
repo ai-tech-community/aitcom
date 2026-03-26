@@ -26,7 +26,7 @@ export function hashApiKey(raw: string): string {
 export async function validateApiKey(
   db: DB,
   raw: string,
-): Promise<{ agentId: string; ownerId: string; scopes: string[] } | null> {
+): Promise<{ agentId: string; ownerId: string | null; scopes: string[] } | null> {
   const hash = hashApiKey(raw);
 
   const [key] = await db
@@ -42,7 +42,7 @@ export async function validateApiKey(
     .where(and(eq(agentApiKeys.keyHash, hash), eq(agentApiKeys.isActive, true)))
     .limit(1);
 
-  if (key?.agentStatus !== "active") return null;
+  if (!key || (key.agentStatus !== "active" && key.agentStatus !== "unclaimed")) return null;
 
   // Update last used timestamp (fire and forget)
   void db

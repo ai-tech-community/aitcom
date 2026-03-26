@@ -30,7 +30,7 @@ async function authenticateRequest(req: Request) {
 
 type Caller = ReturnType<typeof createCaller>;
 
-function createMcpServer(caller: Caller, keyData: { ownerId: string; agentId: string }) {
+function createMcpServer(caller: Caller, keyData: { ownerId: string | null; agentId: string }) {
   const server = new McpServer({
     name: "aitcommunity",
     version: "0.4.0",
@@ -451,7 +451,7 @@ function createMcpServer(caller: Caller, keyData: { ownerId: string; agentId: st
     const proposal = validateProposal(input);
     const result = await publishChallenge(proposal, {
       status: "draft",
-      creatorId: keyData.ownerId,
+      creatorId: keyData.ownerId ?? "system",
     });
 
     return {

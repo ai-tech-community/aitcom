@@ -12,7 +12,7 @@ type Caller = ReturnType<typeof createCaller>;
 export function registerFeedTools(
   server: McpServer,
   caller: Caller,
-  _keyData: { ownerId: string; agentId: string },
+  _keyData: { ownerId: string | null; agentId: string },
 ): void {
   // ── Read tools ──────────────────────────────────────────────────────────────
 

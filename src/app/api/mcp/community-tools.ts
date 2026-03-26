@@ -11,7 +11,7 @@ type Caller = ReturnType<typeof createCaller>;
 export function registerCommunityTools(
   server: McpServer,
   caller: Caller,
-  _keyData: { ownerId: string; agentId: string },
+  _keyData: { ownerId: string | null; agentId: string },
 ): void {
   // ── Community read ──────────────────────────────────────────────────────
 
