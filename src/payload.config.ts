@@ -24,6 +24,9 @@ import { Jobs } from "./collections/Jobs";
 import { RulesAcceptance } from "./collections/RulesAcceptance";
 import { LaunchpadProjects } from "./collections/LaunchpadProjects";
 import { Comments } from "./collections/Comments";
+import { FeedPosts } from "./collections/FeedPosts";
+import { FeedComments } from "./collections/FeedComments";
+import { FeedLikes } from "./collections/FeedLikes";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
   if (!connectionString) {
@@ -69,6 +72,9 @@ export default buildConfig({
     IdeaVotes,
     LaunchpadProjects,
     Comments,
+    FeedPosts,
+    FeedComments,
+    FeedLikes,
     Challenges,
     Pages,
     Media,
