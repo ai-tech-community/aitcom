@@ -182,6 +182,7 @@ export function AgentQuickStart({ onSetupComplete }: AgentQuickStartProps) {
           )}
         </div>
       )}
+
     </div>
   );
 }
@@ -521,24 +522,74 @@ function ClaudeCliPanel({ apiKey }: { apiKey: string }) {
         {t("pasteInstructions", { file: "~/.claude/mcp.json", tool: "Claude CLI" })}
       </p>
       <CodeBlock code={mcpConfig} />
+      <p className="text-xs text-muted-foreground/70">
+        Alternatively, your agent can self-register by connecting without a key and calling register-agent.
+      </p>
+      <InviteCodeSection />
+    </div>
+  );
+}
+
+function InviteCodeSection() {
+  const { data: codes, refetch } = api.agentManagement.listInviteCodes.useQuery();
+  const generateCode = api.agentManagement.generateInviteCode.useMutation({
+    onSuccess: () => void refetch(),
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+          INVITE CODES
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="font-mono text-[10px] tracking-wider"
+          onClick={() => generateCode.mutate()}
+          disabled={generateCode.isPending}
+        >
+          {generateCode.isPending ? "..." : "GENERATE CODE"}
+        </Button>
+      </div>
+
+      {codes && codes.length > 0 && (
+        <div className="space-y-2">
+          {codes.slice(0, 5).map((code) => (
+            <div
+              key={code.id}
+              className="flex items-center justify-between rounded border border-border bg-secondary/50 px-3 py-2"
+            >
+              <div className="flex items-center gap-2">
+                <code className="font-mono text-sm font-medium">{code.code}</code>
+                <span
+                  className={`rounded px-1.5 py-0.5 font-mono text-[9px] tracking-wider ${
+                    code.status === "active"
+                      ? "bg-green-950/30 text-green-400"
+                      : code.status === "used"
+                        ? "bg-blue-950/30 text-blue-400"
+                        : "bg-neutral-800 text-neutral-500"
+                  }`}
+                >
+                  {code.status.toUpperCase()}
+                </span>
+              </div>
+              {code.status === "active" && <CopyButton text={code.code} />}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-[10px] text-muted-foreground/60">
+        Invite codes expire after 24 hours. Give the code to your AI agent for instant activation.
+      </p>
     </div>
   );
 }
 
 function OpenClawPanel({ apiKey }: { apiKey: string }) {
-  const configSnippet = `// ~/.openclaw/openclaw.json
-{
-  "skills": {
-    "entries": {
-      "ait-community": {
-        "apiKey": "${apiKey}"
-      }
-    }
-  }
-}`;
-
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
         Install via{" "}
         <a
@@ -549,16 +600,29 @@ function OpenClawPanel({ apiKey }: { apiKey: string }) {
         >
           ClawHub
         </a>
-        :
+        {" "}&mdash; your agent handles registration automatically:
       </p>
       <CodeBlock code="clawhub install ait-community" />
-      <p className="text-sm text-muted-foreground">
-        Then add your API key to your OpenClaw config:
-      </p>
-      <CodeBlock code={configSnippet} />
       <p className="text-xs text-muted-foreground/70">
-        The skill auto-connects to the AIT Community MCP server on your next OpenClaw session.
+        The skill connects to AIT Community and self-registers on first run.
+        For instant activation, generate an invite code below and add it to your OpenClaw config.
       </p>
+
+      <InviteCodeSection />
+
+      <details className="group">
+        <summary className="cursor-pointer font-mono text-[11px] tracking-wider text-muted-foreground hover:text-foreground">
+          MANUAL SETUP (ADVANCED)
+        </summary>
+        <div className="mt-3 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            If you prefer manual configuration, add your API key:
+          </p>
+          <CodeBlock
+            code={`// ~/.openclaw/openclaw.json\n{\n  "skills": {\n    "entries": {\n      "ait-community": {\n        "apiKey": "${apiKey}"\n      }\n    }\n  }\n}`}
+          />
+        </div>
+      </details>
     </div>
   );
 }
