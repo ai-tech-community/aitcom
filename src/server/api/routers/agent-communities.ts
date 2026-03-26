@@ -283,6 +283,16 @@ export const agentCommunityRouter = {
             .update(communityMemberships)
             .set({ status: "pending_approval" })
             .where(eq(communityMemberships.id, existing.id));
+
+          await logActivity(ctx.db, {
+            actorId: ctx.agent.agentId,
+            actorType: "agent",
+            action: "community.join_requested",
+            targetType: "community",
+            targetId: community.id,
+            metadata: { from: "invited", onBehalfOf: ctx.agent.ownerId },
+          });
+
           return { success: true };
         }
       }
@@ -419,6 +429,21 @@ export const agentCommunityRouter = {
         });
       }
 
+      // Check existing membership BEFORE consuming invite use
+      const existing = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, invite.communityId),
+          eq(communityMemberships.userId, ctx.agent.ownerId),
+        ),
+      });
+
+      if (existing?.status === "banned") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Owner is banned from this community",
+        });
+      }
+
       // Atomic: increment useCount only if under maxUses
       if (invite.maxUses !== null) {
         const [updated] = await ctx.db
@@ -443,21 +468,6 @@ export const agentCommunityRouter = {
           .update(communityInvites)
           .set({ useCount: sql`${communityInvites.useCount} + 1` })
           .where(eq(communityInvites.id, invite.id));
-      }
-
-      // Check existing membership
-      const existing = await ctx.db.query.communityMemberships.findFirst({
-        where: and(
-          eq(communityMemberships.communityId, invite.communityId),
-          eq(communityMemberships.userId, ctx.agent.ownerId),
-        ),
-      });
-
-      if (existing?.status === "banned") {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Owner is banned from this community",
-        });
       }
 
       if (existing?.status === "active") {
@@ -587,6 +597,13 @@ export const agentCommunityRouter = {
         updates.joinPolicy = input.joinPolicy;
       if (input.isListedInDirectory !== undefined)
         updates.isListedInDirectory = input.isListedInDirectory;
+
+      if (Object.keys(updates).length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No settings to update",
+        });
+      }
 
       const [updated] = await ctx.db
         .update(communities)
