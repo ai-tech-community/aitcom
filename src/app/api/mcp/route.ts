@@ -7,6 +7,8 @@ import { validateApiKey } from "@/server/agent/api-key";
 import { checkRateLimit } from "@/server/agent/rate-limit";
 import { createCaller } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
+import { registerCommunityTools } from "./community-tools";
+import { registerFeedTools } from "./feed-tools";
 
 // ── Auth helper ─────────────────────────────────────────────────────────────
 
@@ -31,23 +33,24 @@ type Caller = ReturnType<typeof createCaller>;
 function createMcpServer(caller: Caller, keyData: { ownerId: string; agentId: string }) {
   const server = new McpServer({
     name: "aitcommunity",
-    version: "0.3.0",
+    version: "0.4.0",
   });
 
   // ── Read tools ──────────────────────────────────────────────────────────
 
   server.registerTool("browse-threads", {
     description:
-      "Browse recent forum threads. Returns threads sorted by most recent activity.",
+      "Browse recent forum threads. Returns threads sorted by most recent activity. Optionally filter to a specific community.",
     inputSchema: {
       category: z
         .enum(["all", "general", "question", "showcase", "job"])
         .default("all")
         .describe("Filter threads by category."),
       limit: z.number().min(1).max(50).default(20).describe("Max threads to return."),
+      communitySlug: z.string().optional().describe("Optional community slug to scope results."),
     },
-  }, async ({ category, limit }) => {
-    const result = await caller.agent.browseThreads({ category, limit });
+  }, async ({ category, limit, communitySlug }) => {
+    const result = await caller.agent.browseThreads({ category, limit, communitySlug });
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   });
 
@@ -67,9 +70,10 @@ function createMcpServer(caller: Caller, keyData: { ownerId: string; agentId: st
       "Browse upcoming community events sorted by date.",
     inputSchema: {
       limit: z.number().min(1).max(20).default(10).describe("Max events to return."),
+      communitySlug: z.string().optional().describe("Optional community slug to scope results."),
     },
-  }, async ({ limit }) => {
-    const result = await caller.agent.browseEvents({ limit });
+  }, async ({ limit, communitySlug }) => {
+    const result = await caller.agent.browseEvents({ limit, communitySlug });
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   });
 
@@ -79,9 +83,10 @@ function createMcpServer(caller: Caller, keyData: { ownerId: string; agentId: st
     inputSchema: {
       limit: z.number().min(1).max(50).default(20).describe("Max members to return."),
       search: z.string().optional().describe("Optional search term for display name."),
+      communitySlug: z.string().optional().describe("Optional community slug to scope results."),
     },
-  }, async ({ limit, search }) => {
-    const result = await caller.agent.browseMembers({ limit, search });
+  }, async ({ limit, search, communitySlug }) => {
+    const result = await caller.agent.browseMembers({ limit, search, communitySlug });
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   });
 
@@ -95,9 +100,10 @@ function createMcpServer(caller: Caller, keyData: { ownerId: string; agentId: st
         .default("all")
         .describe("Restrict to a content type, or 'all'."),
       limit: z.number().min(1).max(20).default(10).describe("Max results."),
+      communitySlug: z.string().optional().describe("Optional community slug to scope results."),
     },
-  }, async ({ query, type, limit }) => {
-    const result = await caller.agent.searchKnowledge({ query, type, limit });
+  }, async ({ query, type, limit, communitySlug }) => {
+    const result = await caller.agent.searchKnowledge({ query, type, limit, communitySlug });
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   });
 
@@ -486,6 +492,10 @@ function createMcpServer(caller: Caller, keyData: { ownerId: string; agentId: st
     const result = await caller.agent.getSessionHistory({ limit });
     return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
   });
+
+  // ── Community & Feed tools (domain modules) ────────────────────────────
+  registerCommunityTools(server, caller, keyData);
+  registerFeedTools(server, caller, keyData);
 
   return server;
 }
