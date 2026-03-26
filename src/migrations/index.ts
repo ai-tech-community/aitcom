@@ -5,6 +5,7 @@ import * as migration_20260227_forum_schema_upgrade from './20260227_forum_schem
 import * as migration_20260312_benchmark_tables from './20260312_benchmark_tables';
 import * as migration_20260312_benchmark_model_id from './20260312_benchmark_model_id';
 import * as migration_20260320_backfill_member_profiles from './20260320_backfill_member_profiles';
+import * as migration_20260326_community_feed_schema from './20260326_community_feed_schema';
 
 export const migrations = [
   {
@@ -41,5 +42,10 @@ export const migrations = [
     up: migration_20260320_backfill_member_profiles.up,
     down: migration_20260320_backfill_member_profiles.down,
     name: '20260320_backfill_member_profiles'
+  },
+  {
+    up: migration_20260326_community_feed_schema.up,
+    down: migration_20260326_community_feed_schema.down,
+    name: '20260326_community_feed_schema'
   },
 ];
