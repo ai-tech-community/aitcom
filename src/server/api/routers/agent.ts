@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, ilike, sql } from "drizzle-orm";
+import { eq, and, desc, ilike, sql, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import type { Where } from "payload";
 
@@ -27,6 +27,8 @@ import {
   benchmarkQuestions,
   benchmarkRuns,
   benchmarkAnswers,
+  communities,
+  communityMemberships,
 } from "@/server/db/schema";
 import { BENCHMARK_TOPICS, BENCHMARK_DIFFICULTIES } from "@/lib/benchmark-constants";
 import { createHmac } from "crypto";
@@ -82,6 +84,7 @@ export const agentRouter = createTRPCRouter({
           .enum(["all", "general", "question", "showcase", "job"])
           .default("all"),
         limit: z.number().min(1).max(50).default(20),
+        communitySlug: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -89,10 +92,30 @@ export const agentRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
 
-      const where =
-        input.category === "all"
-          ? undefined
-          : { category: { equals: input.category } };
+      // Resolve community if scoped
+      let communityId: string | undefined;
+      if (input.communitySlug) {
+        const community = await ctx.db.query.communities.findFirst({
+          where: and(
+            eq(communities.slug, input.communitySlug),
+            isNull(communities.deletedAt),
+          ),
+        });
+        if (!community) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        }
+        communityId = community.id;
+      }
+
+      const conditions: Where[] = [];
+      if (input.category !== "all") {
+        conditions.push({ category: { equals: input.category } });
+      }
+      if (communityId) {
+        conditions.push({ communityId: { equals: communityId } });
+      }
+
+      const where: Where | undefined = conditions.length > 0 ? { and: conditions } : undefined;
 
       const { docs } = await payload.find({
         collection: "forum-threads",
@@ -182,6 +205,7 @@ export const agentRouter = createTRPCRouter({
     .input(
       z.object({
         limit: z.number().min(1).max(20).default(10),
+        communitySlug: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -190,13 +214,33 @@ export const agentRouter = createTRPCRouter({
       const payload = await getPayloadClient();
       const now = new Date().toISOString();
 
+      // Resolve community if scoped
+      let communityId: string | undefined;
+      if (input.communitySlug) {
+        const community = await ctx.db.query.communities.findFirst({
+          where: and(
+            eq(communities.slug, input.communitySlug),
+            isNull(communities.deletedAt),
+          ),
+        });
+        if (!community) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        }
+        communityId = community.id;
+      }
+
+      const conditions: Where[] = [
+        { status: { equals: "published" } },
+        { date: { greater_than_equal: now } },
+      ];
+      if (communityId) {
+        conditions.push({ communityId: { equals: communityId } });
+      }
+
       const { docs } = await payload.find({
         collection: "events",
         where: {
-          and: [
-            { status: { equals: "published" } },
-            { date: { greater_than_equal: now } },
-          ],
+          and: conditions,
         },
         sort: "date",
         limit: input.limit,
@@ -223,11 +267,50 @@ export const agentRouter = createTRPCRouter({
       z.object({
         limit: z.number().min(1).max(50).default(20),
         search: z.string().optional(),
+        communitySlug: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
 
+      if (input.communitySlug) {
+        const community = await ctx.db.query.communities.findFirst({
+          where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        });
+        if (!community) throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+
+        const members = await ctx.db
+          .select({
+            userId: communityMemberships.userId,
+            role: communityMemberships.role,
+            joinedAt: communityMemberships.joinedAt,
+            displayName: memberProfiles.displayName,
+            bio: memberProfiles.bio,
+            xp: memberProfiles.xp,
+            level: memberProfiles.level,
+          })
+          .from(communityMemberships)
+          .leftJoin(memberProfiles, eq(communityMemberships.userId, memberProfiles.userId))
+          .where(and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.status, "active"),
+          ))
+          .orderBy(desc(communityMemberships.joinedAt))
+          .limit(input.limit);
+
+        return members.map((m) => ({
+          userId: m.userId,
+          displayName: m.displayName ?? null,
+          bio: m.bio ?? null,
+          skills: null,
+          company: null,
+          xp: m.xp ?? 0,
+          level: m.level ?? 1,
+          role: m.role,
+        }));
+      }
+
+      // Original global logic unchanged below
       const conditions = [eq(memberProfiles.isPublic, true)];
 
       if (input.search) {
@@ -262,12 +345,29 @@ export const agentRouter = createTRPCRouter({
           .enum(["threads", "articles", "ideas", "all"])
           .default("all"),
         limit: z.number().min(1).max(20).default(10),
+        communitySlug: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
 
       const payload = await getPayloadClient();
+
+      // Resolve community if scoped
+      let communityId: string | undefined;
+      if (input.communitySlug) {
+        const community = await ctx.db.query.communities.findFirst({
+          where: and(
+            eq(communities.slug, input.communitySlug),
+            isNull(communities.deletedAt),
+          ),
+        });
+        if (!community) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        }
+        communityId = community.id;
+      }
+
       const results: {
         type: string;
         id: number;
@@ -280,14 +380,19 @@ export const agentRouter = createTRPCRouter({
 
       // Search threads
       if (input.type === "all" || input.type === "threads") {
+        const threadWhere: Where = {
+          or: [
+            { title: { contains: input.query } },
+            { content: { contains: input.query } },
+          ],
+        };
+        const threadConditions: Where[] = [threadWhere];
+        if (communityId) {
+          threadConditions.push({ communityId: { equals: communityId } });
+        }
         const { docs } = await payload.find({
           collection: "forum-threads",
-          where: {
-            or: [
-              { title: { contains: input.query } },
-              { content: { contains: input.query } },
-            ],
-          },
+          where: communityId ? { and: threadConditions } : threadWhere,
           limit: perType,
           sort: "-createdAt",
           depth: 0,
@@ -305,14 +410,19 @@ export const agentRouter = createTRPCRouter({
 
       // Search articles
       if (input.type === "all" || input.type === "articles") {
+        const articleWhere: Where = {
+          and: [
+            { status: { equals: "published" } },
+            { title: { contains: input.query } },
+          ],
+        };
+        const articleConditions: Where[] = [articleWhere];
+        if (communityId) {
+          articleConditions.push({ communityId: { equals: communityId } });
+        }
         const { docs } = await payload.find({
           collection: "articles",
-          where: {
-            and: [
-              { status: { equals: "published" } },
-              { title: { contains: input.query } },
-            ],
-          },
+          where: communityId ? { and: articleConditions } : articleWhere,
           limit: perType,
           sort: "-createdAt",
           locale: "en",
@@ -332,14 +442,19 @@ export const agentRouter = createTRPCRouter({
 
       // Search ideas
       if (input.type === "all" || input.type === "ideas") {
+        const ideaWhere: Where = {
+          or: [
+            { title: { contains: input.query } },
+            { description: { contains: input.query } },
+          ],
+        };
+        const ideaConditions: Where[] = [ideaWhere];
+        if (communityId) {
+          ideaConditions.push({ communityId: { equals: communityId } });
+        }
         const { docs } = await payload.find({
           collection: "community-ideas",
-          where: {
-            or: [
-              { title: { contains: input.query } },
-              { description: { contains: input.query } },
-            ],
-          },
+          where: communityId ? { and: ideaConditions } : ideaWhere,
           limit: perType,
           sort: "-createdAt",
           depth: 0,
