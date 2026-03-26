@@ -55,7 +55,7 @@ export const feedRouter = createTRPCRouter({
       }
 
       const { docs } = await payload.find({
-        collection: "feed-posts" as any,
+        collection: "feed-posts",
         where: whereClause as Parameters<typeof payload.find>[0]["where"],
         sort: "-createdAt",
         limit: input.limit + 1,
@@ -70,7 +70,7 @@ export const feedRouter = createTRPCRouter({
       if (userId && posts.length > 0) {
         const postIds = posts.map((p) => p.id);
         const { docs: myLikes } = await payload.find({
-          collection: "feed-likes" as any,
+          collection: "feed-likes",
           where: {
             and: [
               { userId: { equals: userId } },
@@ -82,7 +82,7 @@ export const feedRouter = createTRPCRouter({
         });
         const likedPostIds = new Set(
           myLikes.map((l) =>
-            typeof l.post === "object" ? (l.post as { id: number }).id : l.post,
+            typeof l.post === "object" ? l.post.id : l.post,
           ),
         );
         const postsWithLike = posts.map((p) => ({
@@ -92,7 +92,7 @@ export const feedRouter = createTRPCRouter({
         const nextCursor =
           hasMore && posts.length > 0
             ? {
-                createdAt: posts[posts.length - 1]!.createdAt as string,
+                createdAt: posts[posts.length - 1]!.createdAt,
                 id: posts[posts.length - 1]!.id,
               }
             : undefined;
@@ -103,7 +103,7 @@ export const feedRouter = createTRPCRouter({
       const nextCursor =
         hasMore && posts.length > 0
           ? {
-              createdAt: posts[posts.length - 1]!.createdAt as string,
+              createdAt: posts[posts.length - 1]!.createdAt,
               id: posts[posts.length - 1]!.id,
             }
           : undefined;
@@ -158,7 +158,7 @@ export const feedRouter = createTRPCRouter({
       const userName = ctx.session.user.name ?? "member";
 
       const post = await payload.create({
-        collection: "feed-posts" as any,
+        collection: "feed-posts",
         data: {
           content: input.content,
           imageUrl: input.imageUrl ?? undefined,
@@ -196,7 +196,7 @@ export const feedRouter = createTRPCRouter({
       const payload = await getPayloadClient();
 
       const post = await payload.findByID({
-        collection: "feed-posts" as any,
+        collection: "feed-posts",
         id: input.postId,
         depth: 0,
       });
@@ -209,7 +209,7 @@ export const feedRouter = createTRPCRouter({
       }
 
       return payload.update({
-        collection: "feed-posts" as any,
+        collection: "feed-posts",
         id: input.postId,
         data: {
           content: input.content,
@@ -226,7 +226,7 @@ export const feedRouter = createTRPCRouter({
       const payload = await getPayloadClient();
 
       const post = await payload.findByID({
-        collection: "feed-posts" as any,
+        collection: "feed-posts",
         id: input.postId,
         depth: 0,
       });
@@ -261,7 +261,7 @@ export const feedRouter = createTRPCRouter({
       }
 
       return payload.update({
-        collection: "feed-posts" as any,
+        collection: "feed-posts",
         id: input.postId,
         data: {
           isDeleted: true,
@@ -280,7 +280,7 @@ export const feedRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
 
       const post = await payload.findByID({
-        collection: "feed-posts" as any,
+        collection: "feed-posts",
         id: input.postId,
         depth: 0,
       });
@@ -302,7 +302,7 @@ export const feedRouter = createTRPCRouter({
       }
 
       const { docs: existingLikes } = await payload.find({
-        collection: "feed-likes" as any,
+        collection: "feed-likes",
         where: {
           and: [
             { post: { equals: input.postId } },
@@ -315,22 +315,22 @@ export const feedRouter = createTRPCRouter({
 
       if (existingLikes.length > 0) {
         await payload.delete({
-          collection: "feed-likes" as any,
+          collection: "feed-likes",
           id: existingLikes[0]!.id,
         });
         await payload.update({
-          collection: "feed-posts" as any,
+          collection: "feed-posts",
           id: input.postId,
           data: { likeCount: Math.max(0, (post.likeCount ?? 0) - 1) },
         });
         return { liked: false };
       } else {
         await payload.create({
-          collection: "feed-likes" as any,
+          collection: "feed-likes",
           data: { post: input.postId, userId },
         });
         await payload.update({
-          collection: "feed-posts" as any,
+          collection: "feed-posts",
           id: input.postId,
           data: { likeCount: (post.likeCount ?? 0) + 1 },
         });
@@ -356,7 +356,7 @@ export const feedRouter = createTRPCRouter({
       const payload = await getPayloadClient();
 
       const { docs } = await payload.find({
-        collection: "feed-comments" as any,
+        collection: "feed-comments",
         where: {
           and: [
             { post: { equals: input.postId } },
@@ -383,7 +383,7 @@ export const feedRouter = createTRPCRouter({
       const payload = await getPayloadClient();
 
       const post = await payload.findByID({
-        collection: "feed-posts" as any,
+        collection: "feed-posts",
         id: input.postId,
         depth: 0,
       });
@@ -407,7 +407,7 @@ export const feedRouter = createTRPCRouter({
       const userName = ctx.session.user.name ?? "member";
 
       const comment = await payload.create({
-        collection: "feed-comments" as any,
+        collection: "feed-comments",
         data: {
           post: input.postId,
           content: input.content,
@@ -447,7 +447,7 @@ export const feedRouter = createTRPCRouter({
       const payload = await getPayloadClient();
 
       const comment = await payload.findByID({
-        collection: "feed-comments" as any,
+        collection: "feed-comments",
         id: input.commentId,
         depth: 0,
       });
@@ -460,7 +460,7 @@ export const feedRouter = createTRPCRouter({
       }
 
       return payload.update({
-        collection: "feed-comments" as any,
+        collection: "feed-comments",
         id: input.commentId,
         data: {
           content: input.content,
@@ -477,7 +477,7 @@ export const feedRouter = createTRPCRouter({
       const payload = await getPayloadClient();
 
       const comment = await payload.findByID({
-        collection: "feed-comments" as any,
+        collection: "feed-comments",
         id: input.commentId,
         depth: 0,
       });
@@ -513,23 +513,23 @@ export const feedRouter = createTRPCRouter({
 
       // Soft-delete and decrement parent post commentCount
       await payload.update({
-        collection: "feed-comments" as any,
+        collection: "feed-comments",
         id: input.commentId,
         data: { isDeleted: true, content: "", authorName: "" },
       });
 
       const postId =
         typeof comment.post === "object"
-          ? (comment.post as { id: number }).id
+          ? comment.post.id
           : comment.post;
       if (postId) {
         const post = await payload.findByID({
-          collection: "feed-posts" as any,
+          collection: "feed-posts",
           id: postId,
           depth: 0,
         });
         await payload.update({
-          collection: "feed-posts" as any,
+          collection: "feed-posts",
           id: postId,
           data: { commentCount: Math.max(0, (post.commentCount ?? 0) - 1) },
         });

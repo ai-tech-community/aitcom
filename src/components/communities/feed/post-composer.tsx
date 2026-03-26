@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import Image from "next/image";
 import { ImagePlus, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -81,9 +82,11 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
 
       {imageUrl ? (
         <div className="relative inline-block">
-          <img
+          <Image
             src={imageUrl}
             alt="Preview"
+            width={192}
+            height={192}
             className="max-h-48 rounded-lg object-cover"
           />
           <Button

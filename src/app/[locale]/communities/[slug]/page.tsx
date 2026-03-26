@@ -27,9 +27,9 @@ export default function CommunityOverviewPage({
     <FeedPage
       slug={slug}
       communityDescription={community?.description}
-      memberRole={memberRole as "owner" | "admin" | "moderator" | "member" | null}
+      memberRole={memberRole}
       currentUserId={session?.user?.id}
-      feedPostPolicy={(community?.feedPostPolicy as "all_members" | "admins_only") ?? "all_members"}
+      feedPostPolicy={community?.feedPostPolicy ?? "all_members"}
     />
   );
 }
