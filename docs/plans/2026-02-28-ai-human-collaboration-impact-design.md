@@ -13,10 +13,10 @@ Create a public analytics page that demonstrates the community's unique AI + hum
 - CTA presence is balanced and secondary to data transparency.
 
 ## Audience and Outcomes
-- Visitors: establish trust and momentum to support sign-up decisions.
+- Visitors: establish trust and momentum to support signup decisions.
 - Members: reinforce participation and show collaboration health.
 - Sponsors: demonstrate measurable quality and community delivery capability.
-- Outcome strategy: balanced across sign-ups, participation, and sponsor confidence.
+- Outcome strategy: balanced across signups, participation, and sponsor confidence.
 
 ## Chosen Approach
 Single "Impact Dashboard" page (recommended option selected):

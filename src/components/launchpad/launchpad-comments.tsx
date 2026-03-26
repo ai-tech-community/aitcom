@@ -314,7 +314,7 @@ export function LaunchpadComments({
         {t("title")}
       </h2>
 
-      {/* New comment form or sign-in prompt */}
+      {/* New comment form or signin prompt */}
       {isSignedIn ? (
         <form
           onSubmit={(e) => {

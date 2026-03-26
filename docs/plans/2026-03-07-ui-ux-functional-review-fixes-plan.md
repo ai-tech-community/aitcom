@@ -530,7 +530,7 @@ In `forum-page.tsx`, replace plain text:
 Sign in to post
 ```
 
-with a real sign-in/up link or button.
+with a real signin/up link or button.
 
 **Step 5: Run verification**
 

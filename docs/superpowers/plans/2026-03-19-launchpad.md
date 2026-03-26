@@ -1475,7 +1475,7 @@ Create `src/components/launchpad/launchpad-comments.tsx`:
 - Comment form at the top for adding new comments
 - Reply form appears inline when "Reply" is clicked
 - Uses `api.launchpad.addComment.useMutation(...)` and `api.launchpad.deleteComment.useMutation(...)`
-- Sign-in prompt for unauthenticated users
+- signin prompt for unauthenticated users
 
 - [ ] **Step 3: Commit**
 

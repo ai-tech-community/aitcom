@@ -12,7 +12,7 @@ A community platform for technical innovators in the Netherlands, focused on AI 
 - **Blog** — Articles, tutorials, and talk recordings
 - **Internationalization** — Full English and Dutch language support
 - **Gamification** — XP, levels, and badges to reward community participation
-- **Authentication** — Email/password and GitHub OAuth sign-in
+- **Authentication** — Email/password and GitHub OAuth signin
 
 ## Tech Stack
 
@@ -55,7 +55,7 @@ DATABASE_URL="postgresql://..."        # PostgreSQL connection string
 BETTER_AUTH_SECRET="your-secret"       # Auth session secret (min 32 chars)
 PAYLOAD_SECRET="your-payload-secret"   # Payload CMS secret (min 32 chars)
 
-# OAuth (required for GitHub sign-in)
+# OAuth (required for GitHub signin)
 BETTER_AUTH_GITHUB_CLIENT_ID="..."
 BETTER_AUTH_GITHUB_CLIENT_SECRET="..."
 

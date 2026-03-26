@@ -328,7 +328,7 @@ export function ArticleComments({
         / {t("title")}
       </h2>
 
-      {/* New comment form or sign-in prompt */}
+      {/* New comment form or signin prompt */}
       {isSignedIn ? (
         <CommentForm
           articleId={articleId}
@@ -338,7 +338,7 @@ export function ArticleComments({
         />
       ) : (
         <p className="text-muted-foreground font-mono text-xs">
-          <Link href="/sign-in" className="hover:text-foreground underline transition-colors">
+          <Link href="/signin" className="hover:text-foreground underline transition-colors">
             {t("signIn")}
           </Link>
         </p>

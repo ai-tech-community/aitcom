@@ -303,7 +303,7 @@ git commit -m "chore: push schema to Neon Postgres, verify migration"
 
 ## Part 2: Auth Completion
 
-### Task 7: Wire sign-up form to Better Auth
+### Task 7: Wire signup form to Better Auth
 
 **Files:**
 - Modify: `src/app/[locale]/auth/signup/page.tsx`
@@ -430,19 +430,19 @@ export default function SignUpPage() {
 
 ```bash
 git add src/app/[locale]/auth/signup/page.tsx
-git commit -m "feat: wire sign-up form to Better Auth"
+git commit -m "feat: wire signup form to Better Auth"
 ```
 
 ---
 
-### Task 8: Wire sign-in form to Better Auth
+### Task 8: Wire signin form to Better Auth
 
 **Files:**
 - Modify: `src/app/[locale]/auth/signin/page.tsx`
 
 **Step 1: Implement the form submission**
 
-Same pattern as sign-up. Key difference: use `authClient.signIn.email()`.
+Same pattern as signup. Key difference: use `authClient.signIn.email()`.
 
 ```typescript
 "use client";
@@ -547,7 +547,7 @@ export default function SignInPage() {
 
 ```bash
 git add src/app/[locale]/auth/signin/page.tsx
-git commit -m "feat: wire sign-in form to Better Auth"
+git commit -m "feat: wire signin form to Better Auth"
 ```
 
 ---
@@ -726,7 +726,7 @@ git commit -m "feat: add auth route protection and dashboard page"
 
 Run: `pnpm dev`
 
-**Step 2: Test sign-up**
+**Step 2: Test signup**
 
 1. Navigate to `/en/auth/signup`
 2. Fill in name, email, password (min 8 chars)
@@ -737,10 +737,10 @@ Run: `pnpm dev`
 
 1. Click logout icon → should reload and show `[J] JOIN` again
 
-**Step 4: Test sign-in**
+**Step 4: Test signin**
 
 1. Navigate to `/en/auth/signin`
-2. Enter the email/password from sign-up
+2. Enter the email/password from signup
 3. Submit → should redirect to `/`
 
 **Step 5: Test route protection**
@@ -750,7 +750,7 @@ Run: `pnpm dev`
 
 **Step 6: Test GitHub OAuth**
 
-1. Click GitHub button on sign-in page → should redirect to GitHub OAuth flow
+1. Click GitHub button on signin page → should redirect to GitHub OAuth flow
 2. After authorizing → should redirect back and be signed in
 
 ---

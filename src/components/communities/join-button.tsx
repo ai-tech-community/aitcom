@@ -53,7 +53,7 @@ export function JoinButton({ slug, joinPolicy, membershipStatus, memberRole }: J
 
   const handleAction = async () => {
     if (!session?.user) {
-      router.push("/auth/sign-in" as never);
+      router.push("/auth/signin" as never);
       return;
     }
 

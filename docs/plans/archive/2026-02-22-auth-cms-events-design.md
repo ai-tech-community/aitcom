@@ -17,7 +17,7 @@ Two-system split within a single Next.js application sharing one Neon Postgres d
 - Admin panel at `/admin` with Payload's own auth (separate from member auth)
 
 **Existing stack** handles member-facing features:
-- Better Auth — member sign-in/sign-up (email + GitHub OAuth)
+- Better Auth — member signin/signup (email + GitHub OAuth)
 - tRPC — event registration, forum posts, profile updates
 - Drizzle ORM — member profiles, registrations, forum threads/replies
 
@@ -55,7 +55,7 @@ Two-system split within a single Next.js application sharing one Neon Postgres d
 
 The auth infrastructure exists (Better Auth config, GitHub OAuth provider, API route handler, tRPC protected procedures). The following needs to be wired up:
 
-### Sign-in / Sign-up Forms
+### signin / signup Forms
 - Wire forms to `authClient.signIn.email()` and `authClient.signUp.email()`
 - Wire GitHub OAuth button to `authClient.signIn.social({ provider: "github" })`
 - Add form validation with Zod (email format, password min length)

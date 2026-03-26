@@ -36,7 +36,7 @@ describe("resolveBetterAuthBaseUrl", () => {
 
 describe("resolveTrustedOrigins", () => {
   it("includes the incoming request origin in development", () => {
-    const request = new Request("http://localhost:3002/api/auth/sign-up/email", {
+    const request = new Request("http://localhost:3002/api/auth/signup/email", {
       headers: {
         origin: "http://localhost:3002",
         host: "localhost:3002",
