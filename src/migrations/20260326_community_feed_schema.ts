@@ -38,7 +38,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       ON "forum_replies"("community_id");
   `);
 
-  // ── feed_posts: create table ────────────────────────────────────────
+  // ── feed_posts: create table or add missing columns ──────────────────
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "feed_posts" (
       "id" serial PRIMARY KEY,
@@ -46,7 +46,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       "image_url" varchar,
       "author_id" varchar NOT NULL,
       "author_name" varchar,
-      "community_id" varchar NOT NULL,
+      "community_id" varchar,
       "like_count" numeric DEFAULT 0,
       "comment_count" numeric DEFAULT 0,
       "is_deleted" boolean DEFAULT false,
@@ -57,6 +57,16 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     );
   `);
 
+  // If the table already existed, ensure new columns are present
+  await db.execute(sql`
+    ALTER TABLE "feed_posts"
+      ADD COLUMN IF NOT EXISTS "is_deleted" boolean DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "is_edited" boolean DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "edited_at" timestamp(3) with time zone,
+      ADD COLUMN IF NOT EXISTS "like_count" numeric DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS "comment_count" numeric DEFAULT 0;
+  `);
+
   await db.execute(sql`
     CREATE INDEX IF NOT EXISTS "feed_posts_author_id_idx"
       ON "feed_posts"("author_id");
@@ -64,7 +74,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       ON "feed_posts"("community_id");
   `);
 
-  // ── feed_comments: create table ─────────────────────────────────────
+  // ── feed_comments: create table or add missing columns ────────────────
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "feed_comments" (
       "id" serial PRIMARY KEY,
@@ -72,13 +82,21 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       "content" varchar NOT NULL,
       "author_id" varchar NOT NULL,
       "author_name" varchar,
-      "community_id" varchar NOT NULL,
+      "community_id" varchar,
       "is_deleted" boolean DEFAULT false,
       "is_edited" boolean DEFAULT false,
       "edited_at" timestamp(3) with time zone,
       "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
       "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
     );
+  `);
+
+  // If the table already existed, ensure new columns are present
+  await db.execute(sql`
+    ALTER TABLE "feed_comments"
+      ADD COLUMN IF NOT EXISTS "is_deleted" boolean DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "is_edited" boolean DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "edited_at" timestamp(3) with time zone;
   `);
 
   await db.execute(sql`

@@ -30,7 +30,7 @@ export const FeedComments: CollectionConfig = {
     { name: "content", type: "text", required: true, maxLength: 1000 },
     { name: "authorId", type: "text", required: true, index: true },
     { name: "authorName", type: "text", admin: { readOnly: true } },
-    { name: "communityId", type: "text", required: true, index: true },
+    { name: "communityId", type: "text", index: true },
     { name: "isDeleted", type: "checkbox", defaultValue: false, admin: { position: "sidebar" } },
     { name: "isEdited", type: "checkbox", defaultValue: false, admin: { position: "sidebar", readOnly: true } },
     { name: "editedAt", type: "date", admin: { position: "sidebar", readOnly: true } },

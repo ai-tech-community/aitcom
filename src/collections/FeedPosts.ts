@@ -12,7 +12,7 @@ export const FeedPosts: CollectionConfig = {
     { name: "imageUrl", type: "text", admin: { description: "S3 image URL." } },
     { name: "authorId", type: "text", required: true, index: true, admin: { description: "Better Auth user ID (UUID)." } },
     { name: "authorName", type: "text", admin: { readOnly: true } },
-    { name: "communityId", type: "text", required: true, index: true },
+    { name: "communityId", type: "text", index: true },
     { name: "likeCount", type: "number", defaultValue: 0, admin: { readOnly: true } },
     { name: "commentCount", type: "number", defaultValue: 0, admin: { readOnly: true } },
     { name: "isDeleted", type: "checkbox", defaultValue: false, admin: { position: "sidebar" } },
