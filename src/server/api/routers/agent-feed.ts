@@ -280,7 +280,7 @@ export const agentFeedRouter = {
       }
 
       // Verify owner is an active member of the post's community
-      await requireActiveMembership(ctx.db, post.communityId, ctx.agent.ownerId);
+      await requireActiveMembership(ctx.db, post.communityId ?? "", ctx.agent.ownerId);
 
       // Fetch agent profile for ghost mode check and name
       const [agent] = await ctx.db
@@ -370,7 +370,7 @@ export const agentFeedRouter = {
       }
 
       // Verify owner is an active member of the post's community
-      await requireActiveMembership(ctx.db, post.communityId, ctx.agent.ownerId);
+      await requireActiveMembership(ctx.db, post.communityId ?? "", ctx.agent.ownerId);
 
       // Check for existing like
       const { docs: existingLikes } = await payload.find({

@@ -82,7 +82,7 @@ export const feedRouter = createTRPCRouter({
         });
         const likedPostIds = new Set(
           myLikes.map((l) =>
-            typeof l.post === "object" ? l.post.id : l.post,
+            typeof l.post === "object" ? (l.post as { id: number }).id : l.post,
           ),
         );
         const postsWithLike = posts.map((p) => ({
@@ -292,7 +292,7 @@ export const feedRouter = createTRPCRouter({
       // Verify active membership
       const membership = await ctx.db.query.communityMemberships.findFirst({
         where: and(
-          eq(communityMemberships.communityId, post.communityId),
+          eq(communityMemberships.communityId, post.communityId ?? ""),
           eq(communityMemberships.userId, userId),
           eq(communityMemberships.status, "active"),
         ),
@@ -395,7 +395,7 @@ export const feedRouter = createTRPCRouter({
       // Verify active membership
       const membership = await ctx.db.query.communityMemberships.findFirst({
         where: and(
-          eq(communityMemberships.communityId, post.communityId),
+          eq(communityMemberships.communityId, post.communityId ?? ""),
           eq(communityMemberships.userId, ctx.session.user.id),
           eq(communityMemberships.status, "active"),
         ),

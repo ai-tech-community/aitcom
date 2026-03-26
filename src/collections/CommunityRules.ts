@@ -11,7 +11,6 @@ export const CommunityRules: CollectionConfig = {
     {
       name: "communityId",
       type: "text",
-      required: true,
       index: true,
       admin: { description: "Drizzle community UUID." },
     },

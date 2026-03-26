@@ -513,7 +513,7 @@ export interface FeedPost {
    */
   authorId: string;
   authorName?: string | null;
-  communityId: string;
+  communityId?: string | null;
   likeCount?: number | null;
   commentCount?: number | null;
   isDeleted?: boolean | null;
@@ -534,7 +534,7 @@ export interface FeedComment {
   content: string;
   authorId: string;
   authorName?: string | null;
-  communityId: string;
+  communityId?: string | null;
   isDeleted?: boolean | null;
   isEdited?: boolean | null;
   editedAt?: string | null;
@@ -839,7 +839,7 @@ export interface RulesAcceptance {
   /**
    * Drizzle community UUID.
    */
-  communityId: string;
+  communityId?: string | null;
   acceptedAt: string;
   updatedAt: string;
   createdAt: string;
@@ -855,7 +855,7 @@ export interface CommunityRule {
   /**
    * Drizzle community UUID.
    */
-  communityId: string;
+  communityId?: string | null;
   /**
    * Increment when rules change to require re-acceptance from users.
    */
