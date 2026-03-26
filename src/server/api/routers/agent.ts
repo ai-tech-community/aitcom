@@ -7,6 +7,7 @@ import {
   createTRPCRouter,
   agentProcedure,
   requireScope,
+  requireOwner,
 } from "@/server/api/trpc";
 import {
   agentProfiles,
@@ -481,6 +482,7 @@ export const agentRouter = createTRPCRouter({
 
   myProfile: agentProcedure.query(async ({ ctx }) => {
     requireScope(ctx.agent.scopes, "read");
+    const ownerId = requireOwner(ctx.agent.ownerId);
 
     const [agent] = await ctx.db
       .select()
@@ -491,7 +493,7 @@ export const agentRouter = createTRPCRouter({
     const [owner] = await ctx.db
       .select()
       .from(memberProfiles)
-      .where(eq(memberProfiles.userId, ctx.agent.ownerId))
+      .where(eq(memberProfiles.userId, ownerId))
       .limit(1);
 
     return {
@@ -509,6 +511,7 @@ export const agentRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       // Get agent profile for expertise tags and lastActiveAt cursor
       const [agent] = await ctx.db
@@ -537,7 +540,7 @@ export const agentRouter = createTRPCRouter({
             // Exclude this agent's own actions
             sql`NOT (${activityEvents.actorId} = ${ctx.agent.agentId} AND ${activityEvents.actorType} = 'agent')`,
             // Exclude private events not meant for this agent's owner
-            sql`(${activityEvents.recipientId} IS NULL OR ${activityEvents.recipientId} = ${ctx.agent.ownerId})`,
+            sql`(${activityEvents.recipientId} IS NULL OR ${activityEvents.recipientId} = ${ownerId})`,
           ),
         )
         .orderBy(desc(activityEvents.createdAt))
@@ -588,7 +591,7 @@ export const agentRouter = createTRPCRouter({
             break;
           }
           case "challenge.objective_completed": {
-            if (event.actorId === ctx.agent.ownerId) {
+            if (event.actorId === ownerId) {
               type = "challenge_update";
               title = `Challenge progress: ${metaTitle ?? ""}`;
               relevance = "Owner completed a challenge objective";
@@ -596,7 +599,7 @@ export const agentRouter = createTRPCRouter({
             break;
           }
           case "challenge.completed": {
-            if (event.actorId === ctx.agent.ownerId) {
+            if (event.actorId === ownerId) {
               type = "challenge_update";
               title = `Challenge completed: ${metaTitle ?? ""}`;
               relevance = "Owner completed a challenge";
@@ -640,7 +643,7 @@ export const agentRouter = createTRPCRouter({
         .where(
           and(
             eq(conversations.type, "agent"),
-            eq(conversationParticipants.userId, ctx.agent.ownerId),
+            eq(conversationParticipants.userId, ownerId),
           ),
         )
         .limit(1);
@@ -687,6 +690,7 @@ export const agentRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const [agent] = await ctx.db
         .select()
@@ -727,7 +731,7 @@ export const agentRouter = createTRPCRouter({
         .where(
           and(
             eq(conversations.type, "agent"),
-            eq(conversationParticipants.userId, ctx.agent.ownerId),
+            eq(conversationParticipants.userId, ownerId),
           ),
         )
         .limit(1);
@@ -767,7 +771,7 @@ export const agentRouter = createTRPCRouter({
         .from(challengeEnrollments)
         .where(
           and(
-            eq(challengeEnrollments.userId, ctx.agent.ownerId),
+            eq(challengeEnrollments.userId, ownerId),
             sql`${challengeEnrollments.status} IN ('active', 'submitted')`,
           ),
         );
@@ -906,7 +910,8 @@ export const agentRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      requireScope(ctx.agent.scopes, "contribute");     
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
       const payload = await getPayloadClient();
 
       // Fetch agent profile
@@ -1006,7 +1011,7 @@ export const agentRouter = createTRPCRouter({
           .insert(agentDrafts)
           .values({
             agentId: agent.id,
-            ownerId: ctx.agent.ownerId,
+            ownerId,
             type: "thread_reply",
             targetType: "forum-threads",
             targetId: String(input.threadId),
@@ -1070,6 +1075,7 @@ export const agentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const payload = await getPayloadClient();
 
@@ -1170,7 +1176,7 @@ export const agentRouter = createTRPCRouter({
           .insert(agentDrafts)
           .values({
             agentId: agent.id,
-            ownerId: ctx.agent.ownerId,
+            ownerId,
             type: "knowledge_share",
             targetType: "forum-threads",
             targetId: String(input.threadId),
@@ -1239,12 +1245,13 @@ export const agentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const [suggestion] = await ctx.db
         .insert(agentSuggestions)
         .values({
           agentId: ctx.agent.agentId,
-          ownerId: ctx.agent.ownerId,
+          ownerId,
           type: "topic_suggestion",
           title: input.title,
           content: input.description,
@@ -1273,12 +1280,13 @@ export const agentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const [suggestion] = await ctx.db
         .insert(agentSuggestions)
         .values({
           agentId: ctx.agent.agentId,
-          ownerId: ctx.agent.ownerId,
+          ownerId,
           type: "event_interest",
           content: input.reason,
           metadata: { eventId: input.eventId },
@@ -1292,9 +1300,9 @@ export const agentRouter = createTRPCRouter({
     .input(z.object({ ideaId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const payload = await getPayloadClient();
-      const ownerId = ctx.agent.ownerId;
 
       // Check if the owner has already voted
       const { docs: existingVotes } = await payload.find({
@@ -1462,6 +1470,7 @@ export const agentRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
       const payload = await getPayloadClient();
       const challenge = await payload.findByID({
         collection: "challenges",
@@ -1474,7 +1483,7 @@ export const agentRouter = createTRPCRouter({
         .where(
           and(
             eq(challengeEnrollments.challengeId, input.challengeId),
-            eq(challengeEnrollments.userId, ctx.agent.ownerId),
+            eq(challengeEnrollments.userId, ownerId),
           ),
         )
         .limit(1);
@@ -1485,13 +1494,14 @@ export const agentRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
       const [enrollment] = await ctx.db
         .select()
         .from(challengeEnrollments)
         .where(
           and(
             eq(challengeEnrollments.challengeId, input.challengeId),
-            eq(challengeEnrollments.userId, ctx.agent.ownerId),
+            eq(challengeEnrollments.userId, ownerId),
           ),
         )
         .limit(1);
@@ -1562,7 +1572,7 @@ export const agentRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
-      const ownerId = ctx.agent.ownerId;
+      const ownerId = requireOwner(ctx.agent.ownerId);
       const payload = await getPayloadClient();
       const challenge = await payload.findByID({
         collection: "challenges",
@@ -1679,13 +1689,14 @@ export const agentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
       const [enrollment] = await ctx.db
         .select()
         .from(challengeEnrollments)
         .where(
           and(
             eq(challengeEnrollments.challengeId, input.challengeId),
-            eq(challengeEnrollments.userId, ctx.agent.ownerId),
+            eq(challengeEnrollments.userId, ownerId),
             eq(challengeEnrollments.status, "active"),
           ),
         )
@@ -1737,7 +1748,7 @@ export const agentRouter = createTRPCRouter({
         ctx.db,
         enrollment.id,
         input.challengeId,
-        ctx.agent.ownerId,
+        ownerId,
       );
       return {
         updated: true,
@@ -1761,13 +1772,14 @@ export const agentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
       const [enrollment] = await ctx.db
         .select()
         .from(challengeEnrollments)
         .where(
           and(
             eq(challengeEnrollments.challengeId, input.challengeId),
-            eq(challengeEnrollments.userId, ctx.agent.ownerId),
+            eq(challengeEnrollments.userId, ownerId),
             eq(challengeEnrollments.status, "active"),
           ),
         )
@@ -1827,7 +1839,7 @@ export const agentRouter = createTRPCRouter({
         ctx.db,
         enrollment.id,
         input.challengeId,
-        ctx.agent.ownerId,
+        ownerId,
       );
       return { results: outcomes };
     }),
@@ -1845,7 +1857,7 @@ export const agentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
-      const ownerId = ctx.agent.ownerId;
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       // Check agent visibility mode for ghost mode
       const [agent] = await ctx.db
@@ -1888,7 +1900,7 @@ export const agentRouter = createTRPCRouter({
         .from(challengeReplies)
         .where(
           and(
-            eq(challengeReplies.authorId, ctx.agent.ownerId),
+            eq(challengeReplies.authorId, ownerId),
             eq(challengeReplies.authorType, "agent"),
             sql`${challengeReplies.createdAt} > ${cooldownCutoff}`,
           ),
@@ -1988,6 +2000,7 @@ export const agentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const [agent] = await ctx.db
         .select({ visibilityMode: agentProfiles.visibilityMode })
@@ -1998,7 +2011,7 @@ export const agentRouter = createTRPCRouter({
       if (agent?.visibilityMode === "ghost") {
         await ctx.db.insert(agentDrafts).values({
           agentId: ctx.agent.agentId,
-          ownerId: ctx.agent.ownerId,
+          ownerId,
           type: "challenge_channel_reply",
           content: input.content,
           metadata: { threadId: input.threadId },
@@ -2011,7 +2024,7 @@ export const agentRouter = createTRPCRouter({
         .insert(challengeReplies)
         .values({
           threadId: input.threadId,
-          authorId: ctx.agent.ownerId,
+          authorId: ownerId,
           authorType: "agent",
           content: input.content,
         })
@@ -2036,7 +2049,7 @@ export const agentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
-      const ownerId = ctx.agent.ownerId;
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const [enrollment] = await ctx.db
         .select()
@@ -2302,6 +2315,7 @@ export const agentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       // Decode and verify run token
       let tokenData: {
@@ -2409,7 +2423,7 @@ export const agentRouter = createTRPCRouter({
         .values({
           agentId: ctx.agent.agentId,
           agentName: agentRow?.name ?? "Unknown Agent",
-          ownerId: ctx.agent.ownerId,
+          ownerId,
           totalQuestions: scored.length,
           correctAnswers: correctCount,
           scorePercent: scorePercent.toFixed(2),
@@ -2453,6 +2467,7 @@ export const agentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const [agentRow] = await ctx.db
         .select({ name: agentProfiles.name })
@@ -2465,7 +2480,7 @@ export const agentRouter = createTRPCRouter({
         .values({
           ...input,
           status: "pending",
-          contributorId: ctx.agent.ownerId,
+          contributorId: ownerId,
           contributorName: agentRow?.name ?? "Agent",
         })
         .returning();

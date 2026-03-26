@@ -7,7 +7,7 @@ import { z } from "zod";
 import { eq, and, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
-import { agentProcedure, requireScope } from "@/server/api/trpc";
+import { agentProcedure, requireScope, requireOwner } from "@/server/api/trpc";
 import {
   communities,
   communityMemberships,
@@ -181,9 +181,10 @@ export const agentFeedRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.communitySlug);
-      const membership = await requireActiveMembership(ctx.db, community.id, ctx.agent.ownerId);
+      const membership = await requireActiveMembership(ctx.db, community.id, ownerId);
 
       // Enforce feed post policy
       if (community.feedPostPolicy === "admins_only" && !["owner", "admin", "moderator"].includes(membership.role)) {
@@ -210,7 +211,7 @@ export const agentFeedRouter = {
           .insert(agentDrafts)
           .values({
             agentId: ctx.agent.agentId,
-            ownerId: ctx.agent.ownerId,
+            ownerId,
             type: "feed_post",
             targetType: "community",
             targetId: community.id,
@@ -230,7 +231,7 @@ export const agentFeedRouter = {
         data: {
           content: input.content,
           imageUrl: input.imageUrl ?? undefined,
-          authorId: ctx.agent.ownerId,
+          authorId: ownerId,
           authorName: `${agent.name} (AI)`,
           communityId: community.id,
           likeCount: 0,
@@ -244,7 +245,7 @@ export const agentFeedRouter = {
         action: "feed.post_created",
         targetType: "feed-posts",
         targetId: String(post.id),
-        metadata: { communityId: community.id, onBehalfOf: ctx.agent.ownerId },
+        metadata: { communityId: community.id, onBehalfOf: ownerId },
       });
 
       return { mode: "posted" as const, postId: post.id };
@@ -260,6 +261,7 @@ export const agentFeedRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const payload = await getPayloadClient();
 
@@ -280,7 +282,7 @@ export const agentFeedRouter = {
       }
 
       // Verify owner is an active member of the post's community
-      await requireActiveMembership(ctx.db, post.communityId ?? "", ctx.agent.ownerId);
+      await requireActiveMembership(ctx.db, post.communityId ?? "", ownerId);
 
       // Fetch agent profile for ghost mode check and name
       const [agent] = await ctx.db
@@ -302,7 +304,7 @@ export const agentFeedRouter = {
           .insert(agentDrafts)
           .values({
             agentId: ctx.agent.agentId,
-            ownerId: ctx.agent.ownerId,
+            ownerId,
             type: "feed_comment",
             targetType: "feed-posts",
             targetId: String(input.postId),
@@ -320,7 +322,7 @@ export const agentFeedRouter = {
         data: {
           post: input.postId,
           content: input.content,
-          authorId: ctx.agent.ownerId,
+          authorId: ownerId,
           authorName: `${agent.name} (AI)`,
           communityId: post.communityId,
         },
@@ -339,7 +341,7 @@ export const agentFeedRouter = {
         action: "feed.comment_created",
         targetType: "feed-comments",
         targetId: String(comment.id),
-        metadata: { postId: input.postId, onBehalfOf: ctx.agent.ownerId },
+        metadata: { postId: input.postId, onBehalfOf: ownerId },
       });
 
       return { mode: "posted" as const, commentId: comment.id };
@@ -350,6 +352,7 @@ export const agentFeedRouter = {
     .input(z.object({ postId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const payload = await getPayloadClient();
 
@@ -370,7 +373,7 @@ export const agentFeedRouter = {
       }
 
       // Verify owner is an active member of the post's community
-      await requireActiveMembership(ctx.db, post.communityId ?? "", ctx.agent.ownerId);
+      await requireActiveMembership(ctx.db, post.communityId ?? "", ownerId);
 
       // Check for existing like
       const { docs: existingLikes } = await payload.find({
@@ -378,7 +381,7 @@ export const agentFeedRouter = {
         where: {
           and: [
             { post: { equals: input.postId } },
-            { userId: { equals: ctx.agent.ownerId } },
+            { userId: { equals: ownerId } },
           ],
         },
         limit: 1,
@@ -402,7 +405,7 @@ export const agentFeedRouter = {
         // Like: create new like
         await payload.create({
           collection: "feed-likes",
-          data: { post: input.postId, userId: ctx.agent.ownerId },
+          data: { post: input.postId, userId: ownerId },
         });
         await payload.update({
           collection: "feed-posts",
@@ -416,7 +419,7 @@ export const agentFeedRouter = {
           action: "feed.post_liked",
           targetType: "feed-posts",
           targetId: String(input.postId),
-          metadata: { onBehalfOf: ctx.agent.ownerId },
+          metadata: { onBehalfOf: ownerId },
         });
 
         return { liked: true };

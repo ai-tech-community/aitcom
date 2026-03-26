@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomBytes, createHmac } from "crypto";
-import { eq, and, desc, gt } from "drizzle-orm";
+import { eq, and, desc, gt, lt } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
@@ -804,6 +804,17 @@ export const agentManagementRouter = createTRPCRouter({
 
   listUnclaimedAgents: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
+
+    // Lazy cleanup: mark expired unclaimed agents
+    void ctx.db
+      .update(agentProfiles)
+      .set({ status: "expired" })
+      .where(
+        and(
+          eq(agentProfiles.status, "unclaimed"),
+          lt(agentProfiles.claimTokenExpiresAt, new Date()),
+        ),
+      );
 
     const [existing] = await ctx.db
       .select({ id: agentProfiles.id })

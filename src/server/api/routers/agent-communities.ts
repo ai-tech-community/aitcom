@@ -7,7 +7,7 @@ import { z } from "zod";
 import { and, eq, isNull, ilike, sql, desc, count } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
-import { agentProcedure, requireScope } from "@/server/api/trpc";
+import { agentProcedure, requireScope, requireOwner } from "@/server/api/trpc";
 import {
   communities,
   communityMemberships,
@@ -137,6 +137,7 @@ export const agentCommunityRouter = {
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
 
@@ -155,7 +156,7 @@ export const agentCommunityRouter = {
         await ctx.db.query.communityMemberships.findFirst({
           where: and(
             eq(communityMemberships.communityId, community.id),
-            eq(communityMemberships.userId, ctx.agent.ownerId),
+            eq(communityMemberships.userId, ownerId),
           ),
         });
 
@@ -181,6 +182,7 @@ export const agentCommunityRouter = {
     .input(z.object({ slug: z.string() }))
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
 
@@ -194,7 +196,7 @@ export const agentCommunityRouter = {
       const existing = await ctx.db.query.communityMemberships.findFirst({
         where: and(
           eq(communityMemberships.communityId, community.id),
-          eq(communityMemberships.userId, ctx.agent.ownerId),
+          eq(communityMemberships.userId, ownerId),
         ),
       });
 
@@ -219,7 +221,7 @@ export const agentCommunityRouter = {
       } else {
         await ctx.db.insert(communityMemberships).values({
           communityId: community.id,
-          userId: ctx.agent.ownerId,
+          userId: ownerId,
           role: "member",
           status: "active",
         });
@@ -231,7 +233,7 @@ export const agentCommunityRouter = {
         action: "community.joined",
         targetType: "community",
         targetId: community.id,
-        metadata: { onBehalfOf: ctx.agent.ownerId },
+        metadata: { onBehalfOf: ownerId },
       });
 
       return { success: true };
@@ -242,6 +244,7 @@ export const agentCommunityRouter = {
     .input(z.object({ slug: z.string() }))
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
 
@@ -255,7 +258,7 @@ export const agentCommunityRouter = {
       const existing = await ctx.db.query.communityMemberships.findFirst({
         where: and(
           eq(communityMemberships.communityId, community.id),
-          eq(communityMemberships.userId, ctx.agent.ownerId),
+          eq(communityMemberships.userId, ownerId),
         ),
       });
 
@@ -290,7 +293,7 @@ export const agentCommunityRouter = {
             action: "community.join_requested",
             targetType: "community",
             targetId: community.id,
-            metadata: { from: "invited", onBehalfOf: ctx.agent.ownerId },
+            metadata: { from: "invited", onBehalfOf: ownerId },
           });
 
           return { success: true };
@@ -299,7 +302,7 @@ export const agentCommunityRouter = {
 
       await ctx.db.insert(communityMemberships).values({
         communityId: community.id,
-        userId: ctx.agent.ownerId,
+        userId: ownerId,
         role: "member",
         status: "pending_approval",
       });
@@ -310,7 +313,7 @@ export const agentCommunityRouter = {
         action: "community.join_requested",
         targetType: "community",
         targetId: community.id,
-        metadata: { onBehalfOf: ctx.agent.ownerId },
+        metadata: { onBehalfOf: ownerId },
       });
 
       return { success: true };
@@ -321,13 +324,14 @@ export const agentCommunityRouter = {
     .input(z.object({ slug: z.string() }))
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
 
       const membership = await resolveOwnerMembership(
         ctx.db,
         community.id,
-        ctx.agent.ownerId,
+        ownerId,
       );
 
       if (!membership) {
@@ -369,7 +373,7 @@ export const agentCommunityRouter = {
         action: "community.left",
         targetType: "community",
         targetId: community.id,
-        metadata: { onBehalfOf: ctx.agent.ownerId },
+        metadata: { onBehalfOf: ownerId },
       });
 
       return { success: true };
@@ -378,6 +382,7 @@ export const agentCommunityRouter = {
   /** List communities the owner belongs to. */
   getOwnerCommunities: agentProcedure.query(async ({ ctx }) => {
     requireScope(ctx.agent.scopes, "contribute");
+    const ownerId = requireOwner(ctx.agent.ownerId);
 
     const memberships = await ctx.db
       .select({
@@ -398,7 +403,7 @@ export const agentCommunityRouter = {
           isNull(communities.deletedAt),
         ),
       )
-      .where(eq(communityMemberships.userId, ctx.agent.ownerId))
+      .where(eq(communityMemberships.userId, ownerId))
       .orderBy(desc(communityMemberships.joinedAt));
 
     return memberships;
@@ -409,6 +414,7 @@ export const agentCommunityRouter = {
     .input(z.object({ code: z.string() }))
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const invite = await ctx.db.query.communityInvites.findFirst({
         where: eq(communityInvites.code, input.code),
@@ -433,7 +439,7 @@ export const agentCommunityRouter = {
       const existing = await ctx.db.query.communityMemberships.findFirst({
         where: and(
           eq(communityMemberships.communityId, invite.communityId),
-          eq(communityMemberships.userId, ctx.agent.ownerId),
+          eq(communityMemberships.userId, ownerId),
         ),
       });
 
@@ -482,7 +488,7 @@ export const agentCommunityRouter = {
       } else {
         await ctx.db.insert(communityMemberships).values({
           communityId: invite.communityId,
-          userId: ctx.agent.ownerId,
+          userId: ownerId,
           role: "member",
           status: "active",
           invitedBy: invite.createdBy,
@@ -495,7 +501,7 @@ export const agentCommunityRouter = {
         action: "community.joined",
         targetType: "community",
         targetId: invite.communityId,
-        metadata: { via: "invite", onBehalfOf: ctx.agent.ownerId },
+        metadata: { via: "invite", onBehalfOf: ownerId },
       });
 
       return { success: true, communitySlug: invite.community.slug };
@@ -519,6 +525,7 @@ export const agentCommunityRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const slug = generateSlug(input.name);
 
@@ -540,14 +547,14 @@ export const agentCommunityRouter = {
           description: input.description,
           joinPolicy: input.joinPolicy,
           isListedInDirectory: input.isListedInDirectory,
-          createdBy: ctx.agent.ownerId,
+          createdBy: ownerId,
         })
         .returning();
 
       // Owner becomes community owner
       await ctx.db.insert(communityMemberships).values({
         communityId: community!.id,
-        userId: ctx.agent.ownerId,
+        userId: ownerId,
         role: "owner",
         status: "active",
       });
@@ -558,7 +565,7 @@ export const agentCommunityRouter = {
         action: "community.created",
         targetType: "community",
         targetId: community!.id,
-        metadata: { name: input.name, slug, onBehalfOf: ctx.agent.ownerId },
+        metadata: { name: input.name, slug, onBehalfOf: ownerId },
       });
 
       return community!;
@@ -584,9 +591,10 @@ export const agentCommunityRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      await requireAdmin(ctx.db, community.id, ctx.agent.ownerId);
+      await requireAdmin(ctx.db, community.id, ownerId);
 
       const updates: Record<string, unknown> = {};
       if (input.name !== undefined) updates.name = input.name;
@@ -634,9 +642,10 @@ export const agentCommunityRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      await requireAdmin(ctx.db, community.id, ctx.agent.ownerId);
+      await requireAdmin(ctx.db, community.id, ownerId);
 
       const code = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
       const expiresAt = input.expiresInDays
@@ -648,7 +657,7 @@ export const agentCommunityRouter = {
         .values({
           communityId: community.id,
           code,
-          createdBy: ctx.agent.ownerId,
+          createdBy: ownerId,
           maxUses: input.maxUses ?? null,
           expiresAt,
         })
@@ -670,9 +679,10 @@ export const agentCommunityRouter = {
     .input(z.object({ slug: z.string(), inviteId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      await requireAdmin(ctx.db, community.id, ctx.agent.ownerId);
+      await requireAdmin(ctx.db, community.id, ownerId);
 
       const deleted = await ctx.db
         .delete(communityInvites)
@@ -696,9 +706,10 @@ export const agentCommunityRouter = {
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      await requireAdmin(ctx.db, community.id, ctx.agent.ownerId);
+      await requireAdmin(ctx.db, community.id, ownerId);
 
       const invites = await ctx.db
         .select()
@@ -727,12 +738,13 @@ export const agentCommunityRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
       const membership = await requireAdmin(
         ctx.db,
         community.id,
-        ctx.agent.ownerId,
+        ownerId,
       );
 
       // Verify target exists and actor can manage them
@@ -755,7 +767,7 @@ export const agentCommunityRouter = {
         .insert(agentSuggestions)
         .values({
           agentId: ctx.agent.agentId,
-          ownerId: ctx.agent.ownerId,
+          ownerId: ownerId,
           type: "community_action",
           title: `Ban member from ${community.name}`,
           content: input.reason,
@@ -795,12 +807,13 @@ export const agentCommunityRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
       const membership = await requireAdmin(
         ctx.db,
         community.id,
-        ctx.agent.ownerId,
+        ownerId,
       );
 
       const target = await ctx.db.query.communityMemberships.findFirst({
@@ -823,7 +836,7 @@ export const agentCommunityRouter = {
         .insert(agentSuggestions)
         .values({
           agentId: ctx.agent.agentId,
-          ownerId: ctx.agent.ownerId,
+          ownerId: ownerId,
           type: "community_action",
           title: `Remove member from ${community.name}`,
           content: input.reason,
@@ -863,6 +876,7 @@ export const agentCommunityRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
 
@@ -870,7 +884,7 @@ export const agentCommunityRouter = {
       const membership = await resolveOwnerMembership(
         ctx.db,
         community.id,
-        ctx.agent.ownerId,
+        ownerId,
       );
       if (membership?.role !== "owner") {
         throw new TRPCError({
@@ -899,7 +913,7 @@ export const agentCommunityRouter = {
         .insert(agentSuggestions)
         .values({
           agentId: ctx.agent.agentId,
-          ownerId: ctx.agent.ownerId,
+          ownerId: ownerId,
           type: "community_action",
           title: `Transfer ownership of ${community.name}`,
           content: input.reason,
@@ -940,12 +954,13 @@ export const agentCommunityRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
       const membership = await requireAdmin(
         ctx.db,
         community.id,
-        ctx.agent.ownerId,
+        ownerId,
       );
 
       const target = await ctx.db.query.communityMemberships.findFirst({
@@ -972,7 +987,7 @@ export const agentCommunityRouter = {
         .insert(agentSuggestions)
         .values({
           agentId: ctx.agent.agentId,
-          ownerId: ctx.agent.ownerId,
+          ownerId: ownerId,
           type: "community_action",
           title: `Change role to ${input.role} in ${community.name}`,
           content: input.reason,

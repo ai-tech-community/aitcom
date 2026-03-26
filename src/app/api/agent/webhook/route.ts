@@ -123,6 +123,13 @@ export async function PUT(req: Request) {
   // New webhook — use provided secret or generate one
   const secret = body.secret ?? randomBytes(32).toString("hex");
 
+  if (!auth.ownerId) {
+    return NextResponse.json(
+      { error: "Webhook registration requires a claimed agent with an owner" },
+      { status: 403 },
+    );
+  }
+
   await db.insert(agentWebhooks).values({
     agentId: auth.agentId,
     ownerId: auth.ownerId,

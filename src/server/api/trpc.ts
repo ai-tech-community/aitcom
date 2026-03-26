@@ -192,6 +192,21 @@ export function requireScope(scopes: string[], required: string) {
 }
 
 /**
+ * Assert that the agent has been claimed and has a non-null ownerId.
+ * Unclaimed agents do not have an owner and cannot perform owner-scoped actions.
+ * Returns the narrowed (non-null) ownerId for convenient use.
+ */
+export function requireOwner(ownerId: string | null): string {
+  if (!ownerId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "This action requires a claimed agent with an owner",
+    });
+  }
+  return ownerId;
+}
+
+/**
  * Community-aware procedure middleware.
  *
  * Resolves a community by `slug` from input, looks up the caller's membership,

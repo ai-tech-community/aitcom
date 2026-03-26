@@ -7,6 +7,7 @@ import {
   protectedProcedure,
   agentProcedure,
   requireScope,
+  requireOwner,
 } from "@/server/api/trpc";
 import {
   conversations,
@@ -483,6 +484,7 @@ export const inboxRouter = createTRPCRouter({
    */
   agentCheckInbox: agentProcedure.query(async ({ ctx }) => {
     requireScope(ctx.agent.scopes, "read");
+    const ownerId = requireOwner(ctx.agent.ownerId);
 
     const [agentConv] = await ctx.db
       .select({ id: conversations.id })
@@ -494,7 +496,7 @@ export const inboxRouter = createTRPCRouter({
       .where(
         and(
           eq(conversations.type, "agent"),
-          eq(conversationParticipants.userId, ctx.agent.ownerId),
+          eq(conversationParticipants.userId, ownerId),
         ),
       )
       .limit(1);
@@ -538,6 +540,7 @@ export const inboxRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       // Find existing agent conversation
       const [existingConv] = await ctx.db
@@ -550,7 +553,7 @@ export const inboxRouter = createTRPCRouter({
         .where(
           and(
             eq(conversations.type, "agent"),
-            eq(conversationParticipants.userId, ctx.agent.ownerId),
+            eq(conversationParticipants.userId, ownerId),
           ),
         )
         .limit(1);
@@ -567,7 +570,7 @@ export const inboxRouter = createTRPCRouter({
 
         await ctx.db.insert(conversationParticipants).values({
           conversationId: newConv!.id,
-          userId: ctx.agent.ownerId,
+          userId: ownerId,
           isPinned: true,
         });
 
@@ -579,7 +582,7 @@ export const inboxRouter = createTRPCRouter({
         .insert(messages)
         .values({
           conversationId: convId,
-          senderId: ctx.agent.ownerId,
+          senderId: ownerId,
           senderType: "agent",
           content: input.content,
           metadata: input.metadata,
@@ -599,7 +602,7 @@ export const inboxRouter = createTRPCRouter({
         action: "message.sent",
         targetType: "conversations",
         targetId: convId,
-        recipientId: ctx.agent.ownerId,
+        recipientId: ownerId,
       });
 
       return { messageId: message!.id };
@@ -618,6 +621,7 @@ export const inboxRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const [agentConv] = await ctx.db
         .select({ id: conversations.id })
@@ -629,7 +633,7 @@ export const inboxRouter = createTRPCRouter({
         .where(
           and(
             eq(conversations.type, "agent"),
-            eq(conversationParticipants.userId, ctx.agent.ownerId),
+            eq(conversationParticipants.userId, ownerId),
           ),
         )
         .limit(1);
@@ -677,6 +681,7 @@ export const inboxRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       // Check canReadOwnerDMs permission
       const [agent] = await ctx.db
@@ -704,7 +709,7 @@ export const inboxRouter = createTRPCRouter({
         )
         .where(
           and(
-            eq(conversationParticipants.userId, ctx.agent.ownerId),
+            eq(conversationParticipants.userId, ownerId),
             eq(conversations.type, "dm"),
           ),
         );
