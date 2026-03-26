@@ -799,4 +799,172 @@ export const agentManagementRouter = createTRPCRouter({
           : ("active" as const),
     }));
   }),
+
+  // ── Claiming ─────────────────────────────────────────────────────────────
+
+  listUnclaimedAgents: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const [existing] = await ctx.db
+      .select({ id: agentProfiles.id })
+      .from(agentProfiles)
+      .where(eq(agentProfiles.ownerId, userId))
+      .limit(1);
+
+    const agents = await ctx.db
+      .select({
+        id: agentProfiles.id,
+        name: agentProfiles.name,
+        bio: agentProfiles.bio,
+        createdAt: agentProfiles.createdAt,
+        claimTokenExpiresAt: agentProfiles.claimTokenExpiresAt,
+      })
+      .from(agentProfiles)
+      .where(
+        and(
+          eq(agentProfiles.status, "unclaimed"),
+          gt(agentProfiles.claimTokenExpiresAt, new Date()),
+        ),
+      )
+      .orderBy(desc(agentProfiles.createdAt))
+      .limit(50);
+
+    return { agents, userAlreadyOwnsAgent: !!existing };
+  }),
+
+  getAgentByClaimToken: protectedProcedure
+    .input(z.object({ token: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const [agent] = await ctx.db
+        .select({
+          id: agentProfiles.id,
+          name: agentProfiles.name,
+          bio: agentProfiles.bio,
+          createdAt: agentProfiles.createdAt,
+          status: agentProfiles.status,
+          claimTokenExpiresAt: agentProfiles.claimTokenExpiresAt,
+        })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.claimToken, input.token))
+        .limit(1);
+
+      if (!agent) return null;
+      if (agent.status !== "unclaimed") return null;
+      if (agent.claimTokenExpiresAt && new Date() > agent.claimTokenExpiresAt) return null;
+
+      return agent;
+    }),
+
+  claimAgent: protectedProcedure
+    .input(
+      z.object({
+        token: z.string().optional(),
+        agentId: z.string().optional(),
+      }).refine((d) => d.token || d.agentId, "Provide either token or agentId"),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Check user doesn't already own an agent
+      const [existing] = await ctx.db
+        .select({ id: agentProfiles.id })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.ownerId, userId))
+        .limit(1);
+
+      if (existing) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "You already own an agent. Each user can own one agent.",
+        });
+      }
+
+      // Find the agent
+      let agentQuery;
+      if (input.token) {
+        [agentQuery] = await ctx.db
+          .select()
+          .from(agentProfiles)
+          .where(
+            and(
+              eq(agentProfiles.claimToken, input.token),
+              eq(agentProfiles.status, "unclaimed"),
+            ),
+          )
+          .limit(1);
+      } else {
+        [agentQuery] = await ctx.db
+          .select()
+          .from(agentProfiles)
+          .where(
+            and(
+              eq(agentProfiles.id, input.agentId!),
+              eq(agentProfiles.status, "unclaimed"),
+            ),
+          )
+          .limit(1);
+      }
+
+      if (!agentQuery) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Agent not found or already claimed.",
+        });
+      }
+
+      if (agentQuery.claimTokenExpiresAt && new Date() > agentQuery.claimTokenExpiresAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "This claim link has expired.",
+        });
+      }
+
+      // Claim: set owner, clear claim token, upgrade status
+      await ctx.db
+        .update(agentProfiles)
+        .set({
+          ownerId: userId,
+          status: "active",
+          claimToken: null,
+          claimTokenExpiresAt: null,
+        })
+        .where(eq(agentProfiles.id, agentQuery.id));
+
+      // Upgrade API key scopes and set ownerId
+      await ctx.db
+        .update(agentApiKeys)
+        .set({
+          ownerId: userId,
+          scopes: ["read", "contribute", "self-profile"],
+        })
+        .where(
+          and(
+            eq(agentApiKeys.agentId, agentQuery.id),
+            eq(agentApiKeys.isActive, true),
+          ),
+        );
+
+      // Create agent conversation (pinned) in inbox
+      const [agentConv] = await ctx.db
+        .insert(conversations)
+        .values({ type: "agent" })
+        .returning();
+
+      await ctx.db.insert(conversationParticipants).values({
+        conversationId: agentConv!.id,
+        userId,
+        isPinned: true,
+      });
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "agent.claimed",
+        targetType: "agent_profile",
+        targetId: agentQuery.id,
+        metadata: { agentName: agentQuery.name, method: input.token ? "magic-link" : "dashboard" },
+      });
+
+      return { success: true, agentId: agentQuery.id, agentName: agentQuery.name };
+    }),
 });
