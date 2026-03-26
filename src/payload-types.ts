@@ -76,6 +76,9 @@ export interface Config {
     'idea-votes': IdeaVote;
     'launchpad-projects': LaunchpadProject;
     comments: Comment;
+    'feed-posts': FeedPost;
+    'feed-comments': FeedComment;
+    'feed-likes': FeedLike;
     challenges: Challenge;
     pages: Page;
     media: Media;
@@ -101,6 +104,9 @@ export interface Config {
     'idea-votes': IdeaVotesSelect<false> | IdeaVotesSelect<true>;
     'launchpad-projects': LaunchpadProjectsSelect<false> | LaunchpadProjectsSelect<true>;
     comments: CommentsSelect<false> | CommentsSelect<true>;
+    'feed-posts': FeedPostsSelect<false> | FeedPostsSelect<true>;
+    'feed-comments': FeedCommentsSelect<false> | FeedCommentsSelect<true>;
+    'feed-likes': FeedLikesSelect<false> | FeedLikesSelect<true>;
     challenges: ChallengesSelect<false> | ChallengesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -486,6 +492,68 @@ export interface Comment {
   authorId: string;
   authorName?: string | null;
   communityId?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Community feed posts.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feed-posts".
+ */
+export interface FeedPost {
+  id: number;
+  content: string;
+  /**
+   * S3 image URL.
+   */
+  imageUrl?: string | null;
+  /**
+   * Better Auth user ID (UUID).
+   */
+  authorId: string;
+  authorName?: string | null;
+  communityId: string;
+  likeCount?: number | null;
+  commentCount?: number | null;
+  isDeleted?: boolean | null;
+  isEdited?: boolean | null;
+  editedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Comments on community feed posts.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feed-comments".
+ */
+export interface FeedComment {
+  id: number;
+  post: number | FeedPost;
+  content: string;
+  authorId: string;
+  authorName?: string | null;
+  communityId: string;
+  isDeleted?: boolean | null;
+  isEdited?: boolean | null;
+  editedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Tracks which users liked which feed posts.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feed-likes".
+ */
+export interface FeedLike {
+  id: number;
+  post: number | FeedPost;
+  /**
+   * Better Auth user ID (UUID).
+   */
+  userId: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -914,6 +982,18 @@ export interface PayloadLockedDocument {
         value: number | Comment;
       } | null)
     | ({
+        relationTo: 'feed-posts';
+        value: number | FeedPost;
+      } | null)
+    | ({
+        relationTo: 'feed-comments';
+        value: number | FeedComment;
+      } | null)
+    | ({
+        relationTo: 'feed-likes';
+        value: number | FeedLike;
+      } | null)
+    | ({
         relationTo: 'challenges';
         value: number | Challenge;
       } | null)
@@ -1167,6 +1247,50 @@ export interface CommentsSelect<T extends boolean = true> {
   authorId?: T;
   authorName?: T;
   communityId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feed-posts_select".
+ */
+export interface FeedPostsSelect<T extends boolean = true> {
+  content?: T;
+  imageUrl?: T;
+  authorId?: T;
+  authorName?: T;
+  communityId?: T;
+  likeCount?: T;
+  commentCount?: T;
+  isDeleted?: T;
+  isEdited?: T;
+  editedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feed-comments_select".
+ */
+export interface FeedCommentsSelect<T extends boolean = true> {
+  post?: T;
+  content?: T;
+  authorId?: T;
+  authorName?: T;
+  communityId?: T;
+  isDeleted?: T;
+  isEdited?: T;
+  editedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "feed-likes_select".
+ */
+export interface FeedLikesSelect<T extends boolean = true> {
+  post?: T;
+  userId?: T;
   updatedAt?: T;
   createdAt?: T;
 }
