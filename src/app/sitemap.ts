@@ -1,9 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getPayloadClient } from "@/server/payload";
 
-// Force dynamic rendering — sitemap queries the live database
-export const dynamic = "force-dynamic";
-
 const BASE_URL = "https://aitcommunity.org";
 
 function localeEntries(
