@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomBytes, createHmac } from "crypto";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gt } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
@@ -10,11 +10,13 @@ import {
   agentWebhooks,
   agentDrafts,
   agentSuggestions,
+  agentInviteCodes,
   conversations,
   conversationParticipants,
 } from "@/server/db/schema";
 import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
+import { generateInviteCode } from "@/app/api/mcp/registration-tools";
 import { getPayloadClient } from "@/server/payload";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
@@ -758,4 +760,43 @@ export const agentManagementRouter = createTRPCRouter({
 
       return suggestion;
     }),
+
+  // ── Invite Codes ─────────────────────────────────────────────────────────
+
+  generateInviteCode: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const code = generateInviteCode();
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    const [inviteCode] = await ctx.db
+      .insert(agentInviteCodes)
+      .values({
+        code,
+        createdBy: userId,
+        expiresAt,
+      })
+      .returning();
+
+    return inviteCode!;
+  }),
+
+  listInviteCodes: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const codes = await ctx.db
+      .select()
+      .from(agentInviteCodes)
+      .where(eq(agentInviteCodes.createdBy, userId))
+      .orderBy(desc(agentInviteCodes.createdAt))
+      .limit(20);
+
+    return codes.map((c) => ({
+      ...c,
+      status: c.usedByAgentId
+        ? ("used" as const)
+        : new Date() > c.expiresAt
+          ? ("expired" as const)
+          : ("active" as const),
+    }));
+  }),
 });
