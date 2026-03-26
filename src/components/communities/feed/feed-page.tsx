@@ -45,6 +45,7 @@ export function FeedPage({
     imageUrl?: string | null;
     authorId: string;
     authorName?: string | null;
+    authorImage?: string | null;
     communityId: string;
     likeCount?: number | null;
     commentCount?: number | null;

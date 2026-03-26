@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -32,6 +32,7 @@ interface FeedPost {
   imageUrl?: string | null;
   authorId: string;
   authorName?: string | null;
+  authorImage?: string | null;
   communityId: string;
   likeCount?: number | null;
   commentCount?: number | null;
@@ -106,6 +107,9 @@ export function FeedPostCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
           <Avatar className="size-8">
+            {post.authorImage ? (
+              <AvatarImage src={post.authorImage} alt={post.authorName ?? ""} />
+            ) : null}
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
           <div>

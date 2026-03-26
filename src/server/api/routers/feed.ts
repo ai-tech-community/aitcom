@@ -3,8 +3,8 @@ import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, publicProcedure, protectedProcedure } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
-import { and, eq, isNull } from "drizzle-orm";
-import { communities, communityMemberships } from "@/server/db/schema";
+import { and, eq, isNull, inArray } from "drizzle-orm";
+import { communities, communityMemberships, user } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 
 export const feedRouter = createTRPCRouter({
@@ -65,6 +65,19 @@ export const feedRouter = createTRPCRouter({
       const hasMore = docs.length > input.limit;
       const posts = hasMore ? docs.slice(0, input.limit) : docs;
 
+      // Fetch author images
+      const authorIds = [...new Set(posts.map((p) => p.authorId).filter(Boolean))] as string[];
+      const authorImageMap = new Map<string, string | null>();
+      if (authorIds.length > 0) {
+        const authors = await ctx.db
+          .select({ id: user.id, image: user.image })
+          .from(user)
+          .where(inArray(user.id, authorIds));
+        for (const a of authors) {
+          authorImageMap.set(a.id, a.image);
+        }
+      }
+
       const userId = ctx.session?.user?.id;
 
       if (userId && posts.length > 0) {
@@ -87,6 +100,7 @@ export const feedRouter = createTRPCRouter({
         );
         const postsWithLike = posts.map((p) => ({
           ...p,
+          authorImage: authorImageMap.get(p.authorId as string) ?? null,
           hasLiked: likedPostIds.has(p.id),
         }));
         const nextCursor =
@@ -99,7 +113,11 @@ export const feedRouter = createTRPCRouter({
         return { posts: postsWithLike, nextCursor };
       }
 
-      const postsWithLike = posts.map((p) => ({ ...p, hasLiked: false }));
+      const postsWithLike = posts.map((p) => ({
+        ...p,
+        authorImage: authorImageMap.get(p.authorId as string) ?? null,
+        hasLiked: false,
+      }));
       const nextCursor =
         hasMore && posts.length > 0
           ? {
