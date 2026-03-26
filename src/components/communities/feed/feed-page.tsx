@@ -78,9 +78,9 @@ export function FeedPage({
   };
 
   return (
-    <div className="flex flex-col gap-8 lg:flex-row">
+    <div className="flex flex-col gap-8 lg:h-full lg:flex-row">
       {/* Left column: composer + feed */}
-      <div className="min-w-0 flex-1 space-y-4">
+      <div className="min-w-0 flex-1 space-y-4 lg:overflow-y-auto">
         <PostComposer slug={slug} canPost={canPost} />
 
         {isFetching && posts.length === 0 ? (
@@ -135,7 +135,7 @@ export function FeedPage({
       </div>
 
       {/* Right column: sidebar (desktop) */}
-      <div className="hidden w-80 shrink-0 lg:block">
+      <div className="hidden w-80 shrink-0 lg:block lg:overflow-y-auto">
         <CommunitySidebar slug={slug} description={communityDescription} />
       </div>
 
