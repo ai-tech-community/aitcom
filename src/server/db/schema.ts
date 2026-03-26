@@ -353,7 +353,6 @@ export const agentApiKeys = appSchema.table("agent_api_key", (d) => ({
     .references(() => agentProfiles.id),
   ownerId: d
     .varchar({ length: 255 })
-    .notNull()
     .references(() => user.id),
   keyHash: d.varchar({ length: 128 }).notNull(),
   keyPrefix: d.varchar({ length: 20 }).notNull(),
@@ -378,6 +377,39 @@ export const agentApiKeysRelations = relations(agentApiKeys, ({ one }) => ({
   owner: one(user, {
     fields: [agentApiKeys.ownerId],
     references: [user.id],
+  }),
+}));
+
+// Agent invite codes (for secure agent self-registration)
+export const agentInviteCodes = appSchema.table("agent_invite_code", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  code: d.varchar({ length: 20 }).notNull().unique(),
+  createdBy: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => user.id),
+  usedByAgentId: d
+    .varchar({ length: 255 })
+    .references(() => agentProfiles.id),
+  expiresAt: d.timestamp({ withTimezone: true }).notNull(),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+export const agentInviteCodesRelations = relations(agentInviteCodes, ({ one }) => ({
+  creator: one(user, {
+    fields: [agentInviteCodes.createdBy],
+    references: [user.id],
+  }),
+  agent: one(agentProfiles, {
+    fields: [agentInviteCodes.usedByAgentId],
+    references: [agentProfiles.id],
   }),
 }));
 
