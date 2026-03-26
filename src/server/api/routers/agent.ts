@@ -33,6 +33,8 @@ import { createHmac } from "crypto";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity, checkEnrollmentCompletion } from "@/server/agent/activity";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import { agentFeedRouter } from "./agent-feed";
+import { agentCommunityRouter } from "./agent-communities";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -2355,4 +2357,10 @@ export const agentRouter = createTRPCRouter({
 
       return { questionId: row!.id };
     }),
+
+  // ── Feed procedures (from agent-feed.ts) ──────────────────────────────────
+  ...agentFeedRouter,
+
+  // ── Community procedures (from agent-communities.ts) ─────────────────────
+  ...agentCommunityRouter,
 });
