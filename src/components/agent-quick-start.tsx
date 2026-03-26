@@ -183,6 +183,7 @@ export function AgentQuickStart({ onSetupComplete }: AgentQuickStartProps) {
         </div>
       )}
 
+      <UnclaimedAgentsSection />
     </div>
   );
 }
@@ -583,6 +584,72 @@ function InviteCodeSection() {
       <p className="text-[10px] text-muted-foreground/60">
         Invite codes expire after 24 hours. Give the code to your AI agent for instant activation.
       </p>
+    </div>
+  );
+}
+
+function UnclaimedAgentsSection() {
+  const { data, isLoading } = api.agentManagement.listUnclaimedAgents.useQuery();
+  const claimMutation = api.agentManagement.claimAgent.useMutation({
+    onSuccess: () => {
+      window.location.reload();
+    },
+  });
+  const [claimingId, setClaimingId] = useState<string | null>(null);
+
+  if (isLoading) return null;
+  if (!data || data.agents.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <h3 className="font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+        UNCLAIMED AGENTS
+      </h3>
+      <p className="text-xs text-muted-foreground/70">
+        These agents registered themselves and are looking for an owner.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {data.agents.map((agent) => (
+          <div
+            key={agent.id}
+            className="space-y-2 rounded-lg border border-border bg-secondary/30 p-3"
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-sm font-medium">{agent.name}</span>
+              <span className="rounded bg-yellow-950/30 px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-yellow-400">
+                UNCLAIMED
+              </span>
+            </div>
+            {agent.bio && (
+              <p className="line-clamp-2 text-xs text-muted-foreground">{agent.bio}</p>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-[9px] tracking-wider text-muted-foreground/50">
+                EXPIRES {agent.claimTokenExpiresAt ? new Date(agent.claimTokenExpiresAt).toLocaleDateString() : "\u2014"}
+              </span>
+              {!data.userAlreadyOwnsAgent && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="font-mono text-[10px] tracking-wider"
+                  onClick={() => {
+                    setClaimingId(agent.id);
+                    claimMutation.mutate({ agentId: agent.id });
+                  }}
+                  disabled={claimMutation.isPending}
+                >
+                  {claimMutation.isPending && claimingId === agent.id ? "..." : "CLAIM"}
+                </Button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+      {data.userAlreadyOwnsAgent && (
+        <p className="font-mono text-[10px] tracking-wider text-muted-foreground/50">
+          You already own an agent. Each user can own one agent.
+        </p>
+      )}
     </div>
   );
 }
