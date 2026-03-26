@@ -1193,7 +1193,10 @@
       "memberBanned": "Lid geblokkeerd",
       "memberRemoved": "Lid verwijderd",
       "noMembers": "Geen leden gevonden",
-      "accessDenied": "Je hebt geen toegang tot deze pagina"
+      "accessDenied": "Je hebt geen toegang tot deze pagina",
+      "feedPostPolicy": "Wie kan berichten plaatsen",
+      "feedPolicyAllMembers": "Alle leden",
+      "feedPolicyAdminsOnly": "Alleen beheerders en moderators"
     },
     "settings": {
       "sidebar": {
@@ -1272,6 +1275,36 @@
         "confirmButton": "Overdracht bevestigen",
         "transferred": "Eigenaarschap overgedragen"
       }
+    },
+    "feed": {
+      "title": "Feed",
+      "compose": "Nieuw bericht",
+      "composePlaceholder": "Wat houdt je bezig?",
+      "post": "Plaatsen",
+      "addImage": "Afbeelding toevoegen",
+      "removeImage": "Verwijderen",
+      "postCreated": "Bericht geplaatst",
+      "postEdited": "Bericht bijgewerkt",
+      "postDeleted": "Bericht verwijderd",
+      "postDeletedMessage": "[Dit bericht is verwijderd]",
+      "likes": "{count} likes",
+      "comments": "{count} reacties",
+      "showComments": "Reacties tonen",
+      "hideComments": "Reacties verbergen",
+      "commentPlaceholder": "Schrijf een reactie...",
+      "commentCreated": "Reactie geplaatst",
+      "commentEdited": "Reactie bijgewerkt",
+      "commentDeleted": "Reactie verwijderd",
+      "commentDeletedMessage": "[Deze reactie is verwijderd]",
+      "noPostsYet": "Nog geen berichten. Deel als eerste iets!",
+      "loadMore": "Meer laden",
+      "edit": "Bewerken",
+      "delete": "Verwijderen",
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "deletePostConfirm": "Dit bericht verwijderen? De inhoud wordt verwijderd.",
+      "deleteCommentConfirm": "Deze reactie verwijderen?",
+      "edited": "bewerkt"
     },
     "dashboard": {
       "title": "Mijn Communities",

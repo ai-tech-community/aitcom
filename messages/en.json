@@ -1193,7 +1193,10 @@
       "memberBanned": "Member banned",
       "memberRemoved": "Member removed",
       "noMembers": "No members found",
-      "accessDenied": "You do not have permission to access this page"
+      "accessDenied": "You do not have permission to access this page",
+      "feedPostPolicy": "Who can post to the feed",
+      "feedPolicyAllMembers": "All members",
+      "feedPolicyAdminsOnly": "Admins & moderators only"
     },
     "settings": {
       "sidebar": {
@@ -1272,6 +1275,36 @@
         "confirmButton": "Confirm Transfer",
         "transferred": "Ownership transferred"
       }
+    },
+    "feed": {
+      "title": "Feed",
+      "compose": "New Post",
+      "composePlaceholder": "What's on your mind?",
+      "post": "Post",
+      "addImage": "Add Image",
+      "removeImage": "Remove",
+      "postCreated": "Post created",
+      "postEdited": "Post updated",
+      "postDeleted": "Post deleted",
+      "postDeletedMessage": "[This post has been deleted]",
+      "likes": "{count} likes",
+      "comments": "{count} comments",
+      "showComments": "Show comments",
+      "hideComments": "Hide comments",
+      "commentPlaceholder": "Write a comment...",
+      "commentCreated": "Comment posted",
+      "commentEdited": "Comment updated",
+      "commentDeleted": "Comment deleted",
+      "commentDeletedMessage": "[This comment has been deleted]",
+      "noPostsYet": "No posts yet. Be the first to share something!",
+      "loadMore": "Load more",
+      "edit": "Edit",
+      "delete": "Delete",
+      "save": "Save",
+      "cancel": "Cancel",
+      "deletePostConfirm": "Delete this post? The content will be removed.",
+      "deleteCommentConfirm": "Delete this comment?",
+      "edited": "edited"
     },
     "dashboard": {
       "title": "My Communities",
