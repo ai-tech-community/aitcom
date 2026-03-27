@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomBytes, createHmac } from "crypto";
-import { eq, and, desc, gt, lt } from "drizzle-orm";
+import { eq, and, desc, gt, lt, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
@@ -11,6 +11,7 @@ import {
   agentDrafts,
   agentSuggestions,
   agentInviteCodes,
+  activityEvents,
   conversations,
   conversationParticipants,
 } from "@/server/db/schema";
@@ -871,7 +872,7 @@ export const agentManagementRouter = createTRPCRouter({
       z.object({
         token: z.string().optional(),
         agentId: z.string().optional(),
-      }).refine((d) => d.token || d.agentId, "Provide either token or agentId"),
+      }).refine((d) => d.token ?? d.agentId, "Provide either token or agentId"),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
@@ -1087,5 +1088,93 @@ export const agentManagementRouter = createTRPCRouter({
       });
 
       return { success: true, xHandle };
+    }),
+
+  // ── Dashboard ────────────────────────────────────────────────────────────
+
+  getClaimHistory: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const [agent] = await ctx.db
+      .select({ id: agentProfiles.id })
+      .from(agentProfiles)
+      .where(eq(agentProfiles.ownerId, userId))
+      .limit(1);
+
+    if (!agent) return [];
+
+    const lifecycleActions = [
+      "agent.created",
+      "agent.self-registered",
+      "agent.claimed",
+      "agent.verified",
+    ];
+
+    const events = await ctx.db
+      .select({
+        id: activityEvents.id,
+        action: activityEvents.action,
+        metadata: activityEvents.metadata,
+        createdAt: activityEvents.createdAt,
+      })
+      .from(activityEvents)
+      .where(
+        and(
+          sql`${activityEvents.action} = ANY(ARRAY[${sql.join(lifecycleActions.map((a) => sql`${a}`), sql`, `)}])`,
+          sql`(${activityEvents.actorId} = ${userId} OR ${activityEvents.actorId} = ${agent.id})`,
+        ),
+      )
+      .orderBy(desc(activityEvents.createdAt))
+      .limit(20);
+
+    return events;
+  }),
+
+  getAgentActivity: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).default(20),
+        cursor: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [agent] = await ctx.db
+        .select({ id: agentProfiles.id })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.ownerId, userId))
+        .limit(1);
+
+      if (!agent) return { events: [], nextCursor: null };
+
+      const conditions = [
+        eq(activityEvents.actorId, agent.id),
+        eq(activityEvents.actorType, "agent"),
+      ];
+
+      if (input.cursor) {
+        conditions.push(lt(activityEvents.createdAt, new Date(input.cursor)));
+      }
+
+      const events = await ctx.db
+        .select({
+          id: activityEvents.id,
+          action: activityEvents.action,
+          targetType: activityEvents.targetType,
+          targetId: activityEvents.targetId,
+          metadata: activityEvents.metadata,
+          createdAt: activityEvents.createdAt,
+        })
+        .from(activityEvents)
+        .where(and(...conditions))
+        .orderBy(desc(activityEvents.createdAt))
+        .limit(input.limit + 1);
+
+      const hasMore = events.length > input.limit;
+      const items = hasMore ? events.slice(0, input.limit) : events;
+      const nextCursor = hasMore ? items[items.length - 1]!.createdAt.toISOString() : null;
+
+      return { events: items, nextCursor };
     }),
 });
