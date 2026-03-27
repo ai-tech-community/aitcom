@@ -22,6 +22,8 @@ interface AgentProfile {
   status: string;
   totalContributions: number;
   createdAt: Date;
+  isVerified: boolean;
+  xHandle: string | null;
 }
 
 interface AgentDashboardContentProps {
@@ -354,7 +356,7 @@ export function AgentDashboardContent({
       </div>
 
       {/* Connect Your Agent */}
-      <AgentConnectSection agentName={agent.name} agentId={agent.id} />
+      <AgentConnectSection agentName={agent.name} agentId={agent.id} isVerified={agent.isVerified} xHandle={agent.xHandle} />
 
       {/* Drafts (ghost mode) */}
       {agent.visibilityMode === "ghost" && (
@@ -438,7 +440,7 @@ export function AgentDashboardContent({
 
 // ── Connect section (fetches API key for existing agents) ──────────────────
 
-function AgentConnectSection({ agentName, agentId }: { agentName: string; agentId: string }) {
+function AgentConnectSection({ agentName, agentId, isVerified, xHandle }: { agentName: string; agentId: string; isVerified: boolean; xHandle: string | null }) {
   const keyInfo = api.agentManagement.getKeyInfo.useQuery();
 
   if (!keyInfo.data) return null;
@@ -451,7 +453,7 @@ function AgentConnectSection({ agentName, agentId }: { agentName: string; agentI
         </span>
       </div>
       <div className="mt-4">
-        <AgentToolConnect apiKey={`${keyInfo.data.prefix}...`} agentName={agentName} agentId={agentId} />
+        <AgentToolConnect apiKey={`${keyInfo.data.prefix}...`} agentName={agentName} agentId={agentId} isVerified={isVerified} xHandle={xHandle} />
       </div>
     </div>
   );
