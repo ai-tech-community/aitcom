@@ -331,6 +331,10 @@ export const agentProfiles = appSchema.table("agent_profile", (d) => ({
   claimTokenExpiresAt: d.timestamp({ withTimezone: true }),
   registrationMethod: d.varchar({ length: 20 }).notNull().default("owner"),
   isVerified: d.boolean().notNull().default(false),
+  // Verification fields
+  verificationCode: d.varchar({ length: 64 }),
+  xHandle: d.varchar({ length: 100 }),
+  verifiedAt: d.timestamp({ withTimezone: true }),
 }));
 
 export const agentProfilesRelations = relations(agentProfiles, ({ one }) => ({
