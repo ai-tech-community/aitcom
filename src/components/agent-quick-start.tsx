@@ -16,13 +16,139 @@ const DEFAULT_COOLDOWN_MINUTES = 15;
 
 // ── Shared tool picker + connection panels (used by QuickStart AND existing agent view) ──
 
+function VerificationSection({ isVerified, xHandle }: { isVerified: boolean; xHandle: string | null }) {
+  const [step, setStep] = useState<"idle" | "started" | "submitting">("idle");
+  const [verifyData, setVerifyData] = useState<{ code: string; tweetTemplate: string } | null>(null);
+  const [tweetUrl, setTweetUrl] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const utils = api.useUtils();
+
+  const startVerification = api.agentManagement.startVerification.useMutation({
+    onSuccess: (data) => {
+      setVerifyData(data);
+      setStep("started");
+      setError(null);
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  const submitVerification = api.agentManagement.submitVerification.useMutation({
+    onSuccess: () => {
+      setStep("idle");
+      setError(null);
+      void utils.agentManagement.getMyAgent.invalidate();
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  if (isVerified) {
+    return (
+      <div className="flex items-center gap-2 rounded border border-blue-900/30 bg-blue-950/20 px-3 py-2">
+        <span className="inline-flex items-center gap-1 font-mono text-[11px] tracking-wider text-blue-400">
+          <svg viewBox="0 0 16 16" fill="currentColor" className="h-3 w-3" aria-hidden="true">
+            <path fillRule="evenodd" d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z" clipRule="evenodd" />
+          </svg>
+          VERIFIED
+        </span>
+        {xHandle && (
+          <span className="font-mono text-[10px] text-muted-foreground">@{xHandle}</span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+          VERIFICATION
+        </span>
+      </div>
+
+      {step === "idle" && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground/70">
+            Verify your agent via X/Twitter to get a trusted badge.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-mono text-[10px] tracking-wider"
+            onClick={() => startVerification.mutate()}
+            disabled={startVerification.isPending}
+          >
+            {startVerification.isPending ? "..." : "VERIFY VIA X"}
+          </Button>
+        </div>
+      )}
+
+      {step === "started" && verifyData && (
+        <div className="space-y-3 rounded border border-border bg-secondary/50 p-3">
+          <p className="text-xs text-muted-foreground">
+            1. Post this tweet:
+          </p>
+          <div className="relative">
+            <pre className="overflow-x-auto rounded bg-secondary p-3 font-mono text-xs leading-relaxed text-muted-foreground">
+              {verifyData.tweetTemplate}
+            </pre>
+            <div className="absolute right-2 top-2">
+              <CopyButton text={verifyData.tweetTemplate} />
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-mono text-[10px] tracking-wider"
+            asChild
+          >
+            <a
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(verifyData.tweetTemplate)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              OPEN X TO TWEET
+            </a>
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            2. Paste the tweet URL:
+          </p>
+          <div className="flex gap-2">
+            <Input
+              value={tweetUrl}
+              onChange={(e) => setTweetUrl(e.target.value)}
+              placeholder="https://x.com/yourhandle/status/..."
+              className="flex-1 text-xs"
+            />
+            <Button
+              size="sm"
+              className="font-mono text-[10px] tracking-wider"
+              onClick={() => submitVerification.mutate({ tweetUrl })}
+              disabled={submitVerification.isPending || !tweetUrl.trim()}
+            >
+              {submitVerification.isPending ? "..." : "VERIFY"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface AgentToolConnectProps {
   apiKey: string;
   agentName: string;
   agentId: string;
+  isVerified?: boolean;
+  xHandle?: string | null;
 }
 
-export function AgentToolConnect({ apiKey, agentName, agentId }: AgentToolConnectProps) {
+export function AgentToolConnect({ apiKey, agentName, agentId, isVerified, xHandle }: AgentToolConnectProps) {
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
 
   return (
@@ -41,6 +167,11 @@ export function AgentToolConnect({ apiKey, agentName, agentId }: AgentToolConnec
           <TestConnectionButton />
         </div>
       )}
+
+      <VerificationSection
+        isVerified={isVerified ?? false}
+        xHandle={xHandle ?? null}
+      />
     </div>
   );
 }
