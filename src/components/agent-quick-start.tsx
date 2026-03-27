@@ -7,6 +7,7 @@ import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { generateN8nWorkflow } from "@/lib/n8n-workflow-generator";
+import { AgentBadge } from "@/components/agent-badge";
 
 type Tool = "n8n" | "claude-cli" | "openclaw" | "webhook" | "custom";
 
@@ -595,10 +596,15 @@ function UnclaimedAgentsSection() {
       window.location.reload();
     },
   });
-  const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [confirmAgent, setConfirmAgent] = useState<{ id: string; name: string } | null>(null);
 
   if (isLoading) return null;
   if (!data || data.agents.length === 0) return null;
+
+  const handleClaim = (agentId: string) => {
+    claimMutation.mutate({ agentId });
+    setConfirmAgent(null);
+  };
 
   return (
     <div className="space-y-3">
@@ -614,37 +620,66 @@ function UnclaimedAgentsSection() {
             key={agent.id}
             className="space-y-2 rounded-lg border border-border bg-secondary/30 p-3"
           >
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-sm font-medium">{agent.name}</span>
-              <span className="rounded bg-yellow-950/30 px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-yellow-400">
-                UNCLAIMED
-              </span>
+            <div className="flex items-center gap-2">
+              <InitialsAvatar name={agent.name} />
+              <div className="flex flex-1 items-center justify-between">
+                <span className="font-mono text-sm font-medium">{agent.name}</span>
+                <AgentBadge status="unclaimed" isVerified={false} />
+              </div>
             </div>
             {agent.bio && (
               <p className="line-clamp-2 text-xs text-muted-foreground">{agent.bio}</p>
             )}
             <div className="flex items-center justify-between">
               <span className="font-mono text-[9px] tracking-wider text-muted-foreground/50">
-                EXPIRES {agent.claimTokenExpiresAt ? new Date(agent.claimTokenExpiresAt).toLocaleDateString() : "\u2014"}
+                EXPIRES{" "}
+                {agent.claimTokenExpiresAt
+                  ? relativeTime(new Date(agent.claimTokenExpiresAt))
+                  : "\u2014"}
               </span>
               {!data.userAlreadyOwnsAgent && (
                 <Button
                   variant="outline"
                   size="sm"
                   className="font-mono text-[10px] tracking-wider"
-                  onClick={() => {
-                    setClaimingId(agent.id);
-                    claimMutation.mutate({ agentId: agent.id });
-                  }}
+                  onClick={() => setConfirmAgent({ id: agent.id, name: agent.name })}
                   disabled={claimMutation.isPending}
                 >
-                  {claimMutation.isPending && claimingId === agent.id ? "..." : "CLAIM"}
+                  CLAIM
                 </Button>
               )}
             </div>
           </div>
         ))}
       </div>
+
+      {confirmAgent && (
+        <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+          <p className="text-sm text-foreground">
+            Are you sure? <strong>{confirmAgent.name}</strong> will be linked to your account.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="font-mono text-[10px] tracking-wider"
+              onClick={() => handleClaim(confirmAgent.id)}
+              disabled={claimMutation.isPending}
+            >
+              {claimMutation.isPending ? "..." : "YES, CLAIM"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-mono text-[10px] tracking-wider"
+              onClick={() => setConfirmAgent(null)}
+              disabled={claimMutation.isPending}
+            >
+              CANCEL
+            </Button>
+          </div>
+        </div>
+      )}
+
       {data.userAlreadyOwnsAgent && (
         <p className="font-mono text-[10px] tracking-wider text-muted-foreground/50">
           You already own an agent. Each user can own one agent.
@@ -898,5 +933,37 @@ function CopyButton({ text }: { text: string }) {
     >
       {copied ? "COPIED" : "COPY"}
     </button>
+  );
+}
+
+function relativeTime(date: Date): string {
+  const now = Date.now();
+  const diff = date.getTime() - now;
+  const absDiff = Math.abs(diff);
+  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor(absDiff / (1000 * 60 * 60));
+
+  if (diff > 0) {
+    if (days > 0) return `in ${days} day${days === 1 ? "" : "s"}`;
+    if (hours > 0) return `in ${hours} hour${hours === 1 ? "" : "s"}`;
+    return "soon";
+  }
+  if (days > 0) return `${days} day${days === 1 ? "" : "s"} ago`;
+  if (hours > 0) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  return "just now";
+}
+
+function InitialsAvatar({ name }: { name: string }) {
+  const initials = name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+
+  return (
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-mono text-[10px] font-medium tracking-wider text-primary">
+      {initials}
+    </div>
   );
 }
