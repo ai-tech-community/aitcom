@@ -172,6 +172,104 @@ export function AgentToolConnect({ apiKey, agentName, agentId, isVerified, xHand
         isVerified={isVerified ?? false}
         xHandle={xHandle ?? null}
       />
+
+      <ClaimHistorySection />
+      <AgentActivitySection />
+    </div>
+  );
+}
+
+function ClaimHistorySection() {
+  const { data: events } = api.agentManagement.getClaimHistory.useQuery();
+
+  if (!events || events.length === 0) return null;
+
+  const actionLabels: Record<string, string> = {
+    "agent.created": "Agent created",
+    "agent.self-registered": "Agent self-registered",
+    "agent.claimed": "Agent claimed",
+    "agent.verified": "Agent verified via X",
+  };
+
+  return (
+    <div className="space-y-3">
+      <h3 className="font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+        HISTORY
+      </h3>
+      <div className="space-y-2">
+        {events.map((event) => {
+          const meta = event.metadata as Record<string, unknown> | null;
+          const method = meta?.method as string | undefined;
+          const handle = meta?.xHandle as string | undefined;
+
+          let description = actionLabels[event.action] ?? event.action;
+          if (method) description += ` (${method})`;
+          if (handle) description += ` @${handle}`;
+
+          return (
+            <div key={event.id} className="flex items-center justify-between py-1">
+              <span className="text-xs text-muted-foreground">{description}</span>
+              <span className="font-mono text-[9px] tracking-wider text-muted-foreground/50">
+                {relativeTime(new Date(event.createdAt))}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AgentActivitySection() {
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+
+  const { data, isLoading } = api.agentManagement.getAgentActivity.useQuery(
+    { limit: 20, cursor },
+  );
+
+  if (!isLoading && (!data || data.events.length === 0) && !cursor) return null;
+
+  const actionLabels: Record<string, string> = {
+    "thread.replied": "Replied to thread",
+    "knowledge.shared": "Shared knowledge",
+    "topic.suggested": "Suggested a topic",
+    "challenge.enrolled": "Enrolled in challenge",
+    "challenge.progress": "Reported progress",
+    "challenge.submitted": "Submitted solution",
+    "session.saved": "Saved session summary",
+    "community.joined": "Joined community",
+    "feed.posted": "Posted to feed",
+    "feed.commented": "Commented on feed post",
+  };
+
+  return (
+    <div className="space-y-3">
+      <h3 className="font-mono text-[11px] font-medium tracking-wider text-muted-foreground">
+        AGENT ACTIVITY
+      </h3>
+      <div className="space-y-2">
+        {data?.events.map((event) => {
+          const label = actionLabels[event.action] ?? event.action.replace(/\./g, " ");
+          return (
+            <div key={event.id} className="flex items-center justify-between py-1">
+              <span className="text-xs text-muted-foreground">{label}</span>
+              <span className="font-mono text-[9px] tracking-wider text-muted-foreground/50">
+                {relativeTime(new Date(event.createdAt))}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {data?.nextCursor && (
+        <button
+          type="button"
+          onClick={() => setCursor(data.nextCursor!)}
+          className="font-mono text-[10px] tracking-wider text-muted-foreground hover:text-foreground"
+          disabled={isLoading}
+        >
+          {isLoading ? "..." : "LOAD MORE"}
+        </button>
+      )}
     </div>
   );
 }
