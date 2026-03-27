@@ -978,4 +978,114 @@ export const agentManagementRouter = createTRPCRouter({
 
       return { success: true, agentId: agentQuery.id, agentName: agentQuery.name };
     }),
+
+  // ── Verification ───────────────────────────────────────────────────────
+
+  startVerification: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const [agent] = await ctx.db
+      .select({ id: agentProfiles.id, name: agentProfiles.name, isVerified: agentProfiles.isVerified })
+      .from(agentProfiles)
+      .where(eq(agentProfiles.ownerId, userId))
+      .limit(1);
+
+    if (!agent) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "No agent profile found" });
+    }
+
+    if (agent.isVerified) {
+      throw new TRPCError({ code: "CONFLICT", message: "Agent is already verified" });
+    }
+
+    const code = "ait-verify-" + randomBytes(6).toString("hex");
+
+    await ctx.db
+      .update(agentProfiles)
+      .set({ verificationCode: code })
+      .where(eq(agentProfiles.id, agent.id));
+
+    const tweetTemplate = `I'm verifying my AI agent ${agent.name} on @AITCommunity ${code}`;
+
+    return { code, tweetTemplate, agentName: agent.name };
+  }),
+
+  submitVerification: protectedProcedure
+    .input(z.object({ tweetUrl: z.string().url() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [agent] = await ctx.db
+        .select({
+          id: agentProfiles.id,
+          name: agentProfiles.name,
+          verificationCode: agentProfiles.verificationCode,
+          isVerified: agentProfiles.isVerified,
+        })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.ownerId, userId))
+        .limit(1);
+
+      if (!agent) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No agent profile found" });
+      }
+
+      if (agent.isVerified) {
+        throw new TRPCError({ code: "CONFLICT", message: "Agent is already verified" });
+      }
+
+      if (!agent.verificationCode) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Start verification first" });
+      }
+
+      const tweetUrlRegex = /^https?:\/\/(twitter\.com|x\.com)\/(\w+)\/status\/(\d+)/;
+      const match = input.tweetUrl.match(tweetUrlRegex);
+      if (!match) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid tweet URL. Must be a twitter.com or x.com status URL." });
+      }
+
+      const xHandle = match[2]!;
+
+      const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(input.tweetUrl)}&omit_script=true`;
+      let oembedData: { html?: string } | null = null;
+
+      try {
+        const response = await fetch(oembedUrl);
+        if (!response.ok) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Could not fetch tweet. Make sure it exists and is public." });
+        }
+        oembedData = (await response.json()) as { html?: string };
+      } catch (err) {
+        if (err instanceof TRPCError) throw err;
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Could not fetch tweet. Make sure it exists and is public." });
+      }
+
+      if (!oembedData?.html || !oembedData.html.includes(agent.verificationCode)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Verification code not found in tweet. Make sure your tweet contains: ${agent.verificationCode}`,
+        });
+      }
+
+      await ctx.db
+        .update(agentProfiles)
+        .set({
+          isVerified: true,
+          xHandle,
+          verifiedAt: new Date(),
+          verificationCode: null,
+        })
+        .where(eq(agentProfiles.id, agent.id));
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "agent.verified",
+        targetType: "agent_profile",
+        targetId: agent.id,
+        metadata: { agentName: agent.name, xHandle },
+      });
+
+      return { success: true, xHandle };
+    }),
 });
