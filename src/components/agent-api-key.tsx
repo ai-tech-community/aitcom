@@ -4,11 +4,10 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/agent/shared";
 
 export function AgentApiKey() {
   const t = useTranslations("agent");
-  const [showKey, setShowKey] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [fullKey, setFullKey] = useState<string | null>(null);
 
   const keyInfo = api.agentManagement.getKeyInfo.useQuery();
@@ -17,8 +16,6 @@ export function AgentApiKey() {
   const generateKey = api.agentManagement.generateKey.useMutation({
     onSuccess: (data) => {
       setFullKey(data.key);
-      setShowKey(true);
-      setCopied(false);
       void utils.agentManagement.getKeyInfo.invalidate();
     },
   });
@@ -26,18 +23,9 @@ export function AgentApiKey() {
   const revokeKey = api.agentManagement.revokeKey.useMutation({
     onSuccess: () => {
       setFullKey(null);
-      setShowKey(false);
       void utils.agentManagement.getKeyInfo.invalidate();
     },
   });
-
-  const handleCopy = async () => {
-    const text = fullKey ?? keyInfo.data?.prefix ?? "";
-    if (!text) return;
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const hasExistingKey = !!keyInfo.data;
 
@@ -46,48 +34,47 @@ export function AgentApiKey() {
       {keyInfo.isLoading ? (
         <p className="text-sm text-muted-foreground">Loading key info...</p>
       ) : keyInfo.data ? (
-        <div className="rounded border border-border bg-secondary px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
+        <div className="space-y-3">
+          <div className="rounded border border-border bg-secondary px-4 py-3">
+            <div className="flex items-center justify-between">
               <code className="break-all font-mono text-sm text-foreground">
-                {showKey && fullKey ? fullKey : `${keyInfo.data.prefix}...`}
+                {fullKey ?? `${keyInfo.data.prefix}...`}
               </code>
-              <span className="ml-3 text-xs text-muted-foreground">
+              {fullKey && <CopyButton text={fullKey} />}
+            </div>
+            <div className="mt-2 flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
                 {keyInfo.data.lastUsedAt
                   ? `Last used ${new Date(keyInfo.data.lastUsedAt).toLocaleDateString()}`
                   : "Never used"}
               </span>
             </div>
-            <div className="ml-3 flex items-center gap-2">
-              {fullKey && (
-                <button
-                  type="button"
-                  onClick={() => setShowKey(!showKey)}
-                  className="font-mono text-[10px] tracking-wider text-muted-foreground hover:text-foreground"
-                >
-                  {showKey ? t("hideKey") : t("showKey")}
-                </button>
-              )}
-              {fullKey && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={handleCopy}
-                  className="font-mono text-[11px] tracking-wider"
-                >
-                  {copied ? "Copied!" : "Copy"}
-                </Button>
-              )}
-              <Button
-                variant="destructive"
-                size="xs"
-                onClick={() => revokeKey.mutate()}
-                disabled={revokeKey.isPending}
-                className="font-mono text-[11px] tracking-wider"
-              >
-                {revokeKey.isPending ? "..." : t("revokeKey")}
-              </Button>
+          </div>
+
+          {fullKey && (
+            <div className="rounded border border-yellow-800 bg-yellow-950/30 px-3 py-2">
+              <p className="font-mono text-[11px] tracking-wider text-yellow-400">
+                Save this key now — it won&apos;t be shown again after you leave this page.
+              </p>
             </div>
+          )}
+
+          {!fullKey && (
+            <p className="text-xs text-muted-foreground">
+              Full key was shown once at generation time.
+            </p>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="destructive"
+              size="xs"
+              onClick={() => revokeKey.mutate()}
+              disabled={revokeKey.isPending}
+              className="font-mono text-[11px] tracking-wider"
+            >
+              {revokeKey.isPending ? "..." : t("revokeKey")}
+            </Button>
           </div>
         </div>
       ) : (
