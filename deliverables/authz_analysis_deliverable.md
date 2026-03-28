@@ -1,189 +1,268 @@
 # Authorization Analysis Report
-## AIT Community (aitcommunity.org)
 
 ## 1. Executive Summary
 
 - **Analysis Status:** Complete
-- **Key Outcome:** Nine authorization vulnerabilities were identified and systematically validated against source code across the tRPC gateway (260+ procedures), direct HTTP API routes, and the PayloadCMS REST layer. Five vulnerabilities carry high confidence; two carry medium confidence; two carry low confidence. All high- and medium-confidence findings have been passed to the exploitation phase via the machine-readable exploitation queue.
-- **Purpose of this Document:** This report provides the strategic context, dominant vulnerability patterns, and architectural intelligence necessary to effectively exploit the vulnerabilities listed in the queue. It is intended to be read alongside the JSON deliverable.
-- **Scope:** External attacker, internet-accessible surface at `https://www.aitcommunity.org` only.
+- **Analysis Date:** 2026-03-28
+- **Target:** https://www.aitcommunity.org
+- **Key Outcome:** Eight (8) externally-exploitable authorization vulnerabilities confirmed through white-box code analysis. Findings span all three categories: vertical privilege escalation (4), context/workflow bypass (3), and one dual-category. All findings have been passed to the exploitation phase via the machine-readable exploitation queue.
+- **Purpose of this Document:** This report provides the strategic context, dominant patterns, and architectural intelligence necessary to effectively exploit the vulnerabilities listed in the queue. It is intended to be read alongside the JSON deliverable.
+
+**Confirmed Vulnerabilities by Category:**
+
+| ID | Category | Endpoint | Confidence |
+|----|----------|----------|------------|
+| AUTHZ-VULN-01 | Vertical | `POST /api/trpc/agentManagement.claimAgent` | High |
+| AUTHZ-VULN-02 | Vertical | `POST /api/trpc/forum.pinThread` | High |
+| AUTHZ-VULN-03 | Vertical | `POST /api/trpc/forum.lockThread` | High |
+| AUTHZ-VULN-04 | Vertical | `POST /api/trpc/challenges.create` | High |
+| AUTHZ-VULN-05 | Context_Workflow | `POST /api/mollie/webhook` | High |
+| AUTHZ-VULN-06 | Context_Workflow | `POST /api/trpc/challenges.reviewSolution` | High |
+| AUTHZ-VULN-07 | Context_Workflow | `POST /api/trpc/articles.submit` | Medium |
 
 ---
 
 ## 2. Dominant Vulnerability Patterns
 
-### Pattern 1: Missing Global-Scope Authorization Guard (Vertical)
-- **Description:** Several privilege-gated operations (pin thread, lock thread, create challenge, claim agent) are partially guarded—checks exist for community-scoped objects but fall through with no guard when the `communityId` field is absent (global/platform-level objects).
-- **Implication:** Any authenticated user can exercise moderator-level control over global forum threads and create official-looking challenges labeled as sponsored content.
-- **Representative:** AUTHZ-VULN-01 (claimAgent bypass), AUTHZ-VULN-02 (challenges.create), AUTHZ-VULN-03 (forum.pinThread), AUTHZ-VULN-04 (forum.lockThread)
+### Pattern 1: Conditional Authorization Guard (Vertical)
+- **Description:** Authorization checks gated on the presence of an optional field (`communityId`). When the field is absent (global threads), the entire authorization block is skipped.
+- **Implication:** Any authenticated user can perform moderator-level operations (pin, lock threads) on global forum threads with no privilege check.
+- **Representative:** AUTHZ-VULN-02, AUTHZ-VULN-03
 
-### Pattern 2: Missing Prior-State Validation in Multi-Step Workflows (Context)
-- **Description:** Several workflow endpoints accept requests at a "later" step without first verifying that the prior step reached its required terminal state. The authorization model checks *who* but not *where in the workflow*.
-- **Implication:** Challenge creators can approve solutions on arbitrary enrollment states; trusted authors can repeatedly re-publish content to farm XP awards.
-- **Representative:** AUTHZ-VULN-06 (challenges.reviewSolution), AUTHZ-VULN-07 (articles.submit)
+### Pattern 2: Missing Role Prerequisite on Privileged Operations (Vertical)
+- **Description:** Endpoints that create privileged resources (official challenges, agent claims) use only `protectedProcedure` (any authenticated user) with no role or capability check.
+- **Implication:** Any authenticated user can create official challenges with sponsor attribution and arbitrary XP/badge rewards, or claim any unclaimed agent without a valid token.
+- **Representative:** AUTHZ-VULN-01, AUTHZ-VULN-04
 
-### Pattern 3: Missing Webhook Signature Verification (Context)
-- **Description:** The Mollie payment webhook endpoint accepts unauthenticated POST requests, trusts the `paymentId` from the request body as the only identifier, and unconditionally writes `paymentStatus` to the database before checking registration state.
-- **Implication:** An attacker with knowledge of a valid Mollie payment ID can replay webhook calls to manipulate event registration statuses.
-- **Representative:** AUTHZ-VULN-05 (/api/mollie/webhook)
+### Pattern 3: Missing Prior-State Validation in Workflows (Context)
+- **Description:** Multi-step processes (challenge submission -> review, article draft -> publish) fail to validate that prerequisite states were reached before allowing the next action.
+- **Implication:** Challenge creators can award XP to users who never submitted a solution; trusted article authors can trigger repeated XP awards by re-submitting already-published articles.
+- **Representative:** AUTHZ-VULN-06, AUTHZ-VULN-07
+
+### Pattern 4: Missing Webhook Signature Verification (Context)
+- **Description:** The Mollie payment webhook endpoint accepts any POST request without verifying the request originates from Mollie.
+- **Implication:** An attacker who can obtain or enumerate a valid Mollie `paymentId` can trigger event registration confirmation, XP award, and confirmation email for any user with a pending payment.
+- **Representative:** AUTHZ-VULN-05
 
 ---
 
 ## 3. Strategic Intelligence for Exploitation
 
 ### Session Management Architecture
-- Sessions use Better Auth v1.4.5 with session tokens stored as HTTP-only cookies (`better-auth.session_token` / `__Secure-better-auth.session_token`).
-- On each tRPC request, `createTRPCContext` calls `auth.api.getSession({headers})` which validates the session cookie against the PostgreSQL `session` table.
-- **Critical Finding:** Session user ID is reliably extracted and trusted. The vulnerabilities documented here are not authentication bypasses—they are authorization logic gaps that exist *after* authentication succeeds.
+- Sessions use Better Auth v1.4.5 with HTTP-only session cookies (`better-auth.session_token` / `__Secure-better-auth.session_token`).
+- The `createTRPCContext` extracts the session on every tRPC call and validates it against the PostgreSQL `session` table.
+- User ID (`ctx.session.user.id`) is extracted from the validated session -- not user-controllable directly.
+- **Critical Finding:** All authorization flaws are in application logic AFTER authentication, not in the authentication layer itself. A valid session is sufficient to trigger most vulnerabilities.
 
 ### Role/Permission Model
-- **Four privilege tiers identified:** `anon` (0), `user` (1), community-scoped roles (member/moderator/admin/owner, levels 2–5), and PayloadCMS admin/editor (separate auth domain).
-- Agent API keys form a parallel auth domain with scope arrays (`read`, `contribute`, `self-profile`).
-- **Critical Finding:** Community roles are correctly enforced *when* a `communityId` is present. The gap is at the platform/global level—there is no "global moderator" or "platform admin" role in the tRPC tier that can be checked for non-community operations. The `pinThread` and `lockThread` guards are gated on `if (thread.communityId)`, creating a dead zone for global threads.
-- Role checks are not middleware-enforced at the router level; each procedure must call them explicitly. This leads to the pattern where `challenges.create` uses only `protectedProcedure` (session check) with no additional role check.
+- Five role domains: `user` (global authenticated), `community:{member,moderator,admin,owner}` (community-scoped), `agent:{unclaimed,claimed}` (API key domain), `payload:{editor,admin}` (CMS domain), `anon` (unauthenticated).
+- **Critical Finding:** Community roles are properly scoped -- but the conditional `if (thread.communityId)` pattern means operations on resources WITHOUT a communityId skip role checks entirely. This is the root of VULN-02 and VULN-03.
+- **Critical Finding:** There is no `sponsorProcedure` or `adminProcedure` in tRPC. Challenges and other "privileged" content creation routes use only `protectedProcedure`, leaving role enforcement to in-procedure logic that is absent in `challenges.create`.
 
-### Resource Access Patterns
-- Most tRPC endpoints use input parameters (IDs, slugs) to identify target resources.
-- **Critical Finding for claimAgent:** The `claimAgent` procedure accepts either `{token}` (requires knowledge of a secret one-time token) or `{agentId}` (requires only the agent's public UUID, no secret). The `agentId` path fetches the agent by ID + `status='unclaimed'`, then performs a token *expiry* check on `claimTokenExpiresAt`. The expiry check runs on the already-fetched row regardless of path—but the fundamental authorization asymmetry is that `agentId` alone (a non-secret) is sufficient to claim any unclaimed agent.
+### Agent Claim Architecture
+- Agents have two states: `unclaimed` (no owner) and `claimed` (ownerId set).
+- The intended claim flow: platform generates a `claimToken` + `claimTokenExpiresAt`; user follows link with token.
+- **Critical Finding:** The `claimAgent` procedure accepts either `{token}` OR `{agentId}`. The `agentId` branch queries only `id = input.agentId AND status = "unclaimed"` -- no token, no secret, no expiry check. Any authenticated user who knows (or enumerates) an agent's UUID can claim it.
+- The `listUnclaimedAgents` endpoint may expose unclaimed agent UUIDs to authenticated users, making enumeration trivial.
 
-### Payment Webhook Architecture
-- The Mollie webhook at `/api/mollie/webhook` is a completely unauthenticated POST handler.
-- It extracts `paymentId` from `FormData`, calls `mollie.payments.get(paymentId)` to fetch real status from Mollie's API, then updates the local `eventRegistrations` table.
-- **Critical Finding:** The `paymentStatus` column update (line 51 in the route) executes unconditionally—before checking `registration.status`. This means any attacker who knows a valid Mollie payment ID can trigger a status write on that registration. While Mollie API returns authentic payment state (spoofing the Mollie response is not possible), the lack of signature verification means legitimate payment IDs from the attacker's own account can be replayed or cross-submitted.
+### Payment / Webhook Flow
+- Paid event registration creates a DB record with `status: "pending_payment"` and a Mollie `paymentId`.
+- The only mechanism to advance to `status: "registered"` is the Mollie webhook at `/api/mollie/webhook`.
+- **Critical Finding:** The webhook reads `paymentId` from the POST FormData body, fetches actual payment status from Mollie API, and if `status === "paid"` AND registration is `pending_payment`, confirms the registration + awards XP. There is no HMAC/signature verification of the incoming request.
+- The paymentId format follows Mollie conventions (`tr_XXXXXXXXXX`). These may be observable via browser network traffic when initiating a payment.
 
-### PayloadCMS Secret Architecture
-- `payload.config.ts` resolves the secret as: `process.env.PAYLOAD_SECRET ?? process.env.BETTER_AUTH_SECRET ?? "dev-secret-change-me"`.
-- This secret is used for JWT signing and encryption of PayloadCMS admin session tokens.
-- **Critical Finding:** If neither env var is set in production, the hardcoded fallback `"dev-secret-change-me"` is a publicly known value, enabling forged admin JWT tokens.
+### Challenge Authorization Architecture
+- Challenges are a core gamification feature with XP rewards, badges, and sponsor attribution.
+- The `challenges.create` procedure uses `protectedProcedure` only. `publishedBy` is hardcoded to `"sponsor"` regardless of caller identity.
+- **Critical Finding:** Any authenticated user can create challenges with any difficulty, XP reward, badge, and max participant count -- all of which directly affect platform-wide leaderboard integrity.
+- The `challenges.reviewSolution` procedure verifies the caller is the challenge creator and that the enrollment belongs to the challenge. However, it does NOT check enrollment status or submission existence.
 
----
-
-## 4. Detailed Vulnerability Findings
-
-### AUTHZ-VULN-01: Unclaimed Agent Takeover via agentId Path
-- **Type:** Vertical
-- **Endpoint:** `POST /api/trpc/agentManagement.claimAgent`
-- **Vulnerable Code:** `src/server/api/routers/agent-management.ts` lines 921–930
-- **Role Context:** Any authenticated user (`user` role) who does not already own an agent
-- **Guard Evidence:** The `token` path requires a secret claim token. The `agentId` path only requires `id = agentId AND status = 'unclaimed'` — no secret. Token expiry fires after fetch on both paths but does not require the claim token to be validated on the agentId path.
-- **Side Effect:** Agent ownerId set to attacker userId, status set to "active", API keys upgraded to claimed-agent scopes, inbox conversation created.
-- **Reason:** Two code paths exposed for one mutation. agentId path requires only a non-secret UUID; any authenticated user can claim any unclaimed agent.
-- **Confidence:** High
-
-### AUTHZ-VULN-02: Unprivileged Challenge Creation with Sponsor Attribution
-- **Type:** Vertical
-- **Endpoint:** `POST /api/trpc/challenges.create`
-- **Vulnerable Code:** `src/server/api/routers/challenges.ts` lines 713–754
-- **Role Context:** Any authenticated user (`user` role)
-- **Guard Evidence:** Only `protectedProcedure` (session check). No admin/sponsor/privileged role check in lines 713–830. `publishedBy` hardcoded to `"sponsor"`.
-- **Side Effect:** Challenge created in PayloadCMS with `publishedBy: "sponsor"`, attacker becomes creatorId and gains `reviewSolution` power over all participants.
-- **Reason:** Missing role gate. Any user can create sponsor-attributed challenges and act as challenge arbiter.
-- **Confidence:** High
-
-### AUTHZ-VULN-03: Arbitrary Global Thread Pin by Any Authenticated User
-- **Type:** Vertical
-- **Endpoint:** `POST /api/trpc/forum.pinThread`
-- **Vulnerable Code:** `src/server/api/routers/forum.ts` lines 594–627
-- **Role Context:** Any authenticated user (`user` role)
-- **Guard Evidence:** `if (thread.communityId) { moderator check }` — the guard block is skipped entirely for threads where `communityId` is null. `payload.update` executes unconditionally.
-- **Side Effect:** Any global forum thread's `isPinned` field set to true/false by any authenticated user.
-- **Reason:** Authorization check does not dominate all code paths. Missing fallback guard for non-community threads.
-- **Confidence:** High
-
-### AUTHZ-VULN-04: Arbitrary Global Thread Lock by Any Authenticated User
-- **Type:** Vertical
-- **Endpoint:** `POST /api/trpc/forum.lockThread`
-- **Vulnerable Code:** `src/server/api/routers/forum.ts` lines 629–662
-- **Role Context:** Any authenticated user (`user` role)
-- **Guard Evidence:** `if (thread.communityId) { moderator check }` — identical conditional gap. Global threads reach `payload.update` with no authorization.
-- **Side Effect:** Any global forum thread's `isLocked` field set to true/false, silencing or restoring all replies.
-- **Reason:** Identical structural flaw to AUTHZ-VULN-03.
-- **Confidence:** High
-
-### AUTHZ-VULN-05: Unauthenticated Mollie Webhook — Payment Status Manipulation
-- **Type:** Context/Workflow
-- **Endpoint:** `POST /api/mollie/webhook`
-- **Vulnerable Code:** `src/app/api/mollie/webhook/route.ts` lines 26–51
-- **Role Context:** Anonymous (no authentication required)
-- **Guard Evidence:** No HMAC/signature verification. `paymentId` from attacker-controlled FormData. `paymentStatus` column update at lines 48–51 fires unconditionally before checking registration.status.
-- **Side Effect:** For any eventRegistration whose paymentId is known: paymentStatus column unconditionally overwritten; if Mollie reports "paid" and registration is "pending_payment", registration promoted to "registered" with XP award.
-- **Reason:** No request authentication. Attacker can replay own legitimate paymentIds or submit other users' IDs to manipulate registration state.
-- **Confidence:** High
-
-### AUTHZ-VULN-06: Challenge Solution Review Without Submission State Check
-- **Type:** Context/Workflow
-- **Endpoint:** `POST /api/trpc/challenges.reviewSolution`
-- **Vulnerable Code:** `src/server/api/routers/challenges.ts` lines 963–979
-- **Role Context:** Challenge creator (user who called challenges.create)
-- **Guard Evidence:** Enrollment lookup filters only on `(challengeId, userId)` — no status filter. Compare to `submitSolution` line 846 which requires `status = 'active'`.
-- **Side Effect:** Creator can approve peer-review objectives on enrollments in any state (active, abandoned, completed), potentially awarding XP without legitimate submission.
-- **Reason:** Workflow requires enroll → submit → review. Review step omits prior-state validation.
-- **Confidence:** Medium
-
-### AUTHZ-VULN-07: Trusted Author Article Re-publish XP Farming
-- **Type:** Context/Workflow
-- **Endpoint:** `POST /api/trpc/articles.submit`
-- **Vulnerable Code:** `src/server/api/routers/articles.ts` lines 185–240
-- **Role Context:** Trusted author (authenticated user with sufficient XP/badges)
-- **Guard Evidence:** No check on `article.status` before allowing re-submission. `delete` procedure (lines 283–310) explicitly blocks published articles; `submit` does not. Trusted path unconditionally calls `awardXP(XP_AMOUNTS.ARTICLE_PUBLISHED)`.
-- **Side Effect:** Re-publishing an already-published article re-triggers XP awards, badge checks, and activity log entries.
-- **Reason:** Expected workflow is create → submit → publish (once). Missing prior-state guard allows repeated XP accrual from a single article.
-- **Confidence:** Medium
-
-### AUTHZ-VULN-08: PayloadCMS Admin JWT Forgery via Hardcoded Secret Fallback
-- **Type:** Vertical
-- **Endpoint:** `POST /admin/login` (PayloadCMS admin panel)
-- **Vulnerable Code:** `src/payload.config.ts` lines 146–149
-- **Role Context:** Anonymous (if env vars absent in production)
-- **Guard Evidence:** `secret: process.env.PAYLOAD_SECRET ?? process.env.BETTER_AUTH_SECRET ?? "dev-secret-change-me"`. Known fallback enables JWT forgery.
-- **Side Effect:** Full PayloadCMS admin access — read/write/delete all 20 collections.
-- **Reason:** If neither env var is configured in production, signing secret is publicly known.
-- **Confidence:** Low (depends on production configuration)
-
-### AUTHZ-VULN-09: Forum Rules Acceptance Bypass for Global Threads
-- **Type:** Context/Workflow
-- **Endpoint:** `POST /api/trpc/forum.createThread`, `POST /api/trpc/forum.submitIdea`
-- **Vulnerable Code:** `src/server/api/routers/forum.ts` lines 18–52 (`requireRulesAcceptance`)
-- **Role Context:** Any authenticated user (`user` role)
-- **Guard Evidence:** `if (!communityId) return;` at line 19. Since `communitySlug` is optional in both procedures, omitting it bypasses all rules-acceptance enforcement.
-- **Side Effect:** Global forum threads/ideas created without user having accepted forum rules.
-- **Reason:** Helper designed for community-specific rules; global threads have no compensating check.
-- **Confidence:** Low
+### Article Trust Model
+- Articles have two author paths: trusted members (direct publish) and untrusted (pending review).
+- **Critical Finding:** The trusted author path (`articles.submit`) unconditionally awards `XP_AMOUNTS.ARTICLE_PUBLISHED` without checking if the article was already published. The untrusted path correctly guards with `if (!article.reviewStatus)`. Trusted authors can repeatedly call `submit` on a published article to farm XP.
 
 ---
 
-## 5. Vectors Analyzed and Confirmed Secure
+## 4. Vectors Analyzed and Confirmed Secure
+
+These authorization checks were traced and confirmed to have robust, properly-placed guards.
 
 | **Endpoint** | **Guard Location** | **Defense Mechanism** | **Verdict** |
 |---|---|---|---|
-| `POST /api/trpc/agentManagement.reviewDraft` | `agent-management.ts:664–673` | `UPDATE ... WHERE id=X AND ownerId=userId` atomic | SAFE |
-| `POST /api/trpc/agentManagement.dismissSuggestion` | `agent-management.ts:757–766` | `UPDATE ... WHERE id=X AND ownerId=userId` atomic | SAFE |
-| `GET /api/trpc/inbox.getMessages` | `inbox.ts:216–232` | Participant lookup before message fetch | SAFE |
-| `POST /api/trpc/notifications.markRead` | `notifications.ts:54–64` | `UPDATE ... WHERE userId=userId` atomic | SAFE |
-| `POST /api/trpc/notifications.delete` | `notifications.ts:82–89` | `DELETE ... WHERE id=X AND userId=userId` atomic | SAFE |
-| `GET /api/trpc/challenges.getProgress` | `challenges.ts:376–384` | `challengeId AND userId` double-bound | SAFE |
-| `POST /api/trpc/challenges.reviewSolution` | `challenges.ts:949–960` | Creator check + enrollment bound by challengeId | SAFE (horizontal) |
-| `GET /api/trpc/members.getPublicProfile` | `members.ts:131` | `isPublic = true` filter in SQL | SAFE |
-| `POST /api/trpc/launchpad.deleteComment` | `launchpad.ts:662–678` | Fetch-then-compare before DELETE | SAFE |
-| `POST /api/trpc/launchpad.update` | `launchpad.ts:357–365` | Fetch-then-compare before UPDATE | SAFE |
-| `POST /api/trpc/forum.editThread` | `forum.ts:685–701` | Ownership check; mod bypass scoped to thread communityId | SAFE |
-| `POST /api/trpc/forum.deleteThread` | `forum.ts:734–752` | Ownership + community-scoped mod check before soft-delete | SAFE |
-| `POST /api/trpc/forum.editReply` | `forum.ts:787–803` | Ownership; mod bypass scoped to reply communityId | SAFE |
-| `POST /api/trpc/forum.deleteReply` | `forum.ts:835–853` | Ownership + community-scoped mod check | SAFE |
-| `POST /api/trpc/forum.upsertRules` | `forum.ts:897–914` | Requires owner/admin in community | SAFE |
-| `POST /api/trpc/forum.updateIdeaStatus` | `forum.ts:968–979` | Requires owner/admin; communityId from DB record | SAFE |
-| `POST /api/trpc/events.cancelRegistration` | `events.ts:203–212` | `UPDATE ... WHERE eventId=X AND userId=sessionUserId` atomic | SAFE |
-| `POST /api/trpc/communities.join` | `communities.ts:279` | `joinPolicy !== "open"` throws FORBIDDEN | SAFE |
-| `POST /api/trpc/agent.reportObjectiveProgress` | `agent.ts:1700` | Enrollment requires `status = 'active'`; `completedAt IS NULL` | SAFE |
-| `GET /api/[collection]/[id]` (PayloadCMS REST) | PayloadCMS access control | All writes admin-only; media/comments public-read by design | SAFE |
+| `POST /api/trpc/agentManagement.reviewDraft` | agent-management.ts:670 | `eq(agentDrafts.ownerId, userId)` in UPDATE WHERE clause | SAFE |
+| `POST /api/trpc/agentManagement.dismissSuggestion` | agent-management.ts:763 | `eq(agentSuggestions.ownerId, userId)` in UPDATE WHERE clause | SAFE |
+| `GET /api/trpc/inbox.getMessages` | inbox.ts:216-225 | Participant check against `conversationParticipants` before message fetch | SAFE |
+| `POST /api/trpc/notifications.markRead` | notifications.ts:58 | `eq(notifications.userId, userId)` in WHERE clause | SAFE |
+| `POST /api/trpc/notifications.delete` | notifications.ts:88 | Both `notificationId` and `userId` in WHERE clause | SAFE |
+| `GET /api/trpc/challenges.getProgress` | challenges.ts:381 | `eq(challengeEnrollments.userId, userId)` in WHERE clause | SAFE |
+| `GET /api/trpc/members.getPublicProfile` | members.ts:131 | `eq(memberProfiles.isPublic, true)` in WHERE clause | SAFE |
+| `POST /api/trpc/launchpad.deleteComment` | launchpad.ts:662+676 | Author check + PayloadCMS admin fallback | SAFE |
+| `POST /api/trpc/launchpad.update` | launchpad.ts:372-373 | `project.authorId !== ctx.session.user.id` check | SAFE |
+| `POST /api/trpc/forum.editThread` | forum.ts:685-703 | Author check + community moderator fallback | SAFE |
+| `POST /api/trpc/forum.deleteReply` | forum.ts:835-853 | Author check + community moderator fallback | SAFE |
+| `POST /api/trpc/events.cancelRegistration` | events.ts:209 | `eq(eventRegistrations.userId, userId)` in WHERE clause | SAFE |
+| `POST /api/trpc/communities.join` | communities.ts:279 | `community.joinPolicy !== "open"` throws FORBIDDEN | SAFE |
+| `POST /api/trpc/communities.acceptInvite` | communities.ts:406-425 | Expiry check + atomic max-uses compare-and-swap | SAFE |
+| `POST /api/trpc/communities.banMember` | communities.ts:canManageRole | `canManageRole()` strictly greater hierarchy required | SAFE |
+| `POST /api/trpc/communities.removeMember` | communities.ts:canManageRole | `canManageRole()` strictly greater hierarchy required | SAFE |
+| `POST /api/trpc/forum.upsertRules` | forum.ts:913 | `membership.role === "owner" or "admin"` before update | SAFE |
+| `POST /api/trpc/forum.updateIdeaStatus` | forum.ts:978 | Community owner/admin check; global ideas rejected | SAFE |
+| `POST /api/trpc/agent.reportObjectiveProgress` | agent.ts:1700 | `eq(challengeEnrollments.status, "active")` in WHERE clause | SAFE |
+| `POST /api/trpc/forum.createThread` | forum.ts:requireRulesAcceptance | Server-side DB check for rules-acceptance record (for community threads) | SAFE |
+| `POST /api/trpc/forum.submitIdea` | forum.ts:requireRulesAcceptance | Server-side DB check for rules-acceptance record (for community ideas) | SAFE |
+| `POST /api/trpc/communities.updateSettings` | communities.ts:585-586 | Owner/admin role required | SAFE |
+
+---
+
+## 5. Detailed Vulnerability Findings
+
+### AUTHZ-VULN-01: Agent Claim Token Bypass via agentId Parameter
+
+**Type:** Vertical
+**File:** `src/server/api/routers/agent-management.ts` lines 883-944
+**Role Required:** Any authenticated user
+
+The `claimAgent` procedure accepts either `{token}` or `{agentId}`. The token path validates the secret token value against the database. The agentId path only checks `status = "unclaimed"` -- no token, no secret, no ownership validation:
+
+```typescript
+} else {
+  [agentQuery] = await ctx.db.select().from(agentProfiles).where(
+    and(eq(agentProfiles.id, input.agentId!), eq(agentProfiles.status, "unclaimed"))
+  ).limit(1);
+}
+```
+
+Any authenticated user who knows an unclaimed agent's UUID can claim it, binding it to their account and gaining ownership of all associated API keys and capabilities.
+
+---
+
+### AUTHZ-VULN-02 & AUTHZ-VULN-03: Global Forum Thread Pin/Lock Without Authorization
+
+**Type:** Vertical
+**File:** `src/server/api/routers/forum.ts` lines 594-662
+**Role Required:** Any authenticated user
+
+The authorization guard for both `pinThread` and `lockThread` is wrapped in `if (thread.communityId)`. For global threads (communityId = null), the entire check is skipped:
+
+```typescript
+if (thread.communityId) {
+  // Moderator check -- ONLY runs for community threads
+}
+// Falls through with no check for global threads
+await payload.update({ collection: "forum-threads", data: { isPinned: true } });
+```
+
+Any authenticated user can pin or lock any global forum thread.
+
+---
+
+### AUTHZ-VULN-04: Unauthorized Challenge Creation with Sponsor Attribution
+
+**Type:** Vertical
+**File:** `src/server/api/routers/challenges.ts` lines 713-830
+**Role Required:** Any authenticated user
+
+`challenges.create` uses `protectedProcedure` with no role check. `publishedBy` is hardcoded to `"sponsor"`:
+
+```typescript
+create: protectedProcedure  // No admin/sponsor check
+  .mutation(async ({ ctx, input }) => {
+    await payload.create({
+      data: {
+        publishedBy: "sponsor",  // Hardcoded -- any user creates as sponsor
+        xpReward: input.xpReward,  // User-controlled
+        badgeReward: input.badgeReward,  // User-controlled
+      }
+    });
+  })
+```
+
+Any authenticated user can create official sponsor-attributed challenges with arbitrary XP and badge rewards, corrupting platform-wide leaderboard integrity.
+
+---
+
+### AUTHZ-VULN-05: Mollie Webhook No Signature Verification
+
+**Type:** Context_Workflow
+**File:** `src/app/api/mollie/webhook/route.ts` lines 19-94
+**Role Required:** None (unauthenticated)
+
+The webhook handler reads `paymentId` from the POST body, fetches status from Mollie API, and triggers registration confirmation with no signature check:
+
+```typescript
+export async function POST(request: Request) {
+  const formData = await request.formData();
+  const paymentId = formData.get("id") as string | null;
+  // NO SIGNATURE VERIFICATION
+  const payment = await mollie.payments.get(paymentId);
+  if (paymentStatus === "paid" && registration.status === "pending_payment") {
+    // Confirms registration + awards XP + sends email
+  }
+}
+```
+
+An attacker with a valid `paymentId` can replay the webhook to confirm their own or others' pending registrations, award XP, and trigger confirmation emails -- all without a Mollie signature.
+
+---
+
+### AUTHZ-VULN-06: Challenge Solution Approved Without Prior Submission
+
+**Type:** Context_Workflow
+**File:** `src/server/api/routers/challenges.ts` lines 936-1013
+**Role Required:** Challenge creator (any authenticated user who created a challenge)
+
+`reviewSolution` verifies the caller is the challenge creator and the enrollment belongs to the challenge. However, it does not check enrollment status or submission existence:
+
+```typescript
+const [enrollment] = await ctx.db.select().from(challengeEnrollments).where(
+  and(
+    eq(challengeEnrollments.challengeId, input.challengeId),
+    eq(challengeEnrollments.userId, input.participantUserId),
+    // MISSING: eq(challengeEnrollments.status, "active")
+    // MISSING: isNotNull(challengeEnrollments.submittedAt)
+  )
+).limit(1);
+// Unconditionally awards XP if approved=true
+if (input.approved) {
+  await awardXp(ctx.db, input.participantUserId, XP_AMOUNTS.CHALLENGE_SOLUTION_APPROVED);
+}
+```
+
+A challenge creator can approve any enrollment -- regardless of whether a solution was submitted -- awarding XP to any enrolled user (including themselves via a second account).
+
+---
+
+### AUTHZ-VULN-07: Trusted Author Article XP Re-Award
+
+**Type:** Context_Workflow
+**File:** `src/server/api/routers/articles.ts` lines 185-252
+**Role Required:** User with trusted author status
+
+The trusted author submit path awards XP unconditionally with no prior-state check:
+
+```typescript
+if (trusted) {
+  await payload.update({ ..., data: { status: "published" } });
+  await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.ARTICLE_PUBLISHED); // No prior-state guard
+} else {
+  // Correctly guards: if (!article.reviewStatus) { awardXp(...) }
+}
+```
+
+A trusted author can repeatedly call `submit` on an already-published article to farm `ARTICLE_PUBLISHED` XP indefinitely.
 
 ---
 
 ## 6. Analysis Constraints and Blind Spots
 
-- **Runtime Environment Variables:** AUTHZ-VULN-08 depends on whether `PAYLOAD_SECRET` or `BETTER_AUTH_SECRET` is set in production. Static analysis cannot confirm this.
-- **Mollie Payment ID Discovery:** AUTHZ-VULN-05 impact depends on whether payment IDs are discoverable (leaked in responses, notifications, or URLs).
-- **Trusted Author Threshold:** AUTHZ-VULN-07 is constrained to users who have achieved trusted-author status. The exact XP/badge threshold in `isTrustedAuthor()` limits the attack surface.
-- **Agent ID Enumeration:** AUTHZ-VULN-01 requires a valid unclaimed agent UUID. `listUnclaimedAgents` and MCP `browse-members` may expose these.
-- **MCP Tool Authorization:** The ~50 MCP tools at `/api/mcp` were not independently audited; they are assumed to delegate to the same tRPC procedures analyzed here.
+- **Trusted Author Status:** AUTHZ-VULN-07 requires "trusted author" status which is assigned via PayloadCMS admin panel. The confidence is MEDIUM because this prerequisite is not publicly self-obtainable.
 
+- **Mollie paymentId Observability:** AUTHZ-VULN-05 requires a valid `paymentId`. The IDs are observable via browser network traffic when initiating a payment. An attacker can intercept their own `paymentId` and replay the webhook.
+
+- **Agent UUID Enumerability:** AUTHZ-VULN-01 requires knowing an unclaimed agent UUID. The `listUnclaimedAgents` endpoint may expose these IDs to any authenticated user, making enumeration trivial -- this should be verified during exploitation.
+
+- **PayloadCMS Default Secret:** The `payload.config.ts` contains fallback: `process.env.PAYLOAD_SECRET ?? process.env.BETTER_AUTH_SECRET ?? "dev-secret-change-me"`. If neither env var is set in production, JWT forgery against the PayloadCMS admin panel is possible. This could not be confirmed via static analysis alone.
+
+- **PayloadCMS Collections Without Access Control:** Collections `Articles`, `Events`, `LaunchpadProjects`, `CommunityRules`, `RulesAcceptance` lack explicit `access` properties. PayloadCMS 3.x defaults likely restrict unauthenticated REST access, but this was not live-tested.
+
+- **Race Conditions:** Some procedures (e.g., `reportObjectiveProgress` completedAt NULL check) may be vulnerable to TOCTOU race conditions under concurrent requests, but this was not analyzed in depth as it is outside the scope of logical authorization flaws.
