@@ -3,9 +3,7 @@
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { Settings } from "lucide-react";
 
@@ -33,65 +31,67 @@ export default function MyCommunities() {
   if (!memberships?.length) {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <p className="text-muted-foreground">{t("noCommunities")}</p>
-        <Button asChild>
-          <Link href="/communities">{t("exploreCommunities")}</Link>
-        </Button>
+        <p className="text-sm text-muted-foreground">{t("noCommunities")}</p>
+        <Link
+          href="/communities"
+          className="font-mono text-xs tracking-wider text-primary underline underline-offset-4 hover:text-primary/80"
+        >
+          {t("exploreCommunities")}
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <h2 className="text-lg font-semibold tracking-tight">{t("title")}</h2>
+    <div>
+      <div className="border-b border-border pb-4">
+        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+          / {t("title").toUpperCase()}
+        </span>
+      </div>
 
       {/* Active memberships */}
       {active.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-muted-foreground font-mono text-xs font-medium uppercase tracking-wider">
+        <div className="mt-6">
+          <h3 className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
             {t("active")} ({active.length})
           </h3>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="mt-2">
             {active.map((m) => (
-              <Card key={m.communityId}>
-                <CardContent className="flex items-center justify-between gap-4 p-4">
-                  <div className="min-w-0 flex-1">
-                    <Link
-                      href={`/communities/${m.slug}` as never}
-                      className="font-medium hover:underline"
-                    >
-                      {m.name}
+              <Link
+                key={m.communityId}
+                href={`/communities/${m.slug}` as never}
+                className="flex flex-col gap-1.5 border-b border-border px-4 py-3.5 transition-colors hover:bg-secondary/50 sm:flex-row sm:items-center sm:gap-0"
+              >
+                <span className="text-[15px] font-medium leading-snug sm:flex-1">
+                  {m.name}
+                </span>
+
+                {m.description ? (
+                  <span className="line-clamp-1 text-sm text-muted-foreground sm:flex-1">
+                    {m.description}
+                  </span>
+                ) : null}
+
+                <span className="rounded border border-border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider text-muted-foreground sm:ml-3">
+                  {tRoles(m.role).toUpperCase()}
+                </span>
+
+                {(m.role === "owner" || m.role === "admin") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-1.5 w-fit font-mono text-[10px] tracking-wider sm:ml-3 sm:mt-0"
+                    asChild
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Link href={`/communities/${m.slug}/settings` as never}>
+                      <Settings className="mr-1 size-3" />
+                      {t("manage")}
                     </Link>
-                    {m.description ? (
-                      <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">
-                        {m.description}
-                      </p>
-                    ) : null}
-                    <Badge variant="secondary" className="mt-1 text-xs">
-                      {tRoles(m.role)}
-                    </Badge>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {(m.role === "owner" || m.role === "admin") && (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link
-                          href={
-                            `/communities/${m.slug}/settings` as never
-                          }
-                        >
-                          <Settings className="mr-1 size-3.5" />
-                          {t("manage")}
-                        </Link>
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/communities/${m.slug}` as never}>
-                        {t("view")}
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </Button>
+                )}
+              </Link>
             ))}
           </div>
         </div>
@@ -99,27 +99,30 @@ export default function MyCommunities() {
 
       {/* Pending memberships */}
       {pending.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-muted-foreground font-mono text-xs font-medium uppercase tracking-wider">
+        <div className="mt-6">
+          <h3 className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
             {t("pending")} ({pending.length})
           </h3>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="mt-2">
             {pending.map((m) => (
-              <Card key={m.communityId} className="opacity-75">
-                <CardContent className="flex items-center justify-between gap-4 p-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{m.name}</p>
-                    {m.description ? (
-                      <p className="text-muted-foreground mt-0.5 line-clamp-1 text-sm">
-                        {m.description}
-                      </p>
-                    ) : null}
-                    <Badge variant="outline" className="mt-1 text-xs">
-                      {t("pending")}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+              <div
+                key={m.communityId}
+                className="flex flex-col gap-1.5 border-b border-border px-4 py-3.5 opacity-75 sm:flex-row sm:items-center sm:gap-0"
+              >
+                <span className="text-[15px] font-medium leading-snug sm:flex-1">
+                  {m.name}
+                </span>
+
+                {m.description ? (
+                  <span className="line-clamp-1 text-sm text-muted-foreground sm:flex-1">
+                    {m.description}
+                  </span>
+                ) : null}
+
+                <span className="rounded border border-dashed border-border px-2 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground sm:ml-3">
+                  {t("pending").toUpperCase()}
+                </span>
+              </div>
             ))}
           </div>
         </div>
