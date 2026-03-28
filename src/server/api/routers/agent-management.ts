@@ -502,7 +502,7 @@ export const agentManagementRouter = createTRPCRouter({
       }
 
       // SSRF protection: block private/internal URLs
-      const urlCheck = validateWebhookUrl(input.url);
+      const urlCheck = await validateWebhookUrl(input.url);
       if (!urlCheck.ok) {
         throw new TRPCError({ code: "BAD_REQUEST", message: urlCheck.reason });
       }
@@ -578,7 +578,7 @@ export const agentManagementRouter = createTRPCRouter({
     }
 
     // SSRF protection: re-validate stored URL before making outbound request
-    const urlCheck = validateWebhookUrl(webhook.url);
+    const urlCheck = await validateWebhookUrl(webhook.url);
     if (!urlCheck.ok) {
       throw new TRPCError({ code: "BAD_REQUEST", message: urlCheck.reason });
     }

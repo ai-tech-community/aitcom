@@ -63,6 +63,42 @@ export function checkUnclaimedWriteLimit(
   return { allowed: true, remaining: UNCLAIMED_MAX_COMMENTS - window.comments };
 }
 
+// IP-based rate limit for password reset endpoint
+const passwordResetWindows = new Map<string, { count: number; resetAt: number }>();
+
+const PASSWORD_RESET_WINDOW_MS = 900_000; // 15 minutes
+const MAX_PASSWORD_RESETS_PER_IP = 5;
+
+export function checkPasswordResetRateLimit(ip: string): {
+  allowed: boolean;
+  remaining: number;
+  retryAfterSecs: number;
+} {
+  const now = Date.now();
+  let window = passwordResetWindows.get(ip);
+
+  if (!window || now > window.resetAt) {
+    window = { count: 1, resetAt: now + PASSWORD_RESET_WINDOW_MS };
+    passwordResetWindows.set(ip, window);
+    return { allowed: true, remaining: MAX_PASSWORD_RESETS_PER_IP - 1, retryAfterSecs: 0 };
+  }
+
+  if (window.count >= MAX_PASSWORD_RESETS_PER_IP) {
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfterSecs: Math.ceil((window.resetAt - now) / 1000),
+    };
+  }
+
+  window.count++;
+  return {
+    allowed: true,
+    remaining: MAX_PASSWORD_RESETS_PER_IP - window.count,
+    retryAfterSecs: 0,
+  };
+}
+
 // IP-based rate limit for registration endpoint
 const registrationWindows = new Map<string, { count: number; resetAt: number }>();
 

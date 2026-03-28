@@ -50,7 +50,7 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
       result.webhooksProcessed++;
 
       // SSRF protection: skip webhooks with private/internal URLs
-      const urlCheck = validateWebhookUrl(webhook.url);
+      const urlCheck = await validateWebhookUrl(webhook.url);
       if (!urlCheck.ok) {
         console.warn(`[webhook-dispatch] Skipping webhook ${webhook.id}: ${urlCheck.reason}`);
         // Auto-disable the unsafe webhook

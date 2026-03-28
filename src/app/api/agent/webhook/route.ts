@@ -84,7 +84,7 @@ export async function PUT(req: Request) {
   }
 
   // SSRF protection: block private/internal URLs
-  const urlCheck = validateWebhookUrl(body.url);
+  const urlCheck = await validateWebhookUrl(body.url);
   if (!urlCheck.ok) {
     return NextResponse.json({ error: urlCheck.reason }, { status: 400 });
   }
