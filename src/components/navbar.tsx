@@ -64,6 +64,9 @@ export function Navbar() {
       if (key === "D" && session?.user) {
         e.preventDefault();
         router.push("/dashboard");
+      } else if (key === "A" && session?.user) {
+        e.preventDefault();
+        router.push("/dashboard/agent");
       } else if (key === "J" && !session?.user) {
         e.preventDefault();
         router.push("/auth/signup");
@@ -121,6 +124,17 @@ export function Navbar() {
                 )}
               >
                 [D] DASHBOARD
+              </Link>
+              <Link
+                href="/dashboard/agent"
+                className={cn(
+                  "hover:text-foreground font-mono text-xs transition-colors",
+                  pathname.startsWith("/dashboard/agent")
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
+                [A] {t("myAgent").toUpperCase()}
               </Link>
               <NotificationBell />
               <button
@@ -185,6 +199,18 @@ export function Navbar() {
                         )}
                       >
                         [D] DASHBOARD
+                      </Link>
+                      <Link
+                        href="/dashboard/agent"
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          "hover:text-foreground font-mono text-sm transition-colors",
+                          pathname.startsWith("/dashboard/agent")
+                            ? "text-foreground"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        [A] {t("myAgent").toUpperCase()}
                       </Link>
                       <button
                         onClick={() => {
