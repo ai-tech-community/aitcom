@@ -1364,6 +1364,38 @@ export const communities = appSchema.table(
   ],
 );
 
+export const communityLumaIntegrations = appSchema.table(
+  "community_luma_integration",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .unique()
+      .references(() => communities.id),
+    apiKeyEncrypted: d.text().notNull(),
+    calendarApiId: d.text().notNull().default(""),
+    calendarName: d.text(),
+    tagFilters: d
+      .jsonb()
+      .$type<string[]>(),
+    isEnabled: d.boolean().notNull().default(false),
+    lastSyncCheck: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("luma_integration_community_idx").on(t.communityId),
+  ],
+);
+
 export const communityMemberships = appSchema.table(
   "community_membership",
   (d) => ({
