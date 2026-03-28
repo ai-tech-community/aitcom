@@ -421,7 +421,7 @@ export const eventsRouter = createTRPCRouter({
         )
         .limit(1);
 
-      if (integration && integration.calendarApiId) {
+      if (integration?.calendarApiId) {
         const cacheKey = `luma-events:${community.id}`;
         const cached = getCached<NormalizedEvent[]>(cacheKey);
 
