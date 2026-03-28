@@ -52,7 +52,7 @@ export const { GET, POST } = auth.handler();
 import { auth } from "@/lib/auth/server";
 
 export default auth.middleware({
-  loginUrl: "/auth/sign-in",
+  loginUrl: "/auth/signin",
 });
 
 export const config = {
@@ -142,12 +142,12 @@ Use pre-built components instead of building custom auth forms.
 
 | Component                | Purpose                                   |
 | ------------------------ | ----------------------------------------- |
-| `AuthView`               | Sign-in, sign-up, forgot-password pages   |
+| `AuthView`               | signin, signup, forgot-password pages   |
 | `AccountView`            | Account settings, security pages          |
 | `UserButton`             | User avatar with dropdown menu            |
 | `SignedIn` / `SignedOut` | Conditional rendering based on auth state |
 | `RedirectToSignIn`       | Redirect unauthenticated users            |
-| `RedirectToSignUp`       | Redirect to sign-up page                  |
+| `RedirectToSignUp`       | Redirect to signup page                  |
 
 See the [UI components reference](https://neon.com/docs/auth/reference/ui-components.md) for full props and customization.
 
@@ -221,7 +221,7 @@ export default async function AuthPage({
 }
 ```
 
-Auth paths: `sign-in`, `sign-up`, `forgot-password`, `reset-password`, `magic-link`, `two-factor`, `callback`, `sign-out`
+Auth paths: `signin`, `signup`, `forgot-password`, `reset-password`, `magic-link`, `two-factor`, `callback`, `sign-out`
 
 ### AccountView (Next.js)
 
@@ -255,7 +255,7 @@ Account paths: `settings`, `security`
 import { SignedIn, SignedOut, UserButton } from "@neondatabase/auth/react";
 
 <SignedOut>
-  <a href="/auth/sign-in">Sign In</a>
+  <a href="/auth/signin">Sign In</a>
 </SignedOut>
 <SignedIn>
   <UserButton />
@@ -268,7 +268,7 @@ import { SignedIn, SignedOut, UserButton } from "@neondatabase/auth/react";
 | ----------------------------------------------- | ---------------------------------------------- |
 | `auth.signUp.email({ email, password, name })`  | Create account (server)                        |
 | `auth.signIn.email({ email, password })`        | Sign in (server)                               |
-| `auth.signIn.social({ provider, callbackURL })` | OAuth sign-in (server)                         |
+| `auth.signIn.social({ provider, callbackURL })` | OAuth signin (server)                         |
 | `auth.signOut()`                                | Sign out (server)                              |
 | `auth.getSession()`                             | Get session (server, requires `force-dynamic`) |
 | `authClient.useSession()`                       | Session hook (client, needs React adapter)     |
