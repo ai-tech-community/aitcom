@@ -198,7 +198,7 @@ function ClaimHistorySection() {
       </h3>
       <div className="space-y-2">
         {events.map((event) => {
-          const meta = event.metadata as Record<string, unknown> | null;
+          const meta = event.metadata;
           const method = meta?.method as string | undefined;
           const handle = meta?.xHandle as string | undefined;
 

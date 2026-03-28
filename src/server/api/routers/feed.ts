@@ -100,7 +100,7 @@ export const feedRouter = createTRPCRouter({
         );
         const postsWithLike = posts.map((p) => ({
           ...p,
-          authorImage: authorImageMap.get(p.authorId as string) ?? null,
+          authorImage: authorImageMap.get(p.authorId) ?? null,
           hasLiked: likedPostIds.has(p.id),
         }));
         const nextCursor =
@@ -115,7 +115,7 @@ export const feedRouter = createTRPCRouter({
 
       const postsWithLike = posts.map((p) => ({
         ...p,
-        authorImage: authorImageMap.get(p.authorId as string) ?? null,
+        authorImage: authorImageMap.get(p.authorId) ?? null,
         hasLiked: false,
       }));
       const nextCursor =

@@ -1040,7 +1040,7 @@ export const agentManagementRouter = createTRPCRouter({
       }
 
       const tweetUrlRegex = /^https?:\/\/(twitter\.com|x\.com)\/(\w+)\/status\/(\d+)/;
-      const match = input.tweetUrl.match(tweetUrlRegex);
+      const match = tweetUrlRegex.exec(input.tweetUrl);
       if (!match) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid tweet URL. Must be a twitter.com or x.com status URL." });
       }
@@ -1061,7 +1061,7 @@ export const agentManagementRouter = createTRPCRouter({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Could not fetch tweet. Make sure it exists and is public." });
       }
 
-      if (!oembedData?.html || !oembedData.html.includes(agent.verificationCode)) {
+      if (!oembedData?.html?.includes(agent.verificationCode)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: `Verification code not found in tweet. Make sure your tweet contains: ${agent.verificationCode}`,
