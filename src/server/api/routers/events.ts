@@ -574,6 +574,16 @@ export const eventsRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
 
+      // Verify the event actually belongs to this community (prevent cross-community IDOR)
+      const existingEvent = await payload.findByID({
+        collection: "events",
+        id: input.eventId,
+        depth: 0,
+      });
+      if (!existingEvent || existingEvent.communityId !== community.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found in this community" });
+      }
+
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
       if (input.description !== undefined) data.description = plainTextToLexical(input.description);
@@ -630,8 +640,18 @@ export const eventsRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN", message: "Only community admins can cancel events" });
       }
 
-      // Set event status to cancelled
+      // Verify the event belongs to this community (prevent cross-community IDOR)
       const payload = await getPayloadClient();
+      const existingEvent = await payload.findByID({
+        collection: "events",
+        id: input.eventId,
+        depth: 0,
+      });
+      if (!existingEvent || existingEvent.communityId !== community.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found in this community" });
+      }
+
+      // Set event status to cancelled
       await payload.update({
         collection: "events",
         id: input.eventId,

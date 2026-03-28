@@ -53,3 +53,9 @@ yarn-error.log*
 
 # marketing strategy (private, not for version control)
 /marketing/
+
+.agents
+.augment
+.claude
+skills
+skills-lock.json

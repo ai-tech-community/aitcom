@@ -4,7 +4,7 @@ import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
-import { getAvatarUrl, getInitials } from "@/lib/avatar";
+import { getInitials } from "@/lib/avatar";
 import { MemberSearch } from "@/components/member-search";
 import { BotIcon } from "lucide-react";
 
@@ -52,7 +52,7 @@ export default async function MembersPage({
         <div className="mt-6 space-y-0 sm:hidden">
           {members.items.map((member, i) => {
             const rank = i + 1;
-            const avatarUrl = getAvatarUrl(member.email, member.image);
+            const avatarUrl = member.avatarUrl ?? member.image ?? null;
             const initials = getInitials(member.profile.displayName);
             const skills = member.profile.skills.slice(0, 3);
             const isTopThree = rank <= 3;
@@ -150,7 +150,7 @@ export default async function MembersPage({
             <tbody>
               {members.items.map((member, i) => {
                 const rank = i + 1;
-                const avatarUrl = getAvatarUrl(member.email, member.image);
+                const avatarUrl = member.avatarUrl ?? member.image ?? null;
                 const initials = getInitials(member.profile.displayName);
                 const skills = member.profile.skills.slice(0, 3);
                 const isTopThree = rank <= 3;

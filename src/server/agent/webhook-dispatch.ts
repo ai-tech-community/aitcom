@@ -7,6 +7,7 @@ import {
   agentProfiles,
   memberProfiles,
 } from "@/server/db/schema";
+import { validateWebhookUrl } from "./validate-webhook-url";
 
 type DB = typeof _db;
 
@@ -47,6 +48,19 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
   for (const webhook of webhooks) {
     try {
       result.webhooksProcessed++;
+
+      // SSRF protection: skip webhooks with private/internal URLs
+      const urlCheck = validateWebhookUrl(webhook.url);
+      if (!urlCheck.ok) {
+        console.warn(`[webhook-dispatch] Skipping webhook ${webhook.id}: ${urlCheck.reason}`);
+        // Auto-disable the unsafe webhook
+        await db
+          .update(agentWebhooks)
+          .set({ isEnabled: false })
+          .where(eq(agentWebhooks.id, webhook.id));
+        result.disabled++;
+        continue;
+      }
 
       const prefixes = webhook.categories.flatMap(
         (cat) => CATEGORY_PREFIXES[cat] ?? [],

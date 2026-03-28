@@ -433,7 +433,19 @@
     "orContinueWith": "Of ga verder met",
     "github": "GitHub",
     "signingIn": "Bezig met inloggen...",
-    "signingUp": "Bezig met registreren..."
+    "signingUp": "Bezig met registreren...",
+    "forgotPasswordTitle": "Wachtwoord Resetten",
+    "forgotPasswordDescription": "Voer je e-mail in en we sturen je een resetlink.",
+    "sendResetLink": "Resetlink Versturen",
+    "sendingResetLink": "Versturen...",
+    "resetLinkSent": "Als er een account bestaat met dat e-mailadres, ontvang je binnenkort een resetlink.",
+    "backToSignIn": "Terug naar Inloggen",
+    "resetPasswordTitle": "Nieuw Wachtwoord Instellen",
+    "newPassword": "Nieuw Wachtwoord",
+    "resetPassword": "Wachtwoord Resetten",
+    "resettingPassword": "Resetten...",
+    "passwordResetSuccess": "Wachtwoord succesvol gereset. Je kunt nu inloggen.",
+    "invalidResetToken": "Deze resetlink is ongeldig of verlopen."
   },
   "language": {
     "en": "English",

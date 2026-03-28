@@ -85,7 +85,10 @@ export default buildConfig({
     CommunityRules,
     {
       slug: "users",
-      auth: true,
+      auth: {
+        maxLoginAttempts: 5,
+        lockTime: 15 * 60 * 1000, // 15 minutes
+      },
       admin: { useAsTitle: "email" },
       fields: [
         { name: "name", type: "text" },

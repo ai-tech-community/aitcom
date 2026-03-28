@@ -433,7 +433,19 @@
     "orContinueWith": "Or continue with",
     "github": "GitHub",
     "signingIn": "Signing in...",
-    "signingUp": "Signing up..."
+    "signingUp": "Signing up...",
+    "forgotPasswordTitle": "Reset Password",
+    "forgotPasswordDescription": "Enter your email and we'll send you a reset link.",
+    "sendResetLink": "Send Reset Link",
+    "sendingResetLink": "Sending...",
+    "resetLinkSent": "If an account exists with that email, you'll receive a reset link shortly.",
+    "backToSignIn": "Back to Sign In",
+    "resetPasswordTitle": "Set New Password",
+    "newPassword": "New Password",
+    "resetPassword": "Reset Password",
+    "resettingPassword": "Resetting...",
+    "passwordResetSuccess": "Password reset successfully. You can now sign in.",
+    "invalidResetToken": "This reset link is invalid or has expired."
   },
   "language": {
     "en": "English",
