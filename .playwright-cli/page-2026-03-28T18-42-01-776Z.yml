@@ -1,0 +1,76 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "modal logo" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img "modal logo" [ref=e9]
+      - generic [ref=e11]:
+        - link "Home" [ref=e12] [cursor=pointer]:
+          - /url: https://www.mailinator.com/
+        - link "Email" [ref=e13] [cursor=pointer]:
+          - /url: /v4/public/inboxes.jsp
+        - link "Pricing" [ref=e14] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/pricing/
+        - link "Documentation" [ref=e15] [cursor=pointer]:
+          - /url: https://www.mailinator.com/documentation/docs/category/getting-started/index.html
+        - link "FAQ" [ref=e16] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/mailinator-faqs/
+        - link "Login" [ref=e17] [cursor=pointer]:
+          - /url: /v4/login.jsp
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - img [ref=e22]
+          - text: Recent Inboxes
+        - generic [ref=e73]: xss-test-pent...
+        - generic [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+          - generic [ref=e27]: Request Trial
+        - generic [ref=e28]:
+          - text: Mailinator + AI
+          - link "Give Your AI Assistant the Power of Mailinator" [ref=e29] [cursor=pointer]:
+            - /url: /v4/mailinatorai.jsp
+            - text: Give Your AI Assistant the Power of Mailinator
+            - img [ref=e30]
+      - generic [ref=e31]:
+        - link "System Status" [ref=e32] [cursor=pointer]:
+          - /url: https://monitor.mailinator.com/status/mailinator
+        - link "Terms" [ref=e33] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/terms-of-use/
+        - link "Privacy" [ref=e34] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/privacy-policy/
+        - link "Accessibility" [ref=e35] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/accessibility/
+        - link "Security" [ref=e36] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/security-details/
+        - paragraph [ref=e37]:
+          - text: Copyright 2025 Manybrain, LLC,
+          - text: All Rights Reserved
+    - main [ref=e38]:
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - heading "Public Messages" [level=4] [ref=e42]
+          - button "Pause Button" [ref=e44] [cursor=pointer]:
+            - img [ref=e45]
+          - button "Delete Button" [ref=e48] [cursor=pointer]:
+            - img [ref=e49]
+          - generic [ref=e52]:
+            - textbox "inbox field" [ref=e53]: xss-test-pentest-2026
+            - button "GO" [ref=e54] [cursor=pointer]
+        - table [ref=e57]:
+          - rowgroup [ref=e58]:
+            - row "From Subject Received" [ref=e59] [cursor=pointer]:
+              - cell "From" [ref=e60]
+              - cell "Subject" [ref=e61]
+              - cell "Received" [ref=e62]
+        - table [ref=e74]:
+          - rowgroup [ref=e75]:
+            - row "AIT Community Welcome to AIT Community, /scriptscriptalert(document.domain)/script! just now" [ref=e76] [cursor=pointer]:
+              - cell [ref=e77]
+              - cell "AIT Community" [ref=e80]
+              - cell "Welcome to AIT Community, /scriptscriptalert(document.domain)/script!" [ref=e81]
+              - cell "just now" [ref=e82]
+    - link [ref=e70] [cursor=pointer]:
+      - /url: /comic/comic.jsp
+      - img [ref=e71]
