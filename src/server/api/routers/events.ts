@@ -580,7 +580,7 @@ export const eventsRouter = createTRPCRouter({
         id: input.eventId,
         depth: 0,
       });
-      if (!existingEvent || existingEvent.communityId !== community.id) {
+      if (!existingEvent?.communityId || existingEvent.communityId !== community.id) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Event not found in this community" });
       }
 
@@ -647,7 +647,7 @@ export const eventsRouter = createTRPCRouter({
         id: input.eventId,
         depth: 0,
       });
-      if (!existingEvent || existingEvent.communityId !== community.id) {
+      if (!existingEvent?.communityId || existingEvent.communityId !== community.id) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Event not found in this community" });
       }
 
