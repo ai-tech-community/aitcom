@@ -1,0 +1,167 @@
+- generic [ref=e1]:
+  - link "✉ Guerrilla Mail - Disposable Temporary E-Mail Address" [ref=e3] [cursor=pointer]:
+    - /url: /
+    - img "✉ Guerrilla Mail - Disposable Temporary E-Mail Address" [ref=e4]
+  - heading "Guerrilla Mail - Disposable Temporary E-Mail Address" [level=3] [ref=e5]
+  - generic [ref=e7]: Avoid spam and stay safe - use a disposable email address! Click the "WTF" button below for help. So far we've processed 20,726,703,448 emails, Keeping your real inbox safe and clean (102249 emails going in / hour)
+  - insertion [ref=e9]
+  - generic [ref=e12]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - text: qgthuxof @
+        - combobox [ref=e16]:
+          - option "sharklasers.com" [selected]
+          - option "guerrillamail.info"
+          - option "grr.la"
+          - option "guerrillamail.biz"
+          - option "guerrillamail.com"
+          - option "guerrillamail.de"
+          - option "guerrillamail.net"
+          - option "guerrillamail.org"
+          - option "guerrillamailblock.com"
+          - option "pokemail.net"
+          - option "spam4.me"
+      - link "Forget Me" [ref=e17] [cursor=pointer]:
+        - /url: /?fgt=1
+      - link "WTF?" [ref=e18] [cursor=pointer]:
+        - /url: "#"
+      - text: wlamz5+3ripnuprr2q0g@sharklasers.com
+      - generic [ref=e19]:
+        - checkbox "Scramble Address" [checked] [ref=e20]
+        - generic [ref=e21]:
+          - img [ref=e22]
+          - text: Scramble Address
+    - generic [ref=e23]:
+      - list [ref=e25]:
+        - listitem [ref=e26] [cursor=pointer]:
+          - link "Email" [ref=e27]:
+            - /url: /inbox
+        - listitem [ref=e28] [cursor=pointer]:
+          - link "Compose" [ref=e29]:
+            - /url: /compose
+        - listitem [ref=e30] [cursor=pointer]:
+          - link "Tools" [ref=e31]:
+            - /url: /tools
+        - listitem [ref=e32] [cursor=pointer]:
+          - link "About" [ref=e33]:
+            - /url: /about
+      - table "Delete" [ref=e36]:
+        - caption [ref=e37]:
+          - button "Delete" [ref=e39] [cursor=pointer]
+        - rowgroup [ref=e45]:
+          - row "noreply@mailer.aitcommunity.org Welcome to AIT Community, SSRF Tester! Welcome, SSRF Tester! You've joined AIT Community — a platform for engineers an 19:13:53" [ref=e46] [cursor=pointer]:
+            - cell [ref=e47]:
+              - checkbox [ref=e48]
+            - cell "noreply@mailer.aitcommunity.org" [ref=e49]
+            - cell "Welcome to AIT Community, SSRF Tester! Welcome, SSRF Tester! You've joined AIT Community — a platform for engineers an" [ref=e50]:
+              - link "Welcome to AIT Community, SSRF Tester!" [ref=e51]:
+                - /url: /inbox?mail_id=241961037
+              - text: Welcome, SSRF Tester! You've joined AIT Community — a platform for engineers an
+            - cell "19:13:53" [ref=e52]
+          - 'row "no-reply@guerrillamail.com Welcome to Guerrilla Mail Dear Random User, Thank you for using Guerrilla Mail - your temporary email address friend and spam fighter''s ally! Your disposable email address has been created ready for use. Email: qgthux 19:11:59" [ref=e53] [cursor=pointer]':
+            - cell [ref=e54]:
+              - checkbox [ref=e55]
+            - cell "no-reply@guerrillamail.com" [ref=e56]
+            - 'cell "Welcome to Guerrilla Mail Dear Random User, Thank you for using Guerrilla Mail - your temporary email address friend and spam fighter''s ally! Your disposable email address has been created ready for use. Email: qgthux" [ref=e57]':
+              - link "Welcome to Guerrilla Mail" [ref=e58]:
+                - /url: /inbox?mail_id=1
+              - text: "Dear Random User, Thank you for using Guerrilla Mail - your temporary email address friend and spam fighter's ally! Your disposable email address has been created ready for use. Email: qgthux"
+            - cell "19:11:59" [ref=e59]
+  - generic [ref=e60]:
+    - generic [ref=e62]:
+      - link [ref=e63] [cursor=pointer]:
+        - /url: https://twitter.com/GuerrillaMail
+      - link [ref=e64] [cursor=pointer]:
+        - /url: http://www.reddit.com/domain/guerrillamail.com/
+      - link [ref=e65] [cursor=pointer]:
+        - /url: https://www.facebook.com/GuerrillaMail
+      - generic [ref=e67]:
+        - text: GuerrillaMail's email is powered by
+        - link "Go-Guerrilla" [ref=e68] [cursor=pointer]:
+          - /url: https://github.com/flashmob/go-guerrilla
+        - text: ", our open-source project."
+    - generic [ref=e69]:
+      - text: guerrillamail.com is an anti-spam weapon of choice!
+      - text: Copyright 2006 - 2026 Jamit Software Limited |
+      - link "Terms of Service" [ref=e70] [cursor=pointer]:
+        - /url: /tos
+      - text: "|"
+      - link "API" [ref=e71] [cursor=pointer]:
+        - /url: http://www.guerrillamail.com/GuerrillaMailAPI.html
+      - text: "|"
+      - link "Blog" [ref=e72] [cursor=pointer]:
+        - /url: https://www.guerrillamail.com/blog/
+      - text: "|"
+      - link "Control Panel" [ref=e73] [cursor=pointer]:
+        - /url: https://grr.la/ryo/guerrillamail.com/edit
+      - paragraph [ref=e74]:
+        - text: "Language: English |"
+        - link "Español" [ref=e75] [cursor=pointer]:
+          - /url: /es/
+        - text: "|"
+        - link "Français" [ref=e76] [cursor=pointer]:
+          - /url: /fr/
+        - text: "|"
+        - link "Italiano" [ref=e77] [cursor=pointer]:
+          - /url: /it/
+        - text: "|"
+        - link "Deutsch" [ref=e78] [cursor=pointer]:
+          - /url: /de/
+        - link "Nederlands" [ref=e79] [cursor=pointer]:
+          - /url: /nl/
+        - text: "|"
+        - link "Português" [ref=e80] [cursor=pointer]:
+          - /url: /pt/
+        - text: "|"
+        - link "Русский" [ref=e81] [cursor=pointer]:
+          - /url: /ru/
+        - text: "|"
+        - link "Türkçe" [ref=e82] [cursor=pointer]:
+          - /url: /tr/
+        - text: "|"
+        - link "Українське" [ref=e83] [cursor=pointer]:
+          - /url: /uk/
+        - link "العربية" [ref=e84] [cursor=pointer]:
+          - /url: /ar/
+        - text: "|"
+        - link "한국어" [ref=e85] [cursor=pointer]:
+          - /url: /ko/
+        - text: "|"
+        - link "日本語" [ref=e86] [cursor=pointer]:
+          - /url: /jp/
+        - text: "|"
+        - link "简体中文" [ref=e87] [cursor=pointer]:
+          - /url: /zh/
+        - text: "|"
+        - link "繁體中文" [ref=e88] [cursor=pointer]:
+          - /url: /zh-hant/
+  - dialog "Guerrilla Mail asks for your consent to use your personal data to:" [active] [ref=e92]:
+    - button "Close" [ref=e94] [cursor=pointer]:
+      - img [ref=e98]
+    - generic [ref=e104]:
+      - generic [ref=e105]:
+        - img "Welcome to Guerrilla Mail" [ref=e108]
+        - heading "Guerrilla Mail asks for your consent to use your personal data to:" [level=1] [ref=e109]
+      - list [ref=e111]:
+        - listitem [ref=e112]:
+          - img [ref=e115]
+          - generic [ref=e117]: Personalised advertising and content, advertising and content measurement, audience research and services development
+        - listitem [ref=e118]:
+          - img [ref=e121]
+          - generic [ref=e123]: Store and/or access information on a device
+      - button "Learn more" [ref=e124] [cursor=pointer]:
+        - img [ref=e127]
+        - generic [ref=e129]: Learn more
+      - generic [ref=e130]:
+        - paragraph [ref=e131]:
+          - text: Your personal data will be processed and information from your device (cookies, unique identifiers, and other device data) may be stored by, accessed by and shared with 211 partners, or used specifically by this site. We and our partners may use precise geolocation data.
+          - button "List of partners." [ref=e132] [cursor=pointer]
+        - paragraph [ref=e133]: Some vendors may process your personal data on the basis of legitimate interest, which you can object to by managing your options below. Look for a link at the bottom of this page or in the site menu to manage or withdraw consent in privacy and cookie settings.
+    - generic [ref=e134]:
+      - generic [ref=e136]:
+        - button "Consent" [ref=e137] [cursor=pointer]:
+          - paragraph [ref=e139]: Consent
+        - button "Do not consent" [ref=e140] [cursor=pointer]:
+          - paragraph [ref=e142]: Do not consent
+      - button "Manage options" [ref=e143] [cursor=pointer]:
+        - paragraph [ref=e144]: Manage options

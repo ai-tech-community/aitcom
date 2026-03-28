@@ -1,0 +1,250 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - navigation [ref=e5]:
+        - generic [ref=e7]:
+          - link " Home" [ref=e8] [cursor=pointer]:
+            - /url: .
+            - generic [ref=e9]: 
+            - text: Home
+          - link " Donate" [ref=e10] [cursor=pointer]:
+            - /url: donate
+            - generic [ref=e11]: 
+            - text: Donate
+          - link " Domains" [ref=e12] [cursor=pointer]:
+            - /url: add-domain
+            - generic [ref=e13]: 
+            - text: Domains
+          - link " Random" [ref=e14] [cursor=pointer]:
+            - /url: email-generator
+            - generic [ref=e15]: 
+            - text: Random
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - img "Temporary Email" [ref=e23]
+            - text: English
+          - generic [ref=e25]: 
+      - link "YOPmail, Disposable email Address" [ref=e27] [cursor=pointer]:
+        - /url: .
+        - img "YOPmail, Disposable email Address" [ref=e28]
+      - heading "Disposable Email Address - Temporary and anonymous inbox" [level=1] [ref=e30]:
+        - text: Disposable Email Address
+        - generic [ref=e31]: "- Temporary and anonymous inbox"
+    - main [ref=e32]:
+      - insertion [ref=e35]:
+        - iframe [ref=e37]:
+          - generic [active] [ref=f49e1]:
+            - generic [ref=f49e6]:
+              - generic [ref=f49e7]:
+                - generic "Lansweeper" [ref=f49e8]:
+                  - link "Get 14 Days of Free Trial" [ref=f49e9] [cursor=pointer]:
+                    - /url: https://googleads.g.doubleclick.net/aclk?sa=l&ai=CPZPJhivIafaKMrOkrASK6MjYBLPH8JSGAd-B7dWYFNnItNeOKhABILjHpAVgkbSFheQXoAGg-ff-AsgBAakCr31oaP5Osz6oAwHIA8sEqgTIAU_QxzOZpGv7fjOdwIHiQdCjdC8WrLmGJnf4WccZiqlrMQplG7KKHtzYdHZN9q-Ia7sYEV9dHEY0w5m2fzNvMYJWRBsPoFR3s_Lvm2rLBn0wLuLN-PtxKCBPqgWDPCBG6nHWV76gm_AQHnDaJipB18kH-Q-nsoaxMA-dgAL2LRwgdiBo9rqYGqTR_weCAA4JTKnEjq7UwWj6jVk1R2RY-iwJQge_HA8sDNBlBjsef3tn-yk1YhTnrTH19KVz5pLVykSOBwTYhkD0wATcj9nSoAWIBf-AiutTgAfIhoiBAagHp8yxAqgHpr4bqAfMzrECqAfz0RuoB5bYG6gHqpuxAqgHjs4bqAeT2BuoB_DgG6gH7paxAqgH_p6xAqgHr76xAqgH1ckbqAfZtrECqAeaBqgH_56xAqgH35-xAqgH-MKxAqgH-8KxAtgHAdIIMgiA4YAQEAEYnwMyCKqCgICAgIAIOg6AwAOAgISAgJSu4AOoB0i9_cE6WMe0p9Gpw5MDsQnnGXkvqTgq1IAKAZgLAcgLAaoNAk5MyA0B6g0TCO3qp9Gpw5MDFTMSiwodCjQSS_ANAogOCbAOx7SSvhjYEwzQFQHKFgIKAPgWAYAXAbIXEBgBKgozOTYzOTUwNDU0UAa6FwI4AaoYFwkAAAAAYJMLQRIKMzk2Mzk1MDQ1NBgBshgJEgKkZhgBIgEA0BgB6BgBwhkCCAE&ae=1&gclid=EAIaIQobChMI9uWn0anDkwMVMxKLCh0KNBJLEAEYASAAEgJgOvD_BwE&num=1&cid=CAQSgwEABaugfeALSsWmlLyT1cLqkgliATPka3p0tRQGWxfdepKZeJNwszqtIAJX4nYsV1MelUjw1asvw1PF7w2NWHZfcShNZYZsRv3NPxkl7YO6fAufTvXRSVHo0rimBAxySObvzEm_GAv7oe6HMaX917-Mq7OOGVUm58Xx6LFezBBEXKbO0xgB&sig=AOD64_2u1YPcUrgUPF2t36tjYRzw_dIwhQ&client=ca-pub-5609129721109980&rf=1&nb=0&adurl=https://www.lansweeper.com/lp/ip-network-scanner/%3Futm_source%3Dgoogle%26utm_medium%3Dcpc%26utm_campaign%3Dls-pmax-cost-visibility-emea%26utm_id%3D22498137033%26utm_term%3D%26gclid%3DEAIaIQobChMI9uWn0anDkwMVMxKLCh0KNBJLEAEYASAAEgJgOvD_BwE%26utm_content%3Dip-scanner-and-diagrams%26gad_source%3D5%26gad_campaignid%3D22504702079%26gclid%3DEAIaIQobChMI9uWn0anDkwMVMxKLCh0KNBJLEAEYASAAEgJgOvD_BwE
+                - link "You Can't Manage What You Don't See. Gain Complete Visibility over Your IT Network Assets. Lansweeper" [ref=f49e11] [cursor=pointer]:
+                  - /url: https://googleads.g.doubleclick.net/aclk?sa=l&ai=CPZPJhivIafaKMrOkrASK6MjYBLPH8JSGAd-B7dWYFNnItNeOKhABILjHpAVgkbSFheQXoAGg-ff-AsgBAakCr31oaP5Osz6oAwHIA8sEqgTIAU_QxzOZpGv7fjOdwIHiQdCjdC8WrLmGJnf4WccZiqlrMQplG7KKHtzYdHZN9q-Ia7sYEV9dHEY0w5m2fzNvMYJWRBsPoFR3s_Lvm2rLBn0wLuLN-PtxKCBPqgWDPCBG6nHWV76gm_AQHnDaJipB18kH-Q-nsoaxMA-dgAL2LRwgdiBo9rqYGqTR_weCAA4JTKnEjq7UwWj6jVk1R2RY-iwJQge_HA8sDNBlBjsef3tn-yk1YhTnrTH19KVz5pLVykSOBwTYhkD0wATcj9nSoAWIBf-AiutTgAfIhoiBAagHp8yxAqgHpr4bqAfMzrECqAfz0RuoB5bYG6gHqpuxAqgHjs4bqAeT2BuoB_DgG6gH7paxAqgH_p6xAqgHr76xAqgH1ckbqAfZtrECqAeaBqgH_56xAqgH35-xAqgH-MKxAqgH-8KxAtgHAdIIMgiA4YAQEAEYnwMyCKqCgICAgIAIOg6AwAOAgISAgJSu4AOoB0i9_cE6WMe0p9Gpw5MDsQnnGXkvqTgq1IAKAZgLAcgLAaoNAk5MyA0B6g0TCO3qp9Gpw5MDFTMSiwodCjQSS_ANAogOCbAOx7SSvhjYEwzQFQHKFgIKAPgWAYAXAbIXEBgBKgozOTYzOTUwNDU0UAa6FwI4AaoYFwkAAAAAYJMLQRIKMzk2Mzk1MDQ1NBgBshgJEgKkZhgBIgEA0BgB6BgBwhkCCAE&ae=1&gclid=EAIaIQobChMI9uWn0anDkwMVMxKLCh0KNBJLEAEYASAAEgJgOvD_BwE&num=1&cid=CAQSgwEABaugfeALSsWmlLyT1cLqkgliATPka3p0tRQGWxfdepKZeJNwszqtIAJX4nYsV1MelUjw1asvw1PF7w2NWHZfcShNZYZsRv3NPxkl7YO6fAufTvXRSVHo0rimBAxySObvzEm_GAv7oe6HMaX917-Mq7OOGVUm58Xx6LFezBBEXKbO0xgB&sig=AOD64_2u1YPcUrgUPF2t36tjYRzw_dIwhQ&client=ca-pub-5609129721109980&rf=1&nb=7&adurl=https://www.lansweeper.com/lp/ip-network-scanner/%3Futm_source%3Dgoogle%26utm_medium%3Dcpc%26utm_campaign%3Dls-pmax-cost-visibility-emea%26utm_id%3D22498137033%26utm_term%3D%26gclid%3DEAIaIQobChMI9uWn0anDkwMVMxKLCh0KNBJLEAEYASAAEgJgOvD_BwE%26utm_content%3Dip-scanner-and-diagrams%26gad_source%3D5%26gad_campaignid%3D22504702079%26gclid%3DEAIaIQobChMI9uWn0anDkwMVMxKLCh0KNBJLEAEYASAAEgJgOvD_BwE
+                  - text: You Can't Manage What You Don't See. Gain Complete
+                  - text: Visibility over Your IT Network Assets. Lansweeper
+              - link "Sign Up" [ref=f49e14] [cursor=pointer]:
+                - /url: https://googleads.g.doubleclick.net/aclk?sa=l&ai=CPZPJhivIafaKMrOkrASK6MjYBLPH8JSGAd-B7dWYFNnItNeOKhABILjHpAVgkbSFheQXoAGg-ff-AsgBAakCr31oaP5Osz6oAwHIA8sEqgTIAU_QxzOZpGv7fjOdwIHiQdCjdC8WrLmGJnf4WccZiqlrMQplG7KKHtzYdHZN9q-Ia7sYEV9dHEY0w5m2fzNvMYJWRBsPoFR3s_Lvm2rLBn0wLuLN-PtxKCBPqgWDPCBG6nHWV76gm_AQHnDaJipB18kH-Q-nsoaxMA-dgAL2LRwgdiBo9rqYGqTR_weCAA4JTKnEjq7UwWj6jVk1R2RY-iwJQge_HA8sDNBlBjsef3tn-yk1YhTnrTH19KVz5pLVykSOBwTYhkD0wATcj9nSoAWIBf-AiutTgAfIhoiBAagHp8yxAqgHpr4bqAfMzrECqAfz0RuoB5bYG6gHqpuxAqgHjs4bqAeT2BuoB_DgG6gH7paxAqgH_p6xAqgHr76xAqgH1ckbqAfZtrECqAeaBqgH_56xAqgH35-xAqgH-MKxAqgH-8KxAtgHAdIIMgiA4YAQEAEYnwMyCKqCgICAgIAIOg6AwAOAgISAgJSu4AOoB0i9_cE6WMe0p9Gpw5MDsQnnGXkvqTgq1IAKAZgLAcgLAaoNAk5MyA0B6g0TCO3qp9Gpw5MDFTMSiwodCjQSS_ANAogOCbAOx7SSvhjYEwzQFQHKFgIKAPgWAYAXAbIXEBgBKgozOTYzOTUwNDU0UAa6FwI4AaoYFwkAAAAAYJMLQRIKMzk2Mzk1MDQ1NBgBshgJEgKkZhgBIgEA0BgB6BgBwhkCCAE&ae=1&gclid=EAIaIQobChMI9uWn0anDkwMVMxKLCh0KNBJLEAEYASAAEgJgOvD_BwE&num=1&cid=CAQSgwEABaugfeALSsWmlLyT1cLqkgliATPka3p0tRQGWxfdepKZeJNwszqtIAJX4nYsV1MelUjw1asvw1PF7w2NWHZfcShNZYZsRv3NPxkl7YO6fAufTvXRSVHo0rimBAxySObvzEm_GAv7oe6HMaX917-Mq7OOGVUm58Xx6LFezBBEXKbO0xgB&sig=AOD64_2u1YPcUrgUPF2t36tjYRzw_dIwhQ&client=ca-pub-5609129721109980&rf=1&nb=8&adurl=https://www.lansweeper.com/lp/ip-network-scanner/%3Futm_source%3Dgoogle%26utm_medium%3Dcpc%26utm_campaign%3Dls-pmax-cost-visibility-emea%26utm_id%3D22498137033%26utm_term%3D%26gclid%3DEAIaIQobChMI9uWn0anDkwMVMxKLCh0KNBJLEAEYASAAEgJgOvD_BwE%26utm_content%3Dip-scanner-and-diagrams%26gad_source%3D5%26gad_campaignid%3D22504702079%26gclid%3DEAIaIQobChMI9uWn0anDkwMVMxKLCh0KNBJLEAEYASAAEgJgOvD_BwE
+                - generic [ref=f49e17]:
+                  - generic [ref=f49e18]: Sign Up
+                  - img [ref=f49e19]
+            - img [ref=f49e24] [cursor=pointer]
+            - button [ref=f49e27] [cursor=pointer]:
+              - img [ref=f49e28]
+            - iframe
+      - generic [ref=e39]:
+        - generic [ref=e40]: You Name it, YOPmail has it!
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - generic [ref=e43]: 
+            - heading "Auto generated inbox!" [level=5] [ref=e44]
+          - generic [ref=e45]:
+            - generic [ref=e46]: 
+            - heading "No Registration!" [level=5] [ref=e47]
+          - generic [ref=e48]:
+            - generic [ref=e49]: 
+            - heading "Messages are kept 8 days!" [level=5] [ref=e50]
+          - generic [ref=e51]:
+            - generic [ref=e52]: 
+            - heading "No Password!" [level=5] [ref=e53]
+          - generic [ref=e54]:
+            - img [ref=e55]
+            - heading "Reply to messages!" [level=5] [ref=e56]
+          - generic [ref=e57]:
+            - img [ref=e58]
+            - heading "Email deliverability!" [level=5] [ref=e59]
+      - generic [ref=e61]:
+        - generic [ref=e65]:
+          - heading "Type the Email name of your choice" [level=2] [ref=e66]
+          - generic [ref=e71]:
+            - generic "My disposable Email addresses" [ref=e73] [cursor=pointer]:
+              - generic [ref=e74]: 
+            - textbox "Login" [active] [ref=e77]:
+              - /placeholder: Enter your inbox here
+              - text: pentestverify1
+            - generic "Clear" [ref=e79] [cursor=pointer]:
+              - generic [ref=e80]: 
+            - button "" [ref=e82] [cursor=pointer]:
+              - generic [ref=e83]: 
+        - generic [ref=e86]:
+          - link " Random Email generator Can't decide on a disposable email name? Try YOPmail's temp mail Generator !" [ref=e87] [cursor=pointer]:
+            - /url: email-generator
+            - generic [ref=e89]: 
+            - generic [ref=e90]:
+              - heading "Random Email generator" [level=3] [ref=e91]
+              - paragraph [ref=e92]: Can't decide on a disposable email name? Try YOPmail's temp mail Generator !
+          - link " Alternate domain names Email sent to these domains are auto-forwarded to YOPmail. Your temporary address won't be blacklisted" [ref=e93] [cursor=pointer]:
+            - /url: alternate-domains
+            - generic [ref=e95]: 
+            - generic [ref=e96]:
+              - heading "Alternate domain names" [level=3] [ref=e97]
+              - paragraph [ref=e98]: Email sent to these domains are auto-forwarded to YOPmail. Your temporary address won't be blacklisted
+          - generic [ref=e99]:
+            - generic "Updated everyday" [ref=e100]:
+              - generic [ref=e101]:
+                - generic [ref=e102]: "New daily domain :"
+                - generic [ref=e103]: "@imap.fr.nf"
+              - button "" [ref=e105] [cursor=pointer]:
+                - generic [ref=e106]: 
+            - generic "Updated everyday" [ref=e107]:
+              - generic [ref=e108]:
+                - generic [ref=e109]: "Other domains names :"
+                - button " More..." [ref=e111] [cursor=pointer]:
+                  - generic [ref=e112]: 
+                  - generic [ref=e113]: More...
+              - iframe [ref=e114]:
+                - generic [ref=f40e2]:
+                  - generic [ref=f40e3]: "@noreply.fr"
+                  - generic [ref=f40e4]: "@wir-sind.com"
+                  - generic [ref=f40e5]: "@haben-wir.com"
+                  - generic [ref=f40e6]: "@wishy.fr"
+                  - generic [ref=f40e7]: "@ist-hier.com"
+                  - generic [ref=f40e8]: "@ves.ink"
+          - insertion [ref=e116]:
+            - generic [ref=e119]:
+              - heading "These are topics related to the article that might interest you" [level=2] [ref=e121]: Discover more
+              - link "Email Anonymity Guide" [ref=e122] [cursor=pointer]:
+                - generic "Email Anonymity Guide" [ref=e123]
+                - img [ref=e125]
+              - link "Spam Protection Software" [ref=e127] [cursor=pointer]:
+                - generic "Spam Protection Software" [ref=e128]
+                - img [ref=e130]
+          - link "  Add your own domain Add your own domain name on YOPmail and receive messages here" [ref=e132] [cursor=pointer]:
+            - /url: add-domain
+            - generic [ref=e133]:
+              - generic [ref=e134]: 
+              - generic [ref=e135]: 
+            - generic [ref=e136]:
+              - heading "Add your own domain" [level=3] [ref=e137]
+              - paragraph [ref=e138]: Add your own domain name on YOPmail and receive messages here
+          - link " Hide disposable email with an alias Hide your real YOPmail inbox with an alternate address. Emails to the alias are auto-forwarded to the real inbox." [ref=e139] [cursor=pointer]:
+            - /url: email-alias
+            - generic [ref=e141]: 
+            - generic [ref=e142]:
+              - heading "Hide disposable email with an alias" [level=3] [ref=e143]
+              - paragraph [ref=e144]: Hide your real YOPmail inbox with an alternate address. Emails to the alias are auto-forwarded to the real inbox.
+          - link " YOPchat! Chat with your YOPmail friends." [ref=e145] [cursor=pointer]:
+            - /url: yopmail-chat
+            - generic [ref=e147]: 
+            - generic [ref=e148]:
+              - heading "YOPchat!" [level=3] [ref=e149]
+              - paragraph [ref=e150]: Chat with your YOPmail friends.
+          - link " Support YOPmail You appreciate YOPmail and you want to contribute to its development." [ref=e151] [cursor=pointer]:
+            - /url: donate
+            - generic [ref=e153]: 
+            - generic [ref=e154]:
+              - heading "Support YOPmail" [level=3] [ref=e155]
+              - paragraph [ref=e156]: You appreciate YOPmail and you want to contribute to its development.
+      - generic [ref=e158]:
+        - generic [ref=e160]:
+          - heading "Disposable email address" [level=2] [ref=e161]
+          - paragraph [ref=e162]: YOPmail’s free, quick and feature rich service guards you against spam. Protect your actual email with an anonymous email address, instead use YOPmail’s disposable one to sign-up wherever you want. YOPmail creates temporary inboxes of your choice instantaneously. Use Now & stay Protected!
+        - insertion [ref=e164]:
+          - generic [ref=e167]:
+            - heading "These are topics related to the article that might interest you" [level=2] [ref=e169]: Discover more
+            - link "Encrypted cloud storage" [ref=e170] [cursor=pointer]:
+              - generic "Encrypted cloud storage" [ref=e171]
+              - img [ref=e173]
+            - link "Emails" [ref=e175] [cursor=pointer]:
+              - generic "Emails" [ref=e176]
+              - img [ref=e178]
+            - link "Encrypted Email Communication" [ref=e180] [cursor=pointer]:
+              - generic "Encrypted Email Communication" [ref=e181]
+              - img [ref=e183]
+        - generic [ref=e185]:
+          - heading "How does a temporary email protect you?" [level=2] [ref=e186]
+          - heading "If you think that registering on the web may result in spam, preferably use a temporary email address. Your information could be abused. Use YOPmail’s free anonymous email addresses, to protect you against spam." [level=3] [ref=e187]:
+            - generic [ref=e188]: If you think that registering on the web may result in spam, preferably use a temporary email address. Your information could be abused. Use YOPmail’s free anonymous email addresses, to protect you against spam.
+          - list [ref=e189]:
+            - listitem [ref=e190]: Use ‘any-name-of-your-choice’@YOPmail.com to sign up on websites without disclosing your email address. Message sent to the ‘address’@YOPmail.com is instantaneously created at YOPmail server. No registration required for checking your temporary inbox at YOPmail
+            - listitem [ref=e191]: Easily check your disposable inbox at YOPmail.com or directly go to https://YOPmail.com?"name-of-your-inbox"
+            - listitem [ref=e192]: Temporary inboxes are not password protected. Hence, choose a unique inbox name or use YOPmail’s Disposable Email Address Generator. You can also use your inbox's email alias for extra security
+            - listitem [ref=e193]:
+              - text: "Additional :"
+              - text: · All inboxes already exists and are never deleted.
+              - text: · Messages are kept 8 days. You can also manually remove them.
+              - text: · To prevent abuse of service, sending anonymous emails from YOPmail is prohibited. You can however, send an email from a YOPmail email address to another YOPmail disposable email address.
+            - listitem [ref=e194]: "New on YOPmail : It is now possible to reply to messages !"
+        - generic:
+          - insertion:
+            - iframe [ref=e196]:
+              
+      - generic [ref=e197]:
+        - generic [ref=e198]:
+          - heading "What is a disposable or temporary email address?" [level=2] [ref=e199]
+          - paragraph [ref=e200]: The objective of disposable email address is to avoid giving out your personal email address in order to protect it, whether for reasons of confidentiality or to avoid receiving spam. Indeed, some websites can use your email address and some will even resell it. Your privacy on the internet is something to be taken seriously.
+          - heading "There are several categories of disposable or temporary email solutions :" [level=3] [ref=e201]
+          - list [ref=e202]:
+            - listitem [ref=e203]: disposable email addresses that offer a temporary inbox for a limited time,
+            - listitem [ref=e204]: disposable email addresses that automatically forward received messages to a personal email address,
+            - listitem [ref=e205]: disposable email addresses that allow you to create or delete aliases (secondary email addresses).
+          - paragraph [ref=e206]: YOPmail is in the first category but inboxes do not expire unlike most disposable email services.
+          - heading "There are different ways to name disposable email address (DEA) services :" [level=3] [ref=e207]
+          - paragraph [ref=e208]: Temporary email, throw-away address, Trash mail, One-time email, Anonymous email or Fake mail.
+          - heading "Here are a few examples of the use of a disposable email address:" [level=3] [ref=e209]
+          - list [ref=e210]:
+            - listitem [ref=e211]: Registers on websites without disclosing my personal information.
+            - listitem [ref=e212]: Do not share my email address so as not to receive spam.
+            - listitem [ref=e213]: Give an email address to someone you don't trust.
+            - listitem [ref=e214]: Subscribe to a newsletter.
+            - listitem [ref=e215]: Write anonymous comments on blogs or forums.
+            - listitem [ref=e216]: Register anonymously on a dating site.
+            - listitem [ref=e217]: You are a developer, and you want to test your mail sending system.
+            - listitem [ref=e218]: You need many email addresses quickly.
+            - listitem [ref=e219]: ...
+        - insertion [ref=e221]:
+          - generic [ref=e224]:
+            - heading "These are topics related to the article that might interest you" [level=2] [ref=e226]: Discover more
+            - link "Virtual credit cards" [ref=e227] [cursor=pointer]:
+              - generic "Virtual credit cards" [ref=e228]
+              - img [ref=e230]
+            - link "Custom Email Domains" [ref=e232] [cursor=pointer]:
+              - generic "Custom Email Domains" [ref=e233]
+              - img [ref=e235]
+            - link "Secure data shredders" [ref=e237] [cursor=pointer]:
+              - generic "Secure data shredders" [ref=e238]
+              - img [ref=e240]
+        - generic [ref=e242]:
+          - heading "How to use your disposable email ?" [level=2] [ref=e243]
+          - generic [ref=e244]: 1. Choose a disposable email address randomly (with @YOPmail.com)
+          - list [ref=e245]:
+            - listitem [ref=e246]: "No need to create an address : all disposable email accounts already exist on YOPmail."
+            - listitem [ref=e247]: "No inspiration : use the email address generator."
+            - listitem [ref=e248]: You can also choose an alternative domain name as they are usually not blacklisted (A new domain name is added every day).
+            - listitem [ref=e249]: And for more confidentiality, we'll give you an alias that hides your temporary email. Aliases and alternate domains can be combined.
+          - generic [ref=e250]: 2. Use this temporary email address on Internet
+          - list [ref=e251]:
+            - listitem [ref=e252]: Protect your personal email address and prefer using this temporary address as spam dustbin. Preserve your privacy and remain anonymous.
+          - generic [ref=e253]: 3. Check mails on YOPmail
+          - list [ref=e254]:
+            - listitem [ref=e255]: Mails are visible in the webmail. Just click on the refresh button to check mails and click in the list to read them.
+    - contentinfo [ref=e256]:
+      - generic [ref=e257]:
+        - link "Contact" [ref=e258] [cursor=pointer]:
+          - /url: contact
+        - text: "|"
+        - link "Privacy Policy" [ref=e259] [cursor=pointer]:
+          - /url: privacy
+  - generic [ref=e261]:
+    - button "Privacy and cookie settings" [ref=e262] [cursor=pointer]
+    - generic [ref=e263]: "Managed by Google. Complies with IAB TCF. CMP ID: 300"

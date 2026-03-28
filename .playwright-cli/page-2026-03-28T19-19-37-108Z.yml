@@ -1,0 +1,156 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - link "Mailnesia logo" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img "Mailnesia logo" [ref=e5]
+      - link "MAILNESIA" [ref=e7] [cursor=pointer]:
+        - /url: /
+    - generic [ref=e8]:
+      - paragraph [ref=e9]: "CHECK YOUR INBOX:"
+      - generic [ref=e11]:
+        - textbox "Type mailbox and press ENTER" [ref=e12]: ssrftestaz99
+        - text: "@mailnesia.com"
+        - button "OK" [ref=e13] [cursor=pointer]
+      - link "Random mailbox" [ref=e14] [cursor=pointer]:
+        - /url: /random/
+  - heading "Mail for ssrftestaz99:" [level=1] [ref=e15]:
+    - text: Mail for
+    - link "ssrftestaz99" [ref=e16] [cursor=pointer]:
+      - /url: mailto:ssrftestaz99@mailnesia.com
+    - text: ":"
+  - generic [ref=e17]:
+    - link "RSS" [ref=e18] [cursor=pointer]:
+      - /url: /rss/ssrftestaz99
+      - img "RSS" [ref=e19]
+    - link "Settings" [ref=e20] [cursor=pointer]:
+      - /url: /settings/ssrftestaz99
+      - img "Settings" [ref=e21]
+    - link "Delete all mail" [ref=e22] [cursor=pointer]:
+      - /url: "#"
+      - img "Delete all mail" [ref=e23]
+  - table [ref=e24]:
+    - rowgroup [ref=e25]:
+      - row "Date From To Subject" [ref=e26]:
+        - columnheader "Date" [ref=e27]
+        - columnheader "From" [ref=e28]
+        - columnheader "To" [ref=e29]
+        - columnheader "Subject" [ref=e30]
+        - columnheader [ref=e31]
+    - rowgroup [ref=e32]:
+      - row "a few seconds ago AIT Community <noreply@mailer.aitcommunity.org> ssrftestaz99@mailnesia.com Welcome to AIT Community, SSRF Tester! ↗" [ref=e33]:
+        - cell "a few seconds ago" [ref=e34]:
+          - time [ref=e35]: a few seconds ago
+        - cell "AIT Community <noreply@mailer.aitcommunity.org>" [ref=e36]:
+          - link "AIT Community <noreply@mailer.aitcommunity.org>" [ref=e37] [cursor=pointer]:
+            - /url: /mailbox/ssrftestaz99/1158391996
+        - cell "ssrftestaz99@mailnesia.com" [ref=e38]:
+          - link "ssrftestaz99@mailnesia.com" [ref=e39] [cursor=pointer]:
+            - /url: /mailbox/ssrftestaz99/1158391996
+        - cell "Welcome to AIT Community, SSRF Tester!" [ref=e40]:
+          - link "Welcome to AIT Community, SSRF Tester!" [ref=e41] [cursor=pointer]:
+            - /url: /mailbox/ssrftestaz99/1158391996
+        - cell "↗" [ref=e42]:
+          - link "↗" [ref=e43] [cursor=pointer]:
+            - /url: /mailbox/ssrftestaz99/1158391996
+  - generic:
+    - generic [ref=e44]:
+      - link "in English" [ref=e45] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "magyarul" [ref=e46] [cursor=pointer]:
+        - /url: /hu/
+      - text: ·
+      - link "Italiano" [ref=e47] [cursor=pointer]:
+        - /url: /it/
+      - text: ·
+      - link "latviešu valoda" [ref=e48] [cursor=pointer]:
+        - /url: /lv/
+      - text: ·
+      - link "suomi" [ref=e49] [cursor=pointer]:
+        - /url: /fi/
+      - text: ·
+      - link "português" [ref=e50] [cursor=pointer]:
+        - /url: /pt/
+      - text: ·
+      - link "auf Deutsch" [ref=e51] [cursor=pointer]:
+        - /url: /de/
+      - text: ·
+      - link "на русском языке" [ref=e52] [cursor=pointer]:
+        - /url: /ru/
+      - text: ·
+      - link "po polsku" [ref=e53] [cursor=pointer]:
+        - /url: /pl/
+      - text: ·
+      - link "繁體中文" [ref=e54] [cursor=pointer]:
+        - /url: /zh/
+      - text: ·
+      - link "En Français" [ref=e55] [cursor=pointer]:
+        - /url: /fr/
+      - text: ·
+      - link "En Español" [ref=e56] [cursor=pointer]:
+        - /url: /es/
+      - text: ·
+      - link "V češtině" [ref=e57] [cursor=pointer]:
+        - /url: /cs/
+      - text: ·
+      - link "En Español de Argentina" [ref=e58] [cursor=pointer]:
+        - /url: /es-ar/
+      - text: ·
+      - link "på svenska" [ref=e59] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "na hrvatskom" [ref=e60] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "in het Nederlands" [ref=e61] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "v slovenščini" [ref=e62] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "بالعربي" [ref=e63] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "Dalam bahasa melayu" [ref=e64] [cursor=pointer]:
+        - /url: /ms/
+      - text: ·
+      - link "Bahasa Indonesia" [ref=e65] [cursor=pointer]:
+        - /url: /id/
+      - text: ·
+      - link "Em Português do Brasil" [ref=e66] [cursor=pointer]:
+        - /url: /pt-br/
+      - text: ·
+      - link "Türkçe" [ref=e67] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "हिंदी" [ref=e68] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "Ελληνικά" [ref=e69] [cursor=pointer]:
+        - /url: /el/
+      - text: ·
+      - link "简体中文" [ref=e70] [cursor=pointer]:
+        - /url: /zh-cn/
+      - text: ·
+      - link "العربية" [ref=e71] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "na Srpskom" [ref=e72] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "în Română" [ref=e73] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "bằng Tiếng Việt" [ref=e74] [cursor=pointer]:
+        - /url: /vi/
+    - generic [ref=e75]:
+      - text: Built with the
+      - link "Perl Programming Language" [ref=e76] [cursor=pointer]:
+        - /url: https://perl.org
+      - text: ·
+      - link "Terms and conditions of service" [ref=e77] [cursor=pointer]:
+        - /url: /terms-of-service.html
+      - text: ·
+      - link "Privacy policy" [ref=e78] [cursor=pointer]:
+        - /url: /privacy-policy.html

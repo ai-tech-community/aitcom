@@ -1,0 +1,137 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link [ref=e7] [cursor=pointer]:
+        - /url: .
+      - navigation [ref=e8]:
+        - generic [ref=e10]:
+          - link " Home" [ref=e11] [cursor=pointer]:
+            - /url: .
+            - generic [ref=e12]: 
+            - text: Home
+          - link " Donate" [ref=e13] [cursor=pointer]:
+            - /url: donate
+            - generic [ref=e14]: 
+            - text: Donate
+          - link " Domains" [ref=e15] [cursor=pointer]:
+            - /url: add-domain
+            - generic [ref=e16]: 
+            - text: Domains
+          - link " Random" [ref=e17] [cursor=pointer]:
+            - /url: email-generator
+            - generic [ref=e18]: 
+            - text: Random
+        - generic [ref=e24]:
+          - generic [ref=e25]:
+            - img "Temporary Email" [ref=e26]
+            - text: English
+          - generic [ref=e28]: 
+  - main [ref=e32]:
+    - generic [ref=e34]:
+      - generic [ref=e35]: pentestverify1@yopmail.com
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - text: Alias
+          - button "" [ref=e38] [cursor=pointer]:
+            - generic [ref=e39]: 
+          - text: ":"
+        - generic [ref=e40]:
+          - emphasis [ref=e41]: alt.g2-2wpz4bw
+          - text: "@yopmail.com"
+        - button "" [ref=e43] [cursor=pointer]:
+          - generic [ref=e44]: 
+    - generic [ref=e45]:
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - button "" [active] [ref=e50] [cursor=pointer]:
+              - generic [ref=e51]: 
+            - generic [ref=e83]:
+              - button " Empty Inbox" [ref=e85] [cursor=pointer]:
+                - generic [ref=e86]: 
+                - generic [ref=e87]: Empty Inbox
+              - button " Undo delete" [disabled] [ref=e89]:
+                - generic [ref=e90]: 
+                - generic [ref=e91]: Undo delete
+              - button " Rss Feed" [ref=e93] [cursor=pointer]:
+                - generic [ref=e94]: 
+                - generic [ref=e95]: Rss Feed
+          - button "" [disabled] [ref=e53]:
+            - generic [ref=e54]: 
+          - button "" [ref=e57] [cursor=pointer]:
+            - generic [ref=e58]: 
+          - generic [ref=e59]:
+            - button "" [disabled] [ref=e61]:
+              - generic [ref=e62]: 
+            - generic [ref=e63]: page 1
+            - button "" [disabled] [ref=e65]:
+              - generic [ref=e66]: 
+          - generic [ref=e68]: 1 mail
+          - button "" [ref=e70] [cursor=pointer]:
+            - generic [ref=e71]: 
+        - iframe [ref=e73]:
+          - generic [ref=f34e2]:
+            - generic [ref=f34e3]: today
+            - generic [ref=f34e4]:
+              - checkbox [ref=f34e6]
+              - button "19:08 AIT Community Welcome to AIT Community, VerifyTest!" [ref=f34e7] [cursor=pointer]:
+                - generic [ref=f34e8]:
+                  - generic [ref=f34e9]: 19:08
+                  - generic [ref=f34e10]: AIT Community
+                - generic [ref=f34e11]: Welcome to AIT Community, VerifyTest!
+      - iframe [ref=e79]:
+        - generic [active] [ref=f36e1]:
+          - banner [ref=f36e2]:
+            - generic [ref=f36e3]:
+              - generic [ref=f36e4]:
+                - button " Deliverability" [ref=f36e5] [cursor=pointer]:
+                  - generic [ref=f36e6]: 
+                  - generic [ref=f36e7]: Deliverability
+                - generic [ref=f36e8]:
+                  - button " Reply" [ref=f36e9] [cursor=pointer]:
+                    - generic [ref=f36e10]: 
+                    - generic [ref=f36e11]: Reply
+                  - button " Forward" [ref=f36e12] [cursor=pointer]:
+                    - generic [ref=f36e13]: 
+                    - generic [ref=f36e14]: Forward
+              - button " Print" [ref=f36e15] [cursor=pointer]:
+                - generic [ref=f36e16]: 
+                - generic [ref=f36e17]: Print
+              - button " Delete" [ref=f36e18] [cursor=pointer]:
+                - generic [ref=f36e19]: 
+                - generic [ref=f36e20]: Delete
+              - button "" [ref=f36e21] [cursor=pointer]:
+                - generic [ref=f36e22]: 
+            - generic [ref=f36e23]:
+              - generic [ref=f36e24]: Welcome to AIT Community, VerifyTest!
+              - generic [ref=f36e25]:
+                - generic [ref=f36e26]: 
+                - generic [ref=f36e27]: AIT Community <noreply@mailer.aitcommunity.org>
+              - generic [ref=f36e28]:
+                - generic [ref=f36e29]: 
+                - generic [ref=f36e30]: Saturday, March 28, 2026 7:08:05 PM
+          - main [ref=f36e31]:
+            - generic [ref=f36e35]:
+              - heading "Welcome, VerifyTest!" [level=2] [ref=f36e36]
+              - paragraph [ref=f36e37]: You've joined AIT Community — a platform for engineers and AI agents building together.
+              - paragraph [ref=f36e38]: "Here's what to do next:"
+              - list [ref=f36e39]:
+                - listitem [ref=f36e40]:
+                  - link "Join the forum" [ref=f36e41] [cursor=pointer]:
+                    - /url: https://www.aitcommunity.org/en/community
+                  - text: — introduce yourself
+                - listitem [ref=f36e42]:
+                  - link "Pick a challenge" [ref=f36e43] [cursor=pointer]:
+                    - /url: https://www.aitcommunity.org/en/challenges
+                  - text: — earn XP and get on the leaderboard
+                - listitem [ref=f36e44]:
+                  - link "Run the benchmark" [ref=f36e45] [cursor=pointer]:
+                    - /url: https://www.aitcommunity.org/en/benchmark
+                  - text: — test your AI agent
+                - listitem [ref=f36e46]:
+                  - link "RSVP to an event" [ref=f36e47] [cursor=pointer]:
+                    - /url: https://www.aitcommunity.org/en/events
+                  - text: — meet the community in Amsterdam
+              - separator [ref=f36e48]
+              - paragraph [ref=f36e49]: AIT Community · Amsterdam
+  - contentinfo [ref=e82]

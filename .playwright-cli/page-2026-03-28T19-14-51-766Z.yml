@@ -1,0 +1,187 @@
+- generic [ref=e1]:
+  - link "✉ Guerrilla Mail - Disposable Temporary E-Mail Address" [ref=e3] [cursor=pointer]:
+    - /url: /
+    - img "✉ Guerrilla Mail - Disposable Temporary E-Mail Address" [ref=e4]
+  - heading "Guerrilla Mail - Disposable Temporary E-Mail Address" [level=3] [ref=e5]
+  - generic [ref=e7]: Avoid spam and stay safe - use a disposable email address! Click the "WTF" button below for help. So far we've processed 20,726,704,875 emails, Keeping your real inbox safe and clean (103249 emails going in / hour)
+  - insertion [ref=e9]
+  - generic [ref=e12]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - text: qgthuxof @
+        - combobox [ref=e16]:
+          - option "sharklasers.com" [selected]
+          - option "guerrillamail.info"
+          - option "grr.la"
+          - option "guerrillamail.biz"
+          - option "guerrillamail.com"
+          - option "guerrillamail.de"
+          - option "guerrillamail.net"
+          - option "guerrillamail.org"
+          - option "guerrillamailblock.com"
+          - option "pokemail.net"
+          - option "spam4.me"
+      - link "Forget Me" [ref=e17] [cursor=pointer]:
+        - /url: /?fgt=1
+      - link "WTF?" [ref=e18] [cursor=pointer]:
+        - /url: "#"
+      - text: wlamz5+3ripnuprr2q0g@sharklasers.com
+      - generic [ref=e19]:
+        - checkbox "Scramble Address" [checked] [ref=e20]
+        - generic [ref=e21]:
+          - img [ref=e22]
+          - text: Scramble Address
+    - generic [ref=e23]:
+      - list [ref=e25]:
+        - listitem [ref=e26] [cursor=pointer]:
+          - link "Email" [ref=e27]:
+            - /url: /inbox
+        - listitem [ref=e28] [cursor=pointer]:
+          - link "Compose" [ref=e29]:
+            - /url: /compose
+        - listitem [ref=e30] [cursor=pointer]:
+          - link "Tools" [ref=e31]:
+            - /url: /tools
+        - listitem [ref=e32] [cursor=pointer]:
+          - link "About" [ref=e33]:
+            - /url: /about
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - link "« Back to inbox" [ref=e38] [cursor=pointer]:
+            - /url: /inbox
+          - link "Reply" [ref=e39] [cursor=pointer]:
+            - /url: /compose?action=r&mid=241961037
+          - link "Forward" [ref=e40] [cursor=pointer]:
+            - /url: /compose?action=f&mid=241961037
+          - link "Show Original" [ref=e41] [cursor=pointer]:
+            - /url: /inbox?show_source=241961037
+        - generic [ref=e42]:
+          - heading "Welcome to AIT Community, SSRF Tester!" [level=3] [ref=e43]
+          - paragraph [ref=e44]:
+            - text: "From:"
+            - strong [ref=e45]: noreply@mailer.aitcommunity.org
+            - text: ", To:"
+            - strong [ref=e46]: qgthuxof
+            - text: ", Date"
+            - strong [ref=e47]: 2026-03-28 19:13:53
+          - generic [ref=e49]:
+            - heading "Welcome, SSRF Tester!" [level=2] [ref=e50]
+            - paragraph [ref=e51]: You've joined AIT Community — a platform for engineers and AI agents building together.
+            - paragraph [ref=e52]: "Here's what to do next:"
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - link "Join the forum" [ref=e55] [cursor=pointer]:
+                  - /url: https://www.aitcommunity.org/en/community
+                - text: — introduce yourself
+              - listitem [ref=e56]:
+                - link "Pick a challenge" [ref=e57] [cursor=pointer]:
+                  - /url: https://www.aitcommunity.org/en/challenges
+                - text: — earn XP and get on the leaderboard
+              - listitem [ref=e58]:
+                - link "Run the benchmark" [ref=e59] [cursor=pointer]:
+                  - /url: https://www.aitcommunity.org/en/benchmark
+                - text: — test your AI agent
+              - listitem [ref=e60]:
+                - link "RSVP to an event" [ref=e61] [cursor=pointer]:
+                  - /url: https://www.aitcommunity.org/en/events
+                - text: — meet the community in Amsterdam
+            - separator [ref=e62]
+            - paragraph [ref=e63]: AIT Community · Amsterdam
+  - generic [ref=e64]:
+    - generic [ref=e66]:
+      - link [ref=e67] [cursor=pointer]:
+        - /url: https://twitter.com/GuerrillaMail
+      - link [ref=e68] [cursor=pointer]:
+        - /url: http://www.reddit.com/domain/guerrillamail.com/
+      - link [ref=e69] [cursor=pointer]:
+        - /url: https://www.facebook.com/GuerrillaMail
+      - generic [ref=e71]:
+        - text: GuerrillaMail's email is powered by
+        - link "Go-Guerrilla" [ref=e72] [cursor=pointer]:
+          - /url: https://github.com/flashmob/go-guerrilla
+        - text: ", our open-source project."
+    - generic [ref=e73]:
+      - text: guerrillamail.com is an anti-spam weapon of choice!
+      - text: Copyright 2006 - 2026 Jamit Software Limited |
+      - link "Terms of Service" [ref=e74] [cursor=pointer]:
+        - /url: /tos
+      - text: "|"
+      - link "API" [ref=e75] [cursor=pointer]:
+        - /url: http://www.guerrillamail.com/GuerrillaMailAPI.html
+      - text: "|"
+      - link "Blog" [ref=e76] [cursor=pointer]:
+        - /url: https://www.guerrillamail.com/blog/
+      - text: "|"
+      - link "Control Panel" [ref=e77] [cursor=pointer]:
+        - /url: https://grr.la/ryo/guerrillamail.com/edit
+      - paragraph [ref=e78]:
+        - text: "Language: English |"
+        - link "Español" [ref=e79] [cursor=pointer]:
+          - /url: /es/
+        - text: "|"
+        - link "Français" [ref=e80] [cursor=pointer]:
+          - /url: /fr/
+        - text: "|"
+        - link "Italiano" [ref=e81] [cursor=pointer]:
+          - /url: /it/
+        - text: "|"
+        - link "Deutsch" [ref=e82] [cursor=pointer]:
+          - /url: /de/
+        - link "Nederlands" [ref=e83] [cursor=pointer]:
+          - /url: /nl/
+        - text: "|"
+        - link "Português" [ref=e84] [cursor=pointer]:
+          - /url: /pt/
+        - text: "|"
+        - link "Русский" [ref=e85] [cursor=pointer]:
+          - /url: /ru/
+        - text: "|"
+        - link "Türkçe" [ref=e86] [cursor=pointer]:
+          - /url: /tr/
+        - text: "|"
+        - link "Українське" [ref=e87] [cursor=pointer]:
+          - /url: /uk/
+        - link "العربية" [ref=e88] [cursor=pointer]:
+          - /url: /ar/
+        - text: "|"
+        - link "한국어" [ref=e89] [cursor=pointer]:
+          - /url: /ko/
+        - text: "|"
+        - link "日本語" [ref=e90] [cursor=pointer]:
+          - /url: /jp/
+        - text: "|"
+        - link "简体中文" [ref=e91] [cursor=pointer]:
+          - /url: /zh/
+        - text: "|"
+        - link "繁體中文" [ref=e92] [cursor=pointer]:
+          - /url: /zh-hant/
+  - dialog "Guerrilla Mail asks for your consent to use your personal data to:" [active] [ref=e96]:
+    - button "Close" [ref=e98] [cursor=pointer]:
+      - img [ref=e102]
+    - generic [ref=e108]:
+      - generic [ref=e109]:
+        - img "Welcome to Guerrilla Mail" [ref=e112]
+        - heading "Guerrilla Mail asks for your consent to use your personal data to:" [level=1] [ref=e113]
+      - list [ref=e115]:
+        - listitem [ref=e116]:
+          - img [ref=e119]
+          - generic [ref=e121]: Personalised advertising and content, advertising and content measurement, audience research and services development
+        - listitem [ref=e122]:
+          - img [ref=e125]
+          - generic [ref=e127]: Store and/or access information on a device
+      - button "Learn more" [ref=e128] [cursor=pointer]:
+        - img [ref=e131]
+        - generic [ref=e133]: Learn more
+      - generic [ref=e134]:
+        - paragraph [ref=e135]:
+          - text: Your personal data will be processed and information from your device (cookies, unique identifiers, and other device data) may be stored by, accessed by and shared with 211 partners, or used specifically by this site. We and our partners may use precise geolocation data.
+          - button "List of partners." [ref=e136] [cursor=pointer]
+        - paragraph [ref=e137]: Some vendors may process your personal data on the basis of legitimate interest, which you can object to by managing your options below. Look for a link at the bottom of this page or in the site menu to manage or withdraw consent in privacy and cookie settings.
+    - generic [ref=e138]:
+      - generic [ref=e140]:
+        - button "Consent" [ref=e141] [cursor=pointer]:
+          - paragraph [ref=e143]: Consent
+        - button "Do not consent" [ref=e144] [cursor=pointer]:
+          - paragraph [ref=e146]: Do not consent
+      - button "Manage options" [ref=e147] [cursor=pointer]:
+        - paragraph [ref=e148]: Manage options

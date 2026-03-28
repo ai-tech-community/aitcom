@@ -1,0 +1,106 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - link "AIT. home" [ref=e5] [cursor=pointer]:
+          - /url: /en
+          - img "AIT." [ref=e6]
+        - navigation [ref=e12]:
+          - link "[C] COMMUNITIES" [ref=e13] [cursor=pointer]:
+            - /url: /en/communities
+          - link "[E] EVENTS" [ref=e14] [cursor=pointer]:
+            - /url: /en/events
+          - link "[G] CHALLENGES" [ref=e15] [cursor=pointer]:
+            - /url: /en/challenges
+          - link "[L] LAUNCHPAD" [ref=e16] [cursor=pointer]:
+            - /url: /en/launchpad
+          - link "[B] BLOG" [ref=e17] [cursor=pointer]:
+            - /url: /en/blog
+          - link "[W] JOBS" [ref=e18] [cursor=pointer]:
+            - /url: /en/jobs
+          - link "[K] BENCHMARK" [ref=e19] [cursor=pointer]:
+            - /url: /en/benchmark
+          - link "[I] IMPACT" [ref=e20] [cursor=pointer]:
+            - /url: /en/impact
+          - link "[S] SPONSORS" [ref=e21] [cursor=pointer]:
+            - /url: /en/sponsors
+          - link "[M] MEMBERS" [ref=e22] [cursor=pointer]:
+            - /url: /en/members
+      - generic [ref=e23]:
+        - button "NL" [ref=e24]:
+          - img [ref=e25]
+          - text: NL
+        - link "[J] JOIN" [ref=e28] [cursor=pointer]:
+          - /url: /en/auth/signup
+  - main [ref=e29]:
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - heading "Sign Up" [level=1] [ref=e33]
+        - paragraph [ref=e34]: Join AIT. Community
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - generic [ref=e37]: FULL NAME
+          - textbox "FULL NAME" [ref=e38]:
+            - /placeholder: Jane Doe
+        - generic [ref=e39]:
+          - generic [ref=e40]: EMAIL
+          - textbox "EMAIL" [ref=e41]:
+            - /placeholder: engineer@company.nl
+        - generic [ref=e42]:
+          - generic [ref=e43]: PASSWORD
+          - textbox "PASSWORD" [ref=e44]
+        - button "Sign Up" [ref=e45]
+      - generic [ref=e50]: OR CONTINUE WITH
+      - button "GitHub" [ref=e51]:
+        - img
+        - text: GitHub
+      - paragraph [ref=e52]:
+        - text: Already have an account?
+        - link "Sign In" [ref=e53] [cursor=pointer]:
+          - /url: /en/auth/signin
+  - contentinfo [ref=e54]:
+    - generic [ref=e55]:
+      - generic [ref=e56]:
+        - generic [ref=e57]:
+          - img "AIT." [ref=e58]
+          - paragraph [ref=e63]: The home for AI communities — born in the Netherlands, open to the world.
+        - generic [ref=e64]:
+          - generic [ref=e65]:
+            - heading "/ NAVIGATION" [level=4] [ref=e66]
+            - navigation [ref=e67]:
+              - link "Home" [ref=e68] [cursor=pointer]:
+                - /url: /en
+              - link "Events" [ref=e69] [cursor=pointer]:
+                - /url: /en/events
+              - link "Blog" [ref=e70] [cursor=pointer]:
+                - /url: /en/blog
+              - link "Community" [ref=e71] [cursor=pointer]:
+                - /url: /en/communities
+          - generic [ref=e72]:
+            - heading "/ CONNECT" [level=4] [ref=e73]
+            - navigation [ref=e74]:
+              - link "GitHub" [ref=e75] [cursor=pointer]:
+                - /url: https://github.com/ai-tech-community
+              - link "Discord" [ref=e76] [cursor=pointer]:
+                - /url: https://discord.gg
+              - link "X (Twitter)" [ref=e77] [cursor=pointer]:
+                - /url: https://x.com
+              - link "LinkedIn" [ref=e78] [cursor=pointer]:
+                - /url: https://linkedin.com
+          - generic [ref=e79]:
+            - heading "/ LEGAL" [level=4] [ref=e80]
+            - navigation [ref=e81]:
+              - link "Privacy Policy" [ref=e82] [cursor=pointer]:
+                - /url: /en/privacy
+              - link "Terms of Service" [ref=e83] [cursor=pointer]:
+                - /url: /en/terms
+              - link "Security & Transparency" [ref=e84] [cursor=pointer]:
+                - /url: /en/security
+      - generic [ref=e85]:
+        - paragraph [ref=e86]: © 2026 AI Tech Community Netherlands. All rights reserved.
+        - generic [ref=e87]:
+          - paragraph [ref=e88]: "BUILT WITH ♥ BY \x1d"
+          - paragraph
+          - link "KLEVOX STUDIO" [ref=e89] [cursor=pointer]:
+            - /url: https://klevox.com
+  - region "Notifications alt+T"

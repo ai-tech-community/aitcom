@@ -1,0 +1,153 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - link "Mailnesia logo" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img "Mailnesia logo" [ref=e5]
+      - link "MAILNESIA" [ref=e7] [cursor=pointer]:
+        - /url: /
+    - generic [ref=e8]:
+      - paragraph [ref=e9]: "CHECK YOUR INBOX:"
+      - generic [ref=e11]:
+        - textbox "Type mailbox and press ENTER" [ref=e12]: ssrftestaz99
+        - text: "@mailnesia.com"
+        - button "OK" [ref=e13] [cursor=pointer]
+      - link "Random mailbox" [ref=e14] [cursor=pointer]:
+        - /url: /random/
+  - generic [ref=e15]:
+    - link "delete this email" [ref=e16] [cursor=pointer]:
+      - /url: "#"
+    - link "view original" [ref=e17] [cursor=pointer]:
+      - /url: /mailbox/ssrftestaz99/1158393208/raw
+    - link "Test URL clicker" [ref=e18] [cursor=pointer]:
+      - /url: /mailbox/ssrftestaz99/1158393208/test_url_clicker
+  - table [ref=e19]:
+    - rowgroup [ref=e20]:
+      - row "Date From To Subject" [ref=e21]:
+        - columnheader "Date" [ref=e22]
+        - columnheader "From" [ref=e23]
+        - columnheader "To" [ref=e24]
+        - columnheader "Subject" [ref=e25]
+    - rowgroup [ref=e26]:
+      - row "Sat, 28 Mar 2026 19:23:53 +0000 AIT Community <noreply@mailer.aitcommunity.org> ssrftestaz99@mailnesia.com Reset your password — AIT Community" [ref=e27]:
+        - cell "Sat, 28 Mar 2026 19:23:53 +0000" [ref=e28]
+        - cell "AIT Community <noreply@mailer.aitcommunity.org>" [ref=e29]
+        - cell "ssrftestaz99@mailnesia.com" [ref=e30]
+        - cell "Reset your password — AIT Community" [ref=e31]
+  - generic [ref=e32]:
+    - list [ref=e33]:
+      - listitem [ref=e34]:
+        - link "text_html" [ref=e35]:
+          - /url: "#text_html_1158393208"
+      - listitem [ref=e36]:
+        - link "text_plain" [ref=e37] [cursor=pointer]:
+          - /url: "#text_plain_1158393208"
+    - generic [ref=e41]:
+      - paragraph [ref=e42]: Hi SSRF Tester,
+      - paragraph [ref=e43]:
+        - text: You requested a password reset. Click
+        - link "this link" [ref=e44] [cursor=pointer]:
+          - /url: https://www.aitcommunity.org/api/auth/reset-password/U2VbNapjUdtxPiqLTcDkekNP?callbackURL=https%3A%2F%2Fwww.aitcommunity.org%2Fen
+        - text: to set a new password.
+      - paragraph [ref=e45]: If you didn't request this, you can safely ignore this email.
+  - generic:
+    - generic [ref=e46]:
+      - link "in English" [ref=e47] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "magyarul" [ref=e48] [cursor=pointer]:
+        - /url: /hu/
+      - text: ·
+      - link "Italiano" [ref=e49] [cursor=pointer]:
+        - /url: /it/
+      - text: ·
+      - link "latviešu valoda" [ref=e50] [cursor=pointer]:
+        - /url: /lv/
+      - text: ·
+      - link "suomi" [ref=e51] [cursor=pointer]:
+        - /url: /fi/
+      - text: ·
+      - link "português" [ref=e52] [cursor=pointer]:
+        - /url: /pt/
+      - text: ·
+      - link "auf Deutsch" [ref=e53] [cursor=pointer]:
+        - /url: /de/
+      - text: ·
+      - link "на русском языке" [ref=e54] [cursor=pointer]:
+        - /url: /ru/
+      - text: ·
+      - link "po polsku" [ref=e55] [cursor=pointer]:
+        - /url: /pl/
+      - text: ·
+      - link "繁體中文" [ref=e56] [cursor=pointer]:
+        - /url: /zh/
+      - text: ·
+      - link "En Français" [ref=e57] [cursor=pointer]:
+        - /url: /fr/
+      - text: ·
+      - link "En Español" [ref=e58] [cursor=pointer]:
+        - /url: /es/
+      - text: ·
+      - link "V češtině" [ref=e59] [cursor=pointer]:
+        - /url: /cs/
+      - text: ·
+      - link "En Español de Argentina" [ref=e60] [cursor=pointer]:
+        - /url: /es-ar/
+      - text: ·
+      - link "på svenska" [ref=e61] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "na hrvatskom" [ref=e62] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "in het Nederlands" [ref=e63] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "v slovenščini" [ref=e64] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "بالعربي" [ref=e65] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "Dalam bahasa melayu" [ref=e66] [cursor=pointer]:
+        - /url: /ms/
+      - text: ·
+      - link "Bahasa Indonesia" [ref=e67] [cursor=pointer]:
+        - /url: /id/
+      - text: ·
+      - link "Em Português do Brasil" [ref=e68] [cursor=pointer]:
+        - /url: /pt-br/
+      - text: ·
+      - link "Türkçe" [ref=e69] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "हिंदी" [ref=e70] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "Ελληνικά" [ref=e71] [cursor=pointer]:
+        - /url: /el/
+      - text: ·
+      - link "简体中文" [ref=e72] [cursor=pointer]:
+        - /url: /zh-cn/
+      - text: ·
+      - link "العربية" [ref=e73] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "na Srpskom" [ref=e74] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "în Română" [ref=e75] [cursor=pointer]:
+        - /url: /
+      - text: ·
+      - link "bằng Tiếng Việt" [ref=e76] [cursor=pointer]:
+        - /url: /vi/
+    - generic [ref=e77]:
+      - text: Built with the
+      - link "Perl Programming Language" [ref=e78] [cursor=pointer]:
+        - /url: https://perl.org
+      - text: ·
+      - link "Terms and conditions of service" [ref=e79] [cursor=pointer]:
+        - /url: /terms-of-service.html
+      - text: ·
+      - link "Privacy policy" [ref=e80] [cursor=pointer]:
+        - /url: /privacy-policy.html

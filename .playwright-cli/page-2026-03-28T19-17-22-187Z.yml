@@ -1,0 +1,168 @@
+- generic [active] [ref=e1]:
+  - link "✉ Guerrilla Mail - Disposable Temporary E-Mail Address" [ref=e3] [cursor=pointer]:
+    - /url: /
+    - img "✉ Guerrilla Mail - Disposable Temporary E-Mail Address" [ref=e4]
+  - heading "Guerrilla Mail - Disposable Temporary E-Mail Address" [level=3] [ref=e5]
+  - generic [ref=e7]: Avoid spam and stay safe - use a disposable email address! Click the "WTF" button below for help. So far we've processed 20,726,709,185 emails, Keeping your real inbox safe and clean (101649 emails going in / hour)
+  - insertion [ref=e9]:
+    - generic [ref=e11]:
+      - generic "These are topics related to the article that might interest you" [ref=e12]: Discover more
+      - link "VPN service subscriptions" [ref=e13] [cursor=pointer]:
+        - img [ref=e15]
+        - text: VPN service subscriptions
+      - link "Disposable email generator" [ref=e17] [cursor=pointer]:
+        - img [ref=e19]
+        - text: Disposable email generator
+      - link "Anonymous browsing tools" [ref=e21] [cursor=pointer]:
+        - img [ref=e23]
+        - text: Anonymous browsing tools
+      - link "Website hosting plans" [ref=e25] [cursor=pointer]:
+        - img [ref=e27]
+        - text: Website hosting plans
+  - generic [ref=e30]:
+    - generic [ref=e32]:
+      - generic [ref=e33]:
+        - text: qgthuxof @
+        - combobox [ref=e34]:
+          - option "sharklasers.com" [selected]
+          - option "guerrillamail.info"
+          - option "grr.la"
+          - option "guerrillamail.biz"
+          - option "guerrillamail.com"
+          - option "guerrillamail.de"
+          - option "guerrillamail.net"
+          - option "guerrillamail.org"
+          - option "guerrillamailblock.com"
+          - option "pokemail.net"
+          - option "spam4.me"
+      - link "Forget Me" [ref=e35] [cursor=pointer]:
+        - /url: /?fgt=1
+      - link "WTF?" [ref=e36] [cursor=pointer]:
+        - /url: "#"
+      - text: wlamz5+3ripnuprr2q0g@sharklasers.com
+      - generic [ref=e37]:
+        - checkbox "Scramble Address" [checked] [ref=e38]
+        - generic [ref=e39]:
+          - img [ref=e40]
+          - text: Scramble Address
+    - generic [ref=e41]:
+      - list [ref=e43]:
+        - listitem [ref=e44] [cursor=pointer]:
+          - link "Email" [ref=e45]:
+            - /url: /inbox
+        - listitem [ref=e46] [cursor=pointer]:
+          - link "Compose" [ref=e47]:
+            - /url: /compose
+        - listitem [ref=e48] [cursor=pointer]:
+          - link "Tools" [ref=e49]:
+            - /url: /tools
+        - listitem [ref=e50] [cursor=pointer]:
+          - link "About" [ref=e51]:
+            - /url: /about
+      - 'table "Delete Next update in: 8 sec." [ref=e115]':
+        - caption [ref=e55]:
+          - generic [ref=e56]:
+            - button "Delete" [ref=e57] [cursor=pointer]
+            - generic [ref=e116]: "Next update in: 8 sec."
+        - rowgroup [ref=e63]:
+          - row "noreply@mailer.aitcommunity.org Welcome to AIT Community, SSRF Tester! Welcome, SSRF Tester! You've joined AIT Community — a platform for engineers an 19:13:53" [ref=e64] [cursor=pointer]:
+            - cell [ref=e65]:
+              - checkbox [ref=e66]
+            - cell "noreply@mailer.aitcommunity.org" [ref=e67]
+            - cell "Welcome to AIT Community, SSRF Tester! Welcome, SSRF Tester! You've joined AIT Community — a platform for engineers an" [ref=e68]:
+              - link "Welcome to AIT Community, SSRF Tester!" [ref=e69]:
+                - /url: /inbox?mail_id=241961037
+              - text: Welcome, SSRF Tester! You've joined AIT Community — a platform for engineers an
+            - cell "19:13:53" [ref=e70]
+          - 'row "no-reply@guerrillamail.com Welcome to Guerrilla Mail Dear Random User, Thank you for using Guerrilla Mail - your temporary email address friend and spam fighter''s ally! Your disposable email address has been created ready for use. Email: qgthux 19:11:59" [ref=e71] [cursor=pointer]':
+            - cell [ref=e72]:
+              - checkbox [ref=e73]
+            - cell "no-reply@guerrillamail.com" [ref=e74]
+            - 'cell "Welcome to Guerrilla Mail Dear Random User, Thank you for using Guerrilla Mail - your temporary email address friend and spam fighter''s ally! Your disposable email address has been created ready for use. Email: qgthux" [ref=e75]':
+              - link "Welcome to Guerrilla Mail" [ref=e76]:
+                - /url: /inbox?mail_id=1
+              - text: "Dear Random User, Thank you for using Guerrilla Mail - your temporary email address friend and spam fighter's ally! Your disposable email address has been created ready for use. Email: qgthux"
+            - cell "19:11:59" [ref=e77]
+  - generic [ref=e78]:
+    - generic [ref=e80]:
+      - link [ref=e81] [cursor=pointer]:
+        - /url: https://twitter.com/GuerrillaMail
+      - link [ref=e82] [cursor=pointer]:
+        - /url: http://www.reddit.com/domain/guerrillamail.com/
+      - link [ref=e83] [cursor=pointer]:
+        - /url: https://www.facebook.com/GuerrillaMail
+      - generic [ref=e85]:
+        - text: GuerrillaMail's email is powered by
+        - link "Go-Guerrilla" [ref=e86] [cursor=pointer]:
+          - /url: https://github.com/flashmob/go-guerrilla
+        - text: ", our open-source project."
+    - generic [ref=e87]:
+      - text: guerrillamail.com is an anti-spam weapon of choice!
+      - text: Copyright 2006 - 2026 Jamit Software Limited |
+      - link "Terms of Service" [ref=e88] [cursor=pointer]:
+        - /url: /tos
+      - text: "|"
+      - link "API" [ref=e89] [cursor=pointer]:
+        - /url: http://www.guerrillamail.com/GuerrillaMailAPI.html
+      - text: "|"
+      - link "Blog" [ref=e90] [cursor=pointer]:
+        - /url: https://www.guerrillamail.com/blog/
+      - text: "|"
+      - link "Control Panel" [ref=e91] [cursor=pointer]:
+        - /url: https://grr.la/ryo/guerrillamail.com/edit
+      - paragraph [ref=e92]:
+        - text: "Language: English |"
+        - link "Español" [ref=e93] [cursor=pointer]:
+          - /url: /es/
+        - text: "|"
+        - link "Français" [ref=e94] [cursor=pointer]:
+          - /url: /fr/
+        - text: "|"
+        - link "Italiano" [ref=e95] [cursor=pointer]:
+          - /url: /it/
+        - text: "|"
+        - link "Deutsch" [ref=e96] [cursor=pointer]:
+          - /url: /de/
+        - link "Nederlands" [ref=e97] [cursor=pointer]:
+          - /url: /nl/
+        - text: "|"
+        - link "Português" [ref=e98] [cursor=pointer]:
+          - /url: /pt/
+        - text: "|"
+        - link "Русский" [ref=e99] [cursor=pointer]:
+          - /url: /ru/
+        - text: "|"
+        - link "Türkçe" [ref=e100] [cursor=pointer]:
+          - /url: /tr/
+        - text: "|"
+        - link "Українське" [ref=e101] [cursor=pointer]:
+          - /url: /uk/
+        - link "العربية" [ref=e102] [cursor=pointer]:
+          - /url: /ar/
+        - text: "|"
+        - link "한국어" [ref=e103] [cursor=pointer]:
+          - /url: /ko/
+        - text: "|"
+        - link "日本語" [ref=e104] [cursor=pointer]:
+          - /url: /jp/
+        - text: "|"
+        - link "简体中文" [ref=e105] [cursor=pointer]:
+          - /url: /zh/
+        - text: "|"
+        - link "繁體中文" [ref=e106] [cursor=pointer]:
+          - /url: /zh-hant/
+  - generic [ref=e108]:
+    - button "Privacy and cookie settings" [ref=e109] [cursor=pointer]
+    - generic [ref=e110]: "Managed by Google. Complies with IAB TCF. CMP ID: 300"
+  - insertion [ref=e112]:
+    - generic [ref=e118]:
+      - heading "These are topics related to the article that might interest you" [level=2] [ref=e120]: Discover more
+      - link "Encrypted messaging apps" [ref=e121] [cursor=pointer]:
+        - generic "Encrypted messaging apps" [ref=e122]
+        - img [ref=e124]
+      - link "Email address protector" [ref=e126] [cursor=pointer]:
+        - generic "Email address protector" [ref=e127]
+        - img [ref=e129]
+      - link "Open source software support" [ref=e131] [cursor=pointer]:
+        - generic "Open source software support" [ref=e132]
+        - img [ref=e134]

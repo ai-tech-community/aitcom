@@ -1,0 +1,214 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - navigation [ref=e5]:
+        - generic [ref=e7]:
+          - link " Home" [ref=e8] [cursor=pointer]:
+            - /url: .
+            - generic [ref=e9]: 
+            - text: Home
+          - link " Donate" [ref=e10] [cursor=pointer]:
+            - /url: donate
+            - generic [ref=e11]: 
+            - text: Donate
+          - link " Domains" [ref=e12] [cursor=pointer]:
+            - /url: add-domain
+            - generic [ref=e13]: 
+            - text: Domains
+          - link " Random" [ref=e14] [cursor=pointer]:
+            - /url: email-generator
+            - generic [ref=e15]: 
+            - text: Random
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - img "Temporary Email" [ref=e23]
+            - text: English
+          - generic [ref=e25]: 
+      - link "YOPmail, Disposable email Address" [ref=e27] [cursor=pointer]:
+        - /url: .
+        - img "YOPmail, Disposable email Address" [ref=e28]
+      - heading "Disposable Email Address - Temporary and anonymous inbox" [level=1] [ref=e30]:
+        - text: Disposable Email Address
+        - generic [ref=e31]: "- Temporary and anonymous inbox"
+    - main [ref=e32]:
+      - insertion [ref=e35]
+      - generic [ref=e38]:
+        - generic [ref=e39]: You Name it, YOPmail has it!
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - generic [ref=e42]: 
+            - heading "Auto generated inbox!" [level=5] [ref=e43]
+          - generic [ref=e44]:
+            - generic [ref=e45]: 
+            - heading "No Registration!" [level=5] [ref=e46]
+          - generic [ref=e47]:
+            - generic [ref=e48]: 
+            - heading "Messages are kept 8 days!" [level=5] [ref=e49]
+          - generic [ref=e50]:
+            - generic [ref=e51]: 
+            - heading "No Password!" [level=5] [ref=e52]
+          - generic [ref=e53]:
+            - img [ref=e54]
+            - heading "Reply to messages!" [level=5] [ref=e55]
+          - generic [ref=e56]:
+            - img [ref=e57]
+            - heading "Email deliverability!" [level=5] [ref=e58]
+      - generic [ref=e60]:
+        - generic [ref=e64]:
+          - heading "Type the Email name of your choice" [level=2] [ref=e65]
+          - generic [ref=e70]:
+            - textbox "Login" [ref=e73]:
+              - /placeholder: Enter your inbox here
+            - button "" [ref=e75] [cursor=pointer]:
+              - generic [ref=e76]: 
+        - generic [ref=e79]:
+          - link " Random Email generator Can't decide on a disposable email name? Try YOPmail's temp mail Generator !" [ref=e80] [cursor=pointer]:
+            - /url: email-generator
+            - generic [ref=e82]: 
+            - generic [ref=e83]:
+              - heading "Random Email generator" [level=3] [ref=e84]
+              - paragraph [ref=e85]: Can't decide on a disposable email name? Try YOPmail's temp mail Generator !
+          - link " Alternate domain names Email sent to these domains are auto-forwarded to YOPmail. Your temporary address won't be blacklisted" [ref=e86] [cursor=pointer]:
+            - /url: alternate-domains
+            - generic [ref=e88]: 
+            - generic [ref=e89]:
+              - heading "Alternate domain names" [level=3] [ref=e90]
+              - paragraph [ref=e91]: Email sent to these domains are auto-forwarded to YOPmail. Your temporary address won't be blacklisted
+          - generic [ref=e92]:
+            - generic "Updated everyday" [ref=e93]:
+              - generic [ref=e94]:
+                - generic [ref=e95]: "New daily domain :"
+                - generic [ref=e96]: "@imap.fr.nf"
+              - button "" [ref=e98] [cursor=pointer]:
+                - generic [ref=e99]: 
+            - generic "Updated everyday" [ref=e100]:
+              - generic [ref=e101]:
+                - generic [ref=e102]: "Other domains names :"
+                - button " More..." [ref=e104] [cursor=pointer]:
+                  - generic [ref=e105]: 
+                  - generic [ref=e106]: More...
+              - iframe [ref=e107]:
+                - generic [ref=f17e2]:
+                  - generic [ref=f17e3]: "@noreply.fr"
+                  - generic [ref=f17e4]: "@wir-sind.com"
+                  - generic [ref=f17e5]: "@haben-wir.com"
+                  - generic [ref=f17e6]: "@wishy.fr"
+                  - generic [ref=f17e7]: "@ist-hier.com"
+                  - generic [ref=f17e8]: "@ves.ink"
+          - insertion [ref=e109]
+          - link "  Add your own domain Add your own domain name on YOPmail and receive messages here" [ref=e111] [cursor=pointer]:
+            - /url: add-domain
+            - generic [ref=e112]:
+              - generic [ref=e113]: 
+              - generic [ref=e114]: 
+            - generic [ref=e115]:
+              - heading "Add your own domain" [level=3] [ref=e116]
+              - paragraph [ref=e117]: Add your own domain name on YOPmail and receive messages here
+          - link " Hide disposable email with an alias Hide your real YOPmail inbox with an alternate address. Emails to the alias are auto-forwarded to the real inbox." [ref=e118] [cursor=pointer]:
+            - /url: email-alias
+            - generic [ref=e120]: 
+            - generic [ref=e121]:
+              - heading "Hide disposable email with an alias" [level=3] [ref=e122]
+              - paragraph [ref=e123]: Hide your real YOPmail inbox with an alternate address. Emails to the alias are auto-forwarded to the real inbox.
+          - link " YOPchat! Chat with your YOPmail friends." [ref=e124] [cursor=pointer]:
+            - /url: yopmail-chat
+            - generic [ref=e126]: 
+            - generic [ref=e127]:
+              - heading "YOPchat!" [level=3] [ref=e128]
+              - paragraph [ref=e129]: Chat with your YOPmail friends.
+          - link " Support YOPmail You appreciate YOPmail and you want to contribute to its development." [ref=e130] [cursor=pointer]:
+            - /url: donate
+            - generic [ref=e132]: 
+            - generic [ref=e133]:
+              - heading "Support YOPmail" [level=3] [ref=e134]
+              - paragraph [ref=e135]: You appreciate YOPmail and you want to contribute to its development.
+      - generic [ref=e137]:
+        - generic [ref=e139]:
+          - heading "Disposable email address" [level=2] [ref=e140]
+          - paragraph [ref=e141]: YOPmail’s free, quick and feature rich service guards you against spam. Protect your actual email with an anonymous email address, instead use YOPmail’s disposable one to sign-up wherever you want. YOPmail creates temporary inboxes of your choice instantaneously. Use Now & stay Protected!
+        - insertion [ref=e143]
+        - generic [ref=e145]:
+          - heading "How does a temporary email protect you?" [level=2] [ref=e146]
+          - heading "If you think that registering on the web may result in spam, preferably use a temporary email address. Your information could be abused. Use YOPmail’s free anonymous email addresses, to protect you against spam." [level=3] [ref=e147]:
+            - generic [ref=e148]: If you think that registering on the web may result in spam, preferably use a temporary email address. Your information could be abused. Use YOPmail’s free anonymous email addresses, to protect you against spam.
+          - list [ref=e149]:
+            - listitem [ref=e150]: Use ‘any-name-of-your-choice’@YOPmail.com to sign up on websites without disclosing your email address. Message sent to the ‘address’@YOPmail.com is instantaneously created at YOPmail server. No registration required for checking your temporary inbox at YOPmail
+            - listitem [ref=e151]: Easily check your disposable inbox at YOPmail.com or directly go to https://YOPmail.com?"name-of-your-inbox"
+            - listitem [ref=e152]: Temporary inboxes are not password protected. Hence, choose a unique inbox name or use YOPmail’s Disposable Email Address Generator. You can also use your inbox's email alias for extra security
+            - listitem [ref=e153]:
+              - text: "Additional :"
+              - text: · All inboxes already exists and are never deleted.
+              - text: · Messages are kept 8 days. You can also manually remove them.
+              - text: · To prevent abuse of service, sending anonymous emails from YOPmail is prohibited. You can however, send an email from a YOPmail email address to another YOPmail disposable email address.
+            - listitem [ref=e154]: "New on YOPmail : It is now possible to reply to messages !"
+        - insertion [ref=e156]
+      - generic [ref=e158]:
+        - generic [ref=e159]:
+          - heading "What is a disposable or temporary email address?" [level=2] [ref=e160]
+          - paragraph [ref=e161]: The objective of disposable email address is to avoid giving out your personal email address in order to protect it, whether for reasons of confidentiality or to avoid receiving spam. Indeed, some websites can use your email address and some will even resell it. Your privacy on the internet is something to be taken seriously.
+          - heading "There are several categories of disposable or temporary email solutions :" [level=3] [ref=e162]
+          - list [ref=e163]:
+            - listitem [ref=e164]: disposable email addresses that offer a temporary inbox for a limited time,
+            - listitem [ref=e165]: disposable email addresses that automatically forward received messages to a personal email address,
+            - listitem [ref=e166]: disposable email addresses that allow you to create or delete aliases (secondary email addresses).
+          - paragraph [ref=e167]: YOPmail is in the first category but inboxes do not expire unlike most disposable email services.
+          - heading "There are different ways to name disposable email address (DEA) services :" [level=3] [ref=e168]
+          - paragraph [ref=e169]: Temporary email, throw-away address, Trash mail, One-time email, Anonymous email or Fake mail.
+          - heading "Here are a few examples of the use of a disposable email address:" [level=3] [ref=e170]
+          - list [ref=e171]:
+            - listitem [ref=e172]: Registers on websites without disclosing my personal information.
+            - listitem [ref=e173]: Do not share my email address so as not to receive spam.
+            - listitem [ref=e174]: Give an email address to someone you don't trust.
+            - listitem [ref=e175]: Subscribe to a newsletter.
+            - listitem [ref=e176]: Write anonymous comments on blogs or forums.
+            - listitem [ref=e177]: Register anonymously on a dating site.
+            - listitem [ref=e178]: You are a developer, and you want to test your mail sending system.
+            - listitem [ref=e179]: You need many email addresses quickly.
+            - listitem [ref=e180]: ...
+        - insertion [ref=e182]
+        - generic [ref=e184]:
+          - heading "How to use your disposable email ?" [level=2] [ref=e185]
+          - generic [ref=e186]: 1. Choose a disposable email address randomly (with @YOPmail.com)
+          - list [ref=e187]:
+            - listitem [ref=e188]: "No need to create an address : all disposable email accounts already exist on YOPmail."
+            - listitem [ref=e189]: "No inspiration : use the email address generator."
+            - listitem [ref=e190]: You can also choose an alternative domain name as they are usually not blacklisted (A new domain name is added every day).
+            - listitem [ref=e191]: And for more confidentiality, we'll give you an alias that hides your temporary email. Aliases and alternate domains can be combined.
+          - generic [ref=e192]: 2. Use this temporary email address on Internet
+          - list [ref=e193]:
+            - listitem [ref=e194]: Protect your personal email address and prefer using this temporary address as spam dustbin. Preserve your privacy and remain anonymous.
+          - generic [ref=e195]: 3. Check mails on YOPmail
+          - list [ref=e196]:
+            - listitem [ref=e197]: Mails are visible in the webmail. Just click on the refresh button to check mails and click in the list to read them.
+    - contentinfo [ref=e198]:
+      - generic [ref=e199]:
+        - link "Contact" [ref=e200] [cursor=pointer]:
+          - /url: contact
+        - text: "|"
+        - link "Privacy Policy" [ref=e201] [cursor=pointer]:
+          - /url: privacy
+  - dialog "YOPmail asks for your consent to use your personal data to:" [active] [ref=e205]:
+    - generic [ref=e207]:
+      - generic [ref=e208]:
+        - img "Welcome to YOPmail" [ref=e211]
+        - heading "YOPmail asks for your consent to use your personal data to:" [level=1] [ref=e212]
+      - list [ref=e214]:
+        - listitem [ref=e215]:
+          - img [ref=e218]
+          - generic [ref=e220]: Personalised advertising and content, advertising and content measurement, audience research and services development
+        - listitem [ref=e221]:
+          - img [ref=e224]
+          - generic [ref=e226]: Store and/or access information on a device
+      - button "Learn more" [ref=e227] [cursor=pointer]:
+        - img [ref=e230]
+        - generic [ref=e232]: Learn more
+      - generic [ref=e233]:
+        - paragraph [ref=e234]:
+          - text: Your personal data will be processed and information from your device (cookies, unique identifiers, and other device data) may be stored by, accessed by and shared with 211 partners, or used specifically by this site. We and our partners may use precise geolocation data.
+          - button "List of partners." [ref=e235] [cursor=pointer]
+        - paragraph [ref=e236]: Some vendors may process your personal data on the basis of legitimate interest, which you can object to by managing your options below. Look for a link at the bottom of this page or in the site menu to manage or withdraw consent in privacy and cookie settings.
+    - generic [ref=e239]:
+      - button "Consent" [ref=e240] [cursor=pointer]:
+        - paragraph [ref=e242]: Consent
+      - button "Manage options" [ref=e243] [cursor=pointer]:
+        - paragraph [ref=e245]: Manage options

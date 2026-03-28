@@ -1,0 +1,23 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - img [ref=e6]
+    - generic [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - text: Email
+            - generic [ref=e23]: "*"
+          - textbox "Email *" [ref=e25]
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - text: Password
+            - generic [ref=e28]: "*"
+          - textbox "Password" [ref=e31]
+      - link "Forgot password?" [ref=e32] [cursor=pointer]:
+        - /url: /admin/forgot
+      - button "Login" [ref=e34] [cursor=pointer]:
+        - generic:
+          - generic: Login
+  - status [ref=e35]
+  - region "Notifications alt+T"
+  - alert [ref=e2]: Login - AIT Admin
