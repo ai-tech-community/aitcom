@@ -12,6 +12,7 @@ import { challengeEngineRouter } from "@/server/api/routers/challenge-engine";
 import { challengesRouter } from "@/server/api/routers/challenges";
 import { forumRouter } from "@/server/api/routers/forum";
 import { eventsRouter } from "@/server/api/routers/events";
+import { lumaRouter } from "@/server/api/routers/luma";
 import { membersRouter } from "@/server/api/routers/members";
 import { inboxRouter } from "@/server/api/routers/inbox";
 import { impactRouter } from "@/server/api/routers/impact";
@@ -48,6 +49,7 @@ export const appRouter = createTRPCRouter({
   comments: commentsRouter,
   communities: communitiesRouter,
   feed: feedRouter,
+  luma: lumaRouter,
 });
 
 // export type definition of API
