@@ -1,0 +1,66 @@
+"use client";
+
+import { api } from "@/trpc/react";
+import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/agent/shared";
+
+export function InviteCodes() {
+  const { data: codes, refetch } = api.agentManagement.listInviteCodes.useQuery();
+  const generateCode = api.agentManagement.generateInviteCode.useMutation({
+    onSuccess: () => void refetch(),
+  });
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <div className="border-b border-border pb-4">
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+            / INVITE CODES
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-mono text-[10px] tracking-wider"
+            onClick={() => generateCode.mutate()}
+            disabled={generateCode.isPending}
+          >
+            {generateCode.isPending ? "..." : "GENERATE CODE"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {codes && codes.length > 0 && (
+          <div className="space-y-2">
+            {codes.slice(0, 5).map((code) => (
+              <div
+                key={code.id}
+                className="flex items-center justify-between rounded border border-border bg-secondary/50 px-3 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <code className="font-mono text-sm font-medium">{code.code}</code>
+                  <span
+                    className={`rounded px-1.5 py-0.5 font-mono text-[9px] tracking-wider ${
+                      code.status === "active"
+                        ? "bg-green-950/30 text-green-400"
+                        : code.status === "used"
+                          ? "bg-blue-950/30 text-blue-400"
+                          : "bg-neutral-800 text-neutral-500"
+                    }`}
+                  >
+                    {code.status.toUpperCase()}
+                  </span>
+                </div>
+                {code.status === "active" && <CopyButton text={code.code} />}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p className="text-[10px] text-muted-foreground/60">
+          Invite codes expire after 24 hours. Give the code to your AI agent for instant activation.
+        </p>
+      </div>
+    </div>
+  );
+}
