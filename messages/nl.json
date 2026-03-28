@@ -1206,7 +1206,8 @@
         "members": "Leden",
         "invites": "Uitnodigingen",
         "rules": "Regels",
-        "ownership": "Eigenaarschap"
+        "ownership": "Eigenaarschap",
+        "integrations": "Integraties"
       },
       "members": {
         "activeTab": "Actief",
@@ -1276,6 +1277,33 @@
         "confirmDescription": "Eigenaarschap overdragen aan {name}? Je wordt gedegradeerd naar beheerder. Dit kan niet ongedaan worden gemaakt.",
         "confirmButton": "Overdracht bevestigen",
         "transferred": "Eigenaarschap overgedragen"
+      },
+      "integrations": {
+        "title": "Integraties",
+        "description": "Verbind externe diensten met je community.",
+        "luma": {
+          "title": "Luma Evenementen",
+          "description": "Synchroniseer evenementen van je Luma-kalender. Evenementen verschijnen in je community evenementenlijst.",
+          "connect": "Verbind Luma",
+          "disconnect": "Ontkoppelen",
+          "disconnectConfirm": "Weet je het zeker? Dit verwijdert de Luma-verbinding en stopt met het synchroniseren van evenementen.",
+          "apiKeyLabel": "Luma API-sleutel",
+          "apiKeyPlaceholder": "Plak je Luma API-sleutel",
+          "apiKeyHelp": "Vind je API-sleutel in Luma Instellingen → API. Vereist Luma Plus.",
+          "connecting": "Valideren...",
+          "selectCalendar": "Selecteer Kalender",
+          "selectCalendarDescription": "Kies welke Luma-kalender je wilt synchroniseren.",
+          "connected": "Verbonden",
+          "calendarLabel": "Kalender",
+          "enabled": "Synchronisatie actief",
+          "disabled": "Synchronisatie gepauzeerd",
+          "testConnection": "Test Verbinding",
+          "testing": "Testen...",
+          "testSuccess": "Verbinding succesvol!",
+          "testFailed": "Verbinding mislukt. Verbind opnieuw.",
+          "lastSync": "Laatst gesynchroniseerd",
+          "never": "nooit"
+        }
       }
     },
     "feed": {
