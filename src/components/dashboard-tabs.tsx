@@ -4,22 +4,16 @@ import { usePathname } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import {
   ActivityIcon,
-  BarChartIcon,
-  BotIcon,
   CalendarIcon,
-  BellIcon,
   SettingsIcon,
-  TrophyIcon,
+  UsersIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 const tabs = [
   { path: "/dashboard", icon: ActivityIcon, labelKey: "feed" },
-  { path: "/dashboard/agent", icon: BotIcon, labelKey: "agent" },
-  { path: "/challenges", icon: TrophyIcon, labelKey: "challenges" },
+  { path: "/dashboard/communities", icon: UsersIcon, labelKey: "communities" },
   { path: "/dashboard/events", icon: CalendarIcon, labelKey: "events" },
-  { path: "/dashboard/notifications", icon: BellIcon, labelKey: "notifications" },
-  { path: "/dashboard/impact", icon: BarChartIcon, labelKey: "qa" },
   { path: "/dashboard/settings", icon: SettingsIcon, labelKey: "settings" },
 ] as const;
 
@@ -27,7 +21,7 @@ export function DashboardTabs() {
   const pathname = usePathname();
   const t = useTranslations("dashboard");
 
-  // Strip locale prefix: /en/dashboard/agent -> /dashboard/agent
+  // Strip locale prefix: /en/dashboard/events -> /dashboard/events
   const pathWithoutLocale = pathname.replace(/^\/[a-z]{2}/, "");
 
   return (
