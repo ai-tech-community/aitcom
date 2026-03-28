@@ -377,6 +377,20 @@ export const inboxRouter = createTRPCRouter({
         });
       }
 
+      // Verify recipient exists
+      const [recipient] = await ctx.db
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.id, input.recipientId))
+        .limit(1);
+
+      if (!recipient) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Recipient not found",
+        });
+      }
+
       // Find existing DM between these two users with a single query
       const [existing] = await ctx.db
         .select({ conversationId: conversationParticipants.conversationId })

@@ -33,9 +33,7 @@ export function resolveTrustedOrigins(env: AuthUrlEnv, request?: Request) {
   const publicAppUrl = trimValue(env.NEXT_PUBLIC_APP_URL);
   if (publicAppUrl) origins.add(publicAppUrl);
 
-  const requestOrigin = request?.headers.get("origin")?.trim();
-  if (requestOrigin) origins.add(requestOrigin);
-
+  // In development, also trust requests from the local dev server
   if (env.NODE_ENV === "development") {
     const host = request?.headers.get("host")?.trim();
     const proto = request?.headers.get("x-forwarded-proto")?.trim() ?? "http";

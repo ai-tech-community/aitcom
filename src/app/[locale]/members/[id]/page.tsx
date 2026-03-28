@@ -4,7 +4,7 @@ import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { api } from "@/trpc/server";
 import { notFound } from "next/navigation";
-import { getAvatarUrl, getInitials } from "@/lib/avatar";
+import { getInitials } from "@/lib/avatar";
 import { xpForNextLevel } from "@/lib/gamification";
 import { Linkedin, Github, Globe } from "lucide-react";
 import { db } from "@/server/db";
@@ -60,11 +60,7 @@ export default async function MemberProfilePage({
     (b): b is typeof b & { slug: string } => b.slug != null,
   );
 
-  const avatarUrl = getAvatarUrl(
-    memberUser?.email ?? null,
-    memberUser?.image,
-    120,
-  );
+  const avatarUrl = memberUser?.avatarUrl ?? memberUser?.image ?? null;
   const initials = getInitials(profile.displayName);
   const xpProgress = xpForNextLevel(profile.xp);
 

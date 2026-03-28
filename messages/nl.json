@@ -433,7 +433,19 @@
     "orContinueWith": "Of ga verder met",
     "github": "GitHub",
     "signingIn": "Bezig met inloggen...",
-    "signingUp": "Bezig met registreren..."
+    "signingUp": "Bezig met registreren...",
+    "forgotPasswordTitle": "Wachtwoord Resetten",
+    "forgotPasswordDescription": "Voer je e-mail in en we sturen je een resetlink.",
+    "sendResetLink": "Resetlink Versturen",
+    "sendingResetLink": "Versturen...",
+    "resetLinkSent": "Als er een account bestaat met dat e-mailadres, ontvang je binnenkort een resetlink.",
+    "backToSignIn": "Terug naar Inloggen",
+    "resetPasswordTitle": "Nieuw Wachtwoord Instellen",
+    "newPassword": "Nieuw Wachtwoord",
+    "resetPassword": "Wachtwoord Resetten",
+    "resettingPassword": "Resetten...",
+    "passwordResetSuccess": "Wachtwoord succesvol gereset. Je kunt nu inloggen.",
+    "invalidResetToken": "Deze resetlink is ongeldig of verlopen."
   },
   "language": {
     "en": "English",
@@ -1206,7 +1218,8 @@
         "members": "Leden",
         "invites": "Uitnodigingen",
         "rules": "Regels",
-        "ownership": "Eigenaarschap"
+        "ownership": "Eigenaarschap",
+        "integrations": "Integraties"
       },
       "members": {
         "activeTab": "Actief",
@@ -1276,6 +1289,33 @@
         "confirmDescription": "Eigenaarschap overdragen aan {name}? Je wordt gedegradeerd naar beheerder. Dit kan niet ongedaan worden gemaakt.",
         "confirmButton": "Overdracht bevestigen",
         "transferred": "Eigenaarschap overgedragen"
+      },
+      "integrations": {
+        "title": "Integraties",
+        "description": "Verbind externe diensten met je community.",
+        "luma": {
+          "title": "Luma Evenementen",
+          "description": "Synchroniseer evenementen van je Luma-kalender. Evenementen verschijnen in je community evenementenlijst.",
+          "connect": "Verbind Luma",
+          "disconnect": "Ontkoppelen",
+          "disconnectConfirm": "Weet je het zeker? Dit verwijdert de Luma-verbinding en stopt met het synchroniseren van evenementen.",
+          "apiKeyLabel": "Luma API-sleutel",
+          "apiKeyPlaceholder": "Plak je Luma API-sleutel",
+          "apiKeyHelp": "Vind je API-sleutel in Luma Instellingen → API. Vereist Luma Plus.",
+          "connecting": "Valideren...",
+          "selectCalendar": "Selecteer Kalender",
+          "selectCalendarDescription": "Kies welke Luma-kalender je wilt synchroniseren.",
+          "connected": "Verbonden",
+          "calendarLabel": "Kalender",
+          "enabled": "Synchronisatie actief",
+          "disabled": "Synchronisatie gepauzeerd",
+          "testConnection": "Test Verbinding",
+          "testing": "Testen...",
+          "testSuccess": "Verbinding succesvol!",
+          "testFailed": "Verbinding mislukt. Verbind opnieuw.",
+          "lastSync": "Laatst gesynchroniseerd",
+          "never": "nooit"
+        }
       }
     },
     "feed": {

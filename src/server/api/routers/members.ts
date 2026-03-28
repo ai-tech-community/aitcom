@@ -14,6 +14,7 @@ import {
   XP_AMOUNTS,
   BADGES,
 } from "@/lib/gamification";
+import { getAvatarUrl } from "@/lib/avatar";
 
 const upsertProfileInput = z.object({
   displayName: z.string().min(1).max(255),
@@ -157,7 +158,9 @@ export const membersRouter = createTRPCRouter({
 
       return {
         profile,
-        user: memberUser ?? null,
+        user: memberUser
+          ? { image: memberUser.image, avatarUrl: getAvatarUrl(memberUser.email, memberUser.image) }
+          : null,
         badges: badges.map((b) => ({
           ...BADGES[b.badgeSlug],
           earnedAt: b.earnedAt,
@@ -241,7 +244,10 @@ export const membersRouter = createTRPCRouter({
 
       return {
         items: filtered.map((m) => ({
-          ...m,
+          profile: m.profile,
+          image: m.image,
+          avatarUrl: getAvatarUrl(m.email, m.image),
+          agentId: m.agentId,
           badgeCount: badgeCountMap.get(m.profile.userId) ?? 0,
           hasAgent: !!m.agentId,
         })),
@@ -282,7 +288,9 @@ export const membersRouter = createTRPCRouter({
     );
 
     return top.map((t) => ({
-      ...t,
+      profile: t.profile,
+      image: t.image,
+      avatarUrl: getAvatarUrl(t.email, t.image),
       badgeCount: badgeCountMap.get(t.profile.userId) ?? 0,
     }));
   }),

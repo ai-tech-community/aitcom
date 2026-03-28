@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Where } from "payload";
-import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, publicProcedure, protectedProcedure } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import {
   sendSponsorApplicationConfirmation,
@@ -34,8 +34,8 @@ export const sponsorsRouter = createTRPCRouter({
     return docs;
   }),
 
-  /** Submit a sponsor application (public, no auth required). */
-  submitApplication: publicProcedure
+  /** Submit a sponsor application (requires authentication). */
+  submitApplication: protectedProcedure
     .input(
       z.object({
         companyName: z.string().min(1).max(200),

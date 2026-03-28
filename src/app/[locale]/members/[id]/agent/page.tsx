@@ -20,7 +20,6 @@ async function getAgentData(ownerId: string) {
     .select({
       displayName: memberProfiles.displayName,
       image: user.image,
-      email: user.email,
     })
     .from(memberProfiles)
     .innerJoin(user, eq(user.id, memberProfiles.userId))

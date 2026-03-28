@@ -20,6 +20,7 @@ import { logActivity } from "@/server/agent/activity";
 import { generateInviteCode } from "@/app/api/mcp/registration-tools";
 import { getPayloadClient } from "@/server/payload";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 
 export const agentManagementRouter = createTRPCRouter({
   // ── Agent Profile ─────────────────────────────────────────────────────────
@@ -500,6 +501,12 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
+      // SSRF protection: block private/internal URLs
+      const urlCheck = validateWebhookUrl(input.url);
+      if (!urlCheck.ok) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: urlCheck.reason });
+      }
+
       const [existing] = await ctx.db
         .select({ id: agentWebhooks.id })
         .from(agentWebhooks)
@@ -568,6 +575,12 @@ export const agentManagementRouter = createTRPCRouter({
         code: "NOT_FOUND",
         message: "No webhook configured",
       });
+    }
+
+    // SSRF protection: re-validate stored URL before making outbound request
+    const urlCheck = validateWebhookUrl(webhook.url);
+    if (!urlCheck.ok) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: urlCheck.reason });
     }
 
     const payload = JSON.stringify({

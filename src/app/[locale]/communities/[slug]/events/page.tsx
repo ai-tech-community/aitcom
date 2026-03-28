@@ -2,7 +2,7 @@
 
 import { use, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Plus, Pencil, XCircle } from "lucide-react";
+import { Plus, Pencil, XCircle, ExternalLink } from "lucide-react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Link } from "@/i18n/navigation";
@@ -91,64 +91,107 @@ export default function CommunityEventsPage({
             </span>
           </div>
 
-          {events.map((event) => (
-            <Link
-              key={event.id}
-              href={`/events/${event.slug}` as never}
-              className="border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0"
-            >
-              <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
-                {event.title}
-              </span>
-              <div className="flex items-center gap-3 sm:order-1 sm:w-32">
-                <div className="bg-foreground h-2 w-2 rounded-full" />
-                <span className="font-mono text-[12px] sm:text-[13px]">
-                  {formatDate(event.date)}
+          {events.map((event) => {
+            const isLuma = event.source === "luma";
+            const sharedClassName = "border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0";
+
+            const innerContent = (
+              <>
+                <span className="flex items-center gap-1.5 text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
+                  {event.title}
+                  {isLuma && (
+                    <ExternalLink className="text-muted-foreground inline size-3" />
+                  )}
                 </span>
-                <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden">
+                <div className="flex items-center gap-3 sm:order-1 sm:w-32">
+                  <div className="bg-foreground h-2 w-2 rounded-full" />
+                  <span className="font-mono text-[12px] sm:text-[13px]">
+                    {formatDate(event.date)}
+                  </span>
+                  <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden">
+                    {typeLabels[event.type] ?? event.type}
+                  </span>
+                </div>
+                <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline">
                   {typeLabels[event.type] ?? event.type}
                 </span>
-              </div>
-              <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline">
-                {typeLabels[event.type] ?? event.type}
-              </span>
-              {event.status === "cancelled" && (
-                <span className="text-destructive font-mono text-[10px] font-medium sm:order-4 sm:ml-2">{t("cancelled")}</span>
-              )}
-              <span className="text-muted-foreground ml-4 hidden font-mono text-lg font-light sm:order-5 sm:inline">
-                +
-              </span>
-              {isAdminOrOwner && event.status !== "cancelled" && (
-                <div className="flex shrink-0 items-center gap-1 sm:order-6" onClick={(e) => e.preventDefault()}>
-                  <button className="rounded p-1 hover:bg-zinc-100" onClick={() => {
-                    setEditingEvent({
-                      id: event.id,
-                      data: {
-                        title: event.title,
-                        description: "",
-                        type: event.type,
-                        date: event.date?.split("T")[0] ?? "",
-                        startTime: event.startTime ?? "",
-                        endTime: event.endTime ?? "",
-                        location: event.location,
-                        maxAttendees: event.maxAttendees ? String(event.maxAttendees) : "",
-                      },
-                    });
-                    setDialogOpen(true);
-                  }}>
-                    <Pencil className="size-3.5 text-zinc-400" />
-                  </button>
-                  <button className="rounded p-1 hover:bg-zinc-100" onClick={() => {
-                    if (window.confirm(t("cancelEventConfirm"))) {
-                      cancelMutation.mutate({ eventId: event.id, communitySlug: slug });
-                    }
-                  }}>
-                    <XCircle className="size-3.5 text-zinc-400" />
-                  </button>
-                </div>
-              )}
-            </Link>
-          ))}
+                {event.status === "cancelled" && (
+                  <span className="text-destructive font-mono text-[10px] font-medium sm:order-4 sm:ml-2">
+                    {t("cancelled")}
+                  </span>
+                )}
+                <span className="text-muted-foreground ml-4 hidden font-mono text-lg font-light sm:order-5 sm:inline">
+                  +
+                </span>
+                {isAdminOrOwner && !isLuma && event.status !== "cancelled" && (
+                  <div
+                    className="flex shrink-0 items-center gap-1 sm:order-6"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    <button
+                      className="rounded p-1 hover:bg-zinc-100"
+                      onClick={() => {
+                        setEditingEvent({
+                          id: event.id as number,
+                          data: {
+                            title: event.title,
+                            description: "",
+                            type: event.type,
+                            date:
+                              typeof event.date === "string"
+                                ? event.date.split("T")[0] ?? ""
+                                : "",
+                            startTime: event.startTime ?? "",
+                            endTime: event.endTime ?? "",
+                            location: event.location,
+                            maxAttendees: event.maxAttendees
+                              ? String(event.maxAttendees)
+                              : "",
+                          },
+                        });
+                        setDialogOpen(true);
+                      }}
+                    >
+                      <Pencil className="size-3.5 text-zinc-400" />
+                    </button>
+                    <button
+                      className="rounded p-1 hover:bg-zinc-100"
+                      onClick={() => {
+                        if (window.confirm(t("cancelEventConfirm"))) {
+                          cancelMutation.mutate({
+                            eventId: event.id as number,
+                            communitySlug: slug,
+                          });
+                        }
+                      }}
+                    >
+                      <XCircle className="size-3.5 text-zinc-400" />
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+
+            return isLuma ? (
+              <a
+                key={event.id}
+                href={event.lumaUrl!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={sharedClassName}
+              >
+                {innerContent}
+              </a>
+            ) : (
+              <Link
+                key={event.id}
+                href={`/events/${event.slug}` as never}
+                className={sharedClassName}
+              >
+                {innerContent}
+              </Link>
+            );
+          })}
         </>
       )}
 

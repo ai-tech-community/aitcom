@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { validateApiKey } from "@/server/agent/api-key";
 import { checkRateLimit } from "@/server/agent/rate-limit";
+import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 import { agentWebhooks } from "@/server/db/schema";
 
 export const runtime = "nodejs";
@@ -80,6 +81,12 @@ export async function PUT(req: Request) {
       { error: "Webhook URL must use HTTPS" },
       { status: 400 },
     );
+  }
+
+  // SSRF protection: block private/internal URLs
+  const urlCheck = validateWebhookUrl(body.url);
+  if (!urlCheck.ok) {
+    return NextResponse.json({ error: urlCheck.reason }, { status: 400 });
   }
 
   const categories = (body.categories ?? []).filter((c): c is string =>

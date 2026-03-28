@@ -593,8 +593,31 @@ export const forumRouter = createTRPCRouter({
 
   pinThread: protectedProcedure
     .input(z.object({ threadId: z.number(), isPinned: z.boolean() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
+      const thread = await payload.findByID({
+        collection: "forum-threads",
+        id: input.threadId,
+        depth: 0,
+      });
+
+      if (!thread || thread.isDeleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+      }
+
+      if (thread.communityId) {
+        const membership = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, thread.communityId),
+            eq(communityMemberships.userId, ctx.session.user.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        });
+        if (!membership || (membership.role !== "owner" && membership.role !== "admin" && membership.role !== "moderator")) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only moderators can pin threads" });
+        }
+      }
+
       await payload.update({
         collection: "forum-threads",
         id: input.threadId,
@@ -605,8 +628,31 @@ export const forumRouter = createTRPCRouter({
 
   lockThread: protectedProcedure
     .input(z.object({ threadId: z.number(), isLocked: z.boolean() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
+      const thread = await payload.findByID({
+        collection: "forum-threads",
+        id: input.threadId,
+        depth: 0,
+      });
+
+      if (!thread || thread.isDeleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+      }
+
+      if (thread.communityId) {
+        const membership = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, thread.communityId),
+            eq(communityMemberships.userId, ctx.session.user.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        });
+        if (!membership || (membership.role !== "owner" && membership.role !== "admin" && membership.role !== "moderator")) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only moderators can lock threads" });
+        }
+      }
+
       await payload.update({
         collection: "forum-threads",
         id: input.threadId,

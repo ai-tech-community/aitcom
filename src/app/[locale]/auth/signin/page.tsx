@@ -61,12 +61,20 @@ export default function SignInPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label
-              htmlFor="password"
-              className="font-mono text-xs tracking-wider"
-            >
-              {t("password").toUpperCase()}
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label
+                htmlFor="password"
+                className="font-mono text-xs tracking-wider"
+              >
+                {t("password").toUpperCase()}
+              </Label>
+              <Link
+                href="/auth/forgot-password"
+                className="text-muted-foreground text-xs underline-offset-4 hover:underline"
+              >
+                {t("forgotPassword")}
+              </Link>
+            </div>
             <Input
               id="password"
               type="password"

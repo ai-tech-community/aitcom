@@ -433,7 +433,19 @@
     "orContinueWith": "Or continue with",
     "github": "GitHub",
     "signingIn": "Signing in...",
-    "signingUp": "Signing up..."
+    "signingUp": "Signing up...",
+    "forgotPasswordTitle": "Reset Password",
+    "forgotPasswordDescription": "Enter your email and we'll send you a reset link.",
+    "sendResetLink": "Send Reset Link",
+    "sendingResetLink": "Sending...",
+    "resetLinkSent": "If an account exists with that email, you'll receive a reset link shortly.",
+    "backToSignIn": "Back to Sign In",
+    "resetPasswordTitle": "Set New Password",
+    "newPassword": "New Password",
+    "resetPassword": "Reset Password",
+    "resettingPassword": "Resetting...",
+    "passwordResetSuccess": "Password reset successfully. You can now sign in.",
+    "invalidResetToken": "This reset link is invalid or has expired."
   },
   "language": {
     "en": "English",
@@ -1206,7 +1218,8 @@
         "members": "Members",
         "invites": "Invites",
         "rules": "Rules",
-        "ownership": "Ownership"
+        "ownership": "Ownership",
+        "integrations": "Integrations"
       },
       "members": {
         "activeTab": "Active",
@@ -1276,6 +1289,33 @@
         "confirmDescription": "Transfer ownership to {name}? You will be demoted to admin. This cannot be undone.",
         "confirmButton": "Confirm Transfer",
         "transferred": "Ownership transferred"
+      },
+      "integrations": {
+        "title": "Integrations",
+        "description": "Connect external services to your community.",
+        "luma": {
+          "title": "Luma Events",
+          "description": "Sync events from your Luma calendar. Events will appear in your community events list.",
+          "connect": "Connect Luma",
+          "disconnect": "Disconnect",
+          "disconnectConfirm": "Are you sure? This will remove the Luma connection and stop syncing events.",
+          "apiKeyLabel": "Luma API Key",
+          "apiKeyPlaceholder": "Paste your Luma API key",
+          "apiKeyHelp": "Find your API key in Luma Settings → API. Requires Luma Plus.",
+          "connecting": "Validating...",
+          "selectCalendar": "Select Calendar",
+          "selectCalendarDescription": "Choose which Luma calendar to sync events from.",
+          "connected": "Connected",
+          "calendarLabel": "Calendar",
+          "enabled": "Sync enabled",
+          "disabled": "Sync paused",
+          "testConnection": "Test Connection",
+          "testing": "Testing...",
+          "testSuccess": "Connection successful!",
+          "testFailed": "Connection failed. Please reconnect.",
+          "lastSync": "Last synced",
+          "never": "never"
+        }
       }
     },
     "feed": {

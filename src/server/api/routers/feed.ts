@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, publicProcedure, protectedProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { and, eq, isNull, inArray } from "drizzle-orm";
@@ -9,7 +9,7 @@ import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 
 export const feedRouter = createTRPCRouter({
   // ── getFeed ─────────────────────────────────────────────────────────────────
-  getFeed: publicProcedure
+  getFeed: protectedProcedure
     .input(
       z.object({
         communitySlug: z.string(),
@@ -29,6 +29,18 @@ export const feedRouter = createTRPCRouter({
       });
       if (!community) {
         throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      // Verify active membership
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, ctx.session.user.id),
+          eq(communityMemberships.status, "active"),
+        ),
+      });
+      if (!membership) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Must be a community member to view the feed" });
       }
 
       const payload = await getPayloadClient();
@@ -363,7 +375,7 @@ export const feedRouter = createTRPCRouter({
     }),
 
   // ── getComments ─────────────────────────────────────────────────────────────
-  getComments: publicProcedure
+  getComments: protectedProcedure
     .input(
       z.object({
         postId: z.number(),

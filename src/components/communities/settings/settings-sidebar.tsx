@@ -26,6 +26,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
     { key: "members", href: `${basePath}/members` },
     { key: "invites", href: `${basePath}/invites` },
     { key: "rules", href: `${basePath}/rules` },
+    { key: "integrations", href: `${basePath}/integrations`, ownerOnly: true },
     { key: "ownership", href: `${basePath}/ownership`, ownerOnly: true },
   ];
 
@@ -50,7 +51,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
               )}
             >
-              {t(item.key as "general" | "members" | "invites" | "rules" | "ownership")}
+              {t(item.key as "general" | "members" | "invites" | "rules" | "integrations" | "ownership")}
             </Link>
           );
         })}
@@ -71,7 +72,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {t(item.key as "general" | "members" | "invites" | "rules" | "ownership")}
+              {t(item.key as "general" | "members" | "invites" | "rules" | "integrations" | "ownership")}
             </Link>
           );
         })}
