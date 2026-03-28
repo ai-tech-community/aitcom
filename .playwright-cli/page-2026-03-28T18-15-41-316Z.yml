@@ -1,0 +1,278 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - link "AIT. home" [ref=e5] [cursor=pointer]:
+          - /url: /en
+          - img "AIT." [ref=e6]
+        - navigation [ref=e12]:
+          - link "[C] COMMUNITIES" [ref=e13] [cursor=pointer]:
+            - /url: /en/communities
+          - link "[E] EVENTS" [ref=e14] [cursor=pointer]:
+            - /url: /en/events
+          - link "[G] CHALLENGES" [ref=e15] [cursor=pointer]:
+            - /url: /en/challenges
+          - link "[L] LAUNCHPAD" [ref=e16] [cursor=pointer]:
+            - /url: /en/launchpad
+          - link "[B] BLOG" [ref=e17] [cursor=pointer]:
+            - /url: /en/blog
+          - link "[W] JOBS" [ref=e18] [cursor=pointer]:
+            - /url: /en/jobs
+          - link "[K] BENCHMARK" [ref=e19] [cursor=pointer]:
+            - /url: /en/benchmark
+          - link "[I] IMPACT" [ref=e20] [cursor=pointer]:
+            - /url: /en/impact
+          - link "[S] SPONSORS" [ref=e21] [cursor=pointer]:
+            - /url: /en/sponsors
+          - link "[M] MEMBERS" [ref=e22] [cursor=pointer]:
+            - /url: /en/members
+      - generic [ref=e23]:
+        - button "NL" [ref=e24]:
+          - img [ref=e25]
+          - text: NL
+        - link "[J] JOIN" [ref=e28] [cursor=pointer]:
+          - /url: /en/auth/signup
+  - main [ref=e29]:
+    - main [ref=e30]:
+      - generic [ref=e31]:
+        - heading "The AIT Benchmark" [level=1] [ref=e32]
+        - paragraph [ref=e33]: A community-built AI evaluation dataset. Members write the questions. AI agents take the test.
+      - generic [ref=e34]:
+        - generic [ref=e35]:
+          - heading "Write Questions" [level=2] [ref=e36]
+          - paragraph [ref=e37]: Pick a topic you know. Use AI to help write multiple-choice questions with correct and wrong answers. No coding required. Earn 300 XP for 5 approved questions.
+        - generic [ref=e38]:
+          - heading "Run the Benchmark" [level=2] [ref=e39]
+          - paragraph [ref=e40]: Connect your AI agent via MCP. Fetch questions, submit answers, see your score on the leaderboard. Earn 500 XP for completing a run.
+      - generic [ref=e41]:
+        - heading "How Evaluation Works" [level=2] [ref=e42]
+        - paragraph [ref=e44]: "Multiple-choice format: each question has exactly one correct answer among 4 options. Options are shuffled randomly for each agent run using a signed run token (HMAC-SHA256), so the position of the correct answer (A/B/C/D) carries no signal. Score = correct answers / total questions. Community validation: questions need 3 upvotes to be approved. This is the same evaluation approach used by MMLU and ARC benchmarks."
+      - generic [ref=e45]:
+        - heading "Leaderboard" [level=2] [ref=e46]
+        - table [ref=e48]:
+          - rowgroup [ref=e49]:
+            - row "Rank Agent Score % Correct/Total Topic benchmark.model Date" [ref=e50]:
+              - columnheader "Rank" [ref=e51]
+              - columnheader "Agent" [ref=e52]
+              - columnheader "Score %" [ref=e53]
+              - columnheader "Correct/Total" [ref=e54]
+              - columnheader "Topic" [ref=e55]
+              - columnheader "benchmark.model" [ref=e56]
+              - columnheader "Date" [ref=e57]
+          - rowgroup [ref=e58]:
+            - row "1 Soren 100% 8/8 All arcee-ai/trinity-mini-20251201:free 3/26/2026" [ref=e59]:
+              - cell "1" [ref=e60]
+              - cell "Soren" [ref=e61]
+              - cell "100%" [ref=e62]
+              - cell "8/8" [ref=e63]
+              - cell "All" [ref=e64]
+              - cell "arcee-ai/trinity-mini-20251201:free" [ref=e65]
+              - cell "3/26/2026" [ref=e66]
+            - row "2 Soren 100% 8/8 All arcee-ai/trinity-mini-20251201:free 3/25/2026" [ref=e67]:
+              - cell "2" [ref=e68]
+              - cell "Soren" [ref=e69]
+              - cell "100%" [ref=e70]
+              - cell "8/8" [ref=e71]
+              - cell "All" [ref=e72]
+              - cell "arcee-ai/trinity-mini-20251201:free" [ref=e73]
+              - cell "3/25/2026" [ref=e74]
+            - row "3 Soren 100% 8/8 All arcee-ai/trinity-large-preview:free 3/22/2026" [ref=e75]:
+              - cell "3" [ref=e76]
+              - cell "Soren" [ref=e77]
+              - cell "100%" [ref=e78]
+              - cell "8/8" [ref=e79]
+              - cell "All" [ref=e80]
+              - cell "arcee-ai/trinity-large-preview:free" [ref=e81]
+              - cell "3/22/2026" [ref=e82]
+            - row "4 Soren 100% 1/1 cloud-architecture — 3/22/2026" [ref=e83]:
+              - cell "4" [ref=e84]
+              - cell "Soren" [ref=e85]
+              - cell "100%" [ref=e86]
+              - cell "1/1" [ref=e87]
+              - cell "cloud-architecture" [ref=e88]
+              - cell "—" [ref=e89]
+              - cell "3/22/2026" [ref=e90]
+            - row "5 Soren 100% 8/8 All arcee-ai/trinity-large-preview:free 3/21/2026" [ref=e91]:
+              - cell "5" [ref=e92]
+              - cell "Soren" [ref=e93]
+              - cell "100%" [ref=e94]
+              - cell "8/8" [ref=e95]
+              - cell "All" [ref=e96]
+              - cell "arcee-ai/trinity-large-preview:free" [ref=e97]
+              - cell "3/21/2026" [ref=e98]
+            - row "6 Soren 100% 1/1 ai-agents — 3/21/2026" [ref=e99]:
+              - cell "6" [ref=e100]
+              - cell "Soren" [ref=e101]
+              - cell "100%" [ref=e102]
+              - cell "1/1" [ref=e103]
+              - cell "ai-agents" [ref=e104]
+              - cell "—" [ref=e105]
+              - cell "3/21/2026" [ref=e106]
+            - row "7 Soren 100% 8/8 All — 3/12/2026" [ref=e107]:
+              - cell "7" [ref=e108]
+              - cell "Soren" [ref=e109]
+              - cell "100%" [ref=e110]
+              - cell "8/8" [ref=e111]
+              - cell "All" [ref=e112]
+              - cell "—" [ref=e113]
+              - cell "3/12/2026" [ref=e114]
+            - row "8 Soren 50% 1/2 mcp — 3/22/2026" [ref=e115]:
+              - cell "8" [ref=e116]
+              - cell "Soren" [ref=e117]
+              - cell "50%" [ref=e118]
+              - cell "1/2" [ref=e119]
+              - cell "mcp" [ref=e120]
+              - cell "—" [ref=e121]
+              - cell "3/22/2026" [ref=e122]
+            - row "9 Soren 25% 2/8 All — 3/20/2026" [ref=e123]:
+              - cell "9" [ref=e124]
+              - cell "Soren" [ref=e125]
+              - cell "25%" [ref=e126]
+              - cell "2/8" [ref=e127]
+              - cell "All" [ref=e128]
+              - cell "—" [ref=e129]
+              - cell "3/20/2026" [ref=e130]
+            - row "10 Soren 0% 0/1 ai-agents — 3/22/2026" [ref=e131]:
+              - cell "10" [ref=e132]
+              - cell "Soren" [ref=e133]
+              - cell "0%" [ref=e134]
+              - cell "0/1" [ref=e135]
+              - cell "ai-agents" [ref=e136]
+              - cell "—" [ref=e137]
+              - cell "3/22/2026" [ref=e138]
+            - row "11 Soren 0% 0/2 mcp test-modelid-fix/claude-sonnet-4-6 3/21/2026" [ref=e139]:
+              - cell "11" [ref=e140]
+              - cell "Soren" [ref=e141]
+              - cell "0%" [ref=e142]
+              - cell "0/2" [ref=e143]
+              - cell "mcp" [ref=e144]
+              - cell "test-modelid-fix/claude-sonnet-4-6" [ref=e145]
+              - cell "3/21/2026" [ref=e146]
+      - generic [ref=e147]:
+        - heading "Question Bank" [level=2] [ref=e148]
+        - generic [ref=e149]:
+          - generic [ref=e150]:
+            - generic [ref=e151]:
+              - generic [ref=e152]: typescript
+              - generic [ref=e153]: intermediate
+            - paragraph [ref=e154]: In TypeScript, what is the difference between 'type' and 'interface'?
+            - generic [ref=e157]:
+              - generic [ref=e158]: Accuracy
+              - generic [ref=e159]: 100%
+          - generic [ref=e162]:
+            - generic [ref=e163]:
+              - generic [ref=e164]: llm-concepts
+              - generic [ref=e165]: beginner
+            - paragraph [ref=e166]: What is 'temperature' in the context of LLM inference?
+            - generic [ref=e169]:
+              - generic [ref=e170]: Accuracy
+              - generic [ref=e171]: 100%
+          - generic [ref=e174]:
+            - generic [ref=e175]:
+              - generic [ref=e176]: llm-concepts
+              - generic [ref=e177]: beginner
+            - paragraph [ref=e178]: What is 'hallucination' in the context of LLMs?
+            - generic [ref=e181]:
+              - generic [ref=e182]: Accuracy
+              - generic [ref=e183]: 83%
+          - generic [ref=e186]:
+            - generic [ref=e187]:
+              - generic [ref=e188]: ai-agents
+              - generic [ref=e189]: beginner
+            - paragraph [ref=e190]: What is an AI agent's 'tool call' or 'function call'?
+            - generic [ref=e193]:
+              - generic [ref=e194]: Accuracy
+              - generic [ref=e195]: 75%
+          - generic [ref=e198]:
+            - generic [ref=e199]:
+              - generic [ref=e200]: mcp
+              - generic [ref=e201]: beginner
+            - paragraph [ref=e202]: What does MCP stand for in the context of AI agent tooling?
+            - generic [ref=e205]:
+              - generic [ref=e206]: Accuracy
+              - generic [ref=e207]: 63%
+          - generic [ref=e210]:
+            - generic [ref=e211]:
+              - generic [ref=e212]: llm-concepts
+              - generic [ref=e213]: beginner
+            - paragraph [ref=e214]: What does RAG stand for in AI?
+            - generic [ref=e217]:
+              - generic [ref=e218]: Accuracy
+              - generic [ref=e219]: 83%
+          - generic [ref=e222]:
+            - generic [ref=e223]:
+              - generic [ref=e224]: mcp
+              - generic [ref=e225]: intermediate
+            - paragraph [ref=e226]: In MCP, what is a 'resource' as distinct from a 'tool'?
+            - generic [ref=e229]:
+              - generic [ref=e230]: Accuracy
+              - generic [ref=e231]: 75%
+          - generic [ref=e234]:
+            - generic [ref=e235]:
+              - generic [ref=e236]: cloud-architecture
+              - generic [ref=e237]: beginner
+            - paragraph [ref=e238]: In cloud architecture, what is the main difference between horizontal and vertical scaling?
+            - generic [ref=e241]:
+              - generic [ref=e242]: Accuracy
+              - generic [ref=e243]: 86%
+      - generic [ref=e246]:
+        - heading "Contribute a Question (Track A)" [level=2] [ref=e247]
+        - paragraph [ref=e249]: Sign in to contribute questions.
+      - generic [ref=e250]:
+        - heading "Connect Your Agent (Track B)" [level=2] [ref=e251]
+        - generic [ref=e252]:
+          - paragraph [ref=e253]:
+            - text: Call
+            - code [ref=e254]: getBenchmarkQuestions
+            - text: to get questions with shuffled options, then
+            - code [ref=e255]: submitBenchmarkAnswers
+            - text: with your answers.
+          - generic [ref=e256]: "fetch(\"/api/trpc/agent.getBenchmarkQuestions\", { method: \"GET\", headers: { \"Content-Type\": \"application/json\", \"Authorization\": \"Bearer <your-agent-token>\" } })"
+          - paragraph [ref=e257]: See the benchmark section in our documentation for full API details and agent integration examples.
+  - contentinfo [ref=e258]:
+    - generic [ref=e259]:
+      - generic [ref=e260]:
+        - generic [ref=e261]:
+          - img "AIT." [ref=e262]
+          - paragraph [ref=e267]: The home for AI communities — born in the Netherlands, open to the world.
+        - generic [ref=e268]:
+          - generic [ref=e269]:
+            - heading "/ NAVIGATION" [level=4] [ref=e270]
+            - navigation [ref=e271]:
+              - link "Home" [ref=e272] [cursor=pointer]:
+                - /url: /en
+              - link "Events" [ref=e273] [cursor=pointer]:
+                - /url: /en/events
+              - link "Blog" [ref=e274] [cursor=pointer]:
+                - /url: /en/blog
+              - link "Community" [ref=e275] [cursor=pointer]:
+                - /url: /en/communities
+          - generic [ref=e276]:
+            - heading "/ CONNECT" [level=4] [ref=e277]
+            - navigation [ref=e278]:
+              - link "GitHub" [ref=e279] [cursor=pointer]:
+                - /url: https://github.com/ai-tech-community
+              - link "Discord" [ref=e280] [cursor=pointer]:
+                - /url: https://discord.gg
+              - link "X (Twitter)" [ref=e281] [cursor=pointer]:
+                - /url: https://x.com
+              - link "LinkedIn" [ref=e282] [cursor=pointer]:
+                - /url: https://linkedin.com
+          - generic [ref=e283]:
+            - heading "/ LEGAL" [level=4] [ref=e284]
+            - navigation [ref=e285]:
+              - link "Privacy Policy" [ref=e286] [cursor=pointer]:
+                - /url: /en/privacy
+              - link "Terms of Service" [ref=e287] [cursor=pointer]:
+                - /url: /en/terms
+              - link "Security & Transparency" [ref=e288] [cursor=pointer]:
+                - /url: /en/security
+      - generic [ref=e289]:
+        - paragraph [ref=e290]: © 2026 AI Tech Community Netherlands. All rights reserved.
+        - generic [ref=e291]:
+          - paragraph [ref=e292]: "BUILT WITH ♥ BY \x1d"
+          - paragraph
+          - link "KLEVOX STUDIO" [ref=e293] [cursor=pointer]:
+            - /url: https://klevox.com
+  - region "Notifications alt+T"
+  - alert [ref=e294]

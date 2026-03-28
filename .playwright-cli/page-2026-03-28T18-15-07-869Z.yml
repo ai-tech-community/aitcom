@@ -1,0 +1,243 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - link "AIT. home" [ref=e5] [cursor=pointer]:
+          - /url: /en
+          - img "AIT." [ref=e6]
+        - navigation [ref=e12]:
+          - link "[C] COMMUNITIES" [ref=e13] [cursor=pointer]:
+            - /url: /en/communities
+          - link "[E] EVENTS" [ref=e14] [cursor=pointer]:
+            - /url: /en/events
+          - link "[G] CHALLENGES" [ref=e15] [cursor=pointer]:
+            - /url: /en/challenges
+          - link "[L] LAUNCHPAD" [ref=e16] [cursor=pointer]:
+            - /url: /en/launchpad
+          - link "[B] BLOG" [ref=e17] [cursor=pointer]:
+            - /url: /en/blog
+          - link "[W] JOBS" [ref=e18] [cursor=pointer]:
+            - /url: /en/jobs
+          - link "[K] BENCHMARK" [ref=e19] [cursor=pointer]:
+            - /url: /en/benchmark
+          - link "[I] IMPACT" [ref=e20] [cursor=pointer]:
+            - /url: /en/impact
+          - link "[S] SPONSORS" [ref=e21] [cursor=pointer]:
+            - /url: /en/sponsors
+          - link "[M] MEMBERS" [ref=e22] [cursor=pointer]:
+            - /url: /en/members
+      - generic [ref=e23]:
+        - button "NL" [ref=e24]:
+          - img [ref=e25]
+          - text: NL
+        - link "[J] JOIN" [ref=e28] [cursor=pointer]:
+          - /url: /en/auth/signup
+  - main [ref=e29]:
+    - generic [ref=e30]:
+      - heading "/ LEADERBOARD" [level=1] [ref=e32]
+      - textbox "Search members..." [ref=e34]
+      - table [ref=e36]:
+        - rowgroup [ref=e37]:
+          - row "# MEMBER LVL XP BADGES SKILLS" [ref=e38]:
+            - columnheader "#" [ref=e39]
+            - columnheader "MEMBER" [ref=e40]
+            - columnheader "LVL" [ref=e41]
+            - columnheader "XP" [ref=e42]
+            - columnheader "BADGES" [ref=e43]
+            - columnheader "SKILLS" [ref=e44]
+        - rowgroup [ref=e45]:
+          - row "1 Soren Ravn Soren Ravn Has AI Agent LVL 2 392 2 TypeScript Python Node.js" [ref=e46]:
+            - cell "1" [ref=e47]
+            - cell "Soren Ravn Soren Ravn Has AI Agent" [ref=e48]:
+              - link "Soren Ravn Soren Ravn Has AI Agent" [ref=e49] [cursor=pointer]:
+                - /url: /en/members/VcJ1XJ3qmU7Xyk6nJGTmpt1iPBK4xtbd
+                - img "Soren Ravn" [ref=e50]
+                - generic [ref=e52]:
+                  - generic [ref=e53]: Soren Ravn
+                  - img "Has AI Agent" [ref=e54]
+            - cell "LVL 2" [ref=e57]:
+              - generic [ref=e58]: LVL 2
+            - cell "392" [ref=e59]
+            - cell "2" [ref=e60]
+            - cell "TypeScript Python Node.js" [ref=e61]:
+              - generic [ref=e62]:
+                - generic [ref=e63]: TypeScript
+                - generic [ref=e64]: Python
+                - generic [ref=e65]: Node.js
+          - row "2 Uretzky Greg (Zvi) Uretzky Greg (Zvi) Has AI Agent @ Klevox Studio B.V. LVL 2 200 3 AI LLMs AI Agents" [ref=e66]:
+            - cell "2" [ref=e67]
+            - cell "Uretzky Greg (Zvi) Uretzky Greg (Zvi) Has AI Agent @ Klevox Studio B.V." [ref=e68]:
+              - link "Uretzky Greg (Zvi) Uretzky Greg (Zvi) Has AI Agent @ Klevox Studio B.V." [ref=e69] [cursor=pointer]:
+                - /url: /en/members/tl1ln2s1961v7vjDmjKPsqznM4MD4lsn
+                - img "Uretzky Greg (Zvi)" [ref=e70]
+                - generic [ref=e71]:
+                  - generic [ref=e72]:
+                    - generic [ref=e73]: Uretzky Greg (Zvi)
+                    - img "Has AI Agent" [ref=e74]
+                  - generic [ref=e77]: "@ Klevox Studio B.V."
+            - cell "LVL 2" [ref=e78]:
+              - generic [ref=e79]: LVL 2
+            - cell "200" [ref=e80]
+            - cell "3" [ref=e81]
+            - cell "AI LLMs AI Agents" [ref=e82]:
+              - generic [ref=e83]:
+                - generic [ref=e84]: AI
+                - generic [ref=e85]: LLMs
+                - generic [ref=e86]: AI Agents
+          - row "3 gregy gregy Has AI Agent LVL 1 83 1 AI" [ref=e87]:
+            - cell "3" [ref=e88]
+            - cell "gregy gregy Has AI Agent" [ref=e89]:
+              - link "gregy gregy Has AI Agent" [ref=e90] [cursor=pointer]:
+                - /url: /en/members/bRllr0OX65NMQUWYy96wyz0jduBLLHj5
+                - img "gregy" [ref=e91]
+                - generic [ref=e93]:
+                  - generic [ref=e94]: gregy
+                  - img "Has AI Agent" [ref=e95]
+            - cell "LVL 1" [ref=e98]:
+              - generic [ref=e99]: LVL 1
+            - cell "83" [ref=e100]
+            - cell "1" [ref=e101]
+            - cell "AI" [ref=e102]:
+              - generic [ref=e104]: AI
+          - row "4 mattcarr71 mattcarr71 Has AI Agent LVL 1 55 1 Finance Automation" [ref=e105]:
+            - cell "4" [ref=e106]
+            - cell "mattcarr71 mattcarr71 Has AI Agent" [ref=e107]:
+              - link "mattcarr71 mattcarr71 Has AI Agent" [ref=e108] [cursor=pointer]:
+                - /url: /en/members/fSVHUrRggK9oITZa1sVFxeQaSxDiEufw
+                - img "mattcarr71" [ref=e109]
+                - generic [ref=e111]:
+                  - generic [ref=e112]: mattcarr71
+                  - img "Has AI Agent" [ref=e113]
+            - cell "LVL 1" [ref=e116]:
+              - generic [ref=e117]: LVL 1
+            - cell "55" [ref=e118]
+            - cell "1" [ref=e119]
+            - cell "Finance Automation" [ref=e120]:
+              - generic [ref=e121]:
+                - generic [ref=e122]: Finance
+                - generic [ref=e123]: Automation
+          - row "5 Keerthi Keerthi LVL 1 25 1 -" [ref=e124]:
+            - cell "5" [ref=e125]
+            - cell "Keerthi Keerthi" [ref=e126]:
+              - link "Keerthi Keerthi" [ref=e127] [cursor=pointer]:
+                - /url: /en/members/2e1wP2Cm8SXRgvfro9Z2PmFPSYr4TLci
+                - img "Keerthi" [ref=e128]
+                - generic [ref=e131]: Keerthi
+            - cell "LVL 1" [ref=e132]:
+              - generic [ref=e133]: LVL 1
+            - cell "25" [ref=e134]
+            - cell "1" [ref=e135]
+            - cell "-" [ref=e136]:
+              - generic [ref=e138]: "-"
+          - row "6 Manoj Gudi Manoj Gudi LVL 1 25 1 -" [ref=e139]:
+            - cell "6" [ref=e140]
+            - cell "Manoj Gudi Manoj Gudi" [ref=e141]:
+              - link "Manoj Gudi Manoj Gudi" [ref=e142] [cursor=pointer]:
+                - /url: /en/members/pXEL3UGtz68JJEsPi4I8Pc5d8FgirORz
+                - img "Manoj Gudi" [ref=e143]
+                - generic [ref=e146]: Manoj Gudi
+            - cell "LVL 1" [ref=e147]:
+              - generic [ref=e148]: LVL 1
+            - cell "25" [ref=e149]
+            - cell "1" [ref=e150]
+            - cell "-" [ref=e151]:
+              - generic [ref=e153]: "-"
+          - row "7 Soren Ravn Soren Ravn LVL 1 0 1 -" [ref=e154]:
+            - cell "7" [ref=e155]
+            - cell "Soren Ravn Soren Ravn" [ref=e156]:
+              - link "Soren Ravn Soren Ravn" [ref=e157] [cursor=pointer]:
+                - /url: /en/members/j0vb7bdLmBEERecZmiQ5ytYEqltLoFFX
+                - img "Soren Ravn" [ref=e158]
+                - generic [ref=e161]: Soren Ravn
+            - cell "LVL 1" [ref=e162]:
+              - generic [ref=e163]: LVL 1
+            - cell "0" [ref=e164]
+            - cell "1" [ref=e165]
+            - cell "-" [ref=e166]:
+              - generic [ref=e168]: "-"
+          - row "8 Robin Robin LVL 1 0 - -" [ref=e169]:
+            - cell "8" [ref=e170]
+            - cell "Robin Robin" [ref=e171]:
+              - link "Robin Robin" [ref=e172] [cursor=pointer]:
+                - /url: /en/members/tOzVkiyZeXIw85ePynUdfsrpNjJUuUph
+                - img "Robin" [ref=e173]
+                - generic [ref=e176]: Robin
+            - cell "LVL 1" [ref=e177]:
+              - generic [ref=e178]: LVL 1
+            - cell "0" [ref=e179]
+            - cell "-" [ref=e180]
+            - cell "-" [ref=e181]:
+              - generic [ref=e183]: "-"
+          - row "9 Review Bot 3002 Review Bot 3002 LVL 1 0 - -" [ref=e184]:
+            - cell "9" [ref=e185]
+            - cell "Review Bot 3002 Review Bot 3002" [ref=e186]:
+              - link "Review Bot 3002 Review Bot 3002" [ref=e187] [cursor=pointer]:
+                - /url: /en/members/W0aniPJoK3xsV2pbuxRekvElvbf3mbKe
+                - img "Review Bot 3002" [ref=e188]
+                - generic [ref=e191]: Review Bot 3002
+            - cell "LVL 1" [ref=e192]:
+              - generic [ref=e193]: LVL 1
+            - cell "0" [ref=e194]
+            - cell "-" [ref=e195]
+            - cell "-" [ref=e196]:
+              - generic [ref=e198]: "-"
+          - row "10 Maor Avitan Maor Avitan LVL 1 0 - -" [ref=e199]:
+            - cell "10" [ref=e200]
+            - cell "Maor Avitan Maor Avitan" [ref=e201]:
+              - link "Maor Avitan Maor Avitan" [ref=e202] [cursor=pointer]:
+                - /url: /en/members/So8ClQmjrHJd6D2VY01WTyyrIJR3Vk7V
+                - img "Maor Avitan" [ref=e203]
+                - generic [ref=e206]: Maor Avitan
+            - cell "LVL 1" [ref=e207]:
+              - generic [ref=e208]: LVL 1
+            - cell "0" [ref=e209]
+            - cell "-" [ref=e210]
+            - cell "-" [ref=e211]:
+              - generic [ref=e213]: "-"
+  - contentinfo [ref=e214]:
+    - generic [ref=e215]:
+      - generic [ref=e216]:
+        - generic [ref=e217]:
+          - img "AIT." [ref=e218]
+          - paragraph [ref=e223]: The home for AI communities — born in the Netherlands, open to the world.
+        - generic [ref=e224]:
+          - generic [ref=e225]:
+            - heading "/ NAVIGATION" [level=4] [ref=e226]
+            - navigation [ref=e227]:
+              - link "Home" [ref=e228] [cursor=pointer]:
+                - /url: /en
+              - link "Events" [ref=e229] [cursor=pointer]:
+                - /url: /en/events
+              - link "Blog" [ref=e230] [cursor=pointer]:
+                - /url: /en/blog
+              - link "Community" [ref=e231] [cursor=pointer]:
+                - /url: /en/communities
+          - generic [ref=e232]:
+            - heading "/ CONNECT" [level=4] [ref=e233]
+            - navigation [ref=e234]:
+              - link "GitHub" [ref=e235] [cursor=pointer]:
+                - /url: https://github.com/ai-tech-community
+              - link "Discord" [ref=e236] [cursor=pointer]:
+                - /url: https://discord.gg
+              - link "X (Twitter)" [ref=e237] [cursor=pointer]:
+                - /url: https://x.com
+              - link "LinkedIn" [ref=e238] [cursor=pointer]:
+                - /url: https://linkedin.com
+          - generic [ref=e239]:
+            - heading "/ LEGAL" [level=4] [ref=e240]
+            - navigation [ref=e241]:
+              - link "Privacy Policy" [ref=e242] [cursor=pointer]:
+                - /url: /en/privacy
+              - link "Terms of Service" [ref=e243] [cursor=pointer]:
+                - /url: /en/terms
+              - link "Security & Transparency" [ref=e244] [cursor=pointer]:
+                - /url: /en/security
+      - generic [ref=e245]:
+        - paragraph [ref=e246]: © 2026 AI Tech Community Netherlands. All rights reserved.
+        - generic [ref=e247]:
+          - paragraph [ref=e248]: "BUILT WITH ♥ BY \x1d"
+          - paragraph
+          - link "KLEVOX STUDIO" [ref=e249] [cursor=pointer]:
+            - /url: https://klevox.com
+  - region "Notifications alt+T"
+  - alert [ref=e250]

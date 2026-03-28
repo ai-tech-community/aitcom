@@ -1,0 +1,196 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - link "AIT. home" [ref=e5] [cursor=pointer]:
+          - /url: /en
+          - img "AIT." [ref=e6]
+        - navigation [ref=e12]:
+          - link "[C] COMMUNITIES" [ref=e13] [cursor=pointer]:
+            - /url: /en/communities
+          - link "[E] EVENTS" [ref=e14] [cursor=pointer]:
+            - /url: /en/events
+          - link "[G] CHALLENGES" [ref=e15] [cursor=pointer]:
+            - /url: /en/challenges
+          - link "[L] LAUNCHPAD" [ref=e16] [cursor=pointer]:
+            - /url: /en/launchpad
+          - link "[B] BLOG" [ref=e17] [cursor=pointer]:
+            - /url: /en/blog
+          - link "[W] JOBS" [ref=e18] [cursor=pointer]:
+            - /url: /en/jobs
+          - link "[K] BENCHMARK" [ref=e19] [cursor=pointer]:
+            - /url: /en/benchmark
+          - link "[I] IMPACT" [ref=e20] [cursor=pointer]:
+            - /url: /en/impact
+          - link "[S] SPONSORS" [ref=e21] [cursor=pointer]:
+            - /url: /en/sponsors
+          - link "[M] MEMBERS" [ref=e22] [cursor=pointer]:
+            - /url: /en/members
+      - generic [ref=e23]:
+        - button "NL" [ref=e24]:
+          - img [ref=e25]
+          - text: NL
+        - link "[J] JOIN" [ref=e28] [cursor=pointer]:
+          - /url: /en/auth/signup
+  - main [ref=e29]:
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - generic [ref=e33]: +
+        - generic [ref=e34]: +
+        - generic [ref=e35]: +
+        - generic [ref=e36]: +
+        - generic [ref=e37]: +
+      - heading "Welcome to AI Tech Community" [level=1] [ref=e39]:
+        - generic [ref=e40]: Welcome to
+        - generic [ref=e41]: AI Tech Community
+      - paragraph [ref=e42]: The home for AI communities. Host your community, onboard your members, and grow together — powered by shared infrastructure, challenges, and events.
+      - generic [ref=e43]:
+        - generic [ref=e44]: +
+        - generic [ref=e45]: +
+        - generic [ref=e46]: +
+        - generic [ref=e47]: +
+        - generic [ref=e48]: +
+    - generic [ref=e49]:
+      - generic [ref=e50]:
+        - generic [ref=e51]: "COMMUNITIES:"
+        - generic [ref=e52]: "1"
+      - generic [ref=e53]:
+        - generic [ref=e54]: "MEMBERS:"
+        - generic [ref=e55]: "10"
+      - generic [ref=e56]:
+        - generic [ref=e57]: "EVENTS:"
+        - generic [ref=e58]: "1"
+      - generic [ref=e59]:
+        - generic [ref=e60]: "WORKSHOPS:"
+        - generic [ref=e61]: "1"
+      - generic [ref=e62]:
+        - generic [ref=e63]: "HACKATHONS:"
+        - generic [ref=e64]: "0"
+      - generic [ref=e65]:
+        - generic [ref=e66]: "SPONSORS:"
+        - generic [ref=e67]: "1"
+    - generic [ref=e68]:
+      - heading "/ WHAT WE DO" [level=2] [ref=e70]
+      - generic [ref=e71]:
+        - button "[ FIG. 1 ] Build Set up your AI agent and start building together. Workshops, tools, and open source to get you started." [ref=e72]:
+          - generic [ref=e73]:
+            - generic [ref=e74]: "[ FIG. 1 ]"
+            - img [ref=e75]
+          - generic [ref=e79]:
+            - heading "Build" [level=3] [ref=e80]
+            - paragraph [ref=e81]: Set up your AI agent and start building together. Workshops, tools, and open source to get you started.
+        - button "[ FIG. 2 ] Compete Real problems from real companies, solved with AI. Earn XP, badges, and sponsor rewards." [ref=e82]:
+          - generic [ref=e83]:
+            - generic [ref=e84]: "[ FIG. 2 ]"
+            - img [ref=e85]
+          - generic [ref=e89]:
+            - heading "Compete" [level=3] [ref=e90]
+            - paragraph [ref=e91]: Real problems from real companies, solved with AI. Earn XP, badges, and sponsor rewards.
+        - button "[ FIG. 3 ] Connect Discover and join AI communities worldwide. Each community gets its own space for events, discussions, and collaboration." [ref=e92]:
+          - generic [ref=e93]:
+            - generic [ref=e94]: "[ FIG. 3 ]"
+            - img [ref=e95]
+          - generic [ref=e99]:
+            - heading "Connect" [level=3] [ref=e100]
+            - paragraph [ref=e101]: Discover and join AI communities worldwide. Each community gets its own space for events, discussions, and collaboration.
+    - generic [ref=e102]:
+      - heading "/ UPCOMING EVENTS" [level=2] [ref=e104]
+      - generic [ref=e105]:
+        - generic [ref=e106]: / DATE
+        - generic [ref=e107]: / NAME
+        - generic [ref=e108]: / TYPE
+      - 'link "Intro Deep-Dive: Build Your First AI Agent 2026.5.02 WORKSHOP +" [ref=e109] [cursor=pointer]':
+        - /url: /en/events/intro-deep-dive-build-your-first-ai-agent
+        - generic [ref=e110]: "Intro Deep-Dive: Build Your First AI Agent"
+        - generic [ref=e113]: 2026.5.02
+        - generic [ref=e114]: WORKSHOP
+        - generic [ref=e115]: +
+      - link "View All Events →" [ref=e117] [cursor=pointer]:
+        - /url: /en/events
+    - generic [ref=e118]:
+      - heading "/ WHY AI + HUMANS" [level=2] [ref=e120]
+      - generic [ref=e121]:
+        - heading "Better Together Than Apart" [level=2] [ref=e122]
+        - paragraph [ref=e123]: When engineers and AI agents collaborate, they unlock capabilities neither has alone. Human creativity sets the direction - AI speed makes it real. Together, they build solutions that matter.
+      - generic [ref=e124]:
+        - generic [ref=e125]:
+          - heading "HUMAN CREATIVITY" [level=3] [ref=e126]
+          - paragraph [ref=e127]: Engineers bring domain expertise, taste, and the ability to ask the right questions. AI amplifies that creativity - it doesn't replace it.
+        - generic [ref=e128]:
+          - heading "AI SPEED" [level=3] [ref=e129]
+          - paragraph [ref=e130]: AI agents handle the repetitive work - code generation, testing, documentation - so engineers can focus on architecture and design decisions.
+        - generic [ref=e131]:
+          - heading "REAL IMPACT" [level=3] [ref=e132]
+          - paragraph [ref=e133]: "Our community proves it every day: human-AI teams ship faster, learn faster, and solve problems that neither could tackle alone."
+    - generic [ref=e134]:
+      - heading "/ OUR SPONSORS" [level=2] [ref=e136]
+      - generic [ref=e137]:
+        - heading "Build With the Best Engineers in AI" [level=2] [ref=e138]
+        - paragraph [ref=e139]: Our sponsors publish real challenges, connect with top solvers, and discover engineers who build with AI every day. Join the companies already partnering with our community.
+      - link "Klevox Studio B.V." [ref=e141] [cursor=pointer]:
+        - /url: https://klevox.com/
+        - img "Klevox Studio B.V." [ref=e142]
+      - link "Become a Sponsor →" [ref=e144] [cursor=pointer]:
+        - /url: /en/sponsors
+    - generic [ref=e146]:
+      - link "Build With AI Set up your agent and start building. Workshops, tools, and open source to get you started." [ref=e147] [cursor=pointer]:
+        - /url: /en/communities
+        - generic [ref=e148]: Build With AI
+        - paragraph [ref=e149]: Set up your agent and start building. Workshops, tools, and open source to get you started.
+        - img [ref=e150]
+      - link "Take a Challenge Solve real problems with your AI agent. Earn XP, badges, and sponsor rewards." [ref=e153] [cursor=pointer]:
+        - /url: /en/challenges
+        - generic [ref=e154]: Take a Challenge
+        - paragraph [ref=e155]: Solve real problems with your AI agent. Earn XP, badges, and sponsor rewards.
+        - img [ref=e156]
+      - link "Host Your Community Bring your AI community online. Get your own space with forums, events, and member management — fully maintained by AIT." [ref=e159] [cursor=pointer]:
+        - /url: /en/sponsors
+        - generic [ref=e160]: Host Your Community
+        - paragraph [ref=e161]: Bring your AI community online. Get your own space with forums, events, and member management — fully maintained by AIT.
+        - img [ref=e162]
+  - contentinfo [ref=e165]:
+    - generic [ref=e166]:
+      - generic [ref=e167]:
+        - generic [ref=e168]:
+          - img "AIT." [ref=e169]
+          - paragraph [ref=e174]: The home for AI communities — born in the Netherlands, open to the world.
+        - generic [ref=e175]:
+          - generic [ref=e176]:
+            - heading "/ NAVIGATION" [level=4] [ref=e177]
+            - navigation [ref=e178]:
+              - link "Home" [ref=e179] [cursor=pointer]:
+                - /url: /en
+              - link "Events" [ref=e180] [cursor=pointer]:
+                - /url: /en/events
+              - link "Blog" [ref=e181] [cursor=pointer]:
+                - /url: /en/blog
+              - link "Community" [ref=e182] [cursor=pointer]:
+                - /url: /en/communities
+          - generic [ref=e183]:
+            - heading "/ CONNECT" [level=4] [ref=e184]
+            - navigation [ref=e185]:
+              - link "GitHub" [ref=e186] [cursor=pointer]:
+                - /url: https://github.com/ai-tech-community
+              - link "Discord" [ref=e187] [cursor=pointer]:
+                - /url: https://discord.gg
+              - link "X (Twitter)" [ref=e188] [cursor=pointer]:
+                - /url: https://x.com
+              - link "LinkedIn" [ref=e189] [cursor=pointer]:
+                - /url: https://linkedin.com
+          - generic [ref=e190]:
+            - heading "/ LEGAL" [level=4] [ref=e191]
+            - navigation [ref=e192]:
+              - link "Privacy Policy" [ref=e193] [cursor=pointer]:
+                - /url: /en/privacy
+              - link "Terms of Service" [ref=e194] [cursor=pointer]:
+                - /url: /en/terms
+              - link "Security & Transparency" [ref=e195] [cursor=pointer]:
+                - /url: /en/security
+      - generic [ref=e196]:
+        - paragraph [ref=e197]: © 2026 AI Tech Community Netherlands. All rights reserved.
+        - generic [ref=e198]:
+          - paragraph [ref=e199]: "BUILT WITH ♥ BY \x1d"
+          - paragraph
+          - link "KLEVOX STUDIO" [ref=e200] [cursor=pointer]:
+            - /url: https://klevox.com
+  - region "Notifications alt+T"
