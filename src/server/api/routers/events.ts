@@ -6,7 +6,12 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "@/server/api/trpc";
-import { eventRegistrations, memberProfiles, user, communities, communityMemberships } from "@/server/db/schema";
+import { eventRegistrations, memberProfiles, user, communities, communityMemberships, communityLumaIntegrations } from "@/server/db/schema";
+import { decryptApiKey } from "@/server/luma/crypto";
+import { getCalendarEvents } from "@/server/luma/client";
+import { getCached, setCached } from "@/server/luma/cache";
+import { normalizeLumaEvent } from "@/server/luma/normalize";
+import type { NormalizedEvent } from "@/server/luma/normalize";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
@@ -358,6 +363,7 @@ export const eventsRouter = createTRPCRouter({
 
   /**
    * Get published events for a community.
+   * Merges native Payload CMS events with Luma events (if integration is active).
    */
   getCommunityEvents: publicProcedure
     .input(z.object({ communitySlug: z.string() }))
@@ -368,6 +374,7 @@ export const eventsRouter = createTRPCRouter({
       });
       if (!community) return [];
 
+      // 1. Fetch native events from Payload CMS
       const payload = await getPayloadClient();
       const { docs } = await payload.find({
         collection: "events",
@@ -381,7 +388,76 @@ export const eventsRouter = createTRPCRouter({
         draft: false,
       });
 
-      return docs;
+      // Normalize native events
+      const nativeEvents: NormalizedEvent[] = docs.map((e) => ({
+        id: e.id,
+        title: e.title,
+        slug: e.slug,
+        description: null,
+        type: e.type,
+        date: e.date,
+        startTime: e.startTime ?? null,
+        endTime: e.endTime ?? null,
+        location: e.location,
+        maxAttendees: (e.maxAttendees as number | null) ?? null,
+        image: null,
+        status: e.status,
+        communityId: community.id,
+        source: "native" as const,
+        lumaUrl: null,
+      }));
+
+      // 2. Check for Luma integration
+      let lumaEvents: NormalizedEvent[] = [];
+
+      const [integration] = await ctx.db
+        .select()
+        .from(communityLumaIntegrations)
+        .where(
+          and(
+            eq(communityLumaIntegrations.communityId, community.id),
+            eq(communityLumaIntegrations.isEnabled, true),
+          ),
+        )
+        .limit(1);
+
+      if (integration && integration.calendarApiId) {
+        const cacheKey = `luma-events:${community.id}`;
+        const cached = getCached<NormalizedEvent[]>(cacheKey);
+
+        if (cached) {
+          lumaEvents = cached;
+        } else {
+          try {
+            const apiKey = decryptApiKey(integration.apiKeyEncrypted);
+            const rawEvents = await getCalendarEvents(
+              apiKey,
+              integration.calendarApiId,
+            );
+
+            lumaEvents = rawEvents.map((e) =>
+              normalizeLumaEvent(e, community.id),
+            );
+            setCached(cacheKey, lumaEvents);
+
+            // Update lastSyncCheck (fire and forget)
+            void ctx.db
+              .update(communityLumaIntegrations)
+              .set({ lastSyncCheck: new Date() })
+              .where(eq(communityLumaIntegrations.id, integration.id));
+          } catch (err) {
+            console.error("Failed to fetch Luma events:", err);
+            // Graceful degradation: return native events only
+          }
+        }
+      }
+
+      // 3. Merge and sort by date ascending
+      const allEvents = [...nativeEvents, ...lumaEvents].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      );
+
+      return allEvents;
     }),
 
   /**
