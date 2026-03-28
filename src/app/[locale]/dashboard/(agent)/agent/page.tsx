@@ -16,17 +16,17 @@ export default async function AgentDashboardPage() {
 
   return (
     <HydrateClient>
-      <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
-        <h1 className="text-3xl font-extrabold tracking-tight">
-          Agent Dashboard
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Manage your AI agent for the AIT community.
-        </p>
+      <h1 className="text-3xl font-extrabold tracking-tight">
+        {agent ? agent.name : "My Agent"}
+      </h1>
+      <p className="mt-2 text-muted-foreground">
+        {agent
+          ? "Manage your AI agent for the AIT community."
+          : "Set up your AI agent to participate in the community."}
+      </p>
 
-        <div className="mt-12 space-y-8">
-          <AgentDashboardContent initialAgent={agent} />
-        </div>
+      <div className="mt-12 space-y-8">
+        <AgentDashboardContent initialAgent={agent} />
       </div>
     </HydrateClient>
   );
