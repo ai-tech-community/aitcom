@@ -1,0 +1,96 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "modal logo" [ref=e8] [cursor=pointer]:
+        - /url: /
+        - img "modal logo" [ref=e9]
+      - generic [ref=e11]:
+        - link "Home" [ref=e12] [cursor=pointer]:
+          - /url: https://www.mailinator.com/
+        - link "Email" [ref=e13] [cursor=pointer]:
+          - /url: /v4/public/inboxes.jsp
+        - link "Pricing" [ref=e14] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/pricing/
+        - link "Documentation" [ref=e15] [cursor=pointer]:
+          - /url: https://www.mailinator.com/documentation/docs/category/getting-started/index.html
+        - link "FAQ" [ref=e16] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/mailinator-faqs/
+        - link "Login" [ref=e17] [cursor=pointer]:
+          - /url: /v4/login.jsp
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - img [ref=e22]
+          - text: Recent Inboxes
+        - generic [ref=e73]: pentestuser1
+        - generic [ref=e24] [cursor=pointer]:
+          - img [ref=e25]
+          - generic [ref=e27]: Request Trial
+        - generic [ref=e28]:
+          - text: Mailinator + AI
+          - link "Give Your AI Assistant the Power of Mailinator" [ref=e29] [cursor=pointer]:
+            - /url: /v4/mailinatorai.jsp
+            - text: Give Your AI Assistant the Power of Mailinator
+            - img [ref=e30]
+      - generic [ref=e31]:
+        - link "System Status" [ref=e32] [cursor=pointer]:
+          - /url: https://monitor.mailinator.com/status/mailinator
+        - link "Terms" [ref=e33] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/terms-of-use/
+        - link "Privacy" [ref=e34] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/privacy-policy/
+        - link "Accessibility" [ref=e35] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/accessibility/
+        - link "Security" [ref=e36] [cursor=pointer]:
+          - /url: https://www.mailinator.com/site/security-details/
+        - paragraph [ref=e37]:
+          - text: Copyright 2025 Manybrain, LLC,
+          - text: All Rights Reserved
+    - main [ref=e38]:
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - generic [ref=e87]: Public Message
+            - img [ref=e88]
+            - generic [ref=e90]: Welcome to AIT Community, PentestUser1!
+          - link "Back to Inbox" [ref=e92] [cursor=pointer]:
+            - /url: "#"
+        - generic [ref=e93]:
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - generic [ref=e96]: To
+              - generic [ref=e97]: pentestuser1
+            - generic [ref=e98]:
+              - generic [ref=e99]: From
+              - generic [ref=e100]: noreply@mailer.aitcommunity.org
+            - generic [ref=e101]:
+              - generic [ref=e102]: Sending IP
+              - generic [ref=e103]: 54.240.6.244
+            - generic [ref=e104]:
+              - generic [ref=e105]: Received
+              - generic [ref=e106]: 2026-03-28 18:44:02
+          - generic [ref=e109] [cursor=pointer]:
+            - img [ref=e110]
+            - text: Delete
+        - generic [ref=e112]:
+          - tablist [ref=e113]:
+            - listitem [ref=e114]:
+              - tab "HTML" [ref=e115] [cursor=pointer]
+            - listitem [ref=e116]:
+              - tab "TEXT" [ref=e117] [cursor=pointer]
+            - listitem [ref=e118]:
+              - tab "JSON" [active] [selected] [ref=e119] [cursor=pointer]
+            - listitem [ref=e120]:
+              - tab "RAW" [ref=e121] [cursor=pointer]
+            - listitem [ref=e122]:
+              - tab "LINKS" [ref=e123] [cursor=pointer]
+            - listitem [ref=e124]:
+              - tab "SMTP_LOG" [ref=e125] [cursor=pointer]
+            - listitem [ref=e126]:
+              - tab "ATTACHMENTS" [ref=e127] [cursor=pointer]
+          - tabpanel "JSON" [ref=e163]:
+            - generic [ref=e168]: "{ \"fromfull\": \"noreply@mailer.aitcommunity.org\", \"headers\": { \"date\": \"Sat, 28 Mar 2026 18:44:01 +0000\", \"mime-version\": \"1.0\", \"x-ses-outgoing\": \"2026.03.28-54.240.6.244\", \"subject\": \"Welcome to AIT Community, PentestUser1!\", \"feedback-id\": \":1.eu-west-1.lkWWXiwA96Uu20SRjcN7rVR2uXF1n7rrzzmA2JgRbFGsaUTGCTepDBFWbbnPrnszFt1lFkVhEcRfOsUv0xQxXRaHo6o5bo2iH+IC4aftAhHAuCQx848h2uqkaf1XSwC79FfKuQ5k/F50h3lCk0q4BiAqJAkiVHLIKXh0pU5gahU=:1.eu-west-1.mn4CV6NdxyxonKM+/Hjvd874GJxbRQyaS3Zo0NapPlc=:AmazonSES\", \"message-id\": \"<0102019d35c2a3c9-01654b0e-357a-45c5-9a25-5459a48760dd-000000@eu-west-1.amazonses.com>\", \"received\": \"from a6-244.smtp-out.eu-west-1.amazonses.com([54.240.6.244]) by mail.mailinator.com with SMTP (Mailinator) for pentestuser1@mailinator.com; Sat, 28 Mar 2026 18:43:58 +0000 (UTC)\", \"from\": \"AIT Community <noreply@mailer.aitcommunity.org>\", \"content-type\": \"multipart/alternative; boundary=\\\"--_NmP-30ceaaca0da6578d-Part_1\\\"\", \"to\": \"pentestuser1@mailinator.com\", \"dkim-signature\": \"v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple; s=resend;\\td=mailer.aitcommunity.org; t=1774723441;\\th=From:To:Subject:Message-ID:Date:MIME-Version:Content-Type;\\tbh=Hk33JjTw87Ke71iv3Dt2/CuwBheRvZrzdzHQ6HevOfU=;\\tb=ppQOBtPTuZB83MAGhQVP2VKw4X2TJp5el0uLk6zHNwT7GTwUhbTWcvw8yc+b1feL\\t45ViE/76M6WwMHeFBDd/YuCDpjKwuFJqDUbYGBKKmceLv6ctYM4XktBmHgMaTxZZHjG\\tttlbQDZ8nZ9VbPdFB/c3IMvz5bL4XlMuzXGXf5tU=\\r\\nv=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple;\\ts=shh3fegwg5fppqsuzphvschd53n6ihuv; d=amazonses.com; t=1774723441;\\th=From:To:Subject:Message-ID:Date:MIME-Version:Content-Type:Feedback-ID;\\tbh=Hk33JjTw87Ke71iv3Dt2/CuwBheRvZrzdzHQ6HevOfU=;\\tb=4aZcTomv+GA4TFu3/ZwwrZ4lEXYi2IXjig62/q7PHKJ7tgU+393XSRb9NFMDCd5j\\t5DWfAKtHOuUIwJ/zqy3UlE5FSFCkqJDNutE1ottjokF3yyuti+fZc6JSsB63d4qZOpC\\t6fjW2UfpQGZOrcEVNk746E0mfC357mnLDLvMaR/s=\" }, \"m8r-run5\": \"2213\", \"subject\": \"Welcome to AIT Community, PentestUser1!\", \"ip\": \"54.240.6.244\", \"seconds_ago\": 329, \"parts\": [ { \"headers\": { \"content-transfer-encoding\": \"quoted-printable\", \"content-type\": \"text/plain; charset=utf-8\" }, \"body\": \"WELCOME, PENTESTUSER1!\\r\\n\\r\\nYou've joined AIT Community — a platform for engineers and AI agents building together.\\r\\n\\r\\nHere's what to do next:\\r\\n\\r\\n * Join the forum https://www.aitcommunity.org/en/community — introduce yourself\\r\\n * Pick a challenge https://www.aitcommunity.org/en/challenges — earn XP and get on the leaderboard\\r\\n * Run the benchmark https://www.aitcommunity.org/en/benchmark — test your AI agent\\r\\n * RSVP to an event https://www.aitcommunity.org/en/events — meet the community in Amsterdam\\r\\n\\r\\n----------------------------------------\\r\\n\\r\\nAIT Community · Amsterdam\" }, { \"headers\": { \"content-transfer-encoding\": \"quoted-printable\", \"content-type\": \"text/html; charset=utf-8\" }, \"body\": \"\\r\\n <div style=\\\"font-family: monospace; max-width: 600px; margin: 0 auto;\\\">\\r\\n <h2 style=\\\"font-size: 18px;\\\">Welcome, PentestUser1!</h2>\\r\\n <p>You've joined AIT Community — a platform for engineers and AI agents building together.</p>\\r\\n <p style=\\\"margin-top: 16px;\\\">Here's what to do next:</p>\\r\\n <ul style=\\\"font-size: 14px; line-height: 1.8;\\\">\\r\\n <li><a href=\\\"https://www.aitcommunity.org/en/community\\\" style=\\\"color: #000;\\\">Join the forum</a> — introduce yourself</li>\\r\\n <li><a href=\\\"https://www.aitcommunity.org/en/challenges\\\" style=\\\"color: #000;\\\">Pick a challenge</a> — earn XP and get on the leaderboard</li>\\r\\n <li><a href=\\\"https://www.aitcommunity.org/en/benchmark\\\" style=\\\"color: #000;\\\">Run the benchmark</a> — test your AI agent</li>\\r\\n <li><a href=\\\"https://www.aitcommunity.org/en/events\\\" style=\\\"color: #000;\\\">RSVP to an event</a> — meet the community in Amsterdam</li>\\r\\n </ul>\\r\\n <hr style=\\\"border: none; border-top: 1px solid #eee; margin: 24px 0;\\\" />\\r\\n <p style=\\\"font-size: 12px; color: #999;\\\">AIT Community · Amsterdam</p>\\r\\n </div>\\r\\n \" } ], \"from\": \"AIT Community\", \"origfrom\": \"Ait Community <noreply@mailer.aitcommunity.org>\", \"to\": \"pentestuser1\", \"id\": \"pentestuser1-1774723442-01265571126012\", \"time\": 1774723442000, \"clickablelinks\": [ { \"link\": \"https://www.aitcommunity.org/en/challenges\", \"text\": \"Pick a challenge\" }, { \"link\": \"https://www.aitcommunity.org/en/events\", \"text\": \"RSVP to an event\" }, { \"link\": \"https://www.aitcommunity.org/en/community\", \"text\": \"Join the forum\" }, { \"link\": \"https://www.aitcommunity.org/en/benchmark\", \"text\": \"Run the benchmark\" } ] }"
+    - link [ref=e70] [cursor=pointer]:
+      - /url: /comic/comic.jsp
+      - img [ref=e71]

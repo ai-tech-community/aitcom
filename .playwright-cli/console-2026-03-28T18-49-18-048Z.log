@@ -1,0 +1,60 @@
+[    1234ms] [ERROR] %c << query #1 %ccommunities.getBySlug%c %O 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+   
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; {input: Object, result: TRPCClientError: NOT_FOUND
+    at e.from (https://www.aitcommunity.org/_next/static/chunks/13106-a5…, elapsedMs: 554, context: Object} @ https://www.aitcommunity.org/_next/static/chunks/13106-a5e81d1982b44f37.js?dpl=dpl_EU5c8e4e61vpcGqpwHGockaR5jNs:4
+[    2391ms] [ERROR] %c << query #2 %ccommunities.getBySlug%c %O 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+   
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; {input: Object, result: TRPCClientError: NOT_FOUND
+    at e.from (https://www.aitcommunity.org/_next/static/chunks/13106-a5…, elapsedMs: 154, context: Object} @ https://www.aitcommunity.org/_next/static/chunks/13106-a5e81d1982b44f37.js?dpl=dpl_EU5c8e4e61vpcGqpwHGockaR5jNs:4
+[    4560ms] [ERROR] %c << query #3 %ccommunities.getBySlug%c %O 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+   
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; {input: Object, result: TRPCClientError: NOT_FOUND
+    at e.from (https://www.aitcommunity.org/_next/static/chunks/13106-a5…, elapsedMs: 168, context: Object} @ https://www.aitcommunity.org/_next/static/chunks/13106-a5e81d1982b44f37.js?dpl=dpl_EU5c8e4e61vpcGqpwHGockaR5jNs:4
+[    7561ms] [WARNING] The resource https://www.aitcommunity.org/_next/static/media/4cf2300e9c8272f7-s.p.woff2?dpl=dpl_EU5c8e4e61vpcGqpwHGockaR5jNs was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://www.aitcommunity.org/en/communities/ait/forum:0
+[    7561ms] [WARNING] The resource https://www.aitcommunity.org/_next/static/media/93f479601ee12b01-s.p.woff2?dpl=dpl_EU5c8e4e61vpcGqpwHGockaR5jNs was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://www.aitcommunity.org/en/communities/ait/forum:0
+[    8742ms] [ERROR] %c << query #4 %ccommunities.getBySlug%c %O 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+   
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: bold; 
+    background-color: #3fb0d8;
+    color: white;
+    padding: 2px;
+  ; font-weight: normal; {input: Object, result: TRPCClientError: NOT_FOUND
+    at e.from (https://www.aitcommunity.org/_next/static/chunks/13106-a5…, elapsedMs: 182, context: Object} @ https://www.aitcommunity.org/_next/static/chunks/13106-a5e81d1982b44f37.js?dpl=dpl_EU5c8e4e61vpcGqpwHGockaR5jNs:4
+[   11784ms] [WARNING] The resource https://www.aitcommunity.org/_next/static/media/4cf2300e9c8272f7-s.p.woff2?dpl=dpl_EU5c8e4e61vpcGqpwHGockaR5jNs was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://www.aitcommunity.org/en/communities/ait/forum:0
+[   11785ms] [WARNING] The resource https://www.aitcommunity.org/_next/static/media/93f479601ee12b01-s.p.woff2?dpl=dpl_EU5c8e4e61vpcGqpwHGockaR5jNs was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://www.aitcommunity.org/en/communities/ait/forum:0

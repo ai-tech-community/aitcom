@@ -1,0 +1,83 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - link "AIT. home" [ref=e5] [cursor=pointer]:
+          - /url: /en
+          - img "AIT." [ref=e6]
+        - navigation [ref=e12]:
+          - link "[C] COMMUNITIES" [ref=e13] [cursor=pointer]:
+            - /url: /en/communities
+          - link "[E] EVENTS" [ref=e14] [cursor=pointer]:
+            - /url: /en/events
+          - link "[G] CHALLENGES" [ref=e15] [cursor=pointer]:
+            - /url: /en/challenges
+          - link "[L] LAUNCHPAD" [ref=e16] [cursor=pointer]:
+            - /url: /en/launchpad
+          - link "[B] BLOG" [ref=e17] [cursor=pointer]:
+            - /url: /en/blog
+          - link "[W] JOBS" [ref=e18] [cursor=pointer]:
+            - /url: /en/jobs
+          - link "[K] BENCHMARK" [ref=e19] [cursor=pointer]:
+            - /url: /en/benchmark
+          - link "[I] IMPACT" [ref=e20] [cursor=pointer]:
+            - /url: /en/impact
+          - link "[S] SPONSORS" [ref=e21] [cursor=pointer]:
+            - /url: /en/sponsors
+          - link "[M] MEMBERS" [ref=e22] [cursor=pointer]:
+            - /url: /en/members
+      - generic [ref=e23]:
+        - button "NL" [ref=e24]:
+          - img [ref=e25]
+          - text: NL
+        - link "[J] JOIN" [ref=e28] [cursor=pointer]:
+          - /url: /en/auth/signup
+  - main [ref=e29]:
+    - status "Loading" [ref=e31]
+  - contentinfo [ref=e33]:
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - img "AIT." [ref=e37]
+          - paragraph [ref=e42]: The home for AI communities — born in the Netherlands, open to the world.
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - heading "/ NAVIGATION" [level=4] [ref=e45]
+            - navigation [ref=e46]:
+              - link "Home" [ref=e47] [cursor=pointer]:
+                - /url: /en
+              - link "Events" [ref=e48] [cursor=pointer]:
+                - /url: /en/events
+              - link "Blog" [ref=e49] [cursor=pointer]:
+                - /url: /en/blog
+              - link "Community" [ref=e50] [cursor=pointer]:
+                - /url: /en/communities
+          - generic [ref=e51]:
+            - heading "/ CONNECT" [level=4] [ref=e52]
+            - navigation [ref=e53]:
+              - link "GitHub" [ref=e54] [cursor=pointer]:
+                - /url: https://github.com/ai-tech-community
+              - link "Discord" [ref=e55] [cursor=pointer]:
+                - /url: https://discord.gg
+              - link "X (Twitter)" [ref=e56] [cursor=pointer]:
+                - /url: https://x.com
+              - link "LinkedIn" [ref=e57] [cursor=pointer]:
+                - /url: https://linkedin.com
+          - generic [ref=e58]:
+            - heading "/ LEGAL" [level=4] [ref=e59]
+            - navigation [ref=e60]:
+              - link "Privacy Policy" [ref=e61] [cursor=pointer]:
+                - /url: /en/privacy
+              - link "Terms of Service" [ref=e62] [cursor=pointer]:
+                - /url: /en/terms
+              - link "Security & Transparency" [ref=e63] [cursor=pointer]:
+                - /url: /en/security
+      - generic [ref=e64]:
+        - paragraph [ref=e65]: © 2026 AI Tech Community Netherlands. All rights reserved.
+        - generic [ref=e66]:
+          - paragraph [ref=e67]: "BUILT WITH ♥ BY \x1d"
+          - paragraph
+          - link "KLEVOX STUDIO" [ref=e68] [cursor=pointer]:
+            - /url: https://klevox.com
+  - region "Notifications alt+T"
+  - alert [ref=e69]

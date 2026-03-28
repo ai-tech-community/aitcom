@@ -1,0 +1,50 @@
+- generic [ref=e4]:
+  - generic [ref=e6]:
+    - link "Maildrop Home" [ref=e8] [cursor=pointer]:
+      - /url: /
+      - img [ref=e9]
+    - generic [ref=e14]:
+      - navigation [ref=e15]:
+        - link "How It Works" [ref=e17] [cursor=pointer]:
+          - /url: /how-it-works/
+          - generic [ref=e18]: How It Works
+        - link "Contact Us" [ref=e20] [cursor=pointer]:
+          - /url: /contact-us/
+          - generic [ref=e21]: Contact Us
+      - generic [ref=e22]:
+        - generic [ref=e23]:
+          - textbox "view-this-mailbox" [ref=e24]
+          - generic [ref=e25]: "@ maildrop.cc"
+        - button "View Mailbox" [ref=e26] [cursor=pointer]:
+          - img [ref=e27]
+          - generic [ref=e30]: View Mailbox
+  - main [ref=e31]
+  - generic [ref=e34]:
+    - generic [ref=e35]:
+      - link "Maildrop Home" [ref=e37] [cursor=pointer]:
+        - /url: /
+        - img [ref=e38]
+      - generic [ref=e43]: Copyright © 2023 - Build 4.0
+      - generic [ref=e44]:
+        - img [ref=e45]
+        - generic [ref=e47]: Back to Top
+    - generic [ref=e48]:
+      - generic [ref=e49]: Maildrop Info
+      - link "How It Works" [ref=e50] [cursor=pointer]:
+        - /url: /how-it-works/
+      - link "Privacy Policy (please read!)" [ref=e51] [cursor=pointer]:
+        - /url: /privacy/
+    - generic [ref=e52]:
+      - generic [ref=e53]: Technical Details
+      - link "Developer Documentation" [ref=e54] [cursor=pointer]:
+        - /url: https://docs.maildrop.cc/
+      - link "System Status" [ref=e55] [cursor=pointer]:
+        - /url: https://maildrop.betteruptime.com/
+        - img [ref=e57]
+        - generic [ref=e59]: System Status
+    - generic [ref=e60]:
+      - generic [ref=e61]: Get In Touch
+      - link "Contact Us" [ref=e62] [cursor=pointer]:
+        - /url: /contact-us/
+      - link "Created in California by Heluna" [ref=e63] [cursor=pointer]:
+        - /url: https://heluna.com/
