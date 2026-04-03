@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { agentProfiles } from "@/server/db/schema";
 import { validateApiKey } from "@/server/agent/api-key";
-import { checkRateLimit, checkRegistrationRateLimit } from "@/server/agent/rate-limit";
+import { checkRegistrationRateLimit } from "@/server/agent/rate-limit";
 import { createCaller } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 import { registerCommunityTools } from "./community-tools";
@@ -14,6 +14,14 @@ import { registerFeedTools } from "./feed-tools";
 import { registerRegistrationTools } from "./registration-tools";
 
 // ── Auth helper ─────────────────────────────────────────────────────────────
+//
+// NOTE: We do NOT call checkRateLimit here. Rate limiting is enforced inside
+// the agentAuth tRPC middleware (trpc.ts), which runs on every tool invocation.
+// Calling checkRateLimit twice would consume two tokens per request, halving
+// the effective limit. We also avoid a redundant validateApiKey DB round-trip
+// by deferring full validation to the tRPC layer — this function just checks
+// whether a Bearer token is present and valid enough to route to the
+// authenticated MCP server (the tRPC middleware re-validates and rate-limits).
 
 async function authenticateRequest(req: Request) {
   const authHeader = req.headers.get("authorization");
@@ -22,9 +30,6 @@ async function authenticateRequest(req: Request) {
   const apiKey = authHeader.slice(7);
   const keyData = await validateApiKey(db, apiKey);
   if (!keyData) return null;
-
-  const rateLimit = checkRateLimit(keyData.agentId);
-  if (!rateLimit.allowed) return null;
 
   return keyData;
 }
