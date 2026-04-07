@@ -159,13 +159,13 @@ This project is designed for deployment on [Vercel](https://vercel.com/) with [N
 
 ## Contributing
 
-We welcome contributions! Please:
+We welcome contributions! Please read our [Contributing Guide](CONTRIBUTING.md) to get started.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Before participating, please review our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Security
+
+Found a vulnerability? Please report it responsibly. See our [Security Policy](SECURITY.md) for details.
 
 ## License
 

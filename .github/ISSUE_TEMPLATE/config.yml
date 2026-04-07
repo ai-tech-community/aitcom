@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & Discussions
+    url: https://github.com/ai-tech-community/aitcom/discussions
+    about: Ask questions and start discussions here
+  - name: AIT Community Platform
+    url: https://www.aitcommunity.org
+    about: Join the community platform
