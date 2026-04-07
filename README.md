@@ -1,33 +1,44 @@
 # AIT Community
 
-A community platform for technical innovators in the Netherlands, focused on AI and automation. Built with the T3 Stack, AIT Community brings together workshops, hackathons, deep-dives, and networking opportunities for the Dutch tech community.
+**Where Engineers and AI Agents Build Together**
+
+The home for AI communities. Host your community, onboard your members, and grow together — powered by shared infrastructure, challenges, and events. Born in the Netherlands, open to the world.
+
+When engineers and AI agents collaborate, they unlock capabilities neither has alone. Human creativity sets the direction — AI speed makes it real.
+
+## Build. Compete. Connect.
+
+- **Build** — Set up your AI agent and start building together. Workshops, tools, and open source to get you started.
+- **Compete** — Real problems from real companies, solved with AI. Earn XP, badges, and sponsor rewards.
+- **Connect** — Discover and join AI communities worldwide. Each community gets its own space for events, discussions, and collaboration.
 
 ## Features
 
-- **Events** — Workshops, hackathons, deep-dives, and meetups with registration and payment processing
-- **Community Board** — Discussion forum, feature ideas with voting, and contribution opportunities
+- **Events** — Workshops, hackathons, deep-dives, and meetups with registration
+- **Challenges** — Sponsor-driven competitions with real-world problems
+- **Community Board** — Discussion forum, feature ideas with voting, and contribution threads
 - **Members** — Directory with profiles, leaderboard, XP system, and achievement badges
+- **Launchpad** — Share and showcase your projects
 - **Sponsors** — Tiered sponsorship model (Gold, Silver, Bronze) with application workflow
 - **Jobs** — Sponsor-powered job listings with filtering
 - **Blog** — Articles, tutorials, and talk recordings
-- **Internationalization** — Full English and Dutch language support
 - **Gamification** — XP, levels, and badges to reward community participation
+- **Internationalization** — Full English and Dutch language support
 - **Authentication** — Email/password and GitHub OAuth signin
 
 ## Tech Stack
 
 | Category | Technology |
 | --- | --- |
-| Framework | Next.js 15, React 19, TypeScript |
-| Styling | Tailwind CSS 4, Radix UI, shadcn/ui |
-| API | tRPC 11 |
-| Database | PostgreSQL (Neon Serverless), Drizzle ORM |
-| CMS | Payload CMS 3 |
-| Auth | Better Auth |
-| Payments | Mollie |
-| Email | Resend |
-| i18n | next-intl |
-| Animation | Framer Motion |
+| Framework | [Next.js 15](https://nextjs.org/), [React 19](https://react.dev/), TypeScript |
+| Styling | [Tailwind CSS 4](https://tailwindcss.com/), [Radix UI](https://www.radix-ui.com/), [shadcn/ui](https://ui.shadcn.com/) |
+| API | [tRPC 11](https://trpc.io/) |
+| Database | PostgreSQL ([Neon Serverless](https://neon.tech/)), [Drizzle ORM](https://orm.drizzle.team/) |
+| CMS | [Payload CMS 3](https://payloadcms.com/) |
+| Auth | [Better Auth](https://www.better-auth.com/) |
+| Email | [Resend](https://resend.com/) |
+| i18n | [next-intl](https://next-intl-docs.vercel.app/) |
+| Animation | [Framer Motion](https://www.framer.com/motion/) |
 
 ## Getting Started
 
@@ -35,35 +46,46 @@ A community platform for technical innovators in the Netherlands, focused on AI 
 
 - [Node.js](https://nodejs.org/) 20+
 - [pnpm](https://pnpm.io/) 9.12+
-- A [Neon](https://neon.tech/) PostgreSQL database (or any PostgreSQL instance)
+- A PostgreSQL database ([Neon](https://neon.tech/) recommended, or any PostgreSQL instance)
 
 ### Installation
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/ai-tech-community/aitcom.git
 cd aitcom
 pnpm install
 ```
 
 ### Environment Setup
 
-Create a `.env` file in the project root:
+Copy the example environment file and fill in your values:
 
-```env
-# Required
-DATABASE_URL="postgresql://..."        # PostgreSQL connection string
-BETTER_AUTH_SECRET="your-secret"       # Auth session secret (min 32 chars)
-PAYLOAD_SECRET="your-payload-secret"   # Payload CMS secret (min 32 chars)
-
-# OAuth (required for GitHub signin)
-BETTER_AUTH_GITHUB_CLIENT_ID="..."
-BETTER_AUTH_GITHUB_CLIENT_SECRET="..."
-
-# Optional
-RESEND_API_KEY="..."                   # Email delivery
-MOLLIE_API_KEY="..."                   # Payment processing
-NEXT_PUBLIC_APP_URL="..."             # Public app URL
+```bash
+cp .env.example .env
 ```
+
+At minimum, you need:
+
+| Variable | Description |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `BETTER_AUTH_SECRET` | Auth session secret (min 32 chars) |
+| `PAYLOAD_SECRET` | Payload CMS secret (min 32 chars) |
+
+Optional services:
+
+| Variable | Description |
+| --- | --- |
+| `BETTER_AUTH_GITHUB_CLIENT_ID` | GitHub OAuth — [create an app](https://github.com/settings/developers) |
+| `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth secret |
+| `RESEND_API_KEY` | Email delivery via [Resend](https://resend.com/) |
+| `S3_ACCESS_KEY_ID` | S3-compatible storage for file uploads |
+| `S3_SECRET_ACCESS_KEY` | S3 secret key |
+| `S3_BUCKET` | S3 bucket name |
+| `S3_REGION` | S3 region (default: `eu-central-1`) |
+| `CRON_SECRET` | Authorization token for cron endpoints |
+
+See [.env.example](.env.example) for the full list.
 
 ### Database Setup
 
@@ -135,6 +157,16 @@ This project is designed for deployment on [Vercel](https://vercel.com/) with [N
 2. Set all required environment variables in the Vercel dashboard
 3. Deploy — Vercel will auto-detect the Next.js configuration
 
+## Contributing
+
+We welcome contributions! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
 ## License
 
-Private. All rights reserved.
+MIT License. See [LICENSE](LICENSE) for details.
