@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
+import type { Where } from "payload";
 import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { Link } from "@/i18n/navigation";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
-import { EVENT_FORMAT_LABELS, EVENT_TYPE_LABELS } from "@/lib/event-metadata";
+import {
+  EVENT_FORMAT_LABELS,
+  EVENT_FORMAT_OPTIONS,
+  EVENT_FOCUS_OPTIONS,
+  EVENT_TYPE_LABELS,
+  EVENT_TYPES,
+  type EventFocus,
+  type EventFormat,
+  type EventType,
+} from "@/lib/event-metadata";
+import { EventsFilterBar } from "@/components/events-filter-bar";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -36,19 +47,86 @@ function getImageUrl(event: { coverImage?: unknown; image?: unknown }) {
   return null;
 }
 
-export default async function EventsPage() {
+function oneOf<T extends string>(
+  value: string | undefined,
+  allowed: readonly T[],
+): T | undefined {
+  return value && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : undefined;
+}
+
+type SP = Record<string, string | string[] | undefined>;
+
+function firstParam(sp: SP, key: string): string | undefined {
+  const v = sp[key];
+  return Array.isArray(v) ? v[0] : v;
+}
+
+export default async function EventsPage({
+  searchParams,
+}: {
+  searchParams: Promise<SP>;
+}) {
   const locale = await getLocale();
   const t = await getTranslations("events");
+  const sp = await searchParams;
+
+  const isPast = firstParam(sp, "past") === "1";
+  const q = firstParam(sp, "q")?.trim();
+  const type = oneOf<EventType>(firstParam(sp, "type"), EVENT_TYPES);
+  const focus = oneOf<EventFocus>(firstParam(sp, "focus"), EVENT_FOCUS_OPTIONS);
+  const format = oneOf<EventFormat>(
+    firstParam(sp, "format"),
+    EVENT_FORMAT_OPTIONS,
+  );
+  const fitRaw = Number(firstParam(sp, "fit"));
+  const fit = Number.isFinite(fitRaw) && fitRaw >= 1 && fitRaw <= 10 ? fitRaw : undefined;
+
+  const now = new Date().toISOString();
+  const conditions: Where[] = [{ status: { equals: "published" } }];
+  conditions.push(
+    isPast ? { date: { less_than: now } } : { date: { greater_than_equal: now } },
+  );
+  if (type) conditions.push({ type: { equals: type } });
+  if (focus) conditions.push({ focus: { equals: focus } });
+  if (format) conditions.push({ format: { equals: format } });
+  if (fit) conditions.push({ aitFitScore: { greater_than_equal: fit } });
+  if (q && q.length > 0) {
+    conditions.push({
+      or: [
+        { title: { like: q } },
+        { summary: { like: q } },
+        { location: { like: q } },
+      ],
+    });
+  }
 
   const payload = await getPayloadClient();
   const { docs: events } = await payload.find({
     collection: "events",
-    where: { status: { equals: "published" } },
-    sort: "date",
+    where: { and: conditions },
+    sort: isPast ? "-date" : "date",
     locale: locale as "en" | "nl",
     draft: false,
     depth: 1,
+    limit: 50,
   });
+
+  const hasFilters =
+    !!q || !!type || !!focus || !!format || fit !== undefined;
+
+  const buildTabHref = (past: boolean) => {
+    const next = new URLSearchParams();
+    if (past) next.set("past", "1");
+    if (q) next.set("q", q);
+    if (type) next.set("type", type);
+    if (focus) next.set("focus", focus);
+    if (format) next.set("format", format);
+    if (fit) next.set("fit", String(fit));
+    const qs = next.toString();
+    return qs ? `/events?${qs}` : "/events";
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -58,9 +136,38 @@ export default async function EventsPage() {
         </h1>
       </div>
 
+      <div className="mt-6 flex gap-1 font-mono text-xs tracking-wider">
+        <Link
+          href={buildTabHref(false)}
+          className={`rounded border px-4 py-2 transition-colors ${
+            !isPast
+              ? "border-foreground bg-foreground text-background"
+              : "border-border text-muted-foreground hover:bg-secondary/40"
+          }`}
+        >
+          UPCOMING
+        </Link>
+        <Link
+          href={buildTabHref(true)}
+          className={`rounded border px-4 py-2 transition-colors ${
+            isPast
+              ? "border-foreground bg-foreground text-background"
+              : "border-border text-muted-foreground hover:bg-secondary/40"
+          }`}
+        >
+          PAST
+        </Link>
+      </div>
+
+      <EventsFilterBar />
+
       {events.length === 0 ? (
         <p className="text-muted-foreground mt-12 text-center">
-          {t("noEvents")}
+          {hasFilters
+            ? "No events match these filters."
+            : isPast
+              ? "No past events yet."
+              : t("noEvents")}
         </p>
       ) : (
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
