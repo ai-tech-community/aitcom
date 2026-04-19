@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { MapPin } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function UseMyLocationButton() {
   const router = useRouter();
@@ -59,14 +60,17 @@ export function UseMyLocationButton() {
   };
 
   const baseClass =
-    "border-border hover:bg-secondary/40 inline-flex items-center gap-1.5 rounded border px-3 py-1.5 font-mono text-[11px] tracking-wider transition-colors";
+    "inline-flex items-center gap-1.5 rounded border px-3 py-1.5 font-mono text-[11px] tracking-wider transition-colors";
 
   if (hasLocation) {
     return (
       <button
         type="button"
         onClick={clearLocation}
-        className={`${baseClass} border-foreground bg-foreground text-background hover:bg-foreground/90`}
+        className={cn(
+          baseClass,
+          "border-foreground bg-foreground text-background hover:bg-foreground/85",
+        )}
       >
         <MapPin className="h-3 w-3" />
         USING YOUR LOCATION ✕
@@ -79,7 +83,7 @@ export function UseMyLocationButton() {
       type="button"
       onClick={requestLocation}
       disabled={requesting}
-      className={baseClass}
+      className={cn(baseClass, "border-border hover:bg-secondary/40")}
     >
       <MapPin className="h-3 w-3" />
       {requesting ? "LOCATING…" : "USE MY LOCATION"}
