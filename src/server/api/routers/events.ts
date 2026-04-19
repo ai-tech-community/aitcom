@@ -31,6 +31,13 @@ import { getMollie } from "@/server/mollie";
 import { env } from "@/env";
 import { TRPCError } from "@trpc/server";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import {
+  EVENT_AUDIENCE_OPTIONS,
+  EVENT_FOCUS_OPTIONS,
+  EVENT_FORMAT_OPTIONS,
+  EVENT_LEVEL_OPTIONS,
+  EVENT_TYPES,
+} from "@/lib/event-metadata";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -52,13 +59,74 @@ function getAppUrl(): string {
   return env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
 
+const eventUpsertSchema = z.object({
+  title: z.string().min(3).max(255),
+  description: z.string().max(5000).optional(),
+  summary: z.string().max(1000).optional(),
+  type: z.enum(EVENT_TYPES),
+  date: z.string(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  location: z.string().min(1).max(255),
+  format: z.enum(EVENT_FORMAT_OPTIONS).optional(),
+  region: z.string().max(255).optional(),
+  country: z.string().max(255).optional(),
+  city: z.string().max(255).optional(),
+  focus: z.enum(EVENT_FOCUS_OPTIONS).optional(),
+  level: z.enum(EVENT_LEVEL_OPTIONS).optional(),
+  audience: z.array(z.enum(EVENT_AUDIENCE_OPTIONS)).max(6).optional(),
+  sourceUrl: z.string().url().optional().or(z.literal("")),
+  aitFitScore: z.number().min(1).max(10).optional(),
+  tags: z.array(z.string().min(1).max(50)).max(20).optional(),
+  curatedByAgent: z.boolean().optional(),
+  discoverySource: z.string().max(255).optional(),
+  confidenceScore: z.number().min(0).max(1).optional(),
+  lastVerifiedAt: z.string().optional(),
+  videoUrl: z.string().url().optional().or(z.literal("")),
+  maxAttendees: z.number().min(1).optional(),
+});
+
+function normalizeOptionalString(value?: string) {
+  const trimmed = value?.trim();
+  return trimmed ?? undefined;
+}
+
+function buildEventPayloadData(input: z.infer<typeof eventUpsertSchema>) {
+  return {
+    title: input.title,
+    description: plainTextToLexical(input.description ?? ""),
+    summary: normalizeOptionalString(input.summary),
+    type: input.type,
+    date: input.date,
+    startTime: normalizeOptionalString(input.startTime),
+    endTime: normalizeOptionalString(input.endTime),
+    location: input.location,
+    format: input.format,
+    region: normalizeOptionalString(input.region),
+    country: normalizeOptionalString(input.country),
+    city: normalizeOptionalString(input.city),
+    focus: input.focus,
+    level: input.level,
+    audience: input.audience?.length ? input.audience : undefined,
+    sourceUrl: normalizeOptionalString(input.sourceUrl),
+    aitFitScore: input.aitFitScore,
+    tags: input.tags?.length
+      ? input.tags
+          .map((tag) => ({ tag: tag.trim() }))
+          .filter((entry) => entry.tag.length > 0)
+      : undefined,
+    curatedByAgent: input.curatedByAgent ?? false,
+    discoverySource: normalizeOptionalString(input.discoverySource),
+    confidenceScore: input.confidenceScore,
+    lastVerifiedAt: input.lastVerifiedAt
+      ? new Date(input.lastVerifiedAt).toISOString()
+      : undefined,
+    videoUrl: normalizeOptionalString(input.videoUrl),
+    maxAttendees: input.maxAttendees,
+  };
+}
+
 export const eventsRouter = createTRPCRouter({
-  /**
-   * Register the current user for an event.
-   * - Free events: register immediately
-   * - Paid events: create Mollie payment, return checkout URL
-   * - Full events: waitlist
-   */
   register: protectedProcedure
     .input(
       z.object({
@@ -68,7 +136,6 @@ export const eventsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Check if user is already registered (not cancelled/payment_failed)
       const existing = await ctx.db
         .select()
         .from(eventRegistrations)
@@ -89,14 +156,12 @@ export const eventsRouter = createTRPCRouter({
         };
       }
 
-      // Fetch event from server for capacity and price check
       const payload = await getPayloadClient();
       const event = await payload.findByID({
         collection: "events",
         id: input.eventId,
       });
 
-      // Count current active registrations for capacity check
       const [countResult] = await ctx.db
         .select({ count: sql<number>`count(*)` })
         .from(eventRegistrations)
@@ -115,7 +180,6 @@ export const eventsRouter = createTRPCRouter({
       const isPaid = price > 0;
       const mollie = getMollie();
 
-      // Paid event with Mollie configured
       if (isPaid && mollie && !isFull) {
         const appUrl = getAppUrl();
         const molliePayment = await mollie.payments.create({
@@ -150,7 +214,6 @@ export const eventsRouter = createTRPCRouter({
         };
       }
 
-      // Free event or no Mollie configured
       const status = isFull ? "waitlisted" : "registered";
 
       const [registration] = await ctx.db
@@ -162,7 +225,6 @@ export const eventsRouter = createTRPCRouter({
         })
         .returning();
 
-      // Award XP for registration (only if user has a profile)
       if (status === "registered") {
         const [profile] = await ctx.db
           .select()
@@ -184,7 +246,6 @@ export const eventsRouter = createTRPCRouter({
         });
       }
 
-      // Send confirmation email (async, don't block response)
       void (async () => {
         try {
           const eventData = await getEventEmailData(input.eventId);
@@ -205,10 +266,6 @@ export const eventsRouter = createTRPCRouter({
       };
     }),
 
-  /**
-   * Cancel the current user's registration for an event.
-   * If event was at capacity, promote the next waitlisted user.
-   */
   cancelRegistration: protectedProcedure
     .input(z.object({ eventId: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -225,7 +282,6 @@ export const eventsRouter = createTRPCRouter({
           ),
         );
 
-      // Promote next waitlisted user (if any)
       const [nextWaitlisted] = await ctx.db
         .select()
         .from(eventRegistrations)
@@ -244,7 +300,6 @@ export const eventsRouter = createTRPCRouter({
           .set({ status: "registered" })
           .where(eq(eventRegistrations.id, nextWaitlisted.id));
 
-        // Email the promoted user
         void (async () => {
           try {
             const eventData = await getEventEmailData(input.eventId);
@@ -266,7 +321,6 @@ export const eventsRouter = createTRPCRouter({
         })();
       }
 
-      // Send cancellation email to the user (async)
       void (async () => {
         try {
           const eventData = await getEventEmailData(input.eventId);
@@ -283,9 +337,6 @@ export const eventsRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  /**
-   * Get all active (non-cancelled) registrations for the current user.
-   */
   myRegistrations: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
@@ -302,9 +353,6 @@ export const eventsRouter = createTRPCRouter({
     return registrations;
   }),
 
-  /**
-   * Get the registration status for the current user on a specific event.
-   */
   registrationStatus: protectedProcedure
     .input(z.object({ eventId: z.number() }))
     .query(async ({ ctx, input }) => {
@@ -325,9 +373,6 @@ export const eventsRouter = createTRPCRouter({
       return registration ?? null;
     }),
 
-  /**
-   * Get the count of active registrations for an event (for capacity bar).
-   */
   registrationCount: publicProcedure
     .input(z.object({ eventId: z.number() }))
     .query(async ({ ctx, input }) => {
@@ -344,9 +389,6 @@ export const eventsRouter = createTRPCRouter({
       return result?.count ?? 0;
     }),
 
-  /**
-   * Get registered attendees for an event (public, for the attendee list).
-   */
   getAttendees: publicProcedure
     .input(z.object({ eventId: z.number(), limit: z.number().default(20) }))
     .query(async ({ ctx, input }) => {
@@ -378,10 +420,6 @@ export const eventsRouter = createTRPCRouter({
       }));
     }),
 
-  /**
-   * Get published events for a community.
-   * Merges native Payload CMS events with Luma events (if integration is active).
-   */
   getCommunityEvents: publicProcedure
     .input(z.object({ communitySlug: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -394,7 +432,6 @@ export const eventsRouter = createTRPCRouter({
       });
       if (!community) return [];
 
-      // 1. Fetch native events from Payload CMS
       const payload = await getPayloadClient();
       const { docs } = await payload.find({
         collection: "events",
@@ -408,7 +445,6 @@ export const eventsRouter = createTRPCRouter({
         draft: false,
       });
 
-      // Normalize native events
       const nativeEvents: NormalizedEvent[] = docs.map((e) => ({
         id: e.id,
         title: e.title,
@@ -427,7 +463,6 @@ export const eventsRouter = createTRPCRouter({
         lumaUrl: null,
       }));
 
-      // 2. Check for Luma integration
       let lumaEvents: NormalizedEvent[] = [];
 
       const [integration] = await ctx.db
@@ -460,19 +495,16 @@ export const eventsRouter = createTRPCRouter({
             );
             setCached(cacheKey, lumaEvents);
 
-            // Update lastSyncCheck (fire and forget)
             void ctx.db
               .update(communityLumaIntegrations)
               .set({ lastSyncCheck: new Date() })
               .where(eq(communityLumaIntegrations.id, integration.id));
           } catch (err) {
             console.error("Failed to fetch Luma events:", err);
-            // Graceful degradation: return native events only
           }
         }
       }
 
-      // 3. Merge and sort by date ascending
       const allEvents = [...nativeEvents, ...lumaEvents].sort(
         (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
       );
@@ -480,28 +512,13 @@ export const eventsRouter = createTRPCRouter({
       return allEvents;
     }),
 
-  /**
-   * Create a new event within a community.
-   * Only community owners/admins can create events.
-   */
   createEvent: protectedProcedure
     .input(
-      z.object({
-        communitySlug: z.string(),
-        title: z.string().min(3).max(255),
-        description: z.string().max(5000).optional(),
-        type: z.enum(["workshop", "hackathon", "deep_dive", "meetup"]),
-        date: z.string(),
-        startTime: z.string().optional(),
-        endTime: z.string().optional(),
-        location: z.string().min(1).max(255),
-        maxAttendees: z.number().min(1).optional(),
-      }),
+      z.object({ communitySlug: z.string() }).extend(eventUpsertSchema.shape),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Resolve community and check admin/owner role
       const community = await ctx.db.query.communities.findFirst({
         where: and(
           eq(communities.slug, input.communitySlug),
@@ -542,19 +559,10 @@ export const eventsRouter = createTRPCRouter({
       const event = await payload.create({
         collection: "events",
         data: {
-          title: input.title,
           slug,
-          description: input.description
-            ? plainTextToLexical(input.description)
-            : plainTextToLexical(""),
-          type: input.type,
-          date: input.date,
-          startTime: input.startTime ?? undefined,
-          endTime: input.endTime ?? undefined,
-          location: input.location,
-          maxAttendees: input.maxAttendees ?? undefined,
           status: "published",
           communityId: community.id,
+          ...buildEventPayloadData(input),
         },
       });
 
@@ -570,23 +578,14 @@ export const eventsRouter = createTRPCRouter({
       return event;
     }),
 
-  /** Update an event (admin/owner only) */
   updateEvent: protectedProcedure
     .input(
-      z.object({
-        eventId: z.number(),
-        communitySlug: z.string(),
-        title: z.string().min(3).max(255).optional(),
-        description: z.string().max(5000).optional(),
-        type: z
-          .enum(["workshop", "hackathon", "deep_dive", "meetup"])
-          .optional(),
-        date: z.string().optional(),
-        startTime: z.string().optional(),
-        endTime: z.string().optional(),
-        location: z.string().min(1).max(255).optional(),
-        maxAttendees: z.number().min(1).optional(),
-      }),
+      z
+        .object({
+          eventId: z.number(),
+          communitySlug: z.string(),
+        })
+        .merge(eventUpsertSchema.partial()),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
@@ -622,7 +621,6 @@ export const eventsRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
 
-      // Verify the event actually belongs to this community (prevent cross-community IDOR)
       const existingEvent = await payload.findByID({
         collection: "events",
         id: input.eventId,
@@ -642,11 +640,44 @@ export const eventsRouter = createTRPCRouter({
       if (input.title !== undefined) data.title = input.title;
       if (input.description !== undefined)
         data.description = plainTextToLexical(input.description);
+      if (input.summary !== undefined)
+        data.summary = normalizeOptionalString(input.summary);
       if (input.type !== undefined) data.type = input.type;
       if (input.date !== undefined) data.date = input.date;
-      if (input.startTime !== undefined) data.startTime = input.startTime;
-      if (input.endTime !== undefined) data.endTime = input.endTime;
+      if (input.startTime !== undefined)
+        data.startTime = normalizeOptionalString(input.startTime);
+      if (input.endTime !== undefined)
+        data.endTime = normalizeOptionalString(input.endTime);
       if (input.location !== undefined) data.location = input.location;
+      if (input.format !== undefined) data.format = input.format;
+      if (input.region !== undefined)
+        data.region = normalizeOptionalString(input.region);
+      if (input.country !== undefined)
+        data.country = normalizeOptionalString(input.country);
+      if (input.city !== undefined)
+        data.city = normalizeOptionalString(input.city);
+      if (input.focus !== undefined) data.focus = input.focus;
+      if (input.level !== undefined) data.level = input.level;
+      if (input.audience !== undefined) data.audience = input.audience;
+      if (input.sourceUrl !== undefined)
+        data.sourceUrl = normalizeOptionalString(input.sourceUrl);
+      if (input.aitFitScore !== undefined) data.aitFitScore = input.aitFitScore;
+      if (input.tags !== undefined)
+        data.tags = input.tags
+          .map((tag) => ({ tag: tag.trim() }))
+          .filter((entry) => entry.tag.length > 0);
+      if (input.curatedByAgent !== undefined)
+        data.curatedByAgent = input.curatedByAgent;
+      if (input.discoverySource !== undefined)
+        data.discoverySource = normalizeOptionalString(input.discoverySource);
+      if (input.confidenceScore !== undefined)
+        data.confidenceScore = input.confidenceScore;
+      if (input.lastVerifiedAt !== undefined)
+        data.lastVerifiedAt = input.lastVerifiedAt
+          ? new Date(input.lastVerifiedAt).toISOString()
+          : null;
+      if (input.videoUrl !== undefined)
+        data.videoUrl = normalizeOptionalString(input.videoUrl);
       if (input.maxAttendees !== undefined)
         data.maxAttendees = input.maxAttendees;
 
@@ -668,7 +699,6 @@ export const eventsRouter = createTRPCRouter({
       return event;
     }),
 
-  /** Cancel an event and all registrations (admin/owner only) */
   cancelEvent: protectedProcedure
     .input(
       z.object({
@@ -708,7 +738,6 @@ export const eventsRouter = createTRPCRouter({
         });
       }
 
-      // Verify the event belongs to this community (prevent cross-community IDOR)
       const payload = await getPayloadClient();
       const existingEvent = await payload.findByID({
         collection: "events",
@@ -725,14 +754,12 @@ export const eventsRouter = createTRPCRouter({
         });
       }
 
-      // Set event status to cancelled
       await payload.update({
         collection: "events",
         id: input.eventId,
         data: { status: "cancelled" },
       });
 
-      // Bulk-cancel all active registrations
       await ctx.db
         .update(eventRegistrations)
         .set({ status: "cancelled" })
