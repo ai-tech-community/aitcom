@@ -48,7 +48,8 @@ export type EventDraftImportPayload = ReturnType<typeof buildEventDraftImportPay
 
 function normalizeOptionalString(value?: string) {
   const trimmed = value?.trim();
-  return trimmed ? trimmed : undefined;
+  if (!trimmed) return undefined;
+  return trimmed;
 }
 
 function normalizeTags(tags?: string[]) {
