@@ -80,18 +80,18 @@ export default async function DashboardEventsPage() {
 
   return (
     <div>
-      <div className="border-b border-border pb-4">
-        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+      <div className="border-border border-b pb-4">
+        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / MY EVENTS
         </span>
       </div>
 
       {myEvents.length === 0 ? (
         <div className="mt-6 text-center">
-          <p className="text-sm text-muted-foreground">No upcoming events.</p>
+          <p className="text-muted-foreground text-sm">No upcoming events.</p>
           <Link
             href="/events"
-            className="mt-2 inline-block font-mono text-xs tracking-wider text-primary underline underline-offset-4 hover:text-primary/80"
+            className="text-primary hover:text-primary/80 mt-2 inline-block font-mono text-xs tracking-wider underline underline-offset-4"
           >
             Browse events
           </Link>
@@ -102,33 +102,33 @@ export default async function DashboardEventsPage() {
             <Link
               key={registration.id}
               href={`/events/${event.slug}`}
-              className="flex flex-col gap-1.5 border-b border-border px-4 py-3.5 transition-colors hover:bg-secondary/50 sm:flex-row sm:items-center sm:gap-0"
+              className="border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0"
             >
               {/* Title - first on mobile */}
-              <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
+              <span className="text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
                 {event.title}
               </span>
 
               {/* Date + badges on mobile */}
               <div className="flex items-center gap-3 sm:order-1 sm:w-32">
-                <div className="h-2 w-2 rounded-full bg-primary" />
+                <div className="bg-primary h-2 w-2 rounded-full" />
                 <span className="font-mono text-[12px] sm:text-[13px]">
                   {formatDate(event.date)}
                 </span>
                 {/* Type + status inline on mobile */}
-                <span className="rounded border border-border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider text-muted-foreground sm:hidden">
+                <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden">
                   {typeLabels[event.type] ?? event.type}
                 </span>
-                <span className="rounded border border-dashed border-border px-1.5 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground sm:hidden">
+                <span className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-[10px] tracking-wider sm:hidden">
                   {registration.status.toUpperCase()}
                 </span>
               </div>
 
               {/* Type badge - desktop only */}
-              <span className="hidden rounded border border-border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider text-muted-foreground sm:order-3 sm:inline">
+              <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline">
                 {typeLabels[event.type] ?? event.type}
               </span>
-              <span className="ml-3 hidden rounded border border-dashed border-border px-2 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground sm:order-4 sm:inline">
+              <span className="border-border text-muted-foreground ml-3 hidden rounded border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wider sm:order-4 sm:inline">
                 {registration.status.toUpperCase()}
               </span>
             </Link>

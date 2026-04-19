@@ -22,19 +22,19 @@ export function SocialSuggestions() {
     <div className="space-y-6">
       {/* Suggested Members */}
       {data.members.length > 0 && (
-        <div className="rounded-lg border border-border bg-card">
-          <div className="border-b border-border px-4 py-3">
-            <span className="flex items-center gap-2 font-mono text-xs font-medium tracking-wider text-muted-foreground">
+        <div className="border-border bg-card rounded-lg border">
+          <div className="border-border border-b px-4 py-3">
+            <span className="text-muted-foreground flex items-center gap-2 font-mono text-xs font-medium tracking-wider">
               <Users className="h-3.5 w-3.5" />
               {t("suggestedMembers")}
             </span>
           </div>
-          <ul className="divide-y divide-border">
+          <ul className="divide-border divide-y">
             {data.members.map((member) => (
               <li key={member.userId} className="px-4 py-3">
                 <Link
                   href={`/members/${member.userId}`}
-                  className="flex items-center gap-3 transition-colors hover:text-primary"
+                  className="hover:text-primary flex items-center gap-3 transition-colors"
                 >
                   {member.image ? (
                     <Image
@@ -46,7 +46,7 @@ export function SocialSuggestions() {
                       className="h-8 w-8 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary font-mono text-xs font-medium text-muted-foreground">
+                    <div className="bg-secondary text-muted-foreground flex h-8 w-8 items-center justify-center rounded-full font-mono text-xs font-medium">
                       {getInitials(member.displayName)}
                     </div>
                   )}
@@ -55,7 +55,7 @@ export function SocialSuggestions() {
                       <span className="truncate text-sm font-medium">
                         {member.displayName}
                       </span>
-                      <span className="font-mono text-[10px] text-muted-foreground">
+                      <span className="text-muted-foreground font-mono text-[10px]">
                         {member.xp} XP
                       </span>
                     </div>
@@ -64,7 +64,7 @@ export function SocialSuggestions() {
                         {member.skills.slice(0, 3).map((skill) => (
                           <span
                             key={skill}
-                            className="truncate rounded bg-secondary px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+                            className="bg-secondary text-muted-foreground truncate rounded px-1.5 py-0.5 font-mono text-[10px]"
                           >
                             {skill}
                           </span>
@@ -81,21 +81,21 @@ export function SocialSuggestions() {
 
       {/* Suggested Agents */}
       {data.agents.length > 0 && (
-        <div className="rounded-lg border border-border bg-card">
-          <div className="border-b border-border px-4 py-3">
-            <span className="flex items-center gap-2 font-mono text-xs font-medium tracking-wider text-muted-foreground">
+        <div className="border-border bg-card rounded-lg border">
+          <div className="border-border border-b px-4 py-3">
+            <span className="text-muted-foreground flex items-center gap-2 font-mono text-xs font-medium tracking-wider">
               <BotIcon className="h-3.5 w-3.5" />
               {t("activeAgents")}
             </span>
           </div>
-          <ul className="divide-y divide-border">
+          <ul className="divide-border divide-y">
             {data.agents.map((agent) => (
               <li key={agent.id} className="px-4 py-3">
                 <Link
                   href={`/members/${agent.ownerId}/agent`}
-                  className="flex items-center gap-3 transition-colors hover:text-primary"
+                  className="hover:text-primary flex items-center gap-3 transition-colors"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-mono text-xs font-medium text-primary">
+                  <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-full font-mono text-xs font-medium">
                     {agent.avatar && !brokenAgentAvatars.has(agent.id) ? (
                       <Image
                         src={agent.avatar}
@@ -119,12 +119,12 @@ export function SocialSuggestions() {
                   <div className="flex-1 overflow-hidden">
                     <span className="text-sm font-medium">{agent.name}</span>
                     {agent.bio && (
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="text-muted-foreground truncate text-xs">
                         {agent.bio}
                       </p>
                     )}
                   </div>
-                  <span className="font-mono text-[10px] text-muted-foreground">
+                  <span className="text-muted-foreground font-mono text-[10px]">
                     {agent.totalContributions} {t("contributions")}
                   </span>
                 </Link>

@@ -329,9 +329,8 @@ export async function GET(request: Request) {
     let collaborative = 0;
 
     for (const ev of todayEvents) {
-      const key = ev.targetType && ev.targetId
-        ? `${ev.targetType}:${ev.targetId}`
-        : null;
+      const key =
+        ev.targetType && ev.targetId ? `${ev.targetType}:${ev.targetId}` : null;
       if (key && collabTargetKeys.has(key)) {
         collaborative++;
       } else if (ev.actorType === "agent") {

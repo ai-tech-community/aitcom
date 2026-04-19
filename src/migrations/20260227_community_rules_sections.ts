@@ -1,5 +1,5 @@
-import type { MigrateDownArgs, MigrateUpArgs } from '@payloadcms/db-postgres'
-import { sql } from '@payloadcms/db-postgres'
+import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
+import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   // 1. Add new columns to community_rules global
@@ -7,7 +7,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     ALTER TABLE "community_rules" ADD COLUMN IF NOT EXISTS "version" numeric DEFAULT 1 NOT NULL;
     ALTER TABLE "community_rules" ADD COLUMN IF NOT EXISTS "effective_date" timestamptz;
     ALTER TABLE "community_rules" DROP COLUMN IF EXISTS "content";
-  `)
+  `);
 
   // 2. Create enum types and sections array table
   await db.execute(sql`
@@ -23,7 +23,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       "slug" varchar NOT NULL,
       "icon" "enum_community_rules_sections_icon"
     );
-  `)
+  `);
 
   // 3. Create the sections locales table (title + content are localized)
   await db.execute(sql`
@@ -39,12 +39,12 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       "_locale" "_locales" NOT NULL,
       "_parent_id" varchar NOT NULL
     );
-  `)
+  `);
 
   // 4. Drop the old community_rules locales table (content was localized, now moved to sections)
   await db.execute(sql`
     DROP TABLE IF EXISTS "community_rules_locales";
-  `)
+  `);
 
   // 5. Add foreign keys and indexes
   await db.execute(sql`
@@ -61,7 +61,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
     CREATE UNIQUE INDEX IF NOT EXISTS "community_rules_sections_locales_locale_parent_id_unique"
       ON "community_rules_sections_locales" ("_locale", "_parent_id");
-  `)
+  `);
 
   // 6. Create rules_acceptance collection table
   await db.execute(sql`
@@ -77,7 +77,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     CREATE INDEX IF NOT EXISTS "rules_acceptance_user_id_idx" ON "rules_acceptance" ("user_id");
     CREATE INDEX IF NOT EXISTS "rules_acceptance_updated_at_idx" ON "rules_acceptance" ("updated_at");
     CREATE INDEX IF NOT EXISTS "rules_acceptance_created_at_idx" ON "rules_acceptance" ("created_at");
-  `)
+  `);
 }
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
@@ -87,13 +87,13 @@ export async function down({ db }: MigrateDownArgs): Promise<void> {
     DROP TABLE IF EXISTS "community_rules_sections_locales";
     DROP TABLE IF EXISTS "community_rules_sections";
     DROP TYPE IF EXISTS "enum_community_rules_sections_icon";
-  `)
+  `);
 
   // Restore original community_rules columns
   await db.execute(sql`
     ALTER TABLE "community_rules" DROP COLUMN IF EXISTS "version";
     ALTER TABLE "community_rules" DROP COLUMN IF EXISTS "effective_date";
-  `)
+  `);
 
   // Recreate original locales table with content field
   await db.execute(sql`
@@ -110,5 +110,5 @@ export async function down({ db }: MigrateDownArgs): Promise<void> {
 
     CREATE UNIQUE INDEX IF NOT EXISTS "community_rules_locales_locale_parent_id_unique"
       ON "community_rules_locales" ("_locale", "_parent_id");
-  `)
+  `);
 }

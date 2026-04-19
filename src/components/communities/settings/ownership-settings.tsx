@@ -104,7 +104,9 @@ export function OwnershipSettings({ slug }: OwnershipSettingsProps) {
           <DialogHeader>
             <DialogTitle>{t("confirmTitle")}</DialogTitle>
             <DialogDescription>
-              {t("confirmDescription", { name: selectedMember?.displayName ?? "this member" })}
+              {t("confirmDescription", {
+                name: selectedMember?.displayName ?? "this member",
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -116,7 +118,9 @@ export function OwnershipSettings({ slug }: OwnershipSettingsProps) {
               onClick={handleTransfer}
               disabled={transferMutation.isPending}
             >
-              {transferMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              {transferMutation.isPending && (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              )}
               {t("confirmButton")}
             </Button>
           </DialogFooter>

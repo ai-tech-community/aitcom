@@ -13,7 +13,7 @@ export function RoleBadge({ role }: { role?: string | null }) {
   if (!role || role === "member") return null;
   return (
     <span
-      className={`rounded-full px-1.5 py-0.5 font-mono text-[8px] font-semibold uppercase tracking-wider ${roleStyles[role as Role] ?? roleStyles.member}`}
+      className={`rounded-full px-1.5 py-0.5 font-mono text-[8px] font-semibold tracking-wider uppercase ${roleStyles[role as Role] ?? roleStyles.member}`}
     >
       {role}
     </span>

@@ -30,9 +30,7 @@ export function EventAttendees({ eventId, maxAttendees }: EventAttendeesProps) {
             <span className="text-muted-foreground">
               {count} / {maxAttendees} REGISTERED
             </span>
-            {isFull && (
-              <span className="text-primary font-medium">FULL</span>
-            )}
+            {isFull && <span className="text-primary font-medium">FULL</span>}
           </div>
           <div className="bg-secondary h-2 w-full overflow-hidden rounded-full">
             <div
@@ -56,7 +54,7 @@ export function EventAttendees({ eventId, maxAttendees }: EventAttendeesProps) {
               <Link
                 key={attendee.userId}
                 href={`/members/${attendee.userId}`}
-                className="group flex items-center gap-1.5 rounded-full border border-dashed border-border px-2 py-1 transition-colors hover:border-foreground/30"
+                className="group border-border hover:border-foreground/30 flex items-center gap-1.5 rounded-full border border-dashed px-2 py-1 transition-colors"
                 title={attendee.displayName}
               >
                 {avatarUrl ? (
@@ -68,24 +66,24 @@ export function EventAttendees({ eventId, maxAttendees }: EventAttendeesProps) {
                     height={20}
                   />
                 ) : (
-                  <div className="flex h-5 w-5 items-center justify-center rounded-full bg-secondary font-mono text-[8px] text-muted-foreground">
+                  <div className="bg-secondary text-muted-foreground flex h-5 w-5 items-center justify-center rounded-full font-mono text-[8px]">
                     {initials}
                   </div>
                 )}
-                <span className="font-mono text-[10px] tracking-wider text-muted-foreground group-hover:text-foreground">
+                <span className="text-muted-foreground group-hover:text-foreground font-mono text-[10px] tracking-wider">
                   {attendee.displayName}
                 </span>
               </Link>
             );
           })}
           {count > attendees.length && (
-            <span className="flex items-center px-2 font-mono text-[10px] tracking-wider text-muted-foreground">
+            <span className="text-muted-foreground flex items-center px-2 font-mono text-[10px] tracking-wider">
               +{count - attendees.length} more
             </span>
           )}
         </div>
       ) : (
-        <p className="font-mono text-xs tracking-wider text-muted-foreground">
+        <p className="text-muted-foreground font-mono text-xs tracking-wider">
           No attendees yet. Be the first to register!
         </p>
       )}

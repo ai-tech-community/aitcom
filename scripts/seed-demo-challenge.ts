@@ -28,7 +28,10 @@ const existing = await payload.find({
 });
 
 if (existing.docs.length > 0) {
-  console.log("Challenge already exists (id: %d) — deleting and re-seeding", existing.docs[0]!.id);
+  console.log(
+    "Challenge already exists (id: %d) — deleting and re-seeding",
+    existing.docs[0]!.id,
+  );
   await payload.delete({ collection: "challenges", id: existing.docs[0]!.id });
 }
 
@@ -94,25 +97,29 @@ const challenge = await payload.create({
       ),
     ),
     repo: {
-      templateUrl: "https://github.com/ai-tech-community/challenge-build-mcp-tool",
+      templateUrl:
+        "https://github.com/ai-tech-community/challenge-build-mcp-tool",
       configFile: true,
       testCommand: "npm test",
     },
     objectives: [
       {
-        description: "Implement the greet tool that returns a personalized greeting",
+        description:
+          "Implement the greet tool that returns a personalized greeting",
         verification: "test" as const,
         testPattern: "test/tools.test.ts.*greet",
         targetCount: 1,
       },
       {
-        description: "Implement the calculate tool with add, subtract, multiply, divide",
+        description:
+          "Implement the calculate tool with add, subtract, multiply, divide",
         verification: "test" as const,
         testPattern: "test/tools.test.ts.*calculate",
         targetCount: 1,
       },
       {
-        description: "Build a custom tool of your choice (at least 3 tools total)",
+        description:
+          "Build a custom tool of your choice (at least 3 tools total)",
         verification: "test" as const,
         testPattern: "test/tools.test.ts.*custom",
         targetCount: 1,
@@ -138,7 +145,13 @@ const challenge = await payload.create({
   },
 });
 
-console.log("✓ Demo challenge created (id: %d, slug: %s)", challenge.id, challenge.slug);
-console.log("  URL: https://aitcommunity.org/challenges/build-your-first-mcp-tool");
+console.log(
+  "✓ Demo challenge created (id: %d, slug: %s)",
+  challenge.id,
+  challenge.slug,
+);
+console.log(
+  "  URL: https://aitcommunity.org/challenges/build-your-first-mcp-tool",
+);
 console.log("\nDone!");
 process.exit(0);

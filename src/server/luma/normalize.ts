@@ -28,8 +28,7 @@ export function normalizeLumaEvent(
   communityId: string,
 ): NormalizedEvent {
   const location =
-    event.geo_address_json?.address ??
-    (event.meeting_url ? "Online" : "TBA");
+    event.geo_address_json?.address ?? (event.meeting_url ? "Online" : "TBA");
 
   return {
     id: `luma-${event.api_id}`,

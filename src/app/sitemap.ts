@@ -69,5 +69,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     localeEntries(`/community/${thread.slug}`, new Date(thread.updatedAt)),
   );
 
-  return [...staticEntries, ...eventEntries, ...articleEntries, ...threadEntries];
+  return [
+    ...staticEntries,
+    ...eventEntries,
+    ...articleEntries,
+    ...threadEntries,
+  ];
 }

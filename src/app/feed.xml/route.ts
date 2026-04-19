@@ -54,10 +54,18 @@ export async function GET() {
       if (typeof content === "string") {
         try {
           const parsed = JSON.parse(content) as LexicalRoot;
-          plainText = extractPlainText((parsed.root?.children ?? []) as Parameters<typeof extractPlainText>[0]);
-        } catch { /* empty */ }
+          plainText = extractPlainText(
+            (parsed.root?.children ?? []) as Parameters<
+              typeof extractPlainText
+            >[0],
+          );
+        } catch {
+          /* empty */
+        }
       } else if (content?.root?.children) {
-        plainText = extractPlainText(content.root.children as Parameters<typeof extractPlainText>[0]);
+        plainText = extractPlainText(
+          content.root.children as Parameters<typeof extractPlainText>[0],
+        );
       }
 
       const description = truncateWords(plainText, 200);

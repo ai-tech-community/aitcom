@@ -54,7 +54,7 @@ export function DashboardProfile({
           </span>
         </div>
         {!editing ? (
-          <div className="mt-4 rounded border border-dashed border-primary/30 px-4 py-6 text-center">
+          <div className="border-primary/30 mt-4 rounded border border-dashed px-4 py-6 text-center">
             <p className="text-muted-foreground text-sm">
               {t("completeProfile")}
             </p>

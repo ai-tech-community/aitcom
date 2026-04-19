@@ -3,12 +3,7 @@
 import { useCallback, useRef } from "react";
 import { fitAsciiFrame, useAsciiScene } from "@/components/ascii-scene";
 
-const ROUTES = [
-  "A->B->D",
-  "A->C->E",
-  "B->E->F",
-  "C->D->F",
-];
+const ROUTES = ["A->B->D", "A->C->E", "B->E->F", "C->D->F"];
 
 function connectLines(route: string, pulse: boolean, hop: number): string[] {
   const dot = pulse ? "o" : "*";
@@ -22,9 +17,15 @@ function connectLines(route: string, pulse: boolean, hop: number): string[] {
     "| [C]------[E]------[F]                                      |",
     "|                                                            |",
     "|  messages in flight:                                       |",
-    `|  ${hop % 3 === 0 ? marker : dot} A -> B   ${hop % 3 === 1 ? marker : dot} B -> D   ${hop % 3 === 2 ? marker : dot} D -> F`.padEnd(61, " ") + "|",
+    `|  ${hop % 3 === 0 ? marker : dot} A -> B   ${hop % 3 === 1 ? marker : dot} B -> D   ${hop % 3 === 2 ? marker : dot} D -> F`.padEnd(
+      61,
+      " ",
+    ) + "|",
     `|  active route: ${route}`.padEnd(61, " ") + "|",
-    `|  community signal: ${pulse ? "synchronized" : "propagating"}`.padEnd(61, " ") + "|",
+    `|  community signal: ${pulse ? "synchronized" : "propagating"}`.padEnd(
+      61,
+      " ",
+    ) + "|",
     "\\------------------------------------------------------------/",
   ];
 }

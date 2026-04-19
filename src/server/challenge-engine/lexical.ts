@@ -8,7 +8,11 @@
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-export type LexicalNode = { type: string; version: number; [k: string]: unknown };
+export type LexicalNode = {
+  type: string;
+  version: number;
+  [k: string]: unknown;
+};
 
 // ── Inline / leaf nodes ─────────────────────────────────────────────────────
 

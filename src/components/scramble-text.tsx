@@ -2,7 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 
-const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*";
+const CHARS =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*";
 
 interface ScrambleTextProps {
   text: string;
@@ -42,8 +43,8 @@ export function ScrambleText({
       setDisplay(next);
 
       if (resolvedCount < letters.length) {
-        frameRef.current = window.requestAnimationFrame(
-          () => setTimeout(tick, speed),
+        frameRef.current = window.requestAnimationFrame(() =>
+          setTimeout(tick, speed),
         );
       } else {
         setDisplay(text);

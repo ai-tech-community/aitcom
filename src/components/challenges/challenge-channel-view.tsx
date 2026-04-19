@@ -88,7 +88,7 @@ export function ChallengeChannelView({
   if (channelLoading) {
     return (
       <div className="mt-8">
-        <div className="text-sm text-muted-foreground">Loading channel...</div>
+        <div className="text-muted-foreground text-sm">Loading channel...</div>
       </div>
     );
   }
@@ -96,8 +96,8 @@ export function ChallengeChannelView({
   if (!channel) {
     return (
       <div className="mt-8">
-        <div className="rounded-lg border border-dashed border-border px-6 py-12 text-center">
-          <p className="text-sm text-muted-foreground">
+        <div className="border-border rounded-lg border border-dashed px-6 py-12 text-center">
+          <p className="text-muted-foreground text-sm">
             No channel yet. Enroll to create the channel.
           </p>
         </div>
@@ -131,7 +131,7 @@ export function ChallengeChannelView({
     <div className="mt-8">
       {/* Header + New Thread button */}
       <div className="flex items-center justify-between">
-        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / CHANNEL
         </span>
         <Button
@@ -161,10 +161,10 @@ export function ChallengeChannelView({
       {/* Thread list */}
       <div className="mt-4 space-y-2">
         {threadsLoading ? (
-          <p className="text-sm text-muted-foreground">Loading threads...</p>
+          <p className="text-muted-foreground text-sm">Loading threads...</p>
         ) : threads.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border px-6 py-12 text-center">
-            <p className="text-sm text-muted-foreground">
+          <div className="border-border rounded-lg border border-dashed px-6 py-12 text-center">
+            <p className="text-muted-foreground text-sm">
               No threads yet. Start the conversation!
             </p>
           </div>

@@ -36,7 +36,9 @@ function formatPersonalityDistribution(dist: Record<string, number>): string {
     .sort(([, a], [, b]) => b - a)
     .slice(0, 3);
   if (entries.length === 0) return "-";
-  return entries.map(([label, value]) => `${label}: ${Math.round(value)}%`).join(", ");
+  return entries
+    .map(([label, value]) => `${label}: ${Math.round(value)}%`)
+    .join(", ");
 }
 
 function LearningLoopLabel({ signal }: { signal: string }) {
@@ -55,7 +57,9 @@ export function AudienceBlocks({ labels, data }: AudienceBlocksProps) {
     <section className="grid gap-4 lg:grid-cols-3">
       <article className="rounded-lg border border-zinc-200 bg-white/80 p-4">
         <h3 className="font-semibold text-zinc-900">{labels.visitorsTitle}</h3>
-        <p className="mt-1 text-sm text-zinc-600">{labels.visitorsDescription}</p>
+        <p className="mt-1 text-sm text-zinc-600">
+          {labels.visitorsDescription}
+        </p>
         <div className="mt-3 space-y-1 font-mono text-xs text-zinc-700">
           <p>Momentum: {data.visitors.momentum.toFixed(1)}%</p>
           <p>Outcomes: {data.visitors.outcomes}</p>
@@ -70,7 +74,9 @@ export function AudienceBlocks({ labels, data }: AudienceBlocksProps) {
       </article>
       <article className="rounded-lg border border-zinc-200 bg-white/80 p-4">
         <h3 className="font-semibold text-zinc-900">{labels.membersTitle}</h3>
-        <p className="mt-1 text-sm text-zinc-600">{labels.membersDescription}</p>
+        <p className="mt-1 text-sm text-zinc-600">
+          {labels.membersDescription}
+        </p>
         <div className="mt-3 space-y-1 font-mono text-xs text-zinc-700">
           <p>
             Response Health:{" "}
@@ -79,16 +85,21 @@ export function AudienceBlocks({ labels, data }: AudienceBlocksProps) {
           <p>Answered Threads: {data.members.answeredThreads}</p>
           <p>
             Personality Mix:{" "}
-            {formatPersonalityDistribution(data.members.personalityDistribution)}
+            {formatPersonalityDistribution(
+              data.members.personalityDistribution,
+            )}
           </p>
           <p>
-            Learning Loop: <LearningLoopLabel signal={data.members.learningLoopSignal} />
+            Learning Loop:{" "}
+            <LearningLoopLabel signal={data.members.learningLoopSignal} />
           </p>
         </div>
       </article>
       <article className="rounded-lg border border-zinc-200 bg-white/80 p-4">
         <h3 className="font-semibold text-zinc-900">{labels.sponsorsTitle}</h3>
-        <p className="mt-1 text-sm text-zinc-600">{labels.sponsorsDescription}</p>
+        <p className="mt-1 text-sm text-zinc-600">
+          {labels.sponsorsDescription}
+        </p>
         <div className="mt-3 space-y-1 font-mono text-xs text-zinc-700">
           <p>Delivery Rate: {data.sponsors.deliveryRate.toFixed(1)}%</p>
           <p>Active Builders: {data.sponsors.activeBuilders}</p>

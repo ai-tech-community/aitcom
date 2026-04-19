@@ -15,40 +15,60 @@ export function ActivityTab({ visibilityMode }: ActivityTabProps) {
   return (
     <div className="space-y-8">
       {visibilityMode === "ghost" && (
-        <div className="rounded-xl border border-border bg-card p-6">
-          <div className="border-b border-border pb-4">
-            <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">/ PENDING DRAFTS</span>
+        <div className="border-border bg-card rounded-xl border p-6">
+          <div className="border-border border-b pb-4">
+            <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+              / PENDING DRAFTS
+            </span>
           </div>
-          <div className="mt-4"><AgentDrafts /></div>
+          <div className="mt-4">
+            <AgentDrafts />
+          </div>
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="border-b border-border pb-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">/ SUGGESTIONS</span>
+      <div className="border-border bg-card rounded-xl border p-6">
+        <div className="border-border border-b pb-4">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            / SUGGESTIONS
+          </span>
         </div>
-        <div className="mt-4"><AgentSuggestions /></div>
+        <div className="mt-4">
+          <AgentSuggestions />
+        </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="border-b border-border pb-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">/ AGENT ACTIVITY</span>
+      <div className="border-border bg-card rounded-xl border p-6">
+        <div className="border-border border-b pb-4">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            / AGENT ACTIVITY
+          </span>
         </div>
-        <div className="mt-4"><AgentActivityFeed /></div>
+        <div className="mt-4">
+          <AgentActivityFeed />
+        </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="border-b border-border pb-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">/ IMPACT QA</span>
+      <div className="border-border bg-card rounded-xl border p-6">
+        <div className="border-border border-b pb-4">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            / IMPACT QA
+          </span>
         </div>
-        <div className="mt-4"><QADashboard /></div>
+        <div className="mt-4">
+          <QADashboard />
+        </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="border-b border-border pb-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">/ HISTORY</span>
+      <div className="border-border bg-card rounded-xl border p-6">
+        <div className="border-border border-b pb-4">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            / HISTORY
+          </span>
         </div>
-        <div className="mt-4"><ClaimHistoryFeed /></div>
+        <div className="mt-4">
+          <ClaimHistoryFeed />
+        </div>
       </div>
     </div>
   );
@@ -56,7 +76,10 @@ export function ActivityTab({ visibilityMode }: ActivityTabProps) {
 
 function AgentActivityFeed() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const { data, isLoading } = api.agentManagement.getAgentActivity.useQuery({ limit: 20, cursor });
+  const { data, isLoading } = api.agentManagement.getAgentActivity.useQuery({
+    limit: 20,
+    cursor,
+  });
 
   const actionLabels: Record<string, string> = {
     "thread.replied": "Replied to thread",
@@ -72,19 +95,28 @@ function AgentActivityFeed() {
   };
 
   if (!isLoading && (!data || data.events.length === 0) && !cursor) {
-    return <p className="text-xs text-muted-foreground">No activity yet.</p>;
+    return <p className="text-muted-foreground text-xs">No activity yet.</p>;
   }
 
   return (
     <div className="space-y-2">
       {data?.events.map((event) => (
         <div key={event.id} className="flex items-center justify-between py-1">
-          <span className="text-xs text-muted-foreground">{actionLabels[event.action] ?? event.action.replace(/\./g, " ")}</span>
-          <span className="font-mono text-[9px] tracking-wider text-muted-foreground/50">{relativeTime(new Date(event.createdAt))}</span>
+          <span className="text-muted-foreground text-xs">
+            {actionLabels[event.action] ?? event.action.replace(/\./g, " ")}
+          </span>
+          <span className="text-muted-foreground/50 font-mono text-[9px] tracking-wider">
+            {relativeTime(new Date(event.createdAt))}
+          </span>
         </div>
       ))}
       {data?.nextCursor && (
-        <button type="button" onClick={() => setCursor(data.nextCursor!)} className="font-mono text-[10px] tracking-wider text-muted-foreground hover:text-foreground" disabled={isLoading}>
+        <button
+          type="button"
+          onClick={() => setCursor(data.nextCursor!)}
+          className="text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-wider"
+          disabled={isLoading}
+        >
           {isLoading ? "..." : "LOAD MORE"}
         </button>
       )}
@@ -103,7 +135,7 @@ function ClaimHistoryFeed() {
   };
 
   if (!events || events.length === 0) {
-    return <p className="text-xs text-muted-foreground">No history yet.</p>;
+    return <p className="text-muted-foreground text-xs">No history yet.</p>;
   }
 
   return (
@@ -117,9 +149,14 @@ function ClaimHistoryFeed() {
         if (handle) description += ` @${handle}`;
 
         return (
-          <div key={event.id} className="flex items-center justify-between py-1">
-            <span className="text-xs text-muted-foreground">{description}</span>
-            <span className="font-mono text-[9px] tracking-wider text-muted-foreground/50">{relativeTime(new Date(event.createdAt))}</span>
+          <div
+            key={event.id}
+            className="flex items-center justify-between py-1"
+          >
+            <span className="text-muted-foreground text-xs">{description}</span>
+            <span className="text-muted-foreground/50 font-mono text-[9px] tracking-wider">
+              {relativeTime(new Date(event.createdAt))}
+            </span>
           </div>
         );
       })}

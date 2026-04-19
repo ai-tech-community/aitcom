@@ -104,14 +104,14 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
   // ── Render ────────────────────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+    <div className="bg-background fixed inset-0 z-50 flex flex-col">
       {/* ── Header ──────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+      <div className="border-border flex items-center gap-2 border-b px-3 py-2.5">
         {/* Back arrow */}
         <button
           type="button"
           onClick={handleBack}
-          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+          className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
           aria-label={t("back")}
         >
           <ArrowLeftIcon className="h-4 w-4" />
@@ -128,19 +128,19 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
               height={32}
             />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-medium text-muted-foreground">
+            <div className="bg-secondary text-muted-foreground flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium">
               {chatInfo.displayName.charAt(0).toUpperCase()}
             </div>
           )}
           {chatInfo.isAgent && (
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background">
-              <BotIcon className="h-3 w-3 text-muted-foreground" />
+            <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full">
+              <BotIcon className="text-muted-foreground h-3 w-3" />
             </span>
           )}
         </div>
 
         {/* Name */}
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+        <span className="text-foreground min-w-0 flex-1 truncate text-sm font-medium">
           {chatInfo.displayName}
         </span>
 
@@ -148,7 +148,7 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
         <button
           type="button"
           onClick={handleClose}
-          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+          className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
           aria-label={t("close")}
         >
           <XIcon className="h-4 w-4" />
@@ -158,15 +158,14 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
       {/* ── Messages area ───────────────────────────────────────────── */}
       {messagesQuery.isLoading ? (
         <div className="flex flex-1 items-center justify-center">
-          <Spinner className="h-5 w-5 text-muted-foreground" />
+          <Spinner className="text-muted-foreground h-5 w-5" />
         </div>
       ) : (
         <Conversation className="flex-1">
           <ConversationContent className="gap-4 p-3">
             {messages.map((msg, idx) => {
               const isUser =
-                msg.senderId === currentUserId &&
-                msg.senderType === "human";
+                msg.senderId === currentUserId && msg.senderType === "human";
 
               const prevMsg = messages[idx - 1];
               const showDateSeparator =
@@ -200,11 +199,11 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
                 <div key={msg.id} className="flex flex-col gap-4">
                   {dateLabel && (
                     <div className="flex items-center gap-3">
-                      <div className="h-px flex-1 bg-border" />
-                      <span className="shrink-0 text-[10px] font-medium uppercase text-muted-foreground">
+                      <div className="bg-border h-px flex-1" />
+                      <span className="text-muted-foreground shrink-0 text-[10px] font-medium uppercase">
                         {dateLabel}
                       </span>
-                      <div className="h-px flex-1 bg-border" />
+                      <div className="bg-border h-px flex-1" />
                     </div>
                   )}
                   <Message from={isUser ? "user" : "assistant"}>
@@ -216,7 +215,7 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
                       )}
                     </MessageContent>
                     <span
-                      className={`text-[10px] text-muted-foreground ${isUser ? "ml-auto" : ""}`}
+                      className={`text-muted-foreground text-[10px] ${isUser ? "ml-auto" : ""}`}
                     >
                       {formatTime(msg.createdAt)}
                     </span>
@@ -230,7 +229,7 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
       )}
 
       {/* ── Input area ──────────────────────────────────────────────── */}
-      <div className="border-t border-border">
+      <div className="border-border border-t">
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputTextarea
             placeholder={t("placeholder")}

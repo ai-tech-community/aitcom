@@ -14,7 +14,10 @@ export function MethodologyPanel({
   lastUpdated,
 }: MethodologyPanelProps) {
   return (
-    <section id="methodology" className="rounded-lg border border-zinc-200 bg-white/80 p-4">
+    <section
+      id="methodology"
+      className="rounded-lg border border-zinc-200 bg-white/80 p-4"
+    >
       <h3 className="font-semibold text-zinc-900">{title}</h3>
       <div className="mt-3 space-y-2 text-sm text-zinc-700">
         <p>{aggregateOnly}</p>
@@ -25,4 +28,3 @@ export function MethodologyPanel({
     </section>
   );
 }
-

@@ -19,8 +19,12 @@ export default function OnboardingPage() {
   return (
     <div className="py-8">
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-bold tracking-tight">{t("welcomeTitle")}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{t("welcomeSubtitle")}</p>
+        <h1 className="text-2xl font-bold tracking-tight">
+          {t("welcomeTitle")}
+        </h1>
+        <p className="text-muted-foreground mt-2 text-sm">
+          {t("welcomeSubtitle")}
+        </p>
       </div>
       <OnboardingQuestions onComplete={handleComplete} />
     </div>

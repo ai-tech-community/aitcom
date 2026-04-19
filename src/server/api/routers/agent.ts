@@ -31,10 +31,16 @@ import {
   communities,
   communityMemberships,
 } from "@/server/db/schema";
-import { BENCHMARK_TOPICS, BENCHMARK_DIFFICULTIES } from "@/lib/benchmark-constants";
+import {
+  BENCHMARK_TOPICS,
+  BENCHMARK_DIFFICULTIES,
+} from "@/lib/benchmark-constants";
 import { createHmac } from "crypto";
 import { getPayloadClient } from "@/server/payload";
-import { logActivity, checkEnrollmentCompletion } from "@/server/agent/activity";
+import {
+  logActivity,
+  checkEnrollmentCompletion,
+} from "@/server/agent/activity";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import { agentFeedRouter } from "./agent-feed";
 import { agentCommunityRouter } from "./agent-communities";
@@ -66,7 +72,10 @@ function richTextSnippet(field: unknown, maxLen = 200): string {
   return joined.length > maxLen ? joined.slice(0, maxLen) + "..." : joined;
 }
 
-function getMetadataString(meta: Record<string, unknown>, key: string): string | undefined {
+function getMetadataString(
+  meta: Record<string, unknown>,
+  key: string,
+): string | undefined {
   const value = meta[key];
   return typeof value === "string" ? value : undefined;
 }
@@ -103,7 +112,10 @@ export const agentRouter = createTRPCRouter({
           ),
         });
         if (!community) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Community not found",
+          });
         }
         communityId = community.id;
       }
@@ -116,7 +128,8 @@ export const agentRouter = createTRPCRouter({
         conditions.push({ communityId: { equals: communityId } });
       }
 
-      const where: Where | undefined = conditions.length > 0 ? { and: conditions } : undefined;
+      const where: Where | undefined =
+        conditions.length > 0 ? { and: conditions } : undefined;
 
       const { docs } = await payload.find({
         collection: "forum-threads",
@@ -195,7 +208,9 @@ export const agentRouter = createTRPCRouter({
           content: r.content,
           authorName: r.authorName ?? null,
           authorId: r.authorId ?? null,
-          authorType: ((r as unknown as Record<string, unknown>).authorType as string) ?? "member",
+          authorType:
+            ((r as unknown as Record<string, unknown>).authorType as string) ??
+            "member",
           isOwnReply: r.authorId === ctx.agent.agentId,
           createdAt: r.createdAt,
         })),
@@ -225,7 +240,10 @@ export const agentRouter = createTRPCRouter({
           ),
         });
         if (!community) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Community not found",
+          });
         }
         communityId = community.id;
       }
@@ -276,9 +294,16 @@ export const agentRouter = createTRPCRouter({
 
       if (input.communitySlug) {
         const community = await ctx.db.query.communities.findFirst({
-          where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+          where: and(
+            eq(communities.slug, input.communitySlug),
+            isNull(communities.deletedAt),
+          ),
         });
-        if (!community) throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        if (!community)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Community not found",
+          });
 
         const members = await ctx.db
           .select({
@@ -291,11 +316,16 @@ export const agentRouter = createTRPCRouter({
             level: memberProfiles.level,
           })
           .from(communityMemberships)
-          .leftJoin(memberProfiles, eq(communityMemberships.userId, memberProfiles.userId))
-          .where(and(
-            eq(communityMemberships.communityId, community.id),
-            eq(communityMemberships.status, "active"),
-          ))
+          .leftJoin(
+            memberProfiles,
+            eq(communityMemberships.userId, memberProfiles.userId),
+          )
+          .where(
+            and(
+              eq(communityMemberships.communityId, community.id),
+              eq(communityMemberships.status, "active"),
+            ),
+          )
           .orderBy(desc(communityMemberships.joinedAt))
           .limit(input.limit);
 
@@ -315,9 +345,7 @@ export const agentRouter = createTRPCRouter({
       const conditions = [eq(memberProfiles.isPublic, true)];
 
       if (input.search) {
-        conditions.push(
-          ilike(memberProfiles.displayName, `%${input.search}%`),
-        );
+        conditions.push(ilike(memberProfiles.displayName, `%${input.search}%`));
       }
 
       const profiles = await ctx.db
@@ -342,9 +370,7 @@ export const agentRouter = createTRPCRouter({
     .input(
       z.object({
         query: z.string().min(1).max(200),
-        type: z
-          .enum(["threads", "articles", "ideas", "all"])
-          .default("all"),
+        type: z.enum(["threads", "articles", "ideas", "all"]).default("all"),
         limit: z.number().min(1).max(20).default(10),
         communitySlug: z.string().optional(),
       }),
@@ -364,7 +390,10 @@ export const agentRouter = createTRPCRouter({
           ),
         });
         if (!community) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Community not found",
+          });
         }
         communityId = community.id;
       }
@@ -377,7 +406,8 @@ export const agentRouter = createTRPCRouter({
         createdAt: string;
       }[] = [];
 
-      const perType = input.type === "all" ? Math.ceil(input.limit / 3) : input.limit;
+      const perType =
+        input.type === "all" ? Math.ceil(input.limit / 3) : input.limit;
 
       // Search threads
       if (input.type === "all" || input.type === "threads") {
@@ -403,7 +433,10 @@ export const agentRouter = createTRPCRouter({
             type: "thread",
             id: d.id,
             title: d.title,
-            snippet: typeof d.content === "string" ? (d.content as string).slice(0, 200) : d.title,
+            snippet:
+              typeof d.content === "string"
+                ? (d.content as string).slice(0, 200)
+                : d.title,
             createdAt: d.createdAt,
           });
         }
@@ -521,12 +554,15 @@ export const agentRouter = createTRPCRouter({
         .limit(1);
 
       if (!agent) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Agent profile not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Agent profile not found",
+        });
       }
 
       const sinceDate = input.since
         ? new Date(input.since)
-        : agent.lastActiveAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000); // default: last 24h
+        : (agent.lastActiveAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000)); // default: last 24h
 
       const expertiseTags = agent.expertiseTags ?? [];
 
@@ -650,7 +686,11 @@ export const agentRouter = createTRPCRouter({
 
       if (agentConv) {
         const inboxMessages = await ctx.db
-          .select({ id: messages.id, content: messages.content, createdAt: messages.createdAt })
+          .select({
+            id: messages.id,
+            content: messages.content,
+            createdAt: messages.createdAt,
+          })
           .from(messages)
           .where(
             and(
@@ -677,7 +717,10 @@ export const agentRouter = createTRPCRouter({
       }
 
       // Sort by createdAt desc and trim to limit
-      notifications.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      notifications.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
 
       return notifications.slice(0, input.limit);
     }),
@@ -699,12 +742,15 @@ export const agentRouter = createTRPCRouter({
         .limit(1);
 
       if (!agent) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Agent profile not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Agent profile not found",
+        });
       }
 
       const sinceDate = input.since
         ? new Date(input.since)
-        : agent.lastActiveAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000);
+        : (agent.lastActiveAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000));
 
       const now = new Date();
 
@@ -874,16 +920,33 @@ export const agentRouter = createTRPCRouter({
 
       // Build human-readable summary
       const parts: string[] = [];
-      if (notifications > 0) parts.push(`${notifications} new activity event${notifications !== 1 ? "s" : ""}`);
-      if (unreadInbox > 0) parts.push(`${unreadInbox} unread inbox message${unreadInbox !== 1 ? "s" : ""}`);
-      if (pendingDrafts > 0) parts.push(`${pendingDrafts} draft${pendingDrafts !== 1 ? "s" : ""} awaiting owner approval`);
-      if (activeChallenges > 0) parts.push(`${activeChallenges} active challenge${activeChallenges !== 1 ? "s" : ""}`);
-      if (pendingReviews > 0) parts.push(`${pendingReviews} submission${pendingReviews !== 1 ? "s" : ""} awaiting peer review`);
-      if (newChannelActivity > 0) parts.push(`${newChannelActivity} new channel message${newChannelActivity !== 1 ? "s" : ""}`);
+      if (notifications > 0)
+        parts.push(
+          `${notifications} new activity event${notifications !== 1 ? "s" : ""}`,
+        );
+      if (unreadInbox > 0)
+        parts.push(
+          `${unreadInbox} unread inbox message${unreadInbox !== 1 ? "s" : ""}`,
+        );
+      if (pendingDrafts > 0)
+        parts.push(
+          `${pendingDrafts} draft${pendingDrafts !== 1 ? "s" : ""} awaiting owner approval`,
+        );
+      if (activeChallenges > 0)
+        parts.push(
+          `${activeChallenges} active challenge${activeChallenges !== 1 ? "s" : ""}`,
+        );
+      if (pendingReviews > 0)
+        parts.push(
+          `${pendingReviews} submission${pendingReviews !== 1 ? "s" : ""} awaiting peer review`,
+        );
+      if (newChannelActivity > 0)
+        parts.push(
+          `${newChannelActivity} new channel message${newChannelActivity !== 1 ? "s" : ""}`,
+        );
 
-      const summary = parts.length > 0
-        ? parts.join(", ")
-        : "Nothing new since last check";
+      const summary =
+        parts.length > 0 ? parts.join(", ") : "Nothing new since last check";
 
       return {
         summary,
@@ -981,7 +1044,9 @@ export const agentRouter = createTRPCRouter({
       }
 
       // Block: agent replied to this thread within cooldown window
-      const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000).toISOString();
+      const cooldownCutoff = new Date(
+        Date.now() - cooldownMinutes * 60 * 1000,
+      ).toISOString();
       const { docs: recentOwnReplies } = await payload.find({
         collection: "forum-replies",
         where: {
@@ -997,7 +1062,8 @@ export const agentRouter = createTRPCRouter({
 
       if (recentOwnReplies.length > 0) {
         const nextAllowed = new Date(
-          new Date(recentOwnReplies[0]!.createdAt).getTime() + cooldownMinutes * 60 * 1000,
+          new Date(recentOwnReplies[0]!.createdAt).getTime() +
+            cooldownMinutes * 60 * 1000,
         );
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
@@ -1146,7 +1212,9 @@ export const agentRouter = createTRPCRouter({
       }
 
       // Block: agent replied to this thread within cooldown window
-      const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000).toISOString();
+      const cooldownCutoff = new Date(
+        Date.now() - cooldownMinutes * 60 * 1000,
+      ).toISOString();
       const { docs: recentOwnReplies } = await payload.find({
         collection: "forum-replies",
         where: {
@@ -1162,7 +1230,8 @@ export const agentRouter = createTRPCRouter({
 
       if (recentOwnReplies.length > 0) {
         const nextAllowed = new Date(
-          new Date(recentOwnReplies[0]!.createdAt).getTime() + cooldownMinutes * 60 * 1000,
+          new Date(recentOwnReplies[0]!.createdAt).getTime() +
+            cooldownMinutes * 60 * 1000,
         );
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
@@ -1366,10 +1435,7 @@ export const agentRouter = createTRPCRouter({
     .input(
       z.object({
         bio: z.string().max(2000).optional(),
-        expertiseTags: z
-          .array(z.string().max(50))
-          .max(20)
-          .optional(),
+        expertiseTags: z.array(z.string().max(50)).max(20).optional(),
         description: z.string().max(5000).optional(),
       }),
     )
@@ -1416,7 +1482,11 @@ export const agentRouter = createTRPCRouter({
         action: "agent.profile_updated",
         targetType: "agent_profile",
         targetId: ctx.agent.agentId,
-        metadata: { fields: Object.keys(input).filter((k) => input[k as keyof typeof input] !== undefined) },
+        metadata: {
+          fields: Object.keys(input).filter(
+            (k) => input[k as keyof typeof input] !== undefined,
+          ),
+        },
       });
 
       return updated;
@@ -1605,18 +1675,16 @@ export const agentRouter = createTRPCRouter({
         : [];
       if (objectives.length > 0) {
         await ctx.db.insert(challengeProgress).values(
-          objectives.map(
-            (obj: { verification?: string }, i: number) => ({
-              enrollmentId: enrollment.id,
-              objectiveIndex: i,
-              currentCount: 0,
-              verificationMode: (obj.verification ?? "self-report") as
-                | "platform-action"
-                | "test"
-                | "self-report"
-                | "peer-review",
-            }),
-          ),
+          objectives.map((obj: { verification?: string }, i: number) => ({
+            enrollmentId: enrollment.id,
+            objectiveIndex: i,
+            currentCount: 0,
+            verificationMode: (obj.verification ?? "self-report") as
+              | "platform-action"
+              | "test"
+              | "self-report"
+              | "peer-review",
+          })),
         );
       }
       // Ensure channel exists
@@ -1812,10 +1880,7 @@ export const agentRouter = createTRPCRouter({
             .where(
               and(
                 eq(challengeProgress.enrollmentId, enrollment.id),
-                eq(
-                  challengeProgress.objectiveIndex,
-                  result.objectiveIndex,
-                ),
+                eq(challengeProgress.objectiveIndex, result.objectiveIndex),
                 eq(challengeProgress.verificationMode, "test"),
                 sql`${challengeProgress.completedAt} IS NULL`,
               ),
@@ -1849,9 +1914,7 @@ export const agentRouter = createTRPCRouter({
       z.object({
         challengeId: z.number(),
         content: z.string().min(1).max(5000),
-        threadType: z
-          .enum(["discussion", "question"])
-          .default("discussion"),
+        threadType: z.enum(["discussion", "question"]).default("discussion"),
         title: z.string().min(1).max(500).optional(),
       }),
     )
@@ -1896,7 +1959,10 @@ export const agentRouter = createTRPCRouter({
       const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000);
 
       const [recentOwnReply] = await ctx.db
-        .select({ id: challengeReplies.id, createdAt: challengeReplies.createdAt })
+        .select({
+          id: challengeReplies.id,
+          createdAt: challengeReplies.createdAt,
+        })
         .from(challengeReplies)
         .where(
           and(
@@ -1910,7 +1976,8 @@ export const agentRouter = createTRPCRouter({
 
       if (recentOwnReply) {
         const nextAllowed = new Date(
-          new Date(recentOwnReply.createdAt).getTime() + cooldownMinutes * 60 * 1000,
+          new Date(recentOwnReply.createdAt).getTime() +
+            cooldownMinutes * 60 * 1000,
         );
         throw new TRPCError({
           code: "TOO_MANY_REQUESTS",
@@ -1952,9 +2019,7 @@ export const agentRouter = createTRPCRouter({
         await ctx.db
           .update(challengeThreads)
           .set({ updatedAt: new Date() })
-          .where(
-            eq(challengeThreads.id, enrollment.progressLogThreadId),
-          );
+          .where(eq(challengeThreads.id, enrollment.progressLogThreadId));
         return {
           posted: true,
           drafted: false,
@@ -1982,8 +2047,7 @@ export const agentRouter = createTRPCRouter({
           authorId: ownerId,
           authorType: "agent",
           title:
-            input.title ??
-            `${agent?.name ?? "Agent"}: ${input.threadType}`,
+            input.title ?? `${agent?.name ?? "Agent"}: ${input.threadType}`,
           content: input.content,
         })
         .returning();
@@ -2088,9 +2152,7 @@ export const agentRouter = createTRPCRouter({
           authorType: "agent",
           title: input.title,
           content: input.content,
-          metadata: input.repoUrl
-            ? { repoUrl: input.repoUrl }
-            : undefined,
+          metadata: input.repoUrl ? { repoUrl: input.repoUrl } : undefined,
         })
         .returning();
 
@@ -2179,14 +2241,15 @@ export const agentRouter = createTRPCRouter({
 
       if (logs.length > 20) {
         const idsToDelete = logs.slice(20).map((l) => l.id);
-        await ctx.db
-          .delete(agentSessionLogs)
-          .where(
-            and(
-              eq(agentSessionLogs.agentId, ctx.agent.agentId),
-              sql`${agentSessionLogs.id} IN (${sql.join(idsToDelete.map((id) => sql`${id}`), sql`, `)})`,
-            ),
-          );
+        await ctx.db.delete(agentSessionLogs).where(
+          and(
+            eq(agentSessionLogs.agentId, ctx.agent.agentId),
+            sql`${agentSessionLogs.id} IN (${sql.join(
+              idsToDelete.map((id) => sql`${id}`),
+              sql`, `,
+            )})`,
+          ),
+        );
       }
 
       return { saved: true };

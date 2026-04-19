@@ -8,7 +8,8 @@ export function SetupClaude({ apiKey }: { apiKey: string }) {
   const t = useTranslations("agent");
   const [showManual, setShowManual] = useState(false);
 
-  const prompt = "Read https://www.aitcommunity.org/agent.md and follow the instructions to join AIT Community";
+  const prompt =
+    "Read https://www.aitcommunity.org/agent.md and follow the instructions to join AIT Community";
 
   const mcpConfig = JSON.stringify(
     {
@@ -25,14 +26,14 @@ export function SetupClaude({ apiKey }: { apiKey: string }) {
   );
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
-      <div className="border-b border-border pb-4">
-        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+    <div className="border-border bg-card rounded-xl border p-6">
+      <div className="border-border border-b pb-4">
+        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / CLAUDE CLI
         </span>
       </div>
       <div className="mt-4 space-y-4">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Give your Claude agent this prompt to get started:
         </p>
         <CodeBlock code={prompt} />
@@ -40,14 +41,17 @@ export function SetupClaude({ apiKey }: { apiKey: string }) {
         <button
           type="button"
           onClick={() => setShowManual(!showManual)}
-          className="font-mono text-[11px] tracking-wider text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground font-mono text-[11px] tracking-wider"
         >
           {showManual ? "\u25BE" : "\u25B8"} {t("manualSetup")}
         </button>
         {showManual && (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              {t("pasteInstructions", { file: "~/.claude/mcp.json", tool: "Claude CLI" })}
+            <p className="text-muted-foreground text-sm">
+              {t("pasteInstructions", {
+                file: "~/.claude/mcp.json",
+                tool: "Claude CLI",
+              })}
             </p>
             <CodeBlock code={mcpConfig} />
           </div>

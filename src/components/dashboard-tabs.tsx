@@ -36,7 +36,7 @@ export function DashboardTabs() {
           <Link
             key={path}
             href={path}
-            className={`flex items-center gap-1.5 rounded px-3 py-2 font-mono text-xs font-medium uppercase tracking-wider transition-colors ${
+            className={`flex items-center gap-1.5 rounded px-3 py-2 font-mono text-xs font-medium tracking-wider uppercase transition-colors ${
               isActive
                 ? "bg-secondary/50 text-foreground"
                 : "text-muted-foreground hover:text-foreground"

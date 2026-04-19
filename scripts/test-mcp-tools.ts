@@ -20,7 +20,9 @@ const apiKey = process.argv[2];
 const baseUrl = process.argv[3] ?? "http://localhost:3000";
 
 if (!apiKey) {
-  console.error("Usage: npx tsx scripts/test-mcp-tools.ts <api-key> [base-url]");
+  console.error(
+    "Usage: npx tsx scripts/test-mcp-tools.ts <api-key> [base-url]",
+  );
   process.exit(1);
 }
 
@@ -115,7 +117,10 @@ async function main() {
       );
       console.log(`   lastCheckedAt=${data.lastCheckedAt}`);
 
-      if (typeof data.summary === "string" && typeof data.notifications === "number") {
+      if (
+        typeof data.summary === "string" &&
+        typeof data.notifications === "number"
+      ) {
         pass("get-briefing returns valid response");
       } else {
         fail("get-briefing response shape mismatch");

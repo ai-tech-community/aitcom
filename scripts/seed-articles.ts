@@ -11,7 +11,11 @@ import config from "@payload-config";
 const payload = await getPayload({ config });
 
 // Clear existing articles before re-seeding
-const existing = await payload.find({ collection: "articles", limit: 100, pagination: false });
+const existing = await payload.find({
+  collection: "articles",
+  limit: 100,
+  pagination: false,
+});
 for (const doc of existing.docs) {
   await payload.delete({ collection: "articles", id: doc.id });
 }
@@ -26,10 +30,25 @@ function text(t: string, format = 0): LexicalNode {
   return { type: "text", text: t, version: 1, format };
 }
 function paragraph(...children: LexicalNode[]): LexicalNode {
-  return { type: "paragraph", version: 1, format: "", indent: 0, direction: "ltr", children };
+  return {
+    type: "paragraph",
+    version: 1,
+    format: "",
+    indent: 0,
+    direction: "ltr",
+    children,
+  };
 }
 function heading(tag: string, ...children: LexicalNode[]): LexicalNode {
-  return { type: "heading", tag, version: 1, format: "", indent: 0, direction: "ltr", children };
+  return {
+    type: "heading",
+    tag,
+    version: 1,
+    format: "",
+    indent: 0,
+    direction: "ltr",
+    children,
+  };
 }
 function codeBlock(language: string, code: string): LexicalNode {
   // Payload BlocksFeature CodeBlock format (slug: "Code")
@@ -78,7 +97,14 @@ function numberedList(...items: string[]): LexicalNode {
   };
 }
 function blockquote(...children: LexicalNode[]): LexicalNode {
-  return { type: "quote", version: 1, format: "", indent: 0, direction: "ltr", children };
+  return {
+    type: "quote",
+    version: 1,
+    format: "",
+    indent: 0,
+    direction: "ltr",
+    children,
+  };
 }
 function hr(): LexicalNode {
   return { type: "horizontalrule", version: 1 };
@@ -106,7 +132,12 @@ await payload.create({
     title: "Building RAG Systems with LangChain",
     slug: "building-rag-systems-with-langchain",
     type: "article",
-    tags: [{ tag: "RAG" }, { tag: "LangChain" }, { tag: "Python" }, { tag: "AI" }],
+    tags: [
+      { tag: "RAG" },
+      { tag: "LangChain" },
+      { tag: "Python" },
+      { tag: "AI" },
+    ],
     status: "published",
     _status: "published",
     publishedAt: "2026-02-10T10:00:00.000Z",
@@ -159,7 +190,12 @@ await payload.create({
     title: "Getting Started with Ollama: Run LLMs Locally",
     slug: "getting-started-with-ollama",
     type: "tutorial",
-    tags: [{ tag: "Ollama" }, { tag: "LLM" }, { tag: "Local AI" }, { tag: "TypeScript" }],
+    tags: [
+      { tag: "Ollama" },
+      { tag: "LLM" },
+      { tag: "Local AI" },
+      { tag: "TypeScript" },
+    ],
     mediaUrl:
       "https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=1200&q=80",
     status: "published",
@@ -227,7 +263,12 @@ await payload.create({
     title: "RAG at Scale — Community Talk Recording",
     slug: "rag-at-scale-community-talk",
     type: "talk_recording",
-    tags: [{ tag: "RAG" }, { tag: "Production" }, { tag: "pgvector" }, { tag: "Evaluation" }],
+    tags: [
+      { tag: "RAG" },
+      { tag: "Production" },
+      { tag: "pgvector" },
+      { tag: "Evaluation" },
+    ],
     mediaUrl:
       "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&q=80",
     status: "published",

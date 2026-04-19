@@ -85,7 +85,7 @@ function ImageComponent({
 
   return (
     <div className="border-border my-4 rounded border">
-      <div className="flex items-center gap-2 border-b border-border px-3 py-1.5">
+      <div className="border-border flex items-center gap-2 border-b px-3 py-1.5">
         <input
           type="text"
           value={currentSrc}
@@ -95,7 +95,7 @@ function ImageComponent({
             updateNode(e.target.value, currentAlt);
           }}
           placeholder="https://example.com/image.jpg"
-          className="flex-1 bg-transparent font-mono text-xs text-muted-foreground focus:outline-none"
+          className="text-muted-foreground flex-1 bg-transparent font-mono text-xs focus:outline-none"
         />
         <input
           type="text"
@@ -105,7 +105,7 @@ function ImageComponent({
             updateNode(currentSrc, e.target.value);
           }}
           placeholder="Alt text..."
-          className="w-32 bg-transparent text-xs text-muted-foreground focus:outline-none"
+          className="text-muted-foreground w-32 bg-transparent text-xs focus:outline-none"
         />
         <button
           type="button"
@@ -125,8 +125,12 @@ function ImageComponent({
           onError={() => setImgError(true)}
         />
       ) : (
-        <div className="flex h-32 items-center justify-center text-muted-foreground text-xs">
-          {currentSrc ? (imgError ? "Image failed to load" : "Enter a valid https:// image URL") : "Enter an image URL above"}
+        <div className="text-muted-foreground flex h-32 items-center justify-center text-xs">
+          {currentSrc
+            ? imgError
+              ? "Image failed to load"
+              : "Enter a valid https:// image URL"
+            : "Enter an image URL above"}
         </div>
       )}
     </div>
@@ -220,6 +224,8 @@ export function $createImageNode(src = "", alt = ""): ImageNode {
   return new ImageNode(src, alt);
 }
 
-export function $isImageNode(node: LexicalNode | null | undefined): node is ImageNode {
+export function $isImageNode(
+  node: LexicalNode | null | undefined,
+): node is ImageNode {
   return node instanceof ImageNode;
 }

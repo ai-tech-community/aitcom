@@ -10,7 +10,13 @@ import { SponsorChallengeForm } from "./sponsor-challenge-form";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const DIFFICULTIES = ["all", "beginner", "intermediate", "advanced", "expert"] as const;
+const DIFFICULTIES = [
+  "all",
+  "beginner",
+  "intermediate",
+  "advanced",
+  "expert",
+] as const;
 const TYPES = ["all", "weekly", "monthly", "open-ended"] as const;
 
 type DifficultyFilter = (typeof DIFFICULTIES)[number];
@@ -114,7 +120,7 @@ export function ChallengeList() {
 
       {/* Filters */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground font-mono text-[11px] uppercase tracking-wider">
+        <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
           Difficulty:
         </span>
         {DIFFICULTIES.map((d) => (
@@ -128,7 +134,7 @@ export function ChallengeList() {
         ))}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground font-mono text-[11px] uppercase tracking-wider">
+        <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
           Type:
         </span>
         {TYPES.map((tp) => (

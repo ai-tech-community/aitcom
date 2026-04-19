@@ -23,8 +23,18 @@ const benefits = [
   { key: "benefitLogo", bronze: "yes", silver: "yes", gold: "yes" },
   { key: "benefitHomepage", bronze: "no", silver: "yes", gold: "larger" },
   { key: "benefitJobs", bronze: "1", silver: "3", gold: "jobsUnlimited" },
-  { key: "benefitChallenges", bronze: "challengesOne", silver: "challengesThree", gold: "challengesUnlimited" },
-  { key: "benefitSponsorReward", bronze: "rewardNone", silver: "rewardText", gold: "rewardFull" },
+  {
+    key: "benefitChallenges",
+    bronze: "challengesOne",
+    silver: "challengesThree",
+    gold: "challengesUnlimited",
+  },
+  {
+    key: "benefitSponsorReward",
+    bronze: "rewardNone",
+    silver: "rewardText",
+    gold: "rewardFull",
+  },
   { key: "benefitEvents", bronze: "no", silver: "yes", gold: "coHost" },
   {
     key: "benefitNewsletter",
@@ -46,9 +56,7 @@ export default async function SponsorsPage() {
   });
 
   const sortedSponsors = sponsors.sort(
-    (a, b) =>
-      (tierOrder[a.tier] ?? 2) -
-      (tierOrder[b.tier] ?? 2),
+    (a, b) => (tierOrder[a.tier] ?? 2) - (tierOrder[b.tier] ?? 2),
   );
 
   return (
@@ -101,9 +109,7 @@ export default async function SponsorsPage() {
             <tbody>
               {benefits.map((row) => (
                 <tr key={row.key} className="border-border border-b">
-                  <td className="py-3 pr-4 font-mono text-xs">
-                    {t(row.key)}
-                  </td>
+                  <td className="py-3 pr-4 font-mono text-xs">{t(row.key)}</td>
                   {(["bronze", "silver", "gold"] as const).map((tier) => {
                     const val = row[tier];
                     const display = /^\d+$/.test(val)
@@ -173,10 +179,7 @@ export default async function SponsorsPage() {
         </div>
         <div className="mt-8 grid gap-6 sm:grid-cols-3">
           {(["publish", "engage", "discover"] as const).map((step, i) => (
-            <div
-              key={step}
-              className="border-border rounded-lg border p-6"
-            >
+            <div key={step} className="border-border rounded-lg border p-6">
               <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
                 0{i + 1}
               </span>
@@ -225,7 +228,7 @@ export default async function SponsorsPage() {
                     />
                   )}
                   <span className="text-sm font-medium">{sponsor.name}</span>
-                  <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider">
+                  <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider uppercase">
                     {sponsor.tier}
                   </span>
                 </a>

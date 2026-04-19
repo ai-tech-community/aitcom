@@ -31,10 +31,10 @@ export default function MyCommunities() {
   if (!memberships?.length) {
     return (
       <div className="flex flex-col items-center gap-4 py-16 text-center">
-        <p className="text-sm text-muted-foreground">{t("noCommunities")}</p>
+        <p className="text-muted-foreground text-sm">{t("noCommunities")}</p>
         <Link
           href="/communities"
-          className="font-mono text-xs tracking-wider text-primary underline underline-offset-4 hover:text-primary/80"
+          className="text-primary hover:text-primary/80 font-mono text-xs tracking-wider underline underline-offset-4"
         >
           {t("exploreCommunities")}
         </Link>
@@ -44,8 +44,8 @@ export default function MyCommunities() {
 
   return (
     <div>
-      <div className="border-b border-border pb-4">
-        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+      <div className="border-border border-b pb-4">
+        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / {t("title").toUpperCase()}
         </span>
       </div>
@@ -53,7 +53,7 @@ export default function MyCommunities() {
       {/* Active memberships */}
       {active.length > 0 && (
         <div className="mt-6">
-          <h3 className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <h3 className="text-muted-foreground font-mono text-xs font-medium tracking-wider uppercase">
             {t("active")} ({active.length})
           </h3>
           <div className="mt-2">
@@ -61,19 +61,19 @@ export default function MyCommunities() {
               <Link
                 key={m.communityId}
                 href={`/communities/${m.slug}` as never}
-                className="flex flex-col gap-1.5 border-b border-border px-4 py-3.5 transition-colors hover:bg-secondary/50 sm:flex-row sm:items-center sm:gap-0"
+                className="border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0"
               >
-                <span className="text-[15px] font-medium leading-snug sm:flex-1">
+                <span className="text-[15px] leading-snug font-medium sm:flex-1">
                   {m.name}
                 </span>
 
                 {m.description ? (
-                  <span className="line-clamp-1 text-sm text-muted-foreground sm:flex-1">
+                  <span className="text-muted-foreground line-clamp-1 text-sm sm:flex-1">
                     {m.description}
                   </span>
                 ) : null}
 
-                <span className="rounded border border-border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider text-muted-foreground sm:ml-3">
+                <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:ml-3">
                   {tRoles(m.role).toUpperCase()}
                 </span>
 
@@ -81,7 +81,7 @@ export default function MyCommunities() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-1.5 w-fit font-mono text-[10px] tracking-wider sm:ml-3 sm:mt-0"
+                    className="mt-1.5 w-fit font-mono text-[10px] tracking-wider sm:mt-0 sm:ml-3"
                     asChild
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -100,26 +100,26 @@ export default function MyCommunities() {
       {/* Pending memberships */}
       {pending.length > 0 && (
         <div className="mt-6">
-          <h3 className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <h3 className="text-muted-foreground font-mono text-xs font-medium tracking-wider uppercase">
             {t("pending")} ({pending.length})
           </h3>
           <div className="mt-2">
             {pending.map((m) => (
               <div
                 key={m.communityId}
-                className="flex flex-col gap-1.5 border-b border-border px-4 py-3.5 opacity-75 sm:flex-row sm:items-center sm:gap-0"
+                className="border-border flex flex-col gap-1.5 border-b px-4 py-3.5 opacity-75 sm:flex-row sm:items-center sm:gap-0"
               >
-                <span className="text-[15px] font-medium leading-snug sm:flex-1">
+                <span className="text-[15px] leading-snug font-medium sm:flex-1">
                   {m.name}
                 </span>
 
                 {m.description ? (
-                  <span className="line-clamp-1 text-sm text-muted-foreground sm:flex-1">
+                  <span className="text-muted-foreground line-clamp-1 text-sm sm:flex-1">
                     {m.description}
                   </span>
                 ) : null}
 
-                <span className="rounded border border-dashed border-border px-2 py-0.5 font-mono text-[10px] tracking-wider text-muted-foreground sm:ml-3">
+                <span className="border-border text-muted-foreground rounded border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wider sm:ml-3">
                   {t("pending").toUpperCase()}
                 </span>
               </div>

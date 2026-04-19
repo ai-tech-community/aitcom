@@ -16,7 +16,10 @@ export function getContributionMixWidths(input: {
   humanOnly: number;
   collaborative: number;
 }) {
-  const total = Math.max(1, input.aiOnly + input.humanOnly + input.collaborative);
+  const total = Math.max(
+    1,
+    input.aiOnly + input.humanOnly + input.collaborative,
+  );
 
   return {
     aiOnly: (input.aiOnly / total) * 100,

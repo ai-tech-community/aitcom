@@ -41,7 +41,10 @@ export async function GET(req: Request) {
   const payload = await getPayloadClient();
 
   // Group by challenge to send one reminder per challenge creator
-  const challengeMap = new Map<number, { challengeId: number; participants: string[] }>();
+  const challengeMap = new Map<
+    number,
+    { challengeId: number; participants: string[] }
+  >();
   for (const sub of staleSubmissions) {
     // Check if there are unreviewed peer-review objectives
     const [unreviewedCount] = await db

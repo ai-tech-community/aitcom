@@ -14,9 +14,7 @@ export const feedRouter = createTRPCRouter({
       z.object({
         communitySlug: z.string(),
         limit: z.number().min(1).max(50).default(20),
-        cursor: z
-          .object({ createdAt: z.string(), id: z.number() })
-          .optional(),
+        cursor: z.object({ createdAt: z.string(), id: z.number() }).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -40,7 +38,10 @@ export const feedRouter = createTRPCRouter({
         ),
       });
       if (!membership) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Must be a community member to view the feed" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Must be a community member to view the feed",
+        });
       }
 
       const payload = await getPayloadClient();
@@ -78,7 +79,9 @@ export const feedRouter = createTRPCRouter({
       const posts = hasMore ? docs.slice(0, input.limit) : docs;
 
       // Fetch author images
-      const authorIds = [...new Set(posts.map((p) => p.authorId).filter(Boolean))] as string[];
+      const authorIds = [
+        ...new Set(posts.map((p) => p.authorId).filter(Boolean)),
+      ] as string[];
       const authorImageMap = new Map<string, string | null>();
       if (authorIds.length > 0) {
         const authors = await ctx.db
@@ -97,10 +100,7 @@ export const feedRouter = createTRPCRouter({
         const { docs: myLikes } = await payload.find({
           collection: "feed-likes",
           where: {
-            and: [
-              { userId: { equals: userId } },
-              { post: { in: postIds } },
-            ],
+            and: [{ userId: { equals: userId } }, { post: { in: postIds } }],
           },
           limit: postIds.length,
           depth: 0,
@@ -173,7 +173,9 @@ export const feedRouter = createTRPCRouter({
       }
 
       // Enforce feed post policy
-      const feedPolicy = (community as unknown as { feedPostPolicy?: string }).feedPostPolicy ?? "all_members";
+      const feedPolicy =
+        (community as unknown as { feedPostPolicy?: string }).feedPostPolicy ??
+        "all_members";
       if (feedPolicy === "admins_only") {
         const isPrivileged =
           membership.role === "owner" ||
@@ -448,7 +450,11 @@ export const feedRouter = createTRPCRouter({
       });
 
       // Award XP: commenter gets FEED_COMMENT_CREATE, post author gets FEED_RECEIVE_COMMENT
-      await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.FEED_COMMENT_CREATE);
+      await awardXp(
+        ctx.db,
+        ctx.session.user.id,
+        XP_AMOUNTS.FEED_COMMENT_CREATE,
+      );
       if (post.authorId && post.authorId !== ctx.session.user.id) {
         await awardXp(ctx.db, post.authorId, XP_AMOUNTS.FEED_RECEIVE_COMMENT);
       }
@@ -549,9 +555,7 @@ export const feedRouter = createTRPCRouter({
       });
 
       const postId =
-        typeof comment.post === "object"
-          ? comment.post.id
-          : comment.post;
+        typeof comment.post === "object" ? comment.post.id : comment.post;
       if (postId) {
         const post = await payload.findByID({
           collection: "feed-posts",

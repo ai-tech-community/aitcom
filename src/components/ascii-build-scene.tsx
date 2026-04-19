@@ -5,9 +5,12 @@ import { fitAsciiFrame, useAsciiScene } from "@/components/ascii-scene";
 
 function buildLines(phase: number, blink: boolean) {
   const cursor = blink ? "_" : " ";
-  const fileA = phase >= 1 ? "[ok] src/agent/core.ts" : "[..] src/agent/core.ts";
-  const fileB = phase >= 2 ? "[ok] src/agent/tools.ts" : "[..] src/agent/tools.ts";
-  const fileC = phase >= 2 ? "[ok] src/agent/prompts.ts" : "[..] src/agent/prompts.ts";
+  const fileA =
+    phase >= 1 ? "[ok] src/agent/core.ts" : "[..] src/agent/core.ts";
+  const fileB =
+    phase >= 2 ? "[ok] src/agent/tools.ts" : "[..] src/agent/tools.ts";
+  const fileC =
+    phase >= 2 ? "[ok] src/agent/prompts.ts" : "[..] src/agent/prompts.ts";
   const status =
     phase >= 3
       ? "BUILD STATUS: PASS (3 modules, 0 errors)"

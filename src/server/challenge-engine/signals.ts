@@ -92,8 +92,7 @@ export async function detectCommunitySignals(
 
   // --- Community ideas ---
   for (const idea of ideasResult.docs) {
-    const voteCount =
-      typeof idea.voteCount === "number" ? idea.voteCount : 0;
+    const voteCount = typeof idea.voteCount === "number" ? idea.voteCount : 0;
     // Base 0.7, add up to 0.3 more depending on votes (cap at 30 votes).
     const relevanceScore = Math.min(0.7 + (voteCount / 30) * 0.3, 1);
 

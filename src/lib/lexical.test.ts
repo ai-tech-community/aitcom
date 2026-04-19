@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { extractPlainText, estimateReadingTime, extractHeadings } from "./lexical";
+import {
+  extractPlainText,
+  estimateReadingTime,
+  extractHeadings,
+} from "./lexical";
 
 const makeParagraph = (text: string) => ({
   type: "paragraph",

@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import {
-  createTRPCRouter,
-  protectedProcedure,
-} from "@/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { memberProfiles, memberBadges } from "@/server/db/schema";
@@ -47,7 +44,10 @@ export const articlesRouter = createTRPCRouter({
 
       const article = docs[0];
       if (!article) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Article not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Article not found",
+        });
       }
       if (article.authorId !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not your article" });
@@ -168,7 +168,9 @@ export const articlesRouter = createTRPCRouter({
           ...(data.content !== undefined && { content: data.content }),
           ...(data.type !== undefined && { type: data.type }),
           ...(data.tags !== undefined && { tags: data.tags }),
-          ...(data.mediaUrl !== undefined && { mediaUrl: data.mediaUrl ?? undefined }),
+          ...(data.mediaUrl !== undefined && {
+            mediaUrl: data.mediaUrl ?? undefined,
+          }),
           ...(existing.reviewStatus === "changes_requested" && {
             reviewStatus: null,
             reviewNote: null,
@@ -199,7 +201,10 @@ export const articlesRouter = createTRPCRouter({
       }
 
       if (article.authorType !== "member") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Only member articles can be submitted" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only member articles can be submitted",
+        });
       }
 
       // Check if trusted author
@@ -225,7 +230,11 @@ export const articlesRouter = createTRPCRouter({
           },
         });
 
-        await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.ARTICLE_PUBLISHED);
+        await awardXp(
+          ctx.db,
+          ctx.session.user.id,
+          XP_AMOUNTS.ARTICLE_PUBLISHED,
+        );
 
         const { totalDocs } = await payload.find({
           collection: "articles",
@@ -238,7 +247,12 @@ export const articlesRouter = createTRPCRouter({
           limit: 0,
           depth: 0,
         });
-        await checkArticleBadges(ctx.db, ctx.session.user.id, totalDocs, article.type);
+        await checkArticleBadges(
+          ctx.db,
+          ctx.session.user.id,
+          totalDocs,
+          article.type,
+        );
 
         await logActivity(ctx.db, {
           actorId: ctx.session.user.id,
@@ -262,7 +276,11 @@ export const articlesRouter = createTRPCRouter({
 
         // Award submit XP only on first submit
         if (!article.reviewStatus) {
-          await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.ARTICLE_SUBMITTED);
+          await awardXp(
+            ctx.db,
+            ctx.session.user.id,
+            XP_AMOUNTS.ARTICLE_SUBMITTED,
+          );
         }
 
         await logActivity(ctx.db, {

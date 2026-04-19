@@ -6,10 +6,7 @@ import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { toast } from "sonner";
 import { Trash2, CornerDownRight } from "lucide-react";
-import {
-  Avatar,
-  AvatarFallback,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Link } from "@/i18n/navigation";
 import { useRulesModal } from "@/components/community/rules-provider";
 
@@ -114,7 +111,7 @@ function CommentForm({
         maxLength={5000}
         rows={parentId ? 2 : 3}
         required
-        className="border-border bg-transparent text-foreground placeholder:text-muted-foreground w-full resize-none rounded border px-3 py-2 font-mono text-sm outline-none focus:ring-1 focus:ring-current"
+        className="border-border text-foreground placeholder:text-muted-foreground w-full resize-none rounded border bg-transparent px-3 py-2 font-mono text-sm outline-none focus:ring-1 focus:ring-current"
       />
       <div className="flex justify-end gap-2">
         {onCancel && (
@@ -338,7 +335,10 @@ export function ArticleComments({
         />
       ) : (
         <p className="text-muted-foreground font-mono text-xs">
-          <Link href="/signin" className="hover:text-foreground underline transition-colors">
+          <Link
+            href="/signin"
+            className="hover:text-foreground underline transition-colors"
+          >
             {t("signIn")}
           </Link>
         </p>

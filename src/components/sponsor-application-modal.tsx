@@ -61,7 +61,16 @@ export function SponsorApplicationModal() {
   const t = useTranslations("sponsors");
   const [open, setOpen] = useState(false);
   const [state, dispatch] = useReducer(formReducer, initialState);
-  const { step, success, companyName, website, contactName, contactEmail, tier, message } = state;
+  const {
+    step,
+    success,
+    companyName,
+    website,
+    contactName,
+    contactEmail,
+    tier,
+    message,
+  } = state;
 
   const applyMutation = api.sponsors.submitApplication.useMutation({
     onSuccess: () => dispatch({ type: "SET_SUCCESS" }),
@@ -147,7 +156,13 @@ export function SponsorApplicationModal() {
                     <input
                       type="text"
                       value={companyName}
-                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "companyName", value: e.target.value })}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "companyName",
+                          value: e.target.value,
+                        })
+                      }
                       className="border-border bg-background mt-1 block w-full rounded border px-3 py-2 font-mono text-sm"
                       required
                     />
@@ -157,7 +172,13 @@ export function SponsorApplicationModal() {
                     <input
                       type="url"
                       value={website}
-                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "website", value: e.target.value })}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "website",
+                          value: e.target.value,
+                        })
+                      }
                       className="border-border bg-background mt-1 block w-full rounded border px-3 py-2 font-mono text-sm"
                     />
                   </label>
@@ -168,7 +189,13 @@ export function SponsorApplicationModal() {
                     <input
                       type="text"
                       value={contactName}
-                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "contactName", value: e.target.value })}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "contactName",
+                          value: e.target.value,
+                        })
+                      }
                       className="border-border bg-background mt-1 block w-full rounded border px-3 py-2 font-mono text-sm"
                       required
                     />
@@ -180,7 +207,13 @@ export function SponsorApplicationModal() {
                     <input
                       type="email"
                       value={contactEmail}
-                      onChange={(e) => dispatch({ type: "SET_FIELD", field: "contactEmail", value: e.target.value })}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "contactEmail",
+                          value: e.target.value,
+                        })
+                      }
                       className="border-border bg-background mt-1 block w-full rounded border px-3 py-2 font-mono text-sm"
                       required
                     />
@@ -208,7 +241,9 @@ export function SponsorApplicationModal() {
                   {(["gold", "silver", "bronze"] as const).map((t_tier) => (
                     <button
                       key={t_tier}
-                      onClick={() => dispatch({ type: "SET_TIER", tier: t_tier })}
+                      onClick={() =>
+                        dispatch({ type: "SET_TIER", tier: t_tier })
+                      }
                       className={`rounded border p-4 text-left font-mono text-sm transition-colors ${
                         tier === t_tier
                           ? "border-foreground bg-foreground/5"
@@ -246,7 +281,13 @@ export function SponsorApplicationModal() {
                   <span className="font-mono text-xs">{t("message")}</span>
                   <textarea
                     value={message}
-                    onChange={(e) => dispatch({ type: "SET_FIELD", field: "message", value: e.target.value })}
+                    onChange={(e) =>
+                      dispatch({
+                        type: "SET_FIELD",
+                        field: "message",
+                        value: e.target.value,
+                      })
+                    }
                     rows={4}
                     className="border-border bg-background mt-1 block w-full rounded border px-3 py-2 font-mono text-sm"
                     placeholder={t("messagePlaceholder")}

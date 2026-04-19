@@ -9,7 +9,10 @@ import {
   UsersIcon,
 } from "lucide-react";
 
-const verificationIcons: Record<string, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
+const verificationIcons: Record<
+  string,
+  React.ComponentType<React.SVGProps<SVGSVGElement>>
+> = {
   "platform-action": ZapIcon,
   test: FlaskConicalIcon,
   "self-report": FileCheckIcon,
@@ -31,24 +34,24 @@ export function ChallengeProgress({
   objectives,
 }: ChallengeProgressProps) {
   const { data } = api.challenges.getProgress.useQuery({ challengeId });
-  const { data: testResults } = api.challenges.getTestResults.useQuery({ challengeId });
+  const { data: testResults } = api.challenges.getTestResults.useQuery({
+    challengeId,
+  });
 
   if (!data) return null;
 
   return (
     <div className="space-y-2">
       {objectives.map((objective, index) => {
-        const progress = data.progress.find(
-          (p) => p.objectiveIndex === index,
-        );
+        const progress = data.progress.find((p) => p.objectiveIndex === index);
         const current = progress?.currentCount ?? 0;
         const target = objective.targetCount;
         const isComplete =
-          progress?.completedAt !== null &&
-          progress?.completedAt !== undefined;
+          progress?.completedAt !== null && progress?.completedAt !== undefined;
         const pct = Math.min(100, Math.round((current / target) * 100));
 
-        const verification = objective.verification ?? progress?.verificationMode;
+        const verification =
+          objective.verification ?? progress?.verificationMode;
         const VerificationIcon = verification
           ? verificationIcons[verification]
           : undefined;
@@ -81,16 +84,16 @@ export function ChallengeProgress({
                   }`}
                 >
                   {VerificationIcon && (
-                    <VerificationIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
+                    <VerificationIcon className="text-muted-foreground h-3 w-3 shrink-0" />
                   )}
                   {objective.description}
                   {verification && (
-                    <span className="font-mono text-[11px] text-muted-foreground">
+                    <span className="text-muted-foreground font-mono text-[11px]">
                       {verification}
                     </span>
                   )}
                 </span>
-                <span className="flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground">
+                <span className="text-muted-foreground flex items-center gap-1.5 font-mono text-[11px]">
                   {latestTestResult && (
                     <span
                       className={`font-mono text-[10px] font-semibold ${
@@ -116,7 +119,7 @@ export function ChallengeProgress({
                   {current}/{target}
                 </span>
               </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
+              <div className="bg-secondary mt-1 h-1.5 overflow-hidden rounded-full">
                 <div
                   className={`h-full rounded-full transition-all ${isComplete ? "bg-green-500" : "bg-primary"}`}
                   style={{ width: `${pct}%` }}

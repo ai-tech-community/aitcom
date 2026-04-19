@@ -5,10 +5,10 @@ import { useState } from "react";
 export function CodeBlock({ code }: { code: string }) {
   return (
     <div className="relative">
-      <pre className="overflow-x-auto rounded border border-border bg-secondary p-4 font-mono text-xs leading-relaxed text-muted-foreground">
+      <pre className="border-border bg-secondary text-muted-foreground overflow-x-auto rounded border p-4 font-mono text-xs leading-relaxed">
         {code}
       </pre>
-      <div className="absolute right-2 top-2">
+      <div className="absolute top-2 right-2">
         <CopyButton text={code} />
       </div>
     </div>
@@ -28,7 +28,7 @@ export function CopyButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="rounded border border-border bg-background px-2 py-1 font-mono text-[10px] tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+      className="border-border bg-background text-muted-foreground hover:text-foreground rounded border px-2 py-1 font-mono text-[10px] tracking-wider transition-colors"
     >
       {copied ? "COPIED" : "COPY"}
     </button>
@@ -61,7 +61,7 @@ export function InitialsAvatar({ name }: { name: string }) {
     .toUpperCase();
 
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 font-mono text-[10px] font-medium tracking-wider text-primary">
+    <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-full font-mono text-[10px] font-medium tracking-wider">
       {initials}
     </div>
   );

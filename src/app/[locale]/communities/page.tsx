@@ -4,8 +4,7 @@ import { CommunitiesDirectory } from "@/components/communities/communities-direc
 
 export const metadata: Metadata = {
   title: "Communities",
-  description:
-    "Browse and join communities in the AI Tech Community network.",
+  description: "Browse and join communities in the AI Tech Community network.",
   ...buildOgMeta(
     "Communities",
     "Browse and join communities in the AI Tech Community network.",

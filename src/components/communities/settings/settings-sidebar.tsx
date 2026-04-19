@@ -51,7 +51,15 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
               )}
             >
-              {t(item.key as "general" | "members" | "invites" | "rules" | "integrations" | "ownership")}
+              {t(
+                item.key as
+                  | "general"
+                  | "members"
+                  | "invites"
+                  | "rules"
+                  | "integrations"
+                  | "ownership",
+              )}
             </Link>
           );
         })}
@@ -66,13 +74,21 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
               key={item.key}
               href={item.href as never}
               className={cn(
-                "whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                "rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
                 isActive
                   ? "bg-secondary text-foreground"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {t(item.key as "general" | "members" | "invites" | "rules" | "integrations" | "ownership")}
+              {t(
+                item.key as
+                  | "general"
+                  | "members"
+                  | "invites"
+                  | "rules"
+                  | "integrations"
+                  | "ownership",
+              )}
             </Link>
           );
         })}

@@ -51,9 +51,7 @@ export async function logActivity(
       event.actorId,
       event.action,
       event.metadata,
-    ).catch((err) =>
-      console.error("[challenges] progress check failed:", err),
-    );
+    ).catch((err) => console.error("[challenges] progress check failed:", err));
   }
 }
 
@@ -173,7 +171,9 @@ async function checkPlatformActionProgress(
             title: challenge.title,
             objectiveIndex: i,
             objectiveDescription: objective.action,
-            personalityLabel: classifyPersonality("challenge.objective_completed"),
+            personalityLabel: classifyPersonality(
+              "challenge.objective_completed",
+            ),
             collaborationModel: challenge.collaborationModel ?? "solo-ai",
           },
         });
@@ -250,7 +250,9 @@ export async function checkEnrollmentCompletion(
       monthStart.setHours(0, 0, 0, 0);
 
       const [earned] = await db
-        .select({ total: sql<number>`coalesce(sum((metadata->>'xp')::int), 0)` })
+        .select({
+          total: sql<number>`coalesce(sum((metadata->>'xp')::int), 0)`,
+        })
         .from(activityEvents)
         .where(
           and(

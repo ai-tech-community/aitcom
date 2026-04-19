@@ -11,7 +11,10 @@ import {
 
 const challengeIdInputSchema = z.object({ challengeId: z.number() });
 import { getPayloadClient } from "@/server/payload";
-import { logActivity, checkEnrollmentCompletion } from "@/server/agent/activity";
+import {
+  logActivity,
+  checkEnrollmentCompletion,
+} from "@/server/agent/activity";
 import { sendChallengeSubmissionConfirmation } from "@/server/email";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import {
@@ -50,7 +53,8 @@ function calculateXpReward(
   const avgWeight =
     objectives.length > 0
       ? objectives.reduce(
-          (sum, o) => sum + (VERIFICATION_WEIGHT[o.verification ?? "self-report"] ?? 1),
+          (sum, o) =>
+            sum + (VERIFICATION_WEIGHT[o.verification ?? "self-report"] ?? 1),
           0,
         ) / objectives.length
       : 1;
@@ -886,9 +890,7 @@ export const challengesRouter = createTRPCRouter({
           authorType: "member",
           title: input.title,
           content: input.content,
-          metadata: input.repoUrl
-            ? { repoUrl: input.repoUrl }
-            : undefined,
+          metadata: input.repoUrl ? { repoUrl: input.repoUrl } : undefined,
         })
         .returning();
 
@@ -911,7 +913,8 @@ export const challengesRouter = createTRPCRouter({
       // Send submission confirmation email (non-blocking)
       const userEmail = ctx.session.user.email;
       if (userEmail) {
-        const displayName = ctx.session.user.name ?? userEmail.split("@")[0] ?? "there";
+        const displayName =
+          ctx.session.user.name ?? userEmail.split("@")[0] ?? "there";
         void (async () => {
           const payload = await getPayloadClient();
           const challenge = await payload.findByID({
@@ -925,7 +928,9 @@ export const challengesRouter = createTRPCRouter({
             challenge.title,
             challenge.slug ?? String(input.challengeId),
           );
-        })().catch(() => { /* non-blocking */ });
+        })().catch(() => {
+          /* non-blocking */
+        });
       }
 
       return thread!;

@@ -25,14 +25,17 @@ export function InboxPill() {
     <button
       type="button"
       onClick={toggleList}
-      className="flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 shadow-lg transition-opacity hover:opacity-90"
+      className="border-border bg-background flex items-center gap-2 rounded-lg border px-4 py-2.5 shadow-lg transition-opacity hover:opacity-90"
     >
-      <MessageSquareIcon className="h-4 w-4 text-muted-foreground" />
-      <span className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <MessageSquareIcon className="text-muted-foreground h-4 w-4" />
+      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider uppercase">
         {t("title")}
       </span>
       {unreadCount > 0 && (
-        <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground" aria-label={`${unreadCount} ${t("unreadBadge")}`}>
+        <span
+          className="bg-primary text-primary-foreground flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold"
+          aria-label={`${unreadCount} ${t("unreadBadge")}`}
+        >
           {unreadCount > 99 ? "99+" : unreadCount}
         </span>
       )}

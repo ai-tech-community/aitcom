@@ -24,7 +24,9 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email, redirectTo: "/auth/reset-password" }),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null) as { message?: string } | null;
+        const body = (await res.json().catch(() => null)) as {
+          message?: string;
+        } | null;
         throw new Error(body?.message ?? "Request failed");
       }
     } catch (err) {
@@ -63,7 +65,10 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email" className="font-mono text-xs tracking-wider">
+              <Label
+                htmlFor="email"
+                className="font-mono text-xs tracking-wider"
+              >
                 {t("email").toUpperCase()}
               </Label>
               <Input

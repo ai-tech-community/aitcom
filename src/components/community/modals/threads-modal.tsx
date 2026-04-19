@@ -91,14 +91,20 @@ export function ThreadsModal({
   ];
 
   return (
-    <BuildingModal isOpen={isOpen} onClose={onClose} title={title} subtitle={subtitle} windowIndex={windowIndex}>
+    <BuildingModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      subtitle={subtitle}
+      windowIndex={windowIndex}
+    >
       {/* Category tabs */}
       <div className="mb-4 flex flex-wrap gap-1 border-b border-zinc-200 pb-3">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setCategory(tab.key)}
-            className={`rounded px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-widest transition-colors ${
+            className={`rounded px-2.5 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
               category === tab.key
                 ? "bg-zinc-100 text-zinc-900"
                 : "text-zinc-400 hover:text-zinc-600"
@@ -113,11 +119,16 @@ export function ThreadsModal({
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((n) => (
-            <div key={n} className="h-16 animate-pulse rounded-lg bg-zinc-100" />
+            <div
+              key={n}
+              className="h-16 animate-pulse rounded-lg bg-zinc-100"
+            />
           ))}
         </div>
       ) : threads.length === 0 ? (
-        <p className="py-6 text-center font-mono text-xs text-zinc-400">{t("noThreads")}</p>
+        <p className="py-6 text-center font-mono text-xs text-zinc-400">
+          {t("noThreads")}
+        </p>
       ) : (
         <div className="space-y-1.5">
           {threads.map((thread) => (
@@ -132,7 +143,7 @@ export function ThreadsModal({
               }}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium leading-snug text-zinc-900">
+                <p className="text-sm leading-snug font-medium text-zinc-900">
                   {thread.isPinned && (
                     <span className="mr-1 font-mono text-[9px] text-orange-600">
                       PIN
@@ -141,7 +152,7 @@ export function ThreadsModal({
                   {thread.title}
                 </p>
                 <span
-                  className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider ${categoryStyles[thread.category]}`}
+                  className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${categoryStyles[thread.category]}`}
                 >
                   {t(thread.category)}
                 </span>
@@ -168,11 +179,13 @@ export function ThreadsModal({
       {/* New thread section */}
       <div className="mt-4 border-t border-zinc-200 pt-4">
         {!session?.user ? (
-          <p className="font-mono text-[10px] text-zinc-400">{t("loginToPost")}</p>
+          <p className="font-mono text-[10px] text-zinc-400">
+            {t("loginToPost")}
+          </p>
         ) : !showForm ? (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500 transition-colors hover:text-zinc-900"
+            className="flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase transition-colors hover:text-zinc-900"
           >
             <Plus className="h-3 w-3" />
             {t("newThread")}
@@ -186,7 +199,7 @@ export function ThreadsModal({
             className="space-y-3"
           >
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
                 {t("titleLabel")}
               </label>
               <input
@@ -195,11 +208,11 @@ export function ThreadsModal({
                 placeholder={t("titlePlaceholder")}
                 maxLength={255}
                 required
-                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
+                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
                 {t("categoryLabel")}
               </label>
               <select
@@ -210,7 +223,7 @@ export function ThreadsModal({
                     category: e.target.value as typeof form.category,
                   })
                 }
-                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
+                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
               >
                 <option value="general">{t("general")}</option>
                 <option value="question">{t("question")}</option>
@@ -219,7 +232,7 @@ export function ThreadsModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
                 {t("contentLabel")}
               </label>
               <textarea
@@ -229,21 +242,21 @@ export function ThreadsModal({
                 maxLength={10000}
                 rows={4}
                 required
-                className="w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
+                className="w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
               />
             </div>
             <div className="flex gap-2">
               <button
                 type="submit"
                 disabled={createMutation.isPending}
-                className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+                className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 disabled:opacity-50"
               >
                 {createMutation.isPending ? "Posting..." : "Post"}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded-md border border-zinc-200 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500 transition-colors hover:bg-zinc-50"
+                className="rounded-md border border-zinc-200 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase transition-colors hover:bg-zinc-50"
               >
                 Cancel
               </button>

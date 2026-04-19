@@ -11,7 +11,11 @@ import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { sendForumReplyNotification } from "@/server/email";
 import { and, eq, isNull } from "drizzle-orm";
-import { user as userTable, communities, communityMemberships } from "@/server/db/schema";
+import {
+  user as userTable,
+  communities,
+  communityMemberships,
+} from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 
@@ -63,7 +67,10 @@ export const forumRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const community = await ctx.db.query.communities.findFirst({
-        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
         columns: { id: true },
       });
       if (!community) {
@@ -114,7 +121,10 @@ export const forumRouter = createTRPCRouter({
     .input(z.object({ communitySlug: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const community = await ctx.db.query.communities.findFirst({
-        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
         columns: { id: true },
       });
       if (!community) {
@@ -183,7 +193,10 @@ export const forumRouter = createTRPCRouter({
       let where: Where | undefined;
       if (input.communitySlug) {
         const community = await ctx.db.query.communities.findFirst({
-          where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+          where: and(
+            eq(communities.slug, input.communitySlug),
+            isNull(communities.deletedAt),
+          ),
           columns: { id: true },
         });
         if (community) {
@@ -209,9 +222,7 @@ export const forumRouter = createTRPCRouter({
           depth: 0,
         });
         const votedIdeaIds = new Set(
-          myVotes.map((v) =>
-            typeof v.idea === "object" ? v.idea.id : v.idea,
-          ),
+          myVotes.map((v) => (typeof v.idea === "object" ? v.idea.id : v.idea)),
         );
         return docs.map((idea) => ({
           ...idea,
@@ -234,7 +245,10 @@ export const forumRouter = createTRPCRouter({
       let communityId: string | undefined;
       if (input.communitySlug) {
         const community = await ctx.db.query.communities.findFirst({
-          where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+          where: and(
+            eq(communities.slug, input.communitySlug),
+            isNull(communities.deletedAt),
+          ),
           columns: { id: true },
         });
         communityId = community?.id;
@@ -279,7 +293,10 @@ export const forumRouter = createTRPCRouter({
         id: input.ideaId,
         depth: 0,
       });
-      await requireRulesAcceptance(ctx.session.user.id, idea.communityId ?? undefined);
+      await requireRulesAcceptance(
+        ctx.session.user.id,
+        idea.communityId ?? undefined,
+      );
 
       const { docs: existingVotes } = await payload.find({
         collection: "idea-votes",
@@ -336,9 +353,13 @@ export const forumRouter = createTRPCRouter({
   getThreads: publicProcedure
     .input(
       z.object({
-        category: z.enum(["all", "general", "question", "showcase", "job"]).default("all"),
+        category: z
+          .enum(["all", "general", "question", "showcase", "job"])
+          .default("all"),
         search: z.string().max(200).optional(),
-        sort: z.enum(["newest", "mostReplied", "trending", "lastActive"]).default("newest"),
+        sort: z
+          .enum(["newest", "mostReplied", "trending", "lastActive"])
+          .default("newest"),
         limit: z.number().min(1).max(50).default(20),
         page: z.number().min(1).default(1),
         communitySlug: z.string().optional(),
@@ -352,7 +373,10 @@ export const forumRouter = createTRPCRouter({
 
       if (input.communitySlug) {
         const community = await ctx.db.query.communities.findFirst({
-          where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+          where: and(
+            eq(communities.slug, input.communitySlug),
+            isNull(communities.deletedAt),
+          ),
           columns: { id: true },
         });
         if (community) {
@@ -366,9 +390,7 @@ export const forumRouter = createTRPCRouter({
 
       if (input.search) {
         conditions.push({
-          or: [
-            { title: { like: input.search } },
-          ],
+          or: [{ title: { like: input.search } }],
         });
       }
 
@@ -445,7 +467,10 @@ export const forumRouter = createTRPCRouter({
       let communityId: string | undefined;
       if (input.communitySlug) {
         const community = await ctx.db.query.communities.findFirst({
-          where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+          where: and(
+            eq(communities.slug, input.communitySlug),
+            isNull(communities.deletedAt),
+          ),
           columns: { id: true },
         });
         communityId = community?.id;
@@ -488,7 +513,11 @@ export const forumRouter = createTRPCRouter({
         metadata: { title: input.title, category: input.category, slug },
       });
 
-      await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.FORUM_THREAD_CREATE);
+      await awardXp(
+        ctx.db,
+        ctx.session.user.id,
+        XP_AMOUNTS.FORUM_THREAD_CREATE,
+      );
 
       return thread;
     }),
@@ -510,7 +539,10 @@ export const forumRouter = createTRPCRouter({
         id: input.threadId,
         depth: 0,
       });
-      await requireRulesAcceptance(ctx.session.user.id, thread.communityId ?? undefined);
+      await requireRulesAcceptance(
+        ctx.session.user.id,
+        thread.communityId ?? undefined,
+      );
 
       if (thread.isLocked) {
         throw new TRPCError({
@@ -562,7 +594,9 @@ export const forumRouter = createTRPCRouter({
             ctx.session.user.name ?? "Someone",
             thread.title ?? "your thread",
             thread.slug ?? String(input.threadId),
-          ).catch(() => { /* non-blocking */ });
+          ).catch(() => {
+            /* non-blocking */
+          });
         }
       }
 
@@ -613,8 +647,16 @@ export const forumRouter = createTRPCRouter({
             eq(communityMemberships.status, "active"),
           ),
         });
-        if (!membership || (membership.role !== "owner" && membership.role !== "admin" && membership.role !== "moderator")) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Only moderators can pin threads" });
+        if (
+          !membership ||
+          (membership.role !== "owner" &&
+            membership.role !== "admin" &&
+            membership.role !== "moderator")
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Only moderators can pin threads",
+          });
         }
       }
 
@@ -648,8 +690,16 @@ export const forumRouter = createTRPCRouter({
             eq(communityMemberships.status, "active"),
           ),
         });
-        if (!membership || (membership.role !== "owner" && membership.role !== "admin" && membership.role !== "moderator")) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "Only moderators can lock threads" });
+        if (
+          !membership ||
+          (membership.role !== "owner" &&
+            membership.role !== "admin" &&
+            membership.role !== "moderator")
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Only moderators can lock threads",
+          });
         }
       }
 
@@ -679,7 +729,10 @@ export const forumRouter = createTRPCRouter({
       });
 
       if (thread.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Thread has been deleted" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Thread has been deleted",
+        });
       }
 
       const isAuthor = thread.authorId === ctx.session.user.id;
@@ -693,7 +746,12 @@ export const forumRouter = createTRPCRouter({
             eq(communityMemberships.status, "active"),
           ),
         });
-        if (membership && (membership.role === "owner" || membership.role === "admin" || membership.role === "moderator")) {
+        if (
+          membership &&
+          (membership.role === "owner" ||
+            membership.role === "admin" ||
+            membership.role === "moderator")
+        ) {
           canEdit = true;
         }
       }
@@ -728,7 +786,10 @@ export const forumRouter = createTRPCRouter({
       });
 
       if (thread.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Thread already deleted" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Thread already deleted",
+        });
       }
 
       const isAuthor = thread.authorId === ctx.session.user.id;
@@ -742,7 +803,12 @@ export const forumRouter = createTRPCRouter({
             eq(communityMemberships.status, "active"),
           ),
         });
-        if (membership && (membership.role === "owner" || membership.role === "admin" || membership.role === "moderator")) {
+        if (
+          membership &&
+          (membership.role === "owner" ||
+            membership.role === "admin" ||
+            membership.role === "moderator")
+        ) {
           canDelete = true;
         }
       }
@@ -781,7 +847,10 @@ export const forumRouter = createTRPCRouter({
       });
 
       if (reply.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Reply has been deleted" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Reply has been deleted",
+        });
       }
 
       const isAuthor = reply.authorId === ctx.session.user.id;
@@ -795,7 +864,12 @@ export const forumRouter = createTRPCRouter({
             eq(communityMemberships.status, "active"),
           ),
         });
-        if (membership && (membership.role === "owner" || membership.role === "admin" || membership.role === "moderator")) {
+        if (
+          membership &&
+          (membership.role === "owner" ||
+            membership.role === "admin" ||
+            membership.role === "moderator")
+        ) {
           canEdit = true;
         }
       }
@@ -829,7 +903,10 @@ export const forumRouter = createTRPCRouter({
       });
 
       if (reply.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Reply already deleted" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Reply already deleted",
+        });
       }
 
       const isAuthor = reply.authorId === ctx.session.user.id;
@@ -843,7 +920,12 @@ export const forumRouter = createTRPCRouter({
             eq(communityMemberships.status, "active"),
           ),
         });
-        if (membership && (membership.role === "owner" || membership.role === "admin" || membership.role === "moderator")) {
+        if (
+          membership &&
+          (membership.role === "owner" ||
+            membership.role === "admin" ||
+            membership.role === "moderator")
+        ) {
           canDelete = true;
         }
       }
@@ -852,7 +934,8 @@ export const forumRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      const threadId = typeof reply.thread === "object" ? reply.thread.id : reply.thread;
+      const threadId =
+        typeof reply.thread === "object" ? reply.thread.id : reply.thread;
 
       await payload.update({
         collection: "forum-replies",
@@ -884,19 +967,26 @@ export const forumRouter = createTRPCRouter({
     .input(
       z.object({
         communitySlug: z.string(),
-        sections: z.array(
-          z.object({
-            title: z.string().min(1).max(200),
-            slug: z.string().min(1).max(100),
-            icon: z.enum(["shield", "users", "flag", "scale", "brain", "gavel"]).optional(),
-            content: z.any(),
-          }),
-        ).min(1),
+        sections: z
+          .array(
+            z.object({
+              title: z.string().min(1).max(200),
+              slug: z.string().min(1).max(100),
+              icon: z
+                .enum(["shield", "users", "flag", "scale", "brain", "gavel"])
+                .optional(),
+              content: z.any(),
+            }),
+          )
+          .min(1),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const community = await ctx.db.query.communities.findFirst({
-        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
         columns: { id: true },
       });
       if (!community) {
@@ -910,7 +1000,10 @@ export const forumRouter = createTRPCRouter({
           eq(communityMemberships.status, "active"),
         ),
       });
-      if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
+      if (
+        !membership ||
+        (membership.role !== "owner" && membership.role !== "admin")
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
@@ -965,7 +1058,10 @@ export const forumRouter = createTRPCRouter({
       });
 
       if (!idea.communityId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Idea has no community" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Idea has no community",
+        });
       }
 
       const membership = await ctx.db.query.communityMemberships.findFirst({
@@ -975,7 +1071,10 @@ export const forumRouter = createTRPCRouter({
           eq(communityMemberships.status, "active"),
         ),
       });
-      if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
+      if (
+        !membership ||
+        (membership.role !== "owner" && membership.role !== "admin")
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 

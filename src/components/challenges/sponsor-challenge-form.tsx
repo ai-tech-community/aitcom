@@ -164,7 +164,9 @@ export function SponsorChallengeForm({
   }, []);
 
   const removeObjective = useCallback((index: number) => {
-    setObjectives((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
+    setObjectives((prev) =>
+      prev.length > 1 ? prev.filter((_, i) => i !== index) : prev,
+    );
   }, []);
 
   const handleSubmit = useCallback(
@@ -239,26 +241,26 @@ export function SponsorChallengeForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="rounded-lg border border-border p-6 space-y-6">
+      <div className="border-border space-y-6 rounded-lg border p-6">
         {/* Header */}
-        <div className="border-b border-border pb-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+        <div className="border-border border-b pb-4">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
             / CREATE CHALLENGE
           </span>
         </div>
 
-        <p className="text-sm text-muted-foreground">
+        <p className="text-muted-foreground text-sm">
           Challenge will be created as Draft and needs admin approval.
         </p>
 
         {/* A. Basic Info */}
         <section className="space-y-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
             / BASIC INFO
           </span>
 
           <div className="space-y-2">
-            <label className="font-mono text-xs tracking-wider text-muted-foreground">
+            <label className="text-muted-foreground font-mono text-xs tracking-wider">
               Title *
             </label>
             <Input
@@ -272,7 +274,7 @@ export function SponsorChallengeForm({
           </div>
 
           <div className="space-y-2">
-            <label className="font-mono text-xs tracking-wider text-muted-foreground">
+            <label className="text-muted-foreground font-mono text-xs tracking-wider">
               Slug *
             </label>
             <Input
@@ -286,7 +288,7 @@ export function SponsorChallengeForm({
           </div>
 
           <div className="space-y-2">
-            <label className="font-mono text-xs tracking-wider text-muted-foreground">
+            <label className="text-muted-foreground font-mono text-xs tracking-wider">
               Description *
             </label>
             <Textarea
@@ -301,7 +303,7 @@ export function SponsorChallengeForm({
           </div>
 
           <div className="space-y-2">
-            <label className="font-mono text-xs tracking-wider text-muted-foreground">
+            <label className="text-muted-foreground font-mono text-xs tracking-wider">
               Type
             </label>
             <div className="flex flex-wrap gap-2">
@@ -319,7 +321,7 @@ export function SponsorChallengeForm({
           </div>
 
           <div className="space-y-2">
-            <label className="font-mono text-xs tracking-wider text-muted-foreground">
+            <label className="text-muted-foreground font-mono text-xs tracking-wider">
               Difficulty
             </label>
             <div className="flex flex-wrap gap-2">
@@ -340,13 +342,13 @@ export function SponsorChallengeForm({
         {/* B. Schedule (only for weekly/monthly) */}
         {type !== "open-ended" && (
           <section className="space-y-4">
-            <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+            <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / SCHEDULE
             </span>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <label className="font-mono text-xs tracking-wider text-muted-foreground">
+                <label className="text-muted-foreground font-mono text-xs tracking-wider">
                   Starts At
                 </label>
                 <Input
@@ -356,7 +358,7 @@ export function SponsorChallengeForm({
                 />
               </div>
               <div className="space-y-2">
-                <label className="font-mono text-xs tracking-wider text-muted-foreground">
+                <label className="text-muted-foreground font-mono text-xs tracking-wider">
                   Ends At
                 </label>
                 <Input
@@ -374,7 +376,7 @@ export function SponsorChallengeForm({
           <button
             type="button"
             onClick={() => setShowRepo(!showRepo)}
-            className="flex items-center gap-2 font-mono text-xs font-medium tracking-wider text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-foreground flex items-center gap-2 font-mono text-xs font-medium tracking-wider transition-colors"
           >
             {showRepo ? (
               <ChevronDown className="h-3.5 w-3.5" />
@@ -387,7 +389,7 @@ export function SponsorChallengeForm({
           {showRepo && (
             <div className="space-y-4 pl-5">
               <div className="space-y-2">
-                <label className="font-mono text-xs tracking-wider text-muted-foreground">
+                <label className="text-muted-foreground font-mono text-xs tracking-wider">
                   Template URL
                 </label>
                 <Input
@@ -399,7 +401,7 @@ export function SponsorChallengeForm({
               </div>
 
               <div className="space-y-2">
-                <label className="font-mono text-xs tracking-wider text-muted-foreground">
+                <label className="text-muted-foreground font-mono text-xs tracking-wider">
                   Test Command
                 </label>
                 <Input
@@ -410,7 +412,7 @@ export function SponsorChallengeForm({
               </div>
 
               <div className="space-y-2">
-                <label className="font-mono text-xs tracking-wider text-muted-foreground">
+                <label className="text-muted-foreground font-mono text-xs tracking-wider">
                   Google Colab URL
                 </label>
                 <Input
@@ -421,14 +423,14 @@ export function SponsorChallengeForm({
                 />
               </div>
 
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
                   checked={repoConfigFile}
                   onChange={(e) => setRepoConfigFile(e.target.checked)}
-                  className="rounded border-border"
+                  className="border-border rounded"
                 />
-                <span className="font-mono text-xs tracking-wider text-muted-foreground">
+                <span className="text-muted-foreground font-mono text-xs tracking-wider">
                   Config File
                 </span>
               </label>
@@ -438,7 +440,7 @@ export function SponsorChallengeForm({
 
         {/* D. Objectives */}
         <section className="space-y-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
             / OBJECTIVES
           </span>
 
@@ -446,24 +448,24 @@ export function SponsorChallengeForm({
             {objectives.map((obj, index) => (
               <div
                 key={obj.description || `objective-${index}`}
-                className="rounded-lg border border-border p-4 space-y-3"
+                className="border-border space-y-3 rounded-lg border p-4"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs tracking-wider text-muted-foreground">
+                  <span className="text-muted-foreground font-mono text-xs tracking-wider">
                     Objective {index + 1}
                   </span>
                   <button
                     type="button"
                     onClick={() => removeObjective(index)}
                     disabled={objectives.length <= 1}
-                    className="text-muted-foreground hover:text-destructive disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="text-muted-foreground hover:text-destructive transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="font-mono text-xs tracking-wider text-muted-foreground">
+                  <label className="text-muted-foreground font-mono text-xs tracking-wider">
                     Description *
                   </label>
                   <Input
@@ -478,7 +480,7 @@ export function SponsorChallengeForm({
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <label className="font-mono text-xs tracking-wider text-muted-foreground">
+                    <label className="text-muted-foreground font-mono text-xs tracking-wider">
                       Verification
                     </label>
                     <Select
@@ -501,7 +503,7 @@ export function SponsorChallengeForm({
                   </div>
 
                   <div className="space-y-2">
-                    <label className="font-mono text-xs tracking-wider text-muted-foreground">
+                    <label className="text-muted-foreground font-mono text-xs tracking-wider">
                       Target Count
                     </label>
                     <Input
@@ -519,7 +521,7 @@ export function SponsorChallengeForm({
 
                 {obj.verification === "platform-action" && (
                   <div className="space-y-2">
-                    <label className="font-mono text-xs tracking-wider text-muted-foreground">
+                    <label className="text-muted-foreground font-mono text-xs tracking-wider">
                       Action
                     </label>
                     <Select
@@ -532,10 +534,18 @@ export function SponsorChallengeForm({
                         <SelectValue placeholder="Select action..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="thread.reply">Reply to thread</SelectItem>
-                        <SelectItem value="thread.create">Create thread</SelectItem>
-                        <SelectItem value="knowledge.share">Share knowledge</SelectItem>
-                        <SelectItem value="idea.submitted">Submit idea</SelectItem>
+                        <SelectItem value="thread.reply">
+                          Reply to thread
+                        </SelectItem>
+                        <SelectItem value="thread.create">
+                          Create thread
+                        </SelectItem>
+                        <SelectItem value="knowledge.share">
+                          Share knowledge
+                        </SelectItem>
+                        <SelectItem value="idea.submitted">
+                          Submit idea
+                        </SelectItem>
                         <SelectItem value="idea.voted">Vote on idea</SelectItem>
                       </SelectContent>
                     </Select>
@@ -544,7 +554,7 @@ export function SponsorChallengeForm({
 
                 {obj.verification === "test" && (
                   <div className="space-y-2">
-                    <label className="font-mono text-xs tracking-wider text-muted-foreground">
+                    <label className="text-muted-foreground font-mono text-xs tracking-wider">
                       Test Pattern
                     </label>
                     <Input
@@ -575,16 +585,17 @@ export function SponsorChallengeForm({
 
         {/* E. Rewards */}
         <section className="space-y-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
             / REWARDS
           </span>
 
-          <p className="text-xs text-muted-foreground">
-            XP is auto-calculated based on difficulty and objective verification modes.
+          <p className="text-muted-foreground text-xs">
+            XP is auto-calculated based on difficulty and objective verification
+            modes.
           </p>
 
           <div className="space-y-2">
-            <label className="font-mono text-xs tracking-wider text-muted-foreground">
+            <label className="text-muted-foreground font-mono text-xs tracking-wider">
               Badge Reward
             </label>
             <Input
@@ -595,7 +606,7 @@ export function SponsorChallengeForm({
           </div>
 
           <div className="space-y-2">
-            <label className="font-mono text-xs tracking-wider text-muted-foreground">
+            <label className="text-muted-foreground font-mono text-xs tracking-wider">
               Sponsor Reward
             </label>
             <Textarea
@@ -609,13 +620,13 @@ export function SponsorChallengeForm({
 
         {/* F. Settings */}
         <section className="space-y-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
             / SETTINGS
           </span>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <label className="font-mono text-xs tracking-wider text-muted-foreground">
+              <label className="text-muted-foreground font-mono text-xs tracking-wider">
                 Max Participants (0 = unlimited)
               </label>
               <Input
@@ -628,7 +639,7 @@ export function SponsorChallengeForm({
               />
             </div>
             <div className="space-y-2">
-              <label className="font-mono text-xs tracking-wider text-muted-foreground">
+              <label className="text-muted-foreground font-mono text-xs tracking-wider">
                 Tags (comma-separated)
               </label>
               <Input
@@ -640,7 +651,7 @@ export function SponsorChallengeForm({
           </div>
 
           <div className="space-y-2">
-            <label className="font-mono text-xs tracking-wider text-muted-foreground">
+            <label className="text-muted-foreground font-mono text-xs tracking-wider">
               Ranking Mode
             </label>
             <div className="flex flex-wrap gap-2">
@@ -660,13 +671,13 @@ export function SponsorChallengeForm({
 
         {/* Error display */}
         {error && (
-          <div className="rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="border-destructive bg-destructive/10 text-destructive rounded-lg border p-3 text-sm">
             {error}
           </div>
         )}
 
         {/* G. Actions */}
-        <div className="flex items-center gap-3 border-t border-border pt-4">
+        <div className="border-border flex items-center gap-3 border-t pt-4">
           <Button
             type="submit"
             disabled={createMutation.isPending}

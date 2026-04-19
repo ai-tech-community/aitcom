@@ -103,21 +103,24 @@ function CodeBlockComponent({
     [currentCode, updateNode],
   );
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const ta = e.currentTarget;
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const val = ta.value;
-      const newVal = val.substring(0, start) + "  " + val.substring(end);
-      setCurrentCode(newVal);
-      debouncedUpdateNode(newVal, currentLang);
-      requestAnimationFrame(() => {
-        ta.selectionStart = ta.selectionEnd = start + 2;
-      });
-    }
-  }, [currentLang, debouncedUpdateNode]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Tab") {
+        e.preventDefault();
+        const ta = e.currentTarget;
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const val = ta.value;
+        const newVal = val.substring(0, start) + "  " + val.substring(end);
+        setCurrentCode(newVal);
+        debouncedUpdateNode(newVal, currentLang);
+        requestAnimationFrame(() => {
+          ta.selectionStart = ta.selectionEnd = start + 2;
+        });
+      }
+    },
+    [currentLang, debouncedUpdateNode],
+  );
 
   const handleDelete = useCallback(() => {
     editor.update(() => {
@@ -130,22 +133,27 @@ function CodeBlockComponent({
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + "px";
+      textareaRef.current.style.height =
+        textareaRef.current.scrollHeight + "px";
     }
   }, [currentCode]);
 
   return (
     <div className="bg-muted/50 border-border my-4 overflow-hidden rounded border">
       <div className="border-border flex items-center justify-between border-b px-3 py-1.5">
-        <span className="font-mono text-[10px] tracking-wider text-muted-foreground">CODE</span>
+        <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+          CODE
+        </span>
         <div className="flex items-center gap-2">
           <select
             value={currentLang}
             onChange={handleLangChange}
-            className="bg-transparent text-xs text-muted-foreground focus:outline-none"
+            className="text-muted-foreground bg-transparent text-xs focus:outline-none"
           >
             {Object.entries(CODE_LANGUAGES).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+              <option key={value} value={value}>
+                {label}
+              </option>
             ))}
           </select>
           <button
@@ -181,11 +189,16 @@ export class CodeBlockNode extends DecoratorNode<React.JSX.Element> {
   __blockId: string;
 
   static getType(): string {
-    return "code-block";  // internal Lexical type (NOT "block" to avoid conflict with Payload's BlockNode)
+    return "code-block"; // internal Lexical type (NOT "block" to avoid conflict with Payload's BlockNode)
   }
 
   static clone(node: CodeBlockNode): CodeBlockNode {
-    return new CodeBlockNode(node.__code, node.__language, node.__blockId, node.__key);
+    return new CodeBlockNode(
+      node.__code,
+      node.__language,
+      node.__blockId,
+      node.__key,
+    );
   }
 
   constructor(code: string, language: string, blockId?: string, key?: NodeKey) {
@@ -261,10 +274,15 @@ export class CodeBlockNode extends DecoratorNode<React.JSX.Element> {
   }
 }
 
-export function $createCodeBlockNode(code = "", language = "typescript"): CodeBlockNode {
+export function $createCodeBlockNode(
+  code = "",
+  language = "typescript",
+): CodeBlockNode {
   return new CodeBlockNode(code, language);
 }
 
-export function $isCodeBlockNode(node: LexicalNode | null | undefined): node is CodeBlockNode {
+export function $isCodeBlockNode(
+  node: LexicalNode | null | undefined,
+): node is CodeBlockNode {
   return node instanceof CodeBlockNode;
 }

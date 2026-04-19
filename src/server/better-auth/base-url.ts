@@ -22,7 +22,12 @@ export function resolveBetterAuthBaseUrl(env: AuthUrlEnv) {
     return `http://localhost:${port}`;
   }
 
-  return betterAuthUrl ?? betterAuthBaseUrl ?? publicAppUrl ?? "http://localhost:3000";
+  return (
+    betterAuthUrl ??
+    betterAuthBaseUrl ??
+    publicAppUrl ??
+    "http://localhost:3000"
+  );
 }
 
 export function resolveTrustedOrigins(env: AuthUrlEnv, request?: Request) {

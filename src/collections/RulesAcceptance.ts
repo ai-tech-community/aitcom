@@ -5,7 +5,8 @@ export const RulesAcceptance: CollectionConfig = {
   admin: {
     useAsTitle: "userId",
     defaultColumns: ["userId", "rulesVersion", "acceptedAt"],
-    description: "Tracks which users have accepted which version of the community rules.",
+    description:
+      "Tracks which users have accepted which version of the community rules.",
   },
   fields: [
     {

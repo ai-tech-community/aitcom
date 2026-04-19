@@ -1,9 +1,5 @@
 import { relations, sql } from "drizzle-orm";
-import {
-  index,
-  pgSchema,
-  uniqueIndex,
-} from "drizzle-orm/pg-core";
+import { index, pgSchema, uniqueIndex } from "drizzle-orm/pg-core";
 
 // All Drizzle-managed tables live in the "app" schema to avoid conflicts
 // with Payload CMS tables which live in "public".
@@ -156,7 +152,14 @@ export const eventRegistrations = appSchema.table(
       .varchar({ length: 20 })
       .notNull()
       .default("registered")
-      .$type<"registered" | "waitlisted" | "cancelled" | "attended" | "pending_payment" | "payment_failed">(),
+      .$type<
+        | "registered"
+        | "waitlisted"
+        | "cancelled"
+        | "attended"
+        | "pending_payment"
+        | "payment_failed"
+      >(),
     paymentId: d.varchar({ length: 255 }),
     paymentStatus: d.varchar({ length: 50 }),
     registeredAt: d
@@ -191,11 +194,7 @@ export const memberProfiles = appSchema.table(
       .references(() => user.id),
     displayName: d.varchar({ length: 255 }).notNull(),
     bio: d.text(),
-    skills: d
-      .json()
-      .$type<string[]>()
-      .default([])
-      .notNull(),
+    skills: d.json().$type<string[]>().default([]).notNull(),
     company: d.varchar({ length: 255 }),
     linkedinUrl: d.varchar({ length: 255 }),
     githubUrl: d.varchar({ length: 255 }),
@@ -213,9 +212,7 @@ export const memberProfiles = appSchema.table(
       .notNull(),
     updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
-  (t) => [
-    index("member_profile_xp_idx").on(t.xp),
-  ],
+  (t) => [index("member_profile_xp_idx").on(t.xp)],
 );
 
 export const memberProfileRelations = relations(memberProfiles, ({ one }) => ({
@@ -283,12 +280,15 @@ export const onboardingSteps = appSchema.table(
   ],
 );
 
-export const onboardingStepRelations = relations(onboardingSteps, ({ one }) => ({
-  user: one(user, {
-    fields: [onboardingSteps.userId],
-    references: [user.id],
+export const onboardingStepRelations = relations(
+  onboardingSteps,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [onboardingSteps.userId],
+      references: [user.id],
+    }),
   }),
-}));
+);
 
 // Agent profiles (1:1 with user, for AI agent identities)
 export const agentProfiles = appSchema.table("agent_profile", (d) => ({
@@ -304,20 +304,11 @@ export const agentProfiles = appSchema.table("agent_profile", (d) => ({
   name: d.varchar({ length: 100 }).notNull(),
   avatar: d.varchar({ length: 500 }),
   bio: d.text(),
-  expertiseTags: d
-    .json()
-    .$type<string[]>()
-    .default([]),
+  expertiseTags: d.json().$type<string[]>().default([]),
   description: d.text(),
-  visibilityMode: d
-    .varchar({ length: 20 })
-    .notNull()
-    .default("visible"),
+  visibilityMode: d.varchar({ length: 20 }).notNull().default("visible"),
   status: d.varchar({ length: 20 }).notNull().default("active"),
-  totalContributions: d
-    .integer()
-    .notNull()
-    .default(0),
+  totalContributions: d.integer().notNull().default(0),
   createdAt: d
     .timestamp({ withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
@@ -355,9 +346,7 @@ export const agentApiKeys = appSchema.table("agent_api_key", (d) => ({
     .varchar({ length: 255 })
     .notNull()
     .references(() => agentProfiles.id),
-  ownerId: d
-    .varchar({ length: 255 })
-    .references(() => user.id),
+  ownerId: d.varchar({ length: 255 }).references(() => user.id),
   keyHash: d.varchar({ length: 128 }).notNull(),
   keyPrefix: d.varchar({ length: 20 }).notNull(),
   scopes: d
@@ -396,9 +385,7 @@ export const agentInviteCodes = appSchema.table("agent_invite_code", (d) => ({
     .varchar({ length: 255 })
     .notNull()
     .references(() => user.id),
-  usedByAgentId: d
-    .varchar({ length: 255 })
-    .references(() => agentProfiles.id),
+  usedByAgentId: d.varchar({ length: 255 }).references(() => agentProfiles.id),
   expiresAt: d.timestamp({ withTimezone: true }).notNull(),
   createdAt: d
     .timestamp({ withTimezone: true })
@@ -406,16 +393,19 @@ export const agentInviteCodes = appSchema.table("agent_invite_code", (d) => ({
     .notNull(),
 }));
 
-export const agentInviteCodesRelations = relations(agentInviteCodes, ({ one }) => ({
-  creator: one(user, {
-    fields: [agentInviteCodes.createdBy],
-    references: [user.id],
+export const agentInviteCodesRelations = relations(
+  agentInviteCodes,
+  ({ one }) => ({
+    creator: one(user, {
+      fields: [agentInviteCodes.createdBy],
+      references: [user.id],
+    }),
+    agent: one(agentProfiles, {
+      fields: [agentInviteCodes.usedByAgentId],
+      references: [agentProfiles.id],
+    }),
   }),
-  agent: one(agentProfiles, {
-    fields: [agentInviteCodes.usedByAgentId],
-    references: [agentProfiles.id],
-  }),
-}));
+);
 
 // System notifications (platform-generated alerts, separate from agent inbox)
 export const notifications = appSchema.table(
@@ -441,9 +431,7 @@ export const notifications = appSchema.table(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   }),
-  (t) => [
-    index("notification_user_created_idx").on(t.userId, t.createdAt),
-  ],
+  (t) => [index("notification_user_created_idx").on(t.userId, t.createdAt)],
 );
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
@@ -470,11 +458,7 @@ export const agentWebhooks = appSchema.table("agent_webhook", (d) => ({
     .references(() => user.id),
   url: d.text().notNull(),
   secret: d.varchar({ length: 128 }).notNull(),
-  categories: d
-    .json()
-    .$type<string[]>()
-    .notNull()
-    .default([]),
+  categories: d.json().$type<string[]>().notNull().default([]),
   cursor: d.timestamp({ withTimezone: true }),
   consecutiveFailures: d.integer().notNull().default(0),
   consecutiveAgentEvents: d.integer().notNull().default(0),
@@ -625,36 +609,76 @@ export const dailyCoreMetrics = appSchema.table("daily_core_metrics", (d) => ({
   totalContributions: d.integer().notNull().default(0),
   aiAssisted: d.integer().notNull().default(0),
   humanReviewed: d.integer().notNull().default(0),
-  collaborationRate: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
-  forumHelpfulness: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
+  collaborationRate: d
+    .numeric({ precision: 5, scale: 1 })
+    .notNull()
+    .default("0"),
+  forumHelpfulness: d
+    .numeric({ precision: 5, scale: 1 })
+    .notNull()
+    .default("0"),
   medianResponseMinutes: d.integer(),
   challengeParticipation: d.integer().notNull().default(0),
   challengeCompletion: d.integer().notNull().default(0),
   eventParticipation: d.integer().notNull().default(0),
   growth4w: d.numeric({ precision: 6, scale: 1 }).notNull().default("0"),
-  computedAt: d.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  computedAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
 }));
 
-export const dailyExperimentalMetrics = appSchema.table("daily_experimental_metrics", (d) => ({
-  date: d.date().notNull().primaryKey(),
-  personalityDistribution: d.json().$type<Record<string, number>>().notNull().default({}),
-  overrideRate: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
-  creativityIndex: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
-  collaborationDepth: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
-  ideaToImplMedianMinutes: d.integer(),
-  topPairings: d.json().$type<Array<{ pair: [string, string]; count: number }>>().notNull().default([]),
-  reuseRatio: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
-  learningLoopSignal: d.varchar("learning_loop_signal", { length: 20 }).$type<"improving" | "stable" | "declining">().notNull().default("stable"),
-  learningLoopData: d.json().$type<Record<string, number>>().notNull().default({}),
-  computedAt: d.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-}));
+export const dailyExperimentalMetrics = appSchema.table(
+  "daily_experimental_metrics",
+  (d) => ({
+    date: d.date().notNull().primaryKey(),
+    personalityDistribution: d
+      .json()
+      .$type<Record<string, number>>()
+      .notNull()
+      .default({}),
+    overrideRate: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
+    creativityIndex: d
+      .numeric({ precision: 5, scale: 1 })
+      .notNull()
+      .default("0"),
+    collaborationDepth: d
+      .numeric({ precision: 5, scale: 1 })
+      .notNull()
+      .default("0"),
+    ideaToImplMedianMinutes: d.integer(),
+    topPairings: d
+      .json()
+      .$type<Array<{ pair: [string, string]; count: number }>>()
+      .notNull()
+      .default([]),
+    reuseRatio: d.numeric({ precision: 5, scale: 1 }).notNull().default("0"),
+    learningLoopSignal: d
+      .varchar("learning_loop_signal", { length: 20 })
+      .$type<"improving" | "stable" | "declining">()
+      .notNull()
+      .default("stable"),
+    learningLoopData: d
+      .json()
+      .$type<Record<string, number>>()
+      .notNull()
+      .default({}),
+    computedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+);
 
 export const dailyCollabMix = appSchema.table("daily_collab_mix", (d) => ({
   date: d.date().notNull().primaryKey(),
   aiOnly: d.integer().notNull().default(0),
   humanOnly: d.integer().notNull().default(0),
   collaborative: d.integer().notNull().default(0),
-  computedAt: d.timestamp({ withTimezone: true }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  computedAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
 }));
 
 // Challenge enrollments (member joins a challenge)
@@ -1032,9 +1056,7 @@ export const messages = appSchema.table(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   }),
-  (t) => [
-    index("messages_conv_created_idx").on(t.conversationId, t.createdAt),
-  ],
+  (t) => [index("messages_conv_created_idx").on(t.conversationId, t.createdAt)],
 );
 
 export const conversationsRelations = relations(conversations, ({ many }) => ({
@@ -1164,7 +1186,10 @@ export const benchmarkVotes = appSchema.table(
       .uuid("question_id")
       .notNull()
       .references(() => benchmarkQuestions.id),
-    userId: d.text("user_id").notNull().references(() => user.id),
+    userId: d
+      .text("user_id")
+      .notNull()
+      .references(() => user.id),
     vote: d.text().notNull(), // 'up' | 'down'
     createdAt: d
       .timestamp({ withTimezone: true })
@@ -1313,15 +1338,12 @@ export const launchpadCommentRelations = relations(
   }),
 );
 
-export const launchpadVoteRelations = relations(
-  launchpadVotes,
-  ({ one }) => ({
-    voter: one(user, {
-      fields: [launchpadVotes.voterId],
-      references: [user.id],
-    }),
+export const launchpadVoteRelations = relations(launchpadVotes, ({ one }) => ({
+  voter: one(user, {
+    fields: [launchpadVotes.voterId],
+    references: [user.id],
   }),
-);
+}));
 
 // ── Communities (multi-tenancy) ─────────────────────────────
 export const communities = appSchema.table(
@@ -1380,9 +1402,7 @@ export const communityLumaIntegrations = appSchema.table(
     apiKeyEncrypted: d.text().notNull(),
     calendarApiId: d.text().notNull().default(""),
     calendarName: d.text(),
-    tagFilters: d
-      .jsonb()
-      .$type<string[]>(),
+    tagFilters: d.jsonb().$type<string[]>(),
     isEnabled: d.boolean().notNull().default(false),
     lastSyncCheck: d.timestamp({ withTimezone: true }),
     createdAt: d
@@ -1391,9 +1411,7 @@ export const communityLumaIntegrations = appSchema.table(
       .notNull(),
     updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
   }),
-  (t) => [
-    index("luma_integration_community_idx").on(t.communityId),
-  ],
+  (t) => [index("luma_integration_community_idx").on(t.communityId)],
 );
 
 export const communityMemberships = appSchema.table(
@@ -1430,10 +1448,7 @@ export const communityMemberships = appSchema.table(
     invitedBy: d.varchar({ length: 255 }).references(() => user.id),
   }),
   (t) => [
-    uniqueIndex("membership_community_user_uidx").on(
-      t.communityId,
-      t.userId,
-    ),
+    uniqueIndex("membership_community_user_uidx").on(t.communityId, t.userId),
     index("membership_user_idx").on(t.userId),
     index("membership_community_status_idx").on(t.communityId, t.status),
     index("membership_community_role_idx").on(t.communityId, t.role),

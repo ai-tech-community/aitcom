@@ -5,8 +5,15 @@ export const ForumThreads: CollectionConfig = {
   slug: "forum-threads",
   admin: {
     useAsTitle: "title",
-    defaultColumns: ["title", "category", "isPinned", "replyCount", "createdAt"],
-    description: "Community discussion threads. Pin important threads, lock spam, delete abuse.",
+    defaultColumns: [
+      "title",
+      "category",
+      "isPinned",
+      "replyCount",
+      "createdAt",
+    ],
+    description:
+      "Community discussion threads. Pin important threads, lock spam, delete abuse.",
   },
   fields: [
     { name: "title", type: "text", required: true },
@@ -15,7 +22,10 @@ export const ForumThreads: CollectionConfig = {
       type: "text",
       required: true,
       unique: true,
-      admin: { description: "Auto-generated from title + timestamp. Do not edit manually." },
+      admin: {
+        description:
+          "Auto-generated from title + timestamp. Do not edit manually.",
+      },
     },
     {
       name: "content",
@@ -40,7 +50,10 @@ export const ForumThreads: CollectionConfig = {
       name: "authorId",
       type: "text",
       required: true,
-      admin: { position: "sidebar", description: "Better Auth user ID (UUID)." },
+      admin: {
+        position: "sidebar",
+        description: "Better Auth user ID (UUID).",
+      },
     },
     {
       name: "authorName",
@@ -62,13 +75,19 @@ export const ForumThreads: CollectionConfig = {
       name: "isPinned",
       type: "checkbox",
       defaultValue: false,
-      admin: { position: "sidebar", description: "Pinned threads appear at the top." },
+      admin: {
+        position: "sidebar",
+        description: "Pinned threads appear at the top.",
+      },
     },
     {
       name: "isLocked",
       type: "checkbox",
       defaultValue: false,
-      admin: { position: "sidebar", description: "Locked threads cannot receive new replies." },
+      admin: {
+        position: "sidebar",
+        description: "Locked threads cannot receive new replies.",
+      },
     },
     {
       name: "viewCount",

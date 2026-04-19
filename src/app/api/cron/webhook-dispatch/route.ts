@@ -13,9 +13,16 @@ export async function GET(request: Request) {
 
   try {
     const result = await dispatchWebhooks(db);
-    return NextResponse.json({ success: true, ...result, timestamp: new Date().toISOString() });
+    return NextResponse.json({
+      success: true,
+      ...result,
+      timestamp: new Date().toISOString(),
+    });
   } catch (err) {
     console.error("[webhook-dispatch] Unhandled error:", err);
-    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: String(err) },
+      { status: 500 },
+    );
   }
 }

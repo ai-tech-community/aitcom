@@ -59,7 +59,8 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
   useEffect(() => {
     if (rulesData && !initialized) {
       if (rulesData.rules) {
-        const ruleSections = (rulesData.rules as { sections?: RuleSection[] }).sections;
+        const ruleSections = (rulesData.rules as { sections?: RuleSection[] })
+          .sections;
         if (ruleSections) {
           setSections(
             ruleSections.map((s) => ({
@@ -83,7 +84,10 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
   });
 
   const addSection = () => {
-    setSections((prev) => [...prev, { title: "", slug: "", icon: undefined, content: "" }]);
+    setSections((prev) => [
+      ...prev,
+      { title: "", slug: "", icon: undefined, content: "" },
+    ]);
   };
 
   const removeSection = (index: number) => {
@@ -97,7 +101,10 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
       prev.map((s, i) => {
         if (i !== index) return s;
         const updated = { ...s, ...updates };
-        if (updates.title !== undefined && (s.slug === "" || s.slug === slugify(s.title))) {
+        if (
+          updates.title !== undefined &&
+          (s.slug === "" || s.slug === slugify(s.title))
+        ) {
           updated.slug = slugify(updates.title);
         }
         return updated;
@@ -131,7 +138,14 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
       sections: sections.map((s) => ({
         title: s.title,
         slug: s.slug || slugify(s.title),
-        icon: s.icon as "shield" | "users" | "flag" | "scale" | "brain" | "gavel" | undefined,
+        icon: s.icon as
+          | "shield"
+          | "users"
+          | "flag"
+          | "scale"
+          | "brain"
+          | "gavel"
+          | undefined,
         content: typeof s.content === "string" ? s.content : s.content,
       })),
     });
@@ -140,7 +154,7 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
   if (isLoading) {
     return (
       <div className="flex justify-center py-16">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground size-5 animate-spin" />
       </div>
     );
   }
@@ -154,11 +168,14 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
           <h2 className="text-lg font-semibold tracking-tight">{t("title")}</h2>
           {hasRules && (
             <p className="text-muted-foreground text-sm">
-              {t("currentVersion", { version: (rulesData.rules as { version?: number }).version ?? 1 })}
+              {t("currentVersion", {
+                version: (rulesData.rules as { version?: number }).version ?? 1,
+              })}
               {" · "}
               {t("effectiveDate", {
                 date: new Date(
-                  (rulesData.rules as { effectiveDate?: string }).effectiveDate ?? "",
+                  (rulesData.rules as { effectiveDate?: string })
+                    .effectiveDate ?? "",
                 ).toLocaleDateString(),
               })}
             </p>
@@ -181,15 +198,29 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
               <div key={index} className="space-y-3 rounded-lg border p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <GripVertical className="size-4 cursor-grab text-muted-foreground" />
-                    <span className="font-mono text-xs text-muted-foreground">#{index + 1}</span>
+                    <GripVertical className="text-muted-foreground size-4 cursor-grab" />
+                    <span className="text-muted-foreground font-mono text-xs">
+                      #{index + 1}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1">
                     {index > 0 && (
-                      <Button size="sm" variant="ghost" onClick={() => moveSection(index, index - 1)}>↑</Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => moveSection(index, index - 1)}
+                      >
+                        ↑
+                      </Button>
                     )}
                     {index < sections.length - 1 && (
-                      <Button size="sm" variant="ghost" onClick={() => moveSection(index, index + 1)}>↓</Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => moveSection(index, index + 1)}
+                      >
+                        ↓
+                      </Button>
                     )}
                     <Button
                       size="sm"
@@ -207,7 +238,9 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
                     <Label className="text-xs">{t("sectionTitle")}</Label>
                     <Input
                       value={section.title}
-                      onChange={(e) => updateSection(index, { title: e.target.value })}
+                      onChange={(e) =>
+                        updateSection(index, { title: e.target.value })
+                      }
                       placeholder={t("sectionTitle")}
                     />
                   </div>
@@ -215,14 +248,18 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
                     <Label className="text-xs">{t("sectionIcon")}</Label>
                     <Select
                       value={section.icon ?? ""}
-                      onValueChange={(v) => updateSection(index, { icon: v || undefined })}
+                      onValueChange={(v) =>
+                        updateSection(index, { icon: v || undefined })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select icon" />
                       </SelectTrigger>
                       <SelectContent>
                         {ICON_OPTIONS.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -233,7 +270,9 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
                   <Label className="text-xs">{t("sectionSlug")}</Label>
                   <Input
                     value={section.slug}
-                    onChange={(e) => updateSection(index, { slug: e.target.value })}
+                    onChange={(e) =>
+                      updateSection(index, { slug: e.target.value })
+                    }
                     placeholder="auto-generated-from-title"
                     className="font-mono text-xs"
                   />
@@ -242,8 +281,12 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
                 <div className="space-y-1">
                   <Label className="text-xs">{t("sectionContent")}</Label>
                   <Textarea
-                    value={typeof section.content === "string" ? section.content : ""}
-                    onChange={(e) => updateSection(index, { content: e.target.value })}
+                    value={
+                      typeof section.content === "string" ? section.content : ""
+                    }
+                    onChange={(e) =>
+                      updateSection(index, { content: e.target.value })
+                    }
                     placeholder={t("sectionContent")}
                     rows={4}
                   />
@@ -262,7 +305,9 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
               onClick={handlePublish}
               disabled={upsertMutation.isPending || sections.length === 0}
             >
-              {upsertMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+              {upsertMutation.isPending && (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              )}
               {t("publish")}
             </Button>
           </div>

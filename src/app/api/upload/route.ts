@@ -17,12 +17,18 @@ export async function POST(request: NextRequest) {
   }
 
   if (!file.type.startsWith("image/")) {
-    return NextResponse.json({ error: "Only images are allowed" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Only images are allowed" },
+      { status: 400 },
+    );
   }
 
   // 2MB limit
   if (file.size > 2 * 1024 * 1024) {
-    return NextResponse.json({ error: "File too large (max 2MB)" }, { status: 400 });
+    return NextResponse.json(
+      { error: "File too large (max 2MB)" },
+      { status: 400 },
+    );
   }
 
   const payload = await getPayloadClient();

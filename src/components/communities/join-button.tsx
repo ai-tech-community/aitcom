@@ -19,7 +19,12 @@ interface JoinButtonProps {
   memberRole?: "owner" | "admin" | "moderator" | "member" | null;
 }
 
-export function JoinButton({ slug, joinPolicy, membershipStatus, memberRole }: JoinButtonProps) {
+export function JoinButton({
+  slug,
+  joinPolicy,
+  membershipStatus,
+  memberRole,
+}: JoinButtonProps) {
   const t = useTranslations("communities.profile");
   const { data: session } = authClient.useSession();
   const router = useRouter();
@@ -100,18 +105,27 @@ export function JoinButton({ slug, joinPolicy, membershipStatus, memberRole }: J
   if (membershipStatus === "active") {
     return (
       <Button variant="outline" onClick={handleAction} disabled={isLoading}>
-        {isLoading ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
+        {isLoading ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <LogOut className="size-4" />
+        )}
         {t("leave")}
       </Button>
     );
   }
 
   // Not a member: show join or request button
-  const label = joinPolicy === "approval_required" ? t("requestToJoin") : t("join");
+  const label =
+    joinPolicy === "approval_required" ? t("requestToJoin") : t("join");
 
   return (
     <Button onClick={handleAction} disabled={isLoading}>
-      {isLoading ? <Loader2 className="size-4 animate-spin" /> : <LogIn className="size-4" />}
+      {isLoading ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <LogIn className="size-4" />
+      )}
       {label}
     </Button>
   );

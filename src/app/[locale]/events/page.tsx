@@ -77,7 +77,7 @@ export default async function EventsPage() {
               className="border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0"
             >
               {/* Title - first on mobile */}
-              <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
+              <span className="text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
                 {event.title}
               </span>
 

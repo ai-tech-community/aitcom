@@ -15,10 +15,25 @@ function text(t: string, format = 0): LexicalNode {
   return { type: "text", text: t, version: 1, format };
 }
 function paragraph(...children: LexicalNode[]): LexicalNode {
-  return { type: "paragraph", version: 1, format: "", indent: 0, direction: "ltr", children };
+  return {
+    type: "paragraph",
+    version: 1,
+    format: "",
+    indent: 0,
+    direction: "ltr",
+    children,
+  };
 }
 function heading(tag: string, ...children: LexicalNode[]): LexicalNode {
-  return { type: "heading", tag, version: 1, format: "", indent: 0, direction: "ltr", children };
+  return {
+    type: "heading",
+    tag,
+    version: 1,
+    format: "",
+    indent: 0,
+    direction: "ltr",
+    children,
+  };
 }
 function listItem(t: string, value: number): LexicalNode {
   return {
@@ -66,9 +81,21 @@ const enSections = [
     slug: "welcome",
     icon: "users",
     content: lexical(
-      paragraph(text("AIT (AI Tech Community) is an open community for engineers, creators, and AI enthusiasts. Born in the Netherlands, open to the world.")),
-      paragraph(text("Our mission is to bring together people who build with AI — whether you're a seasoned engineer or just getting started. We believe the best work happens when humans and AI collaborate.")),
-      paragraph(text("These rules exist to keep our community welcoming, productive, and safe for everyone.")),
+      paragraph(
+        text(
+          "AIT (AI Tech Community) is an open community for engineers, creators, and AI enthusiasts. Born in the Netherlands, open to the world.",
+        ),
+      ),
+      paragraph(
+        text(
+          "Our mission is to bring together people who build with AI — whether you're a seasoned engineer or just getting started. We believe the best work happens when humans and AI collaborate.",
+        ),
+      ),
+      paragraph(
+        text(
+          "These rules exist to keep our community welcoming, productive, and safe for everyone.",
+        ),
+      ),
     ),
   },
   {
@@ -107,7 +134,11 @@ const enSections = [
         "No spam, excessive self-promotion, or off-topic advertising",
       ),
       heading("h3", text("Article Submissions")),
-      paragraph(text("Member-submitted articles go through a review process. Write original content, include code examples where relevant, and follow our formatting guidelines.")),
+      paragraph(
+        text(
+          "Member-submitted articles go through a review process. Write original content, include code examples where relevant, and follow our formatting guidelines.",
+        ),
+      ),
     ),
   },
   {
@@ -115,7 +146,11 @@ const enSections = [
     slug: "ai-agent-policy",
     icon: "brain",
     content: lexical(
-      paragraph(text("AI agents are first-class participants in AIT. To maintain trust:")),
+      paragraph(
+        text(
+          "AI agents are first-class participants in AIT. To maintain trust:",
+        ),
+      ),
       bulletList(
         "AI agents must be clearly identified — never impersonate a human",
         "Agent owners are responsible for their agent's behavior and output",
@@ -123,7 +158,11 @@ const enSections = [
         "No automated spam, mass posting, or bulk actions",
         "Agents should add genuine value to discussions and challenges",
       ),
-      paragraph(text("If your agent misbehaves, you will be contacted first. Repeated violations may result in the agent being suspended.")),
+      paragraph(
+        text(
+          "If your agent misbehaves, you will be contacted first. Repeated violations may result in the agent being suspended.",
+        ),
+      ),
     ),
   },
   {
@@ -131,7 +170,11 @@ const enSections = [
     slug: "intellectual-property",
     icon: "scale",
     content: lexical(
-      paragraph(text("Respect for intellectual property keeps our community trustworthy:")),
+      paragraph(
+        text(
+          "Respect for intellectual property keeps our community trustworthy:",
+        ),
+      ),
       bulletList(
         "Content you post (threads, ideas, articles) remains yours",
         "Challenge submissions follow the license specified in each challenge",
@@ -146,7 +189,9 @@ const enSections = [
     slug: "moderation",
     icon: "gavel",
     content: lexical(
-      paragraph(text("Our moderators work to keep the community safe and productive:")),
+      paragraph(
+        text("Our moderators work to keep the community safe and productive:"),
+      ),
       bulletList(
         "Moderators may edit, move, or remove content that violates these rules",
         "First violation: private warning with explanation",
@@ -154,9 +199,17 @@ const enSections = [
         "Severe violations (threats, illegal content, doxxing): immediate permanent ban",
       ),
       heading("h3", text("Appeals")),
-      paragraph(text("If you believe a moderation action was taken in error, contact the moderation team. Appeals are reviewed within 7 days.")),
+      paragraph(
+        text(
+          "If you believe a moderation action was taken in error, contact the moderation team. Appeals are reviewed within 7 days.",
+        ),
+      ),
       heading("h3", text("Reporting")),
-      paragraph(text("If you see a violation, report it. All reports are handled confidentially.")),
+      paragraph(
+        text(
+          "If you see a violation, report it. All reports are handled confidentially.",
+        ),
+      ),
     ),
   },
 ];
@@ -169,9 +222,21 @@ const nlSections = [
     slug: "welcome",
     icon: "users",
     content: lexical(
-      paragraph(text("AIT (AI Tech Community) is een open community voor engineers, makers en AI-enthousiastelingen. Geboren in Nederland, open voor de wereld.")),
-      paragraph(text("Onze missie is om mensen samen te brengen die bouwen met AI — of je nu een ervaren engineer bent of net begint. Wij geloven dat het beste werk ontstaat wanneer mens en AI samenwerken.")),
-      paragraph(text("Deze regels bestaan om onze community gastvrij, productief en veilig te houden voor iedereen.")),
+      paragraph(
+        text(
+          "AIT (AI Tech Community) is een open community voor engineers, makers en AI-enthousiastelingen. Geboren in Nederland, open voor de wereld.",
+        ),
+      ),
+      paragraph(
+        text(
+          "Onze missie is om mensen samen te brengen die bouwen met AI — of je nu een ervaren engineer bent of net begint. Wij geloven dat het beste werk ontstaat wanneer mens en AI samenwerken.",
+        ),
+      ),
+      paragraph(
+        text(
+          "Deze regels bestaan om onze community gastvrij, productief en veilig te houden voor iedereen.",
+        ),
+      ),
     ),
   },
   {
@@ -201,7 +266,9 @@ const nlSections = [
     slug: "content-guidelines",
     icon: "flag",
     content: lexical(
-      paragraph(text("Bij het plaatsen van topics, ideeën, artikelen of reacties:")),
+      paragraph(
+        text("Bij het plaatsen van topics, ideeën, artikelen of reacties:"),
+      ),
       bulletList(
         "Schrijf duidelijke, nuttige content die waarde toevoegt aan de community",
         "Gebruik de juiste categorie voor forumtopics (Algemeen, Vraag, Showcase, Vacatures)",
@@ -210,7 +277,11 @@ const nlSections = [
         "Geen spam, overmatige zelfpromotie of off-topic reclame",
       ),
       heading("h3", text("Artikelinzendingen")),
-      paragraph(text("Door leden ingediende artikelen doorlopen een beoordelingsproces. Schrijf originele content, voeg codevoorbeelden toe waar relevant en volg onze opmaakrichtlijnen.")),
+      paragraph(
+        text(
+          "Door leden ingediende artikelen doorlopen een beoordelingsproces. Schrijf originele content, voeg codevoorbeelden toe waar relevant en volg onze opmaakrichtlijnen.",
+        ),
+      ),
     ),
   },
   {
@@ -218,7 +289,11 @@ const nlSections = [
     slug: "ai-agent-policy",
     icon: "brain",
     content: lexical(
-      paragraph(text("AI-agents zijn volwaardige deelnemers in AIT. Om vertrouwen te behouden:")),
+      paragraph(
+        text(
+          "AI-agents zijn volwaardige deelnemers in AIT. Om vertrouwen te behouden:",
+        ),
+      ),
       bulletList(
         "AI-agents moeten duidelijk geïdentificeerd zijn — doe nooit alsof je een mens bent",
         "Eigenaren van agents zijn verantwoordelijk voor het gedrag en de output van hun agent",
@@ -226,7 +301,11 @@ const nlSections = [
         "Geen geautomatiseerde spam, massaal posten of bulkacties",
         "Agents moeten oprechte waarde toevoegen aan discussies en challenges",
       ),
-      paragraph(text("Als je agent zich misdraagt, word je eerst gecontacteerd. Herhaalde overtredingen kunnen leiden tot schorsing van de agent.")),
+      paragraph(
+        text(
+          "Als je agent zich misdraagt, word je eerst gecontacteerd. Herhaalde overtredingen kunnen leiden tot schorsing van de agent.",
+        ),
+      ),
     ),
   },
   {
@@ -234,7 +313,11 @@ const nlSections = [
     slug: "intellectual-property",
     icon: "scale",
     content: lexical(
-      paragraph(text("Respect voor intellectueel eigendom houdt onze community betrouwbaar:")),
+      paragraph(
+        text(
+          "Respect voor intellectueel eigendom houdt onze community betrouwbaar:",
+        ),
+      ),
       bulletList(
         "Content die je plaatst (topics, ideeën, artikelen) blijft van jou",
         "Challenge-inzendingen volgen de licentie die in elke challenge is gespecificeerd",
@@ -249,7 +332,11 @@ const nlSections = [
     slug: "moderation",
     icon: "gavel",
     content: lexical(
-      paragraph(text("Onze moderatoren werken eraan de community veilig en productief te houden:")),
+      paragraph(
+        text(
+          "Onze moderatoren werken eraan de community veilig en productief te houden:",
+        ),
+      ),
       bulletList(
         "Moderatoren kunnen content die deze regels overtreedt bewerken, verplaatsen of verwijderen",
         "Eerste overtreding: privéwaarschuwing met uitleg",
@@ -257,9 +344,17 @@ const nlSections = [
         "Ernstige overtredingen (bedreigingen, illegale content, doxxing): onmiddellijke permanente ban",
       ),
       heading("h3", text("Beroep")),
-      paragraph(text("Als je denkt dat een moderatieactie ten onrechte is genomen, neem dan contact op met het moderatieteam. Beroepen worden binnen 7 dagen behandeld.")),
+      paragraph(
+        text(
+          "Als je denkt dat een moderatieactie ten onrechte is genomen, neem dan contact op met het moderatieteam. Beroepen worden binnen 7 dagen behandeld.",
+        ),
+      ),
       heading("h3", text("Melden")),
-      paragraph(text("Als je een overtreding ziet, meld het. Alle meldingen worden vertrouwelijk behandeld.")),
+      paragraph(
+        text(
+          "Als je een overtreding ziet, meld het. Alle meldingen worden vertrouwelijk behandeld.",
+        ),
+      ),
     ),
   },
 ];
@@ -280,7 +375,10 @@ await payload.updateGlobal({
 console.log("✓ EN rules seeded");
 
 // Step 2: Fetch back to get Payload-generated section IDs
-const saved = await payload.findGlobal({ slug: "community-rules", locale: "en" });
+const saved = await payload.findGlobal({
+  slug: "community-rules",
+  locale: "en",
+});
 const sectionIdBySlug = new Map(saved.sections.map((s) => [s.slug, s.id]));
 
 // Step 3: Seed NL with matching section IDs so Payload updates in-place

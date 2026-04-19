@@ -70,20 +70,20 @@ export const FileTree = ({
       setInternalExpanded(newExpanded);
       onExpandedChange?.(newExpanded);
     },
-    [expandedPaths, onExpandedChange]
+    [expandedPaths, onExpandedChange],
   );
 
   const contextValue = useMemo(
     () => ({ expandedPaths, onSelect, selectedPath, togglePath }),
-    [expandedPaths, onSelect, selectedPath, togglePath]
+    [expandedPaths, onSelect, selectedPath, togglePath],
   );
 
   return (
     <FileTreeContext.Provider value={contextValue}>
       <div
         className={cn(
-          "rounded-lg border bg-background font-mono text-sm",
-          className
+          "bg-background rounded-lg border font-mono text-sm",
+          className,
         )}
         role="tree"
         {...props}
@@ -133,7 +133,7 @@ export const FileTreeFolder = ({
 
   const folderContextValue = useMemo(
     () => ({ isExpanded, name, path }),
-    [isExpanded, name, path]
+    [isExpanded, name, path],
   );
 
   return (
@@ -149,16 +149,16 @@ export const FileTreeFolder = ({
           <CollapsibleTrigger asChild>
             <button
               className={cn(
-                "flex w-full items-center gap-1 rounded px-2 py-1 text-left transition-colors hover:bg-muted/50",
-                isSelected && "bg-muted"
+                "hover:bg-muted/50 flex w-full items-center gap-1 rounded px-2 py-1 text-left transition-colors",
+                isSelected && "bg-muted",
               )}
               onClick={handleSelect}
               type="button"
             >
               <ChevronRightIcon
                 className={cn(
-                  "size-4 shrink-0 text-muted-foreground transition-transform",
-                  isExpanded && "rotate-90"
+                  "text-muted-foreground size-4 shrink-0 transition-transform",
+                  isExpanded && "rotate-90",
                 )}
               />
               <FileTreeIcon>
@@ -217,7 +217,7 @@ export const FileTreeFile = ({
         onSelect?.(path);
       }
     },
-    [onSelect, path]
+    [onSelect, path],
   );
 
   const fileContextValue = useMemo(() => ({ name, path }), [name, path]);
@@ -227,9 +227,9 @@ export const FileTreeFile = ({
       <div
         aria-selected={isSelected}
         className={cn(
-          "flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors hover:bg-muted/50",
+          "hover:bg-muted/50 flex cursor-pointer items-center gap-1 rounded px-2 py-1 transition-colors",
           isSelected && "bg-muted",
-          className
+          className,
         )}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
@@ -242,7 +242,7 @@ export const FileTreeFile = ({
             {/* Spacer for alignment */}
             <span className="size-4" />
             <FileTreeIcon>
-              {icon ?? <FileIcon className="size-4 text-muted-foreground" />}
+              {icon ?? <FileIcon className="text-muted-foreground size-4" />}
             </FileTreeIcon>
             <FileTreeName>{name}</FileTreeName>
           </>

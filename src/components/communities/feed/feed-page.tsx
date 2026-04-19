@@ -26,13 +26,17 @@ export function FeedPage({
   feedPostPolicy,
 }: FeedPageProps) {
   const t = useTranslations("communities.feed");
-  const [expandedComments, setExpandedComments] = useState<Set<number>>(new Set());
+  const [expandedComments, setExpandedComments] = useState<Set<number>>(
+    new Set(),
+  );
   const [limit, setLimit] = useState(20);
 
   const canPost =
     feedPostPolicy === "all_members"
       ? !!memberRole
-      : memberRole === "owner" || memberRole === "admin" || memberRole === "moderator";
+      : memberRole === "owner" ||
+        memberRole === "admin" ||
+        memberRole === "moderator";
 
   const { data, isFetching, refetch } = api.feed.getFeed.useQuery({
     communitySlug: slug,

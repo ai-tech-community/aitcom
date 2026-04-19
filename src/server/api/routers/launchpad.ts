@@ -75,9 +75,7 @@ export const launchpadRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
 
-      const conditions: Where[] = [
-        { status: { equals: "published" } },
-      ];
+      const conditions: Where[] = [{ status: { equals: "published" } }];
 
       if (input.stage !== "all") {
         conditions.push({ stage: { equals: input.stage } });
@@ -116,9 +114,7 @@ export const launchpadRouter = createTRPCRouter({
 
       if (input.sort === "trending" && projects.length > 0) {
         const projectIds = projects.map((p) => p.id);
-        const sevenDaysAgo = new Date(
-          Date.now() - 7 * 24 * 60 * 60 * 1000,
-        );
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const recentVotes = await ctx.db
           .select({
             projectId: launchpadVotes.projectId,
@@ -138,8 +134,7 @@ export const launchpadRouter = createTRPCRouter({
         );
 
         projects = [...projects].sort(
-          (a, b) =>
-            (voteCounts.get(b.id) ?? 0) - (voteCounts.get(a.id) ?? 0),
+          (a, b) => (voteCounts.get(b.id) ?? 0) - (voteCounts.get(a.id) ?? 0),
         );
       }
 
@@ -180,7 +175,10 @@ export const launchpadRouter = createTRPCRouter({
 
       const project = docs[0];
       if (!project) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Project not found",
+        });
       }
 
       const updates = await ctx.db
@@ -361,14 +359,18 @@ export const launchpadRouter = createTRPCRouter({
       });
 
       if (project.authorId !== ctx.session.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Not the project author" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Not the project author",
+        });
       }
 
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
       if (input.pitch !== undefined) data.pitch = input.pitch;
       if (input.stage !== undefined) data.stage = input.stage;
-      if (input.tags !== undefined) data.tags = input.tags.map((tag) => ({ tag }));
+      if (input.tags !== undefined)
+        data.tags = input.tags.map((tag) => ({ tag }));
       if (input.links !== undefined) data.links = input.links;
       if (input.coverImage !== undefined)
         data.coverImage = input.coverImage ?? undefined;
@@ -395,7 +397,10 @@ export const launchpadRouter = createTRPCRouter({
       });
 
       if (project.authorId !== ctx.session.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Not the project author" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Not the project author",
+        });
       }
 
       await payload.update({
@@ -426,7 +431,10 @@ export const launchpadRouter = createTRPCRouter({
       });
 
       if (project.authorId !== ctx.session.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Not the project author" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Not the project author",
+        });
       }
 
       const [update] = await ctx.db
@@ -656,7 +664,10 @@ export const launchpadRouter = createTRPCRouter({
         .limit(1);
 
       if (!comment) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Comment not found",
+        });
       }
 
       const isCommentAuthor = comment.authorId === ctx.session.user.id;

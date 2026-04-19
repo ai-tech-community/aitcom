@@ -44,10 +44,13 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
       formData.append("file", file);
       formData.append("alt", "feed post image");
 
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
       if (!res.ok) throw new Error("Upload failed");
 
-      const data = await res.json() as { url: string };
+      const data = (await res.json()) as { url: string };
       setImageUrl(data.url);
     } catch {
       toast.error("Upload failed");
@@ -70,7 +73,10 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
   if (!canPost) return null;
 
   return (
-    <form onSubmit={handleSubmit} className="border-border rounded-lg border p-4 space-y-3">
+    <form
+      onSubmit={handleSubmit}
+      className="border-border space-y-3 rounded-lg border p-4"
+    >
       <Textarea
         placeholder={t("composePlaceholder")}
         value={content}
@@ -93,7 +99,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
             type="button"
             variant="destructive"
             size="icon"
-            className="absolute right-1 top-1 size-6"
+            className="absolute top-1 right-1 size-6"
             onClick={() => setImageUrl(null)}
             aria-label={t("removeImage")}
           >

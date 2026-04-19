@@ -17,14 +17,14 @@ interface TranscriptionContextValue {
 }
 
 const TranscriptionContext = createContext<TranscriptionContextValue | null>(
-  null
+  null,
 );
 
 const useTranscription = () => {
   const context = useContext(TranscriptionContext);
   if (!context) {
     throw new Error(
-      "Transcription components must be used within Transcription"
+      "Transcription components must be used within Transcription",
     );
   }
   return context;
@@ -53,7 +53,7 @@ export const Transcription = ({
 
   const contextValue = useMemo(
     () => ({ currentTime, onSeek, onTimeUpdate: setCurrentTime, segments }),
-    [currentTime, onSeek, setCurrentTime, segments]
+    [currentTime, onSeek, setCurrentTime, segments],
   );
 
   return (
@@ -61,7 +61,7 @@ export const Transcription = ({
       <div
         className={cn(
           "flex flex-wrap gap-1 text-sm leading-relaxed",
-          className
+          className,
         )}
         data-slot="transcription"
         {...props}
@@ -99,7 +99,7 @@ export const TranscriptionSegment = ({
       }
       onClick?.(event);
     },
-    [onSeek, segment.startSecond, onClick]
+    [onSeek, segment.startSecond, onClick],
   );
 
   return (
@@ -109,9 +109,9 @@ export const TranscriptionSegment = ({
         isActive && "text-primary",
         isPast && "text-muted-foreground",
         !(isActive || isPast) && "text-muted-foreground/60",
-        onSeek && "cursor-pointer hover:text-foreground",
+        onSeek && "hover:text-foreground cursor-pointer",
         !onSeek && "cursor-default",
-        className
+        className,
       )}
       data-active={isActive}
       data-index={index}

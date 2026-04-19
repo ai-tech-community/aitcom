@@ -32,7 +32,10 @@ export default function CommunityEventsPage({
   const { data: session } = authClient.useSession();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<{ id: number; data: Record<string, string> } | null>(null);
+  const [editingEvent, setEditingEvent] = useState<{
+    id: number;
+    data: Record<string, string>;
+  } | null>(null);
 
   const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
     undefined,
@@ -43,9 +46,8 @@ export default function CommunityEventsPage({
     myMembership?.status === "active" &&
     (myMembership.role === "owner" || myMembership.role === "admin");
 
-  const { data: eventsData, isLoading } = api.events.getCommunityEvents.useQuery(
-    { communitySlug: slug },
-  );
+  const { data: eventsData, isLoading } =
+    api.events.getCommunityEvents.useQuery({ communitySlug: slug });
   const events = eventsData ?? [];
 
   const utils = api.useUtils();
@@ -60,7 +62,13 @@ export default function CommunityEventsPage({
     <div>
       {isAdminOrOwner && (
         <div className="mb-4 flex justify-end">
-          <Button size="sm" onClick={() => { setEditingEvent(null); setDialogOpen(true); }}>
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditingEvent(null);
+              setDialogOpen(true);
+            }}
+          >
             <Plus className="mr-1.5 size-4" /> {t("createEvent")}
           </Button>
         </div>
@@ -93,11 +101,12 @@ export default function CommunityEventsPage({
 
           {events.map((event) => {
             const isLuma = event.source === "luma";
-            const sharedClassName = "border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0";
+            const sharedClassName =
+              "border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0";
 
             const innerContent = (
               <>
-                <span className="flex items-center gap-1.5 text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
+                <span className="flex items-center gap-1.5 text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
                   {event.title}
                   {isLuma && (
                     <ExternalLink className="text-muted-foreground inline size-3" />
@@ -139,7 +148,7 @@ export default function CommunityEventsPage({
                             type: event.type,
                             date:
                               typeof event.date === "string"
-                                ? event.date.split("T")[0] ?? ""
+                                ? (event.date.split("T")[0] ?? "")
                                 : "",
                             startTime: event.startTime ?? "",
                             endTime: event.endTime ?? "",

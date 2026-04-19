@@ -6,7 +6,11 @@ import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import type { Where } from "payload";
-import { LexicalRenderer, extractHeadings, estimateReadingTime } from "@/lib/lexical";
+import {
+  LexicalRenderer,
+  extractHeadings,
+  estimateReadingTime,
+} from "@/lib/lexical";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import { getSession } from "@/server/better-auth/server";
@@ -22,10 +26,7 @@ const getArticleBySlug = cache(async (slug: string, locale: string) => {
   const { docs } = await payload.find({
     collection: "articles",
     where: {
-      and: [
-        { slug: { equals: slug } },
-        { status: { equals: "published" } },
-      ],
+      and: [{ slug: { equals: slug } }, { status: { equals: "published" } }],
     },
     locale: locale as "en" | "nl",
     limit: 1,
@@ -47,9 +48,10 @@ export async function generateMetadata({
   const tags = Array.isArray(article.tags)
     ? (article.tags as { tag: string }[]).map((t) => t.tag)
     : [];
-  const description = tags.length > 0
-    ? `${article.type.charAt(0).toUpperCase() + article.type.slice(1)} - ${tags.join(", ")}`
-    : `${article.type.charAt(0).toUpperCase() + article.type.slice(1)} from AIT Community`;
+  const description =
+    tags.length > 0
+      ? `${article.type.charAt(0).toUpperCase() + article.type.slice(1)} - ${tags.join(", ")}`
+      : `${article.type.charAt(0).toUpperCase() + article.type.slice(1)} from AIT Community`;
 
   return {
     title: article.title,
@@ -70,7 +72,8 @@ export default async function ArticleDetailPage({
 
   const article = await getArticleBySlug(slug, locale);
   if (!article) return notFound();
-  if (article.authorType === "member" && article.reviewStatus !== "approved") return notFound();
+  if (article.authorType === "member" && article.reviewStatus !== "approved")
+    return notFound();
 
   const typeLabels: Record<string, string> = {
     article: t("article"),
@@ -129,7 +132,8 @@ export default async function ArticleDetailPage({
         return { article: a, sharedCount };
       })
       .sort((a, b) => {
-        if (b.sharedCount !== a.sharedCount) return b.sharedCount - a.sharedCount;
+        if (b.sharedCount !== a.sharedCount)
+          return b.sharedCount - a.sharedCount;
         const aDate = a.article.publishedAt ?? "";
         const bDate = b.article.publishedAt ?? "";
         return bDate.localeCompare(aDate);
@@ -175,11 +179,18 @@ export default async function ArticleDetailPage({
         data={{
           "@type": "Article",
           headline: article.title,
-          ...(article.publishedAt ? { datePublished: article.publishedAt } : {}),
+          ...(article.publishedAt
+            ? { datePublished: article.publishedAt }
+            : {}),
           ...(article.mediaUrl ? { image: article.mediaUrl } : {}),
-          author: article.authorType === "member" && article.authorName
-            ? { "@type": "Person" as const, name: article.authorName }
-            : { "@type": "Organization" as const, name: "AIT Community", url: "https://aitcommunity.org" },
+          author:
+            article.authorType === "member" && article.authorName
+              ? { "@type": "Person" as const, name: article.authorName }
+              : {
+                  "@type": "Organization" as const,
+                  name: "AIT Community",
+                  url: "https://aitcommunity.org",
+                },
           publisher: {
             "@type": "Organization",
             name: "AIT Community",
@@ -221,7 +232,9 @@ export default async function ArticleDetailPage({
       </div>
 
       {/* Title */}
-      <h1 className="mt-4 text-4xl font-extrabold tracking-tight">{article.title}</h1>
+      <h1 className="mt-4 text-4xl font-extrabold tracking-tight">
+        {article.title}
+      </h1>
 
       {/* Tags */}
       {tags.length > 0 && (
@@ -253,7 +266,9 @@ export default async function ArticleDetailPage({
       )}
 
       {/* Content area */}
-      <div className={`border-border mt-8 border-t pt-8 ${showToc ? "flex gap-8" : ""}`}>
+      <div
+        className={`border-border mt-8 border-t pt-8 ${showToc ? "flex gap-8" : ""}`}
+      >
         {/* Article content */}
         <div className={showToc ? "min-w-0 flex-1" : ""}>
           <LexicalRenderer content={article.content} />
@@ -330,7 +345,7 @@ export default async function ArticleDetailPage({
                 href={`/blog/${related.slug}`}
                 className="border-border hover:bg-secondary/50 rounded border p-4 transition-colors"
               >
-                <span className="text-sm font-medium leading-snug">
+                <span className="text-sm leading-snug font-medium">
                   {related.title}
                 </span>
                 <div className="text-muted-foreground mt-2 flex items-center gap-2 font-mono text-[10px] tracking-wider">
@@ -341,7 +356,9 @@ export default async function ArticleDetailPage({
                     <span>{formatDate(related.publishedAt)}</span>
                   )}
                   <span>
-                    {t("readingTime", { minutes: estimateReadingTime(related.content) })}
+                    {t("readingTime", {
+                      minutes: estimateReadingTime(related.content),
+                    })}
                   </span>
                 </div>
               </Link>

@@ -58,7 +58,7 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
       }}
       className="mt-6 space-y-3"
     >
-      <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+      <label className="block font-mono text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
         {t("replyLabel")}
       </label>
       <textarea
@@ -68,13 +68,13 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
         maxLength={10000}
         rows={3}
         required
-        className="w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
+        className="w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
       />
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={replyMutation.isPending}
-          className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+          className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 disabled:opacity-50"
         >
           {replyMutation.isPending ? t("replying") : t("reply")}
         </button>

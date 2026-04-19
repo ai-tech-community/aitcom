@@ -87,25 +87,25 @@ export function InboxList() {
   return (
     <div
       className={[
-        "flex flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg",
+        "border-border bg-background flex flex-col overflow-hidden rounded-lg border shadow-lg",
         // Desktop / tablet: fixed size
-        "w-80 max-h-125",
+        "max-h-125 w-80",
         // Mobile: fullscreen overlay (z-60 to sit above the sticky navbar at z-50)
         "max-sm:fixed max-sm:inset-0 max-sm:z-60 max-sm:h-full max-sm:max-h-none max-sm:w-full max-sm:rounded-none max-sm:border-0",
       ].join(" ")}
     >
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="border-border flex items-center justify-between border-b px-4 py-3">
         {mode === "list" ? (
           <>
-            <span className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider uppercase">
               / {t("title")}
             </span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={enterNewMessageMode}
-                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
                 aria-label={t("newMessage")}
               >
                 <PenSquareIcon className="h-4 w-4" />
@@ -113,7 +113,7 @@ export function InboxList() {
               <button
                 type="button"
                 onClick={toggleList}
-                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
                 aria-label={t("close")}
               >
                 {/* X on mobile (fullscreen), chevron on desktop (panel) */}
@@ -128,11 +128,11 @@ export function InboxList() {
               <button
                 type="button"
                 onClick={exitNewMessageMode}
-                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+                className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
               >
                 <ArrowLeftIcon className="h-4 w-4" />
               </button>
-              <span className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider uppercase">
                 {t("newMessage")}
               </span>
             </div>
@@ -142,8 +142,8 @@ export function InboxList() {
 
       {/* ── Search ──────────────────────────────────────────────────────── */}
       <div className="px-3 py-2">
-        <div className="flex items-center gap-2 rounded-full bg-secondary/50 px-3 py-1.5">
-          <SearchIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <div className="bg-secondary/50 flex items-center gap-2 rounded-full px-3 py-1.5">
+          <SearchIcon className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
           <input
             type="text"
             value={mode === "list" ? search : memberSearch}
@@ -152,10 +152,8 @@ export function InboxList() {
                 ? setSearch(e.target.value)
                 : setMemberSearch(e.target.value)
             }
-            placeholder={
-              mode === "list" ? t("search") : t("searchMembers")
-            }
-            className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            placeholder={mode === "list" ? t("search") : t("searchMembers")}
+            className="text-foreground placeholder:text-muted-foreground w-full bg-transparent text-sm focus:outline-none"
           />
         </div>
       </div>
@@ -166,15 +164,15 @@ export function InboxList() {
           // ── Conversation list ────────────────────────────────────────
           conversationsQuery.isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Spinner className="h-5 w-5 text-muted-foreground" />
+              <Spinner className="text-muted-foreground h-5 w-5" />
             </div>
           ) : filteredConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
-              <BotIcon className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm font-medium text-foreground">
+              <BotIcon className="text-muted-foreground h-8 w-8" />
+              <p className="text-foreground text-sm font-medium">
                 {t("noConversations")}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {t("noConversationsDescription")}
               </p>
             </div>
@@ -201,9 +199,7 @@ export function InboxList() {
                     image={image}
                     agentAvatar={agentAvatar}
                     lastMessage={conv.lastMessage?.content ?? null}
-                    lastMessageSenderType={
-                      conv.lastMessage?.senderType ?? null
-                    }
+                    lastMessageSenderType={conv.lastMessage?.senderType ?? null}
                     lastMessageAt={
                       conv.lastMessage?.createdAt
                         ? String(conv.lastMessage.createdAt)
@@ -220,17 +216,17 @@ export function InboxList() {
           <>
             {memberSearch.length === 0 ? (
               <div className="flex items-center justify-center py-12">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   {t("searchMembers")}
                 </p>
               </div>
             ) : membersQuery.isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Spinner className="h-5 w-5 text-muted-foreground" />
+                <Spinner className="text-muted-foreground h-5 w-5" />
               </div>
             ) : members.length === 0 ? (
               <div className="flex items-center justify-center py-12">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   {t("noConversations")}
                 </p>
               </div>
@@ -246,7 +242,7 @@ export function InboxList() {
                         recipientId: member.userId,
                       })
                     }
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
+                    className="hover:bg-secondary/50 flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors"
                   >
                     {member.image ? (
                       <Image
@@ -258,11 +254,11 @@ export function InboxList() {
                         className="h-10 w-10 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-medium text-muted-foreground">
+                      <div className="bg-secondary text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium">
                         {member.displayName.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span className="truncate text-sm font-medium text-foreground">
+                    <span className="text-foreground truncate text-sm font-medium">
                       {member.displayName}
                     </span>
                   </button>

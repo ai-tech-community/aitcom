@@ -13,7 +13,7 @@ import { Toaster } from "sonner";
 import { InboxProvider } from "@/components/inbox/inbox-provider";
 import { InboxRoot } from "@/components/inbox/inbox-root";
 import { RulesProvider } from "@/components/community/rules-provider";
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aitcommunity.org"),
@@ -64,13 +64,18 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} className={`${geist.variable} ${geistMono.variable}`}>
-      <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
+      <body
+        className="bg-background text-foreground antialiased"
+        suppressHydrationWarning
+      >
         <NextIntlClientProvider locale={locale} messages={messages}>
           <TRPCReactProvider>
             <RulesProvider>
               <Navbar />
               <InboxProvider>
-                <main className="min-h-screen to-background bg-linear-to-b from-orange-50/60 via-amber-50/30">{children}</main>
+                <main className="to-background min-h-screen bg-linear-to-b from-orange-50/60 via-amber-50/30">
+                  {children}
+                </main>
                 <Footer />
                 <InboxRoot />
               </InboxProvider>

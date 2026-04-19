@@ -63,7 +63,11 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
   const tDetail = useTranslations("launchpad.detail");
   const { data: session } = authClient.useSession();
 
-  const { data: project, isPending, isError } = api.launchpad.getBySlug.useQuery({ slug });
+  const {
+    data: project,
+    isPending,
+    isError,
+  } = api.launchpad.getBySlug.useQuery({ slug });
 
   const utils = api.useUtils();
   const voteMutation = api.launchpad.vote.useMutation({
@@ -71,11 +75,16 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
       await utils.launchpad.getBySlug.cancel({ slug });
       const prev = utils.launchpad.getBySlug.getData({ slug });
       if (prev) {
-        utils.launchpad.getBySlug.setData({ slug }, {
-          ...prev,
-          hasVoted: !prev.hasVoted,
-          voteCount: prev.hasVoted ? (prev.voteCount ?? 0) - 1 : (prev.voteCount ?? 0) + 1,
-        });
+        utils.launchpad.getBySlug.setData(
+          { slug },
+          {
+            ...prev,
+            hasVoted: !prev.hasVoted,
+            voteCount: prev.hasVoted
+              ? (prev.voteCount ?? 0) - 1
+              : (prev.voteCount ?? 0) + 1,
+          },
+        );
       }
       return { prev };
     },
@@ -129,7 +138,9 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
       {project.status === "archived" && (
         <div className="mt-4 flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
           <Archive className="h-4 w-4 shrink-0 text-zinc-400" />
-          <p className="font-mono text-xs text-zinc-500">{tDetail("archived")}</p>
+          <p className="font-mono text-xs text-zinc-500">
+            {tDetail("archived")}
+          </p>
         </div>
       )}
 
@@ -140,7 +151,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
         {/* Stage badge + edit link */}
         <div className="flex items-center justify-between gap-3">
           <Badge
-            className={`font-mono text-[9px] font-semibold uppercase tracking-wider rounded border px-1.5 py-0.5 ${stageStyles[project.stage] ?? stageStyles.idea}`}
+            className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${stageStyles[project.stage] ?? stageStyles.idea}`}
             variant="outline"
           >
             {t(`stage.${project.stage}`)}
@@ -148,7 +159,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
           {isAuthor && (
             <Link
               href={`/launchpad/${slug}/edit`}
-              className="flex items-center gap-1 rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-100"
+              className="flex items-center gap-1 rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold tracking-wider text-zinc-500 uppercase transition-colors hover:bg-zinc-100"
             >
               <Edit className="h-3 w-3" />
               {tDetail("editProject")}
@@ -157,7 +168,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-bold leading-snug tracking-tight text-zinc-900 sm:text-3xl">
+        <h1 className="text-2xl leading-snug font-bold tracking-tight text-zinc-900 sm:text-3xl">
           {project.title}
         </h1>
 
@@ -187,7 +198,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
             className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-[11px] font-bold transition-colors disabled:opacity-60 ${
               project.hasVoted
                 ? "bg-orange-50 text-orange-600"
-                : "text-zinc-400 hover:text-zinc-700 border border-zinc-200 hover:bg-zinc-50"
+                : "border border-zinc-200 text-zinc-400 hover:bg-zinc-50 hover:text-zinc-700"
             }`}
           >
             <ChevronUp className="h-3.5 w-3.5" />
@@ -235,7 +246,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
       {/* ------------------------------------------------------------------ */}
       {project.pitch && (
         <div className="mt-8">
-          <h2 className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+          <h2 className="mb-4 font-mono text-[10px] font-semibold tracking-widest text-zinc-400 uppercase">
             {tDetail("pitch")}
           </h2>
           <LexicalRenderer content={project.pitch} />

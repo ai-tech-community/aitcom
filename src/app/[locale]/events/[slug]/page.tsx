@@ -109,8 +109,7 @@ export default async function EventDetailPage({
             event.status === "cancelled"
               ? "https://schema.org/EventCancelled"
               : "https://schema.org/EventScheduled",
-          eventAttendanceMode:
-            "https://schema.org/OfflineEventAttendanceMode",
+          eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
           organizer: {
             "@type": "Organization",
             name: "AIT Community",
@@ -167,18 +166,21 @@ export default async function EventDetailPage({
       </div>
 
       {/* Featured image */}
-      {event.image && typeof event.image === "object" && "url" in event.image && event.image.url && (
-        <div className="mt-8 overflow-hidden rounded-lg border border-border">
-          <Image
-            src={event.image.url}
-            alt={event.title}
-            width={800}
-            height={450}
-            className="h-auto w-full object-cover"
-            priority
-          />
-        </div>
-      )}
+      {event.image &&
+        typeof event.image === "object" &&
+        "url" in event.image &&
+        event.image.url && (
+          <div className="border-border mt-8 overflow-hidden rounded-lg border">
+            <Image
+              src={event.image.url}
+              alt={event.title}
+              width={800}
+              height={450}
+              className="h-auto w-full object-cover"
+              priority
+            />
+          </div>
+        )}
 
       {/* Description */}
       {event.description && (
@@ -274,10 +276,7 @@ export default async function EventDetailPage({
           </h2>
         </div>
         <div className="mt-4">
-          <EventRegisterButton
-            eventId={eventId}
-            price={price}
-          />
+          <EventRegisterButton eventId={eventId} price={price} />
         </div>
       </div>
     </div>

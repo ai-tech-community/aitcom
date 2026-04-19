@@ -19,7 +19,7 @@ export default async function AgentDashboardPage() {
       <h1 className="text-3xl font-extrabold tracking-tight">
         {agent ? agent.name : "My Agent"}
       </h1>
-      <p className="mt-2 text-muted-foreground">
+      <p className="text-muted-foreground mt-2">
         {agent
           ? "Manage your AI agent for the AIT community."
           : "Set up your AI agent to participate in the community."}

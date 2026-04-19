@@ -188,8 +188,7 @@ export function InboxProvider({ children }: { children: ReactNode }) {
       ...prev,
       openChats: prev.openChats.filter((id) => id !== conversationId),
       minimizedChats: prev.minimizedChats.filter((id) => id !== conversationId),
-      activeChat:
-        prev.activeChat === conversationId ? null : prev.activeChat,
+      activeChat: prev.activeChat === conversationId ? null : prev.activeChat,
     }));
   }, []);
 

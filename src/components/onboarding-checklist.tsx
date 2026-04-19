@@ -46,24 +46,24 @@ export function OnboardingChecklist() {
   // User hasn't taken the onboarding quiz yet - show soft welcome card
   if (!data?.hasIntent) {
     return (
-      <div className="relative rounded-lg border border-dashed border-primary/30 bg-primary/5 px-4 py-5">
+      <div className="border-primary/30 bg-primary/5 relative rounded-lg border border-dashed px-4 py-5">
         <button
           onClick={handleDismiss}
-          className="absolute right-2 top-2 rounded p-1 text-muted-foreground transition-colors hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground absolute top-2 right-2 rounded p-1 transition-colors"
           aria-label={t("dismiss")}
         >
           <X className="h-3.5 w-3.5" />
         </button>
         <div className="flex items-start gap-3">
-          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <Sparkles className="text-primary mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <p className="text-sm font-medium">{t("welcomeCardTitle")}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-xs">
               {t("welcomeCardDescription")}
             </p>
             <Link
               href="/dashboard/onboarding"
-              className="mt-3 inline-block font-mono text-xs tracking-wider text-primary hover:text-primary/80"
+              className="text-primary hover:text-primary/80 mt-3 inline-block font-mono text-xs tracking-wider"
             >
               {t("welcomeCardCta")}
             </Link>
@@ -81,19 +81,19 @@ export function OnboardingChecklist() {
   if (totalCount === 0) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="border-b border-border px-4 py-3">
+    <div className="border-border bg-card rounded-lg border">
+      <div className="border-border border-b px-4 py-3">
         <div className="flex items-center justify-between">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
             / {t("checklistTitle")}
           </span>
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground">
+            <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
               {completedCount}/{totalCount}
             </span>
             <button
               onClick={handleDismiss}
-              className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground rounded p-0.5 transition-colors"
               aria-label={t("dismiss")}
             >
               <X className="h-3 w-3" />
@@ -101,21 +101,21 @@ export function OnboardingChecklist() {
           </div>
         </div>
         {/* Progress bar */}
-        <div className="mt-2 h-1 rounded-full bg-secondary">
+        <div className="bg-secondary mt-2 h-1 rounded-full">
           <div
-            className="h-1 rounded-full bg-primary transition-all"
+            className="bg-primary h-1 rounded-full transition-all"
             style={{ width: `${(completedCount / totalCount) * 100}%` }}
           />
         </div>
       </div>
 
-      <ul className="divide-y divide-border">
+      <ul className="divide-border divide-y">
         {checklist.map((step) => (
           <li key={step.slug} className="flex items-center gap-3 px-4 py-3">
             {step.completed ? (
-              <Check className="h-4 w-4 shrink-0 text-primary" />
+              <Check className="text-primary h-4 w-4 shrink-0" />
             ) : (
-              <Circle className="h-4 w-4 shrink-0 text-muted-foreground/40" />
+              <Circle className="text-muted-foreground/40 h-4 w-4 shrink-0" />
             )}
 
             <span
@@ -134,7 +134,7 @@ export function OnboardingChecklist() {
                 onClick={() => {
                   completeMutation.mutate({ stepSlug: step.slug });
                 }}
-                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80"
+                className="text-primary hover:text-primary/80 flex items-center gap-1 text-xs"
               >
                 <ExternalLink className="h-3 w-3" />
               </Link>

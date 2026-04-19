@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  resolveBetterAuthBaseUrl,
-  resolveTrustedOrigins,
-} from "./base-url";
+import { resolveBetterAuthBaseUrl, resolveTrustedOrigins } from "./base-url";
 
 describe("resolveBetterAuthBaseUrl", () => {
   it("prefers explicit Better Auth URL settings", () => {

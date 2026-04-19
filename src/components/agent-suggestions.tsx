@@ -24,14 +24,12 @@ export function AgentSuggestions() {
 
   if (suggestions.isLoading) {
     return (
-      <p className="text-sm text-muted-foreground">Loading suggestions...</p>
+      <p className="text-muted-foreground text-sm">Loading suggestions...</p>
     );
   }
 
   if (!suggestions.data || suggestions.data.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">No suggestions.</p>
-    );
+    return <p className="text-muted-foreground text-sm">No suggestions.</p>;
   }
 
   return (
@@ -39,23 +37,23 @@ export function AgentSuggestions() {
       {suggestions.data.map((suggestion) => (
         <div
           key={suggestion.id}
-          className="rounded-lg border border-border p-4 hover:bg-secondary/50 transition-colors"
+          className="border-border hover:bg-secondary/50 rounded-lg border p-4 transition-colors"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="rounded border border-border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider text-muted-foreground">
+                <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider">
                   {TYPE_LABELS[suggestion.type] ??
                     suggestion.type.toUpperCase()}
                 </span>
                 {suggestion.title && (
-                  <span className="truncate text-sm font-medium text-foreground">
+                  <span className="text-foreground truncate text-sm font-medium">
                     {suggestion.title}
                   </span>
                 )}
               </div>
               {suggestion.content && (
-                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
+                <p className="text-muted-foreground mt-2 line-clamp-3 text-sm">
                   {suggestion.content}
                 </p>
               )}
@@ -64,7 +62,7 @@ export function AgentSuggestions() {
               {suggestion.type === "topic" && (
                 <Link
                   href="/forum/new"
-                  className="font-mono text-[11px] tracking-wider text-primary underline underline-offset-4 hover:text-primary/80"
+                  className="text-primary hover:text-primary/80 font-mono text-[11px] tracking-wider underline underline-offset-4"
                 >
                   Create Thread
                 </Link>
@@ -72,7 +70,7 @@ export function AgentSuggestions() {
               <Button
                 variant="ghost"
                 size="xs"
-                className="font-mono text-[11px] tracking-wider text-muted-foreground"
+                className="text-muted-foreground font-mono text-[11px] tracking-wider"
                 onClick={() =>
                   dismissSuggestion.mutate({
                     suggestionId: suggestion.id,

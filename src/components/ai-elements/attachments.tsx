@@ -53,7 +53,7 @@ const mediaCategoryIcons: Record<AttachmentMediaCategory, typeof ImageIcon> = {
 // ============================================================================
 
 export const getMediaCategory = (
-  data: AttachmentData
+  data: AttachmentData,
 ): AttachmentMediaCategory => {
   if (data.type === "source-document") {
     return "source";
@@ -89,7 +89,7 @@ export const getAttachmentLabel = (data: AttachmentData): string => {
 const renderAttachmentImage = (
   url: string,
   filename: string | undefined,
-  isGrid: boolean
+  isGrid: boolean,
 ) =>
   isGrid ? (
     // eslint-disable-next-line @next/next/no-img-element -- attachment previews can be blob/data/external URLs at runtime
@@ -168,7 +168,7 @@ export const Attachments = ({
           "flex items-start",
           variant === "list" ? "flex-col gap-2" : "flex-wrap gap-2",
           variant === "grid" && "ml-auto w-fit",
-          className
+          className,
         )}
         {...props}
       >
@@ -199,7 +199,7 @@ export const Attachment = ({
 
   const contextValue = useMemo<AttachmentContextValue>(
     () => ({ data, mediaCategory, onRemove, variant }),
-    [data, mediaCategory, onRemove, variant]
+    [data, mediaCategory, onRemove, variant],
   );
 
   return (
@@ -209,16 +209,16 @@ export const Attachment = ({
           "group relative",
           variant === "grid" && "size-24 overflow-hidden rounded-lg",
           variant === "inline" && [
-            "flex h-8 cursor-pointer select-none items-center gap-1.5",
-            "rounded-md border border-border px-1.5",
-            "font-medium text-sm transition-all",
+            "flex h-8 cursor-pointer items-center gap-1.5 select-none",
+            "border-border rounded-md border px-1.5",
+            "text-sm font-medium transition-all",
             "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
           ],
           variant === "list" && [
             "flex w-full items-center gap-3 rounded-lg border p-3",
             "hover:bg-accent/50",
           ],
-          className
+          className,
         )}
         {...props}
       >
@@ -266,10 +266,10 @@ export const AttachmentPreview = ({
     <div
       className={cn(
         "flex shrink-0 items-center justify-center overflow-hidden",
-        variant === "grid" && "size-full bg-muted",
-        variant === "inline" && "size-5 rounded bg-background",
-        variant === "list" && "size-12 rounded bg-muted",
-        className
+        variant === "grid" && "bg-muted size-full",
+        variant === "inline" && "bg-background size-5 rounded",
+        variant === "list" && "bg-muted size-12 rounded",
+        className,
       )}
       {...props}
     >
@@ -302,7 +302,7 @@ export const AttachmentInfo = ({
     <div className={cn("min-w-0 flex-1", className)} {...props}>
       <span className="block truncate">{label}</span>
       {showMediaType && data.mediaType && (
-        <span className="block truncate text-muted-foreground text-xs">
+        <span className="text-muted-foreground block truncate text-xs">
           {data.mediaType}
         </span>
       )}
@@ -331,7 +331,7 @@ export const AttachmentRemove = ({
       e.stopPropagation();
       onRemove?.();
     },
-    [onRemove]
+    [onRemove],
   );
 
   if (!onRemove) {
@@ -355,7 +355,7 @@ export const AttachmentRemove = ({
           "[&>svg]:size-2.5",
         ],
         variant === "list" && ["size-8 shrink-0 rounded p-0", "[&>svg]:size-4"],
-        className
+        className,
       )}
       onClick={handleClick}
       type="button"
@@ -387,7 +387,7 @@ export type AttachmentHoverCardTriggerProps = ComponentProps<
 >;
 
 export const AttachmentHoverCardTrigger = (
-  props: AttachmentHoverCardTriggerProps
+  props: AttachmentHoverCardTriggerProps,
 ) => <HoverCardTrigger {...props} />;
 
 export type AttachmentHoverCardContentProps = ComponentProps<
@@ -419,8 +419,8 @@ export const AttachmentEmpty = ({
 }: AttachmentEmptyProps) => (
   <div
     className={cn(
-      "flex items-center justify-center p-4 text-muted-foreground text-sm",
-      className
+      "text-muted-foreground flex items-center justify-center p-4 text-sm",
+      className,
     )}
     {...props}
   >

@@ -131,7 +131,7 @@ export const JSXPreview = memo(
 
     const processedJsx = useMemo(
       () => (isStreaming ? completeJsxTag(jsx) : jsx),
-      [jsx, isStreaming]
+      [jsx, isStreaming],
     );
 
     return (
@@ -151,7 +151,7 @@ export const JSXPreview = memo(
         </div>
       </JSXPreviewContext.Provider>
     );
-  }
+  },
 );
 
 JSXPreview.displayName = "JSXPreview";
@@ -180,7 +180,7 @@ export const JSXPreviewContent = memo(
         setError(err);
         onErrorProp?.(err);
       },
-      [processedJsx, onErrorProp, setError]
+      [processedJsx, onErrorProp, setError],
     );
 
     return (
@@ -194,7 +194,7 @@ export const JSXPreviewContent = memo(
         />
       </div>
     );
-  }
+  },
 );
 
 JSXPreviewContent.displayName = "JSXPreviewContent";
@@ -205,7 +205,7 @@ export type JSXPreviewErrorProps = ComponentProps<"div"> & {
 
 const renderChildren = (
   children: ReactNode | ((error: Error) => ReactNode),
-  error: Error
+  error: Error,
 ): ReactNode => {
   if (typeof children === "function") {
     return children(error);
@@ -224,8 +224,8 @@ export const JSXPreviewError = memo(
     return (
       <div
         className={cn(
-          "flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-3 text-destructive text-sm",
-          className
+          "border-destructive/50 bg-destructive/10 text-destructive flex items-center gap-2 rounded-md border p-3 text-sm",
+          className,
         )}
         {...props}
       >
@@ -239,7 +239,7 @@ export const JSXPreviewError = memo(
         )}
       </div>
     );
-  }
+  },
 );
 
 JSXPreviewError.displayName = "JSXPreviewError";

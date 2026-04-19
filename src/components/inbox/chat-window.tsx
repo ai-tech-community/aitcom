@@ -2,7 +2,13 @@
 
 import { useCallback, useState } from "react";
 import Image from "next/image";
-import { BotIcon, ChevronDownIcon, Maximize2Icon, Minimize2Icon, XIcon } from "lucide-react";
+import {
+  BotIcon,
+  ChevronDownIcon,
+  Maximize2Icon,
+  Minimize2Icon,
+  XIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
@@ -99,9 +105,11 @@ export function ChatWindow({
   // ── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className={`flex flex-col overflow-hidden rounded-lg border border-border bg-background shadow-lg transition-all duration-200 ${expanded ? "h-150 w-120" : "h-112.5 w-80"}`}>
+    <div
+      className={`border-border bg-background flex flex-col overflow-hidden rounded-lg border shadow-lg transition-all duration-200 ${expanded ? "h-150 w-120" : "h-112.5 w-80"}`}
+    >
       {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+      <div className="border-border flex items-center gap-2 border-b px-3 py-2.5">
         {/* Avatar */}
         <div className="relative shrink-0">
           {image ? (
@@ -114,19 +122,19 @@ export function ChatWindow({
               className="h-8 w-8 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-medium text-muted-foreground">
+            <div className="bg-secondary text-muted-foreground flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium">
               {displayName.charAt(0).toUpperCase()}
             </div>
           )}
           {isAgent && (
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background">
-              <BotIcon className="h-3 w-3 text-muted-foreground" />
+            <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full">
+              <BotIcon className="text-muted-foreground h-3 w-3" />
             </span>
           )}
         </div>
 
         {/* Name */}
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+        <span className="text-foreground min-w-0 flex-1 truncate text-sm font-medium">
           {displayName}
         </span>
 
@@ -134,7 +142,7 @@ export function ChatWindow({
         <button
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
-          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+          className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
           aria-label={expanded ? t("collapse") : t("expand")}
         >
           {expanded ? (
@@ -146,7 +154,7 @@ export function ChatWindow({
         <button
           type="button"
           onClick={() => minimizeChat(conversationId)}
-          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+          className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
           aria-label={t("minimize")}
         >
           <ChevronDownIcon className="h-4 w-4" />
@@ -154,7 +162,7 @@ export function ChatWindow({
         <button
           type="button"
           onClick={() => closeChat(conversationId)}
-          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+          className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
           aria-label={t("close")}
         >
           <XIcon className="h-4 w-4" />
@@ -164,20 +172,20 @@ export function ChatWindow({
       {/* ── Messages area ─────────────────────────────────────────────── */}
       {messagesQuery.isLoading ? (
         <div className="flex flex-1 items-center justify-center">
-          <Spinner className="h-5 w-5 text-muted-foreground" />
+          <Spinner className="text-muted-foreground h-5 w-5" />
         </div>
       ) : (
         <Conversation className="flex-1">
           <ConversationContent className="gap-4 p-3">
             {isAgent && messages.length === 0 && !messagesQuery.isLoading && (
               <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-                <BotIcon className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
+                <BotIcon className="text-muted-foreground h-8 w-8" />
+                <p className="text-muted-foreground text-sm">
                   Connect your bot to start chatting.
                 </p>
                 <Link
                   href="/dashboard/agent"
-                  className="text-xs text-primary underline-offset-4 hover:underline"
+                  className="text-primary text-xs underline-offset-4 hover:underline"
                 >
                   Generate an API key to get started
                 </Link>
@@ -185,8 +193,7 @@ export function ChatWindow({
             )}
             {messages.map((msg, idx) => {
               const isUser =
-                msg.senderId === currentUserId &&
-                msg.senderType === "human";
+                msg.senderId === currentUserId && msg.senderType === "human";
 
               const prevMsg = messages[idx - 1];
               const showDateSeparator =
@@ -220,11 +227,11 @@ export function ChatWindow({
                 <div key={msg.id} className="flex flex-col gap-4">
                   {dateLabel && (
                     <div className="flex items-center gap-3">
-                      <div className="h-px flex-1 bg-border" />
-                      <span className="shrink-0 text-[10px] font-medium uppercase text-muted-foreground">
+                      <div className="bg-border h-px flex-1" />
+                      <span className="text-muted-foreground shrink-0 text-[10px] font-medium uppercase">
                         {dateLabel}
                       </span>
-                      <div className="h-px flex-1 bg-border" />
+                      <div className="bg-border h-px flex-1" />
                     </div>
                   )}
                   <Message from={isUser ? "user" : "assistant"}>
@@ -236,7 +243,7 @@ export function ChatWindow({
                       )}
                     </MessageContent>
                     <span
-                      className={`text-[10px] text-muted-foreground ${isUser ? "ml-auto" : ""}`}
+                      className={`text-muted-foreground text-[10px] ${isUser ? "ml-auto" : ""}`}
                     >
                       {formatTime(msg.createdAt)}
                     </span>
@@ -250,7 +257,7 @@ export function ChatWindow({
       )}
 
       {/* ── Input area ────────────────────────────────────────────────── */}
-      <div className="border-t border-border **:data-[slot=input-group]:border-0 **:data-[slot=input-group]:shadow-none **:data-[slot=input-group]:rounded-none">
+      <div className="border-border border-t **:data-[slot=input-group]:rounded-none **:data-[slot=input-group]:border-0 **:data-[slot=input-group]:shadow-none">
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputTextarea
             placeholder={t("placeholder")}

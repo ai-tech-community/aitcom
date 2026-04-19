@@ -9,7 +9,10 @@ type ThreadRepliesProps = {
   initialReplies: ForumReply[];
 };
 
-export function ThreadReplies({ threadId, initialReplies }: ThreadRepliesProps) {
+export function ThreadReplies({
+  threadId,
+  initialReplies,
+}: ThreadRepliesProps) {
   const { data: replies = initialReplies } = api.forum.getReplies.useQuery(
     { threadId },
     { initialData: initialReplies },
@@ -17,7 +20,7 @@ export function ThreadReplies({ threadId, initialReplies }: ThreadRepliesProps) 
 
   return (
     <div className="mt-8">
-      <h2 className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+      <h2 className="mb-4 font-mono text-[10px] font-semibold tracking-widest text-zinc-400 uppercase">
         {replies.length} {replies.length === 1 ? "Reply" : "Replies"}
       </h2>
       <div className="space-y-3">
@@ -29,9 +32,7 @@ export function ThreadReplies({ threadId, initialReplies }: ThreadRepliesProps) 
             <div className="mb-2 flex items-center gap-2 font-mono text-[9px] tracking-wider text-zinc-400">
               <span>{reply.authorName ?? "member"}</span>
               <span>&middot;</span>
-              <span>
-                {new Date(reply.createdAt).toLocaleDateString()}
-              </span>
+              <span>{new Date(reply.createdAt).toLocaleDateString()}</span>
             </div>
             <div className="text-sm leading-relaxed text-zinc-600">
               <LexicalRenderer content={reply.content} />

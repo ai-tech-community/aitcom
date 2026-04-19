@@ -49,7 +49,9 @@ export default async function PrivacyPage() {
 
       {/* DESCRIPTION */}
       <section className="mt-8">
-        <h2 className="font-mono text-sm font-bold tracking-wider">DESCRIPTION</h2>
+        <h2 className="font-mono text-sm font-bold tracking-wider">
+          DESCRIPTION
+        </h2>
       </section>
 
       <ManPageToc items={tocItems} />

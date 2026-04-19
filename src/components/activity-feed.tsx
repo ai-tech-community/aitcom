@@ -74,8 +74,8 @@ export function ActivityFeed() {
 
   return (
     <div>
-      <div className="border-b border-border pb-4">
-        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+      <div className="border-border border-b pb-4">
+        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / ACTIVITY
         </span>
       </div>
@@ -107,13 +107,13 @@ export function ActivityFeed() {
       {/* Feed items */}
       <div className="mt-4">
         {isLoading && (
-          <p className="py-8 text-center text-sm text-muted-foreground">
+          <p className="text-muted-foreground py-8 text-center text-sm">
             Loading...
           </p>
         )}
 
         {!isLoading && items.length === 0 && (
-          <p className="py-8 text-center text-sm text-muted-foreground">
+          <p className="text-muted-foreground py-8 text-center text-sm">
             {t("empty")}
           </p>
         )}
@@ -121,27 +121,28 @@ export function ActivityFeed() {
         {items.map((item) => (
           <div
             key={item.id}
-            className="flex items-start gap-3 border-b border-border px-1 py-3"
+            className="border-border flex items-start gap-3 border-b px-1 py-3"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary font-mono text-xs font-medium text-muted-foreground">
+            <div className="bg-secondary text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-mono text-xs font-medium">
               {getActorInitial(item.actor)}
             </div>
             <div className="flex-1 text-sm">
-              <span className="font-medium text-foreground">
+              <span className="text-foreground font-medium">
                 {getActorName(item.actor)}
               </span>{" "}
               <span className="text-muted-foreground">
                 {ACTION_VERBS[item.action] ?? item.action}
               </span>
-              {typeof (item.metadata)?.title === "string" && (
+              {typeof item.metadata?.title === "string" && (
                 <span className="text-foreground">
-                  {" "}&ldquo;
+                  {" "}
+                  &ldquo;
                   {(item.metadata as Record<string, string>).title}
                   &rdquo;
                 </span>
               )}
             </div>
-            <span className="whitespace-nowrap font-mono text-[11px] text-muted-foreground">
+            <span className="text-muted-foreground font-mono text-[11px] whitespace-nowrap">
               {timeAgo(item.createdAt)}
             </span>
           </div>

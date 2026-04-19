@@ -24,13 +24,17 @@ export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
   const t = useTranslations("dashboard");
   const utils = api.useUtils();
 
-  const [displayName, setDisplayName] = useState(initialData?.displayName ?? "");
+  const [displayName, setDisplayName] = useState(
+    initialData?.displayName ?? "",
+  );
   const [bio, setBio] = useState(initialData?.bio ?? "");
   const [skillsText, setSkillsText] = useState(
     (initialData?.skills ?? []).join(", "),
   );
   const [company, setCompany] = useState(initialData?.company ?? "");
-  const [linkedinUrl, setLinkedinUrl] = useState(initialData?.linkedinUrl ?? "");
+  const [linkedinUrl, setLinkedinUrl] = useState(
+    initialData?.linkedinUrl ?? "",
+  );
   const [githubUrl, setGithubUrl] = useState(initialData?.githubUrl ?? "");
   const [websiteUrl, setWebsiteUrl] = useState(initialData?.websiteUrl ?? "");
   const [isPublic, setIsPublic] = useState(initialData?.isPublic ?? true);

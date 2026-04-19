@@ -113,10 +113,7 @@ export const inboxRouter = createTRPCRouter({
               memberProfiles,
               eq(memberProfiles.userId, conversationParticipants.userId),
             )
-            .leftJoin(
-              user,
-              eq(user.id, conversationParticipants.userId),
-            )
+            .leftJoin(user, eq(user.id, conversationParticipants.userId))
             .where(
               and(
                 eq(conversationParticipants.conversationId, row.conversationId),
@@ -264,7 +261,9 @@ export const inboxRouter = createTRPCRouter({
             eq(conversationParticipants.userId, userId),
           ),
         )
-        .catch((err: unknown) => { console.error("[inbox] update failed:", err); });
+        .catch((err: unknown) => {
+          console.error("[inbox] update failed:", err);
+        });
 
       return { messages: items, nextCursor, hasMore };
     }),
@@ -352,7 +351,9 @@ export const inboxRouter = createTRPCRouter({
             eq(conversationParticipants.userId, userId),
           ),
         )
-        .catch((err: unknown) => { console.error("[inbox] update failed:", err); });
+        .catch((err: unknown) => {
+          console.error("[inbox] update failed:", err);
+        });
 
       return message!;
     }),
@@ -395,7 +396,10 @@ export const inboxRouter = createTRPCRouter({
       const [existing] = await ctx.db
         .select({ conversationId: conversationParticipants.conversationId })
         .from(conversationParticipants)
-        .innerJoin(conversations, eq(conversations.id, conversationParticipants.conversationId))
+        .innerJoin(
+          conversations,
+          eq(conversations.id, conversationParticipants.conversationId),
+        )
         .where(
           and(
             eq(conversations.type, "dm"),
@@ -745,9 +749,7 @@ export const inboxRouter = createTRPCRouter({
           createdAt: messages.createdAt,
         })
         .from(messages)
-        .where(
-          or(...convIds.map((id) => eq(messages.conversationId, id))),
-        )
+        .where(or(...convIds.map((id) => eq(messages.conversationId, id))))
         .orderBy(desc(messages.createdAt))
         .limit(input.limit);
 

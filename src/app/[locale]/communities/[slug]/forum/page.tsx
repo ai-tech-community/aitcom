@@ -21,10 +21,5 @@ export default function CommunityForumPage({
   const membership = myCommunities?.find((c) => c.slug === slug);
   const memberRole = membership?.status === "active" ? membership.role : null;
 
-  return (
-    <ForumPage
-      communitySlug={slug}
-      memberRole={memberRole}
-    />
-  );
+  return <ForumPage communitySlug={slug} memberRole={memberRole} />;
 }

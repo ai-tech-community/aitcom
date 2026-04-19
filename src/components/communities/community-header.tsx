@@ -15,7 +15,11 @@ interface CommunityHeaderProps {
   memberRole?: "owner" | "admin" | "moderator" | "member" | null;
 }
 
-export function CommunityHeader({ community, membershipStatus, memberRole }: CommunityHeaderProps) {
+export function CommunityHeader({
+  community,
+  membershipStatus,
+  memberRole,
+}: CommunityHeaderProps) {
   const t = useTranslations("communities.profile");
 
   const initials = community.name
@@ -26,7 +30,7 @@ export function CommunityHeader({ community, membershipStatus, memberRole }: Com
     .toUpperCase();
 
   return (
-    <div className="border-b bg-background/60 backdrop-blur-sm">
+    <div className="bg-background/60 border-b backdrop-blur-sm">
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">
@@ -34,7 +38,9 @@ export function CommunityHeader({ community, membershipStatus, memberRole }: Com
               {community.logoUrl ? (
                 <AvatarImage src={community.logoUrl} alt={community.name} />
               ) : null}
-              <AvatarFallback className="rounded-xl text-lg">{initials}</AvatarFallback>
+              <AvatarFallback className="rounded-xl text-lg">
+                {initials}
+              </AvatarFallback>
             </Avatar>
 
             <div className="flex flex-col gap-1">

@@ -123,7 +123,7 @@ function FeatureModal({
             key={item.label}
             className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-700 dark:bg-zinc-800/50"
           >
-            <span className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+            <span className="font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase dark:text-zinc-400">
               {item.label}
             </span>
             <p className="mt-1 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
@@ -137,7 +137,7 @@ function FeatureModal({
         <Link
           href={href}
           onClick={onClose}
-          className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-5 py-2 font-mono text-[11px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-5 py-2 font-mono text-[11px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           {cta}
           <ArrowRight className="h-3.5 w-3.5" />

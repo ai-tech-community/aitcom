@@ -193,8 +193,7 @@ export const Challenges: CollectionConfig = {
           admin: {
             description:
               "Regex matching test names/files for test verification.",
-            condition: (_, siblingData) =>
-              siblingData?.verification === "test",
+            condition: (_, siblingData) => siblingData?.verification === "test",
           },
         },
         {
@@ -287,16 +286,14 @@ export const Challenges: CollectionConfig = {
           name: "reference",
           type: "text",
           admin: {
-            description:
-              "Thread ID, URL, or description of the signal source.",
+            description: "Thread ID, URL, or description of the signal source.",
           },
         },
         {
           name: "summary",
           type: "textarea",
           admin: {
-            description:
-              "AI summary of why this challenge was generated.",
+            description: "AI summary of why this challenge was generated.",
           },
         },
       ],
@@ -329,8 +326,7 @@ export const Challenges: CollectionConfig = {
       ],
       admin: {
         position: "sidebar",
-        description:
-          "How humans and AIs collaborate in this challenge.",
+        description: "How humans and AIs collaborate in this challenge.",
       },
     },
     {

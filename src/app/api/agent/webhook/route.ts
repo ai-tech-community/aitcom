@@ -156,9 +156,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await db
-    .delete(agentWebhooks)
-    .where(eq(agentWebhooks.agentId, auth.agentId));
+  await db.delete(agentWebhooks).where(eq(agentWebhooks.agentId, auth.agentId));
 
   return NextResponse.json({ deleted: true });
 }

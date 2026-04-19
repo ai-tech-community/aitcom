@@ -23,7 +23,11 @@ interface MembersSettingsProps {
   myRole: "owner" | "admin" | "moderator" | "member";
 }
 
-export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsProps) {
+export function MembersSettings({
+  slug,
+  joinPolicy,
+  myRole,
+}: MembersSettingsProps) {
   const t = useTranslations("communities.settings.members");
   const tRoles = useTranslations("communities.roles");
   const tManage = useTranslations("communities.manage");
@@ -90,7 +94,8 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
 
   const canManage = (targetRole: string) => {
     if (myRole === "owner") return targetRole !== "owner";
-    if (myRole === "admin") return targetRole === "moderator" || targetRole === "member";
+    if (myRole === "admin")
+      return targetRole === "moderator" || targetRole === "member";
     return false;
   };
 
@@ -127,7 +132,7 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
         <TabsContent value="active">
           {activeLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              <Loader2 className="text-muted-foreground size-5 animate-spin" />
             </div>
           ) : activeMembers.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center text-sm">
@@ -147,7 +152,10 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
                     <div className="flex items-center gap-3">
                       <Avatar>
                         {member.image ? (
-                          <AvatarImage src={member.image} alt={member.displayName ?? ""} />
+                          <AvatarImage
+                            src={member.image}
+                            alt={member.displayName ?? ""}
+                          />
                         ) : null}
                         <AvatarFallback>
                           {(member.displayName ?? "?")[0]?.toUpperCase()}
@@ -192,7 +200,10 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
                           disabled={removeMutation.isPending}
                           onClick={() => {
                             if (window.confirm(tManage("removeConfirm"))) {
-                              removeMutation.mutate({ slug, userId: member.userId });
+                              removeMutation.mutate({
+                                slug,
+                                userId: member.userId,
+                              });
                             }
                           }}
                         >
@@ -204,7 +215,10 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
                           disabled={banMutation.isPending}
                           onClick={() => {
                             if (window.confirm(tManage("banConfirm"))) {
-                              banMutation.mutate({ slug, userId: member.userId });
+                              banMutation.mutate({
+                                slug,
+                                userId: member.userId,
+                              });
                             }
                           }}
                         >
@@ -224,7 +238,7 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
           <TabsContent value="pending">
             {pendingLoading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                <Loader2 className="text-muted-foreground size-5 animate-spin" />
               </div>
             ) : pendingMembers.length === 0 ? (
               <p className="text-muted-foreground py-8 text-center text-sm">
@@ -233,17 +247,25 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
             ) : (
               <div className="divide-y rounded-lg border">
                 {pendingMembers.map((member) => (
-                  <div key={member.userId} className="flex items-center justify-between gap-4 p-4">
+                  <div
+                    key={member.userId}
+                    className="flex items-center justify-between gap-4 p-4"
+                  >
                     <div className="flex items-center gap-3">
                       <Avatar>
                         {member.image ? (
-                          <AvatarImage src={member.image} alt={member.displayName ?? ""} />
+                          <AvatarImage
+                            src={member.image}
+                            alt={member.displayName ?? ""}
+                          />
                         ) : null}
                         <AvatarFallback>
                           {(member.displayName ?? "?")[0]?.toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <p className="text-sm font-medium">{member.displayName ?? "Member"}</p>
+                      <p className="text-sm font-medium">
+                        {member.displayName ?? "Member"}
+                      </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <Button
@@ -251,13 +273,18 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
                         disabled={approveMutation.isPending}
                         onClick={() => {
                           if (window.confirm(t("approveConfirm"))) {
-                            approveMutation.mutate({ slug, userId: member.userId });
+                            approveMutation.mutate({
+                              slug,
+                              userId: member.userId,
+                            });
                           }
                         }}
                       >
                         {approveMutation.isPending ? (
                           <Loader2 className="size-3.5 animate-spin" />
-                        ) : t("approve")}
+                        ) : (
+                          t("approve")
+                        )}
                       </Button>
                       <Button
                         variant="destructive"
@@ -265,13 +292,18 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
                         disabled={rejectMutation.isPending}
                         onClick={() => {
                           if (window.confirm(t("rejectConfirm"))) {
-                            rejectMutation.mutate({ slug, userId: member.userId });
+                            rejectMutation.mutate({
+                              slug,
+                              userId: member.userId,
+                            });
                           }
                         }}
                       >
                         {rejectMutation.isPending ? (
                           <Loader2 className="size-3.5 animate-spin" />
-                        ) : t("reject")}
+                        ) : (
+                          t("reject")
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -285,7 +317,7 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
         <TabsContent value="banned">
           {bannedLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+              <Loader2 className="text-muted-foreground size-5 animate-spin" />
             </div>
           ) : bannedMembers.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center text-sm">
@@ -294,19 +326,29 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
           ) : (
             <div className="divide-y rounded-lg border">
               {bannedMembers.map((member) => (
-                <div key={member.userId} className="flex items-center justify-between gap-4 p-4">
+                <div
+                  key={member.userId}
+                  className="flex items-center justify-between gap-4 p-4"
+                >
                   <div className="flex items-center gap-3">
                     <Avatar>
                       {member.image ? (
-                        <AvatarImage src={member.image} alt={member.displayName ?? ""} />
+                        <AvatarImage
+                          src={member.image}
+                          alt={member.displayName ?? ""}
+                        />
                       ) : null}
                       <AvatarFallback>
                         {(member.displayName ?? "?")[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="text-sm font-medium">{member.displayName ?? "Member"}</p>
-                      <Badge variant="destructive" className="mt-0.5 text-xs">Banned</Badge>
+                      <p className="text-sm font-medium">
+                        {member.displayName ?? "Member"}
+                      </p>
+                      <Badge variant="destructive" className="mt-0.5 text-xs">
+                        Banned
+                      </Badge>
                     </div>
                   </div>
                   <Button
@@ -321,7 +363,9 @@ export function MembersSettings({ slug, joinPolicy, myRole }: MembersSettingsPro
                   >
                     {unbanMutation.isPending ? (
                       <Loader2 className="size-3.5 animate-spin" />
-                    ) : t("unban")}
+                    ) : (
+                      t("unban")
+                    )}
                   </Button>
                 </div>
               ))}

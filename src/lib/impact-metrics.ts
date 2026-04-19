@@ -43,7 +43,9 @@ export function toWeeklyBuckets(
   weeks = 8,
 ): Bucket[] {
   const now = new Date();
-  const firstWeek = startOfWeek(new Date(now.getTime() - (weeks - 1) * 7 * 24 * 60 * 60 * 1000));
+  const firstWeek = startOfWeek(
+    new Date(now.getTime() - (weeks - 1) * 7 * 24 * 60 * 60 * 1000),
+  );
   const map = new Map<string, Bucket>();
 
   for (let i = 0; i < weeks; i++) {
@@ -51,7 +53,11 @@ export function toWeeklyBuckets(
     const key = wk.toISOString();
     map.set(key, {
       key,
-      label: wk.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }),
+      label: wk.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+      }),
       aiOnly: 0,
       humanOnly: 0,
       collaborative: 0,
@@ -100,12 +106,13 @@ export function toWeeklyBuckets(
     const bucket = map.get(wkKey);
     if (!bucket) continue;
 
-    const targetKey = row.targetType && row.targetId
-      ? `${row.targetType}:${row.targetId}`
-      : null;
+    const targetKey =
+      row.targetType && row.targetId
+        ? `${row.targetType}:${row.targetId}`
+        : null;
 
     const isCollab = targetKey
-      ? collabTargets.get(wkKey)?.has(targetKey) ?? false
+      ? (collabTargets.get(wkKey)?.has(targetKey) ?? false)
       : false;
 
     if (isCollab) {
@@ -146,8 +153,8 @@ export type ContextType = "forum_thread" | "challenge" | "event" | "workflow";
 
 export function deriveContextType(action: string): ContextType | null {
   if (action.startsWith("challenge.")) return "challenge";
-  if (action.startsWith("thread.") || action.startsWith("knowledge.")) return "forum_thread";
+  if (action.startsWith("thread.") || action.startsWith("knowledge."))
+    return "forum_thread";
   if (action.startsWith("event.")) return "event";
   return null;
 }
-

@@ -8,7 +8,10 @@ const UNCLAIMED_WRITE_WINDOW_MS = 3_600_000; // 1 hour
 const UNCLAIMED_MAX_POSTS = 5;
 const UNCLAIMED_MAX_COMMENTS = 10;
 
-const unclaimedWriteWindows = new Map<string, { posts: number; comments: number; resetAt: number }>();
+const unclaimedWriteWindows = new Map<
+  string,
+  { posts: number; comments: number; resetAt: number }
+>();
 
 export function checkRateLimit(agentId: string): {
   allowed: boolean;
@@ -44,7 +47,11 @@ export function checkUnclaimedWriteLimit(
   let window = unclaimedWriteWindows.get(agentId);
 
   if (!window || now > window.resetAt) {
-    window = { posts: 0, comments: 0, resetAt: now + UNCLAIMED_WRITE_WINDOW_MS };
+    window = {
+      posts: 0,
+      comments: 0,
+      resetAt: now + UNCLAIMED_WRITE_WINDOW_MS,
+    };
     unclaimedWriteWindows.set(agentId, window);
   }
 
@@ -64,7 +71,10 @@ export function checkUnclaimedWriteLimit(
 }
 
 // IP-based rate limit for password reset endpoint
-const passwordResetWindows = new Map<string, { count: number; resetAt: number }>();
+const passwordResetWindows = new Map<
+  string,
+  { count: number; resetAt: number }
+>();
 
 const PASSWORD_RESET_WINDOW_MS = 900_000; // 15 minutes
 const MAX_PASSWORD_RESETS_PER_IP = 5;
@@ -80,7 +90,11 @@ export function checkPasswordResetRateLimit(ip: string): {
   if (!window || now > window.resetAt) {
     window = { count: 1, resetAt: now + PASSWORD_RESET_WINDOW_MS };
     passwordResetWindows.set(ip, window);
-    return { allowed: true, remaining: MAX_PASSWORD_RESETS_PER_IP - 1, retryAfterSecs: 0 };
+    return {
+      allowed: true,
+      remaining: MAX_PASSWORD_RESETS_PER_IP - 1,
+      retryAfterSecs: 0,
+    };
   }
 
   if (window.count >= MAX_PASSWORD_RESETS_PER_IP) {
@@ -100,7 +114,10 @@ export function checkPasswordResetRateLimit(ip: string): {
 }
 
 // IP-based rate limit for registration endpoint
-const registrationWindows = new Map<string, { count: number; resetAt: number }>();
+const registrationWindows = new Map<
+  string,
+  { count: number; resetAt: number }
+>();
 
 const REGISTRATION_WINDOW_MS = 3_600_000; // 1 hour
 const MAX_REGISTRATIONS_PER_IP = 3;

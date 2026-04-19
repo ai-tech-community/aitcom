@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
- 
+
 import { Resend } from "resend";
 import { env } from "@/env";
 
@@ -237,10 +237,7 @@ export async function sendSponsorWelcome(
 /**
  * Welcome email sent when a new member joins.
  */
-export async function sendMemberWelcome(
-  to: string,
-  displayName: string,
-) {
+export async function sendMemberWelcome(to: string, displayName: string) {
   const resend = getResend();
   if (!resend) return;
 

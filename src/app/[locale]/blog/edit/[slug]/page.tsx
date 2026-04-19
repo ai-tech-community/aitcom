@@ -43,8 +43,8 @@ export default async function EditArticlePage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12">
-        <ArticleEditor
-          initialData={{
+      <ArticleEditor
+        initialData={{
           id: article.id,
           title: article.title,
           slug: article.slug,

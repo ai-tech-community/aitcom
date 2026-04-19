@@ -32,9 +32,7 @@ export default async function CommunityJobsPage() {
             const sponsor =
               typeof job.sponsor === "object" ? job.sponsor : null;
             const logo =
-              sponsor && typeof sponsor.logo === "object"
-                ? sponsor.logo
-                : null;
+              sponsor && typeof sponsor.logo === "object" ? sponsor.logo : null;
             return (
               <a
                 key={job.id}

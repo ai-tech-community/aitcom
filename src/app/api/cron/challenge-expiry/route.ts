@@ -86,11 +86,7 @@ export async function GET(request: Request) {
 
       // Award partial XP (proportional to objectives completed)
       const xpReward = challenge.rewards?.xpReward;
-      if (
-        completedCount > 0 &&
-        xpReward &&
-        typeof xpReward === "number"
-      ) {
+      if (completedCount > 0 && xpReward && typeof xpReward === "number") {
         const partialXp = Math.round(
           (xpReward * completedCount) / totalObjectives,
         );

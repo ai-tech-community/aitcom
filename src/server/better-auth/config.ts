@@ -8,10 +8,7 @@ import { checkEarlyAdopterBadge } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
 import { sendMemberWelcome } from "@/server/email";
 import { getResend } from "@/server/email";
-import {
-  resolveBetterAuthBaseUrl,
-  resolveTrustedOrigins,
-} from "./base-url";
+import { resolveBetterAuthBaseUrl, resolveTrustedOrigins } from "./base-url";
 
 export const auth = betterAuth({
   baseURL: resolveBetterAuthBaseUrl({
@@ -53,7 +50,9 @@ export const auth = betterAuth({
             targetId: user.id,
             metadata: { displayName },
           });
-          sendMemberWelcome(user.email, displayName).catch(() => { /* non-blocking */ });
+          sendMemberWelcome(user.email, displayName).catch(() => {
+            /* non-blocking */
+          });
         },
       },
     },
@@ -61,7 +60,13 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    sendVerificationEmail: async ({ user, url }: { user: { email: string; name?: string | null }; url: string }) => {
+    sendVerificationEmail: async ({
+      user,
+      url,
+    }: {
+      user: { email: string; name?: string | null };
+      url: string;
+    }) => {
       const resend = getResend();
       if (!resend) return;
       await resend.emails.send({
@@ -71,7 +76,13 @@ export const auth = betterAuth({
         html: `<p>Hi ${user.name ?? "there"},</p><p>Please verify your email by clicking <a href="${url}">this link</a>.</p>`,
       });
     },
-    sendResetPassword: async ({ user, url }: { user: { email: string; name?: string | null }; url: string }) => {
+    sendResetPassword: async ({
+      user,
+      url,
+    }: {
+      user: { email: string; name?: string | null };
+      url: string;
+    }) => {
       const resend = getResend();
       if (!resend) return;
       void resend.emails.send({

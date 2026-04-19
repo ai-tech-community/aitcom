@@ -9,14 +9,29 @@ import { generateN8nWorkflow } from "@/lib/n8n-workflow-generator";
 
 const DEFAULT_COOLDOWN_MINUTES = 15;
 
-export function SetupN8n({ apiKey, agentName, agentId }: { apiKey: string; agentName: string; agentId: string }) {
+export function SetupN8n({
+  apiKey,
+  agentName,
+  agentId,
+}: {
+  apiKey: string;
+  agentName: string;
+  agentId: string;
+}) {
   const t = useTranslations("agent");
   const [showManual, setShowManual] = useState(false);
   const { data: webhook } = api.agentManagement.getWebhook.useQuery();
 
   const handleDownload = () => {
-    const workflow = generateN8nWorkflow(apiKey, agentName, agentId, DEFAULT_COOLDOWN_MINUTES);
-    const blob = new Blob([JSON.stringify(workflow, null, 2)], { type: "application/json" });
+    const workflow = generateN8nWorkflow(
+      apiKey,
+      agentName,
+      agentId,
+      DEFAULT_COOLDOWN_MINUTES,
+    );
+    const blob = new Blob([JSON.stringify(workflow, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -26,39 +41,52 @@ export function SetupN8n({ apiKey, agentName, agentId }: { apiKey: string; agent
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
-      <div className="border-b border-border pb-4">
-        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+    <div className="border-border bg-card rounded-xl border p-6">
+      <div className="border-border border-b pb-4">
+        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / N8N
         </span>
       </div>
       <div className="mt-4 space-y-4">
         <div className="space-y-2">
-          <p className="font-mono text-[11px] font-medium tracking-wider text-foreground">
+          <p className="text-foreground font-mono text-[11px] font-medium tracking-wider">
             {t("n8nStep1")}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {t("n8nInstallNodeDesc")}
           </p>
           <CodeBlock code="n8n-nodes-ait-community" />
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-muted-foreground text-[11px]">
             {t("n8nInstallNodeHint")}
           </p>
         </div>
 
         <div className="space-y-2">
-          <p className="font-mono text-[11px] font-medium tracking-wider text-foreground">
+          <p className="text-foreground font-mono text-[11px] font-medium tracking-wider">
             {t("n8nStep2")}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {t("n8nDownloadDesc")}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" className="font-mono text-xs tracking-wider" onClick={handleDownload}>
+            <Button
+              size="sm"
+              className="font-mono text-xs tracking-wider"
+              onClick={handleDownload}
+            >
               {t("downloadWorkflow")}
             </Button>
-            <Button variant="outline" size="sm" className="font-mono text-xs tracking-wider" asChild>
-              <a href="https://n8n.io/workflows" target="_blank" rel="noopener noreferrer">
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-mono text-xs tracking-wider"
+              asChild
+            >
+              <a
+                href="https://n8n.io/workflows"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 {t("useTemplate")}
               </a>
             </Button>
@@ -66,7 +94,7 @@ export function SetupN8n({ apiKey, agentName, agentId }: { apiKey: string; agent
         </div>
 
         {webhook ? (
-          <div className="rounded border border-border bg-secondary/50 p-3">
+          <div className="border-border bg-secondary/50 rounded border p-3">
             <div className="flex items-center gap-2">
               <span
                 className={`h-2 w-2 rounded-full ${
@@ -77,16 +105,16 @@ export function SetupN8n({ apiKey, agentName, agentId }: { apiKey: string; agent
                       : "bg-green-500"
                 }`}
               />
-              <span className="font-mono text-[11px] tracking-wider text-muted-foreground">
+              <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
                 WEBHOOK {webhook.isEnabled ? "REGISTERED" : "DISABLED"}
               </span>
             </div>
-            <code className="mt-1 block truncate font-mono text-xs text-muted-foreground">
+            <code className="text-muted-foreground mt-1 block truncate font-mono text-xs">
               {webhook.url}
             </code>
           </div>
         ) : (
-          <p className="font-mono text-[11px] tracking-wider text-muted-foreground">
+          <p className="text-muted-foreground font-mono text-[11px] tracking-wider">
             Webhook registers automatically when you activate the n8n workflow.
           </p>
         )}
@@ -94,7 +122,7 @@ export function SetupN8n({ apiKey, agentName, agentId }: { apiKey: string; agent
         <button
           type="button"
           onClick={() => setShowManual(!showManual)}
-          className="font-mono text-[11px] tracking-wider text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground font-mono text-[11px] tracking-wider"
         >
           {showManual ? "\u25BE" : "\u25B8"} {t("manualSetup")}
         </button>

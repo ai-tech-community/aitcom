@@ -51,7 +51,10 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
   const t = useTranslations("forum");
   const viewCountedRef = useRef(false);
   const utils = api.useUtils();
-  const canModerate = memberRole === "owner" || memberRole === "admin" || memberRole === "moderator";
+  const canModerate =
+    memberRole === "owner" ||
+    memberRole === "admin" ||
+    memberRole === "moderator";
 
   const { data: session } = authClient.useSession();
 
@@ -152,7 +155,7 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
         href="/forum"
         className="font-mono text-xs tracking-wider text-zinc-400 transition-colors hover:text-zinc-600"
       >
-         {t("backToForum")}
+        {t("backToForum")}
       </Link>
 
       {/* Thread header */}
@@ -165,7 +168,7 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
           )}
           {thread.title}
         </h1>
-        <div className="mt-2 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-zinc-400">
+        <div className="mt-2 flex items-center gap-2 font-mono text-[10px] tracking-widest text-zinc-400 uppercase">
           <span
             className={`rounded border px-1.5 py-0.5 font-semibold ${categoryStyles[thread.category] ?? categoryStyles.general}`}
           >
@@ -174,7 +177,7 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
           <span>&middot;</span>
           <span>{timeAgo(thread.createdAt)}</span>
           {thread.isEdited && (
-            <span className="italic text-zinc-400">({t("edited")})</span>
+            <span className="text-zinc-400 italic">({t("edited")})</span>
           )}
           {thread.authorName && (
             <>
@@ -189,7 +192,7 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
         {(canModerate || isAuthor) && !thread.isDeleted && (
           <div className="mt-3">
             <DropdownMenu>
-              <DropdownMenuTrigger className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500 hover:bg-zinc-100">
+              <DropdownMenuTrigger className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold tracking-wider text-zinc-500 uppercase hover:bg-zinc-100">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
@@ -255,7 +258,7 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
 
       {/* Thread content */}
       {thread.isDeleted ? (
-        <div className="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-5 text-center text-sm italic text-zinc-400">
+        <div className="mt-6 rounded-lg border border-zinc-200 bg-zinc-50 p-5 text-center text-sm text-zinc-400 italic">
           {t("threadDeletedMessage")}
         </div>
       ) : isEditing ? (
@@ -303,7 +306,7 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
       <div className="my-8 border-t border-zinc-200" />
 
       {/* Replies section */}
-      <h2 className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+      <h2 className="mb-4 font-mono text-[10px] font-semibold tracking-widest text-zinc-400 uppercase">
         {t("replies", { count: replies.length })}
       </h2>
 

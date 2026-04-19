@@ -39,10 +39,18 @@ type ReplyListProps = {
   threadSlug: string;
 };
 
-export function ReplyList({ replies, currentUserId, memberRole, threadSlug }: ReplyListProps) {
+export function ReplyList({
+  replies,
+  currentUserId,
+  memberRole,
+  threadSlug,
+}: ReplyListProps) {
   const t = useTranslations("forum");
   const utils = api.useUtils();
-  const canModerate = memberRole === "owner" || memberRole === "admin" || memberRole === "moderator";
+  const canModerate =
+    memberRole === "owner" ||
+    memberRole === "admin" ||
+    memberRole === "moderator";
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState("");
 
@@ -74,18 +82,28 @@ export function ReplyList({ replies, currentUserId, memberRole, threadSlug }: Re
     <div className="space-y-3">
       {replies.map((reply) =>
         reply.isDeleted ? (
-          <div key={reply.id} className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3">
-            <p className="text-sm italic text-zinc-400">{t("replyDeletedMessage")}</p>
+          <div
+            key={reply.id}
+            className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3"
+          >
+            <p className="text-sm text-zinc-400 italic">
+              {t("replyDeletedMessage")}
+            </p>
           </div>
         ) : (
-          <div key={reply.id} className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3">
+          <div
+            key={reply.id}
+            className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3"
+          >
             <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2 font-mono text-[9px] tracking-wider text-zinc-400">
                 <span>{reply.authorName ?? "member"}</span>
                 <RoleBadge role={reply.authorRole} />
                 <span>&middot;</span>
                 <span>{timeAgo(reply.createdAt)}</span>
-                {reply.isEdited && <span className="italic">({t("edited")})</span>}
+                {reply.isEdited && (
+                  <span className="italic">({t("edited")})</span>
+                )}
               </div>
               {(currentUserId === reply.authorId || canModerate) && (
                 <DropdownMenu>
@@ -129,7 +147,10 @@ export function ReplyList({ replies, currentUserId, memberRole, threadSlug }: Re
                 <div className="flex gap-2">
                   <button
                     onClick={() =>
-                      editMutation.mutate({ replyId: reply.id, content: editContent })
+                      editMutation.mutate({
+                        replyId: reply.id,
+                        content: editContent,
+                      })
                     }
                     disabled={editMutation.isPending}
                     className="bg-primary text-primary-foreground rounded-md px-3 py-1 text-xs font-semibold"
