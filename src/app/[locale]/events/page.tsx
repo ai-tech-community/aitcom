@@ -16,6 +16,7 @@ import {
   type EventType,
 } from "@/lib/event-metadata";
 import { EventsFilterBar } from "@/components/events-filter-bar";
+import { EventsMap, type MapEvent } from "@/components/events-map";
 import { getVisitorLocation } from "@/lib/visitor-location";
 
 export const metadata: Metadata = {
@@ -33,6 +34,37 @@ export const metadata: Metadata = {
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function toMapEvents(
+  events: Array<{
+    id: number;
+    slug: string;
+    title: string;
+    date: string;
+    location: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    type: string;
+    aitFitScore?: number | null;
+  }>,
+): MapEvent[] {
+  return events
+    .filter(
+      (e): e is typeof e & { latitude: number; longitude: number } =>
+        typeof e.latitude === "number" && typeof e.longitude === "number",
+    )
+    .map((e) => ({
+      id: e.id,
+      slug: e.slug,
+      title: e.title,
+      date: e.date,
+      location: e.location,
+      latitude: e.latitude,
+      longitude: e.longitude,
+      type: e.type,
+      aitFitScore: e.aitFitScore ?? null,
+    }));
 }
 
 function getImageUrl(event: { coverImage?: unknown; image?: unknown }) {
@@ -90,7 +122,8 @@ export default async function EventsPage({
 
   const pageRaw = Number(firstParam(sp, "page"));
   const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
-  const perPage = 12;
+  const isMapView = firstParam(sp, "view") === "map";
+  const perPage = isMapView ? 200 : 12;
 
   const visitor = await getVisitorLocation();
   const countryParam = firstParam(sp, "country");
@@ -158,7 +191,17 @@ export default async function EventsPage({
     if (sort !== "date") next.set("sort", sort);
     if (countryParam) next.set("country", countryParam);
     if (nearMe) next.set("near", "1");
+    if (isMapView) next.set("view", "map");
     return next;
+  };
+
+  const buildViewHref = (view: "grid" | "map") => {
+    const next = baseParams();
+    if (view === "map") next.set("view", "map");
+    else next.delete("view");
+    if (isPast) next.set("past", "1");
+    const qs = next.toString();
+    return qs ? `/events?${qs}` : "/events";
   };
 
   const buildTabHref = (past: boolean) => {
@@ -212,7 +255,32 @@ export default async function EventsPage({
         visitorCountryName={visitor?.countryName ?? null}
       />
 
-      {events.length === 0 ? (
+      <div className="mt-4 flex gap-1 font-mono text-[11px] tracking-wider">
+        <Link
+          href={buildViewHref("grid")}
+          className={`rounded border px-3 py-1.5 transition-colors ${
+            !isMapView
+              ? "border-foreground bg-foreground text-background"
+              : "border-border text-muted-foreground hover:bg-secondary/40"
+          }`}
+        >
+          GRID
+        </Link>
+        <Link
+          href={buildViewHref("map")}
+          className={`rounded border px-3 py-1.5 transition-colors ${
+            isMapView
+              ? "border-foreground bg-foreground text-background"
+              : "border-border text-muted-foreground hover:bg-secondary/40"
+          }`}
+        >
+          MAP
+        </Link>
+      </div>
+
+      {isMapView ? (
+        <EventsMap events={toMapEvents(events)} />
+      ) : events.length === 0 ? (
         <p className="text-muted-foreground mt-12 text-center">
           {hasFilters
             ? "No events match these filters."
@@ -289,7 +357,7 @@ export default async function EventsPage({
         </div>
       )}
 
-      {totalPages > 1 && (
+      {!isMapView && totalPages > 1 && (
         <Pagination
           currentPage={currentPage ?? page}
           totalPages={totalPages}
