@@ -14,7 +14,6 @@ import {
   EVENT_FOCUS_LABELS,
   EVENT_FORMAT_LABELS,
   EVENT_LEVEL_LABELS,
-  EVENT_REVIEW_STATUS_LABELS,
   EVENT_TYPE_LABELS,
 } from "@/lib/event-metadata";
 
@@ -23,6 +22,21 @@ type MediaValue =
   | number
   | null
   | undefined;
+
+const MONTH_SHORT = [
+  "JAN",
+  "FEB",
+  "MAR",
+  "APR",
+  "MAY",
+  "JUN",
+  "JUL",
+  "AUG",
+  "SEP",
+  "OCT",
+  "NOV",
+  "DEC",
+];
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -132,8 +146,24 @@ export default async function EventDetailPage({
         ? "https://schema.org/MixedEventAttendanceMode"
         : "https://schema.org/OfflineEventAttendanceMode";
 
+  const dateObj = new Date(event.date);
+  const dateMonth = MONTH_SHORT[dateObj.getMonth()] ?? "";
+  const dateDay = dateObj.getDate();
+  const dateYear = dateObj.getFullYear();
+  const locationParts = [event.city, event.region, event.country].filter(
+    Boolean,
+  );
+  const locationShort =
+    locationParts.length > 0 ? locationParts.join(", ") : event.location;
+  const priceLabel =
+    price != null && price > 0
+      ? `€${(price / 100).toFixed(2)}`
+      : price === 0
+        ? "Free"
+        : null;
+
   return (
-    <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
       <JsonLd
         data={{
           "@type": "Event",
@@ -192,305 +222,375 @@ export default async function EventDetailPage({
         }}
       />
 
-      <div className="text-muted-foreground flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider sm:gap-3">
-        <span>{formatDate(event.date)}</span>
-        {event.startTime && (
-          <>
-            <span className="text-border hidden sm:inline">|</span>
-            <span className="text-border sm:hidden">&middot;</span>
-            <span>
-              {event.startTime}
-              {event.endTime ? ` – ${event.endTime}` : ""}
-            </span>
-          </>
-        )}
-        <span className="text-border hidden sm:inline">|</span>
-        <span className="text-border sm:hidden">&middot;</span>
-        <span>{event.location}</span>
-        {event.format && (
-          <>
-            <span className="text-border hidden sm:inline">|</span>
-            <span className="text-border sm:hidden">&middot;</span>
-            <span>{EVENT_FORMAT_LABELS[event.format] ?? event.format}</span>
-          </>
-        )}
-      </div>
+      <EventHero
+        title={event.title}
+        heroImageUrl={heroImage?.url ?? null}
+        heroImageAlt={heroImage?.alt ?? event.title}
+        typeLabel={EVENT_TYPE_LABELS[event.type] ?? event.type}
+        formatLabel={
+          event.format ? EVENT_FORMAT_LABELS[event.format] ?? event.format : null
+        }
+        dateMonth={dateMonth}
+        dateDay={dateDay}
+        dateYear={dateYear}
+        startTime={event.startTime ?? null}
+        endTime={event.endTime ?? null}
+        location={event.location}
+        aitFitScore={
+          typeof event.aitFitScore === "number" ? event.aitFitScore : null
+        }
+      />
 
-      <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
-        {event.title}
-      </h1>
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
+        <div className="min-w-0 space-y-8">
+          {event.summary && (
+            <p className="text-foreground/90 text-lg leading-relaxed">
+              {event.summary}
+            </p>
+          )}
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <span className="border-border text-muted-foreground rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider">
-          {EVENT_TYPE_LABELS[event.type] ?? event.type}
-        </span>
-        {event.reviewStatus && (
-          <span className="border-border text-muted-foreground rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider">
-            {EVENT_REVIEW_STATUS_LABELS[event.reviewStatus] ??
-              event.reviewStatus}
-          </span>
-        )}
-        {typeof event.aitFitScore === "number" && (
-          <span className="bg-foreground text-background rounded px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider">
-            AIT FIT {event.aitFitScore}/10
-          </span>
-        )}
-      </div>
-
-      {heroImage?.url && (
-        <div className="border-border mt-8 overflow-hidden rounded-lg border">
-          <Image
-            src={heroImage.url}
-            alt={heroImage.alt ?? event.title}
-            width={1200}
-            height={675}
-            className="h-auto w-full object-cover"
-            priority
-          />
-        </div>
-      )}
-
-      {(event.summary ??
-        event.focus ??
-        event.level ??
-        event.city ??
-        event.region ??
-        event.country ??
-        event.sourceUrl ??
-        event.videoUrl ??
-        (audience.length > 0 ? "audience" : undefined) ??
-        (tags.length > 0 ? "tags" : undefined)) && (
-        <div className="border-border mt-8 grid gap-6 border-t pt-8 lg:grid-cols-[2fr_1fr]">
-          <div>
-            {event.summary && (
-              <p className="text-foreground/90 text-lg leading-relaxed">
-                {event.summary ?? undefined}
-              </p>
-            )}
-            {tags.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="border-border text-muted-foreground rounded-full border px-3 py-1 text-xs"
-                  >
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="border-border space-y-3 rounded-lg border p-4 text-sm">
-            {event.focus && (
-              <DetailRow
-                label="Focus"
-                value={EVENT_FOCUS_LABELS[event.focus] ?? event.focus}
-              />
-            )}
-            {event.level && (
-              <DetailRow
-                label="Level"
-                value={EVENT_LEVEL_LABELS[event.level] ?? event.level}
-              />
-            )}
-            {audience.length > 0 && (
-              <DetailRow
-                label="Audience"
-                value={audience
-                  .map((entry) => EVENT_AUDIENCE_LABELS[entry] ?? entry)
-                  .join(", ")}
-              />
-            )}
-            {(event.city ?? event.region ?? event.country) && (
-              <DetailRow
-                label="Region"
-                value={[event.city, event.region, event.country]
-                  .filter(Boolean)
-                  .join(", ")}
-              />
-            )}
-            {event.discoverySource && (
-              <DetailRow label="Discovery" value={event.discoverySource} />
-            )}
-            {typeof event.confidenceScore === "number" && (
-              <DetailRow
-                label="Confidence"
-                value={String(event.confidenceScore)}
-              />
-            )}
-            {event.lastVerifiedAt && (
-              <DetailRow
-                label="Verified"
-                value={new Date(event.lastVerifiedAt).toLocaleString(locale)}
-              />
-            )}
-            {event.curatedByAgent && (
-              <DetailRow label="Curated" value="By agent" />
-            )}
-            {event.sourceUrl && (
-              <DetailRow
-                label="Source"
-                value={
-                  <a
-                    href={event.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline underline-offset-4"
-                  >
-                    Original event
-                  </a>
-                }
-              />
-            )}
-            {event.videoUrl && (
-              <DetailRow
-                label="Video"
-                value={
-                  <a
-                    href={event.videoUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline underline-offset-4"
-                  >
-                    Watch video
-                  </a>
-                }
-              />
-            )}
-          </div>
-        </div>
-      )}
-
-      {event.description && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / ABOUT
-            </h2>
-          </div>
-          <div className="mt-4">
-            <LexicalRenderer content={event.description} />
-          </div>
-        </div>
-      )}
-
-      {gallery.length > 0 && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / GALLERY
-            </h2>
-          </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {gallery.map((image, index) => (
-              <div
-                key={`${image?.url}-${index}`}
-                className="border-border overflow-hidden rounded-lg border"
-              >
-                {image?.url && (
-                  <Image
-                    src={image.url}
-                    alt={
-                      image.alt ?? `${event.title} gallery image ${index + 1}`
-                    }
-                    width={600}
-                    height={400}
-                    className="h-56 w-full object-cover"
-                  />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {speakers.length > 0 && (
-        <div className="border-border mt-8 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / SPEAKERS
-            </h2>
-          </div>
-          <div className="mt-4 space-y-4">
-            {speakers.map((speaker) => {
-              const photoUrl =
-                speaker.photo && typeof speaker.photo === "object"
-                  ? speaker.photo.url
-                  : undefined;
-
-              return (
-                <div
-                  key={speaker.id}
-                  className="border-border flex items-start gap-4 rounded border border-dashed px-4 py-4"
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="border-border text-muted-foreground rounded-full border px-3 py-1 text-xs"
                 >
-                  {photoUrl ? (
-                    <Image
-                      src={photoUrl}
-                      alt={speaker.name}
-                      className="h-10 w-10 shrink-0 rounded-full object-cover"
-                      width={40}
-                      height={40}
-                    />
-                  ) : (
-                    <div className="bg-secondary text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-mono text-xs">
-                      {speaker.name
-                        .split(" ")
-                        .map((p) => p[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2)}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{speaker.name}</span>
-                      {speaker.company && (
-                        <span className="text-muted-foreground font-mono text-xs">
-                          @ {speaker.company}
-                        </span>
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {Boolean(
+            event.focus ??
+              event.level ??
+              event.videoUrl ??
+              (audience.length > 0 || locationParts.length > 0 || null),
+          ) && (
+            <div className="border-border grid gap-4 rounded-lg border p-4 text-sm sm:grid-cols-2">
+              {event.focus && (
+                <DetailRow
+                  label="Focus"
+                  value={EVENT_FOCUS_LABELS[event.focus] ?? event.focus}
+                />
+              )}
+              {event.level && (
+                <DetailRow
+                  label="Level"
+                  value={EVENT_LEVEL_LABELS[event.level] ?? event.level}
+                />
+              )}
+              {audience.length > 0 && (
+                <DetailRow
+                  label="Audience"
+                  value={audience
+                    .map((entry) => EVENT_AUDIENCE_LABELS[entry] ?? entry)
+                    .join(", ")}
+                />
+              )}
+              {locationParts.length > 0 && (
+                <DetailRow label="Region" value={locationShort} />
+              )}
+              {event.videoUrl && (
+                <DetailRow
+                  label="Video"
+                  value={
+                    <a
+                      href={event.videoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline underline-offset-4"
+                    >
+                      Watch video
+                    </a>
+                  }
+                />
+              )}
+            </div>
+          )}
+
+          {event.description && (
+            <div className="border-border border-t pt-8">
+              <div className="border-border border-b pb-4">
+                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+                  / ABOUT
+                </h2>
+              </div>
+              <div className="mt-4">
+                <LexicalRenderer content={event.description} />
+              </div>
+            </div>
+          )}
+
+          {speakers.length > 0 && (
+            <div className="border-border border-t pt-8">
+              <div className="border-border border-b pb-4">
+                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+                  / SPEAKERS
+                </h2>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {speakers.map((speaker) => {
+                  const photoUrl =
+                    speaker.photo && typeof speaker.photo === "object"
+                      ? speaker.photo.url
+                      : undefined;
+                  return (
+                    <div
+                      key={speaker.id}
+                      className="border-border flex items-start gap-3 rounded-lg border p-4"
+                    >
+                      {photoUrl ? (
+                        <Image
+                          src={photoUrl}
+                          alt={speaker.name}
+                          className="h-10 w-10 shrink-0 rounded-full object-cover"
+                          width={40}
+                          height={40}
+                        />
+                      ) : (
+                        <div className="bg-secondary text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-mono text-xs">
+                          {speaker.name
+                            .split(" ")
+                            .map((p) => p[0])
+                            .join("")
+                            .toUpperCase()
+                            .slice(0, 2)}
+                        </div>
                       )}
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">
+                          {speaker.name}
+                        </div>
+                        {speaker.company && (
+                          <div className="text-muted-foreground truncate font-mono text-xs">
+                            {speaker.company}
+                          </div>
+                        )}
+                        {speaker.bio && (
+                          <p className="text-muted-foreground mt-2 line-clamp-3 text-sm leading-relaxed">
+                            {speaker.bio}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    {speaker.bio && (
-                      <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                        {speaker.bio}
-                      </p>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {gallery.length > 0 && (
+            <div className="border-border border-t pt-8">
+              <div className="border-border border-b pb-4">
+                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+                  / GALLERY
+                </h2>
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {gallery.map((image, index) => (
+                  <div
+                    key={`${image?.url}-${index}`}
+                    className="border-border overflow-hidden rounded-lg border"
+                  >
+                    {image?.url && (
+                      <Image
+                        src={image.url}
+                        alt={
+                          image.alt ?? `${event.title} gallery image ${index + 1}`
+                        }
+                        width={600}
+                        height={400}
+                        className="h-56 w-full object-cover"
+                      />
                     )}
                   </div>
-                </div>
-              );
-            })}
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="border-border border-t pt-8">
+            <div className="border-border border-b pb-4">
+              <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+                / ATTENDEES
+              </h2>
+            </div>
+            <div className="mt-4">
+              <EventAttendees
+                eventId={eventId}
+                maxAttendees={maxAttendees}
+                isExternal={isExternal}
+              />
+            </div>
           </div>
         </div>
-      )}
 
-      <div className="border-border mt-8 border-t pt-8">
-        <div className="border-border border-b pb-4">
-          <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / ATTENDEES
-          </h2>
-        </div>
-        <div className="mt-4">
-          <EventAttendees
-            eventId={eventId}
-            maxAttendees={maxAttendees}
-            isExternal={isExternal}
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="border-border bg-card space-y-4 rounded-lg border p-5">
+            <div className="space-y-1">
+              <div className="text-muted-foreground font-mono text-[11px] tracking-wider">
+                {dateMonth} {dateDay}, {dateYear}
+              </div>
+              {event.startTime && (
+                <div className="font-mono text-sm tracking-wider">
+                  {event.startTime}
+                  {event.endTime ? ` – ${event.endTime}` : ""}
+                </div>
+              )}
+            </div>
+
+            <div className="border-border border-t pt-4 text-sm">
+              <div className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+                Location
+              </div>
+              <div className="mt-1">{event.location}</div>
+              {locationParts.length > 0 &&
+                locationShort !== event.location && (
+                  <div className="text-muted-foreground mt-0.5 text-xs">
+                    {locationShort}
+                  </div>
+                )}
+            </div>
+
+            {(event.format ?? priceLabel) && (
+              <div className="border-border flex flex-wrap gap-2 border-t pt-4 font-mono text-[11px] tracking-wider">
+                {event.format && (
+                  <span className="border-border rounded border px-2 py-0.5">
+                    {EVENT_FORMAT_LABELS[event.format] ?? event.format}
+                  </span>
+                )}
+                {priceLabel && (
+                  <span className="border-border rounded border px-2 py-0.5">
+                    {priceLabel}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="border-border border-t pt-4">
+              <EventRegisterButton
+                eventId={eventId}
+                price={price}
+                isExternal={isExternal}
+                sourceUrl={sourceUrl}
+              />
+            </div>
+
+            {isExternal && sourceUrl && (
+              <div className="text-muted-foreground border-border border-t pt-4 font-mono text-[10px] tracking-wider">
+                SOURCE ·{" "}
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-4"
+                >
+                  Original event ↗
+                </a>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function EventHero({
+  title,
+  heroImageUrl,
+  heroImageAlt,
+  typeLabel,
+  formatLabel,
+  dateMonth,
+  dateDay,
+  dateYear,
+  startTime,
+  endTime,
+  location,
+  aitFitScore,
+}: {
+  title: string;
+  heroImageUrl: string | null;
+  heroImageAlt: string;
+  typeLabel: string;
+  formatLabel: string | null;
+  dateMonth: string;
+  dateDay: number;
+  dateYear: number;
+  startTime: string | null;
+  endTime: string | null;
+  location: string;
+  aitFitScore: number | null;
+}) {
+  return (
+    <div className="border-border bg-secondary/30 relative overflow-hidden rounded-2xl border">
+      <div className="relative h-64 w-full sm:h-80">
+        {heroImageUrl ? (
+          <Image
+            src={heroImageUrl}
+            alt={heroImageAlt}
+            fill
+            priority
+            className="object-cover"
+            sizes="(min-width: 1024px) 1024px, 100vw"
           />
-        </div>
+        ) : (
+          <div className="from-foreground/10 via-foreground/5 absolute inset-0 bg-linear-to-br to-transparent" />
+        )}
+        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/10" />
       </div>
 
-      <div className="border-border mt-8 border-t pt-8">
-        <div className="border-border border-b pb-4">
-          <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / REGISTRATION
-          </h2>
-        </div>
-        <div className="mt-4">
-          <EventRegisterButton
-            eventId={eventId}
-            price={price}
-            isExternal={isExternal}
-            sourceUrl={sourceUrl}
-          />
+      <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
+        <div className="flex flex-wrap items-end gap-4 sm:gap-6">
+          <div className="bg-background/95 text-foreground flex h-16 w-16 flex-col items-center justify-center rounded-lg text-center shadow-lg sm:h-20 sm:w-20">
+            <span className="font-mono text-[10px] tracking-wider sm:text-xs">
+              {dateMonth}
+            </span>
+            <span className="text-2xl leading-none font-bold sm:text-3xl">
+              {dateDay}
+            </span>
+            <span className="text-muted-foreground font-mono text-[9px] tracking-wider sm:text-[10px]">
+              {dateYear}
+            </span>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] tracking-wider text-white/80 sm:text-[11px]">
+              <span>{typeLabel}</span>
+              {formatLabel && (
+                <>
+                  <span>·</span>
+                  <span>{formatLabel}</span>
+                </>
+              )}
+              {startTime && (
+                <>
+                  <span>·</span>
+                  <span>
+                    {startTime}
+                    {endTime ? `–${endTime}` : ""}
+                  </span>
+                </>
+              )}
+              {aitFitScore !== null && (
+                <>
+                  <span>·</span>
+                  <span className="bg-foreground text-background rounded px-1.5 py-0.5">
+                    AIT {aitFitScore}/10
+                  </span>
+                </>
+              )}
+            </div>
+            <h1 className="mt-2 text-2xl leading-tight font-extrabold tracking-tight text-white sm:text-4xl">
+              {title}
+            </h1>
+            <div className="mt-1 font-mono text-[11px] tracking-wider text-white/80 sm:text-xs">
+              {location}
+            </div>
+          </div>
         </div>
       </div>
     </div>
