@@ -54,7 +54,14 @@ interface EventFormDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function EventFormDialog({ slug, mode, eventId, initialData, open, onOpenChange }: EventFormDialogProps) {
+export function EventFormDialog({
+  slug,
+  mode,
+  eventId,
+  initialData,
+  open,
+  onOpenChange,
+}: EventFormDialogProps) {
   const t = useTranslations("events");
   const utils = api.useUtils();
   const [form, setForm] = useState<EventFormData>(emptyForm);
@@ -97,7 +104,9 @@ export function EventFormDialog({ slug, mode, eventId, initialData, open, onOpen
         startTime: form.startTime || undefined,
         endTime: form.endTime || undefined,
         location: form.location,
-        maxAttendees: form.maxAttendees ? parseInt(form.maxAttendees, 10) : undefined,
+        maxAttendees: form.maxAttendees
+          ? parseInt(form.maxAttendees, 10)
+          : undefined,
       });
     } else if (eventId) {
       updateMutation.mutate({
@@ -110,7 +119,9 @@ export function EventFormDialog({ slug, mode, eventId, initialData, open, onOpen
         startTime: form.startTime || undefined,
         endTime: form.endTime || undefined,
         location: form.location,
-        maxAttendees: form.maxAttendees ? parseInt(form.maxAttendees, 10) : undefined,
+        maxAttendees: form.maxAttendees
+          ? parseInt(form.maxAttendees, 10)
+          : undefined,
       });
     }
   };
@@ -121,22 +132,46 @@ export function EventFormDialog({ slug, mode, eventId, initialData, open, onOpen
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{mode === "create" ? t("createEvent") : t("editEvent")}</DialogTitle>
+          <DialogTitle>
+            {mode === "create" ? t("createEvent") : t("editEvent")}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="event-title">{t("eventTitle")}</Label>
-            <Input id="event-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required minLength={3} maxLength={255} />
+            <Input
+              id="event-title"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              required
+              minLength={3}
+              maxLength={255}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="event-description">{t("eventDescription")}</Label>
-            <Textarea id="event-description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} maxLength={5000} />
+            <Textarea
+              id="event-description"
+              value={form.description}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
+              rows={3}
+              maxLength={5000}
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="event-type">{t("eventType")}</Label>
-              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as typeof form.type })}>
-                <SelectTrigger id="event-type"><SelectValue /></SelectTrigger>
+              <Select
+                value={form.type}
+                onValueChange={(v) =>
+                  setForm({ ...form, type: v as typeof form.type })
+                }
+              >
+                <SelectTrigger id="event-type">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="meetup">Meetup</SelectItem>
                   <SelectItem value="workshop">Workshop</SelectItem>
@@ -147,29 +182,70 @@ export function EventFormDialog({ slug, mode, eventId, initialData, open, onOpen
             </div>
             <div className="space-y-2">
               <Label htmlFor="event-date">{t("eventDate")}</Label>
-              <Input id="event-date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+              <Input
+                id="event-date"
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                required
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="event-start">{t("eventStartTime")}</Label>
-              <Input id="event-start" type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
+              <Input
+                id="event-start"
+                type="time"
+                value={form.startTime}
+                onChange={(e) =>
+                  setForm({ ...form, startTime: e.target.value })
+                }
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="event-end">{t("eventEndTime")}</Label>
-              <Input id="event-end" type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
+              <Input
+                id="event-end"
+                type="time"
+                value={form.endTime}
+                onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+              />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="event-location">{t("eventLocation")}</Label>
-            <Input id="event-location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} required maxLength={255} />
+            <Input
+              id="event-location"
+              value={form.location}
+              onChange={(e) => setForm({ ...form, location: e.target.value })}
+              required
+              maxLength={255}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="event-max">{t("eventMaxAttendees")}</Label>
-            <Input id="event-max" type="number" min={1} value={form.maxAttendees} onChange={(e) => setForm({ ...form, maxAttendees: e.target.value })} />
+            <Input
+              id="event-max"
+              type="number"
+              min={1}
+              value={form.maxAttendees}
+              onChange={(e) =>
+                setForm({ ...form, maxAttendees: e.target.value })
+              }
+            />
           </div>
           <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? (<><Loader2 className="mr-2 size-4 animate-spin" />{t("creating")}</>) : (mode === "create" ? t("createEvent") : t("editEvent"))}
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                {t("creating")}
+              </>
+            ) : mode === "create" ? (
+              t("createEvent")
+            ) : (
+              t("editEvent")
+            )}
           </Button>
         </form>
       </DialogContent>

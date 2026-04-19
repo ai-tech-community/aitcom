@@ -66,7 +66,8 @@ export const lumaRouter = createTRPCRouter({
       if (!result.valid) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "Invalid Luma API key. Make sure you have a Luma Plus subscription.",
+          message:
+            "Invalid Luma API key. Make sure you have a Luma Plus subscription.",
         });
       }
 

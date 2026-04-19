@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { eq, and, lt, sql } from "drizzle-orm";
 import { db } from "@/server/db";
-import { agentProfiles, agentApiKeys, activityEvents } from "@/server/db/schema";
+import {
+  agentProfiles,
+  agentApiKeys,
+  activityEvents,
+} from "@/server/db/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

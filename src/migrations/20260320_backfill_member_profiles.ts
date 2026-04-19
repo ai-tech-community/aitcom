@@ -19,7 +19,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       FROM app."user" u
       LEFT JOIN app.member_profile mp ON mp.user_id = u.id
       WHERE mp.user_id IS NULL;
-    `
+    `,
   );
 }
 

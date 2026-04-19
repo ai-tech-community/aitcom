@@ -44,16 +44,19 @@ const ShimmerComponent = ({
   cycleInterval,
 }: TextShimmerProps) => {
   const MotionComponent = getMotionComponent(
-    Component as keyof JSX.IntrinsicElements
+    Component as keyof JSX.IntrinsicElements,
   );
 
   const [cycleIndex, setCycleIndex] = useState(0);
 
   useEffect(() => {
     if (!cycle || cycle.length <= 1) return;
-    const interval = setInterval(() => {
-      setCycleIndex((prev) => (prev + 1) % cycle.length);
-    }, (cycleInterval ?? 4) * 1000);
+    const interval = setInterval(
+      () => {
+        setCycleIndex((prev) => (prev + 1) % cycle.length);
+      },
+      (cycleInterval ?? 4) * 1000,
+    );
     return () => clearInterval(interval);
   }, [cycle, cycleInterval]);
 
@@ -63,7 +66,7 @@ const ShimmerComponent = ({
   const dynamicSpread = useMemo(() => {
     if (cycle) {
       const maxLen = Math.max(
-        ...cycle.map((item) => (typeof item === "string" ? item.length : 3))
+        ...cycle.map((item) => (typeof item === "string" ? item.length : 3)),
       );
       return maxLen * spread;
     }
@@ -75,7 +78,7 @@ const ShimmerComponent = ({
       animate={{ backgroundPosition: "0% center" }}
       className={cn(
         "relative inline-block bg-[length:250%_100%] bg-clip-text",
-        "[--bg:linear-gradient(90deg,#0000_calc(50%-var(--spread)),var(--color-background),#0000_calc(50%+var(--spread)))] [background-repeat:no-repeat,padding-box]",
+        "[background-repeat:no-repeat,padding-box] [--bg:linear-gradient(90deg,#0000_calc(50%-var(--spread)),var(--color-background),#0000_calc(50%+var(--spread)))]",
         className,
         isTextItem && "text-transparent",
       )}

@@ -48,7 +48,11 @@ export default async function MemberProfilePage({
 
   const [data, [agentProfile], session] = await Promise.all([
     api.members.getPublicProfile({ userId: id }),
-    db.select().from(agentProfiles).where(eq(agentProfiles.ownerId, id)).limit(1),
+    db
+      .select()
+      .from(agentProfiles)
+      .where(eq(agentProfiles.ownerId, id))
+      .limit(1),
     getSession(),
   ]);
   if (!data) notFound();
@@ -242,7 +246,7 @@ export default async function MemberProfilePage({
           </div>
           <Link
             href={`/members/${id}/agent`}
-            className="border-border mt-4 flex items-center gap-4 rounded border p-4 transition-colors hover:bg-secondary/50"
+            className="border-border hover:bg-secondary/50 mt-4 flex items-center gap-4 rounded border p-4 transition-colors"
           >
             {agentProfile.avatar ? (
               <Image

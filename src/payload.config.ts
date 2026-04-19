@@ -5,7 +5,7 @@ import { postgresAdapter } from "@payloadcms/db-postgres";
 import { s3Storage } from "@payloadcms/storage-s3";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import sharp from "sharp";
-import { resendAdapter } from '@payloadcms/email-resend'
+import { resendAdapter } from "@payloadcms/email-resend";
 
 import { Events } from "./collections/Events";
 import { Speakers } from "./collections/Speakers";
@@ -108,20 +108,20 @@ export default buildConfig({
           disablePayloadAccessControl: true,
           generateFileURL: ({ filename, prefix }) => {
             const bucket = process.env.S3_BUCKET;
-            const region = process.env.S3_REGION ?? 'eu-central-1';
-            const parts = [prefix, filename].filter(Boolean).join('/');
-            return `https://${bucket}.s3.${region}.amazonaws.com/${parts}`; 
+            const region = process.env.S3_REGION ?? "eu-central-1";
+            const parts = [prefix, filename].filter(Boolean).join("/");
+            return `https://${bucket}.s3.${region}.amazonaws.com/${parts}`;
           },
         },
       },
-      bucket: process.env.S3_BUCKET ?? '',
+      bucket: process.env.S3_BUCKET ?? "",
       acl: undefined,
       config: {
         credentials: {
-          accessKeyId: process.env.S3_ACCESS_KEY_ID ?? '',
-          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? '',
+          accessKeyId: process.env.S3_ACCESS_KEY_ID ?? "",
+          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? "",
         },
-        region: process.env.S3_REGION ?? 'eu-central-1',
+        region: process.env.S3_REGION ?? "eu-central-1",
       },
     }),
   ],
@@ -149,8 +149,8 @@ export default buildConfig({
     "dev-secret-change-me",
   sharp,
   email: resendAdapter({
-    defaultFromAddress: 'info@mailer.aitcommunity.org',
-    defaultFromName: 'AI Tech Community',
-    apiKey: process.env.RESEND_API_KEY ?? '',
+    defaultFromAddress: "info@mailer.aitcommunity.org",
+    defaultFromName: "AI Tech Community",
+    apiKey: process.env.RESEND_API_KEY ?? "",
   }),
 });

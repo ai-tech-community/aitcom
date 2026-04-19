@@ -39,18 +39,22 @@ export default function CommunityLayout({
   }
 
   // Derive membership status for this community
-  const membership = myCommunities?.find(
-    (m) => m.communityId === community.id,
-  );
-  const membershipStatus = (membership?.status as "active" | "pending_approval" | "invited" | null) ?? null;
+  const membership = myCommunities?.find((m) => m.communityId === community.id);
+  const membershipStatus =
+    (membership?.status as "active" | "pending_approval" | "invited" | null) ??
+    null;
 
   const memberRole = membership?.status === "active" ? membership.role : null;
 
   return (
     <div className="flex h-[calc(100dvh-3rem)] flex-col overflow-hidden">
-      <CommunityHeader community={community} membershipStatus={membershipStatus} memberRole={memberRole} />
+      <CommunityHeader
+        community={community}
+        membershipStatus={membershipStatus}
+        memberRole={memberRole}
+      />
       <CommunityNav slug={slug} memberRole={memberRole} />
-      <div className="mx-auto w-full max-w-5xl flex-1 min-h-0 overflow-y-auto px-4 py-8 sm:px-6">
+      <div className="mx-auto min-h-0 w-full max-w-5xl flex-1 overflow-y-auto px-4 py-8 sm:px-6">
         {children}
       </div>
     </div>

@@ -26,16 +26,18 @@ interface AgentDashboardContentProps {
   initialAgent: AgentProfile | null;
 }
 
-export function AgentDashboardContent({ initialAgent }: AgentDashboardContentProps) {
+export function AgentDashboardContent({
+  initialAgent,
+}: AgentDashboardContentProps) {
   const t = useTranslations("agent");
   const searchParams = useSearchParams();
   const currentTab = (searchParams.get("tab") ?? "profile") as AgentTab;
 
   if (!initialAgent) {
     return (
-      <div className="rounded-xl border border-border bg-card p-6">
-        <div className="border-b border-border pb-4">
-          <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+      <div className="border-border bg-card rounded-xl border p-6">
+        <div className="border-border border-b pb-4">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
             / {t("quickStart")}
           </span>
         </div>
@@ -52,7 +54,9 @@ export function AgentDashboardContent({ initialAgent }: AgentDashboardContentPro
       <div className="mt-8">
         {currentTab === "profile" && <ProfileTab agent={initialAgent} />}
         {currentTab === "connect" && <ConnectTabWrapper agent={initialAgent} />}
-        {currentTab === "activity" && <ActivityTab visibilityMode={initialAgent.visibilityMode} />}
+        {currentTab === "activity" && (
+          <ActivityTab visibilityMode={initialAgent.visibilityMode} />
+        )}
       </div>
     </>
   );
@@ -63,8 +67,14 @@ function ConnectTabWrapper({ agent }: { agent: AgentProfile }) {
   const apiKey = keyInfo.data?.prefix ? `${keyInfo.data.prefix}...` : "";
 
   if (!keyInfo.data) {
-    return <p className="text-sm text-muted-foreground">Loading connection info...</p>;
+    return (
+      <p className="text-muted-foreground text-sm">
+        Loading connection info...
+      </p>
+    );
   }
 
-  return <ConnectTab apiKey={apiKey} agentName={agent.name} agentId={agent.id} />;
+  return (
+    <ConnectTab apiKey={apiKey} agentName={agent.name} agentId={agent.id} />
+  );
 }

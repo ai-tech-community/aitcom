@@ -9,10 +9,18 @@ type LexicalNode = {
   listType?: string;
   url?: string;
   language?: string;
-  src?: string;      // for image nodes
-  alt?: string;      // for image nodes
+  src?: string; // for image nodes
+  alt?: string; // for image nodes
   children?: LexicalNode[];
-  fields?: { url?: string; newTab?: boolean; blockType?: string; code?: string; language?: string; src?: string; alt?: string };
+  fields?: {
+    url?: string;
+    newTab?: boolean;
+    blockType?: string;
+    code?: string;
+    language?: string;
+    src?: string;
+    alt?: string;
+  };
 };
 
 type LexicalRoot = {
@@ -36,9 +44,10 @@ export function extractPlainText(nodes: LexicalNode[]): string {
  * Uses 200 WPM average reading speed.
  */
 export function estimateReadingTime(content: unknown): number {
-  const data = typeof content === "string"
-    ? (JSON.parse(content) as LexicalRoot)
-    : (content as LexicalRoot);
+  const data =
+    typeof content === "string"
+      ? (JSON.parse(content) as LexicalRoot)
+      : (content as LexicalRoot);
 
   if (!data?.root?.children) return 1;
 
@@ -54,9 +63,10 @@ export type Heading = { text: string; slug: string; level: 2 | 3 };
  * Used for table of contents and anchor link generation.
  */
 export function extractHeadings(content: unknown): Heading[] {
-  const data = typeof content === "string"
-    ? (JSON.parse(content) as LexicalRoot)
-    : (content as LexicalRoot);
+  const data =
+    typeof content === "string"
+      ? (JSON.parse(content) as LexicalRoot)
+      : (content as LexicalRoot);
 
   if (!data?.root?.children) return [];
 
@@ -64,10 +74,7 @@ export function extractHeadings(content: unknown): Heading[] {
   const headings: Heading[] = [];
 
   for (const node of data.root.children) {
-    if (
-      node.type === "heading" &&
-      (node.tag === "h2" || node.tag === "h3")
-    ) {
+    if (node.type === "heading" && (node.tag === "h2" || node.tag === "h3")) {
       const text = extractPlainText(node.children ?? []);
       const baseSlug = slugify(text);
       const count = slugMap.get(baseSlug) ?? 0;
@@ -88,7 +95,12 @@ export function extractHeadings(content: unknown): Heading[] {
 function renderText(node: LexicalNode): React.ReactNode {
   const fmt = node.format ?? 0;
   let el: React.ReactNode = node.text ?? "";
-  if (fmt & 16) el = <code className="bg-muted rounded px-1 py-0.5 font-mono text-sm">{el}</code>;
+  if (fmt & 16)
+    el = (
+      <code className="bg-muted rounded px-1 py-0.5 font-mono text-sm">
+        {el}
+      </code>
+    );
   if (fmt & 1) el = <strong>{el}</strong>;
   if (fmt & 2) el = <em>{el}</em>;
   if (fmt & 4) el = <s>{el}</s>;
@@ -96,7 +108,11 @@ function renderText(node: LexicalNode): React.ReactNode {
   return el;
 }
 
-function renderNode(node: LexicalNode, idx: number, slugMap: Map<string, number>): React.ReactNode {
+function renderNode(
+  node: LexicalNode,
+  idx: number,
+  slugMap: Map<string, number>,
+): React.ReactNode {
   switch (node.type) {
     case "text":
       return <React.Fragment key={idx}>{renderText(node)}</React.Fragment>;
@@ -124,7 +140,10 @@ function renderNode(node: LexicalNode, idx: number, slugMap: Map<string, number>
         };
 
         return (
-          <div key={idx} className={`my-4 rounded border px-4 py-3 ${styleMap[variant] ?? styleMap.NOTE}`}>
+          <div
+            key={idx}
+            className={`my-4 rounded border px-4 py-3 ${styleMap[variant] ?? styleMap.NOTE}`}
+          >
             <p className="font-mono text-xs tracking-wider">{variant}</p>
             {title ? <p className="mt-1 text-sm">{title}</p> : null}
           </div>
@@ -134,8 +153,13 @@ function renderNode(node: LexicalNode, idx: number, slugMap: Map<string, number>
       if (plain.startsWith("[MERMAID]")) {
         const source = plain.replace("[MERMAID]", "").trim();
         return (
-          <div key={idx} className="border-border bg-muted/30 my-4 rounded border p-4">
-            <p className="text-muted-foreground mb-2 font-mono text-xs tracking-wider">MERMAID</p>
+          <div
+            key={idx}
+            className="border-border bg-muted/30 my-4 rounded border p-4"
+          >
+            <p className="text-muted-foreground mb-2 font-mono text-xs tracking-wider">
+              MERMAID
+            </p>
             <pre className="overflow-x-auto font-mono text-xs leading-relaxed">
               <code>{source || "graph TD; A[Start] --> B[End]"}</code>
             </pre>
@@ -145,7 +169,10 @@ function renderNode(node: LexicalNode, idx: number, slugMap: Map<string, number>
 
       if (plain === "[TABS]") {
         return (
-          <div key={idx} className="border-border bg-muted/20 my-4 rounded border px-3 py-2 font-mono text-xs">
+          <div
+            key={idx}
+            className="border-border bg-muted/20 my-4 rounded border px-3 py-2 font-mono text-xs"
+          >
             Tabs/Snippets Block
           </div>
         );
@@ -175,7 +202,11 @@ function renderNode(node: LexicalNode, idx: number, slugMap: Map<string, number>
       slugMap.set(baseSlug, count + 1);
 
       return (
-        <Tag key={idx} id={slug} className={`group ${headingClass[node.tag ?? "h2"]}`}>
+        <Tag
+          key={idx}
+          id={slug}
+          className={`group ${headingClass[node.tag ?? "h2"]}`}
+        >
           {node.children?.map((c, i) => renderNode(c, i, slugMap))}
           <a
             href={`#${slug}`}
@@ -223,16 +254,18 @@ function renderNode(node: LexicalNode, idx: number, slugMap: Map<string, number>
     case "code": {
       // Legacy: standard Lexical CodeNode (type "code")
       const code = extractPlainText(node.children ?? []);
-      return (
-        <HighlightedCode key={idx} code={code} language={node.language} />
-      );
+      return <HighlightedCode key={idx} code={code} language={node.language} />;
     }
 
     case "block": {
       // Payload BlocksFeature CodeBlock
       if (node.fields?.blockType === "Code" && node.fields.code !== undefined) {
         return (
-          <HighlightedCode key={idx} code={node.fields.code} language={node.fields.language} />
+          <HighlightedCode
+            key={idx}
+            code={node.fields.code}
+            language={node.fields.language}
+          />
         );
       }
       // Payload BlocksFeature ImageBlock
@@ -241,7 +274,8 @@ function renderNode(node: LexicalNode, idx: number, slugMap: Map<string, number>
         const imgAlt = node.fields.alt ?? "";
         try {
           const parsed = new URL(imgSrc);
-          if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+          if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+            return null;
         } catch {
           return null;
         }
@@ -249,7 +283,11 @@ function renderNode(node: LexicalNode, idx: number, slugMap: Map<string, number>
           <figure key={idx} className="my-6">
             {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs */}
             <img src={imgSrc} alt={imgAlt} className="w-full rounded" />
-            {imgAlt && <figcaption className="text-muted-foreground mt-2 text-center text-sm">{imgAlt}</figcaption>}
+            {imgAlt && (
+              <figcaption className="text-muted-foreground mt-2 text-center text-sm">
+                {imgAlt}
+              </figcaption>
+            )}
           </figure>
         );
       }
@@ -283,7 +321,8 @@ function renderNode(node: LexicalNode, idx: number, slugMap: Map<string, number>
       // Only render http/https URLs to prevent XSS via javascript: or data: URIs
       try {
         const parsed = new URL(src);
-        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+          return null;
       } catch {
         return null;
       }
@@ -291,7 +330,11 @@ function renderNode(node: LexicalNode, idx: number, slugMap: Map<string, number>
         <figure key={idx} className="my-6">
           {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs, next/image requires configured remotePatterns */}
           <img src={src} alt={alt} className="w-full rounded" />
-          {alt && <figcaption className="text-muted-foreground mt-2 text-center text-sm">{alt}</figcaption>}
+          {alt && (
+            <figcaption className="text-muted-foreground mt-2 text-center text-sm">
+              {alt}
+            </figcaption>
+          )}
         </figure>
       );
     }
@@ -340,7 +383,7 @@ async function HighlightedCode({
   }
   return (
     <div
-      className="[&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:p-4 [&_pre]:font-mono [&_pre]:text-sm [&_pre]:leading-relaxed my-4"
+      className="my-4 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:p-4 [&_pre]:font-mono [&_pre]:text-sm [&_pre]:leading-relaxed"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

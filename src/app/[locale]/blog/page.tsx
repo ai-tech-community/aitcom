@@ -37,7 +37,8 @@ export default async function BlogPage({
   const params = await searchParams;
 
   // Parse and clamp page number
-  const rawPage = typeof params.page === "string" ? parseInt(params.page, 10) : 1;
+  const rawPage =
+    typeof params.page === "string" ? parseInt(params.page, 10) : 1;
   const requestedPage = Number.isFinite(rawPage) && rawPage >= 1 ? rawPage : 1;
 
   const q = typeof params.q === "string" ? params.q.trim() : "";
@@ -57,10 +58,7 @@ export default async function BlogPage({
   // Search: title or tags match query
   if (q) {
     conditions.push({
-      or: [
-        { title: { like: q } },
-        { "tags.tag": { like: q } },
-      ],
+      or: [{ title: { like: q } }, { "tags.tag": { like: q } }],
     });
   }
 
@@ -84,7 +82,13 @@ export default async function BlogPage({
 
   // Redirect to last page if requested page exceeds total (show last page, not empty results)
   if (requestedPage > totalPages && totalPages > 0) {
-    redirect(buildBlogUrl({ q: q || undefined, tag: tag || undefined, page: totalPages }));
+    redirect(
+      buildBlogUrl({
+        q: q || undefined,
+        tag: tag || undefined,
+        page: totalPages,
+      }),
+    );
   }
 
   const page = Math.min(requestedPage, Math.max(1, totalPages));
@@ -135,7 +139,7 @@ export default async function BlogPage({
             defaultValue={q}
             maxLength={200}
             placeholder={`/ ${t("search.placeholder")}`}
-            className="border-border bg-transparent text-foreground placeholder:text-muted-foreground w-full rounded border px-3 py-1.5 font-mono text-sm tracking-wider outline-none focus:ring-1 focus:ring-current"
+            className="border-border text-foreground placeholder:text-muted-foreground w-full rounded border bg-transparent px-3 py-1.5 font-mono text-sm tracking-wider outline-none focus:ring-1 focus:ring-current"
           />
           {q && (
             <Link
@@ -195,7 +199,7 @@ export default async function BlogPage({
               className="border-border hover:bg-secondary/50 flex flex-col gap-2 border-b px-4 py-4 transition-colors sm:flex-row sm:items-center sm:gap-0 sm:py-3.5"
             >
               {/* Title - first on mobile for readability */}
-              <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
+              <span className="text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
                 {article.title}
                 {article.authorType === "member" && article.authorName && (
                   <span className="text-muted-foreground ml-2 font-mono text-[10px] font-normal tracking-wider">
@@ -216,20 +220,26 @@ export default async function BlogPage({
                 </span>
                 {/* Reading time - inline on mobile */}
                 <span className="text-muted-foreground font-mono text-[10px] tracking-wider sm:hidden">
-                  {t("readingTime", { minutes: estimateReadingTime(article.content) })}
+                  {t("readingTime", {
+                    minutes: estimateReadingTime(article.content),
+                  })}
                 </span>
               </div>
 
               {/* Reading time - desktop */}
               <span className="text-muted-foreground hidden w-20 font-mono text-[11px] tracking-wider sm:order-3 sm:inline">
-                {t("readingTime", { minutes: estimateReadingTime(article.content) })}
+                {t("readingTime", {
+                  minutes: estimateReadingTime(article.content),
+                })}
               </span>
 
               {/* Type badge - desktop only */}
               <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-4 sm:inline">
                 {typeLabels[article.type] ?? article.type}
               </span>
-              <span className="text-muted-foreground ml-4 hidden font-mono text-lg font-light sm:order-5 sm:inline">+</span>
+              <span className="text-muted-foreground ml-4 hidden font-mono text-lg font-light sm:order-5 sm:inline">
+                +
+              </span>
             </Link>
           ))}
 
@@ -238,13 +248,19 @@ export default async function BlogPage({
             <div className="mt-8 flex items-center justify-center gap-6 font-mono text-xs tracking-wider">
               {page > 1 ? (
                 <Link
-                  href={buildBlogUrl({ q: q || undefined, tag: tag || undefined, page: page - 1 })}
+                  href={buildBlogUrl({
+                    q: q || undefined,
+                    tag: tag || undefined,
+                    page: page - 1,
+                  })}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   ← {t("pagination.prev")}
                 </Link>
               ) : (
-                <span className="text-muted-foreground/40">← {t("pagination.prev")}</span>
+                <span className="text-muted-foreground/40">
+                  ← {t("pagination.prev")}
+                </span>
               )}
 
               <span className="text-muted-foreground">
@@ -253,13 +269,19 @@ export default async function BlogPage({
 
               {page < totalPages ? (
                 <Link
-                  href={buildBlogUrl({ q: q || undefined, tag: tag || undefined, page: page + 1 })}
+                  href={buildBlogUrl({
+                    q: q || undefined,
+                    tag: tag || undefined,
+                    page: page + 1,
+                  })}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {t("pagination.next")} →
                 </Link>
               ) : (
-                <span className="text-muted-foreground/40">{t("pagination.next")} →</span>
+                <span className="text-muted-foreground/40">
+                  {t("pagination.next")} →
+                </span>
               )}
             </div>
           )}

@@ -123,9 +123,7 @@ export function EventRegisterButton({
   }
 
   // Not registered yet
-  const priceLabel = isPaid
-    ? ` - €${((price ?? 0) / 100).toFixed(2)}`
-    : "";
+  const priceLabel = isPaid ? ` - €${((price ?? 0) / 100).toFixed(2)}` : "";
 
   return (
     <Button
@@ -133,9 +131,7 @@ export function EventRegisterButton({
       onClick={() => registerMutation.mutate({ eventId })}
       disabled={registerMutation.isPending}
     >
-      {registerMutation.isPending
-        ? "Registering..."
-        : `Register${priceLabel}`}
+      {registerMutation.isPending ? "Registering..." : `Register${priceLabel}`}
     </Button>
   );
 }

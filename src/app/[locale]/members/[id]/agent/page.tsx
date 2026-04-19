@@ -76,7 +76,7 @@ export default async function AgentProfilePage({
             className="h-20 w-20 rounded-full"
           />
         ) : (
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary text-3xl">
+          <div className="bg-secondary flex h-20 w-20 items-center justify-center rounded-full text-3xl">
             <span role="img" aria-label="Robot">
               🤖
             </span>
@@ -87,11 +87,11 @@ export default async function AgentProfilePage({
             {agent.name}
           </h1>
           {owner && (
-            <p className="mt-1 font-mono text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-1 font-mono text-xs">
               AI Agent for{" "}
               <Link
                 href={`/members/${id}`}
-                className="text-primary underline underline-offset-4 hover:text-primary/80"
+                className="text-primary hover:text-primary/80 underline underline-offset-4"
               >
                 {owner.displayName}
               </Link>
@@ -104,7 +104,7 @@ export default async function AgentProfilePage({
       <div className="border-border mt-8 border-t pt-8">
         <div className="flex gap-8">
           <div>
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground">
+            <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
               CONTRIBUTIONS
             </span>
             <p className="mt-1 text-2xl font-extrabold">
@@ -112,7 +112,7 @@ export default async function AgentProfilePage({
             </p>
           </div>
           <div>
-            <span className="font-mono text-[10px] tracking-wider text-muted-foreground">
+            <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
               ACTIVE SINCE
             </span>
             <p className="mt-1 text-2xl font-extrabold">
@@ -126,7 +126,7 @@ export default async function AgentProfilePage({
       {expertiseTags.length > 0 && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / EXPERTISE
             </h2>
           </div>
@@ -134,7 +134,7 @@ export default async function AgentProfilePage({
             {expertiseTags.map((tag) => (
               <span
                 key={tag}
-                className="rounded border border-border px-2 py-0.5 font-mono text-[11px] tracking-wider text-muted-foreground"
+                className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[11px] tracking-wider"
               >
                 {tag}
               </span>
@@ -147,11 +147,11 @@ export default async function AgentProfilePage({
       {agent.bio && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / BIO
             </h2>
           </div>
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
             {agent.bio}
           </p>
         </div>
@@ -161,11 +161,11 @@ export default async function AgentProfilePage({
       {agent.description && (
         <div className="border-border mt-8 border-t pt-8">
           <div className="border-border border-b pb-4">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / DESCRIPTION (WRITTEN BY THIS AGENT)
             </h2>
           </div>
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
             {agent.description}
           </p>
         </div>

@@ -17,7 +17,11 @@ const INTEREST_OPTIONS = [
   "Cloud Infrastructure",
 ] as const;
 
-export function OnboardingQuestions({ onComplete }: { onComplete: () => void }) {
+export function OnboardingQuestions({
+  onComplete,
+}: {
+  onComplete: () => void;
+}) {
   const t = useTranslations("onboarding");
   const [step, setStep] = useState(0);
   const [intent, setIntent] = useState<Intent | null>(null);
@@ -80,7 +84,9 @@ export function OnboardingQuestions({ onComplete }: { onComplete: () => void }) 
       {step === 0 && (
         <div>
           <h2 className="text-xl font-bold tracking-tight">{t("q1Title")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("q1Subtitle")}</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {t("q1Subtitle")}
+          </p>
           <div className="mt-6 space-y-2">
             {(
               [
@@ -111,7 +117,9 @@ export function OnboardingQuestions({ onComplete }: { onComplete: () => void }) 
       {step === 1 && (
         <div>
           <h2 className="text-xl font-bold tracking-tight">{t("q2Title")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("q2Subtitle")}</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {t("q2Subtitle")}
+          </p>
           <div className="mt-6 flex flex-wrap gap-2">
             {INTEREST_OPTIONS.map((option) => (
               <button
@@ -132,7 +140,7 @@ export function OnboardingQuestions({ onComplete }: { onComplete: () => void }) 
             placeholder={t("otherInterest")}
             value={customInterest}
             onChange={(e) => setCustomInterest(e.target.value)}
-            className="mt-4 w-full rounded-lg border border-border bg-transparent px-4 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+            className="border-border placeholder:text-muted-foreground focus:border-primary mt-4 w-full rounded-lg border bg-transparent px-4 py-2 text-sm focus:outline-none"
           />
         </div>
       )}
@@ -141,7 +149,9 @@ export function OnboardingQuestions({ onComplete }: { onComplete: () => void }) 
       {step === 2 && (
         <div>
           <h2 className="text-xl font-bold tracking-tight">{t("q3Title")}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{t("q3Subtitle")}</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {t("q3Subtitle")}
+          </p>
           <div className="mt-6 space-y-2">
             {(
               [
@@ -172,7 +182,7 @@ export function OnboardingQuestions({ onComplete }: { onComplete: () => void }) 
         <button
           onClick={handleSkip}
           disabled={skipIntent.isPending}
-          className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm transition-colors"
         >
           <SkipForward className="h-3.5 w-3.5" />
           {t("skip")}

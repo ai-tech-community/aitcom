@@ -44,7 +44,9 @@ export const notificationsRouter = createTRPCRouter({
     const [row] = await ctx.db
       .select({ count: sql<number>`count(*)::int` })
       .from(notifications)
-      .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
+      .where(
+        and(eq(notifications.userId, userId), isNull(notifications.readAt)),
+      );
     return { count: row?.count ?? 0 };
   }),
 
@@ -73,7 +75,9 @@ export const notificationsRouter = createTRPCRouter({
       await ctx.db
         .update(notifications)
         .set({ readAt: null })
-        .where(and(eq(notifications.id, input.id), eq(notifications.userId, userId)));
+        .where(
+          and(eq(notifications.id, input.id), eq(notifications.userId, userId)),
+        );
     }),
 
   /**
@@ -85,7 +89,9 @@ export const notificationsRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       await ctx.db
         .delete(notifications)
-        .where(and(eq(notifications.id, input.id), eq(notifications.userId, userId)));
+        .where(
+          and(eq(notifications.id, input.id), eq(notifications.userId, userId)),
+        );
     }),
 
   /**
@@ -103,6 +109,8 @@ export const notificationsRouter = createTRPCRouter({
     const userId = ctx.session.user.id;
     await ctx.db
       .delete(notifications)
-      .where(and(eq(notifications.userId, userId), isNotNull(notifications.readAt)));
+      .where(
+        and(eq(notifications.userId, userId), isNotNull(notifications.readAt)),
+      );
   }),
 });

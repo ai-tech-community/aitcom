@@ -86,9 +86,9 @@ export function SetupWebhook() {
         : "Connected";
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
-      <div className="border-b border-border pb-4">
-        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+    <div className="border-border bg-card rounded-xl border p-6">
+      <div className="border-border border-b pb-4">
+        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / WEBHOOK
         </span>
       </div>
@@ -104,14 +104,14 @@ export function SetupWebhook() {
                     : "bg-red-500"
               }`}
             />
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="text-muted-foreground font-mono text-xs">
               {statusLabel}
             </span>
           </div>
         )}
 
         <div>
-          <label className="font-mono text-[11px] tracking-wider text-muted-foreground">
+          <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
             WEBHOOK URL
           </label>
           <Input
@@ -123,7 +123,7 @@ export function SetupWebhook() {
         </div>
 
         <div>
-          <label className="font-mono text-[11px] tracking-wider text-muted-foreground">
+          <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
             EVENT SUBSCRIPTIONS
           </label>
           <div className="mt-2 grid grid-cols-2 gap-2">
@@ -144,7 +144,7 @@ export function SetupWebhook() {
                 />
                 <div>
                   <span className="text-sm font-medium">{cat.label}</span>
-                  <p className="text-xs text-muted-foreground">{cat.desc}</p>
+                  <p className="text-muted-foreground text-xs">{cat.desc}</p>
                 </div>
               </label>
             ))}
@@ -156,17 +156,18 @@ export function SetupWebhook() {
             <p className="font-mono text-[11px] tracking-wider text-yellow-400">
               WEBHOOK SECRET — SAVE THIS NOW
             </p>
-            <code className="mt-1 block break-all font-mono text-xs text-yellow-200">
+            <code className="mt-1 block font-mono text-xs break-all text-yellow-200">
               {revealedSecret}
             </code>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Use this to verify webhook signatures. It won&apos;t be shown again.
+            <p className="text-muted-foreground mt-2 text-xs">
+              Use this to verify webhook signatures. It won&apos;t be shown
+              again.
             </p>
           </div>
         )}
 
         {error && (
-          <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
+          <div className="border-destructive/30 bg-destructive/10 text-destructive rounded border px-3 py-2 font-mono text-xs">
             {error}
           </div>
         )}
@@ -182,7 +183,9 @@ export function SetupWebhook() {
             size="sm"
             className="font-mono text-xs tracking-wider"
             onClick={handleSave}
-            disabled={upsertWebhook.isPending || !url.trim() || categories.length === 0}
+            disabled={
+              upsertWebhook.isPending || !url.trim() || categories.length === 0
+            }
           >
             {upsertWebhook.isPending ? "..." : webhook ? "Update" : "Save"}
           </Button>
@@ -200,7 +203,7 @@ export function SetupWebhook() {
               <Button
                 variant="outline"
                 size="sm"
-                className="font-mono text-xs tracking-wider text-destructive"
+                className="text-destructive font-mono text-xs tracking-wider"
                 onClick={() => deleteWebhook.mutate()}
                 disabled={deleteWebhook.isPending}
               >

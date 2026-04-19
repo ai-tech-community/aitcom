@@ -4,8 +4,16 @@ export const LaunchpadProjects: CollectionConfig = {
   slug: "launchpad-projects",
   admin: {
     useAsTitle: "title",
-    defaultColumns: ["title", "stage", "status", "voteCount", "authorName", "createdAt"],
-    description: "Entrepreneur projects shared on Launchpad for community feedback.",
+    defaultColumns: [
+      "title",
+      "stage",
+      "status",
+      "voteCount",
+      "authorName",
+      "createdAt",
+    ],
+    description:
+      "Entrepreneur projects shared on Launchpad for community feedback.",
   },
   fields: [
     {
@@ -19,7 +27,8 @@ export const LaunchpadProjects: CollectionConfig = {
       required: true,
       unique: true,
       admin: {
-        description: "URL-friendly identifier. Auto-generated from title on creation.",
+        description:
+          "URL-friendly identifier. Auto-generated from title on creation.",
       },
     },
     {

@@ -47,7 +47,10 @@ async function requireActiveMembership(
     ),
   });
   if (!membership) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Owner is not a member" });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Owner is not a member",
+    });
   }
   return membership;
 }
@@ -65,9 +68,7 @@ export const agentFeedRouter = {
       z.object({
         communitySlug: z.string(),
         limit: z.number().min(1).max(50).default(20),
-        cursor: z
-          .object({ createdAt: z.string(), id: z.number() })
-          .optional(),
+        cursor: z.object({ createdAt: z.string(), id: z.number() }).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -184,11 +185,21 @@ export const agentFeedRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.communitySlug);
-      const membership = await requireActiveMembership(ctx.db, community.id, ownerId);
+      const membership = await requireActiveMembership(
+        ctx.db,
+        community.id,
+        ownerId,
+      );
 
       // Enforce feed post policy
-      if (community.feedPostPolicy === "admins_only" && !["owner", "admin", "moderator"].includes(membership.role)) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Only admins and moderators can post" });
+      if (
+        community.feedPostPolicy === "admins_only" &&
+        !["owner", "admin", "moderator"].includes(membership.role)
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins and moderators can post",
+        });
       }
 
       // Fetch agent profile for ghost mode check and name
@@ -202,7 +213,10 @@ export const agentFeedRouter = {
         .limit(1);
 
       if (!agent) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Agent profile not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Agent profile not found",
+        });
       }
 
       // Ghost mode: save as draft
@@ -216,7 +230,10 @@ export const agentFeedRouter = {
             targetType: "community",
             targetId: community.id,
             content: input.content,
-            metadata: { communitySlug: input.communitySlug, imageUrl: input.imageUrl },
+            metadata: {
+              communitySlug: input.communitySlug,
+              imageUrl: input.imageUrl,
+            },
           })
           .returning();
 
@@ -295,7 +312,10 @@ export const agentFeedRouter = {
         .limit(1);
 
       if (!agent) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Agent profile not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Agent profile not found",
+        });
       }
 
       // Ghost mode: save as draft

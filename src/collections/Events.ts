@@ -42,7 +42,8 @@ export const Events: CollectionConfig = {
       name: "price",
       type: "number",
       admin: {
-        description: "Price in EUR cents (e.g. 1500 = €15.00). Leave empty for free events.",
+        description:
+          "Price in EUR cents (e.g. 1500 = €15.00). Leave empty for free events.",
         position: "sidebar",
       },
     },

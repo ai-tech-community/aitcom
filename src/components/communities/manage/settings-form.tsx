@@ -37,9 +37,7 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(initialData.name);
-  const [description, setDescription] = useState(
-    initialData.description ?? "",
-  );
+  const [description, setDescription] = useState(initialData.description ?? "");
   const [logoUrl, setLogoUrl] = useState(initialData.logoUrl);
   const [isUploading, setIsUploading] = useState(false);
   const [joinPolicy, setJoinPolicy] = useState<
@@ -48,7 +46,9 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
   const [isListedInDirectory, setIsListedInDirectory] = useState(
     initialData.isListedInDirectory,
   );
-  const [feedPostPolicy, setFeedPostPolicy] = useState<"all_members" | "admins_only">(initialData.feedPostPolicy);
+  const [feedPostPolicy, setFeedPostPolicy] = useState<
+    "all_members" | "admins_only"
+  >(initialData.feedPostPolicy);
 
   const updateMutation = api.communities.updateSettings.useMutation({
     onSuccess: () => {
@@ -79,7 +79,7 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
         throw new Error("Upload failed");
       }
 
-      const data = await res.json() as { url: string };
+      const data = (await res.json()) as { url: string };
       setLogoUrl(data.url);
     } catch {
       toast.error(t("logoUploadError"));
@@ -117,10 +117,10 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
         <p className="text-muted-foreground text-sm">{t("logoDescription")}</p>
         <div className="flex items-center gap-4">
           <Avatar className="size-16 rounded-xl text-lg">
-            {logoUrl ? (
-              <AvatarImage src={logoUrl} alt={name} />
-            ) : null}
-            <AvatarFallback className="rounded-xl text-lg">{initials}</AvatarFallback>
+            {logoUrl ? <AvatarImage src={logoUrl} alt={name} /> : null}
+            <AvatarFallback className="rounded-xl text-lg">
+              {initials}
+            </AvatarFallback>
           </Avatar>
           <div className="flex items-center gap-2">
             <Button
@@ -192,9 +192,7 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
         <Select
           value={joinPolicy}
           onValueChange={(v) =>
-            setJoinPolicy(
-              v as "open" | "invite_only" | "approval_required",
-            )
+            setJoinPolicy(v as "open" | "invite_only" | "approval_required")
           }
         >
           <SelectTrigger id="joinPolicy">
@@ -216,14 +214,20 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
         <Label htmlFor="feedPostPolicy">{t("feedPostPolicy")}</Label>
         <Select
           value={feedPostPolicy}
-          onValueChange={(v) => setFeedPostPolicy(v as "all_members" | "admins_only")}
+          onValueChange={(v) =>
+            setFeedPostPolicy(v as "all_members" | "admins_only")
+          }
         >
           <SelectTrigger id="feedPostPolicy">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all_members">{t("feedPolicyAllMembers")}</SelectItem>
-            <SelectItem value="admins_only">{t("feedPolicyAdminsOnly")}</SelectItem>
+            <SelectItem value="all_members">
+              {t("feedPolicyAllMembers")}
+            </SelectItem>
+            <SelectItem value="admins_only">
+              {t("feedPolicyAdminsOnly")}
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>

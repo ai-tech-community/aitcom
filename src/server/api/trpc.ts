@@ -14,7 +14,11 @@ import { z, ZodError } from "zod";
 import { and, eq, isNull } from "drizzle-orm";
 import { auth } from "@/server/better-auth";
 import { db } from "@/server/db";
-import { agentProfiles, communities, communityMemberships } from "@/server/db/schema";
+import {
+  agentProfiles,
+  communities,
+  communityMemberships,
+} from "@/server/db/schema";
 import type { CommunityRole } from "@/server/communities/role-utils";
 import { checkRateLimit } from "@/server/agent/rate-limit";
 
@@ -220,15 +224,15 @@ const communityAuth = t.middleware(async ({ ctx, next, getRawInput }) => {
   const rawInput = await getRawInput();
   const parsed = z.object({ slug: z.string() }).safeParse(rawInput);
   if (!parsed.success) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Missing or invalid community slug" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Missing or invalid community slug",
+    });
   }
   const input = parsed.data;
 
   const community = await ctx.db.query.communities.findFirst({
-    where: and(
-      eq(communities.slug, input.slug),
-      isNull(communities.deletedAt),
-    ),
+    where: and(eq(communities.slug, input.slug), isNull(communities.deletedAt)),
   });
 
   if (!community) {
@@ -247,7 +251,9 @@ const communityAuth = t.middleware(async ({ ctx, next, getRawInput }) => {
       session: { ...ctx.session, user: ctx.session.user },
       community,
       membership: membership ?? null,
-      communityRole: (membership?.status === "active" ? membership.role : null) as CommunityRole | null,
+      communityRole: (membership?.status === "active"
+        ? membership.role
+        : null) as CommunityRole | null,
     },
   });
 });
@@ -255,4 +261,3 @@ const communityAuth = t.middleware(async ({ ctx, next, getRawInput }) => {
 export const communityProcedure = t.procedure
   .use(timingMiddleware)
   .use(communityAuth);
-

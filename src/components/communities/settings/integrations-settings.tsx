@@ -102,7 +102,9 @@ export function IntegrationsSettings({ slug }: IntegrationsSettingsProps) {
           <div className="mt-4 space-y-3">
             <div className="bg-secondary/50 flex items-center justify-between rounded-md px-3 py-2">
               <div>
-                <span className="text-sm font-medium">{t("calendarLabel")}: </span>
+                <span className="text-sm font-medium">
+                  {t("calendarLabel")}:{" "}
+                </span>
                 <span className="text-sm">{config.calendarName}</span>
               </div>
               <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
@@ -112,7 +114,8 @@ export function IntegrationsSettings({ slug }: IntegrationsSettingsProps) {
 
             {config.lastSyncCheck && (
               <p className="text-muted-foreground text-xs">
-                {t("lastSync")}: {new Date(config.lastSyncCheck).toLocaleString()}
+                {t("lastSync")}:{" "}
+                {new Date(config.lastSyncCheck).toLocaleString()}
               </p>
             )}
 
@@ -201,10 +204,7 @@ export function IntegrationsSettings({ slug }: IntegrationsSettingsProps) {
           </div>
         ) : (
           <div className="mt-4">
-            <Button
-              size="sm"
-              onClick={() => setShowKeyInput(true)}
-            >
+            <Button size="sm" onClick={() => setShowKeyInput(true)}>
               {t("connect")}
             </Button>
           </div>

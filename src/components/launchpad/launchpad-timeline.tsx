@@ -65,13 +65,13 @@ export function LaunchpadTimeline({
     <div className="space-y-4">
       {/* Section header */}
       <div className="flex items-center justify-between">
-        <h2 className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+        <h2 className="font-mono text-[10px] font-semibold tracking-widest text-zinc-400 uppercase">
           {t("timeline")}
         </h2>
         {isAuthor && !showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-100"
+            className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold tracking-wider text-zinc-500 uppercase transition-colors hover:bg-zinc-100"
           >
             {t("submit")}
           </button>
@@ -93,7 +93,7 @@ export function LaunchpadTimeline({
           className="space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3"
         >
           <div>
-            <label className="mb-1 block font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500">
+            <label className="mb-1 block font-mono text-[9px] font-semibold tracking-wider text-zinc-500 uppercase">
               {t("title")}
             </label>
             <input
@@ -103,11 +103,11 @@ export function LaunchpadTimeline({
               placeholder={t("titlePlaceholder")}
               maxLength={500}
               required
-              className="w-full rounded border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300"
+              className="w-full rounded border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-300 focus:outline-none"
             />
           </div>
           <div>
-            <label className="mb-1 block font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500">
+            <label className="mb-1 block font-mono text-[9px] font-semibold tracking-wider text-zinc-500 uppercase">
               {t("content")}
             </label>
             <textarea
@@ -117,7 +117,7 @@ export function LaunchpadTimeline({
               maxLength={10000}
               rows={3}
               required
-              className="w-full resize-none rounded border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300"
+              className="w-full resize-none rounded border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-300 focus:outline-none"
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -128,18 +128,16 @@ export function LaunchpadTimeline({
                 setTitle("");
                 setContent("");
               }}
-              className="rounded border border-zinc-200 px-3 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-100"
+              className="rounded border border-zinc-200 px-3 py-1 font-mono text-[9px] font-semibold tracking-wider text-zinc-500 uppercase transition-colors hover:bg-zinc-100"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={
-                postUpdateMutation.isPending ||
-                !title.trim() ||
-                !content.trim()
+                postUpdateMutation.isPending || !title.trim() || !content.trim()
               }
-              className="rounded-md bg-zinc-900 px-3 py-1 font-mono text-[9px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-md bg-zinc-900 px-3 py-1 font-mono text-[9px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 disabled:opacity-50"
             >
               {postUpdateMutation.isPending ? "Posting..." : t("submit")}
             </button>
@@ -166,7 +164,7 @@ export function LaunchpadTimeline({
                 className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-semibold leading-snug text-zinc-900">
+                  <p className="text-sm leading-snug font-semibold text-zinc-900">
                     {update.title}
                   </p>
                   <span className="shrink-0 font-mono text-[9px] text-zinc-400">

@@ -1,5 +1,9 @@
 import type { Block, CollectionConfig } from "payload";
-import { BlocksFeature, CodeBlock, lexicalEditor } from "@payloadcms/richtext-lexical";
+import {
+  BlocksFeature,
+  CodeBlock,
+  lexicalEditor,
+} from "@payloadcms/richtext-lexical";
 
 const ImageBlock: Block = {
   slug: "Image",
@@ -28,7 +32,14 @@ export const Articles: CollectionConfig = {
   slug: "articles",
   admin: {
     useAsTitle: "title",
-    defaultColumns: ["title", "type", "status", "authorType", "reviewStatus", "publishedAt"],
+    defaultColumns: [
+      "title",
+      "type",
+      "status",
+      "authorType",
+      "reviewStatus",
+      "publishedAt",
+    ],
   },
   versions: { drafts: true },
   hooks: {
@@ -42,7 +53,8 @@ export const Articles: CollectionConfig = {
             data.status = "published";
             data.publishedAt = data.publishedAt ?? new Date().toISOString();
           } else if (
-            (data.reviewStatus === "rejected" || data.reviewStatus === "changes_requested") &&
+            (data.reviewStatus === "rejected" ||
+              data.reviewStatus === "changes_requested") &&
             originalDoc?.reviewStatus !== data.reviewStatus
           ) {
             data.status = "draft";
@@ -73,9 +85,8 @@ export const Articles: CollectionConfig = {
           doc.reviewStatus === "approved" &&
           previousDoc?.reviewStatus !== "approved"
         ) {
-          const { awardXp, checkArticleBadges, XP_AMOUNTS } = await import(
-            "@/lib/gamification"
-          );
+          const { awardXp, checkArticleBadges, XP_AMOUNTS } =
+            await import("@/lib/gamification");
           const { getPayloadClient } = await import("@/server/payload");
 
           await awardXp(db, doc.authorId, XP_AMOUNTS.ARTICLE_PUBLISHED);
@@ -149,7 +160,9 @@ export const Articles: CollectionConfig = {
       editor: lexicalEditor({
         features: ({ defaultFeatures }) => [
           ...defaultFeatures,
-          BlocksFeature({ blocks: [CodeBlock({ languages: codeLanguages }), ImageBlock] }),
+          BlocksFeature({
+            blocks: [CodeBlock({ languages: codeLanguages }), ImageBlock],
+          }),
         ],
       }),
     },

@@ -6,13 +6,15 @@ export const ForumReplies: CollectionConfig = {
   admin: {
     useAsTitle: "content",
     defaultColumns: ["thread", "author", "createdAt"],
-    description: "Replies to forum threads. Delete spam or abusive replies here.",
+    description:
+      "Replies to forum threads. Delete spam or abusive replies here.",
   },
   hooks: {
     afterChange: [
       async ({ doc, operation, req }) => {
         if (operation === "create") {
-          const threadId = typeof doc.thread === "object" ? doc.thread.id : doc.thread;
+          const threadId =
+            typeof doc.thread === "object" ? doc.thread.id : doc.thread;
           const thread = await req.payload.findByID({
             collection: "forum-threads",
             id: threadId,

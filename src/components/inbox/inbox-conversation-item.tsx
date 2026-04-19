@@ -55,7 +55,7 @@ export function InboxConversationItem({
     <button
       type="button"
       onClick={() => openChat(id)}
-      className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-secondary/50"
+      className="hover:bg-secondary/50 flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors"
     >
       {/* Avatar */}
       <div className="relative shrink-0">
@@ -71,13 +71,13 @@ export function InboxConversationItem({
             />
           </div>
         ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-sm font-medium text-muted-foreground">
+          <div className="bg-secondary text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium">
             {displayName.charAt(0).toUpperCase()}
           </div>
         )}
         {type === "agent" && (
-          <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-background">
-            <BotIcon className="h-3 w-3 text-muted-foreground" />
+          <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full">
+            <BotIcon className="text-muted-foreground h-3 w-3" />
           </span>
         )}
       </div>
@@ -85,17 +85,21 @@ export function InboxConversationItem({
       {/* Content */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between">
-          <span className={`truncate text-sm ${unreadCount > 0 ? "font-semibold text-foreground" : "font-medium text-foreground"}`}>
+          <span
+            className={`truncate text-sm ${unreadCount > 0 ? "text-foreground font-semibold" : "text-foreground font-medium"}`}
+          >
             {displayName}
           </span>
           {isLastMessageAtValid && parsedLastMessageAt && (
-            <span className="ml-2 shrink-0 font-mono text-[10px] text-muted-foreground">
+            <span className="text-muted-foreground ml-2 shrink-0 font-mono text-[10px]">
               {timeAgo(parsedLastMessageAt)}
             </span>
           )}
         </div>
         {preview && (
-          <p className={`truncate text-xs ${unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+          <p
+            className={`truncate text-xs ${unreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}
+          >
             {lastMessageSenderType === "agent" ? "Agent: " : ""}
             {preview}
           </p>
@@ -104,7 +108,7 @@ export function InboxConversationItem({
 
       {/* Unread dot */}
       {unreadCount > 0 && (
-        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
+        <span className="bg-primary h-2.5 w-2.5 shrink-0 rounded-full" />
       )}
     </button>
   );

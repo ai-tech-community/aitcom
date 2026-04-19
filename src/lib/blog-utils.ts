@@ -13,7 +13,8 @@ export function buildBlogUrl(params: {
   const q = params.q?.trim();
   if (q) searchParams.set("q", q);
   if (params.tag) searchParams.set("tag", params.tag);
-  if (params.page && params.page > 1) searchParams.set("page", String(params.page));
+  if (params.page && params.page > 1)
+    searchParams.set("page", String(params.page));
 
   const qs = searchParams.toString();
   return qs ? `/blog?${qs}` : "/blog";

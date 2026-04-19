@@ -67,7 +67,9 @@ export function FeedPostCard({
 
   const isAuthor = !!currentUserId && post.authorId === currentUserId;
   const isPrivileged =
-    memberRole === "owner" || memberRole === "admin" || memberRole === "moderator";
+    memberRole === "owner" ||
+    memberRole === "admin" ||
+    memberRole === "moderator";
 
   const toggleLike = api.feed.toggleLike.useMutation({
     onSuccess: () => onRefresh(),
@@ -94,7 +96,9 @@ export function FeedPostCard({
   if (post.isDeleted) {
     return (
       <div className="border-border rounded-lg border px-4 py-3">
-        <p className="text-muted-foreground font-mono text-xs">{t("postDeletedMessage")}</p>
+        <p className="text-muted-foreground font-mono text-xs">
+          {t("postDeletedMessage")}
+        </p>
       </div>
     );
   }
@@ -102,7 +106,7 @@ export function FeedPostCard({
   const initials = (post.authorName ?? "?")[0]?.toUpperCase() ?? "?";
 
   return (
-    <div className="border-border rounded-lg border p-4 space-y-3">
+    <div className="border-border space-y-3 rounded-lg border p-4">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5">
@@ -113,7 +117,9 @@ export function FeedPostCard({
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm font-medium leading-tight">{post.authorName ?? "Member"}</p>
+            <p className="text-sm leading-tight font-medium">
+              {post.authorName ?? "Member"}
+            </p>
             <p className="text-muted-foreground text-[11px]">
               {timeAgo(post.createdAt)}
               {post.isEdited ? ` · (${t("edited")})` : ""}
@@ -169,7 +175,10 @@ export function FeedPostCard({
             <Button
               size="sm"
               onClick={() =>
-                editPost.mutate({ postId: post.id, content: editContent.trim() })
+                editPost.mutate({
+                  postId: post.id,
+                  content: editContent.trim(),
+                })
               }
               disabled={!editContent.trim() || editPost.isPending}
             >
@@ -185,7 +194,9 @@ export function FeedPostCard({
           </div>
         </div>
       ) : (
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+          {post.content}
+        </p>
       )}
 
       {/* Image */}
@@ -194,7 +205,7 @@ export function FeedPostCard({
         <img
           src={post.imageUrl}
           alt="Post image"
-          className="w-full rounded-lg object-cover max-h-96"
+          className="max-h-96 w-full rounded-lg object-cover"
         />
       ) : null}
 

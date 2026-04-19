@@ -41,12 +41,18 @@ export async function validateWebhookUrl(
     hostname === "metadata.google.internal" ||
     hostname === "metadata.internal"
   ) {
-    return { ok: false, reason: "Webhook URL must not point to cloud metadata services" };
+    return {
+      ok: false,
+      reason: "Webhook URL must not point to cloud metadata services",
+    };
   }
 
   // Block private/internal IP ranges (RFC 1918, link-local, etc.)
   if (isPrivateHostname(hostname)) {
-    return { ok: false, reason: "Webhook URL must not point to a private/internal address" };
+    return {
+      ok: false,
+      reason: "Webhook URL must not point to a private/internal address",
+    };
   }
 
   // DNS resolution check — resolve hostname and verify all IPs are public.
@@ -94,11 +100,17 @@ export function validateWebhookUrlSync(
     hostname === "metadata.google.internal" ||
     hostname === "metadata.internal"
   ) {
-    return { ok: false, reason: "Webhook URL must not point to cloud metadata services" };
+    return {
+      ok: false,
+      reason: "Webhook URL must not point to cloud metadata services",
+    };
   }
 
   if (isPrivateHostname(hostname)) {
-    return { ok: false, reason: "Webhook URL must not point to a private/internal address" };
+    return {
+      ok: false,
+      reason: "Webhook URL must not point to a private/internal address",
+    };
   }
 
   return { ok: true };
@@ -113,7 +125,9 @@ function isPrivateHostname(hostname: string): boolean {
   const stripped = hostname.replace(/^\[|\]$/g, "");
 
   // Block IPv6-mapped IPv4 (::ffff:127.0.0.1, ::ffff:10.0.0.1, etc.)
-  const mappedV4 = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(stripped);
+  const mappedV4 = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(
+    stripped,
+  );
   if (mappedV4) {
     return isPrivateIPv4(mappedV4[1]!);
   }
@@ -214,12 +228,18 @@ async function checkResolvedIPs(
   }
 
   if (ipv4s.length === 0 && ipv6s.length === 0) {
-    return { ok: false, reason: "Webhook hostname does not resolve to any IP address" };
+    return {
+      ok: false,
+      reason: "Webhook hostname does not resolve to any IP address",
+    };
   }
 
   for (const ip of ipv4s) {
     if (isPrivateIPv4(ip)) {
-      return { ok: false, reason: "Webhook hostname resolves to a private/internal IP address" };
+      return {
+        ok: false,
+        reason: "Webhook hostname resolves to a private/internal IP address",
+      };
     }
   }
 
@@ -232,7 +252,10 @@ async function checkResolvedIPs(
       lower.startsWith("fe80") ||
       lower.startsWith("::ffff:")
     ) {
-      return { ok: false, reason: "Webhook hostname resolves to a private/internal IP address" };
+      return {
+        ok: false,
+        reason: "Webhook hostname resolves to a private/internal IP address",
+      };
     }
   }
 

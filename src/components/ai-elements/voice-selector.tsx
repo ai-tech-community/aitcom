@@ -44,14 +44,14 @@ interface VoiceSelectorContextValue {
 }
 
 const VoiceSelectorContext = createContext<VoiceSelectorContextValue | null>(
-  null
+  null,
 );
 
 export const useVoiceSelector = () => {
   const context = useContext(VoiceSelectorContext);
   if (!context) {
     throw new Error(
-      "VoiceSelector components must be used within VoiceSelector"
+      "VoiceSelector components must be used within VoiceSelector",
     );
   }
   return context;
@@ -75,17 +75,17 @@ export const VoiceSelector = (voiceSelectorProps: VoiceSelectorProps) => {
   } = voiceSelectorProps;
   const onValueChange = useMemo(
     () => voiceSelectorProps.onValueChange?.bind(undefined),
-    [voiceSelectorProps.onValueChange]
+    [voiceSelectorProps.onValueChange],
   );
   const onOpenChange = useMemo(
     () => voiceSelectorProps.onOpenChange?.bind(undefined),
-    [voiceSelectorProps.onOpenChange]
+    [voiceSelectorProps.onOpenChange],
   );
   const handleValueChange = useCallback(
     (nextValue: string | undefined) => {
       onValueChange?.(nextValue);
     },
-    [onValueChange]
+    [onValueChange],
   );
   const [value, setValue] = useControllableState({
     defaultProp: defaultValue,
@@ -97,7 +97,7 @@ export const VoiceSelector = (voiceSelectorProps: VoiceSelectorProps) => {
     (nextOpen: boolean) => {
       onOpenChange?.(nextOpen);
     },
-    [onOpenChange]
+    [onOpenChange],
   );
   const [open, setOpen] = useControllableState({
     defaultProp: defaultOpen,
@@ -107,7 +107,7 @@ export const VoiceSelector = (voiceSelectorProps: VoiceSelectorProps) => {
 
   const voiceSelectorContext = useMemo(
     () => ({ open, setOpen, setValue, value }),
-    [value, setValue, open, setOpen]
+    [value, setValue, open, setOpen],
   );
 
   return (
@@ -456,7 +456,7 @@ export const VoiceSelectorBullet = ({
 }: VoiceSelectorBulletProps) => (
   <span
     aria-hidden="true"
-    className={cn("select-none text-border", className)}
+    className={cn("text-border select-none", className)}
     {...props}
   >
     &bull;
@@ -486,7 +486,7 @@ export const VoiceSelectorPreview = ({
       onClick?.(event);
       onPlay?.();
     },
-    [onClick, onPlay]
+    [onClick, onPlay],
   );
 
   let icon = <PlayIcon className="size-3" />;

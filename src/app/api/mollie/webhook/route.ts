@@ -19,7 +19,10 @@ function formatDate(dateStr: string): string {
 export async function POST(request: Request) {
   const mollie = getMollie();
   if (!mollie) {
-    return NextResponse.json({ error: "Mollie not configured" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Mollie not configured" },
+      { status: 500 },
+    );
   }
 
   const formData = await request.formData();
@@ -40,7 +43,10 @@ export async function POST(request: Request) {
     .limit(1);
 
   if (!registration) {
-    return NextResponse.json({ error: "Registration not found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Registration not found" },
+      { status: 404 },
+    );
   }
 
   // Update payment status
@@ -81,12 +87,16 @@ export async function POST(request: Request) {
           id: registration.eventId,
         });
 
-        await sendRegistrationConfirmation(registeredUser.email, registeredUser.name ?? "there", {
-          eventTitle: event.title,
-          eventDate: formatDate(event.date),
-          eventLocation: event.location,
-          eventSlug: event.slug,
-        });
+        await sendRegistrationConfirmation(
+          registeredUser.email,
+          registeredUser.name ?? "there",
+          {
+            eventTitle: event.title,
+            eventDate: formatDate(event.date),
+            eventLocation: event.location,
+            eventSlug: event.slug,
+          },
+        );
       }
     } catch (e) {
       console.error("Failed to send post-payment confirmation email:", e);

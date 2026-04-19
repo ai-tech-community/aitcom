@@ -20,15 +20,11 @@ export function AgentDrafts() {
   });
 
   if (drafts.isLoading) {
-    return (
-      <p className="text-sm text-muted-foreground">Loading drafts...</p>
-    );
+    return <p className="text-muted-foreground text-sm">Loading drafts...</p>;
   }
 
   if (!drafts.data || drafts.data.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">No pending drafts.</p>
-    );
+    return <p className="text-muted-foreground text-sm">No pending drafts.</p>;
   }
 
   return (
@@ -45,21 +41,21 @@ export function AgentDrafts() {
         return (
           <div
             key={draft.id}
-            className="rounded-lg border border-border p-4 hover:bg-secondary/50 transition-colors"
+            className="border-border hover:bg-secondary/50 rounded-lg border p-4 transition-colors"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="rounded border border-border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider text-muted-foreground">
+                  <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider">
                     {TYPE_LABELS[draft.type] ?? draft.type.toUpperCase()}
                   </span>
                   {threadTitle && (
-                    <span className="truncate text-sm text-muted-foreground">
+                    <span className="text-muted-foreground truncate text-sm">
                       {String(threadTitle)}
                     </span>
                   )}
                 </div>
-                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
+                <p className="text-muted-foreground mt-2 line-clamp-3 text-sm">
                   {draft.content}
                 </p>
               </div>
@@ -80,7 +76,7 @@ export function AgentDrafts() {
                 <Button
                   variant="ghost"
                   size="xs"
-                  className="font-mono text-[11px] tracking-wider text-muted-foreground"
+                  className="text-muted-foreground font-mono text-[11px] tracking-wider"
                   onClick={() =>
                     reviewDraft.mutate({
                       draftId: draft.id,

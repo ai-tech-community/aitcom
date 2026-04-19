@@ -1,5 +1,5 @@
-import type { MigrateDownArgs, MigrateUpArgs } from '@payloadcms/db-postgres'
-import { sql } from '@payloadcms/db-postgres'
+import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
+import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
@@ -33,7 +33,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
     ALTER TABLE "articles" DROP COLUMN IF EXISTS "tags";
     ALTER TABLE "_articles_v" DROP COLUMN IF EXISTS "version_tags";
-  `)
+  `);
 }
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
@@ -42,5 +42,5 @@ export async function down({ db }: MigrateDownArgs): Promise<void> {
     DROP TABLE "_articles_v_version_tags" CASCADE;
     ALTER TABLE "articles" ADD COLUMN "tags" jsonb;
     ALTER TABLE "_articles_v" ADD COLUMN "version_tags" jsonb;
-  `)
+  `);
 }

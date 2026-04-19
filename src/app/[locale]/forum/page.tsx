@@ -4,8 +4,7 @@ import { ForumPage } from "@/components/forum/forum-page";
 
 export const metadata: Metadata = {
   title: "Forum — AIT",
-  description:
-    "Ask, share, connect with the AIT community",
+  description: "Ask, share, connect with the AIT community",
   ...buildOgMeta(
     "Forum",
     "Ask, share, connect with the AIT community",

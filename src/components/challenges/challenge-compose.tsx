@@ -59,7 +59,7 @@ export function ChallengeCompose({
 
   return (
     <div className="mt-8">
-      <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
         / NEW THREAD
       </span>
 
@@ -112,7 +112,7 @@ export function ChallengeCompose({
 
       {/* Error */}
       {createThread.isError && (
-        <p className="mt-2 font-mono text-xs text-destructive">
+        <p className="text-destructive mt-2 font-mono text-xs">
           {createThread.error.message}
         </p>
       )}
@@ -121,9 +121,7 @@ export function ChallengeCompose({
       <div className="mt-4 flex items-center gap-3">
         <Button
           className="font-mono text-xs tracking-wider"
-          disabled={
-            !title.trim() || !content.trim() || createThread.isPending
-          }
+          disabled={!title.trim() || !content.trim() || createThread.isPending}
           onClick={handleSubmit}
         >
           {createThread.isPending ? "Posting..." : "Post Thread"}

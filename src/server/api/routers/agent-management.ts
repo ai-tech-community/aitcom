@@ -431,7 +431,8 @@ export const agentManagementRouter = createTRPCRouter({
       return {
         ok: false,
         reason: "not-connected" as const,
-        details: "API key is ready but no external tool has connected yet. Configure your n8n workflow or Claude CLI, then try again.",
+        details:
+          "API key is ready but no external tool has connected yet. Configure your n8n workflow or Claude CLI, then try again.",
       };
     }
 
@@ -465,12 +466,9 @@ export const agentManagementRouter = createTRPCRouter({
   upsertWebhook: protectedProcedure
     .input(
       z.object({
-        url: z
-          .string()
-          .url()
-          .startsWith("https://", {
-            message: "Webhook URL must use HTTPS",
-          }),
+        url: z.string().url().startsWith("https://", {
+          message: "Webhook URL must use HTTPS",
+        }),
         categories: z
           .array(
             z.enum([
@@ -544,9 +542,7 @@ export const agentManagementRouter = createTRPCRouter({
   /** Delete the current user's webhook configuration. */
   deleteWebhook: protectedProcedure.mutation(async ({ ctx }) => {
     const userId = ctx.session.user.id;
-    await ctx.db
-      .delete(agentWebhooks)
-      .where(eq(agentWebhooks.ownerId, userId));
+    await ctx.db.delete(agentWebhooks).where(eq(agentWebhooks.ownerId, userId));
     return { success: true };
   }),
 
@@ -630,9 +626,7 @@ export const agentManagementRouter = createTRPCRouter({
   getDrafts: protectedProcedure
     .input(
       z.object({
-        status: z
-          .enum(["pending", "approved", "rejected"])
-          .default("pending"),
+        status: z.enum(["pending", "approved", "rejected"]).default("pending"),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -724,9 +718,7 @@ export const agentManagementRouter = createTRPCRouter({
   getSuggestions: protectedProcedure
     .input(
       z.object({
-        status: z
-          .enum(["pending", "approved", "rejected"])
-          .default("pending"),
+        status: z.enum(["pending", "approved", "rejected"]).default("pending"),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -875,17 +867,20 @@ export const agentManagementRouter = createTRPCRouter({
 
       if (!agent) return null;
       if (agent.status !== "unclaimed") return null;
-      if (agent.claimTokenExpiresAt && new Date() > agent.claimTokenExpiresAt) return null;
+      if (agent.claimTokenExpiresAt && new Date() > agent.claimTokenExpiresAt)
+        return null;
 
       return agent;
     }),
 
   claimAgent: protectedProcedure
     .input(
-      z.object({
-        token: z.string().optional(),
-        agentId: z.string().optional(),
-      }).refine((d) => d.token ?? d.agentId, "Provide either token or agentId"),
+      z
+        .object({
+          token: z.string().optional(),
+          agentId: z.string().optional(),
+        })
+        .refine((d) => d.token ?? d.agentId, "Provide either token or agentId"),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
@@ -937,7 +932,10 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
-      if (agentQuery.claimTokenExpiresAt && new Date() > agentQuery.claimTokenExpiresAt) {
+      if (
+        agentQuery.claimTokenExpiresAt &&
+        new Date() > agentQuery.claimTokenExpiresAt
+      ) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: "This claim link has expired.",
@@ -987,10 +985,17 @@ export const agentManagementRouter = createTRPCRouter({
         action: "agent.claimed",
         targetType: "agent_profile",
         targetId: agentQuery.id,
-        metadata: { agentName: agentQuery.name, method: input.token ? "magic-link" : "dashboard" },
+        metadata: {
+          agentName: agentQuery.name,
+          method: input.token ? "magic-link" : "dashboard",
+        },
       });
 
-      return { success: true, agentId: agentQuery.id, agentName: agentQuery.name };
+      return {
+        success: true,
+        agentId: agentQuery.id,
+        agentName: agentQuery.name,
+      };
     }),
 
   // ── Verification ───────────────────────────────────────────────────────
@@ -999,17 +1004,27 @@ export const agentManagementRouter = createTRPCRouter({
     const userId = ctx.session.user.id;
 
     const [agent] = await ctx.db
-      .select({ id: agentProfiles.id, name: agentProfiles.name, isVerified: agentProfiles.isVerified })
+      .select({
+        id: agentProfiles.id,
+        name: agentProfiles.name,
+        isVerified: agentProfiles.isVerified,
+      })
       .from(agentProfiles)
       .where(eq(agentProfiles.ownerId, userId))
       .limit(1);
 
     if (!agent) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "No agent profile found" });
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No agent profile found",
+      });
     }
 
     if (agent.isVerified) {
-      throw new TRPCError({ code: "CONFLICT", message: "Agent is already verified" });
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "Agent is already verified",
+      });
     }
 
     const code = "ait-verify-" + randomBytes(6).toString("hex");
@@ -1041,21 +1056,35 @@ export const agentManagementRouter = createTRPCRouter({
         .limit(1);
 
       if (!agent) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "No agent profile found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No agent profile found",
+        });
       }
 
       if (agent.isVerified) {
-        throw new TRPCError({ code: "CONFLICT", message: "Agent is already verified" });
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Agent is already verified",
+        });
       }
 
       if (!agent.verificationCode) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Start verification first" });
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Start verification first",
+        });
       }
 
-      const tweetUrlRegex = /^https?:\/\/(twitter\.com|x\.com)\/(\w+)\/status\/(\d+)/;
+      const tweetUrlRegex =
+        /^https?:\/\/(twitter\.com|x\.com)\/(\w+)\/status\/(\d+)/;
       const match = tweetUrlRegex.exec(input.tweetUrl);
       if (!match) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid tweet URL. Must be a twitter.com or x.com status URL." });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Invalid tweet URL. Must be a twitter.com or x.com status URL.",
+        });
       }
 
       const xHandle = match[2]!;
@@ -1066,12 +1095,19 @@ export const agentManagementRouter = createTRPCRouter({
       try {
         const response = await fetch(oembedUrl);
         if (!response.ok) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Could not fetch tweet. Make sure it exists and is public." });
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Could not fetch tweet. Make sure it exists and is public.",
+          });
         }
         oembedData = (await response.json()) as { html?: string };
       } catch (err) {
         if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Could not fetch tweet. Make sure it exists and is public." });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Could not fetch tweet. Make sure it exists and is public.",
+        });
       }
 
       if (!oembedData?.html?.includes(agent.verificationCode)) {
@@ -1133,7 +1169,10 @@ export const agentManagementRouter = createTRPCRouter({
       .from(activityEvents)
       .where(
         and(
-          sql`${activityEvents.action} = ANY(ARRAY[${sql.join(lifecycleActions.map((a) => sql`${a}`), sql`, `)}])`,
+          sql`${activityEvents.action} = ANY(ARRAY[${sql.join(
+            lifecycleActions.map((a) => sql`${a}`),
+            sql`, `,
+          )}])`,
           sql`(${activityEvents.actorId} = ${userId} OR ${activityEvents.actorId} = ${agent.id})`,
         ),
       )
@@ -1186,7 +1225,9 @@ export const agentManagementRouter = createTRPCRouter({
 
       const hasMore = events.length > input.limit;
       const items = hasMore ? events.slice(0, input.limit) : events;
-      const nextCursor = hasMore ? items[items.length - 1]!.createdAt.toISOString() : null;
+      const nextCursor = hasMore
+        ? items[items.length - 1]!.createdAt.toISOString()
+        : null;
 
       return { events: items, nextCursor };
     }),

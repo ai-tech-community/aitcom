@@ -130,11 +130,18 @@ export function Footer() {
           <p className="text-muted-foreground font-mono text-[11px] tracking-wider">
             {t("copyright", { year: new Date().getFullYear() })}
           </p>
-          <div className="flex text-muted-foreground font-mono text-[11px] tracking-wider">
-          <p>
-            BUILT WITH &#9829; BY &#29;
-          </p><p> </p>
-          <a href="https://klevox.com" className="hover:text-primary" target="_blank" > KLEVOX STUDIO</a></div>
+          <div className="text-muted-foreground flex font-mono text-[11px] tracking-wider">
+            <p>BUILT WITH &#9829; BY &#29;</p>
+            <p> </p>
+            <a
+              href="https://klevox.com"
+              className="hover:text-primary"
+              target="_blank"
+            >
+              {" "}
+              KLEVOX STUDIO
+            </a>
+          </div>
         </div>
       </div>
     </footer>

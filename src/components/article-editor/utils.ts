@@ -41,7 +41,9 @@ export function hasCodeNode(nodes: unknown): boolean {
   });
 }
 
-export function getHeadingOutline(nodes: unknown): Array<{ tag: string; text: string }> {
+export function getHeadingOutline(
+  nodes: unknown,
+): Array<{ tag: string; text: string }> {
   if (!Array.isArray(nodes)) return [];
 
   return nodes
@@ -76,7 +78,9 @@ export function generateSlug(title: string): string {
   return slugify(title);
 }
 
-export function preprocessEditorState(content: SerializedEditorState | undefined): string | undefined {
+export function preprocessEditorState(
+  content: SerializedEditorState | undefined,
+): string | undefined {
   if (!content) return undefined;
   type MutableSerializedNode = {
     type?: string;
@@ -115,7 +119,9 @@ export function preprocessEditorState(content: SerializedEditorState | undefined
   return JSON.stringify(json);
 }
 
-export function postprocessEditorState(state: SerializedEditorState): SerializedEditorState {
+export function postprocessEditorState(
+  state: SerializedEditorState,
+): SerializedEditorState {
   type MutableSerializedNode = {
     type?: string;
     fields?: {
@@ -147,7 +153,9 @@ export function postprocessEditorState(state: SerializedEditorState): Serialized
         // Ensure fields wrapper exists (handles old-format images with top-level src/alt)
         if (!node.fields?.blockType) {
           node.fields = {
-            id: node.fields?.id ?? crypto.randomUUID().replace(/-/g, "").substring(0, 12),
+            id:
+              node.fields?.id ??
+              crypto.randomUUID().replace(/-/g, "").substring(0, 12),
             blockType: "Image",
             src: node.fields?.src ?? node.src ?? "",
             alt: node.fields?.alt ?? node.alt ?? "",

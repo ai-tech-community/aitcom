@@ -1,8 +1,17 @@
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { clampRate, safeDelta, safePercent, toWeeklyBuckets } from "@/lib/impact-metrics";
-import { createTRPCRouter, protectedProcedure, publicProcedure } from "@/server/api/trpc";
+import {
+  clampRate,
+  safeDelta,
+  safePercent,
+  toWeeklyBuckets,
+} from "@/lib/impact-metrics";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "@/server/api/trpc";
 import {
   activityEvents,
   challengeEnrollments,
@@ -37,13 +46,19 @@ function startOfWeekStr(dateStr: string): string {
 
 function weekLabel(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00Z");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+  return d.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Fallback: compute from raw events (used when aggregate tables are empty)
 // ---------------------------------------------------------------------------
-type DbCtx = { db: Parameters<Parameters<typeof publicProcedure.query>[0]>[0]["ctx"]["db"] };
+type DbCtx = {
+  db: Parameters<Parameters<typeof publicProcedure.query>[0]>[0]["ctx"]["db"];
+};
 
 async function computeFromRawEvents(
   ctx: DbCtx,
@@ -51,7 +66,9 @@ async function computeFromRawEvents(
   previousSince: Date | null,
 ) {
   const now = new Date();
-  const contributionWhere = since ? gte(activityEvents.createdAt, since) : undefined;
+  const contributionWhere = since
+    ? gte(activityEvents.createdAt, since)
+    : undefined;
   const previousWhere = previousSince
     ? and(
         gte(activityEvents.createdAt, previousSince),
@@ -142,7 +159,9 @@ async function computeFromRawEvents(
       collection: "forum-threads",
       limit: 1,
       depth: 0,
-      where: since ? { createdAt: { greater_than_equal: since.toISOString() } } : undefined,
+      where: since
+        ? { createdAt: { greater_than_equal: since.toISOString() } }
+        : undefined,
     }),
     payload.find({
       collection: "forum-threads",
@@ -151,7 +170,9 @@ async function computeFromRawEvents(
       where: {
         and: [
           { replyCount: { greater_than: 0 } },
-          ...(since ? [{ createdAt: { greater_than_equal: since.toISOString() } }] : []),
+          ...(since
+            ? [{ createdAt: { greater_than_equal: since.toISOString() } }]
+            : []),
         ],
       },
     }),
@@ -162,7 +183,9 @@ async function computeFromRawEvents(
       where: {
         and: [
           { replyCount: { greater_than: 0 } },
-          ...(since ? [{ createdAt: { greater_than_equal: since.toISOString() } }] : []),
+          ...(since
+            ? [{ createdAt: { greater_than_equal: since.toISOString() } }]
+            : []),
         ],
       },
       sort: "-lastActivityAt",
@@ -179,7 +202,8 @@ async function computeFromRawEvents(
       if (!thread.createdAt || !thread.lastActivityAt) return null;
       const created = new Date(thread.createdAt).getTime();
       const last = new Date(thread.lastActivityAt).getTime();
-      if (Number.isNaN(created) || Number.isNaN(last) || last < created) return null;
+      if (Number.isNaN(created) || Number.isNaN(last) || last < created)
+        return null;
       return Math.round((last - created) / 60000);
     })
     .filter((value): value is number => value !== null)
@@ -187,9 +211,11 @@ async function computeFromRawEvents(
   const medianFirstResponse =
     responseMinutes.length === 0
       ? null
-      : responseMinutes[Math.floor(responseMinutes.length / 2)] ?? null;
+      : (responseMinutes[Math.floor(responseMinutes.length / 2)] ?? null);
 
-  const challengeDateWhere = since ? gte(challengeEnrollments.enrolledAt, since) : undefined;
+  const challengeDateWhere = since
+    ? gte(challengeEnrollments.enrolledAt, since)
+    : undefined;
   const challengeParticipation = extractCount(
     await ctx.db
       .select({ count: sql<number>`count(*)::int` })
@@ -202,7 +228,10 @@ async function computeFromRawEvents(
       .from(challengeEnrollments)
       .where(
         challengeDateWhere
-          ? and(challengeDateWhere, eq(challengeEnrollments.status, "completed"))
+          ? and(
+              challengeDateWhere,
+              eq(challengeEnrollments.status, "completed"),
+            )
           : eq(challengeEnrollments.status, "completed"),
       ),
   );
@@ -211,7 +240,9 @@ async function computeFromRawEvents(
     Math.max(challengeParticipation, 1),
   );
 
-  const eventDateWhere = since ? gte(eventRegistrations.registeredAt, since) : undefined;
+  const eventDateWhere = since
+    ? gte(eventRegistrations.registeredAt, since)
+    : undefined;
   const eventLinkedParticipation = extractCount(
     await ctx.db
       .select({ count: sql<number>`count(*)::int` })
@@ -226,14 +257,25 @@ async function computeFromRawEvents(
       ),
   );
 
-  const collaborationGrowth4w = safeDelta(collaborationRate, previousCollabRate);
+  const collaborationGrowth4w = safeDelta(
+    collaborationRate,
+    previousCollabRate,
+  );
 
   // Weekly active contributors (distinct actors in the last 7 days)
   const fallbackWeeklyActiveRows = await ctx.db
-    .select({ count: sql<number>`count(distinct ${activityEvents.actorId})::int` })
+    .select({
+      count: sql<number>`count(distinct ${activityEvents.actorId})::int`,
+    })
     .from(activityEvents)
-    .where(gte(activityEvents.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)));
-  const fallbackWeeklyActiveContributors = fallbackWeeklyActiveRows[0]?.count ?? 0;
+    .where(
+      gte(
+        activityEvents.createdAt,
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      ),
+    );
+  const fallbackWeeklyActiveContributors =
+    fallbackWeeklyActiveRows[0]?.count ?? 0;
 
   const trendSince = new Date(Date.now() - 8 * 7 * 24 * 60 * 60 * 1000);
   const trendRows = await ctx.db
@@ -271,7 +313,10 @@ async function computeFromRawEvents(
         value: clampRate(
           safePercent(
             bucket.collaborative,
-            Math.max(bucket.collaborative + bucket.aiOnly + bucket.humanOnly, 1),
+            Math.max(
+              bucket.collaborative + bucket.aiOnly + bucket.humanOnly,
+              1,
+            ),
           ),
         ),
       })),
@@ -313,17 +358,26 @@ async function computeFromRawEvents(
         {
           key: "humanOverrideRate",
           displayType: "percentage" as const,
-          value: clampRate(safePercent(humanReviewedAi, Math.max(aiAssisted, 1))),
+          value: clampRate(
+            safePercent(humanReviewedAi, Math.max(aiAssisted, 1)),
+          ),
         },
         {
           key: "creativityIndex",
           displayType: "percentage" as const,
-          value: clampRate(safePercent(challengeCompleted, Math.max(challengeParticipation, 1))),
+          value: clampRate(
+            safePercent(
+              challengeCompleted,
+              Math.max(challengeParticipation, 1),
+            ),
+          ),
         },
         {
           key: "collaborationDepth",
           displayType: "number" as const,
-          value: Number((humanReviewedAi / Math.max(challengeCompleted, 1)).toFixed(1)),
+          value: Number(
+            (humanReviewedAi / Math.max(challengeCompleted, 1)).toFixed(1),
+          ),
           suffix: "rounds",
         },
         {
@@ -361,14 +415,27 @@ type MixRow = typeof dailyCollabMix.$inferSelect;
 function mixRowsToWeeklyBuckets(rows: MixRow[], weeks = 8) {
   const now = new Date();
   // Build week keys for the last N weeks (Monday-start)
-  const firstWeekDate = new Date(now.getTime() - (weeks - 1) * 7 * 24 * 60 * 60 * 1000);
+  const firstWeekDate = new Date(
+    now.getTime() - (weeks - 1) * 7 * 24 * 60 * 60 * 1000,
+  );
   const firstWeekKey = startOfWeekStr(toDateStr(firstWeekDate));
 
-  const bucketMap = new Map<string, { label: string; aiOnly: number; humanOnly: number; collaborative: number }>();
+  const bucketMap = new Map<
+    string,
+    { label: string; aiOnly: number; humanOnly: number; collaborative: number }
+  >();
   for (let i = 0; i < weeks; i++) {
-    const wkDate = new Date(new Date(firstWeekKey + "T00:00:00Z").getTime() + i * 7 * 24 * 60 * 60 * 1000);
+    const wkDate = new Date(
+      new Date(firstWeekKey + "T00:00:00Z").getTime() +
+        i * 7 * 24 * 60 * 60 * 1000,
+    );
     const key = toDateStr(wkDate);
-    bucketMap.set(key, { label: weekLabel(key), aiOnly: 0, humanOnly: 0, collaborative: 0 });
+    bucketMap.set(key, {
+      label: weekLabel(key),
+      aiOnly: 0,
+      humanOnly: 0,
+      collaborative: 0,
+    });
   }
 
   for (const row of rows) {
@@ -417,12 +484,19 @@ export const impactRouter = createTRPCRouter({
           ctx.db
             .select()
             .from(dailyExperimentalMetrics)
-            .where(sinceStr ? gte(dailyExperimentalMetrics.date, sinceStr) : undefined)
+            .where(
+              sinceStr
+                ? gte(dailyExperimentalMetrics.date, sinceStr)
+                : undefined,
+            )
             .orderBy(desc(dailyExperimentalMetrics.date)),
         ]);
       } catch (err) {
         // Tables may not exist yet (pre-migration); fall through to raw fallback
-        console.warn("[impact] Aggregate table query failed, using raw fallback:", err);
+        console.warn(
+          "[impact] Aggregate table query failed, using raw fallback:",
+          err,
+        );
       }
 
       // ------- Fallback: if no aggregate data yet, use raw queries -------
@@ -433,12 +507,24 @@ export const impactRouter = createTRPCRouter({
       // ------- Aggregate core rows (SUM counts, LATEST for rates) -------
       const latestCore = coreRows[coreRows.length - 1]!;
 
-      const totalContributions = coreRows.reduce((s, r) => s + r.totalContributions, 0);
+      const totalContributions = coreRows.reduce(
+        (s, r) => s + r.totalContributions,
+        0,
+      );
       const aiAssisted = coreRows.reduce((s, r) => s + r.aiAssisted, 0);
       const humanReviewedAi = coreRows.reduce((s, r) => s + r.humanReviewed, 0);
-      const challengeParticipation = coreRows.reduce((s, r) => s + r.challengeParticipation, 0);
-      const challengeCompletion = coreRows.reduce((s, r) => s + r.challengeCompletion, 0);
-      const eventParticipation = coreRows.reduce((s, r) => s + r.eventParticipation, 0);
+      const challengeParticipation = coreRows.reduce(
+        (s, r) => s + r.challengeParticipation,
+        0,
+      );
+      const challengeCompletion = coreRows.reduce(
+        (s, r) => s + r.challengeCompletion,
+        0,
+      );
+      const eventParticipation = coreRows.reduce(
+        (s, r) => s + r.eventParticipation,
+        0,
+      );
 
       const collaborationRate = clampRate(Number(latestCore.collaborationRate));
       const forumHelpfulness = Number(latestCore.forumHelpfulness);
@@ -464,7 +550,7 @@ export const impactRouter = createTRPCRouter({
       // ------- Experimental metrics (latest + averages) -------
       const latestExp = expRows.length > 0 ? expRows[0]! : null;
 
-      const avgNumeric = (getter: (r: typeof expRows[number]) => string) => {
+      const avgNumeric = (getter: (r: (typeof expRows)[number]) => string) => {
         if (expRows.length === 0) return 0;
         const sum = expRows.reduce((s, r) => s + Number(getter(r)), 0);
         return Number((sum / expRows.length).toFixed(1));
@@ -483,7 +569,7 @@ export const impactRouter = createTRPCRouter({
       const medianIdeaToImplMinutes =
         implMinutes.length === 0
           ? null
-          : implMinutes[Math.floor(implMinutes.length / 2)] ?? null;
+          : (implMinutes[Math.floor(implMinutes.length / 2)] ?? null);
       const medianIdeaToImpl =
         medianIdeaToImplMinutes != null
           ? Number((medianIdeaToImplMinutes / 1440).toFixed(1))
@@ -491,9 +577,16 @@ export const impactRouter = createTRPCRouter({
 
       // Weekly active contributors (distinct actors in the last 7 days)
       const weeklyActiveRows = await ctx.db
-        .select({ count: sql<number>`count(distinct ${activityEvents.actorId})::int` })
+        .select({
+          count: sql<number>`count(distinct ${activityEvents.actorId})::int`,
+        })
         .from(activityEvents)
-        .where(gte(activityEvents.createdAt, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)));
+        .where(
+          gte(
+            activityEvents.createdAt,
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          ),
+        );
       const weeklyActiveContributors = weeklyActiveRows[0]?.count ?? 0;
 
       return {
@@ -518,7 +611,10 @@ export const impactRouter = createTRPCRouter({
             value: clampRate(
               safePercent(
                 bucket.collaborative,
-                Math.max(bucket.collaborative + bucket.aiOnly + bucket.humanOnly, 1),
+                Math.max(
+                  bucket.collaborative + bucket.aiOnly + bucket.humanOnly,
+                  1,
+                ),
               ),
             ),
           })),
@@ -601,14 +697,18 @@ export const impactRouter = createTRPCRouter({
     }),
 
   getQADetails: protectedProcedure
-    .input(z.object({
-      range: z.enum(["7d", "30d", "90d", "all"]).default("30d"),
-    }))
+    .input(
+      z.object({
+        range: z.enum(["7d", "30d", "90d", "all"]).default("30d"),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       // Compute since date based on range
       const rangeDays = { "7d": 7, "30d": 30, "90d": 90, all: null } as const;
       const days = rangeDays[input.range];
-      const since = days ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : null;
+      const since = days
+        ? new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+        : null;
       const sinceStr = since ? toDateStr(since) : undefined;
 
       // Read daily aggregate rows (fall back gracefully if tables don't exist yet)
@@ -618,19 +718,32 @@ export const impactRouter = createTRPCRouter({
 
       try {
         [coreRows, mixRows, expRows] = await Promise.all([
-          ctx.db.select().from(dailyCoreMetrics)
+          ctx.db
+            .select()
+            .from(dailyCoreMetrics)
             .where(sinceStr ? gte(dailyCoreMetrics.date, sinceStr) : undefined)
             .orderBy(dailyCoreMetrics.date),
-          ctx.db.select().from(dailyCollabMix)
+          ctx.db
+            .select()
+            .from(dailyCollabMix)
             .where(sinceStr ? gte(dailyCollabMix.date, sinceStr) : undefined)
             .orderBy(dailyCollabMix.date),
-          ctx.db.select().from(dailyExperimentalMetrics)
-            .where(sinceStr ? gte(dailyExperimentalMetrics.date, sinceStr) : undefined)
+          ctx.db
+            .select()
+            .from(dailyExperimentalMetrics)
+            .where(
+              sinceStr
+                ? gte(dailyExperimentalMetrics.date, sinceStr)
+                : undefined,
+            )
             .orderBy(dailyExperimentalMetrics.date),
         ]);
       } catch (err) {
         // Tables may not exist yet (pre-migration)
-        console.warn("[impact] Aggregate table query failed in QA details:", err);
+        console.warn(
+          "[impact] Aggregate table query failed in QA details:",
+          err,
+        );
       }
 
       // Per-metric confidence: low if N < 30 data points
@@ -639,20 +752,45 @@ export const impactRouter = createTRPCRouter({
 
       // Daily sparkline data
       const sparklines = {
-        totalContributions: coreRows.map(r => ({ date: r.date, value: r.totalContributions })),
-        collaborationRate: coreRows.map(r => ({ date: r.date, value: Number(r.collaborationRate) })),
-        forumHelpfulness: coreRows.map(r => ({ date: r.date, value: Number(r.forumHelpfulness) })),
-        collabMix: mixRows.map(r => ({ date: r.date, aiOnly: r.aiOnly, humanOnly: r.humanOnly, collaborative: r.collaborative })),
-        overrideRate: expRows.map(r => ({ date: r.date, value: Number(r.overrideRate) })),
-        creativityIndex: expRows.map(r => ({ date: r.date, value: Number(r.creativityIndex) })),
+        totalContributions: coreRows.map((r) => ({
+          date: r.date,
+          value: r.totalContributions,
+        })),
+        collaborationRate: coreRows.map((r) => ({
+          date: r.date,
+          value: Number(r.collaborationRate),
+        })),
+        forumHelpfulness: coreRows.map((r) => ({
+          date: r.date,
+          value: Number(r.forumHelpfulness),
+        })),
+        collabMix: mixRows.map((r) => ({
+          date: r.date,
+          aiOnly: r.aiOnly,
+          humanOnly: r.humanOnly,
+          collaborative: r.collaborative,
+        })),
+        overrideRate: expRows.map((r) => ({
+          date: r.date,
+          value: Number(r.overrideRate),
+        })),
+        creativityIndex: expRows.map((r) => ({
+          date: r.date,
+          value: Number(r.creativityIndex),
+        })),
       };
 
       // Aggregated metrics summary (same as getOverview but simpler)
-      const totalContributions = coreRows.reduce((s, r) => s + r.totalContributions, 0);
+      const totalContributions = coreRows.reduce(
+        (s, r) => s + r.totalContributions,
+        0,
+      );
       const aiAssisted = coreRows.reduce((s, r) => s + r.aiAssisted, 0);
       const humanReviewed = coreRows.reduce((s, r) => s + r.humanReviewed, 0);
-      const latestCore = coreRows.length > 0 ? coreRows[coreRows.length - 1]! : null;
-      const latestExp = expRows.length > 0 ? expRows[expRows.length - 1]! : null;
+      const latestCore =
+        coreRows.length > 0 ? coreRows[coreRows.length - 1]! : null;
+      const latestExp =
+        expRows.length > 0 ? expRows[expRows.length - 1]! : null;
 
       // Admin-only: data quality metrics
       // Check user role from session. The user object should have a `role` field.
@@ -662,27 +800,36 @@ export const impactRouter = createTRPCRouter({
       if (isAdmin) {
         // Data quality: % of events with enriched metadata
         const totalEvents = extractCount(
-          await ctx.db.select({ count: sql<number>`count(*)::int` })
+          await ctx.db
+            .select({ count: sql<number>`count(*)::int` })
             .from(activityEvents)
             .where(since ? gte(activityEvents.createdAt, since) : undefined),
         );
 
         const withSessionId = extractCount(
-          await ctx.db.select({ count: sql<number>`count(*)::int` })
+          await ctx.db
+            .select({ count: sql<number>`count(*)::int` })
             .from(activityEvents)
             .where(
               since
-                ? and(gte(activityEvents.createdAt, since), sql`${activityEvents.collabSessionId} IS NOT NULL`)
+                ? and(
+                    gte(activityEvents.createdAt, since),
+                    sql`${activityEvents.collabSessionId} IS NOT NULL`,
+                  )
                 : sql`${activityEvents.collabSessionId} IS NOT NULL`,
             ),
         );
 
         const withPersonality = extractCount(
-          await ctx.db.select({ count: sql<number>`count(*)::int` })
+          await ctx.db
+            .select({ count: sql<number>`count(*)::int` })
             .from(activityEvents)
             .where(
               since
-                ? and(gte(activityEvents.createdAt, since), sql`${activityEvents.metadata}->>'personalityLabel' IS NOT NULL`)
+                ? and(
+                    gte(activityEvents.createdAt, since),
+                    sql`${activityEvents.metadata}->>'personalityLabel' IS NOT NULL`,
+                  )
                 : sql`${activityEvents.metadata}->>'personalityLabel' IS NOT NULL`,
             ),
         );
@@ -691,7 +838,10 @@ export const impactRouter = createTRPCRouter({
           dataQuality: {
             totalEvents,
             withSessionId: safePercent(withSessionId, Math.max(totalEvents, 1)),
-            withPersonality: safePercent(withPersonality, Math.max(totalEvents, 1)),
+            withPersonality: safePercent(
+              withPersonality,
+              Math.max(totalEvents, 1),
+            ),
           },
           aggregateRows: {
             core: coreRows.length,
@@ -708,8 +858,12 @@ export const impactRouter = createTRPCRouter({
           totalContributions,
           aiAssisted,
           humanReviewed,
-          collaborationRate: latestCore ? Number(latestCore.collaborationRate) : 0,
-          forumHelpfulness: latestCore ? Number(latestCore.forumHelpfulness) : 0,
+          collaborationRate: latestCore
+            ? Number(latestCore.collaborationRate)
+            : 0,
+          forumHelpfulness: latestCore
+            ? Number(latestCore.forumHelpfulness)
+            : 0,
           personalityDistribution: latestExp?.personalityDistribution ?? {},
           learningLoopSignal: latestExp?.learningLoopSignal ?? "stable",
         },

@@ -60,7 +60,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
       {description ? (
         <section>
           <SectionHeader title="/ ABOUT" />
-          <p className="text-muted-foreground mt-4 whitespace-pre-wrap text-sm leading-relaxed">
+          <p className="text-muted-foreground mt-4 text-sm leading-relaxed whitespace-pre-wrap">
             {description}
           </p>
         </section>
@@ -95,7 +95,10 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
                     {event.location && ` · ${event.location}`}
                   </p>
                 </div>
-                <Badge variant="outline" className="shrink-0 text-[9px] uppercase">
+                <Badge
+                  variant="outline"
+                  className="shrink-0 text-[9px] uppercase"
+                >
                   {typeLabels[event.type] ?? event.type}
                 </Badge>
               </Link>
@@ -128,12 +131,16 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{thread.title}</p>
                   <p className="text-muted-foreground text-[11px]">
-                    {thread.authorName} · {timeAgo(thread.lastActivityAt ?? thread.createdAt)}
+                    {thread.authorName} ·{" "}
+                    {timeAgo(thread.lastActivityAt ?? thread.createdAt)}
                     {(thread.replyCount ?? 0) > 0 &&
                       ` · ${t("replies", { count: thread.replyCount ?? 0 })}`}
                   </p>
                 </div>
-                <Badge variant="secondary" className="shrink-0 text-[9px] uppercase">
+                <Badge
+                  variant="secondary"
+                  className="shrink-0 text-[9px] uppercase"
+                >
                   {thread.category}
                 </Badge>
               </Link>
@@ -163,14 +170,20 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
               >
                 <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
                   <ChevronUp className="text-muted-foreground size-3" />
-                  <span className="font-mono text-[10px] font-bold">{idea.voteCount ?? 0}</span>
+                  <span className="font-mono text-[10px] font-bold">
+                    {idea.voteCount ?? 0}
+                  </span>
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{idea.title}</p>
-                  <p className="text-muted-foreground text-[11px]">{idea.authorName}</p>
+                  <p className="text-muted-foreground text-[11px]">
+                    {idea.authorName}
+                  </p>
                 </div>
                 <Badge
-                  variant={idea.status === "implemented" ? "default" : "secondary"}
+                  variant={
+                    idea.status === "implemented" ? "default" : "secondary"
+                  }
                   className="shrink-0 text-[9px] uppercase"
                 >
                   {idea.status}

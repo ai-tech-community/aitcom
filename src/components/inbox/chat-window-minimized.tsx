@@ -28,7 +28,7 @@ export function ChatWindowMinimized({
   const { closeChat, restoreChat } = useInbox();
 
   return (
-    <div className="flex items-center gap-1 rounded-lg border border-border bg-background px-2 py-2 shadow-lg transition-opacity hover:opacity-90">
+    <div className="border-border bg-background flex items-center gap-1 rounded-lg border px-2 py-2 shadow-lg transition-opacity hover:opacity-90">
       <button
         type="button"
         onClick={() => restoreChat(conversationId)}
@@ -46,19 +46,19 @@ export function ChatWindowMinimized({
               className="h-6 w-6 rounded-full object-cover"
             />
           ) : (
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-[10px] font-medium text-muted-foreground">
+            <div className="bg-secondary text-muted-foreground flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium">
               {displayName.charAt(0).toUpperCase()}
             </div>
           )}
           {isAgent && (
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-background">
-              <BotIcon className="h-2.5 w-2.5 text-muted-foreground" />
+            <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full">
+              <BotIcon className="text-muted-foreground h-2.5 w-2.5" />
             </span>
           )}
         </div>
 
         {/* Name */}
-        <span className="max-w-[120px] truncate text-sm font-medium text-foreground">
+        <span className="text-foreground max-w-[120px] truncate text-sm font-medium">
           {displayName}
         </span>
       </button>
@@ -67,7 +67,7 @@ export function ChatWindowMinimized({
       <button
         type="button"
         onClick={() => closeChat(conversationId)}
-        className="rounded-md p-0.5 text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground"
+        className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-0.5 transition-colors"
         aria-label="Close"
       >
         <XIcon className="h-3.5 w-3.5" />

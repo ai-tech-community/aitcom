@@ -101,24 +101,51 @@ export default async function Home() {
 
   // Fetch real counts for stats ticker
   const [memberCount, eventCount, sponsorCount] = await Promise.all([
-    db.select({ value: count() }).from(memberProfiles).where(eq(memberProfiles.isPublic, true)).then((r) => r[0]?.value ?? 0),
-    payload.find({ collection: "events", where: { status: { not_equals: "draft" } }, limit: 0 }).then((r) => r.totalDocs),
-    payload.find({ collection: "sponsors", where: { status: { equals: "active" } }, limit: 0 }).then((r) => r.totalDocs),
+    db
+      .select({ value: count() })
+      .from(memberProfiles)
+      .where(eq(memberProfiles.isPublic, true))
+      .then((r) => r[0]?.value ?? 0),
+    payload
+      .find({
+        collection: "events",
+        where: { status: { not_equals: "draft" } },
+        limit: 0,
+      })
+      .then((r) => r.totalDocs),
+    payload
+      .find({
+        collection: "sponsors",
+        where: { status: { equals: "active" } },
+        limit: 0,
+      })
+      .then((r) => r.totalDocs),
   ]);
 
-  const communityCount = await db.select({ value: count() }).from(communities).where(isNull(communities.deletedAt)).then((r) => r[0]?.value ?? 0);
+  const communityCount = await db
+    .select({ value: count() })
+    .from(communities)
+    .where(isNull(communities.deletedAt))
+    .then((r) => r[0]?.value ?? 0);
 
-  const workshopCount = await payload.find({
-    collection: "events",
-    where: { type: { in: ["workshop", "deep_dive"] }, status: { not_equals: "draft" } },
-    limit: 0,
-  }).then((r) => r.totalDocs);
+  const workshopCount = await payload
+    .find({
+      collection: "events",
+      where: {
+        type: { in: ["workshop", "deep_dive"] },
+        status: { not_equals: "draft" },
+      },
+      limit: 0,
+    })
+    .then((r) => r.totalDocs);
 
-  const hackathonCount = await payload.find({
-    collection: "events",
-    where: { type: { equals: "hackathon" }, status: { not_equals: "draft" } },
-    limit: 0,
-  }).then((r) => r.totalDocs);
+  const hackathonCount = await payload
+    .find({
+      collection: "events",
+      where: { type: { equals: "hackathon" }, status: { not_equals: "draft" } },
+      limit: 0,
+    })
+    .then((r) => r.totalDocs);
 
   return (
     <>
@@ -138,10 +165,7 @@ export default async function Home() {
         <div className="relative z-10 px-4 pt-8 pb-6 sm:px-12 sm:pt-16 sm:pb-12">
           <GridMarkers />
           <div className="mt-4 space-y-0 sm:mt-8">
-            <HeroTitle
-              greeting="Welcome to"
-              title={t("hero.title")}
-            />
+            <HeroTitle greeting="Welcome to" title={t("hero.title")} />
           </div>
           <p className="text-muted-foreground mt-4 max-w-175 text-sm leading-relaxed sm:mt-8 sm:text-xl">
             {t("hero.description")}
@@ -204,7 +228,7 @@ export default async function Home() {
                   }`}
                 >
                   {/* Title - first on mobile */}
-                  <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
+                  <span className="text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
                     {event.title}
                   </span>
 
@@ -295,7 +319,9 @@ export default async function Home() {
 
       {/* Sponsors */}
       <section className="px-6 py-12 sm:px-12">
-        <SectionLabel>/ {t("sponsors.currentSponsors").toUpperCase()}</SectionLabel>
+        <SectionLabel>
+          / {t("sponsors.currentSponsors").toUpperCase()}
+        </SectionLabel>
 
         <div className="mt-8 max-w-3xl">
           <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
@@ -310,9 +336,7 @@ export default async function Home() {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-8">
             {featuredSponsors.map((sponsor) => {
               const logo =
-                typeof sponsor.logo === "object"
-                  ? sponsor.logo
-                  : null;
+                typeof sponsor.logo === "object" ? sponsor.logo : null;
               return logo?.url ? (
                 <a
                   key={sponsor.id}
@@ -351,7 +375,9 @@ export default async function Home() {
             {
               title: t("join.attend.title"),
               desc: t("join.attend.description"),
-              href: session?.user ? ("/dashboard/agent" as const) : ("/communities" as const),
+              href: session?.user
+                ? ("/dashboard/agent" as const)
+                : ("/communities" as const),
             },
             {
               title: t("join.challenge.title"),

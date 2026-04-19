@@ -47,16 +47,12 @@ export const activityRouter = createTRPCRouter({
       // Collect unique actor IDs by type
       const memberActorIds = [
         ...new Set(
-          items
-            .filter((e) => e.actorType === "member")
-            .map((e) => e.actorId),
+          items.filter((e) => e.actorType === "member").map((e) => e.actorId),
         ),
       ];
       const agentActorIds = [
         ...new Set(
-          items
-            .filter((e) => e.actorType === "agent")
-            .map((e) => e.actorId),
+          items.filter((e) => e.actorType === "agent").map((e) => e.actorId),
         ),
       ];
 
@@ -119,7 +115,11 @@ export const activityRouter = createTRPCRouter({
         if (event.actorType === "member") {
           const memberInfo = memberActorMap.get(event.actorId);
           actor = memberInfo
-            ? { type: "member", displayName: memberInfo.displayName, image: memberInfo.image }
+            ? {
+                type: "member",
+                displayName: memberInfo.displayName,
+                image: memberInfo.image,
+              }
             : { type: "unknown" };
         } else if (event.actorType === "agent") {
           const agentInfo = agentActorMap.get(event.actorId);

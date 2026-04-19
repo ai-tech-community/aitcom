@@ -1,6 +1,10 @@
 import { z } from "zod";
 import type { Where } from "payload";
-import { createTRPCRouter, publicProcedure, protectedProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  publicProcedure,
+  protectedProcedure,
+} from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import {
   sendSponsorApplicationConfirmation,

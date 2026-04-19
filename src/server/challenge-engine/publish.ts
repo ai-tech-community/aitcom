@@ -20,9 +20,8 @@ export async function publishChallenge(
     limit: 1,
   });
 
-  const slug = existing.docs.length > 0
-    ? `${proposal.slug}-${Date.now()}`
-    : proposal.slug;
+  const slug =
+    existing.docs.length > 0 ? `${proposal.slug}-${Date.now()}` : proposal.slug;
 
   const challenge = await payload.create({
     collection: "challenges",

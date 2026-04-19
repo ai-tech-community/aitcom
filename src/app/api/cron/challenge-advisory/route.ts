@@ -80,16 +80,20 @@ export async function GET(request: Request) {
 
       // Build advice message
       const objectives =
-        (
-          challenge.objectives as
-            | { description: string; action: string; targetCount: number; verification: string }[]
-            | undefined
-        ) ?? [];
+        (challenge.objectives as
+          | {
+              description: string;
+              action: string;
+              targetCount: number;
+              verification: string;
+            }[]
+          | undefined) ?? [];
       const totalObjectives = objectives.length;
       const completedCount = totalObjectives - progressRows.length;
 
       // Check if challenge has a repo URL
-      const repoUrl = (challenge.repo as { templateUrl?: string } | undefined)?.templateUrl;
+      const repoUrl = (challenge.repo as { templateUrl?: string } | undefined)
+        ?.templateUrl;
 
       // Look up the challenge channel
       const [channel] = await db
@@ -104,7 +108,8 @@ export async function GET(request: Request) {
       for (const progress of progressRows) {
         const objective = objectives[progress.objectiveIndex];
         if (!objective) continue;
-        const modeLabel = progress.verificationMode ?? objective.verification ?? "self-report";
+        const modeLabel =
+          progress.verificationMode ?? objective.verification ?? "self-report";
         message += `- **${objective.description}** (${progress.currentCount}/${objective.targetCount}) - verification: *${modeLabel}*\n`;
       }
 

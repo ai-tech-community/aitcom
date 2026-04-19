@@ -19,12 +19,16 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   ] as const;
 
   for (const table of tablesNeedingCommunityId) {
-    await db.execute(sql.raw(
-      `ALTER TABLE "${table}" ADD COLUMN IF NOT EXISTS "community_id" varchar`
-    ));
-    await db.execute(sql.raw(
-      `CREATE INDEX IF NOT EXISTS "${table}_community_id_idx" ON "${table}"("community_id")`
-    ));
+    await db.execute(
+      sql.raw(
+        `ALTER TABLE "${table}" ADD COLUMN IF NOT EXISTS "community_id" varchar`,
+      ),
+    );
+    await db.execute(
+      sql.raw(
+        `CREATE INDEX IF NOT EXISTS "${table}_community_id_idx" ON "${table}"("community_id")`,
+      ),
+    );
   }
 
   // ── forum_threads: add soft-delete / edit tracking ──────────────────
@@ -176,11 +180,21 @@ export async function down({ db }: MigrateDownArgs): Promise<void> {
 
   // Remove community_id from all tables
   const tables = [
-    "forum_threads", "forum_replies", "community_ideas", "idea_votes",
-    "challenges", "community_rules", "rules_acceptance", "launchpad_projects",
-    "jobs", "comments", "events",
+    "forum_threads",
+    "forum_replies",
+    "community_ideas",
+    "idea_votes",
+    "challenges",
+    "community_rules",
+    "rules_acceptance",
+    "launchpad_projects",
+    "jobs",
+    "comments",
+    "events",
   ];
   for (const table of tables) {
-    await db.execute(sql.raw(`ALTER TABLE "${table}" DROP COLUMN IF EXISTS "community_id"`));
+    await db.execute(
+      sql.raw(`ALTER TABLE "${table}" DROP COLUMN IF EXISTS "community_id"`),
+    );
   }
 }

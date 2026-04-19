@@ -6,11 +6,7 @@ import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { toast } from "sonner";
 import { Trash2, CornerDownRight } from "lucide-react";
-import {
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -118,16 +114,14 @@ function CommentItem({
                   alt={comment.authorName ?? ""}
                 />
               )}
-              <AvatarFallback className="bg-zinc-200 text-zinc-600 font-mono text-[9px]">
+              <AvatarFallback className="bg-zinc-200 font-mono text-[9px] text-zinc-600">
                 {getInitials(comment.authorName)}
               </AvatarFallback>
             </Avatar>
             <span className="font-mono text-[9px] font-semibold tracking-wider text-zinc-600">
               {comment.authorName ?? "member"}
             </span>
-            <span className="font-mono text-[9px] text-zinc-400">
-              &middot;
-            </span>
+            <span className="font-mono text-[9px] text-zinc-400">&middot;</span>
             <span className="font-mono text-[9px] text-zinc-400">
               {timeAgo(comment.createdAt)}
             </span>
@@ -136,7 +130,7 @@ function CommentItem({
             {currentUserId && (
               <button
                 onClick={() => setShowReplyForm((v) => !v)}
-                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-400 transition-colors hover:bg-zinc-200 hover:text-zinc-600"
+                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-zinc-400 uppercase transition-colors hover:bg-zinc-200 hover:text-zinc-600"
               >
                 <CornerDownRight className="h-2.5 w-2.5" />
                 {t("reply")}
@@ -148,7 +142,7 @@ function CommentItem({
                   deleteCommentMutation.mutate({ commentId: comment.id })
                 }
                 disabled={deleteCommentMutation.isPending}
-                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-red-400 uppercase transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
               >
                 <Trash2 className="h-2.5 w-2.5" />
                 {t("delete")}
@@ -184,7 +178,7 @@ function CommentItem({
             maxLength={5000}
             rows={2}
             required
-            className="w-full resize-none rounded border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300"
+            className="w-full resize-none rounded border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-300 focus:outline-none"
           />
           <div className="flex justify-end gap-2">
             <button
@@ -193,16 +187,14 @@ function CommentItem({
                 setShowReplyForm(false);
                 setReplyContent("");
               }}
-              className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-wider text-zinc-500 transition-colors hover:bg-zinc-100"
+              className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold tracking-wider text-zinc-500 uppercase transition-colors hover:bg-zinc-100"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={
-                addCommentMutation.isPending || !replyContent.trim()
-              }
-              className="rounded-md bg-zinc-900 px-3 py-1 font-mono text-[9px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              disabled={addCommentMutation.isPending || !replyContent.trim()}
+              className="rounded-md bg-zinc-900 px-3 py-1 font-mono text-[9px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 disabled:opacity-50"
             >
               {addCommentMutation.isPending ? "Posting..." : t("reply")}
             </button>
@@ -227,7 +219,7 @@ function CommentItem({
                         alt={reply.authorName ?? ""}
                       />
                     )}
-                    <AvatarFallback className="bg-zinc-200 text-zinc-600 font-mono text-[9px]">
+                    <AvatarFallback className="bg-zinc-200 font-mono text-[9px] text-zinc-600">
                       {getInitials(reply.authorName)}
                     </AvatarFallback>
                   </Avatar>
@@ -247,7 +239,7 @@ function CommentItem({
                       deleteCommentMutation.mutate({ commentId: reply.id })
                     }
                     disabled={deleteCommentMutation.isPending}
-                    className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-red-400 uppercase transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
                   >
                     <Trash2 className="h-2.5 w-2.5" />
                     {t("delete")}
@@ -310,7 +302,7 @@ export function LaunchpadComments({
   return (
     <div className="space-y-4">
       {/* Section header */}
-      <h2 className="font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+      <h2 className="font-mono text-[10px] font-semibold tracking-widest text-zinc-400 uppercase">
         {t("title")}
       </h2>
 
@@ -334,13 +326,13 @@ export function LaunchpadComments({
             maxLength={5000}
             rows={3}
             required
-            className="w-full resize-none rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300"
+            className="w-full resize-none rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-300 focus:outline-none"
           />
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={addCommentMutation.isPending || !newComment.trim()}
-              className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 disabled:opacity-50"
             >
               {addCommentMutation.isPending ? "Posting..." : t("submit")}
             </button>

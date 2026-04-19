@@ -6,7 +6,13 @@ import {
   publicProcedure,
   protectedProcedure,
 } from "@/server/api/trpc";
-import { memberProfiles, memberBadges, user, eventRegistrations, agentProfiles } from "@/server/db/schema";
+import {
+  memberProfiles,
+  memberBadges,
+  user,
+  eventRegistrations,
+  agentProfiles,
+} from "@/server/db/schema";
 import {
   awardXp,
   awardBadge,
@@ -59,9 +65,12 @@ export const membersRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
 
       // Normalize empty strings to null for URL fields
-      const linkedinUrl = input.linkedinUrl === "" ? null : (input.linkedinUrl ?? null);
-      const githubUrl = input.githubUrl === "" ? null : (input.githubUrl ?? null);
-      const websiteUrl = input.websiteUrl === "" ? null : (input.websiteUrl ?? null);
+      const linkedinUrl =
+        input.linkedinUrl === "" ? null : (input.linkedinUrl ?? null);
+      const githubUrl =
+        input.githubUrl === "" ? null : (input.githubUrl ?? null);
+      const websiteUrl =
+        input.websiteUrl === "" ? null : (input.websiteUrl ?? null);
 
       // Check if profile exists
       const [existing] = await ctx.db
@@ -159,7 +168,10 @@ export const membersRouter = createTRPCRouter({
       return {
         profile,
         user: memberUser
-          ? { image: memberUser.image, avatarUrl: getAvatarUrl(memberUser.email, memberUser.image) }
+          ? {
+              image: memberUser.image,
+              avatarUrl: getAvatarUrl(memberUser.email, memberUser.image),
+            }
           : null,
         badges: badges.map((b) => ({
           ...BADGES[b.badgeSlug],

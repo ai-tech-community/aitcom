@@ -63,7 +63,7 @@ export function ReplyForm({ threadId, isLocked }: ReplyFormProps) {
         if (!content.trim()) return;
         replyMutation.mutate({ threadId, content: content.trim() });
       }}
-      className="sticky bottom-0 border-t border-zinc-200 bg-white p-4 sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:mt-6 sm:space-y-3"
+      className="sticky bottom-0 border-t border-zinc-200 bg-white p-4 sm:static sm:mt-6 sm:space-y-3 sm:border-0 sm:bg-transparent sm:p-0"
     >
       <div>
         <MarkdownToolbar
@@ -78,14 +78,14 @@ export function ReplyForm({ threadId, isLocked }: ReplyFormProps) {
           maxLength={10000}
           rows={3}
           required
-          className="w-full resize-none rounded-b-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none focus:ring-1 focus:ring-zinc-300"
+          className="w-full resize-none rounded-b-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-300 focus:outline-none"
         />
       </div>
       <div className="flex justify-end">
         <button
           type="submit"
           disabled={replyMutation.isPending || !content.trim()}
-          className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+          className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 disabled:opacity-50"
         >
           {replyMutation.isPending ? t("replying") : t("reply")}
         </button>

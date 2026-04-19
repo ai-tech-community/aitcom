@@ -67,7 +67,10 @@ export default function ResetPasswordPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="newPassword" className="font-mono text-xs tracking-wider">
+            <Label
+              htmlFor="newPassword"
+              className="font-mono text-xs tracking-wider"
+            >
               {t("newPassword").toUpperCase()}
             </Label>
             <Input

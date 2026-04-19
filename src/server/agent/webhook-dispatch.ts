@@ -52,7 +52,9 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
       // SSRF protection: skip webhooks with private/internal URLs
       const urlCheck = await validateWebhookUrl(webhook.url);
       if (!urlCheck.ok) {
-        console.warn(`[webhook-dispatch] Skipping webhook ${webhook.id}: ${urlCheck.reason}`);
+        console.warn(
+          `[webhook-dispatch] Skipping webhook ${webhook.id}: ${urlCheck.reason}`,
+        );
         // Auto-disable the unsafe webhook
         await db
           .update(agentWebhooks)
@@ -86,9 +88,11 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
 
       const matchingEvents = events.filter((evt) => {
         // Skip private events not meant for this webhook's owner
-        if (evt.recipientId && evt.recipientId !== webhook.ownerId) return false;
+        if (evt.recipientId && evt.recipientId !== webhook.ownerId)
+          return false;
         if (evt.actorId === webhook.agentId) return false;
-        if (!prefixes.some((prefix) => evt.action.startsWith(prefix))) return false;
+        if (!prefixes.some((prefix) => evt.action.startsWith(prefix)))
+          return false;
 
         // Dampen cross-agent ping-pong: skip agent events after 2 consecutive agent-only events
         if (evt.actorType === "agent" && consecutiveAgentEvents >= 2) {
@@ -101,7 +105,11 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
       let consecutiveFailures = webhook.consecutiveFailures;
 
       for (const evt of matchingEvents) {
-        const actorName = await resolveActorName(db, evt.actorId, evt.actorType);
+        const actorName = await resolveActorName(
+          db,
+          evt.actorId,
+          evt.actorType,
+        );
 
         const payload = JSON.stringify({
           type: evt.action,
@@ -155,14 +163,21 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
         if (consecutiveFailures >= MAX_FAILURES) {
           await db
             .update(agentWebhooks)
-            .set({ isEnabled: false, consecutiveFailures, consecutiveAgentEvents })
+            .set({
+              isEnabled: false,
+              consecutiveFailures,
+              consecutiveAgentEvents,
+            })
             .where(eq(agentWebhooks.id, webhook.id));
           result.disabled++;
           break;
         }
 
         // Skip this poison event after too many retries
-        if (consecutiveFailures >= SKIP_AFTER_RETRIES && consecutiveFailures < MAX_FAILURES) {
+        if (
+          consecutiveFailures >= SKIP_AFTER_RETRIES &&
+          consecutiveFailures < MAX_FAILURES
+        ) {
           // Skip — advance cursor past this event, reset for next event
           consecutiveFailures = 0;
         }
@@ -171,15 +186,24 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
       // Advance cursor to last event we saw (even if no matches, so we don't re-scan)
       if (consecutiveFailures < MAX_FAILURES) {
         const finalCursor =
-          events.length > 0 ? events[events.length - 1]!.createdAt : webhook.cursor;
+          events.length > 0
+            ? events[events.length - 1]!.createdAt
+            : webhook.cursor;
 
         await db
           .update(agentWebhooks)
-          .set({ cursor: finalCursor, consecutiveFailures, consecutiveAgentEvents })
+          .set({
+            cursor: finalCursor,
+            consecutiveFailures,
+            consecutiveAgentEvents,
+          })
           .where(eq(agentWebhooks.id, webhook.id));
       }
     } catch (err) {
-      console.error(`[webhook-dispatch] Error processing webhook ${webhook.id}:`, err);
+      console.error(
+        `[webhook-dispatch] Error processing webhook ${webhook.id}:`,
+        err,
+      );
       result.failures++;
     }
   }

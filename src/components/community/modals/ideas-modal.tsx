@@ -23,7 +23,13 @@ const statusStyles: Record<string, string> = {
   rejected: "text-zinc-400 border-zinc-200 bg-zinc-50",
 };
 
-export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: IdeasModalProps) {
+export function IdeasModal({
+  isOpen,
+  onClose,
+  title,
+  subtitle,
+  windowIndex,
+}: IdeasModalProps) {
   const t = useTranslations("community.ideas");
   const tRules = useTranslations("community.rules");
   const [sort, setSort] = useState<"votes" | "recent">("votes");
@@ -85,14 +91,20 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
   });
 
   return (
-    <BuildingModal isOpen={isOpen} onClose={onClose} title={title} subtitle={subtitle} windowIndex={windowIndex}>
+    <BuildingModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      subtitle={subtitle}
+      windowIndex={windowIndex}
+    >
       {/* Sort tabs */}
       <div className="mb-4 flex gap-1 border-b border-zinc-200 pb-3">
         {(["votes", "recent"] as const).map((s) => (
           <button
             key={s}
             onClick={() => setSort(s)}
-            className={`rounded px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-widest transition-colors ${
+            className={`rounded px-3 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
               sort === s
                 ? "bg-orange-50 text-orange-600"
                 : "text-zinc-400 hover:text-zinc-600"
@@ -107,11 +119,16 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((n) => (
-            <div key={n} className="h-14 animate-pulse rounded-lg bg-zinc-100" />
+            <div
+              key={n}
+              className="h-14 animate-pulse rounded-lg bg-zinc-100"
+            />
           ))}
         </div>
       ) : ideas.length === 0 ? (
-        <p className="py-6 text-center font-mono text-xs text-zinc-400">{t("noIdeas")}</p>
+        <p className="py-6 text-center font-mono text-xs text-zinc-400">
+          {t("noIdeas")}
+        </p>
       ) : (
         <div className="space-y-2">
           {ideas.map((idea) => (
@@ -142,7 +159,9 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
 
               {/* Content */}
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium leading-snug text-zinc-900">{idea.title}</p>
+                <p className="text-sm leading-snug font-medium text-zinc-900">
+                  {idea.title}
+                </p>
                 {idea.description && (
                   <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-zinc-500">
                     {idea.description}
@@ -150,7 +169,7 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
                 )}
                 <div className="mt-1 flex items-center gap-2">
                   <span
-                    className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider ${statusStyles[idea.status]}`}
+                    className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${statusStyles[idea.status]}`}
                   >
                     {idea.status === "open"
                       ? t("statusOpen")
@@ -168,11 +187,13 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
       {/* Submit idea section */}
       <div className="mt-4 border-t border-zinc-200 pt-4">
         {!session?.user ? (
-          <p className="font-mono text-[10px] text-zinc-400">{t("loginToSubmit")}</p>
+          <p className="font-mono text-[10px] text-zinc-400">
+            {t("loginToSubmit")}
+          </p>
         ) : !showForm ? (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-orange-600 transition-colors hover:text-orange-500"
+            className="flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-widest text-orange-600 uppercase transition-colors hover:text-orange-500"
           >
             <Lightbulb className="h-3 w-3" />
             {t("submit")}
@@ -181,12 +202,15 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              submitMutation.mutate({ title: ideaTitle, description: ideaDesc || undefined });
+              submitMutation.mutate({
+                title: ideaTitle,
+                description: ideaDesc || undefined,
+              });
             }}
             className="space-y-3"
           >
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
                 {t("titleLabel")}
               </label>
               <input
@@ -195,11 +219,11 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
                 placeholder={t("titlePlaceholder")}
                 maxLength={100}
                 required
-                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
+                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
                 {t("descriptionLabel")}
               </label>
               <textarea
@@ -208,21 +232,21 @@ export function IdeasModal({ isOpen, onClose, title, subtitle, windowIndex }: Id
                 placeholder={t("descriptionPlaceholder")}
                 maxLength={500}
                 rows={3}
-                className="w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
+                className="w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
               />
             </div>
             <div className="flex gap-2">
               <button
                 type="submit"
                 disabled={submitMutation.isPending}
-                className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+                className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 disabled:opacity-50"
               >
                 {submitMutation.isPending ? t("submitting") : t("submit")}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded-md border border-zinc-200 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500 transition-colors hover:bg-zinc-50"
+                className="rounded-md border border-zinc-200 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase transition-colors hover:bg-zinc-50"
               >
                 Cancel
               </button>

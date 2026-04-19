@@ -39,8 +39,12 @@ export function MyArticlesList() {
   const t = useTranslations("articleEditor");
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const { data: articles, isLoading, refetch } = api.articles.myArticles.useQuery();
-const deleteMutation = api.articles.delete.useMutation({
+  const {
+    data: articles,
+    isLoading,
+    refetch,
+  } = api.articles.myArticles.useQuery();
+  const deleteMutation = api.articles.delete.useMutation({
     onSuccess: () => {
       toast.success(t("deleted"));
       void refetch();
@@ -132,7 +136,7 @@ const deleteMutation = api.articles.delete.useMutation({
               className="border-border flex flex-col gap-2 border-b px-4 py-4 sm:flex-row sm:items-center sm:gap-0 sm:py-3.5"
             >
               {/* Title */}
-              <span className="text-[15px] font-medium leading-snug sm:order-2 sm:flex-1">
+              <span className="text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
                 {article.title}
               </span>
 
@@ -146,8 +150,9 @@ const deleteMutation = api.articles.delete.useMutation({
 
               {/* Status badge */}
               <span
-                className={`sm:order-3 sm:w-24 rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider w-fit ${
-                  statusColors[article.status] ?? "border-zinc-500/40 text-zinc-400"
+                className={`w-fit rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:order-3 sm:w-24 ${
+                  statusColors[article.status] ??
+                  "border-zinc-500/40 text-zinc-400"
                 }`}
               >
                 {t(statusKeys[article.status] ?? article.status).toUpperCase()}
@@ -163,11 +168,15 @@ const deleteMutation = api.articles.delete.useMutation({
                   >
                     {(() => {
                       const reviewKey = reviewStatusKeys[article.reviewStatus];
-                      return (reviewKey ? t(reviewKey) : article.reviewStatus).toUpperCase();
+                      return (
+                        reviewKey ? t(reviewKey) : article.reviewStatus
+                      ).toUpperCase();
                     })()}
                   </span>
                 ) : (
-                  <span className="text-muted-foreground font-mono text-[10px]">-</span>
+                  <span className="text-muted-foreground font-mono text-[10px]">
+                    -
+                  </span>
                 )}
               </span>
 
@@ -184,7 +193,7 @@ const deleteMutation = api.articles.delete.useMutation({
                     type="button"
                     onClick={() => handleDelete(article.id)}
                     disabled={deletingId === article.id}
-                    className="text-red-400 hover:text-red-300 font-mono text-[10px] tracking-wider transition-colors disabled:opacity-50"
+                    className="font-mono text-[10px] tracking-wider text-red-400 transition-colors hover:text-red-300 disabled:opacity-50"
                   >
                     {t("delete").toUpperCase()}
                   </button>
@@ -192,11 +201,12 @@ const deleteMutation = api.articles.delete.useMutation({
               </div>
 
               {/* Review note - full width */}
-              {article.reviewStatus === "changes_requested" && article.reviewNote && (
-                <div className="mt-1 w-full rounded border border-orange-500/20 bg-orange-500/5 px-3 py-2 text-xs sm:order-6">
-                  {article.reviewNote}
-                </div>
-              )}
+              {article.reviewStatus === "changes_requested" &&
+                article.reviewNote && (
+                  <div className="mt-1 w-full rounded border border-orange-500/20 bg-orange-500/5 px-3 py-2 text-xs sm:order-6">
+                    {article.reviewNote}
+                  </div>
+                )}
             </div>
           ))}
         </>

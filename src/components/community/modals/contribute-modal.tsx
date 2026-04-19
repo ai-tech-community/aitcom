@@ -53,14 +53,20 @@ export function ContributeModal({
   ];
 
   return (
-    <BuildingModal isOpen={isOpen} onClose={onClose} title={title} subtitle={subtitle} windowIndex={windowIndex}>
+    <BuildingModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      subtitle={subtitle}
+      windowIndex={windowIndex}
+    >
       <div className="grid gap-3 sm:grid-cols-2">
         {cards.map(({ key, border, badge, href, disabled }) => (
           <div
             key={key}
             className={`rounded-lg border p-4 transition-colors ${border} ${disabled ? "opacity-50" : ""}`}
           >
-            <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-zinc-900">
+            <h3 className="font-mono text-xs font-bold tracking-wider text-zinc-900 uppercase">
               {t(`${key}.title`)}
             </h3>
             <p className="mt-1.5 text-[12px] leading-relaxed text-zinc-500">
@@ -69,7 +75,7 @@ export function ContributeModal({
             <div className="mt-3">
               {disabled ? (
                 <span
-                  className={`inline-block rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-widest ${badge}`}
+                  className={`inline-block rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold tracking-widest uppercase ${badge}`}
                 >
                   {t(`${key}.cta`)}
                 </span>
@@ -77,13 +83,13 @@ export function ContributeModal({
                 <Link
                   href={href}
                   onClick={onClose}
-                  className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-widest transition-colors ${badge} hover:opacity-80`}
+                  className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold tracking-widest uppercase transition-colors ${badge} hover:opacity-80`}
                 >
                   {t(`${key}.cta`)}
                 </Link>
               ) : (
                 <button
-                  className={`rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-widest transition-colors ${badge} hover:opacity-80`}
+                  className={`rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold tracking-widest uppercase transition-colors ${badge} hover:opacity-80`}
                 >
                   {t(`${key}.cta`)}
                 </button>

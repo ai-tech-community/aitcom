@@ -25,12 +25,16 @@ if (signals.length === 0) {
 } else {
   console.log(`Found ${signals.length} signals:\n`);
   for (const signal of signals) {
-    console.log(`  [${signal.type}] (relevance: ${signal.relevanceScore.toFixed(2)})`);
+    console.log(
+      `  [${signal.type}] (relevance: ${signal.relevanceScore.toFixed(2)})`,
+    );
     console.log(`    ${signal.summary}`);
     console.log(`    ref: ${signal.reference}`);
     console.log();
   }
-  console.log("Agents can use these signals via the 'get-community-signals' MCP tool");
+  console.log(
+    "Agents can use these signals via the 'get-community-signals' MCP tool",
+  );
   console.log("and propose challenges via the 'propose-challenge' MCP tool.");
 }
 

@@ -15,7 +15,10 @@ import {
   agentSuggestions,
 } from "@/server/db/schema";
 import { generateSlug } from "@/server/communities/slug-utils";
-import { canManageRole, type CommunityRole } from "@/server/communities/role-utils";
+import {
+  canManageRole,
+  type CommunityRole,
+} from "@/server/communities/role-utils";
 import { logActivity } from "@/server/agent/activity";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -65,10 +68,16 @@ async function requireAdmin(
 ) {
   const membership = await resolveOwnerMembership(db, communityId, ownerId);
   if (!membership) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Not a member of this community" });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Not a member of this community",
+    });
   }
   if (membership.role !== "owner" && membership.role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Requires admin or owner role" });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Requires admin or owner role",
+    });
   }
   return membership;
 }
@@ -152,13 +161,14 @@ export const agentCommunityRouter = {
         );
 
       // Fetch the owner's membership (if any)
-      const ownerMembership =
-        await ctx.db.query.communityMemberships.findFirst({
+      const ownerMembership = await ctx.db.query.communityMemberships.findFirst(
+        {
           where: and(
             eq(communityMemberships.communityId, community.id),
             eq(communityMemberships.userId, ownerId),
           ),
-        });
+        },
+      );
 
       return {
         ...community,
@@ -601,8 +611,7 @@ export const agentCommunityRouter = {
       if (input.description !== undefined)
         updates.description = input.description;
       if (input.logoUrl !== undefined) updates.logoUrl = input.logoUrl;
-      if (input.joinPolicy !== undefined)
-        updates.joinPolicy = input.joinPolicy;
+      if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
       if (input.isListedInDirectory !== undefined)
         updates.isListedInDirectory = input.isListedInDirectory;
 
@@ -741,11 +750,7 @@ export const agentCommunityRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      const membership = await requireAdmin(
-        ctx.db,
-        community.id,
-        ownerId,
-      );
+      const membership = await requireAdmin(ctx.db, community.id, ownerId);
 
       // Verify target exists and actor can manage them
       const target = await ctx.db.query.communityMemberships.findFirst({
@@ -756,11 +761,22 @@ export const agentCommunityRouter = {
       });
 
       if (!target) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Target user not found in community" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Target user not found in community",
+        });
       }
 
-      if (!canManageRole(membership.role as CommunityRole, target.role as CommunityRole)) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions to ban this user" });
+      if (
+        !canManageRole(
+          membership.role as CommunityRole,
+          target.role as CommunityRole,
+        )
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Insufficient permissions to ban this user",
+        });
       }
 
       const [suggestion] = await ctx.db
@@ -810,11 +826,7 @@ export const agentCommunityRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      const membership = await requireAdmin(
-        ctx.db,
-        community.id,
-        ownerId,
-      );
+      const membership = await requireAdmin(ctx.db, community.id, ownerId);
 
       const target = await ctx.db.query.communityMemberships.findFirst({
         where: and(
@@ -825,11 +837,22 @@ export const agentCommunityRouter = {
       });
 
       if (!target) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Target user not found in community" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Target user not found in community",
+        });
       }
 
-      if (!canManageRole(membership.role as CommunityRole, target.role as CommunityRole)) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions to remove this user" });
+      if (
+        !canManageRole(
+          membership.role as CommunityRole,
+          target.role as CommunityRole,
+        )
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Insufficient permissions to remove this user",
+        });
       }
 
       const [suggestion] = await ctx.db
@@ -957,11 +980,7 @@ export const agentCommunityRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      const membership = await requireAdmin(
-        ctx.db,
-        community.id,
-        ownerId,
-      );
+      const membership = await requireAdmin(ctx.db, community.id, ownerId);
 
       const target = await ctx.db.query.communityMemberships.findFirst({
         where: and(
@@ -972,15 +991,24 @@ export const agentCommunityRouter = {
       });
 
       if (!target) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Target user not found in community" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Target user not found in community",
+        });
       }
 
       // Verify hierarchy: actor must outrank target's current AND desired role
       if (
-        !canManageRole(membership.role as CommunityRole, target.role as CommunityRole) ||
+        !canManageRole(
+          membership.role as CommunityRole,
+          target.role as CommunityRole,
+        ) ||
         !canManageRole(membership.role as CommunityRole, input.role)
       ) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Insufficient permissions",
+        });
       }
 
       const [suggestion] = await ctx.db

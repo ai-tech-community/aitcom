@@ -49,13 +49,15 @@ function plainTextToLexical(text: string) {
 
 function lexicalToPlainText(lexical: unknown): string {
   if (!lexical || typeof lexical !== "object") return "";
-  const root = (lexical as { root?: { children?: Array<{ children?: Array<{ text?: string }> }> } }).root;
+  const root = (
+    lexical as {
+      root?: { children?: Array<{ children?: Array<{ text?: string }> }> };
+    }
+  ).root;
   if (!root?.children) return "";
   return root.children
     .map((para) =>
-      (para.children ?? [])
-        .map((node) => node.text ?? "")
-        .join(""),
+      (para.children ?? []).map((node) => node.text ?? "").join(""),
     )
     .join("\n");
 }
@@ -66,25 +68,26 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
 
   const [title, setTitle] = useState("");
   const [pitch, setPitch] = useState("");
-  const [stage, setStage] = useState<"idea" | "prototype" | "mvp" | "launched">("idea");
+  const [stage, setStage] = useState<"idea" | "prototype" | "mvp" | "launched">(
+    "idea",
+  );
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [links, setLinks] = useState<Array<{ label: string; url: string }>>([]);
 
   // Fetch project data in edit mode
-  const { data: project, isLoading: isLoadingProject } = api.launchpad.getBySlug.useQuery(
-    { slug: slug ?? "" },
-    { enabled: mode === "edit" && !!slug },
-  );
+  const { data: project, isLoading: isLoadingProject } =
+    api.launchpad.getBySlug.useQuery(
+      { slug: slug ?? "" },
+      { enabled: mode === "edit" && !!slug },
+    );
 
   // Pre-fill form when project data is loaded
   useEffect(() => {
     if (mode === "edit" && project) {
       setTitle(project.title ?? "");
       setPitch(lexicalToPlainText(project.pitch));
-      setStage(
-        project.stage ?? "idea",
-      );
+      setStage(project.stage ?? "idea");
       setTags(
         Array.isArray(project.tags)
           ? project.tags.map((t: { tag: string }) => t.tag)
@@ -150,11 +153,7 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
   const addLink = () => setLinks([...links, { label: "", url: "" }]);
   const removeLink = (index: number) =>
     setLinks(links.filter((_, i) => i !== index));
-  const updateLink = (
-    index: number,
-    field: "label" | "url",
-    value: string,
-  ) => {
+  const updateLink = (index: number, field: "label" | "url", value: string) => {
     setLinks(
       links.map((link, i) =>
         i === index ? { ...link, [field]: value } : link,
@@ -281,7 +280,9 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
             placeholder={t("tagsPlaceholder")}
             disabled={isSubmitting || tags.length >= 10}
           />
-          <p className="text-xs text-zinc-400">Press Enter to add a tag. Max 10 tags.</p>
+          <p className="text-xs text-zinc-400">
+            Press Enter to add a tag. Max 10 tags.
+          </p>
         </div>
 
         {/* Links */}

@@ -7,14 +7,15 @@ import { api } from "@/trpc/react";
 type Range = "7d" | "30d" | "90d" | "all";
 
 function Sparkline({ data }: { data: Array<{ date: string; value: number }> }) {
-  if (data.length === 0) return <p className="text-xs text-zinc-400">No data</p>;
+  if (data.length === 0)
+    return <p className="text-xs text-zinc-400">No data</p>;
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
-    <div className="flex items-end gap-px h-8">
+    <div className="flex h-8 items-end gap-px">
       {data.map((d) => (
         <div
           key={d.date}
-          className="flex-1 bg-zinc-900 rounded-t-sm"
+          className="flex-1 rounded-t-sm bg-zinc-900"
           style={{ height: `${(d.value / max) * 100}%`, minHeight: 1 }}
         />
       ))}
@@ -26,7 +27,9 @@ export function QADashboard() {
   const t = useTranslations("impact");
   const [range, setRange] = useState<Range>("30d");
 
-  const { data, isLoading, error } = api.impact.getQADetails.useQuery({ range });
+  const { data, isLoading, error } = api.impact.getQADetails.useQuery({
+    range,
+  });
 
   if (isLoading) {
     return (
@@ -52,7 +55,10 @@ export function QADashboard() {
   ];
 
   const metricCards: Array<{ label: string; value: string | number }> = [
-    { label: t("core.totalContributions"), value: data.metrics.totalContributions },
+    {
+      label: t("core.totalContributions"),
+      value: data.metrics.totalContributions,
+    },
     { label: t("core.aiAssisted"), value: data.metrics.aiAssisted },
     { label: t("core.humanReviewedAi"), value: data.metrics.humanReviewed },
     {
@@ -69,9 +75,18 @@ export function QADashboard() {
     label: string;
     data: Array<{ date: string; value: number }>;
   }> = [
-    { label: t("core.totalContributions"), data: data.sparklines.totalContributions },
-    { label: t("core.collaborationRate"), data: data.sparklines.collaborationRate },
-    { label: t("core.forumHelpfulness"), data: data.sparklines.forumHelpfulness },
+    {
+      label: t("core.totalContributions"),
+      data: data.sparklines.totalContributions,
+    },
+    {
+      label: t("core.collaborationRate"),
+      data: data.sparklines.collaborationRate,
+    },
+    {
+      label: t("core.forumHelpfulness"),
+      data: data.sparklines.forumHelpfulness,
+    },
     {
       label: t("experimental.humanOverrideRate.title"),
       data: data.sparklines.overrideRate,
@@ -91,7 +106,7 @@ export function QADashboard() {
     <div className="mx-auto max-w-6xl space-y-8 px-6 py-12 sm:px-10">
       {/* Header */}
       <header className="space-y-3">
-        <p className="font-mono text-xs uppercase tracking-widest text-zinc-500">
+        <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
           {t("qa.subtitle")}
         </p>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -104,7 +119,7 @@ export function QADashboard() {
                 key={btn.value}
                 type="button"
                 onClick={() => setRange(btn.value)}
-                className={`rounded-md border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest ${
+                className={`rounded-md border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase ${
                   range === btn.value
                     ? "border-zinc-900 bg-zinc-900 text-white"
                     : "border-zinc-300 bg-white text-zinc-600"
@@ -120,7 +135,7 @@ export function QADashboard() {
       {/* Confidence + data point count */}
       <div className="flex items-center gap-4">
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-widest ${
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[10px] font-medium tracking-widest uppercase ${
             data.confidence === "low"
               ? "bg-amber-100 text-amber-800"
               : "bg-green-100 text-green-800"
@@ -140,17 +155,19 @@ export function QADashboard() {
             key={card.label}
             className="rounded-lg border border-zinc-200 bg-white p-4"
           >
-            <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+            <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
               {card.label}
             </p>
-            <p className="mt-1 text-2xl font-bold text-zinc-900">{card.value}</p>
+            <p className="mt-1 text-2xl font-bold text-zinc-900">
+              {card.value}
+            </p>
           </div>
         ))}
       </section>
 
       {/* Sparkline previews */}
       <section className="space-y-4">
-        <h2 className="font-mono text-xs uppercase tracking-widest text-zinc-500">
+        <h2 className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
           Sparklines
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -159,7 +176,7 @@ export function QADashboard() {
               key={entry.label}
               className="rounded-lg border border-zinc-200 bg-white p-4"
             >
-              <p className="mb-2 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+              <p className="mb-2 font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
                 {entry.label}
               </p>
               <Sparkline data={entry.data} />
@@ -171,14 +188,14 @@ export function QADashboard() {
       {/* Personality distribution */}
       {personalityEntries.length > 0 && (
         <section className="space-y-4">
-          <h2 className="font-mono text-xs uppercase tracking-widest text-zinc-500">
+          <h2 className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
             {t("experimental.agentPersonalityMix.title")}
           </h2>
           <div className="rounded-lg border border-zinc-200 bg-white p-4">
             <div className="space-y-2">
               {personalityEntries.map(([label, value]) => (
                 <div key={label} className="flex items-center gap-3">
-                  <span className="w-24 shrink-0 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+                  <span className="w-24 shrink-0 font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
                     {label}
                   </span>
                   <div className="h-3 flex-1 rounded-full bg-zinc-100">
@@ -201,11 +218,11 @@ export function QADashboard() {
 
       {/* Learning loop signal */}
       <section className="space-y-4">
-        <h2 className="font-mono text-xs uppercase tracking-widest text-zinc-500">
+        <h2 className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
           {t("experimental.learningLoop.title")}
         </h2>
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-widest ${
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[10px] font-medium tracking-widest uppercase ${
             data.metrics.learningLoopSignal === "improving"
               ? "bg-green-100 text-green-800"
               : data.metrics.learningLoopSignal === "declining"
@@ -220,13 +237,13 @@ export function QADashboard() {
       {/* Admin section */}
       {data.admin && (
         <section className="space-y-4 rounded-lg border border-zinc-300 bg-zinc-50 p-6">
-          <h2 className="font-mono text-xs uppercase tracking-widest text-zinc-700">
+          <h2 className="font-mono text-xs tracking-widest text-zinc-700 uppercase">
             {t("qa.dataQuality")}
           </h2>
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
                 Total Events
               </p>
               <p className="mt-1 text-2xl font-bold text-zinc-900">
@@ -234,7 +251,7 @@ export function QADashboard() {
               </p>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
                 With Session ID
               </p>
               <p className="mt-1 text-2xl font-bold text-zinc-900">
@@ -242,7 +259,7 @@ export function QADashboard() {
               </p>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
                 With Personality Label
               </p>
               <p className="mt-1 text-2xl font-bold text-zinc-900">
@@ -251,12 +268,12 @@ export function QADashboard() {
             </div>
           </div>
 
-          <h3 className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+          <h3 className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
             Aggregate Row Counts
           </h3>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
                 Core
               </p>
               <p className="mt-1 text-xl font-bold text-zinc-900">
@@ -264,7 +281,7 @@ export function QADashboard() {
               </p>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
                 Mix
               </p>
               <p className="mt-1 text-xl font-bold text-zinc-900">
@@ -272,7 +289,7 @@ export function QADashboard() {
               </p>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-zinc-500">
+              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
                 Experimental
               </p>
               <p className="mt-1 text-xl font-bold text-zinc-900">

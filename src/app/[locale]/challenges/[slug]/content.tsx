@@ -8,14 +8,7 @@ import { LexicalRenderer } from "@/lib/lexical";
 import { ChallengeProgress } from "@/components/challenges/challenge-progress";
 import { ChallengeLeaderboard } from "@/components/challenges/challenge-leaderboard";
 import { ChallengeChannelView } from "@/components/challenges/challenge-channel-view";
-import {
-  GitBranch,
-  Trophy,
-  Award,
-  Gift,
-  Clock,
-  Target,
-} from "lucide-react";
+import { GitBranch, Trophy, Award, Gift, Clock, Target } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -138,16 +131,28 @@ export function ChallengeDetailContent({
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       {/* Tab navigation */}
       <div className="flex gap-2">
-        <button onClick={() => setTab("overview")} className={pillClass("overview")}>
+        <button
+          onClick={() => setTab("overview")}
+          className={pillClass("overview")}
+        >
           Overview
         </button>
-        <button onClick={() => setTab("channel")} className={pillClass("channel")}>
+        <button
+          onClick={() => setTab("channel")}
+          className={pillClass("channel")}
+        >
           Channel
         </button>
-        <button onClick={() => setTab("progress")} className={pillClass("progress")}>
+        <button
+          onClick={() => setTab("progress")}
+          className={pillClass("progress")}
+        >
           My Progress
         </button>
-        <button onClick={() => setTab("participants")} className={pillClass("participants")}>
+        <button
+          onClick={() => setTab("participants")}
+          className={pillClass("participants")}
+        >
           Participants
         </button>
       </div>
@@ -156,7 +161,7 @@ export function ChallengeDetailContent({
       {tab === "overview" && (
         <div className="mt-8">
           {/* Meta line */}
-          <div className="flex flex-wrap items-center gap-3 font-mono text-xs tracking-wider text-muted-foreground">
+          <div className="text-muted-foreground flex flex-wrap items-center gap-3 font-mono text-xs tracking-wider">
             <span className="uppercase">{challenge.type}</span>
             {challenge.difficulty && (
               <>
@@ -175,18 +180,21 @@ export function ChallengeDetailContent({
                 <Badge variant="outline">Sponsor</Badge>
               </>
             )}
-            {challenge.collaborationModel && challenge.collaborationModel !== "solo-ai" && (
-              <>
-                <span className="text-border">|</span>
-                <Badge variant="secondary" className="text-purple-600">
-                  {challenge.collaborationModel === "relay" && "Relay"}
-                  {challenge.collaborationModel === "swarm" && "Swarm"}
-                  {challenge.collaborationModel === "adversarial" && "Adversarial"}
-                  {challenge.collaborationModel === "blind" && "Blind"}
-                  {challenge.collaborationModel === "escalation" && "Escalation"}
-                </Badge>
-              </>
-            )}
+            {challenge.collaborationModel &&
+              challenge.collaborationModel !== "solo-ai" && (
+                <>
+                  <span className="text-border">|</span>
+                  <Badge variant="secondary" className="text-purple-600">
+                    {challenge.collaborationModel === "relay" && "Relay"}
+                    {challenge.collaborationModel === "swarm" && "Swarm"}
+                    {challenge.collaborationModel === "adversarial" &&
+                      "Adversarial"}
+                    {challenge.collaborationModel === "blind" && "Blind"}
+                    {challenge.collaborationModel === "escalation" &&
+                      "Escalation"}
+                  </Badge>
+                </>
+              )}
             {challenge.generatedBy === "ai" && (
               <>
                 <span className="text-border">|</span>
@@ -217,7 +225,7 @@ export function ChallengeDetailContent({
                   href={challenge.repo.templateUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-4 hover:opacity-80"
+                  className="text-primary inline-flex items-center gap-1.5 text-sm underline underline-offset-4 hover:opacity-80"
                 >
                   <GitBranch className="h-3.5 w-3.5" />
                   View Template Repo
@@ -228,10 +236,14 @@ export function ChallengeDetailContent({
                   href={challenge.repo.colabUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-4 hover:opacity-80"
+                  className="text-primary inline-flex items-center gap-1.5 text-sm underline underline-offset-4 hover:opacity-80"
                 >
-                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M16.94 2.634a1.255 1.255 0 0 0-1.078-.57c-.39 0-.78.19-1.078.57L12 6.298 9.198 2.634a1.255 1.255 0 0 0-1.078-.57c-.39 0-.78.19-1.078.57L4.32 6.298C3.5 7.39 3 8.74 3 10.21c0 4.42 4.03 8.01 9 8.01s9-3.59 9-8.01c0-1.47-.5-2.82-1.32-3.912l-2.74-3.664zM12 16.22c-3.87 0-7-2.69-7-6.01 0-1.04.35-2 .95-2.82L8.12 4.5 12 9.7l3.88-5.2 2.17 2.89c.6.82.95 1.78.95 2.82 0 3.32-3.13 6.01-7 6.01z"/>
+                  <svg
+                    className="h-3.5 w-3.5"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M16.94 2.634a1.255 1.255 0 0 0-1.078-.57c-.39 0-.78.19-1.078.57L12 6.298 9.198 2.634a1.255 1.255 0 0 0-1.078-.57c-.39 0-.78.19-1.078.57L4.32 6.298C3.5 7.39 3 8.74 3 10.21c0 4.42 4.03 8.01 9 8.01s9-3.59 9-8.01c0-1.47-.5-2.82-1.32-3.912l-2.74-3.664zM12 16.22c-3.87 0-7-2.69-7-6.01 0-1.04.35-2 .95-2.82L8.12 4.5 12 9.7l3.88-5.2 2.17 2.89c.6.82.95 1.78.95 2.82 0 3.32-3.13 6.01-7 6.01z" />
                   </svg>
                   Open in Colab
                 </a>
@@ -250,12 +262,12 @@ export function ChallengeDetailContent({
                 {enroll.isPending ? "Enrolling..." : "Enroll in Challenge"}
               </Button>
             ) : (
-              <span className="inline-block rounded-full bg-secondary px-4 py-1.5 font-mono text-xs tracking-wider text-muted-foreground">
+              <span className="bg-secondary text-muted-foreground inline-block rounded-full px-4 py-1.5 font-mono text-xs tracking-wider">
                 Enrolled
               </span>
             )}
             {enroll.isError && (
-              <p className="mt-2 font-mono text-xs text-destructive">
+              <p className="text-destructive mt-2 font-mono text-xs">
                 {enroll.error.message}
               </p>
             )}
@@ -263,9 +275,9 @@ export function ChallengeDetailContent({
 
           {/* Description */}
           {challenge.description ? (
-            <div className="mt-8 border-t border-border pt-8">
-              <div className="border-b border-border pb-4">
-                <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+            <div className="border-border mt-8 border-t pt-8">
+              <div className="border-border border-b pb-4">
+                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
                   / DESCRIPTION
                 </h2>
               </div>
@@ -277,9 +289,9 @@ export function ChallengeDetailContent({
 
           {/* Objectives */}
           {challenge.objectives.length > 0 && (
-            <div className="mt-8 border-t border-border pt-8">
-              <div className="border-b border-border pb-4">
-                <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+            <div className="border-border mt-8 border-t pt-8">
+              <div className="border-border border-b pb-4">
+                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
                   / OBJECTIVES
                 </h2>
               </div>
@@ -287,25 +299,29 @@ export function ChallengeDetailContent({
                 {challenge.objectives.map((obj, i) => (
                   <li
                     key={obj.description}
-                    className="flex items-start gap-3 rounded border border-dashed border-border px-4 py-3"
+                    className="border-border flex items-start gap-3 rounded border border-dashed px-4 py-3"
                   >
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary font-mono text-xs font-medium text-muted-foreground">
+                    <span className="bg-secondary text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-xs font-medium">
                       {i + 1}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <Target className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                        <span className="text-sm font-medium text-foreground">
+                        <Target className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                        <span className="text-foreground text-sm font-medium">
                           {obj.description}
                         </span>
                       </div>
                       <div className="mt-1 flex items-center gap-2">
                         {obj.verification && (
-                          <Badge variant="secondary" className="font-mono text-[10px]">
-                            {verificationLabels[obj.verification] ?? obj.verification}
+                          <Badge
+                            variant="secondary"
+                            className="font-mono text-[10px]"
+                          >
+                            {verificationLabels[obj.verification] ??
+                              obj.verification}
                           </Badge>
                         )}
-                        <span className="font-mono text-[11px] text-muted-foreground">
+                        <span className="text-muted-foreground font-mono text-[11px]">
                           Target: {obj.targetCount}
                         </span>
                       </div>
@@ -317,16 +333,18 @@ export function ChallengeDetailContent({
           )}
 
           {/* Rewards */}
-          <div className="mt-8 border-t border-border pt-8">
-            <div className="border-b border-border pb-4">
-              <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+          <div className="border-border mt-8 border-t pt-8">
+            <div className="border-border border-b pb-4">
+              <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
                 / REWARDS
               </h2>
             </div>
             <div className="mt-4 space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Trophy className="h-4 w-4 text-yellow-500" />
-                <span className="font-medium">{challenge.rewards.xpReward} XP</span>
+                <span className="font-medium">
+                  {challenge.rewards.xpReward} XP
+                </span>
               </div>
               {challenge.rewards.badgeReward && (
                 <div className="flex items-center gap-2 text-sm">
@@ -345,9 +363,9 @@ export function ChallengeDetailContent({
 
           {/* Tags */}
           {challenge.tags && challenge.tags.length > 0 && (
-            <div className="mt-8 border-t border-border pt-8">
-              <div className="border-b border-border pb-4">
-                <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+            <div className="border-border mt-8 border-t pt-8">
+              <div className="border-border border-b pb-4">
+                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
                   / TAGS
                 </h2>
               </div>
@@ -355,7 +373,7 @@ export function ChallengeDetailContent({
                 {challenge.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full bg-secondary px-3 py-1 font-mono text-xs tracking-wider text-muted-foreground"
+                    className="bg-secondary text-muted-foreground rounded-full px-3 py-1 font-mono text-xs tracking-wider"
                   >
                     {tag}
                   </span>
@@ -367,15 +385,13 @@ export function ChallengeDetailContent({
       )}
 
       {/* ── Channel Tab ───────────────────────────────────────────────── */}
-      {tab === "channel" && (
-        <ChallengeChannelView challengeId={challenge.id} />
-      )}
+      {tab === "channel" && <ChallengeChannelView challengeId={challenge.id} />}
 
       {/* ── My Progress Tab ───────────────────────────────────────────── */}
       {tab === "progress" && (
         <div className="mt-8">
-          <div className="border-b border-border pb-4">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+          <div className="border-border border-b pb-4">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / MY PROGRESS
             </h2>
           </div>
@@ -389,8 +405,8 @@ export function ChallengeDetailContent({
                 }))}
               />
             ) : (
-              <div className="rounded-lg border border-dashed border-border px-6 py-12 text-center">
-                <p className="text-sm text-muted-foreground">
+              <div className="border-border rounded-lg border border-dashed px-6 py-12 text-center">
+                <p className="text-muted-foreground text-sm">
                   Enroll first to track progress
                 </p>
                 <Button
@@ -409,8 +425,8 @@ export function ChallengeDetailContent({
       {/* ── Participants Tab ──────────────────────────────────────────── */}
       {tab === "participants" && (
         <div className="mt-8">
-          <div className="border-b border-border pb-4">
-            <h2 className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+          <div className="border-border border-b pb-4">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / PARTICIPANTS
             </h2>
           </div>

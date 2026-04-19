@@ -18,7 +18,7 @@ function BlockMenu({
   return (
     <div
       ref={menuRef}
-      className="absolute left-0 top-0 z-10 flex items-center gap-0.5 will-change-transform"
+      className="absolute top-0 left-0 z-10 flex items-center gap-0.5 will-change-transform"
     >
       <button
         type="button"
@@ -28,21 +28,37 @@ function BlockMenu({
           onAdd();
         }}
         onMouseDown={(e) => e.stopPropagation()}
-        className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground"
+        className="text-muted-foreground/40 hover:bg-muted hover:text-foreground flex h-6 w-6 items-center justify-center rounded transition-colors"
         title="Add block below"
         onDragStart={(e) => e.preventDefault()}
         draggable={false}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       </button>
       <div
-        className="flex h-6 w-6 cursor-grab items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
+        className="text-muted-foreground/40 hover:bg-muted hover:text-foreground flex h-6 w-6 cursor-grab items-center justify-center rounded transition-colors active:cursor-grabbing"
         title="Drag to move"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
           <circle cx="9" cy="5" r="1.5" />
           <circle cx="15" cy="5" r="1.5" />
           <circle cx="9" cy="12" r="1.5" />
@@ -55,11 +71,15 @@ function BlockMenu({
   );
 }
 
-function TargetLine({ targetLineRef }: { targetLineRef: React.RefObject<HTMLDivElement | null> }) {
+function TargetLine({
+  targetLineRef,
+}: {
+  targetLineRef: React.RefObject<HTMLDivElement | null>;
+}) {
   return (
     <div
       ref={targetLineRef}
-      className="pointer-events-none absolute left-0 top-0 h-1 rounded-full bg-primary/40 opacity-0 will-change-transform"
+      className="bg-primary/40 pointer-events-none absolute top-0 left-0 h-1 rounded-full opacity-0 will-change-transform"
     />
   );
 }

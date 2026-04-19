@@ -91,19 +91,23 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
       {/* Search + New Thread */}
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder={t("search")}
-            className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/30 w-full rounded-md border py-2 pl-9 pr-3 font-mono text-xs focus:outline-none focus:ring-1"
+            className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/30 w-full rounded-md border py-2 pr-3 pl-9 font-mono text-xs focus:ring-1 focus:outline-none"
           />
         </div>
         {session?.user ? (
           <Link
-            href={communitySlug ? `/forum/new?community=${communitySlug}` as never : "/forum/new"}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 flex shrink-0 items-center gap-1.5 rounded-md px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest transition-colors"
+            href={
+              communitySlug
+                ? (`/forum/new?community=${communitySlug}` as never)
+                : "/forum/new"
+            }
+            className="bg-primary text-primary-foreground hover:bg-primary/90 flex shrink-0 items-center gap-1.5 rounded-md px-4 py-2 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors"
           >
             <Plus className="h-3 w-3" />
             {t("newThread")}
@@ -122,13 +126,13 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
       <div className="border-border mb-5 flex items-center justify-between gap-4 border-b pb-3">
         <CategoryTabs active={category} onChange={handleCategoryChange} />
         <div className="flex shrink-0 items-center gap-2">
-          <span className="text-muted-foreground font-mono text-[9px] uppercase tracking-widest">
+          <span className="text-muted-foreground font-mono text-[9px] tracking-widest uppercase">
             {t("sort")}:
           </span>
           <select
             value={sort}
             onChange={(e) => handleSortChange(e.target.value as Sort)}
-            className="border-border bg-background text-foreground focus:border-ring focus:ring-ring/30 w-full rounded border px-2 py-1 font-mono text-[10px] focus:outline-none focus:ring-1 sm:w-auto"
+            className="border-border bg-background text-foreground focus:border-ring focus:ring-ring/30 w-full rounded border px-2 py-1 font-mono text-[10px] focus:ring-1 focus:outline-none sm:w-auto"
           >
             <option value="newest">{t("sortNewest")}</option>
             <option value="mostReplied">{t("sortMostReplied")}</option>
@@ -142,10 +146,7 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-muted h-16 animate-pulse rounded-lg"
-            />
+            <div key={i} className="bg-muted h-16 animate-pulse rounded-lg" />
           ))}
         </div>
       ) : noResults ? (
@@ -159,7 +160,12 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
       ) : (
         <div className="space-y-3">
           {threads.map((thread, i) => (
-            <ThreadCard key={thread.id} thread={thread} index={i} memberRole={memberRole} />
+            <ThreadCard
+              key={thread.id}
+              thread={thread}
+              index={i}
+              memberRole={memberRole}
+            />
           ))}
         </div>
       )}
@@ -169,7 +175,7 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
         <div className="mt-6 text-center">
           <button
             onClick={() => setPage((p) => p + 1)}
-            className="border-border text-muted-foreground hover:border-ring hover:bg-secondary rounded-md border px-6 py-2 font-mono text-[10px] font-semibold uppercase tracking-widest transition-colors"
+            className="border-border text-muted-foreground hover:border-ring hover:bg-secondary rounded-md border px-6 py-2 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors"
           >
             {t("loadMore")}
           </button>

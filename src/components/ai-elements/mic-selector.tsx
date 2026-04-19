@@ -96,7 +96,7 @@ export const MicSelector = ({
       value,
       width,
     }),
-    [devices, onOpenChange, onValueChange, open, setWidth, value, width]
+    [devices, onOpenChange, onValueChange, open, setWidth, value, width],
   );
 
   return (
@@ -141,7 +141,7 @@ export const MicSelectorTrigger = ({
       <Button variant="outline" {...props} ref={ref}>
         {children}
         <ChevronsUpDownIcon
-          className="shrink-0 text-muted-foreground"
+          className="text-muted-foreground shrink-0"
           size={16}
         />
       </Button>
@@ -214,7 +214,7 @@ export const MicSelectorItem = (props: MicSelectorItemProps) => {
       onValueChange?.(currentValue);
       onOpenChange?.(false);
     },
-    [onValueChange, onOpenChange]
+    [onValueChange, onOpenChange],
   );
 
   return <CommandItem onSelect={handleSelect} {...props} />;
@@ -289,7 +289,7 @@ export const useAudioDevices = () => {
 
       const deviceList = await navigator.mediaDevices.enumerateDevices();
       const audioInputs = deviceList.filter(
-        (device) => device.kind === "audioinput"
+        (device) => device.kind === "audioinput",
       );
 
       setDevices(audioInputs);
@@ -323,7 +323,7 @@ export const useAudioDevices = () => {
 
       const deviceList = await navigator.mediaDevices.enumerateDevices();
       const audioInputs = deviceList.filter(
-        (device) => device.kind === "audioinput"
+        (device) => device.kind === "audioinput",
       );
 
       setDevices(audioInputs);
@@ -357,7 +357,7 @@ export const useAudioDevices = () => {
     return () => {
       navigator.mediaDevices.removeEventListener(
         "devicechange",
-        handleDeviceChange
+        handleDeviceChange,
       );
     };
   }, [hasPermission, loadDevicesWithPermission, loadDevicesWithoutPermission]);

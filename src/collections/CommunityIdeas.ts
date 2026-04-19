@@ -5,7 +5,8 @@ export const CommunityIdeas: CollectionConfig = {
   admin: {
     useAsTitle: "title",
     defaultColumns: ["title", "status", "voteCount", "author", "createdAt"],
-    description: "Community feature requests and proposals. Change status as ideas are implemented or declined.",
+    description:
+      "Community feature requests and proposals. Change status as ideas are implemented or declined.",
   },
   fields: [
     {
@@ -21,7 +22,10 @@ export const CommunityIdeas: CollectionConfig = {
       name: "authorId",
       type: "text",
       required: true,
-      admin: { position: "sidebar", description: "Better Auth user ID (UUID)." },
+      admin: {
+        position: "sidebar",
+        description: "Better Auth user ID (UUID).",
+      },
     },
     {
       name: "authorName",

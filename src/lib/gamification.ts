@@ -1,7 +1,12 @@
 import { eq, sql, and } from "drizzle-orm";
 import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
 import type * as schema from "@/server/db/schema";
-import { memberProfiles, memberBadges, eventRegistrations, activityEvents } from "@/server/db/schema";
+import {
+  memberProfiles,
+  memberBadges,
+  eventRegistrations,
+  activityEvents,
+} from "@/server/db/schema";
 
 // --- Badge Definitions ---
 
@@ -118,7 +123,8 @@ export const BADGES: Record<string, BadgeDefinition> = {
   agent_collab: {
     slug: "agent_collab",
     name: "Full Stack Agent",
-    description: "Completed a challenge where your agent posted 5+ progress updates",
+    description:
+      "Completed a challenge where your agent posted 5+ progress updates",
     icon: "🤖",
   },
   streak_10: {
@@ -191,7 +197,10 @@ export function calculateLevel(xp: number): number {
   return Math.floor(xp / 200) + 1;
 }
 
-export function xpForNextLevel(currentXp: number): { current: number; needed: number } {
+export function xpForNextLevel(currentXp: number): {
+  current: number;
+  needed: number;
+} {
   const level = calculateLevel(currentXp);
   const levelStart = (level - 1) * 200;
   return {

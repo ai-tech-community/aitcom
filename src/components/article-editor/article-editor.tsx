@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef, useReducer } from "react";
+import {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+  useReducer,
+} from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { useRouter } from "@/i18n/navigation";
@@ -34,7 +41,10 @@ import {
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_CHECK_LIST_COMMAND,
 } from "@payloadcms/richtext-lexical/lexical/list";
-import { LinkNode, AutoLinkNode } from "@payloadcms/richtext-lexical/lexical/link";
+import {
+  LinkNode,
+  AutoLinkNode,
+} from "@payloadcms/richtext-lexical/lexical/link";
 import { $setBlocksType } from "@payloadcms/richtext-lexical/lexical/selection";
 import {
   HorizontalRuleNode,
@@ -46,15 +56,32 @@ import { LinkPlugin } from "@payloadcms/richtext-lexical/lexical/react/LexicalLi
 
 import { CodeBlockNode, $createCodeBlockNode } from "./nodes/code-block-node";
 import { ImageNode, $createImageNode } from "./nodes/image-node";
-import type { ArticleEditorProps, SaveState, SlashGroup, SlashCommand } from "./types";
+import type {
+  ArticleEditorProps,
+  SaveState,
+  SlashGroup,
+  SlashCommand,
+} from "./types";
 import { editorReducer, slashMenuReducer } from "./reducers";
-import { extractPlainText, hasCodeNode, getHeadingOutline, filterSlashCommands, generateSlug, preprocessEditorState, postprocessEditorState } from "./utils";
+import {
+  extractPlainText,
+  hasCodeNode,
+  getHeadingOutline,
+  filterSlashCommands,
+  generateSlug,
+  preprocessEditorState,
+  postprocessEditorState,
+} from "./utils";
 import { SlashCommandMenu } from "./slash-command-menu";
 import { FloatingToolbar } from "./floating-toolbar";
 import { BlockHandles } from "./block-handles";
 import { PrePublishDialog } from "./pre-publish-dialog";
 
-function EditorBridge({ onReady }: { onReady: (editor: LexicalEditor) => void }) {
+function EditorBridge({
+  onReady,
+}: {
+  onReady: (editor: LexicalEditor) => void;
+}) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -64,7 +91,10 @@ function EditorBridge({ onReady }: { onReady: (editor: LexicalEditor) => void })
   return null;
 }
 
-export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorProps) {
+export function ArticleEditor({
+  initialData,
+  isTrustedAuthor,
+}: ArticleEditorProps) {
   const t = useTranslations("articleEditor");
   const router = useRouter();
 
@@ -81,7 +111,18 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
     articleId: initialData?.id ?? null,
   });
 
-  const { title, type, tags, mediaUrl, editorState, saving, submitting, saveState, lastSavedAt, articleId } = state;
+  const {
+    title,
+    type,
+    tags,
+    mediaUrl,
+    editorState,
+    saving,
+    submitting,
+    saveState,
+    lastSavedAt,
+    articleId,
+  } = state;
 
   const [slash, slashDispatch] = useReducer(slashMenuReducer, {
     open: false,
@@ -90,7 +131,10 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
   });
 
   const [tagInput, setTagInput] = useState("");
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [message, setMessage] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [editorRef, setEditorRef] = useState<LexicalEditor | null>(null);
   const [editorAnchor, setEditorAnchor] = useState<HTMLDivElement | null>(null);
@@ -108,39 +152,58 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
   const updateMutation = api.articles.update.useMutation();
   const submitMutation = api.articles.submit.useMutation();
 
-  const initialConfig = useMemo(() => ({
-    namespace: "ArticleEditor",
-    theme: {
-      paragraph: "mb-2 leading-relaxed",
-      heading: {
-        h2: "mt-6 mb-3 text-2xl font-bold tracking-tight",
-        h3: "mt-4 mb-2 text-xl font-semibold",
+  const initialConfig = useMemo(
+    () => ({
+      namespace: "ArticleEditor",
+      theme: {
+        paragraph: "mb-2 leading-relaxed",
+        heading: {
+          h2: "mt-6 mb-3 text-2xl font-bold tracking-tight",
+          h3: "mt-4 mb-2 text-xl font-semibold",
+        },
+        list: {
+          ul: "mb-4 pl-6 list-disc",
+          ol: "mb-4 pl-6 list-decimal",
+          listitem: "mb-1",
+        },
+        quote:
+          "border-l-4 border-primary/40 pl-4 italic text-muted-foreground my-4",
+        text: {
+          bold: "font-bold",
+          italic: "italic",
+          code: "bg-muted rounded px-1 py-0.5 font-mono text-sm",
+          underline: "underline",
+          strikethrough: "line-through",
+        },
+        link: "text-primary underline underline-offset-4 hover:opacity-80",
       },
-      list: {
-        ul: "mb-4 pl-6 list-disc",
-        ol: "mb-4 pl-6 list-decimal",
-        listitem: "mb-1",
-      },
-      quote: "border-l-4 border-primary/40 pl-4 italic text-muted-foreground my-4",
-      text: {
-        bold: "font-bold",
-        italic: "italic",
-        code: "bg-muted rounded px-1 py-0.5 font-mono text-sm",
-        underline: "underline",
-        strikethrough: "line-through",
-      },
-      link: "text-primary underline underline-offset-4 hover:opacity-80",
-    },
-    nodes: [HeadingNode, QuoteNode, ListNode, ListItemNode, LinkNode, AutoLinkNode, HorizontalRuleNode, CodeBlockNode, ImageNode],
-    editorState: initialData?.content ? preprocessEditorState(initialData.content) : undefined,
-    onError: (error: Error) => console.error("[ArticleEditor]", error),
-  }), [initialData?.content]);
+      nodes: [
+        HeadingNode,
+        QuoteNode,
+        ListNode,
+        ListItemNode,
+        LinkNode,
+        AutoLinkNode,
+        HorizontalRuleNode,
+        CodeBlockNode,
+        ImageNode,
+      ],
+      editorState: initialData?.content
+        ? preprocessEditorState(initialData.content)
+        : undefined,
+      onError: (error: Error) => console.error("[ArticleEditor]", error),
+    }),
+    [initialData?.content],
+  );
 
-  const showMessage = useCallback((text: string, msgType: "success" | "error") => {
-    setMessage({ text, type: msgType });
-    if (messageTimer.current) clearTimeout(messageTimer.current);
-    messageTimer.current = setTimeout(() => setMessage(null), 3500);
-  }, []);
+  const showMessage = useCallback(
+    (text: string, msgType: "success" | "error") => {
+      setMessage({ text, type: msgType });
+      if (messageTimer.current) clearTimeout(messageTimer.current);
+      messageTimer.current = setTimeout(() => setMessage(null), 3500);
+    },
+    [],
+  );
 
   const saveDraftInternal = useCallback(
     async (showToast: boolean) => {
@@ -175,7 +238,10 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
             mediaUrl: mediaUrl || null,
           });
 
-          const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const time = new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
           dispatch({ type: "SAVE_SUCCESS", payload: { articleId, time } });
           if (showToast) showMessage(t("savedDraft"), "success");
           return articleId;
@@ -192,8 +258,14 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
 
         const createdId = Number(created.id);
         const createdSlug = (created as { slug?: string }).slug;
-        const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        dispatch({ type: "SAVE_SUCCESS", payload: { articleId: createdId, time } });
+        const time = new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        dispatch({
+          type: "SAVE_SUCCESS",
+          payload: { articleId: createdId, time },
+        });
         if (showToast) showMessage(t("draftCreated"), "success");
 
         // Update URL so refresh loads the saved article instead of a blank editor.
@@ -201,21 +273,40 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
         if (!initialData?.id && createdSlug) {
           const currentPath = window.location.pathname;
           const locale = currentPath.split("/")[1]; // e.g. "en" or "nl"
-          window.history.replaceState(null, "", `/${locale}/blog/edit/${createdSlug}`);
+          window.history.replaceState(
+            null,
+            "",
+            `/${locale}/blog/edit/${createdSlug}`,
+          );
         }
 
         return createdId;
       } catch (err) {
         dispatch({ type: "SAVE_ERROR" });
         if (showToast) {
-          showMessage(err instanceof Error ? err.message : t("failedToSave"), "error");
+          showMessage(
+            err instanceof Error ? err.message : t("failedToSave"),
+            "error",
+          );
         }
         return null;
       } finally {
         dispatch({ type: "SAVE_END" });
       }
     },
-    [articleId, createMutation, editorState, initialData?.id, mediaUrl, showMessage, t, tags, title, type, updateMutation],
+    [
+      articleId,
+      createMutation,
+      editorState,
+      initialData?.id,
+      mediaUrl,
+      showMessage,
+      t,
+      tags,
+      title,
+      type,
+      updateMutation,
+    ],
   );
 
   const saveDraftRef = useRef(saveDraftInternal);
@@ -225,7 +316,8 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
 
   const plainText = useMemo(() => {
     if (!editorState) return "";
-    const nodes = (editorState as { root?: { children?: unknown[] } }).root?.children ?? [];
+    const nodes =
+      (editorState as { root?: { children?: unknown[] } }).root?.children ?? [];
     return extractPlainText(nodes);
   }, [editorState]);
 
@@ -240,10 +332,16 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
   }, [wordCount]);
 
   const contentNodes = useMemo(() => {
-    return (editorState as { root?: { children?: unknown[] } } | null)?.root?.children ?? [];
+    return (
+      (editorState as { root?: { children?: unknown[] } } | null)?.root
+        ?.children ?? []
+    );
   }, [editorState]);
 
-  const outline = useMemo(() => getHeadingOutline(contentNodes), [contentNodes]);
+  const outline = useMemo(
+    () => getHeadingOutline(contentNodes),
+    [contentNodes],
+  );
 
   const blockingChecks = useMemo(() => {
     const results: string[] = [];
@@ -268,11 +366,16 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
       });
 
       if (firstHeadingIndex > 0) {
-        introBeforeHeading = contentNodes.slice(0, firstHeadingIndex).some((node) => {
-          if (!node || typeof node !== "object") return false;
-          const n = node as Record<string, unknown>;
-          return n.type === "paragraph" && extractPlainText(n.children).trim().length > 0;
-        });
+        introBeforeHeading = contentNodes
+          .slice(0, firstHeadingIndex)
+          .some((node) => {
+            if (!node || typeof node !== "object") return false;
+            const n = node as Record<string, unknown>;
+            return (
+              n.type === "paragraph" &&
+              extractPlainText(n.children).trim().length > 0
+            );
+          });
       }
     }
 
@@ -283,8 +386,10 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
   const warningChecks = useMemo(() => {
     const results: string[] = [];
     const containsCode = hasCodeNode(contentNodes) || plainText.includes("```");
-    if (type === "tutorial" && !containsCode) results.push(t("checkTutorialNoCode"));
-    if (plainText.includes("[MERMAID]") && !/graph\s+[A-Z]{2}/.test(plainText)) results.push(t("checkMermaidLikelyInvalid"));
+    if (type === "tutorial" && !containsCode)
+      results.push(t("checkTutorialNoCode"));
+    if (plainText.includes("[MERMAID]") && !/graph\s+[A-Z]{2}/.test(plainText))
+      results.push(t("checkMermaidLikelyInvalid"));
     if (wordCount > 0 && wordCount < 120) results.push(t("checkTooShort"));
     return results;
   }, [contentNodes, plainText, t, type, wordCount]);
@@ -307,14 +412,29 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
 
       await submitMutation.mutateAsync({ id });
       setPublishDialogOpen(false);
-      showMessage(isTrustedAuthor ? t("publishedSuccess") : t("submitted"), "success");
+      showMessage(
+        isTrustedAuthor ? t("publishedSuccess") : t("submitted"),
+        "success",
+      );
       setTimeout(() => router.push("/blog/my-articles"), 1400);
     } catch (err) {
-      showMessage(err instanceof Error ? err.message : t("failedToSubmit"), "error");
+      showMessage(
+        err instanceof Error ? err.message : t("failedToSubmit"),
+        "error",
+      );
     } finally {
       dispatch({ type: "SUBMIT_END" });
     }
-  }, [articleId, blockingChecks, isTrustedAuthor, router, saveDraftInternal, showMessage, submitMutation, t]);
+  }, [
+    articleId,
+    blockingChecks,
+    isTrustedAuthor,
+    router,
+    saveDraftInternal,
+    showMessage,
+    submitMutation,
+    t,
+  ]);
 
   useEffect(() => {
     if (!initialized.current) {
@@ -322,7 +442,13 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
       return;
     }
 
-    if (!title.trim() || !editorState || submittingRef.current || savingRef.current) return;
+    if (
+      !title.trim() ||
+      !editorState ||
+      submittingRef.current ||
+      savingRef.current
+    )
+      return;
     dispatch({ type: "MARK_UNSAVED" });
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
 
@@ -348,24 +474,30 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
   const handleEditorChange = useCallback((edState: EditorState) => {
     if (serializeTimer.current) clearTimeout(serializeTimer.current);
     serializeTimer.current = setTimeout(() => {
-      dispatch({ type: "SET_EDITOR_STATE", payload: postprocessEditorState(edState.toJSON()) });
+      dispatch({
+        type: "SET_EDITOR_STATE",
+        payload: postprocessEditorState(edState.toJSON()),
+      });
     }, 150);
   }, []);
 
-  const insertParagraphText = useCallback((editor: LexicalEditor, text: string) => {
-    editor.update(() => {
-      const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
+  const insertParagraphText = useCallback(
+    (editor: LexicalEditor, text: string) => {
+      editor.update(() => {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) return;
 
-      const lines = text.split("\n");
-      const nodes = lines.map((line) => {
-        const p = $createParagraphNode();
-        p.append($createTextNode(line));
-        return p;
+        const lines = text.split("\n");
+        const nodes = lines.map((line) => {
+          const p = $createParagraphNode();
+          p.append($createTextNode(line));
+          return p;
+        });
+        selection.insertNodes(nodes);
       });
-      selection.insertNodes(nodes);
-    });
-  }, []);
+    },
+    [],
+  );
 
   const executeSlashCommand = useCallback(
     (id: string) => {
@@ -374,7 +506,8 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
       if (id === "h2" || id === "h3") {
         editorRef.update(() => {
           const selection = $getSelection();
-          if ($isRangeSelection(selection)) $setBlocksType(selection, () => $createHeadingNode(id));
+          if ($isRangeSelection(selection))
+            $setBlocksType(selection, () => $createHeadingNode(id));
         });
         slashDispatch({ type: "CLOSE" });
         return;
@@ -383,7 +516,8 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
       if (id === "paragraph") {
         editorRef.update(() => {
           const selection = $getSelection();
-          if ($isRangeSelection(selection)) $setBlocksType(selection, () => $createParagraphNode());
+          if ($isRangeSelection(selection))
+            $setBlocksType(selection, () => $createParagraphNode());
         });
         slashDispatch({ type: "CLOSE" });
         return;
@@ -392,15 +526,19 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
       if (id === "quote") {
         editorRef.update(() => {
           const selection = $getSelection();
-          if ($isRangeSelection(selection)) $setBlocksType(selection, () => $createQuoteNode());
+          if ($isRangeSelection(selection))
+            $setBlocksType(selection, () => $createQuoteNode());
         });
         slashDispatch({ type: "CLOSE" });
         return;
       }
 
-      if (id === "ul") editorRef.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-      if (id === "ol") editorRef.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
-      if (id === "check") editorRef.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
+      if (id === "ul")
+        editorRef.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+      if (id === "ol")
+        editorRef.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+      if (id === "check")
+        editorRef.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
       if (id === "divider") {
         editorRef.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND, undefined);
         slashDispatch({ type: "CLOSE" });
@@ -430,12 +568,31 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
         slashDispatch({ type: "CLOSE" });
         return;
       }
-      if (id === "admonition-info") insertParagraphText(editorRef, "[!INFO] Short info title\nExplain the context and expected behavior.");
-      if (id === "admonition-warning") insertParagraphText(editorRef, "[!WARNING] Important warning\nDescribe risk, impact, and mitigation steps.");
-      if (id === "admonition-success") insertParagraphText(editorRef, "[!SUCCESS] Good practice\nExplain what success looks like and why it works.");
-      if (id === "mermaid") insertParagraphText(editorRef, "[MERMAID] graph TD; A[Start] --> B[End]");
+      if (id === "admonition-info")
+        insertParagraphText(
+          editorRef,
+          "[!INFO] Short info title\nExplain the context and expected behavior.",
+        );
+      if (id === "admonition-warning")
+        insertParagraphText(
+          editorRef,
+          "[!WARNING] Important warning\nDescribe risk, impact, and mitigation steps.",
+        );
+      if (id === "admonition-success")
+        insertParagraphText(
+          editorRef,
+          "[!SUCCESS] Good practice\nExplain what success looks like and why it works.",
+        );
+      if (id === "mermaid")
+        insertParagraphText(
+          editorRef,
+          "[MERMAID] graph TD; A[Start] --> B[End]",
+        );
       if (id === "tabs") {
-        insertParagraphText(editorRef, "[TABS]\n[Tab: API]\n```ts\nfetch('/api/example')\n```\n[Tab: cURL]\n```bash\ncurl https://example.com/api/example\n```");
+        insertParagraphText(
+          editorRef,
+          "[TABS]\n[Tab: API]\n```ts\nfetch('/api/example')\n```\n[Tab: cURL]\n```bash\ncurl https://example.com/api/example\n```",
+        );
       }
 
       slashDispatch({ type: "CLOSE" });
@@ -443,7 +600,10 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
     [editorRef, insertParagraphText],
   );
 
-  const filteredSlashCommands = useMemo(() => filterSlashCommands(slash.query), [slash.query]);
+  const filteredSlashCommands = useMemo(
+    () => filterSlashCommands(slash.query),
+    [slash.query],
+  );
 
   const handleEditorKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -476,13 +636,19 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
 
       if (event.key === "ArrowDown") {
         event.preventDefault();
-        slashDispatch({ type: "MOVE_DOWN", payload: filteredSlashCommands.length });
+        slashDispatch({
+          type: "MOVE_DOWN",
+          payload: filteredSlashCommands.length,
+        });
         return;
       }
 
       if (event.key === "ArrowUp") {
         event.preventDefault();
-        slashDispatch({ type: "MOVE_UP", payload: filteredSlashCommands.length });
+        slashDispatch({
+          type: "MOVE_UP",
+          payload: filteredSlashCommands.length,
+        });
         return;
       }
 
@@ -504,7 +670,13 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
         slashDispatch({ type: "APPEND_QUERY", payload: event.key });
       }
     },
-    [editorRef, executeSlashCommand, filteredSlashCommands, slash.activeIndex, slash.open],
+    [
+      editorRef,
+      executeSlashCommand,
+      filteredSlashCommands,
+      slash.activeIndex,
+      slash.open,
+    ],
   );
 
   const groupedCommands = useMemo(() => {
@@ -533,35 +705,48 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
   return (
     <div>
       {/* Changes-requested banner */}
-      {initialData?.reviewStatus === "changes_requested" && initialData.reviewNote && (
-        <div className="mb-6 rounded border border-orange-500/30 bg-orange-500/10 px-4 py-3">
-          <p className="font-mono text-xs font-medium tracking-wider text-orange-400">{t("changesRequested").toUpperCase()}</p>
-          <p className="mt-1 text-sm">{initialData.reviewNote}</p>
-        </div>
-      )}
+      {initialData?.reviewStatus === "changes_requested" &&
+        initialData.reviewNote && (
+          <div className="mb-6 rounded border border-orange-500/30 bg-orange-500/10 px-4 py-3">
+            <p className="font-mono text-xs font-medium tracking-wider text-orange-400">
+              {t("changesRequested").toUpperCase()}
+            </p>
+            <p className="mt-1 text-sm">{initialData.reviewNote}</p>
+          </div>
+        )}
 
       {/* Toast messages */}
       {message && (
-        <div className={`mb-6 rounded border px-4 py-2 text-sm ${message.type === "success" ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}>
+        <div
+          className={`mb-6 rounded border px-4 py-2 text-sm ${message.type === "success" ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-red-500/30 bg-red-500/10 text-red-400"}`}
+        >
           {message.text}
         </div>
       )}
 
       {/* Sticky top bar */}
-      <div className="bg-background/70 sticky top-14 z-10 -mx-6 border-b border-border/50 px-6 py-2.5 backdrop-blur sm:-mx-12 sm:px-12">
+      <div className="bg-background/70 border-border/50 sticky top-14 z-10 -mx-6 border-b px-6 py-2.5 backdrop-blur sm:-mx-12 sm:px-12">
         <div className="flex items-center justify-between">
           <div className="flex flex-wrap items-center gap-3 text-xs">
             <span className="font-mono">{saveStateLabel}</span>
-            <span className="text-muted-foreground">{t("wordsCount", { count: wordCount })}</span>
-            <span className="text-muted-foreground">{t("readingMinutes", { count: readingMinutes })}</span>
-            <span className="text-muted-foreground hidden sm:inline">{t("slashHint")}</span>
+            <span className="text-muted-foreground">
+              {t("wordsCount", { count: wordCount })}
+            </span>
+            <span className="text-muted-foreground">
+              {t("readingMinutes", { count: readingMinutes })}
+            </span>
+            <span className="text-muted-foreground hidden sm:inline">
+              {t("slashHint")}
+            </span>
           </div>
           <button
             type="button"
             onClick={() => setPublishDialogOpen(true)}
             className="bg-foreground text-background hover:bg-foreground/90 rounded px-4 py-1.5 font-mono text-xs tracking-wider transition-colors"
           >
-            {isTrustedAuthor ? t("publish").toUpperCase() : t("submitForReview").toUpperCase()}
+            {isTrustedAuthor
+              ? t("publish").toUpperCase()
+              : t("submitForReview").toUpperCase()}
           </button>
         </div>
       </div>
@@ -570,20 +755,31 @@ export function ArticleEditor({ initialData, isTrustedAuthor }: ArticleEditorPro
       <input
         type="text"
         value={title}
-        onChange={(e) => dispatch({ type: "SET_FIELD", field: "title", payload: e.target.value })}
+        onChange={(e) =>
+          dispatch({
+            type: "SET_FIELD",
+            field: "title",
+            payload: e.target.value,
+          })
+        }
         placeholder={t("articleTitlePlaceholder")}
-        className="mt-8 w-full bg-transparent text-3xl font-bold leading-tight tracking-tight placeholder:text-muted-foreground/40 focus:outline-none"
+        className="placeholder:text-muted-foreground/40 mt-8 w-full bg-transparent text-3xl leading-tight font-bold tracking-tight focus:outline-none"
       />
 
       {/* Subtle separator */}
-      <div className="border-b border-border my-4" />
+      <div className="border-border my-4 border-b" />
 
       {/* Borderless content editor */}
       <div className="editor-anchor relative" ref={setEditorAnchor}>
         <LexicalComposer initialConfig={initialConfig}>
           <EditorBridge onReady={setEditorRef} />
           <RichTextPlugin
-            contentEditable={<ContentEditable className="min-h-[60vh] pl-4 text-sm leading-relaxed focus:outline-none sm:pl-14" onKeyDown={handleEditorKeyDown} />}
+            contentEditable={
+              <ContentEditable
+                className="min-h-[60vh] pl-4 text-sm leading-relaxed focus:outline-none sm:pl-14"
+                onKeyDown={handleEditorKeyDown}
+              />
+            }
             ErrorBoundary={LexicalErrorBoundary}
           />
           <HistoryPlugin />

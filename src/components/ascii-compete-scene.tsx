@@ -37,7 +37,11 @@ function bar(score: number, blink: boolean): string {
   return `${fill.repeat(units)}${".".repeat(Math.max(0, 24 - units))}`;
 }
 
-function competeLines(round: Team[], blink: boolean, roundNo: number): string[] {
+function competeLines(
+  round: Team[],
+  blink: boolean,
+  roundNo: number,
+): string[] {
   return [
     "/---------------- challenge leaderboard ---------------------\\",
     `| ROUND ${String(roundNo + 1).padStart(2, "0")}  | live updates | rewards | badges                 |`,
@@ -47,7 +51,10 @@ function competeLines(round: Team[], blink: boolean, roundNo: number): string[] 
     `| 3) ${round[2]!.name}  ${String(round[2]!.score).padStart(3, " ")} pts  [${bar(round[2]!.score, blink)}] |`,
     "|                                                            |",
     "| TASK: optimize retrieval pipeline under 150ms latency      |",
-    `| STATUS: ${blink ? "score event incoming *" : "running validations..."}`.padEnd(61, " ") + "|",
+    `| STATUS: ${blink ? "score event incoming *" : "running validations..."}`.padEnd(
+      61,
+      " ",
+    ) + "|",
     "\\------------------------------------------------------------/",
   ];
 }
@@ -58,7 +65,11 @@ export function AsciiCompeteScene() {
   const render = useCallback((tick: number, cols: number, rows: number) => {
     const roundNo = Math.floor(tick / 10) % ROUNDS.length;
     const blink = Math.floor(tick / 3) % 2 === 0;
-    return fitAsciiFrame(competeLines(ROUNDS[roundNo]!, blink, roundNo), cols, rows);
+    return fitAsciiFrame(
+      competeLines(ROUNDS[roundNo]!, blink, roundNo),
+      cols,
+      rows,
+    );
   }, []);
 
   useAsciiScene(preRef, render, 85);

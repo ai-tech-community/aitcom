@@ -50,7 +50,9 @@ function timeAgo(date: string | null | undefined): string {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-function getCoverUrl(coverImage: LaunchpadCardProps["project"]["coverImage"]): string | null {
+function getCoverUrl(
+  coverImage: LaunchpadCardProps["project"]["coverImage"],
+): string | null {
   if (!coverImage) return null;
   if (typeof coverImage === "object" && coverImage.url) return coverImage.url;
   return null;
@@ -103,7 +105,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
   return (
     <LazyMotion features={domAnimation}>
       <m.div
-        className="flex flex-col rounded-lg border border-zinc-200 bg-white overflow-hidden transition-colors hover:border-zinc-300 hover:shadow-sm"
+        className="flex flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white transition-colors hover:border-zinc-300 hover:shadow-sm"
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.03 }}
@@ -126,24 +128,29 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
         )}
 
         {/* Card body — wrapped in Link */}
-        <Link href={`/launchpad/${project.slug}`} className="flex flex-col flex-1 p-4 gap-2">
+        <Link
+          href={`/launchpad/${project.slug}`}
+          className="flex flex-1 flex-col gap-2 p-4"
+        >
           {/* Stage badge + author */}
           <div className="flex items-center justify-between gap-2">
             <Badge
-              className={`font-mono text-[9px] font-semibold uppercase tracking-wider rounded border px-1.5 py-0.5 ${stageStyles[project.stage] ?? stageStyles.idea}`}
+              className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${stageStyles[project.stage] ?? stageStyles.idea}`}
               variant="outline"
             >
-              {t(`stage.${project.stage as "idea" | "prototype" | "mvp" | "launched"}`)}
+              {t(
+                `stage.${project.stage as "idea" | "prototype" | "mvp" | "launched"}`,
+              )}
             </Badge>
             {project.authorName && (
-              <span className="font-mono text-[10px] text-zinc-400 truncate">
+              <span className="truncate font-mono text-[10px] text-zinc-400">
                 {project.authorName}
               </span>
             )}
           </div>
 
           {/* Title */}
-          <p className="text-sm font-semibold leading-snug text-zinc-900 line-clamp-2">
+          <p className="line-clamp-2 text-sm leading-snug font-semibold text-zinc-900">
             {project.title}
           </p>
 

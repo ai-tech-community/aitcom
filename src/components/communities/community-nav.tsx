@@ -27,13 +27,18 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
     { key: "events", href: `${basePath}/events` },
     { key: "ideas", href: `${basePath}/ideas` },
     { key: "members", href: `${basePath}/members` },
-    ...(isAdminOrOwner ? [{ key: "settings", href: `${basePath}/settings` }] : []),
+    ...(isAdminOrOwner
+      ? [{ key: "settings", href: `${basePath}/settings` }]
+      : []),
   ];
 
   return (
-    <div className="border-b bg-background/40">
+    <div className="bg-background/40 border-b">
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label="Community navigation">
+        <nav
+          className="-mb-px flex gap-1 overflow-x-auto"
+          aria-label="Community navigation"
+        >
           {navItems.map((item) => {
             const isActive =
               item.key === "overview"
@@ -45,13 +50,21 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
                 key={item.key}
                 href={item.href as never}
                 className={cn(
-                  "whitespace-nowrap border-b-2 px-3 py-3 text-sm font-medium transition-colors",
+                  "border-b-2 px-3 py-3 text-sm font-medium whitespace-nowrap transition-colors",
                   isActive
                     ? "border-foreground text-foreground"
-                    : "text-muted-foreground hover:text-foreground border-transparent hover:border-border",
+                    : "text-muted-foreground hover:text-foreground hover:border-border border-transparent",
                 )}
               >
-                {t(item.key as "overview" | "forum" | "events" | "ideas" | "members" | "settings")}
+                {t(
+                  item.key as
+                    | "overview"
+                    | "forum"
+                    | "events"
+                    | "ideas"
+                    | "members"
+                    | "settings",
+                )}
               </Link>
             );
           })}

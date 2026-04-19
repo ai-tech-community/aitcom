@@ -4,15 +4,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { api } from "@/trpc/react";
 import { LexicalRenderer } from "@/lib/lexical";
 import { BuildingModal } from "../building-modal";
-import {
-  Shield,
-  Users,
-  Flag,
-  Scale,
-  Brain,
-  Gavel,
-  Check,
-} from "lucide-react";
+import { Shield, Users, Flag, Scale, Brain, Gavel, Check } from "lucide-react";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   shield: Shield,
@@ -112,12 +104,10 @@ export function RulesModal({
               return (
                 <section key={section.slug} id={`rule-${section.slug}`}>
                   <h2 className="flex items-center gap-2 text-lg font-bold text-zinc-900">
-                    {Icon && (
-                      <Icon className="h-4.5 w-4.5 text-orange-500" />
-                    )}
+                    {Icon && <Icon className="h-4.5 w-4.5 text-orange-500" />}
                     {section.title}
                   </h2>
-                  <div className="prose prose-sm mt-2 max-w-none prose-headings:text-zinc-900 prose-p:text-zinc-600 prose-a:text-orange-600">
+                  <div className="prose prose-sm prose-headings:text-zinc-900 prose-p:text-zinc-600 prose-a:text-orange-600 mt-2 max-w-none">
                     <LexicalRenderer content={section.content} />
                   </div>
                 </section>
@@ -142,7 +132,11 @@ export function RulesModal({
               </div>
             ) : (
               <button
-                onClick={() => acceptMutation.mutate({ communitySlug: communitySlug ?? "ait" })}
+                onClick={() =>
+                  acceptMutation.mutate({
+                    communitySlug: communitySlug ?? "ait",
+                  })
+                }
                 disabled={acceptMutation.isPending}
                 className="w-full rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
               >
@@ -154,9 +148,7 @@ export function RulesModal({
       )}
 
       {!isLoading && (!data || sections.length === 0) && (
-        <p className="py-4 font-mono text-xs text-zinc-400">
-          {t("empty")}
-        </p>
+        <p className="py-4 font-mono text-xs text-zinc-400">{t("empty")}</p>
       )}
     </BuildingModal>
   );

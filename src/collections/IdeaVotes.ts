@@ -5,7 +5,8 @@ export const IdeaVotes: CollectionConfig = {
   admin: {
     useAsTitle: "id",
     defaultColumns: ["idea", "voter", "createdAt"],
-    description: "Tracks which users have voted for which ideas. One vote per user per idea (enforced by hook).",
+    description:
+      "Tracks which users have voted for which ideas. One vote per user per idea (enforced by hook).",
   },
   hooks: {
     beforeChange: [

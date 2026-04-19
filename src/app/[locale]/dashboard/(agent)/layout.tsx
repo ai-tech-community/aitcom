@@ -10,7 +10,7 @@ export default function AgentDashboardLayout({
     <>
       <Link
         href="/dashboard"
-        className="inline-flex items-center gap-1.5 font-mono text-xs tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 font-mono text-xs tracking-wider transition-colors"
       >
         <ArrowLeftIcon className="h-3 w-3" />
         DASHBOARD

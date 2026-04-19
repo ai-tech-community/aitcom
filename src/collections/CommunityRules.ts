@@ -21,7 +21,8 @@ export const CommunityRules: CollectionConfig = {
       required: true,
       defaultValue: 1,
       admin: {
-        description: "Increment when rules change to require re-acceptance from users.",
+        description:
+          "Increment when rules change to require re-acceptance from users.",
       },
     },
     {
@@ -40,15 +41,26 @@ export const CommunityRules: CollectionConfig = {
       label: "Sections",
       required: true,
       minRows: 1,
-      admin: { description: "Structured rule sections with table-of-contents support." },
+      admin: {
+        description: "Structured rule sections with table-of-contents support.",
+      },
       fields: [
-        { name: "title", type: "text", label: "Title", required: true, localized: true },
+        {
+          name: "title",
+          type: "text",
+          label: "Title",
+          required: true,
+          localized: true,
+        },
         {
           name: "slug",
           type: "text",
           label: "Slug",
           required: true,
-          admin: { description: "URL-friendly identifier for anchor links (e.g. 'respect-others')." },
+          admin: {
+            description:
+              "URL-friendly identifier for anchor links (e.g. 'respect-others').",
+          },
         },
         {
           name: "icon",
@@ -63,7 +75,13 @@ export const CommunityRules: CollectionConfig = {
             { label: "Gavel", value: "gavel" },
           ],
         },
-        { name: "content", type: "richText", label: "Content", required: true, localized: true },
+        {
+          name: "content",
+          type: "richText",
+          label: "Content",
+          required: true,
+          localized: true,
+        },
       ],
     },
   ],

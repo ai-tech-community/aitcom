@@ -23,7 +23,14 @@ import {
 import { $setBlocksType } from "@payloadcms/richtext-lexical/lexical/selection";
 import { TOGGLE_LINK_COMMAND } from "@payloadcms/richtext-lexical/lexical/link";
 
-type TextFormat = "bold" | "italic" | "underline" | "strikethrough" | "code" | "subscript" | "superscript";
+type TextFormat =
+  | "bold"
+  | "italic"
+  | "underline"
+  | "strikethrough"
+  | "code"
+  | "subscript"
+  | "superscript";
 type AlignType = "left" | "center" | "right" | "justify";
 
 type ActiveFormats = Record<TextFormat, boolean> & { link: boolean };
@@ -63,14 +70,52 @@ const ALIGN_OPTIONS: { value: AlignType; label: string }[] = [
 // Alignment icons
 function AlignIcon({ align }: { align: AlignType }) {
   const lines: [number, number][] =
-    align === "left"   ? [[2,5],[2,10],[2,5],[2,10]] :
-    align === "center" ? [[4,5],[2,10],[4,5],[2,10]] :
-    align === "right"  ? [[7,5],[2,10],[7,5],[2,10]] :
-                         [[2,10],[2,10],[2,10],[2,10]];
+    align === "left"
+      ? [
+          [2, 5],
+          [2, 10],
+          [2, 5],
+          [2, 10],
+        ]
+      : align === "center"
+        ? [
+            [4, 5],
+            [2, 10],
+            [4, 5],
+            [2, 10],
+          ]
+        : align === "right"
+          ? [
+              [7, 5],
+              [2, 10],
+              [7, 5],
+              [2, 10],
+            ]
+          : [
+              [2, 10],
+              [2, 10],
+              [2, 10],
+              [2, 10],
+            ];
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    >
       {lines.map(([x, w], i) => (
-        <line key={`${x}-${w}-${i}`} x1={x} y1={2 + i * 3.5} x2={x + w} y2={2 + i * 3.5} />
+        <line
+          key={`${x}-${w}-${i}`}
+          x1={x}
+          y1={2 + i * 3.5}
+          x2={x + w}
+          y2={2 + i * 3.5}
+        />
       ))}
     </svg>
   );
@@ -94,10 +139,16 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
   // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (blockDropdownRef.current && !blockDropdownRef.current.contains(e.target as Node)) {
+      if (
+        blockDropdownRef.current &&
+        !blockDropdownRef.current.contains(e.target as Node)
+      ) {
         setBlockDropdownOpen(false);
       }
-      if (alignDropdownRef.current && !alignDropdownRef.current.contains(e.target as Node)) {
+      if (
+        alignDropdownRef.current &&
+        !alignDropdownRef.current.contains(e.target as Node)
+      ) {
         setAlignDropdownOpen(false);
       }
     }
@@ -137,7 +188,13 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
         if ($isHeadingNode(topElement)) {
           setBlockType(topElement.getTag());
         } else if ($isListNode(topElement)) {
-          setBlockType(topElement.getListType() === "number" ? "ol" : topElement.getListType() === "check" ? "check" : "ul");
+          setBlockType(
+            topElement.getListType() === "number"
+              ? "ol"
+              : topElement.getListType() === "check"
+                ? "check"
+                : "ul",
+          );
         } else if (topElement.getType() === "quote") {
           setBlockType("quote");
         } else {
@@ -209,16 +266,26 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
 
         if (type === "paragraph") {
           $setBlocksType(selection, () => $createParagraphNode());
-        } else if (type === "h1" || type === "h2" || type === "h3" || type === "h4" || type === "h5" || type === "h6") {
+        } else if (
+          type === "h1" ||
+          type === "h2" ||
+          type === "h3" ||
+          type === "h4" ||
+          type === "h5" ||
+          type === "h6"
+        ) {
           $setBlocksType(selection, () => $createHeadingNode(type));
         } else if (type === "quote") {
           $setBlocksType(selection, () => $createQuoteNode());
         }
       });
 
-      if (type === "ol") editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
-      if (type === "ul") editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-      if (type === "check") editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
+      if (type === "ol")
+        editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+      if (type === "ul")
+        editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+      if (type === "check")
+        editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
 
       setBlockDropdownOpen(false);
     },
@@ -249,7 +316,11 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
       return;
     }
     const url = linkUrl.startsWith("http") ? linkUrl : `https://${linkUrl}`;
-    editor.dispatchCommand(TOGGLE_LINK_COMMAND, { url, target: "_blank", rel: "noopener noreferrer" });
+    editor.dispatchCommand(TOGGLE_LINK_COMMAND, {
+      url,
+      target: "_blank",
+      rel: "noopener noreferrer",
+    });
     setLinkMode(false);
     setLinkUrl("");
   }, [editor, linkUrl]);
@@ -261,7 +332,8 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
 
   const sep = <div className="bg-border mx-0.5 h-4 w-px" />;
 
-  const currentBlockLabel = BLOCK_TYPES.find((b) => b.value === blockType)?.icon ?? "T";
+  const currentBlockLabel =
+    BLOCK_TYPES.find((b) => b.value === blockType)?.icon ?? "T";
 
   return (
     <div
@@ -291,7 +363,11 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
           <button type="button" onClick={applyLink} className={btnClass(false)}>
             ✓
           </button>
-          <button type="button" onClick={() => setLinkMode(false)} className={btnClass(false)}>
+          <button
+            type="button"
+            onClick={() => setLinkMode(false)}
+            className={btnClass(false)}
+          >
             ✕
           </button>
         </div>
@@ -301,24 +377,41 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
           <div className="relative" ref={blockDropdownRef}>
             <button
               type="button"
-              onClick={() => { setBlockDropdownOpen(!blockDropdownOpen); setAlignDropdownOpen(false); }}
+              onClick={() => {
+                setBlockDropdownOpen(!blockDropdownOpen);
+                setAlignDropdownOpen(false);
+              }}
               className={`${btnClass(false)} flex items-center gap-0.5`}
             >
-              <span className="font-mono text-[10px] font-semibold">{currentBlockLabel}</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <span className="font-mono text-[10px] font-semibold">
+                {currentBlockLabel}
+              </span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="8"
+                height="8"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
             {blockDropdownOpen && (
-              <div className="bg-popover border-border absolute left-0 top-full mt-1 min-w-40 rounded-md border py-1 shadow-lg">
+              <div className="bg-popover border-border absolute top-full left-0 mt-1 min-w-40 rounded-md border py-1 shadow-lg">
                 {BLOCK_TYPES.map((item) => (
                   <button
                     key={item.value}
                     type="button"
                     onClick={() => setBlock(item.value)}
-                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-muted ${blockType === item.value ? "bg-muted text-foreground" : "text-muted-foreground"}`}
+                    className={`hover:bg-muted flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${blockType === item.value ? "bg-muted text-foreground" : "text-muted-foreground"}`}
                   >
-                    <span className="w-5 font-mono text-[10px] font-semibold">{item.icon}</span>
+                    <span className="w-5 font-mono text-[10px] font-semibold">
+                      {item.icon}
+                    </span>
                     <span>{item.label}</span>
                   </button>
                 ))}
@@ -330,22 +423,35 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
           <div className="relative" ref={alignDropdownRef}>
             <button
               type="button"
-              onClick={() => { setAlignDropdownOpen(!alignDropdownOpen); setBlockDropdownOpen(false); }}
+              onClick={() => {
+                setAlignDropdownOpen(!alignDropdownOpen);
+                setBlockDropdownOpen(false);
+              }}
               className={`${btnClass(false)} flex items-center gap-0.5`}
             >
               <AlignIcon align={currentAlign} />
-              <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="8"
+                height="8"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </button>
             {alignDropdownOpen && (
-              <div className="bg-popover border-border absolute left-0 top-full mt-1 min-w-35 rounded-md border py-1 shadow-lg">
+              <div className="bg-popover border-border absolute top-full left-0 mt-1 min-w-35 rounded-md border py-1 shadow-lg">
                 {ALIGN_OPTIONS.map((item) => (
                   <button
                     key={item.value}
                     type="button"
                     onClick={() => setAlignment(item.value)}
-                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-muted ${currentAlign === item.value ? "bg-muted text-foreground" : "text-muted-foreground"}`}
+                    className={`hover:bg-muted flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${currentAlign === item.value ? "bg-muted text-foreground" : "text-muted-foreground"}`}
                   >
                     <AlignIcon align={item.value} />
                     <span>{item.label}</span>
@@ -358,37 +464,91 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
           {sep}
 
           {/* Text formatting */}
-          <button type="button" onClick={() => toggleFormat("bold")} className={btnClass(formats.bold)} title="Bold (Ctrl+B)">
+          <button
+            type="button"
+            onClick={() => toggleFormat("bold")}
+            className={btnClass(formats.bold)}
+            title="Bold (Ctrl+B)"
+          >
             <span className="font-bold">B</span>
           </button>
-          <button type="button" onClick={() => toggleFormat("italic")} className={btnClass(formats.italic)} title="Italic (Ctrl+I)">
+          <button
+            type="button"
+            onClick={() => toggleFormat("italic")}
+            className={btnClass(formats.italic)}
+            title="Italic (Ctrl+I)"
+          >
             <span className="italic">I</span>
           </button>
-          <button type="button" onClick={() => toggleFormat("underline")} className={btnClass(formats.underline)} title="Underline (Ctrl+U)">
+          <button
+            type="button"
+            onClick={() => toggleFormat("underline")}
+            className={btnClass(formats.underline)}
+            title="Underline (Ctrl+U)"
+          >
             <span className="underline">U</span>
           </button>
-          <button type="button" onClick={() => toggleFormat("strikethrough")} className={btnClass(formats.strikethrough)} title="Strikethrough">
+          <button
+            type="button"
+            onClick={() => toggleFormat("strikethrough")}
+            className={btnClass(formats.strikethrough)}
+            title="Strikethrough"
+          >
             <span className="line-through">S</span>
           </button>
 
           {sep}
 
           {/* Subscript / Superscript */}
-          <button type="button" onClick={() => toggleFormat("subscript")} className={btnClass(formats.subscript)} title="Subscript">
-            <span className="text-[10px]">X<sub>2</sub></span>
+          <button
+            type="button"
+            onClick={() => toggleFormat("subscript")}
+            className={btnClass(formats.subscript)}
+            title="Subscript"
+          >
+            <span className="text-[10px]">
+              X<sub>2</sub>
+            </span>
           </button>
-          <button type="button" onClick={() => toggleFormat("superscript")} className={btnClass(formats.superscript)} title="Superscript">
-            <span className="text-[10px]">X<sup>2</sup></span>
+          <button
+            type="button"
+            onClick={() => toggleFormat("superscript")}
+            className={btnClass(formats.superscript)}
+            title="Superscript"
+          >
+            <span className="text-[10px]">
+              X<sup>2</sup>
+            </span>
           </button>
 
           {sep}
 
           {/* Code & Link */}
-          <button type="button" onClick={() => toggleFormat("code")} className={btnClass(formats.code)} title="Inline Code">
+          <button
+            type="button"
+            onClick={() => toggleFormat("code")}
+            className={btnClass(formats.code)}
+            title="Inline Code"
+          >
             <span className="font-mono text-[10px]">&lt;/&gt;</span>
           </button>
-          <button type="button" onClick={handleLink} className={btnClass(formats.link)} title="Link">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <button
+            type="button"
+            onClick={handleLink}
+            className={btnClass(formats.link)}
+            title="Link"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
             </svg>

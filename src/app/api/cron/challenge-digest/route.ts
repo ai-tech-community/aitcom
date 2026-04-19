@@ -55,7 +55,10 @@ export async function GET(req: Request) {
     const [replyCount] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(challengeReplies)
-      .innerJoin(challengeThreads, eq(challengeReplies.threadId, challengeThreads.id))
+      .innerJoin(
+        challengeThreads,
+        eq(challengeReplies.threadId, challengeThreads.id),
+      )
       .where(
         and(
           eq(challengeThreads.channelId, channel.id),

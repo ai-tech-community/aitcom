@@ -134,7 +134,11 @@ export const commentsRouter = createTRPCRouter({
       });
 
       // Award XP
-      await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.ARTICLE_COMMENT_CREATE);
+      await awardXp(
+        ctx.db,
+        ctx.session.user.id,
+        XP_AMOUNTS.ARTICLE_COMMENT_CREATE,
+      );
 
       // Log activity
       await logActivity(ctx.db, {

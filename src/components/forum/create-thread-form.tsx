@@ -54,7 +54,7 @@ export function CreateThreadForm() {
       {/* Back to forum link */}
       <Link
         href="/forum"
-        className="mb-6 inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500 transition-colors hover:text-zinc-900"
+        className="mb-6 inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase transition-colors hover:text-zinc-900"
       >
         <ArrowLeft className="h-3 w-3" />
         {t("backToForum")}
@@ -73,7 +73,7 @@ export function CreateThreadForm() {
       >
         {/* Title */}
         <div>
-          <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
             {t("titleLabel")}
           </label>
           <input
@@ -82,13 +82,13 @@ export function CreateThreadForm() {
             placeholder={t("titlePlaceholder")}
             maxLength={255}
             required
-            className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
+            className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
           />
         </div>
 
         {/* Category */}
         <div>
-          <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
             {t("categoryLabel")}
           </label>
           <select
@@ -96,7 +96,7 @@ export function CreateThreadForm() {
             onChange={(e) =>
               setForm({ ...form, category: e.target.value as Category })
             }
-            className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
+            className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
           >
             <option value="general">{t("general")}</option>
             <option value="question">{t("question")}</option>
@@ -107,7 +107,7 @@ export function CreateThreadForm() {
 
         {/* Content */}
         <div>
-          <label className="mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
             {t("contentLabel")}
           </label>
           <MarkdownToolbar
@@ -122,7 +122,7 @@ export function CreateThreadForm() {
             maxLength={10000}
             rows={8}
             required
-            className="w-full resize-none rounded-b-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-300"
+            className="w-full resize-none rounded-b-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
           />
         </div>
 
@@ -131,13 +131,13 @@ export function CreateThreadForm() {
           <button
             type="submit"
             disabled={createMutation.isPending}
-            className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-zinc-800 disabled:opacity-50"
+            className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 disabled:opacity-50"
           >
             {createMutation.isPending ? t("creating") : t("post")}
           </button>
           <Link
             href="/forum"
-            className="rounded-md border border-zinc-200 px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest text-zinc-500 transition-colors hover:bg-zinc-50"
+            className="rounded-md border border-zinc-200 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase transition-colors hover:bg-zinc-50"
           >
             {t("cancel")}
           </Link>

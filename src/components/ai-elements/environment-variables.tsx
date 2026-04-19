@@ -54,18 +54,18 @@ export const EnvironmentVariables = ({
       setInternalShowValues(show);
       onShowValuesChange?.(show);
     },
-    [onShowValuesChange]
+    [onShowValuesChange],
   );
 
   const contextValue = useMemo(
     () => ({ setShowValues, showValues }),
-    [setShowValues, showValues]
+    [setShowValues, showValues],
   );
 
   return (
     <EnvironmentVariablesContext.Provider value={contextValue}>
       <div
-        className={cn("rounded-lg border bg-background", className)}
+        className={cn("bg-background rounded-lg border", className)}
         {...props}
       >
         {children}
@@ -84,7 +84,7 @@ export const EnvironmentVariablesHeader = ({
   <div
     className={cn(
       "flex items-center justify-between border-b px-4 py-3",
-      className
+      className,
     )}
     {...props}
   >
@@ -99,7 +99,7 @@ export const EnvironmentVariablesTitle = ({
   children,
   ...props
 }: EnvironmentVariablesTitleProps) => (
-  <h3 className={cn("font-medium text-sm", className)} {...props}>
+  <h3 className={cn("text-sm font-medium", className)} {...props}>
     {children ?? "Environment Variables"}
   </h3>
 );
@@ -169,7 +169,7 @@ export const EnvironmentVariable = ({
       <div
         className={cn(
           "flex items-center justify-between gap-4 px-4 py-3",
-          className
+          className,
         )}
         {...props}
       >
@@ -231,9 +231,9 @@ export const EnvironmentVariableValue = ({
   return (
     <span
       className={cn(
-        "font-mono text-muted-foreground text-sm",
+        "text-muted-foreground font-mono text-sm",
         !showValues && "select-none",
-        className
+        className,
       )}
       {...props}
     >
@@ -293,7 +293,7 @@ export const EnvironmentVariableCopyButton = ({
     () => () => {
       window.clearTimeout(timeoutRef.current);
     },
-    []
+    [],
   );
 
   const Icon = isCopied ? CheckIcon : CopyIcon;

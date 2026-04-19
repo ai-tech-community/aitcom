@@ -62,9 +62,8 @@ describe("AgentSuggestions", () => {
 
     render(<AgentSuggestions />);
 
-    expect(screen.getByRole("link", { name: /create thread/i })).toHaveAttribute(
-      "href",
-      "/forum/new",
-    );
+    expect(
+      screen.getByRole("link", { name: /create thread/i }),
+    ).toHaveAttribute("href", "/forum/new");
   });
 });

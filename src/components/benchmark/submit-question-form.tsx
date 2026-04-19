@@ -30,8 +30,12 @@ export function SubmitQuestionForm() {
   const [optionC, setOptionC] = useState("");
   const [optionD, setOptionD] = useState("");
   const [explanation, setExplanation] = useState("");
-  const [topic, setTopic] = useState<(typeof BENCHMARK_TOPICS)[number] | "">("");
-  const [difficulty, setDifficulty] = useState<(typeof BENCHMARK_DIFFICULTIES)[number] | "">("");
+  const [topic, setTopic] = useState<(typeof BENCHMARK_TOPICS)[number] | "">(
+    "",
+  );
+  const [difficulty, setDifficulty] = useState<
+    (typeof BENCHMARK_DIFFICULTIES)[number] | ""
+  >("");
   const [submitted, setSubmitted] = useState(false);
 
   const submitMutation = api.benchmark.submitQuestion.useMutation({
@@ -55,7 +59,9 @@ export function SubmitQuestionForm() {
   if (submitted) {
     return (
       <div className="space-y-2">
-        <p className="text-sm font-medium">Question submitted! Thank you for contributing.</p>
+        <p className="text-sm font-medium">
+          Question submitted! Thank you for contributing.
+        </p>
         <Button
           onClick={() => {
             setQuestion("");
@@ -166,7 +172,11 @@ export function SubmitQuestionForm() {
           <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
             Topic
           </label>
-          <Select value={topic} onValueChange={(v) => setTopic(v as typeof topic)} required>
+          <Select
+            value={topic}
+            onValueChange={(v) => setTopic(v as typeof topic)}
+            required
+          >
             <SelectTrigger className="mt-1 w-full">
               <SelectValue placeholder="Select topic" />
             </SelectTrigger>
@@ -183,7 +193,11 @@ export function SubmitQuestionForm() {
           <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
             Difficulty
           </label>
-          <Select value={difficulty} onValueChange={(v) => setDifficulty(v as typeof difficulty)} required>
+          <Select
+            value={difficulty}
+            onValueChange={(v) => setDifficulty(v as typeof difficulty)}
+            required
+          >
             <SelectTrigger className="mt-1 w-full">
               <SelectValue placeholder="Select difficulty" />
             </SelectTrigger>

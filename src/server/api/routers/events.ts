@@ -6,7 +6,14 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "@/server/api/trpc";
-import { eventRegistrations, memberProfiles, user, communities, communityMemberships, communityLumaIntegrations } from "@/server/db/schema";
+import {
+  eventRegistrations,
+  memberProfiles,
+  user,
+  communities,
+  communityMemberships,
+  communityLumaIntegrations,
+} from "@/server/db/schema";
 import { decryptApiKey } from "@/server/luma/crypto";
 import { getCalendarEvents } from "@/server/luma/client";
 import { getCached, setCached } from "@/server/luma/cache";
@@ -75,7 +82,11 @@ export const eventsRouter = createTRPCRouter({
         .limit(1);
 
       if (existing.length > 0) {
-        return { registration: existing[0]!, alreadyRegistered: true, checkoutUrl: null };
+        return {
+          registration: existing[0]!,
+          alreadyRegistered: true,
+          checkoutUrl: null,
+        };
       }
 
       // Fetch event from server for capacity and price check
@@ -98,8 +109,7 @@ export const eventsRouter = createTRPCRouter({
 
       const currentCount = countResult?.count ?? 0;
       const maxAttendees = (event.maxAttendees as number | undefined) ?? null;
-      const isFull =
-        maxAttendees !== null && currentCount >= maxAttendees;
+      const isFull = maxAttendees !== null && currentCount >= maxAttendees;
 
       const price = (event.price as number | undefined) ?? 0;
       const isPaid = price > 0;
@@ -188,7 +198,11 @@ export const eventsRouter = createTRPCRouter({
         }
       })();
 
-      return { registration: registration!, alreadyRegistered: false, checkoutUrl: null };
+      return {
+        registration: registration!,
+        alreadyRegistered: false,
+        checkoutUrl: null,
+      };
     }),
 
   /**
@@ -345,7 +359,10 @@ export const eventsRouter = createTRPCRouter({
         })
         .from(eventRegistrations)
         .innerJoin(user, eq(eventRegistrations.userId, user.id))
-        .leftJoin(memberProfiles, eq(eventRegistrations.userId, memberProfiles.userId))
+        .leftJoin(
+          memberProfiles,
+          eq(eventRegistrations.userId, memberProfiles.userId),
+        )
         .where(
           and(
             eq(eventRegistrations.eventId, input.eventId),
@@ -369,7 +386,10 @@ export const eventsRouter = createTRPCRouter({
     .input(z.object({ communitySlug: z.string() }))
     .query(async ({ ctx, input }) => {
       const community = await ctx.db.query.communities.findFirst({
-        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
         columns: { id: true },
       });
       if (!community) return [];
@@ -483,10 +503,16 @@ export const eventsRouter = createTRPCRouter({
 
       // Resolve community and check admin/owner role
       const community = await ctx.db.query.communities.findFirst({
-        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
       });
       if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
       }
 
       const membership = await ctx.db.query.communityMemberships.findFirst({
@@ -495,8 +521,14 @@ export const eventsRouter = createTRPCRouter({
           eq(communityMemberships.userId, userId),
         ),
       });
-      if (membership?.status !== "active" || (membership.role !== "owner" && membership.role !== "admin")) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Only community admins can create events" });
+      if (
+        membership?.status !== "active" ||
+        (membership.role !== "owner" && membership.role !== "admin")
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only community admins can create events",
+        });
       }
 
       const baseSlug = input.title
@@ -512,7 +544,9 @@ export const eventsRouter = createTRPCRouter({
         data: {
           title: input.title,
           slug,
-          description: input.description ? plainTextToLexical(input.description) : plainTextToLexical(""),
+          description: input.description
+            ? plainTextToLexical(input.description)
+            : plainTextToLexical(""),
           type: input.type,
           date: input.date,
           startTime: input.startTime ?? undefined,
@@ -544,7 +578,9 @@ export const eventsRouter = createTRPCRouter({
         communitySlug: z.string(),
         title: z.string().min(3).max(255).optional(),
         description: z.string().max(5000).optional(),
-        type: z.enum(["workshop", "hackathon", "deep_dive", "meetup"]).optional(),
+        type: z
+          .enum(["workshop", "hackathon", "deep_dive", "meetup"])
+          .optional(),
         date: z.string().optional(),
         startTime: z.string().optional(),
         endTime: z.string().optional(),
@@ -556,10 +592,16 @@ export const eventsRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
 
       const community = await ctx.db.query.communities.findFirst({
-        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
       });
       if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
       }
 
       const membership = await ctx.db.query.communityMemberships.findFirst({
@@ -568,8 +610,14 @@ export const eventsRouter = createTRPCRouter({
           eq(communityMemberships.userId, userId),
         ),
       });
-      if (membership?.status !== "active" || (membership.role !== "owner" && membership.role !== "admin")) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Only community admins can update events" });
+      if (
+        membership?.status !== "active" ||
+        (membership.role !== "owner" && membership.role !== "admin")
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only community admins can update events",
+        });
       }
 
       const payload = await getPayloadClient();
@@ -580,19 +628,27 @@ export const eventsRouter = createTRPCRouter({
         id: input.eventId,
         depth: 0,
       });
-      if (!existingEvent?.communityId || existingEvent.communityId !== community.id) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found in this community" });
+      if (
+        !existingEvent?.communityId ||
+        existingEvent.communityId !== community.id
+      ) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Event not found in this community",
+        });
       }
 
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
-      if (input.description !== undefined) data.description = plainTextToLexical(input.description);
+      if (input.description !== undefined)
+        data.description = plainTextToLexical(input.description);
       if (input.type !== undefined) data.type = input.type;
       if (input.date !== undefined) data.date = input.date;
       if (input.startTime !== undefined) data.startTime = input.startTime;
       if (input.endTime !== undefined) data.endTime = input.endTime;
       if (input.location !== undefined) data.location = input.location;
-      if (input.maxAttendees !== undefined) data.maxAttendees = input.maxAttendees;
+      if (input.maxAttendees !== undefined)
+        data.maxAttendees = input.maxAttendees;
 
       const event = await payload.update({
         collection: "events",
@@ -624,10 +680,16 @@ export const eventsRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
 
       const community = await ctx.db.query.communities.findFirst({
-        where: and(eq(communities.slug, input.communitySlug), isNull(communities.deletedAt)),
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
       });
       if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
       }
 
       const membership = await ctx.db.query.communityMemberships.findFirst({
@@ -636,8 +698,14 @@ export const eventsRouter = createTRPCRouter({
           eq(communityMemberships.userId, userId),
         ),
       });
-      if (membership?.status !== "active" || (membership.role !== "owner" && membership.role !== "admin")) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Only community admins can cancel events" });
+      if (
+        membership?.status !== "active" ||
+        (membership.role !== "owner" && membership.role !== "admin")
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only community admins can cancel events",
+        });
       }
 
       // Verify the event belongs to this community (prevent cross-community IDOR)
@@ -647,8 +715,14 @@ export const eventsRouter = createTRPCRouter({
         id: input.eventId,
         depth: 0,
       });
-      if (!existingEvent?.communityId || existingEvent.communityId !== community.id) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found in this community" });
+      if (
+        !existingEvent?.communityId ||
+        existingEvent.communityId !== community.id
+      ) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Event not found in this community",
+        });
       }
 
       // Set event status to cancelled

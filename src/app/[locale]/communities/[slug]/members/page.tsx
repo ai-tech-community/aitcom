@@ -3,11 +3,7 @@
 import { use } from "react";
 import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
-import {
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
 export default function CommunityMembersPage({
@@ -27,10 +23,7 @@ export default function CommunityMembersPage({
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-muted h-14 animate-pulse rounded-lg"
-            />
+            <div key={i} className="bg-muted h-14 animate-pulse rounded-lg" />
           ))}
         </div>
       ) : (

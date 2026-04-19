@@ -24,8 +24,10 @@ interface ChallengeThreadDetailProps {
 const typeBadgeColors: Record<string, string> = {
   announcement: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
   discussion: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  question: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  "progress-log": "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
+  question:
+    "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+  "progress-log":
+    "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
   solution: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
 };
 
@@ -37,7 +39,10 @@ const typeLabels: Record<string, string> = {
   solution: "Solution",
 };
 
-const authorTypeBadgeVariant: Record<string, "default" | "secondary" | "outline"> = {
+const authorTypeBadgeVariant: Record<
+  string,
+  "default" | "secondary" | "outline"
+> = {
   member: "secondary",
   agent: "default",
   sponsor: "outline",
@@ -71,12 +76,14 @@ export function ChallengeThreadDetail({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 font-mono text-xs tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 font-mono text-xs tracking-wider transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to threads
         </button>
-        <div className="mt-6 text-sm text-muted-foreground">Loading thread...</div>
+        <div className="text-muted-foreground mt-6 text-sm">
+          Loading thread...
+        </div>
       </div>
     );
   }
@@ -87,12 +94,14 @@ export function ChallengeThreadDetail({
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center gap-1.5 font-mono text-xs tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 font-mono text-xs tracking-wider transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to threads
         </button>
-        <div className="mt-6 text-sm text-muted-foreground">Thread not found.</div>
+        <div className="text-muted-foreground mt-6 text-sm">
+          Thread not found.
+        </div>
       </div>
     );
   }
@@ -105,7 +114,7 @@ export function ChallengeThreadDetail({
       <button
         type="button"
         onClick={onBack}
-        className="flex items-center gap-1.5 font-mono text-xs tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+        className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 font-mono text-xs tracking-wider transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
         Back to threads
@@ -124,63 +133,60 @@ export function ChallengeThreadDetail({
           {thread.title}
         </h2>
         <div className="mt-1.5 flex items-center gap-2">
-          <span className="font-mono text-xs text-muted-foreground">
+          <span className="text-muted-foreground font-mono text-xs">
             {thread.authorName ?? "Unknown"}
           </span>
           <Badge
             variant={authorTypeBadgeVariant[thread.authorType] ?? "secondary"}
-            className="font-mono text-[10px] px-1.5 py-0"
+            className="px-1.5 py-0 font-mono text-[10px]"
           >
             {thread.authorType}
           </Badge>
           <span className="text-border">|</span>
-          <span className="font-mono text-xs text-muted-foreground">
+          <span className="text-muted-foreground font-mono text-xs">
             {timeAgo(thread.createdAt)}
           </span>
         </div>
       </div>
 
       {/* Thread content */}
-      <div className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+      <div className="text-foreground mt-4 text-sm leading-relaxed whitespace-pre-wrap">
         {thread.content}
       </div>
 
       {/* Divider */}
-      <div className="my-6 border-t border-border" />
+      <div className="border-border my-6 border-t" />
 
       {/* Replies section header */}
-      <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
         / REPLIES ({replies.length})
       </span>
 
       {/* Replies list */}
       {replies.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-4 text-sm">
           No replies yet. Be the first to respond.
         </p>
       ) : (
         <div className="mt-4 space-y-4">
           {replies.map((r) => (
-            <div
-              key={r.id}
-              className="rounded-lg border border-border p-3"
-            >
+            <div key={r.id} className="border-border rounded-lg border p-3">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="text-muted-foreground font-mono text-xs">
                   {r.authorName ?? "Unknown"}
                 </span>
                 <Badge
                   variant={authorTypeBadgeVariant[r.authorType] ?? "secondary"}
-                  className="font-mono text-[10px] px-1.5 py-0"
+                  className="px-1.5 py-0 font-mono text-[10px]"
                 >
                   {r.authorType}
                 </Badge>
                 <span className="text-border">|</span>
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="text-muted-foreground font-mono text-xs">
                   {timeAgo(r.createdAt)}
                 </span>
               </div>
-              <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+              <div className="text-foreground mt-2 text-sm leading-relaxed whitespace-pre-wrap">
                 {r.content}
               </div>
             </div>
@@ -198,7 +204,7 @@ export function ChallengeThreadDetail({
           className="resize-none"
         />
         {reply.isError && (
-          <p className="font-mono text-xs text-destructive">
+          <p className="text-destructive font-mono text-xs">
             {reply.error.message}
           </p>
         )}

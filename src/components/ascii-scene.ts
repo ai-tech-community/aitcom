@@ -3,7 +3,11 @@
 import { useEffect } from "react";
 import type { RefObject } from "react";
 
-export function fitAsciiFrame(lines: string[], cols: number, rows: number): string {
+export function fitAsciiFrame(
+  lines: string[],
+  cols: number,
+  rows: number,
+): string {
   if (cols < 2 || rows < 2) return "";
 
   const safeLines = lines.length ? lines : [""];
@@ -19,9 +23,13 @@ export function fitAsciiFrame(lines: string[], cols: number, rows: number): stri
 
   for (let y = 0; y < clampedRows; y++) {
     const sourceIdx = y - topPad;
-    const source = sourceIdx >= 0 && sourceIdx < safeLines.length ? safeLines[sourceIdx] ?? "" : "";
+    const source =
+      sourceIdx >= 0 && sourceIdx < safeLines.length
+        ? (safeLines[sourceIdx] ?? "")
+        : "";
 
-    const cropped = source.length > clampedCols ? source.slice(0, clampedCols) : source;
+    const cropped =
+      source.length > clampedCols ? source.slice(0, clampedCols) : source;
     const paddedLeft = " ".repeat(leftPad) + cropped;
     out.push(paddedLeft.padEnd(clampedCols, " "));
   }

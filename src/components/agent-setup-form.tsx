@@ -47,7 +47,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Name */}
       <div>
-        <label className="font-mono text-[11px] tracking-wider text-muted-foreground">
+        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
           AGENT NAME *
         </label>
         <Input
@@ -62,7 +62,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
 
       {/* Avatar selection */}
       <div>
-        <label className="font-mono text-[11px] tracking-wider text-muted-foreground">
+        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
           AVATAR
         </label>
         <div className="mt-2 flex flex-wrap gap-3">
@@ -78,7 +78,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
               }`}
             >
               {brokenPresets[preset] ? (
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="text-muted-foreground font-mono text-xs">
                   {preset.split("/").pop()?.charAt(0).toUpperCase() ?? "?"}
                 </span>
               ) : (
@@ -101,7 +101,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
 
       {/* Bio */}
       <div>
-        <label className="font-mono text-[11px] tracking-wider text-muted-foreground">
+        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
           BIO
         </label>
         <textarea
@@ -110,16 +110,16 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
           maxLength={2000}
           rows={3}
           placeholder="Describe your agent's purpose..."
-          className="mt-1 w-full rounded border border-border bg-background px-3 py-2 text-sm"
+          className="border-border bg-background mt-1 w-full rounded border px-3 py-2 text-sm"
         />
-        <p className="mt-1 font-mono text-[10px] tracking-wider text-muted-foreground">
+        <p className="text-muted-foreground mt-1 font-mono text-[10px] tracking-wider">
           Your agent can update this itself later
         </p>
       </div>
 
       {/* Visibility mode */}
       <div>
-        <label className="font-mono text-[11px] tracking-wider text-muted-foreground">
+        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
           VISIBILITY MODE
         </label>
         <div className="mt-2 space-y-2">
@@ -140,8 +140,9 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
             />
             <div>
               <span className="text-sm font-medium">Visible</span>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Agent posts are published immediately and visible to all members.
+              <p className="text-muted-foreground mt-0.5 text-xs">
+                Agent posts are published immediately and visible to all
+                members.
               </p>
             </div>
           </label>
@@ -162,7 +163,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
             />
             <div>
               <span className="text-sm font-medium">Ghost</span>
-              <p className="mt-0.5 text-xs text-muted-foreground">
+              <p className="text-muted-foreground mt-0.5 text-xs">
                 Agent creates drafts that you must approve before they are
                 published.
               </p>
@@ -173,7 +174,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
 
       {/* Error */}
       {error && (
-        <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 font-mono text-xs text-destructive">
+        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded border px-3 py-2 font-mono text-xs">
           {error}
         </div>
       )}

@@ -16,7 +16,10 @@ import {
   user,
 } from "@/server/db/schema";
 import { generateSlug } from "@/server/communities/slug-utils";
-import { canManageRole, type CommunityRole } from "@/server/communities/role-utils";
+import {
+  canManageRole,
+  type CommunityRole,
+} from "@/server/communities/role-utils";
 import { logActivity } from "@/server/agent/activity";
 
 /** Escape SQL LIKE/ILIKE pattern characters */
@@ -54,7 +57,9 @@ export const communitiesRouter = createTRPCRouter({
       ];
 
       if (input.search) {
-        conditions.push(ilike(communities.name, `%${escapeLike(input.search)}%`));
+        conditions.push(
+          ilike(communities.name, `%${escapeLike(input.search)}%`),
+        );
       }
 
       // Keyset pagination: (createdAt, id) descending
@@ -130,7 +135,9 @@ export const communitiesRouter = createTRPCRouter({
         cursor: z
           .object({ joinedAt: z.string().datetime(), userId: z.string() })
           .nullish(),
-        status: z.enum(["active", "pending_approval", "banned"]).default("active"),
+        status: z
+          .enum(["active", "pending_approval", "banned"])
+          .default("active"),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -191,13 +198,19 @@ export const communitiesRouter = createTRPCRouter({
           eq(communityMemberships.userId, memberProfiles.userId),
         )
         .where(and(...conditions))
-        .orderBy(desc(communityMemberships.joinedAt), desc(communityMemberships.userId))
+        .orderBy(
+          desc(communityMemberships.joinedAt),
+          desc(communityMemberships.userId),
+        )
         .limit(input.limit + 1);
 
       let nextCursor: typeof input.cursor | undefined;
       if (items.length > input.limit) {
         const next = items.pop()!;
-        nextCursor = { joinedAt: next.joinedAt.toISOString(), userId: next.userId };
+        nextCursor = {
+          joinedAt: next.joinedAt.toISOString(),
+          userId: next.userId,
+        };
       }
 
       return { items, nextCursor };
@@ -293,10 +306,16 @@ export const communitiesRouter = createTRPCRouter({
 
       if (existing) {
         if (existing.status === "banned") {
-          throw new TRPCError({ code: "FORBIDDEN", message: "You are banned from this community" });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are banned from this community",
+          });
         }
         if (existing.status === "active") {
-          throw new TRPCError({ code: "CONFLICT", message: "Already a member" });
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Already a member",
+          });
         }
         // Existing invited/pending_approval → activate instead of duplicate insert
         await ctx.db
@@ -354,13 +373,22 @@ export const communitiesRouter = createTRPCRouter({
 
       if (existing) {
         if (existing.status === "banned") {
-          throw new TRPCError({ code: "FORBIDDEN", message: "You are banned from this community" });
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are banned from this community",
+          });
         }
         if (existing.status === "active") {
-          throw new TRPCError({ code: "CONFLICT", message: "Already a member" });
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Already a member",
+          });
         }
         if (existing.status === "pending_approval") {
-          throw new TRPCError({ code: "CONFLICT", message: "Request already pending" });
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Request already pending",
+          });
         }
         if (existing.status === "invited") {
           // Already invited — update to pending_approval since they're requesting via the approval flow
@@ -404,7 +432,10 @@ export const communitiesRouter = createTRPCRouter({
       }
 
       if (invite.expiresAt && invite.expiresAt < new Date()) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Invite has expired" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invite has expired",
+        });
       }
 
       // Atomic: increment useCount only if under maxUses (prevents race condition)
@@ -421,7 +452,10 @@ export const communitiesRouter = createTRPCRouter({
           .returning();
 
         if (!updated) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Invite has reached max uses" });
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invite has reached max uses",
+          });
         }
       } else {
         // No max — just increment
@@ -440,7 +474,10 @@ export const communitiesRouter = createTRPCRouter({
       });
 
       if (existing?.status === "banned") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "You are banned from this community" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are banned from this community",
+        });
       }
 
       if (existing?.status === "active") {
@@ -518,7 +555,8 @@ export const communitiesRouter = createTRPCRouter({
         if ((ownerCount?.count ?? 0) <= 1) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Cannot leave — you are the last owner. Transfer ownership first.",
+            message:
+              "Cannot leave — you are the last owner. Transfer ownership first.",
           });
         }
       }
@@ -575,7 +613,9 @@ export const communitiesRouter = createTRPCRouter({
         name: z.string().min(2).max(100).optional(),
         description: z.string().max(500).optional(),
         logoUrl: z.string().url().optional().nullable(),
-        joinPolicy: z.enum(["open", "invite_only", "approval_required"]).optional(),
+        joinPolicy: z
+          .enum(["open", "invite_only", "approval_required"])
+          .optional(),
         isListedInDirectory: z.boolean().optional(),
         feedPostPolicy: z.enum(["all_members", "admins_only"]).optional(),
       }),
@@ -588,11 +628,14 @@ export const communitiesRouter = createTRPCRouter({
 
       const updates: Record<string, unknown> = {};
       if (input.name !== undefined) updates.name = input.name;
-      if (input.description !== undefined) updates.description = input.description;
+      if (input.description !== undefined)
+        updates.description = input.description;
       if (input.logoUrl !== undefined) updates.logoUrl = input.logoUrl;
       if (input.joinPolicy !== undefined) updates.joinPolicy = input.joinPolicy;
-      if (input.isListedInDirectory !== undefined) updates.isListedInDirectory = input.isListedInDirectory;
-      if (input.feedPostPolicy !== undefined) updates.feedPostPolicy = input.feedPostPolicy;
+      if (input.isListedInDirectory !== undefined)
+        updates.isListedInDirectory = input.isListedInDirectory;
+      if (input.feedPostPolicy !== undefined)
+        updates.feedPostPolicy = input.feedPostPolicy;
 
       // Note: slug is NOT auto-updated on name change to avoid breaking
       // existing URLs and bookmarks. Slug is set once at community creation.
@@ -641,7 +684,10 @@ export const communitiesRouter = createTRPCRouter({
         .returning();
 
       if (!updated) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "No pending request found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No pending request found",
+        });
       }
 
       await logActivity(ctx.db, {
@@ -681,7 +727,10 @@ export const communitiesRouter = createTRPCRouter({
         .returning();
 
       if (deleted.length === 0) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "No pending request found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No pending request found",
+        });
       }
 
       return { success: true };
@@ -718,7 +767,10 @@ export const communitiesRouter = createTRPCRouter({
         !canManageRole(ctx.communityRole, target.role as CommunityRole) ||
         !canManageRole(ctx.communityRole, input.role)
       ) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient permissions" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Insufficient permissions",
+        });
       }
 
       await ctx.db
@@ -744,11 +796,17 @@ export const communitiesRouter = createTRPCRouter({
     .input(z.object({ slug: z.string(), userId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       if (ctx.communityRole !== "owner") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Only owners can transfer ownership" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only owners can transfer ownership",
+        });
       }
 
       if (input.userId === ctx.session.user.id) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot transfer to yourself" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot transfer to yourself",
+        });
       }
 
       const target = await ctx.db.query.communityMemberships.findFirst({
@@ -760,7 +818,10 @@ export const communitiesRouter = createTRPCRouter({
       });
 
       if (!target) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Target user is not an active member" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Target user is not an active member",
+        });
       }
 
       // Promote target to owner, demote self to admin (atomic via transaction)
@@ -877,7 +938,11 @@ export const communitiesRouter = createTRPCRouter({
   unbanMember: communityProcedure
     .input(z.object({ slug: z.string(), userId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.communityRole || ctx.communityRole === "member" || ctx.communityRole === "moderator") {
+      if (
+        !ctx.communityRole ||
+        ctx.communityRole === "member" ||
+        ctx.communityRole === "moderator"
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
@@ -893,7 +958,10 @@ export const communitiesRouter = createTRPCRouter({
         .returning();
 
       if (deleted.length === 0) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "No banned member found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No banned member found",
+        });
       }
 
       await logActivity(ctx.db, {
@@ -912,7 +980,11 @@ export const communitiesRouter = createTRPCRouter({
   getInviteLinks: communityProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
-      if (!ctx.communityRole || ctx.communityRole === "member" || ctx.communityRole === "moderator") {
+      if (
+        !ctx.communityRole ||
+        ctx.communityRole === "member" ||
+        ctx.communityRole === "moderator"
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 

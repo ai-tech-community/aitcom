@@ -27,5 +27,7 @@ export function decryptApiKey(encoded: string): string {
   const ciphertext = buf.subarray(28);
   const decipher = createDecipheriv("aes-256-gcm", key, iv);
   decipher.setAuthTag(tag);
-  return decipher.update(ciphertext, undefined, "utf8") + decipher.final("utf8");
+  return (
+    decipher.update(ciphertext, undefined, "utf8") + decipher.final("utf8")
+  );
 }

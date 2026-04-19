@@ -23,7 +23,9 @@ export default async function ChallengeDetailPage({
 
   return (
     <HydrateClient>
-      <ChallengeDetailContent challenge={JSON.parse(JSON.stringify(challenge))} />
+      <ChallengeDetailContent
+        challenge={JSON.parse(JSON.stringify(challenge))}
+      />
     </HydrateClient>
   );
 }

@@ -73,11 +73,11 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
     : null;
 
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="border-border rounded-lg border p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-medium text-foreground">
+            <h3 className="text-foreground font-medium">
               <Link
                 href={`/challenges/${challenge.slug}`}
                 className="hover:underline"
@@ -97,24 +97,27 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
               <Badge variant="outline">Sponsor</Badge>
             )}
             {challenge.repo?.templateUrl && (
-              <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
+              <GitBranch className="text-muted-foreground h-3.5 w-3.5" />
             )}
-            {challenge.collaborationModel && challenge.collaborationModel !== "solo-ai" && (
-              <Badge variant="secondary" className="text-purple-600">
-                {challenge.collaborationModel === "relay" && "Relay"}
-                {challenge.collaborationModel === "swarm" && "Swarm"}
-                {challenge.collaborationModel === "adversarial" && "Adversarial"}
-                {challenge.collaborationModel === "blind" && "Blind"}
-                {challenge.collaborationModel === "escalation" && "Escalation"}
-              </Badge>
-            )}
+            {challenge.collaborationModel &&
+              challenge.collaborationModel !== "solo-ai" && (
+                <Badge variant="secondary" className="text-purple-600">
+                  {challenge.collaborationModel === "relay" && "Relay"}
+                  {challenge.collaborationModel === "swarm" && "Swarm"}
+                  {challenge.collaborationModel === "adversarial" &&
+                    "Adversarial"}
+                  {challenge.collaborationModel === "blind" && "Blind"}
+                  {challenge.collaborationModel === "escalation" &&
+                    "Escalation"}
+                </Badge>
+              )}
             {challenge.generatedBy === "ai" && (
               <Badge variant="outline" className="text-blue-500">
                 AI
               </Badge>
             )}
           </div>
-          <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+          <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
             {challenge.type} &middot;{" "}
             {daysLeft === null
               ? t("openEnded")
@@ -134,7 +137,7 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
               {t("join")}
             </Button>
           ) : (
-            <span className="rounded-full bg-secondary px-3 py-1 font-mono text-xs tracking-wider text-muted-foreground">
+            <span className="bg-secondary text-muted-foreground rounded-full px-3 py-1 font-mono text-xs tracking-wider">
               {t("joined")}
             </span>
           )}
@@ -146,7 +149,7 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
           {(challenge.tags as string[]).map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[11px] tracking-wider text-muted-foreground"
+              className="bg-secondary text-muted-foreground rounded-full px-2 py-0.5 font-mono text-[11px] tracking-wider"
             >
               {tag}
             </span>
@@ -163,7 +166,7 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
         </div>
       )}
 
-      <div className="mt-3 text-xs text-muted-foreground">
+      <div className="text-muted-foreground mt-3 text-xs">
         {t("reward")}: {t("xp", { amount: challenge.rewards.xpReward })}
         {challenge.rewards.badgeReward && ` + badge`}
         {challenge.rewards.sponsorReward && (

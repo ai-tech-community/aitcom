@@ -58,9 +58,13 @@ export function FeedComments({
   const [editContent, setEditContent] = useState("");
 
   const isPrivileged =
-    memberRole === "owner" || memberRole === "admin" || memberRole === "moderator";
+    memberRole === "owner" ||
+    memberRole === "admin" ||
+    memberRole === "moderator";
 
-  const { data: comments = [], isLoading } = api.feed.getComments.useQuery({ postId });
+  const { data: comments = [], isLoading } = api.feed.getComments.useQuery({
+    postId,
+  });
 
   const addComment = api.feed.addComment.useMutation({
     onSuccess: () => {
@@ -92,16 +96,16 @@ export function FeedComments({
 
   if (isLoading) {
     return (
-      <div className="space-y-2 border-l border-border pl-4 pt-1">
+      <div className="border-border space-y-2 border-l pt-1 pl-4">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="h-10 animate-pulse rounded bg-muted" />
+          <div key={i} className="bg-muted h-10 animate-pulse rounded" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="space-y-3 border-l border-border pl-4 pt-1">
+    <div className="border-border space-y-3 border-l pt-1 pl-4">
       {/* Comment list */}
       {(comments as FeedComment[]).map((comment) => {
         const isAuthor = !!currentUserId && comment.authorId === currentUserId;
@@ -110,7 +114,10 @@ export function FeedComments({
 
         if (comment.isDeleted) {
           return (
-            <p key={comment.id} className="font-mono text-[11px] text-muted-foreground">
+            <p
+              key={comment.id}
+              className="text-muted-foreground font-mono text-[11px]"
+            >
               {t("commentDeletedMessage")}
             </p>
           );
@@ -119,13 +126,17 @@ export function FeedComments({
         return (
           <div key={comment.id} className="flex items-start gap-2">
             <Avatar className="mt-0.5 size-6 shrink-0">
-              <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+              <AvatarFallback className="text-[10px]">
+                {initials}
+              </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-1">
                 <div>
-                  <span className="text-xs font-medium">{comment.authorName ?? "Member"}</span>
-                  <span className="ml-1.5 text-[10px] text-muted-foreground">
+                  <span className="text-xs font-medium">
+                    {comment.authorName ?? "Member"}
+                  </span>
+                  <span className="text-muted-foreground ml-1.5 text-[10px]">
                     {timeAgo(comment.createdAt)}
                     {comment.isEdited ? ` · (${t("edited")})` : ""}
                   </span>
@@ -133,7 +144,11 @@ export function FeedComments({
                 {canModify && currentUserId ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-5 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-5 shrink-0"
+                      >
                         <MoreHorizontal className="size-3" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -200,7 +215,9 @@ export function FeedComments({
                   </div>
                 </div>
               ) : (
-                <p className="mt-0.5 whitespace-pre-wrap text-sm">{comment.content}</p>
+                <p className="mt-0.5 text-sm whitespace-pre-wrap">
+                  {comment.content}
+                </p>
               )}
             </div>
           </div>
@@ -232,7 +249,9 @@ export function FeedComments({
               }}
               disabled={!newComment.trim() || addComment.isPending}
             >
-              {addComment.isPending ? <Loader2 className="mr-1 size-3 animate-spin" /> : null}
+              {addComment.isPending ? (
+                <Loader2 className="mr-1 size-3 animate-spin" />
+              ) : null}
               {t("post")}
             </Button>
           </div>

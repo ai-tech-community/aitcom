@@ -107,9 +107,7 @@ export function CreateCommunityDialog() {
             <Select
               value={joinPolicy}
               onValueChange={(v) =>
-                setJoinPolicy(
-                  v as "open" | "invite_only" | "approval_required",
-                )
+                setJoinPolicy(v as "open" | "invite_only" | "approval_required")
               }
             >
               <SelectTrigger className="mt-1 font-mono text-sm">
@@ -133,9 +131,7 @@ export function CreateCommunityDialog() {
             </Label>
           </div>
           {mutation.error && (
-            <p className="text-destructive text-sm">
-              {mutation.error.message}
-            </p>
+            <p className="text-destructive text-sm">{mutation.error.message}</p>
           )}
           <Button
             type="submit"

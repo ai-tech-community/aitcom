@@ -13,7 +13,10 @@ import {
   benchmarkAnswers,
   benchmarkVotes,
 } from "@/server/db/schema";
-import { BENCHMARK_TOPICS, BENCHMARK_DIFFICULTIES } from "@/lib/benchmark-constants";
+import {
+  BENCHMARK_TOPICS,
+  BENCHMARK_DIFFICULTIES,
+} from "@/lib/benchmark-constants";
 
 type BenchmarkQuestion = InferSelectModel<typeof benchmarkQuestions>;
 
@@ -123,7 +126,10 @@ export const benchmarkRouter = createTRPCRouter({
         .limit(1);
 
       if (!question) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Question not found." });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Question not found.",
+        });
       }
 
       if (question.contributorId === userId) {
@@ -165,14 +171,23 @@ export const benchmarkRouter = createTRPCRouter({
           .update(benchmarkQuestions)
           .set(
             input.vote === "up"
-              ? { upvotes: sql`${benchmarkQuestions.upvotes} + 1`, updatedAt: new Date() }
-              : { downvotes: sql`${benchmarkQuestions.downvotes} + 1`, updatedAt: new Date() },
+              ? {
+                  upvotes: sql`${benchmarkQuestions.upvotes} + 1`,
+                  updatedAt: new Date(),
+                }
+              : {
+                  downvotes: sql`${benchmarkQuestions.downvotes} + 1`,
+                  updatedAt: new Date(),
+                },
           )
           .where(eq(benchmarkQuestions.id, input.questionId))
           .returning();
 
         if (!updated) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Question not found." });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Question not found.",
+          });
         }
 
         // Auto-approve / auto-reject based on thresholds

@@ -25,8 +25,11 @@ export function ImpactPage() {
   const overviewQuery = api.impact.getOverview.useQuery({ range });
 
   const lastUpdatedLabel = useMemo(() => {
-    if (!overviewQuery.data?.lastUpdatedAt) return t("lastUpdated", { date: "-" });
-    return t("lastUpdated", { date: formatDate(overviewQuery.data.lastUpdatedAt) });
+    if (!overviewQuery.data?.lastUpdatedAt)
+      return t("lastUpdated", { date: "-" });
+    return t("lastUpdated", {
+      date: formatDate(overviewQuery.data.lastUpdatedAt),
+    });
   }, [overviewQuery.data?.lastUpdatedAt, t]);
 
   if (overviewQuery.isLoading) {
@@ -50,16 +53,18 @@ export function ImpactPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8 px-6 py-12 sm:px-10">
       <header className="space-y-3">
-        <p className="font-mono text-xs uppercase tracking-widest text-zinc-500">
+        <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
           {t("subtitle")}
         </p>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-black tracking-tight text-zinc-900">{t("title")}</h1>
+          <h1 className="text-3xl font-black tracking-tight text-zinc-900">
+            {t("title")}
+          </h1>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setRange("30d")}
-              className={`rounded-md border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest ${
+              className={`rounded-md border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase ${
                 range === "30d"
                   ? "border-zinc-900 bg-zinc-900 text-white"
                   : "border-zinc-300 bg-white text-zinc-600"
@@ -70,7 +75,7 @@ export function ImpactPage() {
             <button
               type="button"
               onClick={() => setRange("all")}
-              className={`rounded-md border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest ${
+              className={`rounded-md border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase ${
                 range === "all"
                   ? "border-zinc-900 bg-zinc-900 text-white"
                   : "border-zinc-300 bg-white text-zinc-600"
@@ -80,7 +85,10 @@ export function ImpactPage() {
             </button>
           </div>
         </div>
-        <a href="#methodology" className="font-mono text-[10px] uppercase tracking-widest text-zinc-600 underline">
+        <a
+          href="#methodology"
+          className="font-mono text-[10px] tracking-widest text-zinc-600 uppercase underline"
+        >
           {t("methodology")}
         </a>
       </header>
@@ -173,8 +181,12 @@ export function ImpactPage() {
               },
               crossPersonalityPairing: {
                 title: t("experimental.crossPersonalityPairing.title"),
-                definition: t("experimental.crossPersonalityPairing.definition"),
-                calculation: t("experimental.crossPersonalityPairing.calculation"),
+                definition: t(
+                  "experimental.crossPersonalityPairing.definition",
+                ),
+                calculation: t(
+                  "experimental.crossPersonalityPairing.calculation",
+                ),
                 why: t("experimental.crossPersonalityPairing.why"),
                 caveats: t("experimental.crossPersonalityPairing.caveats"),
               },
@@ -201,19 +213,19 @@ export function ImpactPage() {
       <section className="grid gap-3 md:grid-cols-3">
         <Link
           href="/auth/signup"
-          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-[10px] uppercase tracking-widest text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900"
+          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-[10px] tracking-widest text-zinc-700 uppercase transition hover:border-zinc-900 hover:text-zinc-900"
         >
           {t("cta.join")}
         </Link>
         <Link
           href="/challenges"
-          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-[10px] uppercase tracking-widest text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900"
+          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-[10px] tracking-widest text-zinc-700 uppercase transition hover:border-zinc-900 hover:text-zinc-900"
         >
           {t("cta.challenge")}
         </Link>
         <Link
           href="/sponsors"
-          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-[10px] uppercase tracking-widest text-zinc-700 transition hover:border-zinc-900 hover:text-zinc-900"
+          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-[10px] tracking-widest text-zinc-700 uppercase transition hover:border-zinc-900 hover:text-zinc-900"
         >
           {t("cta.partner")}
         </Link>
@@ -229,4 +241,3 @@ export function ImpactPage() {
     </div>
   );
 }
-

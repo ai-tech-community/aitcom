@@ -97,9 +97,7 @@ async function seed() {
       );
     }
 
-    console.log(
-      `  ✓ Community created: ${communityId}`,
-    );
+    console.log(`  ✓ Community created: ${communityId}`);
     console.log(`  ✓ Owner enrolled: ${owner.id}`);
     console.log(`  ✓ Members enrolled: ${members.length}`);
   });

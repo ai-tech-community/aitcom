@@ -58,8 +58,8 @@ export function NotificationsPageContent() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border pb-4">
-        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+      <div className="border-border flex items-center justify-between border-b pb-4">
+        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / NOTIFICATIONS
         </span>
         <div className="flex gap-2">
@@ -68,7 +68,7 @@ export function NotificationsPageContent() {
             title="Mark all read"
             onClick={() => markRead.mutate({})}
             disabled={markRead.isPending}
-            className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
+            className="border-border text-muted-foreground hover:bg-muted flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs disabled:opacity-50"
           >
             <CheckCheckIcon className="h-3.5 w-3.5" />
             Mark all read
@@ -78,7 +78,7 @@ export function NotificationsPageContent() {
             title="Clear read"
             onClick={() => deleteAllRead.mutate()}
             disabled={deleteAllRead.isPending}
-            className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
+            className="border-border text-muted-foreground hover:bg-muted flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs disabled:opacity-50"
           >
             <BellOffIcon className="h-3.5 w-3.5" />
             Clear read
@@ -88,7 +88,7 @@ export function NotificationsPageContent() {
             title="Clear all"
             onClick={() => deleteAll.mutate()}
             disabled={deleteAll.isPending}
-            className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
+            className="border-border text-muted-foreground hover:bg-muted flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs disabled:opacity-50"
           >
             <Trash2Icon className="h-3.5 w-3.5" />
             Clear all
@@ -104,31 +104,31 @@ export function NotificationsPageContent() {
           </div>
         )}
         {!isLoading && allItems.length === 0 && (
-          <p className="py-12 text-center text-sm text-muted-foreground">
+          <p className="text-muted-foreground py-12 text-center text-sm">
             No notifications
           </p>
         )}
         {allItems.map((n) => (
           <div
             key={n.id}
-            className={`group flex items-start gap-3 rounded-lg border border-border p-4 ${!n.readAt ? "bg-muted/30" : "bg-background"}`}
+            className={`group border-border flex items-start gap-3 rounded-lg border p-4 ${!n.readAt ? "bg-muted/30" : "bg-background"}`}
           >
             {/* Unread dot */}
             <div className="mt-1.5 h-2 w-2 shrink-0">
               {!n.readAt && (
-                <span className="block h-2 w-2 rounded-full bg-primary" />
+                <span className="bg-primary block h-2 w-2 rounded-full" />
               )}
             </div>
 
             {/* Full content — no truncation */}
-            <div className="flex-1 min-w-0 space-y-1">
+            <div className="min-w-0 flex-1 space-y-1">
               <p className="text-sm font-medium">{n.title}</p>
-              <div className="space-y-1 text-sm text-muted-foreground [&_strong]:font-semibold [&_strong]:text-foreground [&_a]:text-primary [&_a]:underline [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:leading-relaxed">
+              <div className="text-muted-foreground [&_strong]:text-foreground [&_a]:text-primary space-y-1 text-sm [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:leading-relaxed [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-4">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {n.content}
                 </ReactMarkdown>
               </div>
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-muted-foreground text-[10px]">
                 {new Date(n.createdAt).toLocaleString()}
               </p>
             </div>
@@ -141,7 +141,7 @@ export function NotificationsPageContent() {
                   title="Mark unread"
                   onClick={() => markUnread.mutate({ id: n.id })}
                   disabled={markUnread.isPending}
-                  className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-50"
+                  className="text-muted-foreground hover:bg-muted rounded p-1 disabled:opacity-50"
                 >
                   <BellOffIcon className="h-4 w-4" />
                 </button>
@@ -151,7 +151,7 @@ export function NotificationsPageContent() {
                   title="Mark read"
                   onClick={() => markRead.mutate({ id: n.id })}
                   disabled={markRead.isPending}
-                  className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-50"
+                  className="text-muted-foreground hover:bg-muted rounded p-1 disabled:opacity-50"
                 >
                   <CheckCheckIcon className="h-4 w-4" />
                 </button>
@@ -161,7 +161,7 @@ export function NotificationsPageContent() {
                 title="Delete"
                 onClick={() => del.mutate({ id: n.id })}
                 disabled={del.isPending}
-                className="rounded p-1 text-muted-foreground hover:bg-muted disabled:opacity-50"
+                className="text-muted-foreground hover:bg-muted rounded p-1 disabled:opacity-50"
               >
                 <Trash2Icon className="h-4 w-4" />
               </button>
@@ -174,7 +174,7 @@ export function NotificationsPageContent() {
             type="button"
             onClick={() => void fetchNextPage()}
             disabled={isFetchingNextPage}
-            className="w-full rounded-lg border border-border py-2.5 text-center text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
+            className="border-border text-muted-foreground hover:bg-muted w-full rounded-lg border py-2.5 text-center text-xs disabled:opacity-50"
           >
             {isFetchingNextPage ? "Loading..." : "Load more"}
           </button>

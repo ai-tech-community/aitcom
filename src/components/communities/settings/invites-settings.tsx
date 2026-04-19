@@ -101,7 +101,11 @@ export function InvitesSettings({ slug }: InvitesSettingsProps) {
             value={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${lastCreatedCode}`}
             className="flex-1 text-sm"
           />
-          <Button size="sm" variant="outline" onClick={() => copyLink(lastCreatedCode)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => copyLink(lastCreatedCode)}
+          >
             <Copy className="mr-1.5 size-3.5" />
             {t("copyLink")}
           </Button>
@@ -136,11 +140,21 @@ export function InvitesSettings({ slug }: InvitesSettingsProps) {
             </Select>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" onClick={handleCreate} disabled={createMutation.isPending}>
-              {createMutation.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+            <Button
+              size="sm"
+              onClick={handleCreate}
+              disabled={createMutation.isPending}
+            >
+              {createMutation.isPending && (
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+              )}
               {t("create")}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setShowForm(false)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowForm(false)}
+            >
               Cancel
             </Button>
           </div>
@@ -150,10 +164,12 @@ export function InvitesSettings({ slug }: InvitesSettingsProps) {
       {/* Invite list */}
       {isLoading ? (
         <div className="flex justify-center py-8">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+          <Loader2 className="text-muted-foreground size-5 animate-spin" />
         </div>
       ) : invites.length === 0 ? (
-        <p className="text-muted-foreground py-8 text-center text-sm">{t("noInvites")}</p>
+        <p className="text-muted-foreground py-8 text-center text-sm">
+          {t("noInvites")}
+        </p>
       ) : (
         <div className="divide-y rounded-lg border">
           {invites.map((invite) => {
@@ -170,19 +186,29 @@ export function InvitesSettings({ slug }: InvitesSettingsProps) {
                   <div className="flex items-center gap-2">
                     <code className="font-mono text-sm">{invite.code}</code>
                     {expired && (
-                      <span className="text-destructive text-xs font-medium">{t("expired")}</span>
+                      <span className="text-destructive text-xs font-medium">
+                        {t("expired")}
+                      </span>
                     )}
                   </div>
                   <p className="text-muted-foreground mt-0.5 text-xs">
                     {invite.useCount} / {invite.maxUses ?? "∞"} uses
                     {invite.expiresAt && !expired && (
-                      <> · Expires {new Date(invite.expiresAt).toLocaleDateString()}</>
+                      <>
+                        {" "}
+                        · Expires{" "}
+                        {new Date(invite.expiresAt).toLocaleDateString()}
+                      </>
                     )}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {!inactive && (
-                    <Button size="sm" variant="ghost" onClick={() => copyLink(invite.code)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => copyLink(invite.code)}
+                    >
                       <Copy className="size-3.5" />
                     </Button>
                   )}

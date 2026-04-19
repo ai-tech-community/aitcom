@@ -37,6 +37,8 @@ describe("buildBlogUrl", () => {
   });
 
   it("omits undefined values", () => {
-    expect(buildBlogUrl({ q: undefined, tag: undefined, page: undefined })).toBe("/blog");
+    expect(
+      buildBlogUrl({ q: undefined, tag: undefined, page: undefined }),
+    ).toBe("/blog");
   });
 });

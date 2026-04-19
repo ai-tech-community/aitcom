@@ -25,14 +25,12 @@ export function ActiveChallengesWidget() {
 
   if (activeEnrollments.length === 0) return null;
 
-  const challengeMap = new Map(
-    (challenges ?? []).map((c) => [c.id, c]),
-  );
+  const challengeMap = new Map((challenges ?? []).map((c) => [c.id, c]));
 
   return (
     <div>
-      <div className="border-b border-border pb-4">
-        <span className="font-mono text-xs font-medium tracking-wider text-muted-foreground">
+      <div className="border-border border-b pb-4">
+        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           / ACTIVE CHALLENGES
         </span>
       </div>
@@ -68,14 +66,12 @@ export function ActiveChallengesWidget() {
             <Link
               key={enrollment.id}
               href={`/challenges/${slug}`}
-              className="block rounded-lg border border-border p-3 transition-colors hover:bg-secondary/30"
+              className="border-border hover:bg-secondary/30 block rounded-lg border p-3 transition-colors"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <TrophyIcon className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">
-                    {challenge.title}
-                  </span>
+                  <TrophyIcon className="text-muted-foreground h-4 w-4" />
+                  <span className="text-sm font-medium">{challenge.title}</span>
                   {difficulty && (
                     <Badge
                       variant="secondary"
@@ -85,10 +81,10 @@ export function ActiveChallengesWidget() {
                     </Badge>
                   )}
                   {hasRepo && (
-                    <GitBranchIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    <GitBranchIcon className="text-muted-foreground h-3.5 w-3.5" />
                   )}
                 </div>
-                <span className="font-mono text-[11px] text-muted-foreground">
+                <span className="text-muted-foreground font-mono text-[11px]">
                   {daysLeft !== null
                     ? t("timeLeft", { days: daysLeft })
                     : t("openEnded")}

@@ -1,7 +1,14 @@
 "use client";
 
 import { use, useState } from "react";
-import { ChevronUp, Lightbulb, MoreHorizontal, Check, X, RotateCcw } from "lucide-react";
+import {
+  ChevronUp,
+  Lightbulb,
+  MoreHorizontal,
+  Check,
+  X,
+  RotateCcw,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
@@ -40,7 +47,8 @@ export default function CommunityIdeasPage({
     { enabled: !!session?.user },
   );
   const membership = myCommunities?.find((c) => c.slug === slug);
-  const isAdminOrOwner = membership?.role === "owner" || membership?.role === "admin";
+  const isAdminOrOwner =
+    membership?.role === "owner" || membership?.role === "admin";
 
   const { data: ideas = [], isLoading } = api.forum.getIdeas.useQuery({
     sort,
@@ -84,7 +92,8 @@ export default function CommunityIdeasPage({
       return { prev };
     },
     onError: (err, _input, ctx) => {
-      if (ctx?.prev) utils.forum.getIdeas.setData({ sort, communitySlug: slug }, ctx.prev);
+      if (ctx?.prev)
+        utils.forum.getIdeas.setData({ sort, communitySlug: slug }, ctx.prev);
       if (err.message === "RULES_NOT_ACCEPTED") {
         toast.error(tRules("mustAccept"));
       }
@@ -107,7 +116,7 @@ export default function CommunityIdeasPage({
           <button
             key={s}
             onClick={() => setSort(s)}
-            className={`rounded px-3 py-1 font-mono text-[10px] font-semibold uppercase tracking-widest transition-colors ${
+            className={`rounded px-3 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
               sort === s
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground"
@@ -155,9 +164,7 @@ export default function CommunityIdeasPage({
               </button>
 
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium leading-snug">
-                  {idea.title}
-                </p>
+                <p className="text-sm leading-snug font-medium">{idea.title}</p>
                 {idea.description && (
                   <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-relaxed">
                     {idea.description}
@@ -165,7 +172,7 @@ export default function CommunityIdeasPage({
                 )}
                 <div className="mt-1 flex items-center gap-2">
                   <span
-                    className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider ${statusStyles[idea.status]}`}
+                    className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${statusStyles[idea.status]}`}
                   >
                     {idea.status === "open"
                       ? t("statusOpen")
@@ -182,7 +189,10 @@ export default function CommunityIdeasPage({
                         {idea.status !== "implemented" && (
                           <DropdownMenuItem
                             onClick={() =>
-                              statusMutation.mutate({ ideaId: idea.id, status: "implemented" })
+                              statusMutation.mutate({
+                                ideaId: idea.id,
+                                status: "implemented",
+                              })
                             }
                           >
                             <Check className="mr-2 h-3.5 w-3.5" />
@@ -192,7 +202,10 @@ export default function CommunityIdeasPage({
                         {idea.status !== "rejected" && (
                           <DropdownMenuItem
                             onClick={() =>
-                              statusMutation.mutate({ ideaId: idea.id, status: "rejected" })
+                              statusMutation.mutate({
+                                ideaId: idea.id,
+                                status: "rejected",
+                              })
                             }
                           >
                             <X className="mr-2 h-3.5 w-3.5" />
@@ -202,7 +215,10 @@ export default function CommunityIdeasPage({
                         {idea.status !== "open" && (
                           <DropdownMenuItem
                             onClick={() =>
-                              statusMutation.mutate({ ideaId: idea.id, status: "open" })
+                              statusMutation.mutate({
+                                ideaId: idea.id,
+                                status: "open",
+                              })
                             }
                           >
                             <RotateCcw className="mr-2 h-3.5 w-3.5" />
@@ -228,7 +244,7 @@ export default function CommunityIdeasPage({
         ) : !showForm ? (
           <button
             onClick={() => setShowForm(true)}
-            className="text-primary hover:text-primary/80 flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest transition-colors"
+            className="text-primary hover:text-primary/80 flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors"
           >
             <Lightbulb className="h-3 w-3" />
             {t("submit")}
@@ -246,7 +262,7 @@ export default function CommunityIdeasPage({
             className="space-y-3"
           >
             <div>
-              <label className="text-muted-foreground mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider">
+              <label className="text-muted-foreground mb-1 block font-mono text-[10px] font-semibold tracking-wider uppercase">
                 {t("titleLabel")}
               </label>
               <input
@@ -255,11 +271,11 @@ export default function CommunityIdeasPage({
                 placeholder={t("titlePlaceholder")}
                 maxLength={100}
                 required
-                className="border-border focus:ring-primary/30 focus:border-primary w-full rounded-md border bg-transparent px-3 py-2 text-sm placeholder:opacity-50 focus:outline-none focus:ring-1"
+                className="border-border focus:ring-primary/30 focus:border-primary w-full rounded-md border bg-transparent px-3 py-2 text-sm placeholder:opacity-50 focus:ring-1 focus:outline-none"
               />
             </div>
             <div>
-              <label className="text-muted-foreground mb-1 block font-mono text-[10px] font-semibold uppercase tracking-wider">
+              <label className="text-muted-foreground mb-1 block font-mono text-[10px] font-semibold tracking-wider uppercase">
                 {t("descriptionLabel")}
               </label>
               <textarea
@@ -268,21 +284,21 @@ export default function CommunityIdeasPage({
                 placeholder={t("descriptionPlaceholder")}
                 maxLength={500}
                 rows={3}
-                className="border-border focus:ring-primary/30 focus:border-primary w-full resize-none rounded-md border bg-transparent px-3 py-2 text-sm placeholder:opacity-50 focus:outline-none focus:ring-1"
+                className="border-border focus:ring-primary/30 focus:border-primary w-full resize-none rounded-md border bg-transparent px-3 py-2 text-sm placeholder:opacity-50 focus:ring-1 focus:outline-none"
               />
             </div>
             <div className="flex gap-2">
               <button
                 type="submit"
                 disabled={submitMutation.isPending}
-                className="bg-primary text-primary-foreground rounded-md px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest transition-colors disabled:opacity-50"
+                className="bg-primary text-primary-foreground rounded-md px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors disabled:opacity-50"
               >
                 {submitMutation.isPending ? t("submitting") : t("submit")}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="border-border text-muted-foreground hover:bg-secondary rounded-md border px-4 py-1.5 font-mono text-[10px] font-semibold uppercase tracking-widest transition-colors"
+                className="border-border text-muted-foreground hover:bg-secondary rounded-md border px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors"
               >
                 Cancel
               </button>
