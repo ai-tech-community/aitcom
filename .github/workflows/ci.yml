@@ -58,9 +58,12 @@ jobs:
     needs: [lint-and-typecheck, format]
 
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-      PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET }}
+      SKIP_ENV_VALIDATION: "true"
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET || 'ci-placeholder-secret-ci-placeholder-secret' }}
+      BETTER_AUTH_GITHUB_CLIENT_ID: "placeholder"
+      BETTER_AUTH_GITHUB_CLIENT_SECRET: "placeholder"
+      PAYLOAD_SECRET: ${{ secrets.PAYLOAD_SECRET || 'ci-placeholder' }}
       BETTER_AUTH_URL: "http://localhost:3000"
       BETTER_AUTH_BASE_URL: "http://localhost:3000"
       NEXT_PUBLIC_APP_URL: "http://localhost:3000"
