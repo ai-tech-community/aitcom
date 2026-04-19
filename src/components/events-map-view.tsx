@@ -25,6 +25,20 @@ const markerIcon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
+const userIcon = L.divIcon({
+  html: `<div style="
+    width: 18px;
+    height: 18px;
+    background: #2563eb;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(37,99,235,0.25), 0 2px 6px rgba(0,0,0,0.3);
+  "></div>`,
+  className: "",
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+});
+
 export interface MapEvent {
   id: number;
   slug: string;
@@ -39,6 +53,21 @@ export interface MapEvent {
 
 interface EventsMapViewProps {
   events: MapEvent[];
+  userCoords?: { lat: number; lng: number } | null;
+}
+
+function haversineKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
 }
 
 function formatDate(dateStr: string): string {
@@ -46,16 +75,40 @@ function formatDate(dateStr: string): string {
   return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export function EventsMapView({ events }: EventsMapViewProps) {
+export function EventsMapView({ events, userCoords = null }: EventsMapViewProps) {
   const bounds = useMemo<L.LatLngBoundsLiteral | null>(() => {
-    if (events.length === 0) return null;
-    const lats = events.map((e) => e.latitude);
-    const lngs = events.map((e) => e.longitude);
+    if (events.length === 0 && !userCoords) return null;
+
+    let points: Array<{ lat: number; lng: number }> = [];
+
+    if (userCoords && events.length > 0) {
+      const sorted = [...events]
+        .map((e) => ({
+          event: e,
+          km: haversineKm(userCoords, { lat: e.latitude, lng: e.longitude }),
+        }))
+        .sort((a, b) => a.km - b.km)
+        .slice(0, 5);
+      points = [
+        userCoords,
+        ...sorted.map((s) => ({ lat: s.event.latitude, lng: s.event.longitude })),
+      ];
+    } else if (userCoords) {
+      return [
+        [userCoords.lat - 0.5, userCoords.lng - 0.5],
+        [userCoords.lat + 0.5, userCoords.lng + 0.5],
+      ];
+    } else {
+      points = events.map((e) => ({ lat: e.latitude, lng: e.longitude }));
+    }
+
+    const lats = points.map((p) => p.lat);
+    const lngs = points.map((p) => p.lng);
     return [
       [Math.min(...lats), Math.min(...lngs)],
       [Math.max(...lats), Math.max(...lngs)],
     ];
-  }, [events]);
+  }, [events, userCoords]);
 
   if (events.length === 0) {
     return (
@@ -78,6 +131,16 @@ export function EventsMapView({ events }: EventsMapViewProps) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        {userCoords && (
+          <Marker
+            position={[userCoords.lat, userCoords.lng]}
+            icon={userIcon}
+          >
+            <Popup>
+              <div className="text-xs font-semibold text-black">You are here</div>
+            </Popup>
+          </Marker>
+        )}
         {events.map((event) => (
           <Marker
             key={event.id}

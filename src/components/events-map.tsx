@@ -17,7 +17,10 @@ const InnerMap = dynamic(
   },
 );
 
-export function EventsMap(props: { events: MapEvent[] }) {
+export function EventsMap(props: {
+  events: MapEvent[];
+  userCoords?: { lat: number; lng: number } | null;
+}) {
   return <InnerMap {...props} />;
 }
 

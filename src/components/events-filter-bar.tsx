@@ -34,6 +34,7 @@ const SORT_OPTIONS = [
   { value: "date", label: "Sort: Date" },
   { value: "fit", label: "Sort: AIT fit" },
   { value: "newest", label: "Sort: Newest" },
+  { value: "near", label: "Sort: Nearest" },
 ];
 
 interface EventsFilterBarProps {

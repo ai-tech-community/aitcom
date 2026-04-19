@@ -327,7 +327,10 @@ export default async function EventsPage({
       </div>
 
       {isMapView ? (
-        <EventsMap events={toMapEvents(events)} />
+        <EventsMap
+          events={toMapEvents(events)}
+          userCoords={userCoords}
+        />
       ) : events.length === 0 ? (
         <p className="text-muted-foreground mt-12 text-center">
           {hasFilters
