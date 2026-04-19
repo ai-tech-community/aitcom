@@ -17,7 +17,9 @@ import {
 } from "@/lib/event-metadata";
 import { EventsFilterBar } from "@/components/events-filter-bar";
 import { EventsMap, type MapEvent } from "@/components/events-map";
+import { UseMyLocationButton } from "@/components/use-my-location-button";
 import { getVisitorLocation } from "@/lib/visitor-location";
+import { haversineDistanceKm, formatDistance } from "@/lib/geo";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -117,13 +119,23 @@ export default async function EventsPage({
   const fit = Number.isFinite(fitRaw) && fitRaw >= 1 && fitRaw <= 10 ? fitRaw : undefined;
 
   const sortRaw = firstParam(sp, "sort");
-  const sort: "date" | "fit" | "newest" =
-    sortRaw === "fit" || sortRaw === "newest" ? sortRaw : "date";
+  const sort: "date" | "fit" | "newest" | "near" =
+    sortRaw === "fit" || sortRaw === "newest" || sortRaw === "near"
+      ? sortRaw
+      : "date";
+
+  const userLat = Number(firstParam(sp, "lat"));
+  const userLng = Number(firstParam(sp, "lng"));
+  const userCoords =
+    Number.isFinite(userLat) && Number.isFinite(userLng)
+      ? { lat: userLat, lng: userLng }
+      : null;
+  const nearSort = sort === "near" && userCoords !== null;
 
   const pageRaw = Number(firstParam(sp, "page"));
   const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
   const isMapView = firstParam(sp, "view") === "map";
-  const perPage = isMapView ? 200 : 12;
+  const perPage = isMapView || nearSort ? 200 : 12;
 
   const visitor = await getVisitorLocation();
   const countryParam = firstParam(sp, "country");
@@ -160,8 +172,17 @@ export default async function EventsPage({
           ? "-date"
           : "date";
 
+  if (nearSort) {
+    conditions.push({ latitude: { exists: true } });
+    conditions.push({ longitude: { exists: true } });
+  }
+
   const payload = await getPayloadClient();
-  const { docs: events, totalPages, page: currentPage } = await payload.find({
+  const {
+    docs: eventsFetched,
+    totalPages,
+    page: currentPage,
+  } = await payload.find({
     collection: "events",
     where: { and: conditions },
     sort: sortParam,
@@ -171,6 +192,28 @@ export default async function EventsPage({
     limit: perPage,
     page,
   });
+
+  const distanceByEventId = new Map<number, number>();
+  let events = eventsFetched;
+  if (nearSort && userCoords) {
+    const withDistance = eventsFetched
+      .map((e) => {
+        if (typeof e.latitude !== "number" || typeof e.longitude !== "number")
+          return null;
+        const km = haversineDistanceKm(userCoords, {
+          lat: e.latitude,
+          lng: e.longitude,
+        });
+        distanceByEventId.set(e.id, km);
+        return { event: e, km };
+      })
+      .filter(
+        (x): x is { event: (typeof eventsFetched)[number]; km: number } =>
+          x !== null,
+      );
+    withDistance.sort((a, b) => a.km - b.km);
+    events = withDistance.map((x) => x.event);
+  }
 
   const hasFilters =
     !!q ||
@@ -192,6 +235,10 @@ export default async function EventsPage({
     if (countryParam) next.set("country", countryParam);
     if (nearMe) next.set("near", "1");
     if (isMapView) next.set("view", "map");
+    if (userCoords) {
+      next.set("lat", String(userLat));
+      next.set("lng", String(userLng));
+    }
     return next;
   };
 
@@ -255,7 +302,8 @@ export default async function EventsPage({
         visitorCountryName={visitor?.countryName ?? null}
       />
 
-      <div className="mt-4 flex gap-1 font-mono text-[11px] tracking-wider">
+      <div className="mt-4 flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-wider">
+        <UseMyLocationButton />
         <Link
           href={buildViewHref("grid")}
           className={`rounded border px-3 py-1.5 transition-colors ${
@@ -294,6 +342,7 @@ export default async function EventsPage({
             const imageUrl = getImageUrl(event);
             const summary =
               typeof event.summary === "string" ? event.summary : "";
+            const distanceKm = distanceByEventId.get(event.id);
             return (
               <Link
                 key={event.id}
@@ -321,6 +370,14 @@ export default async function EventsPage({
                         <span>•</span>
                         <span>
                           {EVENT_FORMAT_LABELS[event.format] ?? event.format}
+                        </span>
+                      </>
+                    )}
+                    {typeof distanceKm === "number" && (
+                      <>
+                        <span>•</span>
+                        <span className="text-foreground">
+                          {formatDistance(distanceKm)}
                         </span>
                       </>
                     )}
