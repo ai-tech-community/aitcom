@@ -188,6 +188,12 @@ export interface Event {
   region?: string | null;
   country?: string | null;
   city?: string | null;
+  /**
+   * Geocoded automatically from location/city/country.
+   */
+  latitude?: number | null;
+  longitude?: number | null;
+  geocodedAt?: string | null;
   date: string;
   startTime?: string | null;
   endTime?: string | null;
@@ -1131,6 +1137,9 @@ export interface EventsSelect<T extends boolean = true> {
   region?: T;
   country?: T;
   city?: T;
+  latitude?: T;
+  longitude?: T;
+  geocodedAt?: T;
   date?: T;
   startTime?: T;
   endTime?: T;

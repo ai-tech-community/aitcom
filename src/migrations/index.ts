@@ -6,6 +6,8 @@ import * as migration_20260312_benchmark_tables from "./20260312_benchmark_table
 import * as migration_20260312_benchmark_model_id from "./20260312_benchmark_model_id";
 import * as migration_20260320_backfill_member_profiles from "./20260320_backfill_member_profiles";
 import * as migration_20260326_community_feed_schema from "./20260326_community_feed_schema";
+import * as migration_20260419_events_discovery_metadata from "./20260419_events_discovery_metadata";
+import * as migration_20260419_143000_events_geocoding from "./20260419_143000_events_geocoding";
 
 export const migrations = [
   {
@@ -47,5 +49,15 @@ export const migrations = [
     up: migration_20260326_community_feed_schema.up,
     down: migration_20260326_community_feed_schema.down,
     name: "20260326_community_feed_schema",
+  },
+  {
+    up: migration_20260419_events_discovery_metadata.up,
+    down: migration_20260419_events_discovery_metadata.down,
+    name: "20260419_events_discovery_metadata",
+  },
+  {
+    up: migration_20260419_143000_events_geocoding.up,
+    down: migration_20260419_143000_events_geocoding.down,
+    name: "20260419_143000_events_geocoding",
   },
 ];

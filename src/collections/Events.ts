@@ -1,4 +1,4 @@
-import type { CollectionConfig } from "payload";
+import type { CollectionAfterChangeHook, CollectionConfig } from "payload";
 
 import {
   EVENT_AUDIENCE_LABELS,
@@ -12,6 +12,67 @@ import {
   EVENT_REVIEW_STATUS_LABELS,
   EVENT_REVIEW_STATUS_OPTIONS,
 } from "@/lib/event-metadata";
+import {
+  buildGeocodeQuery,
+  geocodeLocation,
+} from "@/server/geocoding/nominatim";
+
+function locationChanged(
+  doc: Record<string, unknown>,
+  previous: Record<string, unknown> | undefined,
+): boolean {
+  if (!previous) return true;
+  return (
+    doc.location !== previous.location ||
+    doc.city !== previous.city ||
+    doc.region !== previous.region ||
+    doc.country !== previous.country
+  );
+}
+
+const geocodeAfterChange: CollectionAfterChangeHook = async ({
+  doc,
+  previousDoc,
+  req,
+  operation,
+}) => {
+  const d = doc as Record<string, unknown>;
+  const prev = previousDoc as Record<string, unknown> | undefined;
+  const alreadyGeocoded =
+    typeof d.latitude === "number" && typeof d.longitude === "number";
+  const mustGeocode =
+    operation === "create" ||
+    locationChanged(d, prev) ||
+    !alreadyGeocoded;
+
+  if (!mustGeocode) return;
+
+  const query = buildGeocodeQuery({
+    location: typeof d.location === "string" ? d.location : null,
+    city: typeof d.city === "string" ? d.city : null,
+    region: typeof d.region === "string" ? d.region : null,
+    country: typeof d.country === "string" ? d.country : null,
+  });
+  if (!query) return;
+
+  const result = await geocodeLocation(query);
+  if (!result) return;
+
+  try {
+    await req.payload.update({
+      collection: "events",
+      id: d.id as number,
+      data: {
+        latitude: result.latitude,
+        longitude: result.longitude,
+        geocodedAt: new Date().toISOString(),
+      },
+      context: { skipGeocode: true },
+    });
+  } catch (error) {
+    req.payload.logger.error({ err: error }, "Failed to persist geocode");
+  }
+};
 
 export const Events: CollectionConfig = {
   slug: "events",
@@ -20,6 +81,16 @@ export const Events: CollectionConfig = {
     defaultColumns: ["title", "type", "date", "status", "reviewStatus"],
   },
   versions: { drafts: true },
+  hooks: {
+    afterChange: [
+      async (args) => {
+        if ((args.req.context as { skipGeocode?: boolean })?.skipGeocode) {
+          return;
+        }
+        await geocodeAfterChange(args);
+      },
+    ],
+  },
   fields: [
     { name: "title", type: "text", required: true, localized: true },
     {
@@ -78,6 +149,31 @@ export const Events: CollectionConfig = {
                 { name: "region", type: "text" },
                 { name: "country", type: "text" },
                 { name: "city", type: "text" },
+              ],
+            },
+            {
+              type: "row",
+              fields: [
+                {
+                  name: "latitude",
+                  type: "number",
+                  admin: {
+                    description:
+                      "Geocoded automatically from location/city/country.",
+                    readOnly: true,
+                    width: "40%",
+                  },
+                },
+                {
+                  name: "longitude",
+                  type: "number",
+                  admin: { readOnly: true, width: "40%" },
+                },
+                {
+                  name: "geocodedAt",
+                  type: "date",
+                  admin: { readOnly: true, width: "20%" },
+                },
               ],
             },
             {
