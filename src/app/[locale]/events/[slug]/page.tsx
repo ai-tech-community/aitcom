@@ -6,6 +6,7 @@ import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
 import { EventRegisterButton } from "@/components/event-register-button";
 import { EventAttendees } from "@/components/event-attendees";
+import { EventShareRow } from "@/components/event-share-row";
 import { LexicalRenderer } from "@/lib/lexical";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
@@ -16,6 +17,7 @@ import {
   EVENT_LEVEL_LABELS,
   EVENT_TYPE_LABELS,
 } from "@/lib/event-metadata";
+import type { EventAudience, EventFocus } from "@/lib/event-metadata";
 
 type MediaValue =
   | { url?: string | null; alt?: string | null }
@@ -48,6 +50,36 @@ function getMedia(media: MediaValue) {
     return { url: media.url, alt: media.alt ?? undefined };
   }
   return null;
+}
+
+function buildAitRationale({
+  focus,
+  audience,
+  aitFitScore,
+}: {
+  focus: string | null;
+  audience: string[];
+  aitFitScore: number | null;
+}): string {
+  const parts: string[] = [];
+  const focusLabel = focus
+    ? EVENT_FOCUS_LABELS[focus as EventFocus] ?? String(focus)
+    : null;
+  const audienceLabels = audience
+    .map((a) => EVENT_AUDIENCE_LABELS[a as EventAudience] ?? String(a))
+    .filter(Boolean);
+
+  if (focusLabel) parts.push(`${focusLabel.toLowerCase()} focus`);
+  if (audienceLabels.length > 0) {
+    parts.push(`relevant for ${audienceLabels.join(", ").toLowerCase()}`);
+  }
+  if (aitFitScore !== null && aitFitScore >= 8) parts.push("strong AIT fit");
+
+  if (parts.length === 0) {
+    return "Curated by the AIT event scout.";
+  }
+  const sentence = parts.join(" · ");
+  return sentence.charAt(0).toUpperCase() + sentence.slice(1) + ".";
 }
 
 export async function generateMetadata({
@@ -162,6 +194,18 @@ export default async function EventDetailPage({
         ? "Free"
         : null;
 
+  const aitFitScore =
+    typeof event.aitFitScore === "number" ? event.aitFitScore : null;
+  const showAitCallout =
+    Boolean(event.curatedByAgent) || (aitFitScore !== null && aitFitScore >= 7);
+  const aitRationale = showAitCallout
+    ? buildAitRationale({
+        focus: event.focus ?? null,
+        audience,
+        aitFitScore,
+      })
+    : null;
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
       <JsonLd
@@ -240,6 +284,10 @@ export default async function EventDetailPage({
           typeof event.aitFitScore === "number" ? event.aitFitScore : null
         }
       />
+
+      <div className="mt-6">
+        <EventShareRow slug={event.slug} title={event.title} />
+      </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-8">
@@ -492,6 +540,24 @@ export default async function EventDetailPage({
               </div>
             )}
           </div>
+
+          {showAitCallout && aitRationale && (
+            <div className="border-border bg-secondary/30 mt-4 space-y-2 rounded-lg border p-4">
+              <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider">
+                <span className="bg-foreground text-background rounded px-1.5 py-0.5">
+                  AIT PICK
+                </span>
+                {aitFitScore !== null && (
+                  <span className="text-muted-foreground">
+                    FIT {aitFitScore}/10
+                  </span>
+                )}
+              </div>
+              <p className="text-foreground/80 text-xs leading-relaxed">
+                {aitRationale}
+              </p>
+            </div>
+          )}
         </aside>
       </div>
     </div>
