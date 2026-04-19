@@ -102,6 +102,11 @@ export default async function EventDetailPage({
   const eventId = Number(event.id);
   const maxAttendees = (event.maxAttendees as number | undefined) ?? null;
   const price = (event.price as number | undefined) ?? null;
+  const sourceUrl =
+    typeof event.sourceUrl === "string" && event.sourceUrl.length > 0
+      ? event.sourceUrl
+      : null;
+  const isExternal = sourceUrl !== null;
   const heroImage = getMedia(
     (event.coverImage as MediaValue) ?? (event.image as MediaValue),
   );
@@ -465,7 +470,11 @@ export default async function EventDetailPage({
           </h2>
         </div>
         <div className="mt-4">
-          <EventAttendees eventId={eventId} maxAttendees={maxAttendees} />
+          <EventAttendees
+            eventId={eventId}
+            maxAttendees={maxAttendees}
+            isExternal={isExternal}
+          />
         </div>
       </div>
 
@@ -476,7 +485,12 @@ export default async function EventDetailPage({
           </h2>
         </div>
         <div className="mt-4">
-          <EventRegisterButton eventId={eventId} price={price} />
+          <EventRegisterButton
+            eventId={eventId}
+            price={price}
+            isExternal={isExternal}
+            sourceUrl={sourceUrl}
+          />
         </div>
       </div>
     </div>

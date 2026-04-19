@@ -9,11 +9,15 @@ import { toast } from "sonner";
 interface EventRegisterButtonProps {
   eventId: number;
   price?: number | null;
+  isExternal?: boolean;
+  sourceUrl?: string | null;
 }
 
 export function EventRegisterButton({
   eventId,
   price,
+  isExternal = false,
+  sourceUrl = null,
 }: EventRegisterButtonProps) {
   const router = useRouter();
   const session = authClient.useSession();
@@ -60,20 +64,50 @@ export function EventRegisterButton({
     },
   });
 
-  // Not logged in
+  const markIntentMutation = api.events.markIntent.useMutation({
+    onSuccess: (data) => {
+      if (data.alreadyMarked) {
+        toast.info("Already marked as going.");
+      } else {
+        toast.success("Marked as going. Don't forget to register on the event site.");
+      }
+      void utils.events.registrationStatus.invalidate({ eventId });
+      void utils.events.myRegistrations.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Could not save. Please try again.");
+    },
+  });
+
+  const removeIntentMutation = api.events.removeIntent.useMutation({
+    onSuccess: () => {
+      toast.success("Removed.");
+      void utils.events.registrationStatus.invalidate({ eventId });
+      void utils.events.myRegistrations.invalidate();
+    },
+    onError: (error) => {
+      toast.error(error.message || "Could not remove. Please try again.");
+    },
+  });
+
   if (!isLoggedIn) {
+    const signInLabel = isExternal ? "Sign in to mark as going" : "Sign in to register";
     return (
-      <Button
-        variant="outline"
-        className="w-full font-mono text-xs tracking-wider"
-        onClick={() => router.push("/auth/signin")}
-      >
-        Sign in to register
-      </Button>
+      <div className="space-y-3">
+        <Button
+          variant="outline"
+          className="w-full font-mono text-xs tracking-wider"
+          onClick={() => router.push("/auth/signin")}
+        >
+          {signInLabel}
+        </Button>
+        {isExternal && sourceUrl && (
+          <ExternalSiteLink url={sourceUrl} primary />
+        )}
+      </div>
     );
   }
 
-  // Loading registration status
   if (registrationStatus.isLoading) {
     return (
       <Button
@@ -86,9 +120,31 @@ export function EventRegisterButton({
     );
   }
 
-  // Already registered
   if (registrationStatus.data) {
     const status = registrationStatus.data.status;
+
+    if (isExternal && status === "intent") {
+      return (
+        <div className="space-y-3">
+          <div className="border-border flex items-center gap-2 rounded border px-4 py-2.5">
+            <div className="bg-primary h-2 w-2 rounded-full" />
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
+              STATUS: GOING
+            </span>
+          </div>
+          {sourceUrl && <ExternalSiteLink url={sourceUrl} primary />}
+          <Button
+            variant="outline"
+            className="w-full font-mono text-xs tracking-wider"
+            onClick={() => removeIntentMutation.mutate({ eventId })}
+            disabled={removeIntentMutation.isPending}
+          >
+            {removeIntentMutation.isPending ? "Removing..." : "Not going"}
+          </Button>
+        </div>
+      );
+    }
+
     const statusLabel =
       status === "registered"
         ? "REGISTERED"
@@ -122,7 +178,25 @@ export function EventRegisterButton({
     );
   }
 
-  // Not registered yet
+  if (isExternal) {
+    return (
+      <div className="space-y-3">
+        {sourceUrl && <ExternalSiteLink url={sourceUrl} primary />}
+        <Button
+          variant="outline"
+          className="w-full font-mono text-xs tracking-wider"
+          onClick={() => markIntentMutation.mutate({ eventId })}
+          disabled={markIntentMutation.isPending}
+        >
+          {markIntentMutation.isPending ? "Saving..." : "I'm going"}
+        </Button>
+        <p className="text-muted-foreground text-center font-mono text-[11px] tracking-wider">
+          Registration handled on external site
+        </p>
+      </div>
+    );
+  }
+
   const priceLabel = isPaid ? ` - €${((price ?? 0) / 100).toFixed(2)}` : "";
 
   return (
@@ -133,5 +207,23 @@ export function EventRegisterButton({
     >
       {registerMutation.isPending ? "Registering..." : `Register${priceLabel}`}
     </Button>
+  );
+}
+
+function ExternalSiteLink({ url, primary }: { url: string; primary?: boolean }) {
+  const base =
+    "w-full inline-flex items-center justify-center rounded-md px-4 py-2 font-mono text-xs tracking-wider transition-colors";
+  const styles = primary
+    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+    : "border border-border hover:bg-secondary/40";
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className={`${base} ${styles}`}
+    >
+      Register on event site ↗
+    </a>
   );
 }

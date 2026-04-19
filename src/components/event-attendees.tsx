@@ -8,27 +8,38 @@ import { Link } from "@/i18n/navigation";
 interface EventAttendeesProps {
   eventId: number;
   maxAttendees: number | null;
+  isExternal?: boolean;
 }
 
-export function EventAttendees({ eventId, maxAttendees }: EventAttendeesProps) {
+export function EventAttendees({
+  eventId,
+  maxAttendees,
+  isExternal = false,
+}: EventAttendeesProps) {
   const { data: count = 0 } = api.events.registrationCount.useQuery({
     eventId,
+    includeIntent: isExternal,
   });
   const { data: attendees = [] } = api.events.getAttendees.useQuery({
     eventId,
     limit: 20,
+    includeIntent: isExternal,
   });
 
+  const showCapacity = !isExternal && maxAttendees !== null;
   const isFull = maxAttendees !== null && count >= maxAttendees;
+  const countLabel = isExternal ? "GOING" : "REGISTERED";
+  const emptyLabel = isExternal
+    ? "No one marked as going yet. Be the first."
+    : "No attendees yet. Be the first to register!";
 
   return (
     <div className="space-y-6">
-      {/* Capacity bar */}
-      {maxAttendees !== null && (
+      {showCapacity && (
         <div className="space-y-2">
           <div className="flex items-center justify-between font-mono text-[11px] tracking-wider">
             <span className="text-muted-foreground">
-              {count} / {maxAttendees} REGISTERED
+              {count} / {maxAttendees} {countLabel}
             </span>
             {isFull && <span className="text-primary font-medium">FULL</span>}
           </div>
@@ -36,14 +47,21 @@ export function EventAttendees({ eventId, maxAttendees }: EventAttendeesProps) {
             <div
               className="bg-primary h-full rounded-full transition-all"
               style={{
-                width: `${Math.min((count / maxAttendees) * 100, 100)}%`,
+                width: `${Math.min((count / (maxAttendees ?? 1)) * 100, 100)}%`,
               }}
             />
           </div>
         </div>
       )}
 
-      {/* Attendee list */}
+      {isExternal && count > 0 && (
+        <div className="font-mono text-[11px] tracking-wider">
+          <span className="text-muted-foreground">
+            {count} {count === 1 ? "MEMBER" : "MEMBERS"} {countLabel}
+          </span>
+        </div>
+      )}
+
       {attendees.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {attendees.map((attendee) => {
@@ -84,7 +102,7 @@ export function EventAttendees({ eventId, maxAttendees }: EventAttendeesProps) {
         </div>
       ) : (
         <p className="text-muted-foreground font-mono text-xs tracking-wider">
-          No attendees yet. Be the first to register!
+          {emptyLabel}
         </p>
       )}
     </div>

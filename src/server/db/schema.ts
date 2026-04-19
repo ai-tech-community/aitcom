@@ -159,6 +159,7 @@ export const eventRegistrations = appSchema.table(
         | "attended"
         | "pending_payment"
         | "payment_failed"
+        | "intent"
       >(),
     paymentId: d.varchar({ length: 255 }),
     paymentStatus: d.varchar({ length: 50 }),

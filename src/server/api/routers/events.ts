@@ -373,25 +373,114 @@ export const eventsRouter = createTRPCRouter({
       return registration ?? null;
     }),
 
-  registrationCount: publicProcedure
+  markIntent: protectedProcedure
     .input(z.object({ eventId: z.number() }))
-    .query(async ({ ctx, input }) => {
-      const [result] = await ctx.db
-        .select({ count: sql<number>`count(*)` })
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const payload = await getPayloadClient();
+      const event = await payload.findByID({
+        collection: "events",
+        id: input.eventId,
+      });
+
+      if (!event.sourceUrl) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Intent only applies to external events.",
+        });
+      }
+
+      const existing = await ctx.db
+        .select()
         .from(eventRegistrations)
         .where(
           and(
             eq(eventRegistrations.eventId, input.eventId),
-            sql`${eventRegistrations.status} IN ('registered', 'attended')`,
+            eq(eventRegistrations.userId, userId),
+            sql`${eventRegistrations.status} NOT IN ('cancelled', 'payment_failed')`,
           ),
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        return { registration: existing[0]!, alreadyMarked: true };
+      }
+
+      const [registration] = await ctx.db
+        .insert(eventRegistrations)
+        .values({
+          eventId: input.eventId,
+          userId,
+          status: "intent",
+        })
+        .returning();
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "event.intent",
+        targetType: "event",
+        targetId: String(input.eventId),
+        metadata: { eventTitle: event.title },
+      });
+
+      return { registration: registration!, alreadyMarked: false };
+    }),
+
+  removeIntent: protectedProcedure
+    .input(z.object({ eventId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      await ctx.db
+        .delete(eventRegistrations)
+        .where(
+          and(
+            eq(eventRegistrations.eventId, input.eventId),
+            eq(eventRegistrations.userId, userId),
+            eq(eventRegistrations.status, "intent"),
+          ),
+        );
+
+      return { success: true };
+    }),
+
+  registrationCount: publicProcedure
+    .input(
+      z.object({
+        eventId: z.number(),
+        includeIntent: z.boolean().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const statusFilter = input.includeIntent
+        ? sql`${eventRegistrations.status} IN ('registered', 'attended', 'intent')`
+        : sql`${eventRegistrations.status} IN ('registered', 'attended')`;
+
+      const [result] = await ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(eventRegistrations)
+        .where(
+          and(eq(eventRegistrations.eventId, input.eventId), statusFilter),
         );
 
       return result?.count ?? 0;
     }),
 
   getAttendees: publicProcedure
-    .input(z.object({ eventId: z.number(), limit: z.number().default(20) }))
+    .input(
+      z.object({
+        eventId: z.number(),
+        limit: z.number().default(20),
+        includeIntent: z.boolean().optional(),
+      }),
+    )
     .query(async ({ ctx, input }) => {
+      const statusFilter = input.includeIntent
+        ? sql`${eventRegistrations.status} IN ('registered', 'attended', 'intent')`
+        : sql`${eventRegistrations.status} IN ('registered', 'attended')`;
+
       const rows = await ctx.db
         .select({
           userId: user.id,
@@ -406,10 +495,7 @@ export const eventsRouter = createTRPCRouter({
           eq(eventRegistrations.userId, memberProfiles.userId),
         )
         .where(
-          and(
-            eq(eventRegistrations.eventId, input.eventId),
-            sql`${eventRegistrations.status} IN ('registered', 'attended')`,
-          ),
+          and(eq(eventRegistrations.eventId, input.eventId), statusFilter),
         )
         .limit(input.limit);
 
