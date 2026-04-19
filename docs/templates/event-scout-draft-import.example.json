@@ -1,0 +1,29 @@
+[
+  {
+    "title": "AI Agents in Production",
+    "summary": "Production lessons from real-world agent deployments.",
+    "description": "A practical meetup on shipping agent systems.",
+    "type": "meetup",
+    "date": "2026-05-05T18:00:00.000Z",
+    "startTime": "18:00",
+    "endTime": "20:30",
+    "location": "Amsterdam",
+    "format": "hybrid",
+    "region": "North Holland",
+    "country": "Netherlands",
+    "city": "Amsterdam",
+    "focus": "technical",
+    "level": "mid",
+    "audience": ["engineers", "founders"],
+    "sourceUrl": "https://example.com/events/ai-agents",
+    "aitFitScore": 9,
+    "tags": ["agents", "production", "meetup"],
+    "curatedByAgent": true,
+    "discoverySource": "daily-scout",
+    "confidenceScore": 0.91,
+    "lastVerifiedAt": "2026-04-19T06:00:00.000Z",
+    "reviewStatus": "discovered",
+    "coverImageUrl": "https://example.com/cover.jpg",
+    "videoUrl": "https://example.com/teaser.mp4"
+  }
+]
