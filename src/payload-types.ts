@@ -175,17 +175,62 @@ export interface Event {
     };
     [k: string]: unknown;
   };
+  /**
+   * Short event summary for cards, SEO, and agent curation.
+   */
+  summary?: string | null;
   type: 'workshop' | 'hackathon' | 'deep_dive' | 'meetup';
+  /**
+   * How attendees join this event.
+   */
+  format?: ('online' | 'in-person' | 'hybrid') | null;
+  location: string;
+  region?: string | null;
+  country?: string | null;
+  city?: string | null;
   date: string;
   startTime?: string | null;
   endTime?: string | null;
-  location: string;
   maxAttendees?: number | null;
   /**
    * Price in EUR cents (e.g. 1500 = €15.00). Leave empty for free events.
    */
   price?: number | null;
+  focus?: ('technical' | 'marketing' | 'product' | 'research' | 'mixed') | null;
+  level?: ('junior' | 'mid' | 'senior' | 'expert' | 'mixed') | null;
+  /**
+   * 1-10 relevance score for AIT Community.
+   */
+  aitFitScore?: number | null;
+  audience?: ('engineers' | 'founders' | 'marketers' | 'product' | 'researchers' | 'mixed')[] | null;
+  /**
+   * Optional keyword tags for search and curation.
+   */
+  tags?:
+    | {
+        tag: string;
+        id?: string | null;
+      }[]
+    | null;
+  sourceUrl?: string | null;
+  discoverySource?: string | null;
+  curatedByAgent?: boolean | null;
+  confidenceScore?: number | null;
+  lastVerifiedAt?: string | null;
+  /**
+   * Curation lifecycle; separate from publish status so existing flows keep working.
+   */
+  reviewStatus?: ('discovered' | 'reviewing' | 'approved' | 'archived') | null;
+  /**
+   * Legacy/compatible event image. Existing events continue using this.
+   */
   image?: (number | null) | Media;
+  /**
+   * Primary hero image for the event page.
+   */
+  coverImage?: (number | null) | Media;
+  gallery?: (number | Media)[] | null;
+  videoUrl?: string | null;
   speakers?: (number | Speaker)[] | null;
   status: 'draft' | 'published' | 'cancelled' | 'completed';
   communityId?: string | null;
@@ -1079,14 +1124,38 @@ export interface EventsSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
   description?: T;
+  summary?: T;
   type?: T;
+  format?: T;
+  location?: T;
+  region?: T;
+  country?: T;
+  city?: T;
   date?: T;
   startTime?: T;
   endTime?: T;
-  location?: T;
   maxAttendees?: T;
   price?: T;
+  focus?: T;
+  level?: T;
+  aitFitScore?: T;
+  audience?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  sourceUrl?: T;
+  discoverySource?: T;
+  curatedByAgent?: T;
+  confidenceScore?: T;
+  lastVerifiedAt?: T;
+  reviewStatus?: T;
   image?: T;
+  coverImage?: T;
+  gallery?: T;
+  videoUrl?: T;
   speakers?: T;
   status?: T;
   communityId?: T;
