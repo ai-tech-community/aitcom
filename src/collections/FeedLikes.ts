@@ -8,10 +8,10 @@ export const FeedLikes: CollectionConfig = {
     description: "Tracks which users liked which feed posts.",
   },
   fields: [
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     {
       name: "post",
       type: "relationship",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       relationTo: "feed-posts" as any,
       required: true,
     },
