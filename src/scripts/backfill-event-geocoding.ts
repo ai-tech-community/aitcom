@@ -10,10 +10,7 @@
 import { getPayload } from "payload";
 import config from "@payload-config";
 
-import {
-  buildGeocodeQuery,
-  geocodeLocation,
-} from "@/server/geocoding/nominatim";
+import { geocodeEvent } from "@/server/geocoding/nominatim";
 
 interface EventRow {
   id: number;
@@ -48,16 +45,9 @@ async function main() {
   let fail = 0;
 
   for (const event of toProcess) {
-    const query = buildGeocodeQuery(event);
-    if (!query) {
-      console.log(`[${event.id}] skip (no location fields)`);
-      fail++;
-      continue;
-    }
-
-    const result = await geocodeLocation(query);
+    const result = await geocodeEvent(event);
     if (!result) {
-      console.log(`[${event.id}] no match for "${query}"`);
+      console.log(`[${event.id}] no match for location fields`);
       fail++;
       continue;
     }
@@ -74,7 +64,7 @@ async function main() {
     });
 
     console.log(
-      `[${event.id}] ok lat=${result.latitude.toFixed(4)} lng=${result.longitude.toFixed(4)} (${query})`,
+      `[${event.id}] ok lat=${result.latitude.toFixed(4)} lng=${result.longitude.toFixed(4)} -> ${result.displayName}`,
     );
     ok++;
   }

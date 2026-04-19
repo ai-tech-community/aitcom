@@ -1,6 +1,16 @@
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const MIN_INTERVAL_MS = 1100;
 
+const CONTINENTS = new Set([
+  "europe",
+  "north america",
+  "south america",
+  "asia",
+  "africa",
+  "oceania",
+  "antarctica",
+]);
+
 let lastRequestAt = 0;
 
 async function throttle() {
@@ -24,16 +34,11 @@ interface NominatimResponse {
   display_name: string;
 }
 
-export async function geocodeLocation(
-  query: string,
-): Promise<GeocodeResult | null> {
-  const trimmed = query.trim();
-  if (!trimmed) return null;
-
+async function requestOnce(query: string): Promise<GeocodeResult | null> {
   await throttle();
 
   const url = new URL(NOMINATIM_URL);
-  url.searchParams.set("q", trimmed);
+  url.searchParams.set("q", query);
   url.searchParams.set("format", "json");
   url.searchParams.set("limit", "1");
 
@@ -69,22 +74,76 @@ export async function geocodeLocation(
   }
 }
 
+export async function geocodeLocation(
+  query: string,
+): Promise<GeocodeResult | null> {
+  const trimmed = query.trim();
+  if (!trimmed) return null;
+  return requestOnce(trimmed);
+}
+
+export async function geocodeEvent(event: {
+  location?: string | null;
+  city?: string | null;
+  region?: string | null;
+  country?: string | null;
+}): Promise<GeocodeResult | null> {
+  const queries = buildGeocodeQueries(event);
+  for (const q of queries) {
+    const result = await requestOnce(q);
+    if (result) return result;
+  }
+  return null;
+}
+
+function cleanPart(v?: string | null): string {
+  if (typeof v !== "string") return "";
+  return v
+    .replace(/\s*[+/]\s*virtual.*$/i, "")
+    .replace(/\s*\(.*?\)\s*/g, " ")
+    .trim();
+}
+
+export function buildGeocodeQueries(event: {
+  location?: string | null;
+  city?: string | null;
+  region?: string | null;
+  country?: string | null;
+}): string[] {
+  const location = cleanPart(event.location);
+  const city = cleanPart(event.city);
+  const country = cleanPart(event.country);
+  const region = cleanPart(event.region);
+  const usableRegion =
+    region && !CONTINENTS.has(region.toLowerCase()) ? region : "";
+
+  const candidates: string[] = [];
+  if (city && country) candidates.push(`${city}, ${country}`);
+  if (
+    location &&
+    country &&
+    !location.toLowerCase().includes(country.toLowerCase())
+  ) {
+    candidates.push(`${location}, ${country}`);
+  }
+  if (location) candidates.push(location);
+  if (city && usableRegion) candidates.push(`${city}, ${usableRegion}`);
+  if (city) candidates.push(city);
+
+  const seen = new Set<string>();
+  return candidates.filter((q) => {
+    const key = q.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return q.length > 0;
+  });
+}
+
 export function buildGeocodeQuery(event: {
   location?: string | null;
   city?: string | null;
   region?: string | null;
   country?: string | null;
 }): string {
-  const parts = [event.location, event.city, event.region, event.country]
-    .map((p) => (typeof p === "string" ? p.trim() : ""))
-    .filter((p) => p.length > 0);
-  const seen = new Set<string>();
-  const deduped: string[] = [];
-  for (const p of parts) {
-    const key = p.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    deduped.push(p);
-  }
-  return deduped.join(", ");
+  return buildGeocodeQueries(event)[0] ?? "";
 }

@@ -12,10 +12,7 @@ import {
   EVENT_REVIEW_STATUS_LABELS,
   EVENT_REVIEW_STATUS_OPTIONS,
 } from "@/lib/event-metadata";
-import {
-  buildGeocodeQuery,
-  geocodeLocation,
-} from "@/server/geocoding/nominatim";
+import { geocodeEvent } from "@/server/geocoding/nominatim";
 
 function locationChanged(
   doc: Record<string, unknown>,
@@ -47,15 +44,12 @@ const geocodeAfterChange: CollectionAfterChangeHook = async ({
 
   if (!mustGeocode) return;
 
-  const query = buildGeocodeQuery({
+  const result = await geocodeEvent({
     location: typeof d.location === "string" ? d.location : null,
     city: typeof d.city === "string" ? d.city : null,
     region: typeof d.region === "string" ? d.region : null,
     country: typeof d.country === "string" ? d.country : null,
   });
-  if (!query) return;
-
-  const result = await geocodeLocation(query);
   if (!result) return;
 
   try {
