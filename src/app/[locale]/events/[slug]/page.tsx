@@ -589,6 +589,20 @@ export default async function EventDetailPage({
                     {locationShort}
                   </div>
                 )}
+              {event.format !== "online" && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    [event.location, locationShort]
+                      .filter(Boolean)
+                      .join(", "),
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-[10px] tracking-wider underline underline-offset-4"
+                >
+                  View on map ↗
+                </a>
+              )}
             </div>
 
             {(event.format ?? priceLabel) && (

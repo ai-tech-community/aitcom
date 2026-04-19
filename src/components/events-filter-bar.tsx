@@ -30,6 +30,12 @@ const FIT_OPTIONS = [
   { value: "9", label: "AIT ≥ 9" },
 ];
 
+const SORT_OPTIONS = [
+  { value: "date", label: "Sort: Date" },
+  { value: "fit", label: "Sort: AIT fit" },
+  { value: "newest", label: "Sort: Newest" },
+];
+
 export function EventsFilterBar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -69,14 +75,24 @@ export function EventsFilterBar() {
       pushParams((next) => {
         if (value.trim().length > 0) next.set("q", value.trim());
         else next.delete("q");
+        next.delete("page");
       });
     }, DEBOUNCE_MS);
+  };
+
+  const setSort = (value: string) => {
+    pushParams((next) => {
+      if (value === "date") next.delete("sort");
+      else next.set("sort", value);
+      next.delete("page");
+    });
   };
 
   const setFilter = (key: string, value: string) => {
     pushParams((next) => {
       if (value === ANY) next.delete(key);
       else next.set(key, value);
+      next.delete("page");
     });
   };
 
@@ -93,13 +109,15 @@ export function EventsFilterBar() {
   const focus = searchParams.get("focus") ?? ANY;
   const format = searchParams.get("format") ?? ANY;
   const fit = searchParams.get("fit") ?? ANY;
+  const sort = searchParams.get("sort") ?? "date";
 
   const hasFilters =
     currentQ.length > 0 ||
     type !== ANY ||
     focus !== ANY ||
     format !== ANY ||
-    fit !== ANY;
+    fit !== ANY ||
+    sort !== "date";
 
   return (
     <div className="border-border mt-4 space-y-3 rounded-lg border p-4">
@@ -110,7 +128,7 @@ export function EventsFilterBar() {
         placeholder="/ SEARCH TITLE OR SUMMARY"
         className="font-mono text-sm tracking-wider"
       />
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <Select value={type} onValueChange={(v) => setFilter("type", v)}>
           <SelectTrigger className="font-mono text-xs tracking-wider">
             <SelectValue placeholder="Any type" />
@@ -159,6 +177,19 @@ export function EventsFilterBar() {
           </SelectTrigger>
           <SelectContent>
             {FIT_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={sort} onValueChange={setSort}>
+          <SelectTrigger className="font-mono text-xs tracking-wider">
+            <SelectValue placeholder="Sort: Date" />
+          </SelectTrigger>
+          <SelectContent>
+            {SORT_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
                 {opt.label}
               </SelectItem>
