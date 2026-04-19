@@ -36,7 +36,15 @@ const SORT_OPTIONS = [
   { value: "newest", label: "Sort: Newest" },
 ];
 
-export function EventsFilterBar() {
+interface EventsFilterBarProps {
+  visitorCountryCode?: string | null;
+  visitorCountryName?: string | null;
+}
+
+export function EventsFilterBar({
+  visitorCountryCode = null,
+  visitorCountryName = null,
+}: EventsFilterBarProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -105,11 +113,20 @@ export function EventsFilterBar() {
     });
   };
 
+  const toggleNearMe = () => {
+    pushParams((next) => {
+      if (next.get("near") === "1") next.delete("near");
+      else next.set("near", "1");
+      next.delete("page");
+    });
+  };
+
   const type = searchParams.get("type") ?? ANY;
   const focus = searchParams.get("focus") ?? ANY;
   const format = searchParams.get("format") ?? ANY;
   const fit = searchParams.get("fit") ?? ANY;
   const sort = searchParams.get("sort") ?? "date";
+  const nearMe = searchParams.get("near") === "1";
 
   const hasFilters =
     currentQ.length > 0 ||
@@ -117,10 +134,32 @@ export function EventsFilterBar() {
     focus !== ANY ||
     format !== ANY ||
     fit !== ANY ||
-    sort !== "date";
+    sort !== "date" ||
+    nearMe;
 
   return (
     <div className="border-border mt-4 space-y-3 rounded-lg border p-4">
+      {visitorCountryName && (
+        <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-wider">
+          <span className="text-muted-foreground">
+            DETECTED · {visitorCountryName.toUpperCase()}
+            {visitorCountryCode ? ` (${visitorCountryCode})` : ""}
+          </span>
+          <button
+            type="button"
+            onClick={toggleNearMe}
+            className={`rounded border px-2.5 py-1 transition-colors ${
+              nearMe
+                ? "border-foreground bg-foreground text-background"
+                : "border-border hover:bg-secondary/40"
+            }`}
+          >
+            {nearMe
+              ? `✓ IN ${visitorCountryName.toUpperCase()}`
+              : `SHOW ONLY ${visitorCountryName.toUpperCase()}`}
+          </button>
+        </div>
+      )}
       <Input
         type="text"
         value={search}

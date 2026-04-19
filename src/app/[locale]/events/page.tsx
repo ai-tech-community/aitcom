@@ -16,6 +16,7 @@ import {
   type EventType,
 } from "@/lib/event-metadata";
 import { EventsFilterBar } from "@/components/events-filter-bar";
+import { getVisitorLocation } from "@/lib/visitor-location";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -91,6 +92,12 @@ export default async function EventsPage({
   const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
   const perPage = 12;
 
+  const visitor = await getVisitorLocation();
+  const countryParam = firstParam(sp, "country");
+  const nearMe = firstParam(sp, "near") === "1";
+  const activeCountry =
+    countryParam ?? (nearMe ? visitor?.countryName ?? null : null);
+
   const now = new Date().toISOString();
   const conditions: Where[] = [{ status: { equals: "published" } }];
   conditions.push(
@@ -100,6 +107,7 @@ export default async function EventsPage({
   if (focus) conditions.push({ focus: { equals: focus } });
   if (format) conditions.push({ format: { equals: format } });
   if (fit) conditions.push({ aitFitScore: { greater_than_equal: fit } });
+  if (activeCountry) conditions.push({ country: { like: activeCountry } });
   if (q && q.length > 0) {
     conditions.push({
       or: [
@@ -132,7 +140,13 @@ export default async function EventsPage({
   });
 
   const hasFilters =
-    !!q || !!type || !!focus || !!format || fit !== undefined;
+    !!q ||
+    !!type ||
+    !!focus ||
+    !!format ||
+    fit !== undefined ||
+    !!countryParam ||
+    nearMe;
 
   const baseParams = () => {
     const next = new URLSearchParams();
@@ -142,6 +156,8 @@ export default async function EventsPage({
     if (format) next.set("format", format);
     if (fit) next.set("fit", String(fit));
     if (sort !== "date") next.set("sort", sort);
+    if (countryParam) next.set("country", countryParam);
+    if (nearMe) next.set("near", "1");
     return next;
   };
 
@@ -191,7 +207,10 @@ export default async function EventsPage({
         </Link>
       </div>
 
-      <EventsFilterBar />
+      <EventsFilterBar
+        visitorCountryCode={visitor?.countryCode ?? null}
+        visitorCountryName={visitor?.countryName ?? null}
+      />
 
       {events.length === 0 ? (
         <p className="text-muted-foreground mt-12 text-center">
