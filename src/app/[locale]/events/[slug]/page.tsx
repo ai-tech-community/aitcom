@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import type { Where } from "payload";
 import Image from "next/image";
 import { getLocale } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { notFound } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import { EventRegisterButton } from "@/components/event-register-button";
 import { EventAttendees } from "@/components/event-attendees";
 import { EventShareRow } from "@/components/event-share-row";
@@ -194,6 +196,30 @@ export default async function EventDetailPage({
         ? "Free"
         : null;
 
+  const now = new Date().toISOString();
+  const relatedOrConditions: Where[] = [
+    { type: { equals: event.type } },
+  ];
+  if (event.focus) {
+    relatedOrConditions.push({ focus: { equals: event.focus } });
+  }
+
+  const { docs: relatedEvents } = await payload.find({
+    collection: "events",
+    where: {
+      and: [
+        { status: { equals: "published" } },
+        { date: { greater_than_equal: now } },
+        { id: { not_equals: event.id } },
+        { or: relatedOrConditions },
+      ],
+    },
+    sort: "date",
+    locale: locale as "en" | "nl",
+    depth: 1,
+    limit: 3,
+  });
+
   const aitFitScore =
     typeof event.aitFitScore === "number" ? event.aitFitScore : null;
   const showAitCallout =
@@ -265,6 +291,17 @@ export default async function EventDetailPage({
               }),
         }}
       />
+
+      <nav className="mb-6 flex items-center gap-2 font-mono text-[11px] tracking-wider">
+        <Link
+          href="/events"
+          className="text-muted-foreground hover:text-foreground transition-colors"
+        >
+          / EVENTS
+        </Link>
+        <span className="text-muted-foreground">/</span>
+        <span className="text-foreground/80 truncate">{event.title}</span>
+      </nav>
 
       <EventHero
         title={event.title}
@@ -473,6 +510,58 @@ export default async function EventDetailPage({
               />
             </div>
           </div>
+
+          {relatedEvents.length > 0 && (
+            <div className="border-border border-t pt-8">
+              <div className="border-border border-b pb-4">
+                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+                  / RELATED EVENTS
+                </h2>
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {relatedEvents.map((related) => {
+                  const relMedia = getMedia(
+                    (related.coverImage as MediaValue) ??
+                      (related.image as MediaValue),
+                  );
+                  const relDate = new Date(related.date);
+                  return (
+                    <Link
+                      key={related.id}
+                      href={`/events/${related.slug}`}
+                      className="group border-border hover:bg-secondary/40 overflow-hidden rounded-lg border transition-colors"
+                    >
+                      {relMedia?.url && (
+                        <div className="border-border overflow-hidden border-b">
+                          <Image
+                            src={relMedia.url}
+                            alt={related.title}
+                            width={400}
+                            height={200}
+                            className="h-32 w-full object-cover transition-transform group-hover:scale-[1.02]"
+                          />
+                        </div>
+                      )}
+                      <div className="space-y-2 p-3">
+                        <div className="text-muted-foreground font-mono text-[10px] tracking-wider">
+                          {MONTH_SHORT[relDate.getMonth()]} {relDate.getDate()},{" "}
+                          {relDate.getFullYear()}
+                          {" · "}
+                          {EVENT_TYPE_LABELS[related.type] ?? related.type}
+                        </div>
+                        <div className="line-clamp-2 text-sm leading-tight font-semibold">
+                          {related.title}
+                        </div>
+                        <div className="text-muted-foreground line-clamp-1 text-xs">
+                          {related.location}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
@@ -606,7 +695,7 @@ function EventHero({
         ) : (
           <div className="from-foreground/10 via-foreground/5 absolute inset-0 bg-linear-to-br to-transparent" />
         )}
-        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-black/10" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/70 to-black/30" />
       </div>
 
       <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
