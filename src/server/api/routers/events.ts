@@ -494,9 +494,7 @@ export const eventsRouter = createTRPCRouter({
           memberProfiles,
           eq(eventRegistrations.userId, memberProfiles.userId),
         )
-        .where(
-          and(eq(eventRegistrations.eventId, input.eventId), statusFilter),
-        )
+        .where(and(eq(eventRegistrations.eventId, input.eventId), statusFilter))
         .limit(input.limit);
 
       return rows.map((row) => ({

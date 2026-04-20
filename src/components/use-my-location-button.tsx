@@ -13,8 +13,7 @@ export function UseMyLocationButton() {
   const [, startTransition] = useTransition();
   const [requesting, setRequesting] = useState(false);
 
-  const hasLocation =
-    searchParams.has("lat") && searchParams.has("lng");
+  const hasLocation = searchParams.has("lat") && searchParams.has("lng");
 
   const requestLocation = () => {
     if (!navigator.geolocation) {
