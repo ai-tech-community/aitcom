@@ -12,8 +12,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 
 export function SubmitPromptTab() {
+  const t = useTranslations("benchmark");
   const categories = api.benchmark.listCategories.useQuery();
   const intents = api.benchmark.listIntents.useQuery();
   const submissions = api.benchmark.listMySubmissions.useQuery();
@@ -25,7 +27,7 @@ export function SubmitPromptTab() {
 
   const submit = api.benchmark.submitPrompt.useMutation({
     onSuccess: () => {
-      toast.success("Prompt submitted for review.");
+      toast.success(t("submit.successToast"));
       setText("");
       void utils.benchmark.listMySubmissions.invalidate();
     },
@@ -38,9 +40,9 @@ export function SubmitPromptTab() {
   return (
     <div className="grid gap-6 py-4 md:grid-cols-2">
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Propose a prompt</h2>
+        <h2 className="text-lg font-medium">{t("submit.heading")}</h2>
         <Textarea
-          placeholder="e.g. What is the best CRM for early-stage startups?"
+          placeholder={t("submit.placeholder")}
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={500}
@@ -49,7 +51,7 @@ export function SubmitPromptTab() {
         <div className="grid gap-3 md:grid-cols-2">
           <Select value={categoryId} onValueChange={setCategoryId}>
             <SelectTrigger>
-              <SelectValue placeholder="Category" />
+              <SelectValue placeholder={t("submit.categoryPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               {categories.data?.map((c) => (
@@ -61,7 +63,7 @@ export function SubmitPromptTab() {
           </Select>
           <Select value={intentId} onValueChange={setIntentId}>
             <SelectTrigger>
-              <SelectValue placeholder="Intent" />
+              <SelectValue placeholder={t("submit.intentPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               {intents.data?.map((i) => (
@@ -83,21 +85,23 @@ export function SubmitPromptTab() {
           }
           disabled={!canSubmit}
         >
-          {submit.isPending ? "Submitting…" : "Submit for review"}
+          {submit.isPending ? t("submit.submitting") : t("submit.submitButton")}
         </Button>
       </section>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">My submissions</h2>
+        <h2 className="text-lg font-medium">{t("submit.mySubmissions")}</h2>
         <ul className="flex flex-col divide-y rounded-md border text-sm">
           {submissions.data?.prompts.length === 0 && (
-            <li className="text-muted-foreground p-3">No submissions yet.</li>
+            <li className="text-muted-foreground p-3">
+              {t("submit.noSubmissions")}
+            </li>
           )}
           {submissions.data?.prompts.map((p) => (
             <li key={p.id} className="flex justify-between gap-3 p-3">
               <span className="truncate">{p.text}</span>
               <span className="text-muted-foreground text-xs tracking-wide uppercase">
-                {p.status}
+                {t(`submit.status.${p.status as "pending" | "approved" | "rejected"}`)}
               </span>
             </li>
           ))}

@@ -13,10 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { ManualRunForm } from "./manual-run-form";
 import { AgentRunModal } from "./agent-run-modal";
+import { useTranslations } from "next-intl";
 
 const ALL = "__all__";
 
 export function RunPromptsTab() {
+  const t = useTranslations("benchmark");
   const categories = api.benchmark.listCategories.useQuery();
   const intents = api.benchmark.listIntents.useQuery();
   const [categoryId, setCategoryId] = useState<string>(ALL);
@@ -39,10 +41,10 @@ export function RunPromptsTab() {
       <div className="flex flex-wrap gap-3">
         <Select value={categoryId} onValueChange={setCategoryId}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="All categories" />
+            <SelectValue placeholder={t("run.allCategories")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>All categories</SelectItem>
+            <SelectItem value={ALL}>{t("run.allCategories")}</SelectItem>
             {categories.data?.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.name}
@@ -53,10 +55,10 @@ export function RunPromptsTab() {
 
         <Select value={intentId} onValueChange={setIntentId}>
           <SelectTrigger className="w-48">
-            <SelectValue placeholder="All intents" />
+            <SelectValue placeholder={t("run.allIntents")} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>All intents</SelectItem>
+            <SelectItem value={ALL}>{t("run.allIntents")}</SelectItem>
             {intents.data?.map((i) => (
               <SelectItem key={i.id} value={i.id}>
                 {i.name}
@@ -67,7 +69,7 @@ export function RunPromptsTab() {
 
         <Input
           className="w-64"
-          placeholder="Search prompts…"
+          placeholder={t("run.searchPlaceholder")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -79,7 +81,7 @@ export function RunPromptsTab() {
             <p className="leading-snug font-medium">{p.text}</p>
             <div className="flex gap-2">
               <Button size="sm" onClick={() => setAgentFor(p.id)}>
-                Run with my agent
+                {t("run.runWithAgent")}
               </Button>
               <Button
                 size="sm"
@@ -88,7 +90,7 @@ export function RunPromptsTab() {
                   setManualFor((prev) => (prev === p.id ? null : p.id))
                 }
               >
-                Manual submit
+                {t("run.manualSubmit")}
               </Button>
             </div>
             {manualFor === p.id && (
@@ -102,10 +104,10 @@ export function RunPromptsTab() {
       </ul>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">My recent runs</h2>
+        <h2 className="text-lg font-medium">{t("run.myRecentRuns")}</h2>
         <ul className="flex flex-col divide-y rounded-md border text-sm">
           {mine.data?.runs.length === 0 && (
-            <li className="text-muted-foreground p-3">No runs yet.</li>
+            <li className="text-muted-foreground p-3">{t("run.noRuns")}</li>
           )}
           {mine.data?.runs.map((r) => (
             <li key={r.id} className="flex justify-between gap-3 p-3">
@@ -113,7 +115,7 @@ export function RunPromptsTab() {
                 {r.modelProvider} · {r.modelId}
               </span>
               <span className="text-muted-foreground text-xs tracking-wide uppercase">
-                {r.extractionStatus}
+                {t(`run.status.${r.extractionStatus as "pending" | "done" | "failed" | "processing"}`)}
               </span>
             </li>
           ))}
