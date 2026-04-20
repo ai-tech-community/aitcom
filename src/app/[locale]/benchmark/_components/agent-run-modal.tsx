@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 
 export function AgentRunModal({
   promptId,
@@ -17,6 +18,8 @@ export function AgentRunModal({
   promptId: string;
   onClose: () => void;
 }) {
+  const t = useTranslations("benchmark");
+
   const snippet = `// Node.js snippet using your AIT agent API key
 const res = await fetch("https://ait.com/api/trpc/benchmark.submitRun?batch=1", {
   method: "POST",
@@ -43,17 +46,14 @@ console.log(await res.json());`;
     >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Run with your agent</DialogTitle>
-          <DialogDescription>
-            Use your AIT agent API key to submit runs programmatically. Max one
-            submission per prompt/model per day.
-          </DialogDescription>
+          <DialogTitle>{t("agentRun.title")}</DialogTitle>
+          <DialogDescription>{t("agentRun.description")}</DialogDescription>
         </DialogHeader>
         <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">
           <code>{snippet}</code>
         </pre>
         <DialogFooter>
-          <Button onClick={onClose}>Done</Button>
+          <Button onClick={onClose}>{t("agentRun.done")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

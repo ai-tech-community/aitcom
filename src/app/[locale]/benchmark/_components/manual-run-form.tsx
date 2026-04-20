@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { BENCHMARK_MODEL_PROVIDERS } from "@/lib/benchmark-constants";
 
 export function ManualRunForm({
@@ -22,6 +23,7 @@ export function ManualRunForm({
   promptId: string;
   onDone: () => void;
 }) {
+  const t = useTranslations("benchmark");
   const utils = api.useUtils();
   const [provider, setProvider] = useState<string>("openai");
   const [modelId, setModelId] = useState("");
@@ -29,7 +31,7 @@ export function ManualRunForm({
 
   const submit = api.benchmark.submitRun.useMutation({
     onSuccess: () => {
-      toast.success("Run submitted. Extraction will run shortly.");
+      toast.success(t("manualRun.successToast"));
       void utils.benchmark.listMySubmissions.invalidate();
       onDone();
     },
@@ -52,20 +54,20 @@ export function ManualRunForm({
           </SelectContent>
         </Select>
         <Input
-          placeholder="model id, e.g. gpt-5-pro"
+          placeholder={t("manualRun.modelIdPlaceholder")}
           value={modelId}
           onChange={(e) => setModelId(e.target.value)}
         />
       </div>
       <Textarea
-        placeholder="Paste the model's raw answer…"
+        placeholder={t("manualRun.rawAnswerPlaceholder")}
         value={rawAnswer}
         onChange={(e) => setRawAnswer(e.target.value)}
         rows={6}
       />
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onDone}>
-          Cancel
+          {t("manualRun.cancel")}
         </Button>
         <Button
           size="sm"
@@ -80,7 +82,7 @@ export function ManualRunForm({
             })
           }
         >
-          {submit.isPending ? "Submitting…" : "Submit run"}
+          {submit.isPending ? t("manualRun.submitting") : t("manualRun.submitRun")}
         </Button>
       </div>
     </div>
