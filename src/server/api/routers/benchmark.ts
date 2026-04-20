@@ -544,7 +544,7 @@ export const benchmarkRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      return ctx.db.execute(sql`
+      const result = await ctx.db.execute(sql`
         SELECT b.id, b.canonical_name, b.slug,
                SUM(r.weighted_score) AS total_weighted
         FROM ${aggBrandRankByPrompt} r
@@ -556,6 +556,12 @@ export const benchmarkRouter = createTRPCRouter({
         ORDER BY total_weighted DESC
         LIMIT 10
       `);
+      return (result.rows ?? result) as Array<{
+        id: string;
+        canonical_name: string;
+        slug: string;
+        total_weighted: string;
+      }>;
     }),
 
   getBrandProfile: publicProcedure
