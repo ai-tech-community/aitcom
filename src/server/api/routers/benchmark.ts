@@ -16,6 +16,7 @@ import {
   benchmarkRuns,
   benchmarkBrandMentions,
   brands,
+  brandAliasQueue,
   aggBrandRankByPrompt,
   aggBrandTrendsByDay,
   aggModelBiasMatrix,
@@ -25,6 +26,11 @@ import {
   BENCHMARK_MODEL_PROVIDERS,
   BENCHMARK_SENTIMENTS,
 } from "@/lib/benchmark-constants";
+import { splitMentions } from "@/server/benchmark/ingest-extraction";
+import {
+  EXTRACTOR_VERSION,
+  buildExtractorPrompt,
+} from "@/server/benchmark/extractor-prompt";
 
 export const benchmarkRouter = createTRPCRouter({
   listCategories: publicProcedure.query(async ({ ctx }) => {
@@ -198,6 +204,170 @@ export const benchmarkRouter = createTRPCRouter({
               "You already submitted this prompt/model combo today. Try again tomorrow.",
           });
         }
+        throw err;
+      }
+    }),
+
+  getRunForExtraction: protectedProcedure
+    .input(z.object({ runId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const [run] = await ctx.db
+        .select()
+        .from(benchmarkRuns)
+        .where(eq(benchmarkRuns.id, input.runId))
+        .limit(1);
+      if (!run) throw new TRPCError({ code: "NOT_FOUND", message: "Run not found" });
+
+      const [prompt] = await ctx.db
+        .select()
+        .from(benchmarkPrompts)
+        .where(eq(benchmarkPrompts.id, run.promptId))
+        .limit(1);
+      if (!prompt) throw new TRPCError({ code: "NOT_FOUND", message: "Prompt missing" });
+
+      const brandRows = await ctx.db
+        .select({
+          id: brands.id,
+          slug: brands.slug,
+          canonicalName: brands.canonicalName,
+          aliases: brands.aliases,
+          categoryIds: brands.categoryIds,
+        })
+        .from(brands)
+        .where(sql`${prompt.categoryId} = ANY(${brands.categoryIds})`);
+
+      return {
+        runId: run.id,
+        promptText: prompt.text,
+        rawAnswer: run.rawAnswer,
+        knownBrands: brandRows.map((b) => ({
+          slug: b.slug,
+          canonicalName: b.canonicalName,
+          aliases: b.aliases ?? [],
+        })),
+        extractorVersion: EXTRACTOR_VERSION,
+        renderedPrompt: buildExtractorPrompt({
+          promptText: prompt.text,
+          rawAnswer: run.rawAnswer,
+          knownBrands: brandRows.map((b) => ({
+            slug: b.slug,
+            canonicalName: b.canonicalName,
+            aliases: b.aliases ?? [],
+          })),
+        }),
+      };
+    }),
+
+  submitExtraction: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().uuid(),
+        extractorVersion: z.string().min(1).max(40),
+        mentions: z
+          .array(
+            z.object({
+              rawMention: z.string().min(1).max(500),
+              suggestedBrandSlug: z.string().max(200).nullable(),
+              rank: z.number().int().min(1).max(100).nullable(),
+              sentiment: z.enum(BENCHMARK_SENTIMENTS),
+              context: z.string().max(280),
+              confidence: z.number().min(0).max(1),
+            }),
+          )
+          .max(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db
+        .update(benchmarkRuns)
+        .set({ extractionStatus: "processing" })
+        .where(eq(benchmarkRuns.id, input.runId));
+
+      try {
+        const brandRows = await ctx.db
+          .select({
+            id: brands.id,
+            slug: brands.slug,
+            canonicalName: brands.canonicalName,
+            aliases: brands.aliases,
+          })
+          .from(brands);
+
+        const brandsByKey = new Map<string, { id: string; slug: string }>();
+        for (const b of brandRows) {
+          brandsByKey.set(b.slug.toLowerCase(), { id: b.id, slug: b.slug });
+          brandsByKey.set(b.canonicalName.toLowerCase(), { id: b.id, slug: b.slug });
+          for (const a of b.aliases ?? []) {
+            brandsByKey.set(a.toLowerCase(), { id: b.id, slug: b.slug });
+          }
+        }
+
+        const { resolved, unresolved } = splitMentions(input.mentions, brandsByKey);
+
+        if (resolved.length > 0) {
+          await ctx.db.insert(benchmarkBrandMentions).values(
+            resolved.map((m) => ({
+              runId: input.runId,
+              rawMention: m.rawMention,
+              brandId: m.brandId,
+              rank: m.rank,
+              sentiment: m.sentiment,
+              context: m.context,
+              confidence: m.confidence.toString(),
+              extractorVersion: input.extractorVersion,
+            })),
+          );
+        }
+
+        if (unresolved.length > 0) {
+          await ctx.db.insert(benchmarkBrandMentions).values(
+            unresolved.map((m) => ({
+              runId: input.runId,
+              rawMention: m.rawMention,
+              brandId: null,
+              rank: m.rank,
+              sentiment: m.sentiment,
+              context: m.context,
+              confidence: m.confidence.toString(),
+              extractorVersion: input.extractorVersion,
+            })),
+          );
+          for (const m of unresolved) {
+            const [existing] = await ctx.db
+              .select({ id: brandAliasQueue.id })
+              .from(brandAliasQueue)
+              .where(sql`lower(${brandAliasQueue.rawMention}) = lower(${m.rawMention})`)
+              .limit(1);
+            if (existing) {
+              await ctx.db
+                .update(brandAliasQueue)
+                .set({ occurrenceCount: sql`${brandAliasQueue.occurrenceCount} + 1` })
+                .where(eq(brandAliasQueue.id, existing.id));
+            } else {
+              await ctx.db.insert(brandAliasQueue).values({
+                rawMention: m.rawMention,
+                runId: input.runId,
+                occurrenceCount: 1,
+                status: "pending",
+              });
+            }
+          }
+        }
+
+        await ctx.db
+          .update(benchmarkRuns)
+          .set({ extractionStatus: "done" })
+          .where(eq(benchmarkRuns.id, input.runId));
+
+        return { resolved: resolved.length, unresolved: unresolved.length };
+      } catch (err) {
+        await ctx.db
+          .update(benchmarkRuns)
+          .set({
+            extractionStatus: sql`CASE WHEN ${benchmarkRuns.extractionAttempts} >= 2 THEN 'failed' ELSE 'pending' END`,
+            extractionAttempts: sql`${benchmarkRuns.extractionAttempts} + 1`,
+          })
+          .where(eq(benchmarkRuns.id, input.runId));
         throw err;
       }
     }),
