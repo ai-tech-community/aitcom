@@ -371,4 +371,108 @@ export const benchmarkRouter = createTRPCRouter({
         throw err;
       }
     }),
+
+  getPromptDashboard: publicProcedure
+    .input(
+      z.object({
+        promptId: z.string().uuid(),
+        windowDays: z.number().int().min(1).max(365).default(30),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rankRows = await ctx.db
+        .select()
+        .from(aggBrandRankByPrompt)
+        .where(
+          and(
+            eq(aggBrandRankByPrompt.promptId, input.promptId),
+            eq(aggBrandRankByPrompt.windowDays, input.windowDays),
+          ),
+        );
+      const matrixRows = await ctx.db
+        .select()
+        .from(aggModelBiasMatrix)
+        .where(eq(aggModelBiasMatrix.promptId, input.promptId));
+      return { rankRows, matrixRows };
+    }),
+
+  getTrend: publicProcedure
+    .input(
+      z.object({
+        brandId: z.string().uuid(),
+        modelIds: z.array(z.string()).max(10).optional(),
+        windowDays: z.number().int().min(7).max(365).default(90),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const since = new Date(Date.now() - input.windowDays * 86_400_000);
+      const conds = [eq(aggBrandTrendsByDay.brandId, input.brandId), sql`${aggBrandTrendsByDay.date} >= ${since.toISOString().slice(0, 10)}`];
+      if (input.modelIds?.length) conds.push(inArray(aggBrandTrendsByDay.modelId, input.modelIds));
+      return ctx.db
+        .select()
+        .from(aggBrandTrendsByDay)
+        .where(and(...conds))
+        .orderBy(asc(aggBrandTrendsByDay.date));
+    }),
+
+  getCategoryLeaderboard: publicProcedure
+    .input(
+      z.object({
+        categoryId: z.string().uuid(),
+        windowDays: z.number().int().min(7).max(365).default(30),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.db.execute(sql`
+        SELECT b.id, b.canonical_name, b.slug,
+               SUM(r.weighted_score) AS total_weighted
+        FROM ${aggBrandRankByPrompt} r
+        JOIN ${benchmarkPrompts} p ON p.id = r.prompt_id
+        JOIN ${brands} b ON b.id = r.brand_id
+        WHERE p.category_id = ${input.categoryId}
+          AND r.window_days = ${input.windowDays}
+        GROUP BY b.id, b.canonical_name, b.slug
+        ORDER BY total_weighted DESC
+        LIMIT 10
+      `);
+    }),
+
+  getBrandProfile: publicProcedure
+    .input(z.object({ slug: z.string().min(1).max(200) }))
+    .query(async ({ ctx, input }) => {
+      const [brand] = await ctx.db.select().from(brands).where(eq(brands.slug, input.slug)).limit(1);
+      if (!brand) throw new TRPCError({ code: "NOT_FOUND", message: "Brand not found" });
+      const mentions = await ctx.db
+        .select({
+          runId: benchmarkBrandMentions.runId,
+          modelId: benchmarkRuns.modelId,
+          modelProvider: benchmarkRuns.modelProvider,
+          sentiment: benchmarkBrandMentions.sentiment,
+          context: benchmarkBrandMentions.context,
+          capturedAt: benchmarkRuns.capturedAt,
+        })
+        .from(benchmarkBrandMentions)
+        .innerJoin(benchmarkRuns, eq(benchmarkRuns.id, benchmarkBrandMentions.runId))
+        .where(eq(benchmarkBrandMentions.brandId, brand.id))
+        .orderBy(desc(benchmarkRuns.capturedAt))
+        .limit(100);
+      return { brand, mentions };
+    }),
+
+  getLatestRunsFeed: publicProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db
+        .select({
+          id: benchmarkRuns.id,
+          promptId: benchmarkRuns.promptId,
+          modelId: benchmarkRuns.modelId,
+          modelProvider: benchmarkRuns.modelProvider,
+          capturedAt: benchmarkRuns.capturedAt,
+          extractionStatus: benchmarkRuns.extractionStatus,
+        })
+        .from(benchmarkRuns)
+        .orderBy(desc(benchmarkRuns.capturedAt))
+        .limit(input.limit);
+    }),
 });
