@@ -11,10 +11,11 @@ import { db } from "@/server/db";
 import {
   benchmarkCategories,
   benchmarkIntents,
+  benchmarkPrompts,
   brands,
 } from "@/server/db/schema";
 import { SEED_INTENTS } from "@/lib/benchmark-constants";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 async function main() {
   // Intents
@@ -78,6 +79,45 @@ async function main() {
         verified: true,
       })
       .onConflictDoNothing();
+  }
+
+  // Starter approved prompts (requires at least one user to attribute to)
+  const userResult = await db.execute(sql`SELECT id FROM "app"."user" LIMIT 1`);
+  const anyUser = userResult.rows[0] as { id: string } | undefined;
+  if (anyUser) {
+    const [recommendation] = await db
+      .select()
+      .from(benchmarkIntents)
+      .where(eq(benchmarkIntents.slug, "recommendation"))
+      .limit(1);
+    if (recommendation) {
+      const starterPrompts = [
+        "What is the best CRM for early-stage startups?",
+        "Which AI coding assistant should a solo indie developer use?",
+        "Name the top three LLM APIs for building a chatbot.",
+        "Best password manager for small teams?",
+        "What's the most reliable email-newsletter platform?",
+      ];
+      for (const p of starterPrompts) {
+        await db
+          .insert(benchmarkPrompts)
+          .values({
+            text: p,
+            categoryId: aiTools.id,
+            intentId: recommendation.id,
+            submittedByUserId: anyUser.id,
+            status: "approved",
+            approvedByUserId: anyUser.id,
+            approvedAt: new Date(),
+          })
+          .onConflictDoNothing();
+      }
+      console.log(`Seeded ${starterPrompts.length} starter approved prompts.`);
+    } else {
+      console.warn("No 'recommendation' intent found; skipping prompt seed.");
+    }
+  } else {
+    console.warn("No users in DB; skipping prompt seed. Run seed again after creating at least one user.");
   }
 
   console.log("Seeded benchmark taxonomy + starter brands.");
