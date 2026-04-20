@@ -11,7 +11,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
     -- ── events.summary → events_locales.summary ('en') ────────────────────────
     INSERT INTO "events_locales" ("_locale", "_parent_id", "summary")
-    SELECT 'en'::"enum__locales", e.id, e.summary
+    SELECT 'en'::"_locales", e.id, e.summary
     FROM "events" e
     WHERE e.summary IS NOT NULL
     ON CONFLICT ("_locale", "_parent_id") DO UPDATE
@@ -31,7 +31,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
     -- ── _events_v.version_summary → _events_v_locales.version_summary ────────
     INSERT INTO "_events_v_locales" ("_locale", "_parent_id", "version_summary")
-    SELECT 'en'::"enum__locales", v.id, v.version_summary
+    SELECT 'en'::"_locales", v.id, v.version_summary
     FROM "_events_v" v
     WHERE v.version_summary IS NOT NULL
     ON CONFLICT ("_locale", "_parent_id") DO UPDATE
@@ -80,12 +80,12 @@ export async function down({ db }: MigrateDownArgs): Promise<void> {
     UPDATE "events" e
     SET "summary" = el.summary
     FROM "events_locales" el
-    WHERE el._parent_id = e.id AND el._locale = 'en'::"enum__locales";
+    WHERE el._parent_id = e.id AND el._locale = 'en'::"_locales";
 
     UPDATE "_events_v" v
     SET "version_summary" = vl.version_summary
     FROM "_events_v_locales" vl
-    WHERE vl._parent_id = v.id AND vl._locale = 'en'::"enum__locales";
+    WHERE vl._parent_id = v.id AND vl._locale = 'en'::"_locales";
 
     UPDATE "events" e
     SET "audience" = sub.vals
