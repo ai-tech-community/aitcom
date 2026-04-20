@@ -116,7 +116,8 @@ export default async function EventsPage({
     EVENT_FORMAT_OPTIONS,
   );
   const fitRaw = Number(firstParam(sp, "fit"));
-  const fit = Number.isFinite(fitRaw) && fitRaw >= 1 && fitRaw <= 10 ? fitRaw : undefined;
+  const fit =
+    Number.isFinite(fitRaw) && fitRaw >= 1 && fitRaw <= 10 ? fitRaw : undefined;
 
   const sortRaw = firstParam(sp, "sort");
   const sort: "date" | "fit" | "newest" | "near" =
@@ -133,7 +134,8 @@ export default async function EventsPage({
   const nearSort = sort === "near" && userCoords !== null;
 
   const pageRaw = Number(firstParam(sp, "page"));
-  const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
+  const page =
+    Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.floor(pageRaw) : 1;
   const isMapView = firstParam(sp, "view") === "map";
   const perPage = isMapView || nearSort ? 200 : 12;
 
@@ -141,12 +143,14 @@ export default async function EventsPage({
   const countryParam = firstParam(sp, "country");
   const nearMe = firstParam(sp, "near") === "1";
   const activeCountry =
-    countryParam ?? (nearMe ? visitor?.countryName ?? null : null);
+    countryParam ?? (nearMe ? (visitor?.countryName ?? null) : null);
 
   const now = new Date().toISOString();
   const conditions: Where[] = [{ status: { equals: "published" } }];
   conditions.push(
-    isPast ? { date: { less_than: now } } : { date: { greater_than_equal: now } },
+    isPast
+      ? { date: { less_than: now } }
+      : { date: { greater_than_equal: now } },
   );
   if (type) conditions.push({ type: { equals: type } });
   if (focus) conditions.push({ focus: { equals: focus } });
@@ -327,10 +331,7 @@ export default async function EventsPage({
       </div>
 
       {isMapView ? (
-        <EventsMap
-          events={toMapEvents(events)}
-          userCoords={userCoords}
-        />
+        <EventsMap events={toMapEvents(events)} userCoords={userCoords} />
       ) : events.length === 0 ? (
         <p className="text-muted-foreground mt-12 text-center">
           {hasFilters

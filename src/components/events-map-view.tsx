@@ -3,12 +3,7 @@
 import "leaflet/dist/leaflet.css";
 import { useMemo } from "react";
 import L from "leaflet";
-import {
-  MapContainer,
-  Marker,
-  Popup,
-  TileLayer,
-} from "react-leaflet";
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import { Link } from "@/i18n/navigation";
 
 const markerIcon = L.divIcon({
@@ -75,7 +70,10 @@ function formatDate(dateStr: string): string {
   return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export function EventsMapView({ events, userCoords = null }: EventsMapViewProps) {
+export function EventsMapView({
+  events,
+  userCoords = null,
+}: EventsMapViewProps) {
   const bounds = useMemo<L.LatLngBoundsLiteral | null>(() => {
     if (events.length === 0 && !userCoords) return null;
 
@@ -91,7 +89,10 @@ export function EventsMapView({ events, userCoords = null }: EventsMapViewProps)
         .slice(0, 5);
       points = [
         userCoords,
-        ...sorted.map((s) => ({ lat: s.event.latitude, lng: s.event.longitude })),
+        ...sorted.map((s) => ({
+          lat: s.event.latitude,
+          lng: s.event.longitude,
+        })),
       ];
     } else if (userCoords) {
       return [
@@ -132,12 +133,11 @@ export function EventsMapView({ events, userCoords = null }: EventsMapViewProps)
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {userCoords && (
-          <Marker
-            position={[userCoords.lat, userCoords.lng]}
-            icon={userIcon}
-          >
+          <Marker position={[userCoords.lat, userCoords.lng]} icon={userIcon}>
             <Popup>
-              <div className="text-xs font-semibold text-black">You are here</div>
+              <div className="text-xs font-semibold text-black">
+                You are here
+              </div>
             </Popup>
           </Marker>
         )}

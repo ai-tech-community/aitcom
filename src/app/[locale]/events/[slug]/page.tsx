@@ -65,7 +65,7 @@ function buildAitRationale({
 }): string {
   const parts: string[] = [];
   const focusLabel = focus
-    ? EVENT_FOCUS_LABELS[focus as EventFocus] ?? String(focus)
+    ? (EVENT_FOCUS_LABELS[focus as EventFocus] ?? String(focus))
     : null;
   const audienceLabels = audience
     .map((a) => EVENT_AUDIENCE_LABELS[a as EventAudience] ?? String(a))
@@ -197,9 +197,7 @@ export default async function EventDetailPage({
         : null;
 
   const now = new Date().toISOString();
-  const relatedOrConditions: Where[] = [
-    { type: { equals: event.type } },
-  ];
+  const relatedOrConditions: Where[] = [{ type: { equals: event.type } }];
   if (event.focus) {
     relatedOrConditions.push({ focus: { equals: event.focus } });
   }
@@ -309,7 +307,9 @@ export default async function EventDetailPage({
         heroImageAlt={heroImage?.alt ?? event.title}
         typeLabel={EVENT_TYPE_LABELS[event.type] ?? event.type}
         formatLabel={
-          event.format ? EVENT_FORMAT_LABELS[event.format] ?? event.format : null
+          event.format
+            ? (EVENT_FORMAT_LABELS[event.format] ?? event.format)
+            : null
         }
         dateMonth={dateMonth}
         dateDay={dateDay}
@@ -349,9 +349,9 @@ export default async function EventDetailPage({
 
           {Boolean(
             event.focus ??
-              event.level ??
-              event.videoUrl ??
-              (audience.length > 0 || locationParts.length > 0 || null),
+            event.level ??
+            event.videoUrl ??
+            (audience.length > 0 || locationParts.length > 0 || null),
           ) && (
             <div className="border-border grid gap-4 rounded-lg border p-4 text-sm sm:grid-cols-2">
               {event.focus && (
@@ -483,7 +483,8 @@ export default async function EventDetailPage({
                       <Image
                         src={image.url}
                         alt={
-                          image.alt ?? `${event.title} gallery image ${index + 1}`
+                          image.alt ??
+                          `${event.title} gallery image ${index + 1}`
                         }
                         width={600}
                         height={400}
@@ -583,18 +584,15 @@ export default async function EventDetailPage({
                 Location
               </div>
               <div className="mt-1">{event.location}</div>
-              {locationParts.length > 0 &&
-                locationShort !== event.location && (
-                  <div className="text-muted-foreground mt-0.5 text-xs">
-                    {locationShort}
-                  </div>
-                )}
+              {locationParts.length > 0 && locationShort !== event.location && (
+                <div className="text-muted-foreground mt-0.5 text-xs">
+                  {locationShort}
+                </div>
+              )}
               {event.format !== "online" && (
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                    [event.location, locationShort]
-                      .filter(Boolean)
-                      .join(", "),
+                    [event.location, locationShort].filter(Boolean).join(", "),
                   )}`}
                   target="_blank"
                   rel="noreferrer"

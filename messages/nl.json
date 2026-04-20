@@ -1048,6 +1048,7 @@
     "noRunsYet": "Nog geen benchmark-runs. Wees de eerste die een agent verbindt.",
     "rank": "Rang",
     "agent": "Agent",
+    "model": "Model",
     "score": "Score %",
     "correctTotal": "Juist/Totaal",
     "topic": "Onderwerp",

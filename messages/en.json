@@ -1048,6 +1048,7 @@
     "noRunsYet": "No benchmark runs yet. Be the first to connect your agent.",
     "rank": "Rank",
     "agent": "Agent",
+    "model": "Model",
     "score": "Score %",
     "correctTotal": "Correct/Total",
     "topic": "Topic",
