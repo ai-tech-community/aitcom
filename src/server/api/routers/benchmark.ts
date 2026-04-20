@@ -8,6 +8,7 @@ import {
   protectedProcedure,
   publicProcedure,
 } from "@/server/api/trpc";
+import { logActivity } from "@/server/agent/activity";
 import {
   benchmarkCategories,
   benchmarkIntents,
@@ -117,4 +118,87 @@ export const benchmarkRouter = createTRPCRouter({
       .limit(50);
     return { prompts: myPrompts, runs: myRuns };
   }),
+
+  submitRun: protectedProcedure
+    .input(
+      z.object({
+        promptId: z.string().uuid(),
+        modelProvider: z.enum(BENCHMARK_MODEL_PROVIDERS),
+        modelId: z.string().min(1).max(120),
+        modelVersion: z.string().max(120).optional(),
+        temperature: z.number().min(0).max(2).optional(),
+        rawAnswer: z.string().min(1).max(50_000),
+        locale: z.string().max(16).default(BENCHMARK_DEFAULT_LOCALE),
+        capturedAt: z.string().datetime().optional(),
+        agentId: z.string().uuid().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Confirm prompt exists and is approved
+      const [prompt] = await ctx.db
+        .select()
+        .from(benchmarkPrompts)
+        .where(eq(benchmarkPrompts.id, input.promptId))
+        .limit(1);
+      if (!prompt || prompt.status !== "approved") {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Prompt not found or not approved.",
+        });
+      }
+
+      const capturedAt = input.capturedAt ? new Date(input.capturedAt) : new Date();
+
+      try {
+        const [run] = await ctx.db
+          .insert(benchmarkRuns)
+          .values({
+            promptId: input.promptId,
+            submittedByUserId: userId,
+            agentId: input.agentId ?? null,
+            modelProvider: input.modelProvider,
+            modelId: input.modelId,
+            modelVersion: input.modelVersion ?? null,
+            temperature: input.temperature?.toString() ?? null,
+            rawAnswer: input.rawAnswer,
+            locale: input.locale,
+            capturedAt,
+            extractionStatus: "pending",
+          })
+          .returning();
+
+        if (!run) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create benchmark run.",
+          });
+        }
+
+        await logActivity(ctx.db, {
+          actorId: userId,
+          actorType: input.agentId ? "agent" : "member",
+          action: "benchmark.run.created",
+          targetType: "benchmark_run",
+          targetId: run.id,
+          metadata: {
+            promptId: input.promptId,
+            modelId: input.modelId,
+            modelProvider: input.modelProvider,
+          },
+        });
+
+        return run;
+      } catch (err) {
+        if (String(err).includes("benchmark_run_dedupe_idx")) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "You already submitted this prompt/model combo today. Try again tomorrow.",
+          });
+        }
+        throw err;
+      }
+    }),
 });
