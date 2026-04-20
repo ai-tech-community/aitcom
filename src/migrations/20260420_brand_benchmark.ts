@@ -40,8 +40,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     CREATE TABLE "app"."benchmark_prompt" (
       "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       "text" text NOT NULL,
-      "category_id" uuid NOT NULL REFERENCES "app"."benchmark_category"("id"),
-      "intent_id" uuid NOT NULL REFERENCES "app"."benchmark_intent"("id"),
+      "category_id" uuid NOT NULL REFERENCES "app"."benchmark_category"("id") ON DELETE RESTRICT,
+      "intent_id" uuid NOT NULL REFERENCES "app"."benchmark_intent"("id") ON DELETE RESTRICT,
       "locale" text NOT NULL DEFAULT 'en-US',
       "status" text NOT NULL DEFAULT 'pending',
       "submitted_by_user_id" text NOT NULL REFERENCES "public"."user"("id"),
@@ -120,8 +120,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       "extractor_version" text NOT NULL,
       "created_at" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
-    CREATE INDEX "benchmark_mention_brand_idx" ON "app"."benchmark_brand_mention"("brand_id");
-    CREATE INDEX "benchmark_mention_run_idx" ON "app"."benchmark_brand_mention"("run_id");
+    CREATE INDEX "benchmark_brand_mention_brand_idx" ON "app"."benchmark_brand_mention"("brand_id");
+    CREATE INDEX "benchmark_brand_mention_run_idx" ON "app"."benchmark_brand_mention"("run_id");
   `);
 
   // Alias queue
