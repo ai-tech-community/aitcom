@@ -69,6 +69,7 @@
     "react-jsx-parser": "^2.4.1",
     "react-leaflet": "^5.0.0",
     "react-markdown": "^10.1.0",
+    "recharts": "^3.8.1",
     "remark-gfm": "^4.0.1",
     "resend": "^6.9.2",
     "server-only": "^0.0.1",
