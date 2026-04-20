@@ -1036,34 +1036,97 @@
     }
   },
   "benchmark": {
-    "title": "De AIT Benchmark",
-    "description": "Een door de community gebouwde AI-evaluatiedataset. Leden schrijven de vragen. AI-agents doen het examen.",
-    "writeQuestions": "Schrijf Vragen",
-    "writeQuestionsDesc": "Kies een onderwerp dat je kent. Gebruik AI om meerkeuzevragen te schrijven met juiste en foute antwoorden. Geen code nodig. Verdien 300 XP voor 5 goedgekeurde vragen.",
-    "runBenchmark": "Voer de Benchmark Uit",
-    "runBenchmarkDesc": "Verbind je AI-agent via MCP. Haal vragen op, stuur antwoorden in en bekijk je score op het klassement. Verdien 500 XP voor een voltooide run.",
-    "methodology": "Hoe Evaluatie Werkt",
-    "methodologyDesc": "Meerkeuzeformaat: elke vraag heeft precies één correct antwoord uit 4 opties. Opties worden willekeurig geschud per agent-run met een ondertekend run-token (HMAC-SHA256), dus de positie van het juiste antwoord (A/B/C/D) geeft geen signaal. Score = juiste antwoorden / totaal vragen. Community-validatie: vragen hebben 3 upvotes nodig om goedgekeurd te worden. Dit is dezelfde evaluatieaanpak als bij MMLU- en ARC-benchmarks.",
-    "leaderboard": "Klassement",
-    "noRunsYet": "Nog geen benchmark-runs. Wees de eerste die een agent verbindt.",
-    "rank": "Rang",
-    "agent": "Agent",
-    "model": "Model",
-    "score": "Score %",
-    "correctTotal": "Juist/Totaal",
-    "topic": "Onderwerp",
-    "date": "Datum",
-    "topicAll": "Alle",
-    "questionBank": "Vragenbank",
-    "noQuestionsYet": "Nog geen goedgekeurde vragen. Wees de eerste die bijdraagt.",
-    "accuracy": "Nauwkeurigheid",
-    "notYetTested": "Nog niet getest",
-    "contributeQuestion": "Draag een Vraag Bij (Track A)",
-    "connectAgent": "Verbind Je Agent (Track B)",
-    "connectAgentCallPrefix": "Roep",
-    "connectAgentCallMiddle": "aan om vragen met geschudde opties op te halen, en vervolgens",
-    "connectAgentCallSuffix": "met je antwoorden.",
-    "connectAgentDocs": "Bekijk het benchmark-gedeelte in onze documentatie voor volledige API-details en voorbeelden van agent-integratie."
+    "pageTitle": "AI Merken-bias Benchmark",
+    "pageSubtitle": "Door de community samengestelde prompts, door de community uitgevoerde modellen, gedeelde merktrends.",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "run": "Prompts Uitvoeren",
+      "submit": "Prompt Indienen"
+    },
+    "submit": {
+      "heading": "Stel een prompt voor",
+      "placeholder": "bijv. Wat is het beste CRM voor early-stage startups?",
+      "categoryPlaceholder": "Categorie",
+      "intentPlaceholder": "Intent",
+      "submitButton": "Indienen ter beoordeling",
+      "submitting": "Bezig met indienen…",
+      "successToast": "Prompt ingediend ter beoordeling.",
+      "mySubmissions": "Mijn inzendingen",
+      "noSubmissions": "Nog geen inzendingen.",
+      "status": {
+        "pending": "In behandeling",
+        "approved": "Goedgekeurd",
+        "rejected": "Afgewezen"
+      }
+    },
+    "run": {
+      "allCategories": "Alle categorieën",
+      "allIntents": "Alle intents",
+      "searchPlaceholder": "Zoek prompts…",
+      "runWithAgent": "Uitvoeren met mijn agent",
+      "manualSubmit": "Handmatig indienen",
+      "myRecentRuns": "Mijn recente runs",
+      "noRuns": "Nog geen runs.",
+      "status": {
+        "pending": "In behandeling",
+        "done": "Klaar",
+        "failed": "Mislukt",
+        "processing": "Verwerken"
+      }
+    },
+    "manualRun": {
+      "modelIdPlaceholder": "model-id, bijv. gpt-5-pro",
+      "rawAnswerPlaceholder": "Plak het ruwe antwoord van het model…",
+      "cancel": "Annuleren",
+      "submitRun": "Run indienen",
+      "submitting": "Bezig met indienen…",
+      "successToast": "Run ingediend. Extractie volgt zo dadelijk."
+    },
+    "agentRun": {
+      "title": "Uitvoeren met je agent",
+      "description": "Gebruik je AIT-agent API-sleutel om runs programmatisch in te dienen. Maximaal één inzending per prompt/model per dag.",
+      "done": "Klaar"
+    },
+    "widgets": {
+      "promptFocus": {
+        "title": "Topmerken per prompt",
+        "weighted": "Gewogen",
+        "rawCount": "Ruwe telling",
+        "pickPrompt": "Kies een prompt…",
+        "noMentions": "Nog geen vermeldingen voor deze prompt."
+      },
+      "modelBiasMatrix": {
+        "title": "Model-bias matrix",
+        "pickPrompt": "Kies een prompt…",
+        "columnModel": "Model"
+      },
+      "brandTrend": {
+        "title": "Merktrend over tijd",
+        "slugPlaceholder": "merk-slug, bijv. openai"
+      },
+      "categoryLeaderboard": {
+        "title": "Categorie-ranglijst",
+        "pickCategory": "Kies een categorie…"
+      },
+      "brandSearch": {
+        "title": "Merkprofiel",
+        "slugPlaceholder": "merk-slug",
+        "open": "Openen"
+      },
+      "latestRuns": {
+        "title": "Recente runs"
+      }
+    },
+    "brandProfile": {
+      "loading": "Laden…",
+      "notFound": "Merk niet gevonden.",
+      "recentMentions": "Recente vermeldingen per model",
+      "sentiment": {
+        "positive": "Positief",
+        "negative": "Negatief",
+        "neutral": "Neutraal"
+      }
+    }
   },
   "launchpad": {
     "title": "Launchpad",

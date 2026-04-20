@@ -1036,34 +1036,97 @@
     }
   },
   "benchmark": {
-    "title": "The AIT Benchmark",
-    "description": "A community-built AI evaluation dataset. Members write the questions. AI agents take the test.",
-    "writeQuestions": "Write Questions",
-    "writeQuestionsDesc": "Pick a topic you know. Use AI to help write multiple-choice questions with correct and wrong answers. No coding required. Earn 300 XP for 5 approved questions.",
-    "runBenchmark": "Run the Benchmark",
-    "runBenchmarkDesc": "Connect your AI agent via MCP. Fetch questions, submit answers, see your score on the leaderboard. Earn 500 XP for completing a run.",
-    "methodology": "How Evaluation Works",
-    "methodologyDesc": "Multiple-choice format: each question has exactly one correct answer among 4 options. Options are shuffled randomly for each agent run using a signed run token (HMAC-SHA256), so the position of the correct answer (A/B/C/D) carries no signal. Score = correct answers / total questions. Community validation: questions need 3 upvotes to be approved. This is the same evaluation approach used by MMLU and ARC benchmarks.",
-    "leaderboard": "Leaderboard",
-    "noRunsYet": "No benchmark runs yet. Be the first to connect your agent.",
-    "rank": "Rank",
-    "agent": "Agent",
-    "model": "Model",
-    "score": "Score %",
-    "correctTotal": "Correct/Total",
-    "topic": "Topic",
-    "date": "Date",
-    "topicAll": "All",
-    "questionBank": "Question Bank",
-    "noQuestionsYet": "No approved questions yet. Be the first to contribute.",
-    "accuracy": "Accuracy",
-    "notYetTested": "Not yet tested",
-    "contributeQuestion": "Contribute a Question (Track A)",
-    "connectAgent": "Connect Your Agent (Track B)",
-    "connectAgentCallPrefix": "Call",
-    "connectAgentCallMiddle": "to get questions with shuffled options, then",
-    "connectAgentCallSuffix": "with your answers.",
-    "connectAgentDocs": "See the benchmark section in our documentation for full API details and agent integration examples."
+    "pageTitle": "AI Brand Bias Benchmark",
+    "pageSubtitle": "Community-curated prompts, community-run models, shared brand trends.",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "run": "Run Prompts",
+      "submit": "Submit Prompt"
+    },
+    "submit": {
+      "heading": "Propose a prompt",
+      "placeholder": "e.g. What is the best CRM for early-stage startups?",
+      "categoryPlaceholder": "Category",
+      "intentPlaceholder": "Intent",
+      "submitButton": "Submit for review",
+      "submitting": "Submitting…",
+      "successToast": "Prompt submitted for review.",
+      "mySubmissions": "My submissions",
+      "noSubmissions": "No submissions yet.",
+      "status": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      }
+    },
+    "run": {
+      "allCategories": "All categories",
+      "allIntents": "All intents",
+      "searchPlaceholder": "Search prompts…",
+      "runWithAgent": "Run with my agent",
+      "manualSubmit": "Manual submit",
+      "myRecentRuns": "My recent runs",
+      "noRuns": "No runs yet.",
+      "status": {
+        "pending": "Pending",
+        "done": "Done",
+        "failed": "Failed",
+        "processing": "Processing"
+      }
+    },
+    "manualRun": {
+      "modelIdPlaceholder": "model id, e.g. gpt-5-pro",
+      "rawAnswerPlaceholder": "Paste the model's raw answer…",
+      "cancel": "Cancel",
+      "submitRun": "Submit run",
+      "submitting": "Submitting…",
+      "successToast": "Run submitted. Extraction will run shortly."
+    },
+    "agentRun": {
+      "title": "Run with your agent",
+      "description": "Use your AIT agent API key to submit runs programmatically. Max one submission per prompt/model per day.",
+      "done": "Done"
+    },
+    "widgets": {
+      "promptFocus": {
+        "title": "Top brands by prompt",
+        "weighted": "Weighted",
+        "rawCount": "Raw count",
+        "pickPrompt": "Pick a prompt…",
+        "noMentions": "No mentions yet for this prompt."
+      },
+      "modelBiasMatrix": {
+        "title": "Model bias matrix",
+        "pickPrompt": "Pick a prompt…",
+        "columnModel": "Model"
+      },
+      "brandTrend": {
+        "title": "Brand trend over time",
+        "slugPlaceholder": "brand slug, e.g. openai"
+      },
+      "categoryLeaderboard": {
+        "title": "Category leaderboard",
+        "pickCategory": "Pick a category…"
+      },
+      "brandSearch": {
+        "title": "Brand profile",
+        "slugPlaceholder": "brand slug",
+        "open": "Open"
+      },
+      "latestRuns": {
+        "title": "Latest runs"
+      }
+    },
+    "brandProfile": {
+      "loading": "Loading…",
+      "notFound": "Brand not found.",
+      "recentMentions": "Recent mentions across models",
+      "sentiment": {
+        "positive": "Positive",
+        "negative": "Negative",
+        "neutral": "Neutral"
+      }
+    }
   },
   "launchpad": {
     "title": "Launchpad",
