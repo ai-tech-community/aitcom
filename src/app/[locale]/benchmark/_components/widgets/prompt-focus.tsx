@@ -18,8 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 
 export function PromptFocusWidget() {
+  const t = useTranslations("benchmark");
   const prompts = api.benchmark.listApprovedPrompts.useQuery({
     page: 1,
     pageSize: 50,
@@ -42,20 +44,20 @@ export function PromptFocusWidget() {
   return (
     <div className="flex flex-col gap-3 rounded-md border p-4">
       <header className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Top brands by prompt</h3>
+        <h3 className="text-sm font-medium">{t("widgets.promptFocus.title")}</h3>
         <Select value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
           <SelectTrigger className="w-32">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="weighted">Weighted</SelectItem>
-            <SelectItem value="raw">Raw count</SelectItem>
+            <SelectItem value="weighted">{t("widgets.promptFocus.weighted")}</SelectItem>
+            <SelectItem value="raw">{t("widgets.promptFocus.rawCount")}</SelectItem>
           </SelectContent>
         </Select>
       </header>
       <Select value={promptId} onValueChange={setPromptId}>
         <SelectTrigger>
-          <SelectValue placeholder="Pick a prompt…" />
+          <SelectValue placeholder={t("widgets.promptFocus.pickPrompt")} />
         </SelectTrigger>
         <SelectContent>
           {prompts.data?.map((p) => (
@@ -68,7 +70,7 @@ export function PromptFocusWidget() {
       <div className="h-64">
         {promptId && chartData.length === 0 && dash.isFetched && (
           <p className="text-muted-foreground py-10 text-center text-sm">
-            No mentions yet for this prompt.
+            {t("widgets.promptFocus.noMentions")}
           </p>
         )}
         {chartData.length > 0 && (

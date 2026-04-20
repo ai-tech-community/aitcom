@@ -9,8 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 
 export function ModelBiasMatrixWidget() {
+  const t = useTranslations("benchmark");
   const prompts = api.benchmark.listApprovedPrompts.useQuery({
     page: 1,
     pageSize: 50,
@@ -30,11 +32,11 @@ export function ModelBiasMatrixWidget() {
   return (
     <div className="flex flex-col gap-3 rounded-md border p-4">
       <header className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Model bias matrix</h3>
+        <h3 className="text-sm font-medium">{t("widgets.modelBiasMatrix.title")}</h3>
       </header>
       <Select value={promptId} onValueChange={setPromptId}>
         <SelectTrigger>
-          <SelectValue placeholder="Pick a prompt…" />
+          <SelectValue placeholder={t("widgets.modelBiasMatrix.pickPrompt")} />
         </SelectTrigger>
         <SelectContent>
           {prompts.data?.map((p) => (
@@ -49,7 +51,7 @@ export function ModelBiasMatrixWidget() {
           <table className="min-w-full text-xs">
             <thead>
               <tr>
-                <th className="border p-1 text-left">Model</th>
+                <th className="border p-1 text-left">{t("widgets.modelBiasMatrix.columnModel")}</th>
                 {allBrands.map((b) => (
                   <th key={b} className="border p-1">
                     {b.slice(0, 8)}

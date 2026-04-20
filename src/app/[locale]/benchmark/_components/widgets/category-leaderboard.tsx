@@ -18,8 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 
 export function CategoryLeaderboardWidget() {
+  const t = useTranslations("benchmark");
   const categories = api.benchmark.listCategories.useQuery();
   const [categoryId, setCategoryId] = useState("");
   const lb = api.benchmark.getCategoryLeaderboard.useQuery(
@@ -39,11 +41,11 @@ export function CategoryLeaderboardWidget() {
   return (
     <div className="flex flex-col gap-3 rounded-md border p-4">
       <header>
-        <h3 className="text-sm font-medium">Category leaderboard</h3>
+        <h3 className="text-sm font-medium">{t("widgets.categoryLeaderboard.title")}</h3>
       </header>
       <Select value={categoryId} onValueChange={setCategoryId}>
         <SelectTrigger>
-          <SelectValue placeholder="Pick a category…" />
+          <SelectValue placeholder={t("widgets.categoryLeaderboard.pickCategory")} />
         </SelectTrigger>
         <SelectContent>
           {categories.data?.map((c) => (

@@ -20,8 +20,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useTranslations } from "next-intl";
 
 export function BrandTrendWidget() {
+  const t = useTranslations("benchmark");
   const [slug, setSlug] = useState("openai");
   const brand = api.benchmark.getBrandProfile.useQuery(
     { slug },
@@ -52,7 +54,7 @@ export function BrandTrendWidget() {
   return (
     <div className="flex flex-col gap-3 rounded-md border p-4">
       <header className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Brand trend over time</h3>
+        <h3 className="text-sm font-medium">{t("widgets.brandTrend.title")}</h3>
         <Select
           value={String(windowDays)}
           onValueChange={(v) => setWindowDays(Number(v))}
@@ -68,7 +70,7 @@ export function BrandTrendWidget() {
         </Select>
       </header>
       <Input
-        placeholder="brand slug, e.g. openai"
+        placeholder={t("widgets.brandTrend.slugPlaceholder")}
         value={slug}
         onChange={(e) => setSlug(e.target.value)}
       />
