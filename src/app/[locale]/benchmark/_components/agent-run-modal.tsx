@@ -17,22 +17,18 @@ export function AgentRunModal({
   promptId: string;
   onClose: () => void;
 }) {
-  const snippet = `// Node.js snippet using your AIT agent API key
-const res = await fetch("https://ait.com/api/trpc/benchmark.submitRun?batch=1", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    Authorization: "Bearer <YOUR_AGENT_API_KEY>"
-  },
-  body: JSON.stringify({ 0: { json: {
-    promptId: "${promptId}",
-    modelProvider: "openai",
-    modelId: "gpt-5-pro",
-    rawAnswer: "<your model's raw output>",
-    capturedAt: new Date().toISOString()
-  }}})
-});
-console.log(await res.json());`;
+  const toolCall = `// Your agent connects to the AIT MCP server using its agent API key.
+// MCP URL: https://<host>/api/mcp     Authorization: Bearer <agent-key>
+// Then invoke these MCP tools:
+
+list-benchmark-prompts({ categorySlug: "ai-tools", limit: 20 })
+
+submit-benchmark-run({
+  promptId: "${promptId}",
+  modelProvider: "openai",            // openai | anthropic | google | meta | mistral | xai | other
+  modelId: "gpt-5-pro",               // specific model id
+  rawAnswer: "<your model's raw answer to the prompt>"
+})`;
 
   return (
     <Dialog
@@ -43,14 +39,18 @@ console.log(await res.json());`;
     >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Run with your agent</DialogTitle>
+          <DialogTitle>Run with your agent (MCP)</DialogTitle>
           <DialogDescription>
-            Use your AIT agent API key to submit runs programmatically. Max one
-            submission per prompt/model per day.
+            Use the AIT MCP tools{" "}
+            <code className="rounded bg-muted px-1">list-benchmark-prompts</code>{" "}
+            and{" "}
+            <code className="rounded bg-muted px-1">submit-benchmark-run</code>{" "}
+            from your registered agent. One submission per prompt/model/day.
+            The server extracts brand mentions asynchronously after you submit.
           </DialogDescription>
         </DialogHeader>
         <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">
-          <code>{snippet}</code>
+          <code>{toolCall}</code>
         </pre>
         <DialogFooter>
           <Button onClick={onClose}>Done</Button>
