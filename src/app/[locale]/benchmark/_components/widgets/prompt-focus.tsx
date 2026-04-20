@@ -2,11 +2,28 @@
 
 import { useState } from "react";
 import { api } from "@/trpc/react";
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis, ResponsiveContainer } from "recharts";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Tooltip,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function PromptFocusWidget() {
-  const prompts = api.benchmark.listApprovedPrompts.useQuery({ page: 1, pageSize: 50 });
+  const prompts = api.benchmark.listApprovedPrompts.useQuery({
+    page: 1,
+    pageSize: 50,
+  });
   const [promptId, setPromptId] = useState<string>("");
   const [mode, setMode] = useState<"weighted" | "raw">("weighted");
   const dash = api.benchmark.getPromptDashboard.useQuery(
@@ -27,7 +44,9 @@ export function PromptFocusWidget() {
       <header className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Top brands by prompt</h3>
         <Select value={mode} onValueChange={(v) => setMode(v as typeof mode)}>
-          <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="weighted">Weighted</SelectItem>
             <SelectItem value="raw">Raw count</SelectItem>
@@ -35,16 +54,22 @@ export function PromptFocusWidget() {
         </Select>
       </header>
       <Select value={promptId} onValueChange={setPromptId}>
-        <SelectTrigger><SelectValue placeholder="Pick a prompt…" /></SelectTrigger>
+        <SelectTrigger>
+          <SelectValue placeholder="Pick a prompt…" />
+        </SelectTrigger>
         <SelectContent>
           {prompts.data?.map((p) => (
-            <SelectItem key={p.id} value={p.id}>{p.text}</SelectItem>
+            <SelectItem key={p.id} value={p.id}>
+              {p.text}
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>
       <div className="h-64">
         {promptId && chartData.length === 0 && dash.isFetched && (
-          <p className="py-10 text-center text-sm text-muted-foreground">No mentions yet for this prompt.</p>
+          <p className="text-muted-foreground py-10 text-center text-sm">
+            No mentions yet for this prompt.
+          </p>
         )}
         {chartData.length > 0 && (
           <ResponsiveContainer width="100%" height="100%">

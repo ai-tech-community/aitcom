@@ -64,11 +64,10 @@ export async function GET(
       : null;
 
   const hasTime = typeof event.startTime === "string" && event.startTime;
-  const dtStamp =
-    new Date()
-      .toISOString()
-      .replace(/[-:]/g, "")
-      .replace(/\.\d{3}Z$/, "Z");
+  const dtStamp = new Date()
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}Z$/, "Z");
 
   const dtStartLine = hasTime
     ? `DTSTART:${toIcsFloating(event.date, event.startTime!)}`

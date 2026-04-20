@@ -1,10 +1,13 @@
 import type { CollectionBeforeChangeHook, CollectionConfig } from "payload";
 
-const autoApprovalHook: CollectionBeforeChangeHook = ({ data, req, operation }) => {
+const autoApprovalHook: CollectionBeforeChangeHook = ({
+  data,
+  req,
+  operation,
+}) => {
   if (
     operation === "update" &&
-    data &&
-    data.status === "approved" &&
+    data?.status === "approved" &&
     !data.approvedByUser &&
     req.user
   ) {
@@ -19,7 +22,14 @@ export const BenchmarkPrompts: CollectionConfig = {
   dbName: "benchmark_prompt",
   admin: {
     useAsTitle: "text",
-    defaultColumns: ["text", "status", "category", "intent", "submittedByUser", "createdAt"],
+    defaultColumns: [
+      "text",
+      "status",
+      "category",
+      "intent",
+      "submittedByUser",
+      "createdAt",
+    ],
     description:
       "Crowd-sourced prompts awaiting moderator approval before entering the benchmark.",
   },

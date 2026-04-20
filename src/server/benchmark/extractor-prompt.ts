@@ -4,10 +4,17 @@ export const EXTRACTOR_VERSION = "v1";
 export function buildExtractorPrompt(args: {
   promptText: string;
   rawAnswer: string;
-  knownBrands: Array<{ slug: string; canonicalName: string; aliases: string[] }>;
+  knownBrands: Array<{
+    slug: string;
+    canonicalName: string;
+    aliases: string[];
+  }>;
 }): string {
   const brandList = args.knownBrands
-    .map((b) => `- ${b.canonicalName} [slug: ${b.slug}] aliases: ${b.aliases.join(", ") || "(none)"}`)
+    .map(
+      (b) =>
+        `- ${b.canonicalName} [slug: ${b.slug}] aliases: ${b.aliases.join(", ") || "(none)"}`,
+    )
     .join("\n");
 
   return `You are a brand-extraction assistant. Given an AI model's answer to a user prompt, identify every brand, product, or company name the answer mentions. Return ONLY JSON matching the schema below.

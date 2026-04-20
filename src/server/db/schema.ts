@@ -1112,8 +1112,12 @@ export const benchmarkCategories = appSchema.table(
     name: text("name").notNull(),
     parentId: uuid("parent_id"),
     description: text("description"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => ({
     parentIdx: index("benchmark_category_parent_idx").on(t.parentId),
@@ -1125,7 +1129,9 @@ export const benchmarkIntents = appSchema.table("benchmark_intent", {
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   description: text("description"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const benchmarkPrompts = appSchema.table(
@@ -1141,8 +1147,12 @@ export const benchmarkPrompts = appSchema.table(
     approvedByUserId: text("approved_by_user_id"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     notes: text("notes"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => ({
     statusIdx: index("benchmark_prompt_status_idx").on(t.status),
@@ -1154,12 +1164,22 @@ export const brands = appSchema.table("brand", {
   id: uuid("id").primaryKey().defaultRandom(),
   canonicalName: text("canonical_name").notNull(),
   slug: text("slug").notNull().unique(),
-  aliases: text("aliases").array().notNull().default(sql`ARRAY[]::text[]`),
+  aliases: text("aliases")
+    .array()
+    .notNull()
+    .default(sql`ARRAY[]::text[]`),
   website: text("website"),
-  categoryIds: uuid("category_ids").array().notNull().default(sql`ARRAY[]::uuid[]`),
+  categoryIds: uuid("category_ids")
+    .array()
+    .notNull()
+    .default(sql`ARRAY[]::uuid[]`),
   verified: boolean("verified").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const benchmarkRuns = appSchema.table(
@@ -1176,16 +1196,25 @@ export const benchmarkRuns = appSchema.table(
     rawAnswer: text("raw_answer").notNull(),
     locale: text("locale").notNull().default("en-US"),
     capturedAt: timestamp("captured_at", { withTimezone: true }).notNull(),
-    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+    receivedAt: timestamp("received_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     extractionStatus: text("extraction_status").notNull().default("pending"),
     extractionAttempts: integer("extraction_attempts").notNull().default(0),
     weight: numeric("weight").notNull().default("1.0"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => ({
     promptModelTimeIdx: index("benchmark_run_prompt_model_time_idx").on(
-      t.promptId, t.modelId, t.capturedAt),
-    extractionStatusIdx: index("benchmark_run_extraction_status_idx").on(t.extractionStatus),
+      t.promptId,
+      t.modelId,
+      t.capturedAt,
+    ),
+    extractionStatusIdx: index("benchmark_run_extraction_status_idx").on(
+      t.extractionStatus,
+    ),
   }),
 );
 
@@ -1201,7 +1230,9 @@ export const benchmarkBrandMentions = appSchema.table(
     context: text("context"),
     confidence: numeric("confidence").notNull().default("0.5"),
     extractorVersion: text("extractor_version").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => ({
     brandIdx: index("benchmark_brand_mention_brand_idx").on(t.brandId),
@@ -1220,7 +1251,9 @@ export const brandAliasQueue = appSchema.table(
     status: text("status").notNull().default("pending"),
     reviewedByUserId: text("reviewed_by_user_id"),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (t) => ({
     statusIdx: index("brand_alias_queue_status_idx").on(t.status),
@@ -1237,10 +1270,18 @@ export const aggBrandRankByPrompt = appSchema.table(
     mentionCount: integer("mention_count").notNull(),
     weightedScore: numeric("weighted_score").notNull(),
     avgRank: numeric("avg_rank"),
-    sentimentPositivePct: numeric("sentiment_positive_pct").notNull().default("0"),
-    sentimentNeutralPct: numeric("sentiment_neutral_pct").notNull().default("0"),
-    sentimentNegativePct: numeric("sentiment_negative_pct").notNull().default("0"),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    sentimentPositivePct: numeric("sentiment_positive_pct")
+      .notNull()
+      .default("0"),
+    sentimentNeutralPct: numeric("sentiment_neutral_pct")
+      .notNull()
+      .default("0"),
+    sentimentNegativePct: numeric("sentiment_negative_pct")
+      .notNull()
+      .default("0"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
 );
 
@@ -1251,14 +1292,18 @@ export const aggBrandTrendsByDay = appSchema.table("agg_brand_trends_by_day", {
   date: date("date").notNull(),
   mentionPct: numeric("mention_pct").notNull(),
   runCount: integer("run_count").notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const aggModelBiasMatrix = appSchema.table("agg_model_bias_matrix", {
   promptId: uuid("prompt_id").notNull(),
   modelId: text("model_id").notNull(),
   topBrandIds: jsonb("top_brand_ids").notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 // ── Launchpad ────────────────────────────────────────────────────────────────

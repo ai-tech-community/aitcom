@@ -2,8 +2,22 @@
 
 import { useState } from "react";
 import { api } from "@/trpc/react";
-import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis, ResponsiveContainer } from "recharts";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Tooltip,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+} from "recharts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function CategoryLeaderboardWidget() {
   const categories = api.benchmark.listCategories.useQuery();
@@ -13,16 +27,30 @@ export function CategoryLeaderboardWidget() {
     { enabled: !!categoryId },
   );
 
-  const rows = (lb.data as Array<{ id: string; canonical_name: string; total_weighted: string }> | undefined) ?? [];
-  const data = rows.map((r) => ({ name: r.canonical_name, score: Number(r.total_weighted) }));
+  const rows =
+    (lb.data as
+      | Array<{ id: string; canonical_name: string; total_weighted: string }>
+      | undefined) ?? [];
+  const data = rows.map((r) => ({
+    name: r.canonical_name,
+    score: Number(r.total_weighted),
+  }));
 
   return (
     <div className="flex flex-col gap-3 rounded-md border p-4">
-      <header><h3 className="text-sm font-medium">Category leaderboard</h3></header>
+      <header>
+        <h3 className="text-sm font-medium">Category leaderboard</h3>
+      </header>
       <Select value={categoryId} onValueChange={setCategoryId}>
-        <SelectTrigger><SelectValue placeholder="Pick a category…" /></SelectTrigger>
+        <SelectTrigger>
+          <SelectValue placeholder="Pick a category…" />
+        </SelectTrigger>
         <SelectContent>
-          {categories.data?.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+          {categories.data?.map((c) => (
+            <SelectItem key={c.id} value={c.id}>
+              {c.name}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
       <div className="h-64">

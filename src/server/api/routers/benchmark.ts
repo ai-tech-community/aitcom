@@ -1,6 +1,6 @@
 // src/server/api/routers/benchmark.ts
 import { z } from "zod";
-import { and, asc, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -42,7 +42,10 @@ export const benchmarkRouter = createTRPCRouter({
   }),
 
   listIntents: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.select().from(benchmarkIntents).orderBy(asc(benchmarkIntents.name));
+    return ctx.db
+      .select()
+      .from(benchmarkIntents)
+      .orderBy(asc(benchmarkIntents.name));
   }),
 
   listApprovedPrompts: publicProcedure
@@ -57,10 +60,14 @@ export const benchmarkRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const conds = [eq(benchmarkPrompts.status, "approved")];
-      if (input.categoryId) conds.push(eq(benchmarkPrompts.categoryId, input.categoryId));
-      if (input.intentId) conds.push(eq(benchmarkPrompts.intentId, input.intentId));
+      if (input.categoryId)
+        conds.push(eq(benchmarkPrompts.categoryId, input.categoryId));
+      if (input.intentId)
+        conds.push(eq(benchmarkPrompts.intentId, input.intentId));
       if (input.search) {
-        conds.push(sql`lower(${benchmarkPrompts.text}) like ${"%" + input.search.toLowerCase() + "%"}`);
+        conds.push(
+          sql`lower(${benchmarkPrompts.text}) like ${"%" + input.search.toLowerCase() + "%"}`,
+        );
       }
       const offset = (input.page - 1) * input.pageSize;
       const rows = await ctx.db
@@ -148,14 +155,16 @@ export const benchmarkRouter = createTRPCRouter({
         .from(benchmarkPrompts)
         .where(eq(benchmarkPrompts.id, input.promptId))
         .limit(1);
-      if (!prompt || prompt.status !== "approved") {
+      if (prompt?.status !== "approved") {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Prompt not found or not approved.",
         });
       }
 
-      const capturedAt = input.capturedAt ? new Date(input.capturedAt) : new Date();
+      const capturedAt = input.capturedAt
+        ? new Date(input.capturedAt)
+        : new Date();
 
       try {
         const [run] = await ctx.db
@@ -216,14 +225,16 @@ export const benchmarkRouter = createTRPCRouter({
         .from(benchmarkRuns)
         .where(eq(benchmarkRuns.id, input.runId))
         .limit(1);
-      if (!run) throw new TRPCError({ code: "NOT_FOUND", message: "Run not found" });
+      if (!run)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Run not found" });
 
       const [prompt] = await ctx.db
         .select()
         .from(benchmarkPrompts)
         .where(eq(benchmarkPrompts.id, run.promptId))
         .limit(1);
-      if (!prompt) throw new TRPCError({ code: "NOT_FOUND", message: "Prompt missing" });
+      if (!prompt)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Prompt missing" });
 
       const brandRows = await ctx.db
         .select({
@@ -296,13 +307,19 @@ export const benchmarkRouter = createTRPCRouter({
         const brandsByKey = new Map<string, { id: string; slug: string }>();
         for (const b of brandRows) {
           brandsByKey.set(b.slug.toLowerCase(), { id: b.id, slug: b.slug });
-          brandsByKey.set(b.canonicalName.toLowerCase(), { id: b.id, slug: b.slug });
+          brandsByKey.set(b.canonicalName.toLowerCase(), {
+            id: b.id,
+            slug: b.slug,
+          });
           for (const a of b.aliases ?? []) {
             brandsByKey.set(a.toLowerCase(), { id: b.id, slug: b.slug });
           }
         }
 
-        const { resolved, unresolved } = splitMentions(input.mentions, brandsByKey);
+        const { resolved, unresolved } = splitMentions(
+          input.mentions,
+          brandsByKey,
+        );
 
         if (resolved.length > 0) {
           await ctx.db.insert(benchmarkBrandMentions).values(
@@ -336,12 +353,16 @@ export const benchmarkRouter = createTRPCRouter({
             const [existing] = await ctx.db
               .select({ id: brandAliasQueue.id })
               .from(brandAliasQueue)
-              .where(sql`lower(${brandAliasQueue.rawMention}) = lower(${m.rawMention})`)
+              .where(
+                sql`lower(${brandAliasQueue.rawMention}) = lower(${m.rawMention})`,
+              )
               .limit(1);
             if (existing) {
               await ctx.db
                 .update(brandAliasQueue)
-                .set({ occurrenceCount: sql`${brandAliasQueue.occurrenceCount} + 1` })
+                .set({
+                  occurrenceCount: sql`${brandAliasQueue.occurrenceCount} + 1`,
+                })
                 .where(eq(brandAliasQueue.id, existing.id));
             } else {
               await ctx.db.insert(brandAliasQueue).values({
@@ -406,8 +427,12 @@ export const benchmarkRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const since = new Date(Date.now() - input.windowDays * 86_400_000);
-      const conds = [eq(aggBrandTrendsByDay.brandId, input.brandId), sql`${aggBrandTrendsByDay.date} >= ${since.toISOString().slice(0, 10)}`];
-      if (input.modelIds?.length) conds.push(inArray(aggBrandTrendsByDay.modelId, input.modelIds));
+      const conds = [
+        eq(aggBrandTrendsByDay.brandId, input.brandId),
+        sql`${aggBrandTrendsByDay.date} >= ${since.toISOString().slice(0, 10)}`,
+      ];
+      if (input.modelIds?.length)
+        conds.push(inArray(aggBrandTrendsByDay.modelId, input.modelIds));
       return ctx.db
         .select()
         .from(aggBrandTrendsByDay)
@@ -440,8 +465,13 @@ export const benchmarkRouter = createTRPCRouter({
   getBrandProfile: publicProcedure
     .input(z.object({ slug: z.string().min(1).max(200) }))
     .query(async ({ ctx, input }) => {
-      const [brand] = await ctx.db.select().from(brands).where(eq(brands.slug, input.slug)).limit(1);
-      if (!brand) throw new TRPCError({ code: "NOT_FOUND", message: "Brand not found" });
+      const [brand] = await ctx.db
+        .select()
+        .from(brands)
+        .where(eq(brands.slug, input.slug))
+        .limit(1);
+      if (!brand)
+        throw new TRPCError({ code: "NOT_FOUND", message: "Brand not found" });
       const mentions = await ctx.db
         .select({
           runId: benchmarkBrandMentions.runId,
@@ -452,7 +482,10 @@ export const benchmarkRouter = createTRPCRouter({
           capturedAt: benchmarkRuns.capturedAt,
         })
         .from(benchmarkBrandMentions)
-        .innerJoin(benchmarkRuns, eq(benchmarkRuns.id, benchmarkBrandMentions.runId))
+        .innerJoin(
+          benchmarkRuns,
+          eq(benchmarkRuns.id, benchmarkBrandMentions.runId),
+        )
         .where(eq(benchmarkBrandMentions.brandId, brand.id))
         .orderBy(desc(benchmarkRuns.capturedAt))
         .limit(100);

@@ -6,7 +6,8 @@ export const Brands: CollectionConfig = {
   admin: {
     useAsTitle: "canonicalName",
     defaultColumns: ["canonicalName", "slug", "verified", "createdAt"],
-    description: "Canonical brand registry used for brand-bias benchmark scoring.",
+    description:
+      "Canonical brand registry used for brand-bias benchmark scoring.",
   },
   fields: [
     {

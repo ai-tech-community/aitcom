@@ -6,7 +6,8 @@ export const BenchmarkCategories: CollectionConfig = {
   admin: {
     useAsTitle: "name",
     defaultColumns: ["slug", "name", "parent", "createdAt"],
-    description: "Taxonomy categories for benchmark prompts (e.g. Finance, Health).",
+    description:
+      "Taxonomy categories for benchmark prompts (e.g. Finance, Health).",
   },
   fields: [
     {

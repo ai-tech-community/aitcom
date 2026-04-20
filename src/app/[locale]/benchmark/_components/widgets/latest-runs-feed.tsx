@@ -10,7 +10,9 @@ export function LatestRunsFeedWidget() {
       <ul className="flex flex-col divide-y text-xs">
         {runs.data?.map((r) => (
           <li key={r.id} className="flex justify-between gap-2 p-2">
-            <span className="font-mono">{r.modelProvider}/{r.modelId}</span>
+            <span className="font-mono">
+              {r.modelProvider}/{r.modelId}
+            </span>
             <span className="text-muted-foreground">
               {new Date(r.capturedAt as unknown as string).toLocaleString()}
             </span>

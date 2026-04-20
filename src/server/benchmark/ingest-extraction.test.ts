@@ -10,8 +10,22 @@ describe("splitMentions", () => {
     ]);
     const result = splitMentions(
       [
-        { rawMention: "ChatGPT", suggestedBrandSlug: "openai", rank: 1, sentiment: "positive", context: "c", confidence: 0.9 },
-        { rawMention: "WeirdTool", suggestedBrandSlug: null, rank: 2, sentiment: "neutral", context: "c", confidence: 0.4 },
+        {
+          rawMention: "ChatGPT",
+          suggestedBrandSlug: "openai",
+          rank: 1,
+          sentiment: "positive",
+          context: "c",
+          confidence: 0.9,
+        },
+        {
+          rawMention: "WeirdTool",
+          suggestedBrandSlug: null,
+          rank: 2,
+          sentiment: "neutral",
+          context: "c",
+          confidence: 0.4,
+        },
       ],
       brandsByKey,
     );

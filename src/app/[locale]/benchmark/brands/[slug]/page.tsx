@@ -22,13 +22,22 @@ export default function BrandProfilePage({
       <header className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold">{brand.canonicalName}</h1>
         {brand.website && (
-          <a className="text-sm text-blue-600 underline" href={brand.website} target="_blank" rel="noreferrer">
+          <a
+            className="text-sm text-blue-600 underline"
+            href={brand.website}
+            target="_blank"
+            rel="noreferrer"
+          >
             {brand.website}
           </a>
         )}
         {brand.aliases.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {brand.aliases.map((a) => (<Badge key={a} variant="secondary">{a}</Badge>))}
+            {brand.aliases.map((a) => (
+              <Badge key={a} variant="secondary">
+                {a}
+              </Badge>
+            ))}
           </div>
         )}
       </header>
@@ -37,17 +46,32 @@ export default function BrandProfilePage({
         <h2 className="text-lg font-medium">Recent mentions across models</h2>
         <ul className="flex flex-col gap-2">
           {mentions.map((m, i) => (
-            <li key={i} className="flex flex-col gap-1 rounded-md border p-3 text-sm">
+            <li
+              key={i}
+              className="flex flex-col gap-1 rounded-md border p-3 text-sm"
+            >
               <div className="flex items-center justify-between">
-                <span className="font-mono text-xs">{m.modelProvider}/{m.modelId}</span>
-                <Badge variant={
-                  m.sentiment === "positive" ? "default"
-                  : m.sentiment === "negative" ? "destructive"
-                  : "secondary"
-                }>{m.sentiment}</Badge>
+                <span className="font-mono text-xs">
+                  {m.modelProvider}/{m.modelId}
+                </span>
+                <Badge
+                  variant={
+                    m.sentiment === "positive"
+                      ? "default"
+                      : m.sentiment === "negative"
+                        ? "destructive"
+                        : "secondary"
+                  }
+                >
+                  {m.sentiment}
+                </Badge>
               </div>
-              {m.context && <p className="text-muted-foreground">"{m.context}"</p>}
-              <span className="text-xs text-muted-foreground">
+              {m.context && (
+                <p className="text-muted-foreground">
+                  &ldquo;{m.context}&rdquo;
+                </p>
+              )}
+              <span className="text-muted-foreground text-xs">
                 {new Date(m.capturedAt as unknown as string).toLocaleString()}
               </span>
             </li>

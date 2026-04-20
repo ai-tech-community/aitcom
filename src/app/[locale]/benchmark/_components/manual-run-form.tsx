@@ -37,7 +37,7 @@ export function ManualRunForm({
   });
 
   return (
-    <div className="flex flex-col gap-2 rounded-md bg-muted/30 p-3">
+    <div className="bg-muted/30 flex flex-col gap-2 rounded-md p-3">
       <div className="grid gap-2 md:grid-cols-2">
         <Select value={provider} onValueChange={setProvider}>
           <SelectTrigger>
@@ -73,7 +73,8 @@ export function ManualRunForm({
           onClick={() =>
             submit.mutate({
               promptId,
-              modelProvider: provider as (typeof BENCHMARK_MODEL_PROVIDERS)[number],
+              modelProvider:
+                provider as (typeof BENCHMARK_MODEL_PROVIDERS)[number],
               modelId: modelId.trim(),
               rawAnswer,
             })

@@ -5,7 +5,13 @@ export const BrandAliasQueue: CollectionConfig = {
   dbName: "brand_alias_queue",
   admin: {
     useAsTitle: "rawMention",
-    defaultColumns: ["rawMention", "suggestedBrand", "status", "occurrenceCount", "createdAt"],
+    defaultColumns: [
+      "rawMention",
+      "suggestedBrand",
+      "status",
+      "occurrenceCount",
+      "createdAt",
+    ],
     description:
       "Unrecognised brand mentions surfaced by the extraction pipeline, awaiting moderator triage.",
   },
@@ -34,7 +40,8 @@ export const BrandAliasQueue: CollectionConfig = {
       admin: {
         readOnly: true,
         position: "sidebar",
-        description: "benchmark_run UUID (read-only reference; no Payload collection for runs).",
+        description:
+          "benchmark_run UUID (read-only reference; no Payload collection for runs).",
       },
     },
     {

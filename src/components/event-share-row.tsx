@@ -25,8 +25,7 @@ export function EventShareRow({ slug, title }: EventShareRowProps) {
     }
   }, [slug]);
 
-  const shareUrl =
-    typeof window !== "undefined" ? window.location.href : "";
+  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(title);
 

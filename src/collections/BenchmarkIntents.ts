@@ -6,7 +6,8 @@ export const BenchmarkIntents: CollectionConfig = {
   admin: {
     useAsTitle: "name",
     defaultColumns: ["slug", "name", "createdAt"],
-    description: "Intent labels for benchmark prompts (e.g. recommendation, comparison).",
+    description:
+      "Intent labels for benchmark prompts (e.g. recommendation, comparison).",
   },
   fields: [
     {

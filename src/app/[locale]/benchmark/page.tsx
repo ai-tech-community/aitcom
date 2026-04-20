@@ -19,9 +19,15 @@ export default function BenchmarkPage() {
           <TabsTrigger value="run">Run Prompts</TabsTrigger>
           <TabsTrigger value="submit">Submit Prompt</TabsTrigger>
         </TabsList>
-        <TabsContent value="dashboard"><DashboardTab /></TabsContent>
-        <TabsContent value="run"><RunPromptsTab /></TabsContent>
-        <TabsContent value="submit"><SubmitPromptTab /></TabsContent>
+        <TabsContent value="dashboard">
+          <DashboardTab />
+        </TabsContent>
+        <TabsContent value="run">
+          <RunPromptsTab />
+        </TabsContent>
+        <TabsContent value="submit">
+          <SubmitPromptTab />
+        </TabsContent>
       </Tabs>
     </main>
   );

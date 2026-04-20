@@ -76,7 +76,7 @@ export function RunPromptsTab() {
       <ul className="grid gap-3 md:grid-cols-2">
         {prompts.data?.map((p) => (
           <li key={p.id} className="flex flex-col gap-3 rounded-md border p-4">
-            <p className="font-medium leading-snug">{p.text}</p>
+            <p className="leading-snug font-medium">{p.text}</p>
             <div className="flex gap-2">
               <Button size="sm" onClick={() => setAgentFor(p.id)}>
                 Run with my agent
@@ -92,7 +92,10 @@ export function RunPromptsTab() {
               </Button>
             </div>
             {manualFor === p.id && (
-              <ManualRunForm promptId={p.id} onDone={() => setManualFor(null)} />
+              <ManualRunForm
+                promptId={p.id}
+                onDone={() => setManualFor(null)}
+              />
             )}
           </li>
         ))}
@@ -102,14 +105,14 @@ export function RunPromptsTab() {
         <h2 className="text-lg font-medium">My recent runs</h2>
         <ul className="flex flex-col divide-y rounded-md border text-sm">
           {mine.data?.runs.length === 0 && (
-            <li className="p-3 text-muted-foreground">No runs yet.</li>
+            <li className="text-muted-foreground p-3">No runs yet.</li>
           )}
           {mine.data?.runs.map((r) => (
             <li key={r.id} className="flex justify-between gap-3 p-3">
               <span className="truncate">
                 {r.modelProvider} · {r.modelId}
               </span>
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              <span className="text-muted-foreground text-xs tracking-wide uppercase">
                 {r.extractionStatus}
               </span>
             </li>

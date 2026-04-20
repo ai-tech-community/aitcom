@@ -16,7 +16,10 @@ const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY });
 async function trpc<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}/api/trpc/${path}?batch=1`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${API_KEY}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${API_KEY}`,
+    },
     body: JSON.stringify({ 0: { json: body } }),
   });
   const data = await res.json();
@@ -36,7 +39,9 @@ async function processRun(runId: string) {
     messages: [{ role: "user", content: fetched.renderedPrompt }],
   });
 
-  const text = resp.content.map((c) => (c.type === "text" ? c.text : "")).join("");
+  const text = resp.content
+    .map((c) => (c.type === "text" ? c.text : ""))
+    .join("");
   const json = JSON.parse(text);
 
   await trpc("benchmark.submitExtraction", {
@@ -53,7 +58,7 @@ if (runIds.length === 0) {
   process.exit(1);
 }
 
-(async () => {
+void (async () => {
   for (const id of runIds) {
     try {
       await processRun(id);

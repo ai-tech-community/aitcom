@@ -117,7 +117,9 @@ async function main() {
       console.warn("No 'recommendation' intent found; skipping prompt seed.");
     }
   } else {
-    console.warn("No users in DB; skipping prompt seed. Run seed again after creating at least one user.");
+    console.warn(
+      "No users in DB; skipping prompt seed. Run seed again after creating at least one user.",
+    );
   }
 
   console.log("Seeded benchmark taxonomy + starter brands.");

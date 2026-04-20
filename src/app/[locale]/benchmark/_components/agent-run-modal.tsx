@@ -35,7 +35,12 @@ const res = await fetch("https://ait.com/api/trpc/benchmark.submitRun?batch=1", 
 console.log(await res.json());`;
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Run with your agent</DialogTitle>
@@ -44,7 +49,7 @@ console.log(await res.json());`;
             submission per prompt/model per day.
           </DialogDescription>
         </DialogHeader>
-        <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs">
+        <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">
           <code>{snippet}</code>
         </pre>
         <DialogFooter>

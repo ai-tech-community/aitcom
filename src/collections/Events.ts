@@ -38,9 +38,7 @@ const geocodeAfterChange: CollectionAfterChangeHook = async ({
   const alreadyGeocoded =
     typeof d.latitude === "number" && typeof d.longitude === "number";
   const mustGeocode =
-    operation === "create" ||
-    locationChanged(d, prev) ||
-    !alreadyGeocoded;
+    operation === "create" || locationChanged(d, prev) || !alreadyGeocoded;
 
   if (!mustGeocode) return;
 

@@ -2,10 +2,19 @@
 
 import { useState } from "react";
 import { api } from "@/trpc/react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function ModelBiasMatrixWidget() {
-  const prompts = api.benchmark.listApprovedPrompts.useQuery({ page: 1, pageSize: 50 });
+  const prompts = api.benchmark.listApprovedPrompts.useQuery({
+    page: 1,
+    pageSize: 50,
+  });
   const [promptId, setPromptId] = useState<string>("");
   const dash = api.benchmark.getPromptDashboard.useQuery(
     { promptId, windowDays: 30 },
@@ -13,7 +22,9 @@ export function ModelBiasMatrixWidget() {
   );
 
   const matrix = dash.data?.matrixRows ?? [];
-  const allBrands = Array.from(new Set(matrix.flatMap((m) => (m.topBrandIds as string[]) ?? []))).slice(0, 8);
+  const allBrands = Array.from(
+    new Set(matrix.flatMap((m) => (m.topBrandIds as string[]) ?? [])),
+  ).slice(0, 8);
   const models = matrix.map((m) => m.modelId);
 
   return (
@@ -22,9 +33,15 @@ export function ModelBiasMatrixWidget() {
         <h3 className="text-sm font-medium">Model bias matrix</h3>
       </header>
       <Select value={promptId} onValueChange={setPromptId}>
-        <SelectTrigger><SelectValue placeholder="Pick a prompt…" /></SelectTrigger>
+        <SelectTrigger>
+          <SelectValue placeholder="Pick a prompt…" />
+        </SelectTrigger>
         <SelectContent>
-          {prompts.data?.map((p) => (<SelectItem key={p.id} value={p.id}>{p.text}</SelectItem>))}
+          {prompts.data?.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.text}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
       {models.length > 0 && (
@@ -33,7 +50,11 @@ export function ModelBiasMatrixWidget() {
             <thead>
               <tr>
                 <th className="border p-1 text-left">Model</th>
-                {allBrands.map((b) => (<th key={b} className="border p-1">{b.slice(0, 8)}</th>))}
+                {allBrands.map((b) => (
+                  <th key={b} className="border p-1">
+                    {b.slice(0, 8)}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -49,7 +70,10 @@ export function ModelBiasMatrixWidget() {
                         <td
                           key={b}
                           className="border p-1 text-center"
-                          style={{ background: `rgba(37, 99, 235, ${intensity})`, color: intensity > 0.5 ? "white" : undefined }}
+                          style={{
+                            background: `rgba(37, 99, 235, ${intensity})`,
+                            color: intensity > 0.5 ? "white" : undefined,
+                          }}
                         >
                           {idx < 0 ? "·" : `#${idx + 1}`}
                         </td>

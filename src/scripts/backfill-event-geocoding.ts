@@ -37,9 +37,7 @@ async function main() {
     (e) => e.latitude == null || e.longitude == null,
   );
 
-  console.log(
-    `Events total=${events.length} needGeocode=${toProcess.length}`,
-  );
+  console.log(`Events total=${events.length} needGeocode=${toProcess.length}`);
 
   let ok = 0;
   let fail = 0;

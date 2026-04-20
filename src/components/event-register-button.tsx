@@ -69,7 +69,9 @@ export function EventRegisterButton({
       if (data.alreadyMarked) {
         toast.info("Already marked as going.");
       } else {
-        toast.success("Marked as going. Don't forget to register on the event site.");
+        toast.success(
+          "Marked as going. Don't forget to register on the event site.",
+        );
       }
       void utils.events.registrationStatus.invalidate({ eventId });
       void utils.events.myRegistrations.invalidate();
@@ -91,7 +93,9 @@ export function EventRegisterButton({
   });
 
   if (!isLoggedIn) {
-    const signInLabel = isExternal ? "Sign in to mark as going" : "Sign in to register";
+    const signInLabel = isExternal
+      ? "Sign in to mark as going"
+      : "Sign in to register";
     return (
       <div className="space-y-3">
         <Button
@@ -210,7 +214,13 @@ export function EventRegisterButton({
   );
 }
 
-function ExternalSiteLink({ url, primary }: { url: string; primary?: boolean }) {
+function ExternalSiteLink({
+  url,
+  primary,
+}: {
+  url: string;
+  primary?: boolean;
+}) {
   const base =
     "w-full inline-flex items-center justify-center rounded-md px-4 py-2 font-mono text-xs tracking-wider transition-colors";
   const styles = primary
