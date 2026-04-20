@@ -4,7 +4,7 @@
  * Idempotent — uses onConflictDoNothing so it is safe to re-run.
  *
  * Usage:
- *   npx tsx src/scripts/seed-benchmark.ts
+ *   pnpm benchmark:seed
  */
 
 import { db } from "@/server/db";

@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "scripts": {
-    "benchmark:seed": "npx tsx src/scripts/seed-benchmark.ts",
+    "benchmark:seed": "pnpm dlx tsx --env-file=.env src/scripts/seed-benchmark.ts",
     "build": "next build",
     "check": "next lint && tsc --noEmit",
     "db:generate": "drizzle-kit generate",

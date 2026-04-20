@@ -44,8 +44,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       "intent_id" uuid NOT NULL REFERENCES "app"."benchmark_intent"("id") ON DELETE RESTRICT,
       "locale" text NOT NULL DEFAULT 'en-US',
       "status" text NOT NULL DEFAULT 'pending',
-      "submitted_by_user_id" text NOT NULL REFERENCES "public"."user"("id"),
-      "approved_by_user_id" text REFERENCES "public"."user"("id"),
+      "submitted_by_user_id" text NOT NULL REFERENCES "app"."user"("id"),
+      "approved_by_user_id" text REFERENCES "app"."user"("id"),
       "approved_at" timestamp with time zone,
       "notes" text,
       "created_at" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -78,7 +78,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     CREATE TABLE "app"."benchmark_run" (
       "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       "prompt_id" uuid NOT NULL REFERENCES "app"."benchmark_prompt"("id") ON DELETE CASCADE,
-      "submitted_by_user_id" text NOT NULL REFERENCES "public"."user"("id"),
+      "submitted_by_user_id" text NOT NULL REFERENCES "app"."user"("id"),
       "agent_id" uuid,
       "model_provider" text NOT NULL,
       "model_id" text NOT NULL,
@@ -97,12 +97,14 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       ON "app"."benchmark_run"("prompt_id", "model_id", "captured_at");
     CREATE INDEX "benchmark_run_extraction_status_idx"
       ON "app"."benchmark_run"("extraction_status");
-    CREATE UNIQUE INDEX "benchmark_run_dedupe_idx"
+    -- Dedupe enforced at application layer (see submitRun in benchmark router).
+    -- Functional unique index on date_trunc() fails IMMUTABLE check.
+    CREATE INDEX "benchmark_run_user_prompt_model_idx"
       ON "app"."benchmark_run" (
         "submitted_by_user_id",
         "prompt_id",
         "model_id",
-        date_trunc('day', "captured_at")
+        "captured_at"
       );
   `);
 
@@ -133,7 +135,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       "run_id" uuid REFERENCES "app"."benchmark_run"("id") ON DELETE SET NULL,
       "occurrence_count" integer NOT NULL DEFAULT 1,
       "status" text NOT NULL DEFAULT 'pending',
-      "reviewed_by_user_id" text REFERENCES "public"."user"("id"),
+      "reviewed_by_user_id" text REFERENCES "app"."user"("id"),
       "reviewed_at" timestamp with time zone,
       "created_at" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
     );

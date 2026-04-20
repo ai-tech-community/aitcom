@@ -166,6 +166,31 @@ export const benchmarkRouter = createTRPCRouter({
         ? new Date(input.capturedAt)
         : new Date();
 
+      const dayStart = new Date(capturedAt);
+      dayStart.setUTCHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+      const [existing] = await ctx.db
+        .select({ id: benchmarkRuns.id })
+        .from(benchmarkRuns)
+        .where(
+          and(
+            eq(benchmarkRuns.submittedByUserId, userId),
+            eq(benchmarkRuns.promptId, input.promptId),
+            eq(benchmarkRuns.modelId, input.modelId),
+            sql`${benchmarkRuns.capturedAt} >= ${dayStart.toISOString()}`,
+            sql`${benchmarkRuns.capturedAt} < ${dayEnd.toISOString()}`,
+          ),
+        )
+        .limit(1);
+      if (existing) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "You already submitted this prompt/model combo today. Try again tomorrow.",
+        });
+      }
+
       try {
         const [run] = await ctx.db
           .insert(benchmarkRuns)
@@ -206,13 +231,6 @@ export const benchmarkRouter = createTRPCRouter({
 
         return run;
       } catch (err) {
-        if (String(err).includes("benchmark_run_dedupe_idx")) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message:
-              "You already submitted this prompt/model combo today. Try again tomorrow.",
-          });
-        }
         throw err;
       }
     }),
