@@ -138,6 +138,7 @@ export default buildConfig({
   editor: lexicalEditor(),
   db: postgresAdapter({
     pool: { connectionString: payloadDatabaseUrl },
+    push: false,
   }),
   localization: {
     locales: [
