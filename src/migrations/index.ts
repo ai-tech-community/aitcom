@@ -8,6 +8,7 @@ import * as migration_20260320_backfill_member_profiles from "./20260320_backfil
 import * as migration_20260326_community_feed_schema from "./20260326_community_feed_schema";
 import * as migration_20260419_events_discovery_metadata from "./20260419_events_discovery_metadata";
 import * as migration_20260419_143000_events_geocoding from "./20260419_143000_events_geocoding";
+import * as migration_20260420_events_summary_audience_backfill from "./20260420_events_summary_audience_backfill";
 import * as migration_20260420_brand_benchmark from "./20260420_brand_benchmark";
 
 export const migrations = [
@@ -60,6 +61,11 @@ export const migrations = [
     up: migration_20260419_143000_events_geocoding.up,
     down: migration_20260419_143000_events_geocoding.down,
     name: "20260419_143000_events_geocoding",
+  },
+  {
+    up: migration_20260420_events_summary_audience_backfill.up,
+    down: migration_20260420_events_summary_audience_backfill.down,
+    name: "20260420_events_summary_audience_backfill",
   },
   {
     up: migration_20260420_brand_benchmark.up,
