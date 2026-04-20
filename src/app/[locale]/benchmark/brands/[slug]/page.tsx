@@ -3,17 +3,19 @@
 import { use } from "react";
 import { api } from "@/trpc/react";
 import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "next-intl";
 
 export default function BrandProfilePage({
   params,
 }: {
   params: Promise<{ slug: string; locale: string }>;
 }) {
+  const t = useTranslations("benchmark");
   const { slug } = use(params);
   const q = api.benchmark.getBrandProfile.useQuery({ slug });
 
-  if (q.isLoading) return <main className="p-6">Loading…</main>;
-  if (q.error) return <main className="p-6">Brand not found.</main>;
+  if (q.isLoading) return <main className="p-6">{t("brandProfile.loading")}</main>;
+  if (q.error) return <main className="p-6">{t("brandProfile.notFound")}</main>;
 
   const { brand, mentions } = q.data!;
 
@@ -43,7 +45,7 @@ export default function BrandProfilePage({
       </header>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Recent mentions across models</h2>
+        <h2 className="text-lg font-medium">{t("brandProfile.recentMentions")}</h2>
         <ul className="flex flex-col gap-2">
           {mentions.map((m, i) => (
             <li
@@ -63,7 +65,7 @@ export default function BrandProfilePage({
                         : "secondary"
                   }
                 >
-                  {m.sentiment}
+                  {t(`brandProfile.sentiment.${m.sentiment as "positive" | "negative" | "neutral"}`)}
                 </Badge>
               </div>
               {m.context && (
