@@ -1,184 +1,34 @@
-import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
-import { api } from "@/trpc/server";
-import { SubmitQuestionForm } from "@/components/benchmark/submit-question-form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SubmitPromptTab } from "./_components/submit-prompt-tab";
+import { RunPromptsTab } from "./_components/run-prompts-tab";
+import { DashboardTab } from "./_components/dashboard-tab";
 
-export const metadata: Metadata = {
-  title: "The AIT Benchmark",
-  description:
-    "A community-built AI evaluation dataset. Members write the questions. AI agents take the test.",
-  ...buildOgMeta(
-    "The AIT Benchmark",
-    "A community-built AI evaluation dataset. Members write the questions. AI agents take the test.",
-    "Benchmark",
-  ),
-  alternates: buildAlternates("/benchmark"),
-};
-
-export default async function BenchmarkPage() {
-  const [leaderboard, questionStats, t] = await Promise.all([
-    api.benchmark.getLeaderboard({}).catch(() => []),
-    api.benchmark.getQuestionStats().catch(() => []),
-    getTranslations("benchmark"),
-  ]);
-
+export default function BenchmarkPage() {
   return (
-    <main className="mx-auto max-w-5xl space-y-16 px-4 py-12">
-      {/* HERO */}
-      <section className="text-center">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-          {t("title")}
-        </h1>
-        <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-lg">
-          {t("description")}
+    <main className="container mx-auto flex flex-col gap-6 p-6">
+      <header className="flex flex-col gap-2">
+        <h1 className="text-3xl font-semibold">AI Brand Bias Benchmark</h1>
+        <p className="text-muted-foreground">
+          Community-curated prompts, community-run models, shared brand trends.
         </p>
-      </section>
+      </header>
 
-      {/* TWO TRACKS */}
-      <section className="grid gap-6 sm:grid-cols-2">
-        <div className="bg-card rounded-lg border p-6">
-          <h2 className="text-xl font-semibold">{t("writeQuestions")}</h2>
-          <p className="text-muted-foreground mt-2">
-            {t("writeQuestionsDesc")}
-          </p>
-        </div>
-        <div className="bg-card rounded-lg border p-6">
-          <h2 className="text-xl font-semibold">{t("runBenchmark")}</h2>
-          <p className="text-muted-foreground mt-2">{t("runBenchmarkDesc")}</p>
-        </div>
-      </section>
-
-      {/* METHODOLOGY */}
-      <section>
-        <h2 className="text-2xl font-bold">{t("methodology")}</h2>
-        <div className="bg-muted/50 text-muted-foreground mt-4 rounded-lg border p-6 text-sm leading-relaxed">
-          <p>{t("methodologyDesc")}</p>
-        </div>
-      </section>
-
-      {/* LEADERBOARD */}
-      <section>
-        <h2 className="text-2xl font-bold">{t("leaderboard")}</h2>
-        {leaderboard.length === 0 ? (
-          <p className="text-muted-foreground mt-4">{t("noRunsYet")}</p>
-        ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-muted-foreground border-b text-left">
-                  <th className="pr-4 pb-2">{t("rank")}</th>
-                  <th className="pr-4 pb-2">{t("agent")}</th>
-                  <th className="pr-4 pb-2">{t("score")}</th>
-                  <th className="pr-4 pb-2">{t("correctTotal")}</th>
-                  <th className="pr-4 pb-2">{t("topic")}</th>
-                  <th className="pr-4 pb-2">{t("model")}</th>
-                  <th className="pb-2">{t("date")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaderboard.map((run, i) => (
-                  <tr key={run.id} className="border-b">
-                    <td className="py-2 pr-4">{i + 1}</td>
-                    <td className="py-2 pr-4">{run.agentName}</td>
-                    <td className="py-2 pr-4">{Number(run.scorePercent)}%</td>
-                    <td className="py-2 pr-4">
-                      {run.correctAnswers}/{run.totalQuestions}
-                    </td>
-                    <td className="py-2 pr-4">
-                      {run.topicFilter ?? t("topicAll")}
-                    </td>
-                    <td className="py-2 pr-4">{run.modelId ?? "—"}</td>
-                    <td className="py-2">
-                      {new Date(run.createdAt).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* QUESTION BROWSER */}
-      <section>
-        <h2 className="text-2xl font-bold">{t("questionBank")}</h2>
-        {questionStats.length === 0 ? (
-          <p className="text-muted-foreground mt-4">{t("noQuestionsYet")}</p>
-        ) : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {questionStats.map((q) => (
-              <div key={q.id} className="bg-card rounded-lg border p-4">
-                <div className="flex gap-2">
-                  <span className="bg-primary/10 text-primary rounded-full px-2 py-0.5 text-xs font-medium">
-                    {q.topic}
-                  </span>
-                  <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium">
-                    {q.difficulty}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm">
-                  {q.question.length > 100
-                    ? `${q.question.slice(0, 100)}…`
-                    : q.question}
-                </p>
-                <div className="mt-3">
-                  {q.totalAttempts > 0 ? (
-                    <div>
-                      <div className="text-muted-foreground flex justify-between text-xs">
-                        <span>{t("accuracy")}</span>
-                        <span>{q.accuracyPercent}%</span>
-                      </div>
-                      <div className="bg-muted mt-1 h-2 w-full overflow-hidden rounded-full">
-                        <div
-                          className="bg-primary h-full rounded-full"
-                          style={{ width: `${q.accuracyPercent}%` }}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">
-                      {t("notYetTested")}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* SUBMIT FORM */}
-      <section>
-        <h2 className="text-2xl font-bold">{t("contributeQuestion")}</h2>
-        <div className="mt-4">
-          <SubmitQuestionForm />
-        </div>
-      </section>
-
-      {/* CONNECT AGENT */}
-      <section>
-        <h2 className="text-2xl font-bold">{t("connectAgent")}</h2>
-        <div className="mt-4 space-y-4">
-          <p className="text-muted-foreground">
-            {t("connectAgentCallPrefix")}{" "}
-            <code className="text-sm">getBenchmarkQuestions</code>{" "}
-            {t("connectAgentCallMiddle")}{" "}
-            <code className="text-sm">submitBenchmarkAnswers</code>{" "}
-            {t("connectAgentCallSuffix")}
-          </p>
-          <pre className="bg-muted overflow-x-auto rounded-lg border p-4 text-sm">
-            {`fetch("/api/trpc/agent.getBenchmarkQuestions", {
-  method: "GET",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer <your-agent-token>"
-  }
-})`}
-          </pre>
-          <p className="text-muted-foreground">{t("connectAgentDocs")}</p>
-        </div>
-      </section>
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="run">Run Prompts</TabsTrigger>
+          <TabsTrigger value="submit">Submit Prompt</TabsTrigger>
+        </TabsList>
+        <TabsContent value="dashboard">
+          <DashboardTab />
+        </TabsContent>
+        <TabsContent value="run">
+          <RunPromptsTab />
+        </TabsContent>
+        <TabsContent value="submit">
+          <SubmitPromptTab />
+        </TabsContent>
+      </Tabs>
     </main>
   );
 }

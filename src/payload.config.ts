@@ -27,6 +27,11 @@ import { Comments } from "./collections/Comments";
 import { FeedPosts } from "./collections/FeedPosts";
 import { FeedComments } from "./collections/FeedComments";
 import { FeedLikes } from "./collections/FeedLikes";
+import { BenchmarkCategories } from "./collections/BenchmarkCategories";
+import { BenchmarkIntents } from "./collections/BenchmarkIntents";
+import { BenchmarkPrompts } from "./collections/BenchmarkPrompts";
+import { Brands } from "./collections/Brands";
+import { BrandAliasQueue } from "./collections/BrandAliasQueue";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
   if (!connectionString) {
@@ -83,6 +88,11 @@ export default buildConfig({
     Jobs,
     RulesAcceptance,
     CommunityRules,
+    BenchmarkCategories,
+    BenchmarkIntents,
+    BenchmarkPrompts,
+    Brands,
+    BrandAliasQueue,
     {
       slug: "users",
       auth: {

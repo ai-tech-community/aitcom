@@ -19,6 +19,7 @@ const CATEGORY_PREFIXES: Record<string, string[]> = {
   content: ["article.", "knowledge."],
   events: ["event."],
   community: ["idea."],
+  benchmark: ["benchmark."],
 };
 
 const MAX_EVENTS_PER_RUN = 20;

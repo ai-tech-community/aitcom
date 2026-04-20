@@ -4,6 +4,7 @@
   "private": false,
   "type": "module",
   "scripts": {
+    "benchmark:seed": "pnpm dlx tsx --env-file=.env src/scripts/seed-benchmark.ts",
     "build": "next build",
     "check": "next lint && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
@@ -22,6 +23,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@auth/drizzle-adapter": "^1.7.2",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@mollie/api-client": "^4.4.0",
@@ -69,6 +71,7 @@
     "react-jsx-parser": "^2.4.1",
     "react-leaflet": "^5.0.0",
     "react-markdown": "^10.1.0",
+    "recharts": "^3.8.1",
     "remark-gfm": "^4.0.1",
     "resend": "^6.9.2",
     "server-only": "^0.0.1",

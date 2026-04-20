@@ -478,6 +478,7 @@ export const agentManagementRouter = createTRPCRouter({
               "content",
               "events",
               "community",
+              "benchmark",
             ]),
           )
           .min(1, "Select at least one event category"),

@@ -87,6 +87,11 @@ export interface Config {
     jobs: Job;
     "rules-acceptance": RulesAcceptance;
     "community-rules": CommunityRule;
+    "benchmark-categories": BenchmarkCategory;
+    "benchmark-intents": BenchmarkIntent;
+    "benchmark-prompts": BenchmarkPrompt;
+    brands: Brand;
+    "brand-alias-queue": BrandAliasQueue;
     users: User;
     "payload-kv": PayloadKv;
     "payload-locked-documents": PayloadLockedDocument;
@@ -121,6 +126,19 @@ export interface Config {
       | RulesAcceptanceSelect<false>
       | RulesAcceptanceSelect<true>;
     "community-rules": CommunityRulesSelect<false> | CommunityRulesSelect<true>;
+    "benchmark-categories":
+      | BenchmarkCategoriesSelect<false>
+      | BenchmarkCategoriesSelect<true>;
+    "benchmark-intents":
+      | BenchmarkIntentsSelect<false>
+      | BenchmarkIntentsSelect<true>;
+    "benchmark-prompts":
+      | BenchmarkPromptsSelect<false>
+      | BenchmarkPromptsSelect<true>;
+    brands: BrandsSelect<false> | BrandsSelect<true>;
+    "brand-alias-queue":
+      | BrandAliasQueueSelect<false>
+      | BrandAliasQueueSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     "payload-kv": PayloadKvSelect<false> | PayloadKvSelect<true>;
     "payload-locked-documents":
@@ -986,6 +1004,58 @@ export interface CommunityRule {
   createdAt: string;
 }
 /**
+ * Taxonomy categories for benchmark prompts (e.g. Finance, Health).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "benchmark-categories".
+ */
+export interface BenchmarkCategory {
+  id: number;
+  slug: string;
+  name: string;
+  parent?: (number | null) | BenchmarkCategory;
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Intent labels for benchmark prompts (e.g. recommendation, comparison).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "benchmark-intents".
+ */
+export interface BenchmarkIntent {
+  id: number;
+  slug: string;
+  name: string;
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Crowd-sourced prompts awaiting moderator approval before entering the benchmark.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "benchmark-prompts".
+ */
+export interface BenchmarkPrompt {
+  id: number;
+  text: string;
+  status: "pending" | "approved" | "rejected";
+  category: number | BenchmarkCategory;
+  intent: number | BenchmarkIntent;
+  locale: string;
+  submittedByUser: number | User;
+  approvedByUser?: (number | null) | User;
+  approvedAt?: string | null;
+  /**
+   * Internal moderation notes.
+   */
+  notes?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users".
  */
@@ -1011,6 +1081,52 @@ export interface User {
     | null;
   password?: string | null;
   collection: "users";
+}
+/**
+ * Canonical brand registry used for brand-bias benchmark scoring.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brands".
+ */
+export interface Brand {
+  id: number;
+  canonicalName: string;
+  slug: string;
+  /**
+   * Alternative names/spellings that map to this brand.
+   */
+  aliases?:
+    | {
+        value: string;
+        id?: string | null;
+      }[]
+    | null;
+  website?: string | null;
+  categoryIds?: (number | BenchmarkCategory)[] | null;
+  verified?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Unrecognised brand mentions surfaced by the extraction pipeline, awaiting moderator triage.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brand-alias-queue".
+ */
+export interface BrandAliasQueue {
+  id: number;
+  rawMention: string;
+  suggestedBrand?: (number | null) | Brand;
+  /**
+   * benchmark_run UUID (read-only reference; no Payload collection for runs).
+   */
+  runId?: string | null;
+  occurrenceCount?: number | null;
+  status: "pending" | "merged" | "rejected";
+  reviewedByUser?: (number | null) | User;
+  reviewedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1115,6 +1231,26 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: "community-rules";
         value: number | CommunityRule;
+      } | null)
+    | ({
+        relationTo: "benchmark-categories";
+        value: number | BenchmarkCategory;
+      } | null)
+    | ({
+        relationTo: "benchmark-intents";
+        value: number | BenchmarkIntent;
+      } | null)
+    | ({
+        relationTo: "benchmark-prompts";
+        value: number | BenchmarkPrompt;
+      } | null)
+    | ({
+        relationTo: "brands";
+        value: number | Brand;
+      } | null)
+    | ({
+        relationTo: "brand-alias-queue";
+        value: number | BrandAliasQueue;
       } | null)
     | ({
         relationTo: "users";
@@ -1621,6 +1757,80 @@ export interface CommunityRulesSelect<T extends boolean = true> {
         content?: T;
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "benchmark-categories_select".
+ */
+export interface BenchmarkCategoriesSelect<T extends boolean = true> {
+  slug?: T;
+  name?: T;
+  parent?: T;
+  description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "benchmark-intents_select".
+ */
+export interface BenchmarkIntentsSelect<T extends boolean = true> {
+  slug?: T;
+  name?: T;
+  description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "benchmark-prompts_select".
+ */
+export interface BenchmarkPromptsSelect<T extends boolean = true> {
+  text?: T;
+  status?: T;
+  category?: T;
+  intent?: T;
+  locale?: T;
+  submittedByUser?: T;
+  approvedByUser?: T;
+  approvedAt?: T;
+  notes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brands_select".
+ */
+export interface BrandsSelect<T extends boolean = true> {
+  canonicalName?: T;
+  slug?: T;
+  aliases?:
+    | T
+    | {
+        value?: T;
+        id?: T;
+      };
+  website?: T;
+  categoryIds?: T;
+  verified?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brand-alias-queue_select".
+ */
+export interface BrandAliasQueueSelect<T extends boolean = true> {
+  rawMention?: T;
+  suggestedBrand?: T;
+  runId?: T;
+  occurrenceCount?: T;
+  status?: T;
+  reviewedByUser?: T;
+  reviewedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
