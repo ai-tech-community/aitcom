@@ -23,6 +23,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "@auth/drizzle-adapter": "^1.7.2",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@mollie/api-client": "^4.4.0",
