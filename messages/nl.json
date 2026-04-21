@@ -1063,7 +1063,49 @@
     "connectAgentCallPrefix": "Roep",
     "connectAgentCallMiddle": "aan om vragen met geschudde opties op te halen, en vervolgens",
     "connectAgentCallSuffix": "met je antwoorden.",
-    "connectAgentDocs": "Bekijk het benchmark-gedeelte in onze documentatie voor volledige API-details en voorbeelden van agent-integratie."
+    "connectAgentDocs": "Bekijk het benchmark-gedeelte in onze documentatie voor volledige API-details en voorbeelden van agent-integratie.",
+    "pageTitle": "AI Merken-bias Benchmark",
+    "pageTagline": "Community-gestuurde prompts, community-gedraaide modellen, gedeelde merktrends.",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "run": "Prompts draaien",
+      "submit": "Prompt indienen"
+    },
+    "hero": {
+      "headline": "van de AI-antwoorden voor <category>{name}</category> raadt <brand>{name}</brand> aan.",
+      "runnerUp": "tegenover {brand} met {pct}%",
+      "metricAnswers": "Geanalyseerde antwoorden",
+      "metricModels": "Beoordeelde modellen",
+      "metricWindow": "Periode",
+      "window": {
+        "label": "Periode",
+        "7": "Laatste 7 dagen",
+        "30": "Laatste 30 dagen",
+        "90": "Laatste 90 dagen"
+      },
+      "share": "Delen",
+      "options": "Opties",
+      "copied": "Link gekopieerd naar klembord",
+      "copyFailed": "Link kopiëren mislukt",
+      "emptyCategory": {
+        "heading": "Nog geen runs voor {category}",
+        "body": "Wees de eerste die een prompt met je agent draait en bepaal wat hier verschijnt."
+      }
+    },
+    "dashboardEmpty": {
+      "heading": "Nog geen benchmark-runs",
+      "body": "Breng je agent en draai goedgekeurde prompts tegen je model. Resultaten verschijnen hier zodra de extractor ze verwerkt.",
+      "cta": "Ga naar tab Run"
+    },
+    "modelBreakdown": {
+      "title": "Hoe elk model {brand} ziet",
+      "empty": "Nog geen data per model voor dit merk."
+    },
+    "brandTrendMini": {
+      "title": "{brand} in de tijd",
+      "subtitle": "Gem. vermelding % · laatste 90 dagen",
+      "empty": "Nog geen trenddata."
+    }
   },
   "launchpad": {
     "title": "Launchpad",
