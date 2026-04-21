@@ -31,9 +31,13 @@ const EXTRACTOR_VERSION = "v1-openrouter";
 export async function extractRunInline(db: DB, runId: string): Promise<void> {
   const openrouterKey = process.env.OPENROUTER_API_KEY;
   if (!openrouterKey) {
-    console.warn(
-      `[extract-run] OPENROUTER_API_KEY missing — skipping extraction for ${runId}. Run stays pending; retry manually later.`,
+    console.error(
+      `[extract-run] OPENROUTER_API_KEY missing — marking run ${runId} failed.`,
     );
+    await db
+      .update(benchmarkRuns)
+      .set({ extractionStatus: "failed" })
+      .where(eq(benchmarkRuns.id, runId));
     return;
   }
   const model = process.env.EXTRACTOR_MODEL ?? "moonshotai/kimi-k2.5";

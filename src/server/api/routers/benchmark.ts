@@ -31,7 +31,6 @@ import {
 import { splitMentions } from "@/server/benchmark/ingest-extraction";
 import { slugifyBrandName } from "@/server/benchmark/slugify";
 import { extractRunInline } from "@/server/benchmark/extract-run";
-import { after } from "next/server";
 import {
   EXTRACTOR_VERSION,
   buildExtractorPrompt,
@@ -274,11 +273,12 @@ export const benchmarkRouter = createTRPCRouter({
           },
         });
 
-        // Fire-and-forget: extractor runs after the response is returned to
-        // the client. Failures are logged and the run stays pending for retry.
+        // Fire-and-forget: kick off extraction immediately. Using a direct
+        // void call (not Next's `after`) because `after` can stall under the
+        // MCP streamable HTTP transport and leave runs stuck in `pending`.
         const runId = run.id;
-        after(async () => {
-          await extractRunInline(ctx.db, runId);
+        void extractRunInline(ctx.db, runId).catch((err) => {
+          console.error(`[extract-run] background failure for ${runId}:`, err);
         });
 
         return run;
@@ -1041,8 +1041,8 @@ export const benchmarkRouter = createTRPCRouter({
       });
 
       const runId = run.id;
-      after(async () => {
-        await extractRunInline(ctx.db, runId);
+      void extractRunInline(ctx.db, runId).catch((err) => {
+        console.error(`[extract-run] background failure for ${runId}:`, err);
       });
 
       return {
