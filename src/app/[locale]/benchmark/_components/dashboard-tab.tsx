@@ -1,14 +1,16 @@
 // src/app/[locale]/benchmark/_components/dashboard-tab.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { api } from "@/trpc/react";
 
 import { DashboardEmpty } from "./dashboard/dashboard-empty";
-import { HeroCard } from "./dashboard/hero-card";
-import { ModelBreakdown } from "./dashboard/model-breakdown";
-import { BrandTrendMini } from "./dashboard/brand-trend-mini";
-import { LatestRunsFeedWidget } from "./dashboard/latest-runs-feed";
+import { TopSummaryBanner } from "./dashboard/top-summary-banner";
+import { WindowSegmented } from "./dashboard/window-segmented";
+import { LowDataBanner } from "./dashboard/low-data-banner";
+import { BrandRankedList } from "./dashboard/brand-ranked-list";
+import { BrandTrendChart } from "./dashboard/brand-trend-chart";
+import { VerticalPills } from "./dashboard/vertical-pills";
 import {
   useDashboardQueryState,
   type WindowDays,
@@ -22,14 +24,12 @@ type Props = {
 };
 
 export function DashboardTab({ onChangeTab }: Props) {
-  const { state, update, buildShareUrl } = useDashboardQueryState();
+  const { state, update } = useDashboardQueryState();
   const categories = api.benchmark.listCategories.useQuery();
   const overview = api.benchmark.getHeroOverview.useQuery({
     windowDays: state.windowDays,
     modelScope: state.modelScope,
   });
-
-  const [breakdownOpen, setBreakdownOpen] = useState(false);
 
   const activeCategory = useMemo(() => {
     if (!categories.data || categories.data.length === 0) return null;
@@ -55,6 +55,28 @@ export function DashboardTab({ onChangeTab }: Props) {
     { enabled: Boolean(activeCategory?.id) },
   );
 
+  const list = api.benchmark.getCategoryBrandList.useQuery(
+    {
+      categoryId: activeCategory?.id ?? "",
+      windowDays: state.windowDays,
+    },
+    {
+      enabled: Boolean(activeCategory?.id),
+      placeholderData: (prev) => prev,
+    },
+  );
+
+  const trend = api.benchmark.getCategoryBrandTrend.useQuery(
+    {
+      categoryId: activeCategory?.id ?? "",
+      windowDays: state.windowDays,
+    },
+    {
+      enabled: Boolean(activeCategory?.id),
+      placeholderData: (prev) => prev,
+    },
+  );
+
   const categoriesLoaded = categories.isFetched;
   const categoriesEmpty =
     categoriesLoaded && (categories.data ?? []).length === 0;
@@ -67,61 +89,58 @@ export function DashboardTab({ onChangeTab }: Props) {
     );
   }
 
-  if (!activeCategory) {
-    return (
-      <div className="flex flex-col gap-4 py-4">
-        <HeroCardSkeleton />
-      </div>
-    );
-  }
-
-  const heroBrand = hero.data?.brand ?? null;
+  const onToggleBrand = (slug: string) => {
+    update({
+      activeBrandSlug: state.activeBrandSlug === slug ? null : slug,
+    });
+  };
 
   return (
-    <div className="flex flex-col gap-6 py-4">
-      <HeroCard
-        categories={categories.data!.map((c) => ({
-          id: c.id,
-          slug: c.slug,
-          name: c.name,
-        }))}
-        activeCategory={{
-          id: activeCategory.id,
-          slug: activeCategory.slug,
-          name: activeCategory.name,
-        }}
-        windowDays={state.windowDays}
-        modelScope={state.modelScope}
-        onSelectCategory={(slug) => {
-          update({ categorySlug: slug });
-          setBreakdownOpen(false);
-        }}
-        onWindowChange={(w: WindowDays) => update({ windowDays: w })}
-        onToggleBrandDetail={() => setBreakdownOpen((v) => !v)}
-        getShareUrl={() => buildShareUrl()}
-      />
-
-      {breakdownOpen && heroBrand && (
-        <ModelBreakdown
-          brandId={heroBrand.id}
-          brandName={heroBrand.canonicalName}
-          onClose={() => setBreakdownOpen(false)}
+    <div className="flex flex-col gap-4 py-4">
+      {categories.data && (
+        <VerticalPills
+          categories={categories.data.map((c) => ({
+            id: c.id,
+            slug: c.slug,
+            name: c.name,
+          }))}
+          activeSlug={activeCategory?.slug ?? null}
+          onSelect={(slug) =>
+            update({ categorySlug: slug, activeBrandSlug: null })
+          }
         />
       )}
 
-      {heroBrand && (
-        <div className="grid gap-6 md:grid-cols-2">
-          <BrandTrendMini
-            brandId={heroBrand.id}
-            brandName={heroBrand.canonicalName}
-          />
-          <LatestRunsFeedWidget />
-        </div>
+      <div className="flex justify-end">
+        <WindowSegmented
+          value={state.windowDays}
+          onChange={(w: WindowDays) => update({ windowDays: w })}
+        />
+      </div>
+
+      {activeCategory && (
+        <TopSummaryBanner
+          categoryName={activeCategory.name}
+          brandName={hero.data?.brand.canonicalName ?? null}
+          sharePct={hero.data ? hero.data.sharePct : null}
+        />
       )}
+
+      {list.data && <LowDataBanner totalAnswers={list.data.totalAnswers} />}
+
+      <div className="grid gap-6 md:grid-cols-[minmax(320px,1fr)_2fr]">
+        <BrandRankedList
+          brands={list.data?.brands ?? []}
+          activeBrandSlug={state.activeBrandSlug}
+          onToggleBrand={onToggleBrand}
+          isLoading={list.isLoading}
+        />
+        <BrandTrendChart
+          series={trend.data?.series ?? []}
+          activeBrandSlug={state.activeBrandSlug}
+          isLoading={trend.isLoading}
+        />
+      </div>
     </div>
   );
-}
-
-function HeroCardSkeleton() {
-  return <div className="bg-muted h-64 w-full animate-pulse rounded-lg" />;
 }
