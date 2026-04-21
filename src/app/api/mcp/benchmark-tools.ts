@@ -57,7 +57,9 @@ export function registerBenchmarkTools(
         promptId: z
           .string()
           .uuid()
-          .describe("UUID of the approved prompt (see list-benchmark-prompts)."),
+          .describe(
+            "UUID of the approved prompt (see list-benchmark-prompts).",
+          ),
         modelProvider: z
           .enum(BENCHMARK_MODEL_PROVIDERS)
           .describe("Provider of the model the answer came from."),

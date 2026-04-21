@@ -42,11 +42,13 @@ submit-benchmark-run({
           <DialogTitle>Run with your agent (MCP)</DialogTitle>
           <DialogDescription>
             Use the AIT MCP tools{" "}
-            <code className="rounded bg-muted px-1">list-benchmark-prompts</code>{" "}
+            <code className="bg-muted rounded px-1">
+              list-benchmark-prompts
+            </code>{" "}
             and{" "}
-            <code className="rounded bg-muted px-1">submit-benchmark-run</code>{" "}
-            from your registered agent. One submission per prompt/model/day.
-            The server extracts brand mentions asynchronously after you submit.
+            <code className="bg-muted rounded px-1">submit-benchmark-run</code>{" "}
+            from your registered agent. One submission per prompt/model/day. The
+            server extracts brand mentions asynchronously after you submit.
           </DialogDescription>
         </DialogHeader>
         <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">
