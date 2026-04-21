@@ -77,18 +77,12 @@ export function BrandTrendChart({ series, activeBrandSlug, isLoading }: Props) {
             fontSize={11}
           />
           <Tooltip
-            formatter={(v: any) => {
-              if (typeof v === "number") {
-                return `${v.toFixed(1)}%`;
-              }
-              return v;
-            }}
-            labelFormatter={(l: any) => {
-              if (typeof l === "string") {
-                return l;
-              }
-              return String(l);
-            }}
+            formatter={(v: unknown) =>
+              typeof v === "number" ? `${v.toFixed(1)}%` : ""
+            }
+            labelFormatter={(l: unknown) =>
+              typeof l === "string" ? l : typeof l === "number" ? String(l) : ""
+            }
             contentStyle={{
               backgroundColor: "rgba(255, 255, 255, 0.95)",
               border: "1px solid #ccc",

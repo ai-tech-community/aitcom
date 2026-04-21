@@ -76,7 +76,9 @@ async function main() {
     RETURNING q.id
   `) as Array<{ id: string }>;
 
-  console.log(`Created ${created} brands · merged ${merged.length} alias queue entries`);
+  console.log(
+    `Created ${created} brands · merged ${merged.length} alias queue entries`,
+  );
 }
 
 main().catch((e) => {

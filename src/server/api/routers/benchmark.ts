@@ -397,13 +397,14 @@ export const benchmarkRouter = createTRPCRouter({
 
         // Auto-create unverified brands for unresolved mentions. Dedup within
         // the batch by normalized rawMention; admins can merge duplicates later.
-        const autoResolved: Array<typeof resolved[number]> = [];
+        const autoResolved: Array<(typeof resolved)[number]> = [];
         const nameToBrandId = new Map<string, string>();
         for (const m of unresolved) {
           const key = m.rawMention.trim().toLowerCase();
           let brandId = nameToBrandId.get(key);
           if (!brandId) {
-            const slug = slugifyBrandName(m.rawMention) || `brand-${Date.now()}`;
+            const slug =
+              slugifyBrandName(m.rawMention) || `brand-${Date.now()}`;
             const [inserted] = await ctx.db
               .insert(brands)
               .values({

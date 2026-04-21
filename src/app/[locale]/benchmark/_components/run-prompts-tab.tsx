@@ -129,8 +129,8 @@ export function RunPromptsTab() {
                   {r.extractionStatus === "done" && (
                     <span>
                       {r.mentionsTotal} mention
-                      {r.mentionsTotal === 1 ? "" : "s"} ·{" "}
-                      {r.mentionsResolved} matched
+                      {r.mentionsTotal === 1 ? "" : "s"} · {r.mentionsResolved}{" "}
+                      matched
                       {unresolved > 0 && ` · ${unresolved} in alias queue`}
                     </span>
                   )}

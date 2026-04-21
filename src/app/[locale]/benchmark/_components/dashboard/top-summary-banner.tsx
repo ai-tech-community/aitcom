@@ -9,11 +9,7 @@ type Props = {
   sharePct: number | null;
 };
 
-export function TopSummaryBanner({
-  categoryName,
-  brandName,
-  sharePct,
-}: Props) {
+export function TopSummaryBanner({ categoryName, brandName, sharePct }: Props) {
   const t = useTranslations("benchmark");
   if (!brandName || sharePct == null) return null;
   return (
