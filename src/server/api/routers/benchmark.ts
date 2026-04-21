@@ -791,4 +791,96 @@ export const benchmarkRouter = createTRPCRouter({
         lowData: totalAnswers < 5,
       };
     }),
+
+  getCategoryBrandTrend: publicProcedure
+    .input(
+      z.object({
+        categoryId: z.string().uuid(),
+        windowDays: z
+          .union([z.literal(7), z.literal(30), z.literal(90)])
+          .default(30),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const trendRows = (await ctx.db.execute(sql`
+        SELECT
+          t.brand_id,
+          b.slug AS brand_slug,
+          b.canonical_name AS brand_canonical_name,
+          t.date::text AS day,
+          AVG(t.mention_pct::numeric) AS mention_pct
+        FROM "app"."agg_brand_trends_by_day" t
+        JOIN "app"."brand" b ON b.id = t.brand_id
+        WHERE t.category_id = ${input.categoryId}
+          AND t.date >= (CURRENT_DATE - (${input.windowDays} || ' days')::interval)::date
+        GROUP BY t.brand_id, b.slug, b.canonical_name, t.date
+        ORDER BY t.brand_id, t.date
+      `)) as unknown as {
+        rows?: Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          day: string;
+          mention_pct: string;
+        }>;
+      };
+      const rows =
+        trendRows.rows ??
+        (trendRows as unknown as Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          day: string;
+          mention_pct: string;
+        }>);
+
+      type Series = {
+        brandId: string;
+        slug: string;
+        canonicalName: string;
+        rawPoints: Array<{ date: string; value: number }>;
+      };
+      const byBrand = new Map<string, Series>();
+      for (const r of rows) {
+        let s = byBrand.get(r.brand_id);
+        if (!s) {
+          s = {
+            brandId: r.brand_id,
+            slug: r.brand_slug,
+            canonicalName: r.brand_canonical_name,
+            rawPoints: [],
+          };
+          byBrand.set(r.brand_id, s);
+        }
+        s.rawPoints.push({ date: r.day, value: Number(r.mention_pct) });
+      }
+
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const dayMs = 86_400_000;
+
+      const allDates: string[] = [];
+      for (let i = input.windowDays - 1; i >= 0; i--) {
+        const d = new Date(today.getTime() - i * dayMs);
+        allDates.push(d.toISOString().slice(0, 10));
+      }
+
+      const series = [...byBrand.values()].map((s) => {
+        const byDate = new Map(s.rawPoints.map((p) => [p.date, p.value]));
+        const points = allDates.map((d) => ({
+          date: d,
+          value: byDate.get(d) ?? 0,
+        }));
+        return {
+          brandId: s.brandId,
+          slug: s.slug,
+          canonicalName: s.canonicalName,
+          points,
+        };
+      });
+
+      series.sort((a, b) => a.canonicalName.localeCompare(b.canonicalName));
+
+      return { series };
+    }),
 });
