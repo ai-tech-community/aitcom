@@ -16,7 +16,6 @@ import {
   benchmarkRuns,
   benchmarkBrandMentions,
   brands,
-  brandAliasQueue,
   aggBrandRankByPrompt,
   aggBrandTrendsByDay,
   aggModelBiasMatrix,
@@ -28,6 +27,7 @@ import {
   BENCHMARK_SENTIMENTS,
 } from "@/lib/benchmark-constants";
 import { splitMentions } from "@/server/benchmark/ingest-extraction";
+import { slugifyBrandName } from "@/server/benchmark/slugify";
 import {
   EXTRACTOR_VERSION,
   buildExtractorPrompt,
@@ -379,9 +379,70 @@ export const benchmarkRouter = createTRPCRouter({
           brandsByKey,
         );
 
-        if (resolved.length > 0) {
+        // Fetch run's category so auto-created brands inherit it.
+        const [runRow] = await ctx.db
+          .select({ promptId: benchmarkRuns.promptId })
+          .from(benchmarkRuns)
+          .where(eq(benchmarkRuns.id, input.runId))
+          .limit(1);
+        const [promptRow] = runRow
+          ? await ctx.db
+              .select({ categoryId: benchmarkPrompts.categoryId })
+              .from(benchmarkPrompts)
+              .where(eq(benchmarkPrompts.id, runRow.promptId))
+              .limit(1)
+          : [];
+        const categoryId = promptRow?.categoryId;
+
+        // Auto-create unverified brands for unresolved mentions. Dedup within
+        // the batch by normalized rawMention; admins can merge duplicates later.
+        const autoResolved: Array<typeof resolved[number]> = [];
+        const nameToBrandId = new Map<string, string>();
+        for (const m of unresolved) {
+          const key = m.rawMention.trim().toLowerCase();
+          let brandId = nameToBrandId.get(key);
+          if (!brandId) {
+            const slug = slugifyBrandName(m.rawMention) || `brand-${Date.now()}`;
+            const [inserted] = await ctx.db
+              .insert(brands)
+              .values({
+                slug,
+                canonicalName: m.rawMention.trim(),
+                aliases: [],
+                categoryIds: categoryId ? [categoryId] : [],
+                verified: false,
+              })
+              .onConflictDoNothing({ target: brands.slug })
+              .returning({ id: brands.id });
+            if (inserted) {
+              brandId = inserted.id;
+            } else {
+              // Slug collision on a race — look it up.
+              const [existing] = await ctx.db
+                .select({ id: brands.id })
+                .from(brands)
+                .where(eq(brands.slug, slug))
+                .limit(1);
+              brandId = existing?.id;
+            }
+            if (brandId) nameToBrandId.set(key, brandId);
+          }
+          if (brandId) {
+            autoResolved.push({
+              rawMention: m.rawMention,
+              brandId,
+              rank: m.rank,
+              sentiment: m.sentiment,
+              context: m.context,
+              confidence: m.confidence,
+            });
+          }
+        }
+
+        const allResolved = [...resolved, ...autoResolved];
+        if (allResolved.length > 0) {
           await ctx.db.insert(benchmarkBrandMentions).values(
-            resolved.map((m) => ({
+            allResolved.map((m) => ({
               runId: input.runId,
               rawMention: m.rawMention,
               brandId: m.brandId,
@@ -394,51 +455,15 @@ export const benchmarkRouter = createTRPCRouter({
           );
         }
 
-        if (unresolved.length > 0) {
-          await ctx.db.insert(benchmarkBrandMentions).values(
-            unresolved.map((m) => ({
-              runId: input.runId,
-              rawMention: m.rawMention,
-              brandId: null,
-              rank: m.rank,
-              sentiment: m.sentiment,
-              context: m.context,
-              confidence: m.confidence.toString(),
-              extractorVersion: input.extractorVersion,
-            })),
-          );
-          for (const m of unresolved) {
-            const [existing] = await ctx.db
-              .select({ id: brandAliasQueue.id })
-              .from(brandAliasQueue)
-              .where(
-                sql`lower(${brandAliasQueue.rawMention}) = lower(${m.rawMention})`,
-              )
-              .limit(1);
-            if (existing) {
-              await ctx.db
-                .update(brandAliasQueue)
-                .set({
-                  occurrenceCount: sql`${brandAliasQueue.occurrenceCount} + 1`,
-                })
-                .where(eq(brandAliasQueue.id, existing.id));
-            } else {
-              await ctx.db.insert(brandAliasQueue).values({
-                rawMention: m.rawMention,
-                runId: input.runId,
-                occurrenceCount: 1,
-                status: "pending",
-              });
-            }
-          }
-        }
-
         await ctx.db
           .update(benchmarkRuns)
           .set({ extractionStatus: "done" })
           .where(eq(benchmarkRuns.id, input.runId));
 
-        return { resolved: resolved.length, unresolved: unresolved.length };
+        return {
+          resolved: resolved.length,
+          autoCreated: autoResolved.length,
+        };
       } catch (err) {
         await ctx.db
           .update(benchmarkRuns)

@@ -10,6 +10,7 @@
  */
 
 import { neon } from "@neondatabase/serverless";
+import { slugifyBrandName } from "@/server/benchmark/slugify";
 
 const runId = process.argv[2];
 if (!runId) {
@@ -159,12 +160,39 @@ RULES:
     for (const a of b.aliases ?? []) byName.set(a.toLowerCase(), b.id);
   }
 
+  const nameToBrandId = new Map<string, string>();
+
   for (const m of parsed.mentions) {
     const slugHit = m.suggestedBrandSlug
       ? bySlug.get(m.suggestedBrandSlug.toLowerCase())
       : undefined;
     const nameHit = byName.get(m.rawMention.trim().toLowerCase());
-    const brandId = slugHit ?? nameHit ?? null;
+    let brandId: string | null = slugHit ?? nameHit ?? null;
+
+    if (!brandId) {
+      const key = m.rawMention.trim().toLowerCase();
+      brandId = nameToBrandId.get(key) ?? null;
+      if (!brandId) {
+        const slug = slugifyBrandName(m.rawMention) || `brand-${Date.now()}`;
+        const inserted = (await sql`
+          INSERT INTO "app"."brand"
+            ("slug", "canonical_name", "aliases", "category_ids", "verified")
+          VALUES (${slug}, ${m.rawMention.trim()}, ARRAY[]::text[],
+                  ARRAY[${prompt.category_id}]::uuid[], false)
+          ON CONFLICT (slug) DO NOTHING
+          RETURNING id
+        `) as Array<{ id: string }>;
+        if (inserted[0]) {
+          brandId = inserted[0].id;
+        } else {
+          const [existing] = (await sql`
+            SELECT id FROM "app"."brand" WHERE slug = ${slug} LIMIT 1
+          `) as Array<{ id: string }>;
+          brandId = existing?.id ?? null;
+        }
+        if (brandId) nameToBrandId.set(key, brandId);
+      }
+    }
 
     await sql`
       INSERT INTO "app"."benchmark_brand_mention"
@@ -172,16 +200,6 @@ RULES:
       VALUES (${runId}, ${m.rawMention}, ${brandId}, ${m.rank},
               ${m.sentiment}, ${m.context}, ${m.confidence.toString()}, 'v1-openrouter')
     `;
-
-    if (!brandId) {
-      await sql`
-        INSERT INTO "app"."brand_alias_queue"
-        ("raw_mention", "run_id", "occurrence_count", "status")
-        VALUES (${m.rawMention}, ${runId}, 1, 'pending')
-        ON CONFLICT (lower("raw_mention")) DO UPDATE
-        SET occurrence_count = "brand_alias_queue".occurrence_count + 1
-      `;
-    }
   }
 
   await sql`
