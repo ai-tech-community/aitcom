@@ -1,21 +1,14 @@
+// src/app/[locale]/benchmark/_components/dashboard-tab.tsx
 "use client";
 
-import { PromptFocusWidget } from "./widgets/prompt-focus";
-import { ModelBiasMatrixWidget } from "./widgets/model-bias-matrix";
-import { BrandTrendWidget } from "./widgets/brand-trend";
-import { CategoryLeaderboardWidget } from "./widgets/category-leaderboard";
-import { BrandSearchWidget } from "./widgets/brand-search";
-import { LatestRunsFeedWidget } from "./widgets/latest-runs-feed";
+// Rewritten in Task 16 with the new hero-driven layout.
+// During the component migration, keep this minimal so typecheck passes
+// after obsolete widgets are deleted.
 
 export function DashboardTab() {
   return (
-    <div className="grid gap-4 py-4 md:grid-cols-2">
-      <PromptFocusWidget />
-      <ModelBiasMatrixWidget />
-      <BrandTrendWidget />
-      <CategoryLeaderboardWidget />
-      <BrandSearchWidget />
-      <LatestRunsFeedWidget />
+    <div className="py-6 text-muted-foreground">
+      Dashboard coming up — rebuild in progress.
     </div>
   );
 }
