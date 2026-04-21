@@ -2,22 +2,34 @@ import { readFileSync } from "node:fs";
 import { neon } from "@neondatabase/serverless";
 
 function loadEnv() {
+  const pattern = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i;
   try {
     const text = readFileSync(".env", "utf8");
     for (const line of text.split(/\r?\n/)) {
-      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/i);
+      const m = pattern.exec(line);
       if (!m) continue;
-      let val = m[2];
+      let val = m[2] ?? "";
       if (
         (val.startsWith('"') && val.endsWith('"')) ||
         (val.startsWith("'") && val.endsWith("'"))
       ) {
         val = val.slice(1, -1);
       }
-      if (!process.env[m[1]]) process.env[m[1]] = val;
+      process.env[m[1]!] ??= val;
     }
-  } catch {}
+  } catch {
+    /* no .env */
+  }
 }
+
+type Row = {
+  id: string;
+  prompt_id: string;
+  model_provider: string;
+  model_id: string;
+  extraction_status: string;
+  captured_at: string;
+};
 
 async function main() {
   loadEnv();
@@ -28,7 +40,7 @@ async function main() {
     WHERE extraction_status IN ('pending', 'processing')
     ORDER BY captured_at DESC
     LIMIT 20
-  `) as Array<Record<string, unknown>>;
+  `) as Row[];
   console.log(`Pending/processing runs: ${rows.length}`);
   for (const r of rows) {
     console.log(

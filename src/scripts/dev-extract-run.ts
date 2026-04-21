@@ -1,14 +1,14 @@
 /**
  * Dev-only: extract brand mentions for a pending benchmark run WITHOUT the
- * webhook/agent dance. Hits the DB directly and calls Anthropic.
+ * webhook/agent dance. Hits the DB directly and calls OpenRouter.
  *
  * Usage:
  *   pnpm dlx tsx --env-file=.env src/scripts/dev-extract-run.ts <runId>
  *
- * Env required: ANTHROPIC_API_KEY, DATABASE_URL
+ * Env required: OPENROUTER_API_KEY, DATABASE_URL
+ * Optional: EXTRACTOR_MODEL (defaults to moonshotai/kimi-k2.5)
  */
 
-import Anthropic from "@anthropic-ai/sdk";
 import { neon } from "@neondatabase/serverless";
 
 const runId = process.argv[2];
@@ -17,8 +17,9 @@ if (!runId) {
   process.exit(1);
 }
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error("ANTHROPIC_API_KEY missing (put in .env)");
+const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+if (!OPENROUTER_KEY) {
+  console.error("OPENROUTER_API_KEY missing (put in .env)");
   process.exit(1);
 }
 if (!process.env.DATABASE_URL) {
@@ -26,8 +27,8 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
+const MODEL = process.env.EXTRACTOR_MODEL ?? "moonshotai/kimi-k2.5";
 const sql = neon(process.env.DATABASE_URL);
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 type PromptRow = { text: string; category_id: string };
 type RunRow = { id: string; prompt_id: string; raw_answer: string };
@@ -37,6 +38,33 @@ type BrandRow = {
   canonical_name: string;
   aliases: string[] | null;
 };
+
+async function callExtractor(prompt: string): Promise<string> {
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${OPENROUTER_KEY}`,
+      "HTTP-Referer": "https://aitcommunity.org",
+      "X-Title": "AIT Benchmark Extractor",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      temperature: 0,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`OpenRouter ${res.status}: ${await res.text()}`);
+  }
+  const data = (await res.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  };
+  const text = data.choices?.[0]?.message?.content;
+  if (!text) throw new Error(`Empty response: ${JSON.stringify(data)}`);
+  return text;
+}
 
 async function main() {
   const [run] = (await sql`
@@ -103,25 +131,19 @@ RULES:
 - Do not invent brands. Do not include generic terms ("the database", "an editor").
 - Output ONLY the JSON object. No prose, no markdown fencing.`;
 
-  console.log("Calling Anthropic…");
-  const resp = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 2048,
-    messages: [{ role: "user", content: rendered }],
-  });
+  console.log(`Calling OpenRouter (model: ${MODEL})…`);
+  const text = await callExtractor(rendered);
 
-  const text = resp.content
-    .map((c) => (c.type === "text" ? c.text : ""))
-    .join("");
-
-  let parsed: { mentions: Array<{
-    rawMention: string;
-    suggestedBrandSlug: string | null;
-    rank: number | null;
-    sentiment: "positive" | "neutral" | "negative";
-    context: string;
-    confidence: number;
-  }> };
+  let parsed: {
+    mentions: Array<{
+      rawMention: string;
+      suggestedBrandSlug: string | null;
+      rank: number | null;
+      sentiment: "positive" | "neutral" | "negative";
+      context: string;
+      confidence: number;
+    }>;
+  };
   try {
     parsed = JSON.parse(text);
   } catch {
@@ -148,7 +170,7 @@ RULES:
       INSERT INTO "app"."benchmark_brand_mention"
       ("run_id", "raw_mention", "brand_id", "rank", "sentiment", "context", "confidence", "extractor_version")
       VALUES (${runId}, ${m.rawMention}, ${brandId}, ${m.rank},
-              ${m.sentiment}, ${m.context}, ${m.confidence.toString()}, 'v1-dev')
+              ${m.sentiment}, ${m.context}, ${m.confidence.toString()}, 'v1-openrouter')
     `;
 
     if (!brandId) {
