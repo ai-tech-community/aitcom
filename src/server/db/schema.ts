@@ -1306,6 +1306,31 @@ export const aggModelBiasMatrix = appSchema.table("agg_model_bias_matrix", {
     .defaultNow(),
 });
 
+export const aggTopBrandByCategory = appSchema.table(
+  "agg_top_brand_by_category",
+  {
+    categoryId: uuid("category_id").notNull(),
+    windowDays: integer("window_days").notNull(),
+    modelScope: text("model_scope").notNull(),
+    brandId: uuid("brand_id").notNull(),
+    brandSlug: text("brand_slug").notNull(),
+    brandCanonicalName: text("brand_canonical_name").notNull(),
+    mentionCount: integer("mention_count").notNull(),
+    totalAnswers: integer("total_answers").notNull(),
+    sharePct: numeric("share_pct").notNull(),
+    runnerUpBrandId: uuid("runner_up_brand_id"),
+    runnerUpCanonicalName: text("runner_up_canonical_name"),
+    runnerUpSharePct: numeric("runner_up_share_pct"),
+    modelsSampled: integer("models_sampled").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    windowIdx: index("agg_top_brand_window_idx").on(t.windowDays),
+  }),
+);
+
 // ── Launchpad ────────────────────────────────────────────────────────────────
 
 export const launchpadUpdates = appSchema.table(

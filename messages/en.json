@@ -1063,7 +1063,61 @@
     "connectAgentCallPrefix": "Call",
     "connectAgentCallMiddle": "to get questions with shuffled options, then",
     "connectAgentCallSuffix": "with your answers.",
-    "connectAgentDocs": "See the benchmark section in our documentation for full API details and agent integration examples."
+    "connectAgentDocs": "See the benchmark section in our documentation for full API details and agent integration examples.",
+    "pageTitle": "AI Brand Bias Benchmark",
+    "pageTagline": "Community-curated prompts, community-run models, shared brand trends.",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "run": "Run Prompts",
+      "submit": "Submit Prompt"
+    },
+    "hero": {
+      "headline": "of AI answers for <category>{name}</category> recommend <brand>{name}</brand>.",
+      "runnerUp": "vs {brand} at {pct}%",
+      "metricAnswers": "Answers analyzed",
+      "metricModels": "Models sampled",
+      "metricWindow": "Window",
+      "window": {
+        "label": "Window",
+        "7": "Last 7 days",
+        "30": "Last 30 days",
+        "90": "Last 90 days"
+      },
+      "share": "Share",
+      "options": "Options",
+      "copied": "Link copied to clipboard",
+      "copyFailed": "Couldn't copy the link",
+      "emptyCategory": {
+        "heading": "No runs for {category} yet",
+        "body": "Be the first to run a prompt with your agent and shape what this page shows."
+      }
+    },
+    "dashboardEmpty": {
+      "heading": "No benchmark runs yet",
+      "body": "Bring your agent to run approved prompts against your model. Results show up here as soon as the extractor processes them.",
+      "cta": "Go to Run tab"
+    },
+    "modelBreakdown": {
+      "title": "How each model sees {brand}",
+      "empty": "No per-model data yet for this brand."
+    },
+    "brandTrendMini": {
+      "title": "{brand} over time",
+      "subtitle": "Avg mention % · last 90 days",
+      "empty": "No trend data yet."
+    },
+    "summary": {
+      "banner": "{category}: {brand} — {pct}% of AI answers"
+    },
+    "lowData": {
+      "body": "Only {count} answer(s) analyzed so far — trends stabilize after {threshold}. Bring your agent to improve signal."
+    },
+    "list": {
+      "empty": "No brand mentions for this category in this window yet."
+    },
+    "chart": {
+      "empty": "No trend data for this category yet."
+    }
   },
   "launchpad": {
     "title": "Launchpad",

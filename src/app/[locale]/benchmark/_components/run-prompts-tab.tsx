@@ -107,16 +107,37 @@ export function RunPromptsTab() {
           {mine.data?.runs.length === 0 && (
             <li className="text-muted-foreground p-3">No runs yet.</li>
           )}
-          {mine.data?.runs.map((r) => (
-            <li key={r.id} className="flex justify-between gap-3 p-3">
-              <span className="truncate">
-                {r.modelProvider} · {r.modelId}
-              </span>
-              <span className="text-muted-foreground text-xs tracking-wide uppercase">
-                {r.extractionStatus}
-              </span>
-            </li>
-          ))}
+          {mine.data?.runs.map((r) => {
+            const unresolved = r.mentionsTotal - r.mentionsResolved;
+            return (
+              <li key={r.id} className="flex flex-col gap-1 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="line-clamp-2 font-medium">{r.promptText}</p>
+                  <span className="text-muted-foreground shrink-0 text-xs tracking-wide uppercase">
+                    {r.extractionStatus}
+                  </span>
+                </div>
+                <div className="text-muted-foreground flex flex-wrap gap-3 text-xs">
+                  <span className="font-mono">
+                    {r.modelProvider}/{r.modelId}
+                  </span>
+                  <span>
+                    {new Date(
+                      r.capturedAt as unknown as string,
+                    ).toLocaleString()}
+                  </span>
+                  {r.extractionStatus === "done" && (
+                    <span>
+                      {r.mentionsTotal} mention
+                      {r.mentionsTotal === 1 ? "" : "s"} · {r.mentionsResolved}{" "}
+                      matched
+                      {unresolved > 0 && ` · ${unresolved} in alias queue`}
+                    </span>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </section>
 

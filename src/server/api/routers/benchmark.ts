@@ -16,10 +16,10 @@ import {
   benchmarkRuns,
   benchmarkBrandMentions,
   brands,
-  brandAliasQueue,
   aggBrandRankByPrompt,
   aggBrandTrendsByDay,
   aggModelBiasMatrix,
+  aggTopBrandByCategory,
 } from "@/server/db/schema";
 import {
   BENCHMARK_DEFAULT_LOCALE,
@@ -27,10 +27,14 @@ import {
   BENCHMARK_SENTIMENTS,
 } from "@/lib/benchmark-constants";
 import { splitMentions } from "@/server/benchmark/ingest-extraction";
+import { slugifyBrandName } from "@/server/benchmark/slugify";
+import { extractRunInline } from "@/server/benchmark/extract-run";
+import { after } from "next/server";
 import {
   EXTRACTOR_VERSION,
   buildExtractorPrompt,
 } from "@/server/benchmark/extractor-prompt";
+import { buildSparkline } from "@/server/benchmark/build-sparkline";
 
 export const benchmarkRouter = createTRPCRouter({
   listCategories: publicProcedure.query(async ({ ctx }) => {
@@ -124,12 +128,51 @@ export const benchmarkRouter = createTRPCRouter({
       .orderBy(desc(benchmarkPrompts.createdAt))
       .limit(50);
     const myRuns = await ctx.db
-      .select()
+      .select({
+        id: benchmarkRuns.id,
+        promptId: benchmarkRuns.promptId,
+        promptText: benchmarkPrompts.text,
+        modelProvider: benchmarkRuns.modelProvider,
+        modelId: benchmarkRuns.modelId,
+        extractionStatus: benchmarkRuns.extractionStatus,
+        capturedAt: benchmarkRuns.capturedAt,
+        createdAt: benchmarkRuns.createdAt,
+      })
       .from(benchmarkRuns)
+      .innerJoin(
+        benchmarkPrompts,
+        eq(benchmarkPrompts.id, benchmarkRuns.promptId),
+      )
       .where(eq(benchmarkRuns.submittedByUserId, userId))
       .orderBy(desc(benchmarkRuns.createdAt))
       .limit(50);
-    return { prompts: myPrompts, runs: myRuns };
+
+    const mentionCounts = await ctx.db
+      .select({
+        runId: benchmarkBrandMentions.runId,
+        total: sql<number>`count(*)::int`,
+        resolved: sql<number>`count(${benchmarkBrandMentions.brandId})::int`,
+      })
+      .from(benchmarkBrandMentions)
+      .where(
+        inArray(
+          benchmarkBrandMentions.runId,
+          myRuns.map((r) => r.id),
+        ),
+      )
+      .groupBy(benchmarkBrandMentions.runId);
+    const countsByRun = new Map(mentionCounts.map((c) => [c.runId, c]));
+
+    const runs = myRuns.map((r) => {
+      const c = countsByRun.get(r.id);
+      return {
+        ...r,
+        mentionsTotal: c?.total ?? 0,
+        mentionsResolved: c?.resolved ?? 0,
+      };
+    });
+
+    return { prompts: myPrompts, runs };
   }),
 
   submitRun: protectedProcedure
@@ -227,6 +270,13 @@ export const benchmarkRouter = createTRPCRouter({
             modelId: input.modelId,
             modelProvider: input.modelProvider,
           },
+        });
+
+        // Fire-and-forget: extractor runs after the response is returned to
+        // the client. Failures are logged and the run stays pending for retry.
+        const runId = run.id;
+        after(async () => {
+          await extractRunInline(ctx.db, runId);
         });
 
         return run;
@@ -339,9 +389,71 @@ export const benchmarkRouter = createTRPCRouter({
           brandsByKey,
         );
 
-        if (resolved.length > 0) {
+        // Fetch run's category so auto-created brands inherit it.
+        const [runRow] = await ctx.db
+          .select({ promptId: benchmarkRuns.promptId })
+          .from(benchmarkRuns)
+          .where(eq(benchmarkRuns.id, input.runId))
+          .limit(1);
+        const [promptRow] = runRow
+          ? await ctx.db
+              .select({ categoryId: benchmarkPrompts.categoryId })
+              .from(benchmarkPrompts)
+              .where(eq(benchmarkPrompts.id, runRow.promptId))
+              .limit(1)
+          : [];
+        const categoryId = promptRow?.categoryId;
+
+        // Auto-create unverified brands for unresolved mentions. Dedup within
+        // the batch by normalized rawMention; admins can merge duplicates later.
+        const autoResolved: Array<(typeof resolved)[number]> = [];
+        const nameToBrandId = new Map<string, string>();
+        for (const m of unresolved) {
+          const key = m.rawMention.trim().toLowerCase();
+          let brandId = nameToBrandId.get(key);
+          if (!brandId) {
+            const slug =
+              slugifyBrandName(m.rawMention) || `brand-${Date.now()}`;
+            const [inserted] = await ctx.db
+              .insert(brands)
+              .values({
+                slug,
+                canonicalName: m.rawMention.trim(),
+                aliases: [],
+                categoryIds: categoryId ? [categoryId] : [],
+                verified: false,
+              })
+              .onConflictDoNothing({ target: brands.slug })
+              .returning({ id: brands.id });
+            if (inserted) {
+              brandId = inserted.id;
+            } else {
+              // Slug collision on a race — look it up.
+              const [existing] = await ctx.db
+                .select({ id: brands.id })
+                .from(brands)
+                .where(eq(brands.slug, slug))
+                .limit(1);
+              brandId = existing?.id;
+            }
+            if (brandId) nameToBrandId.set(key, brandId);
+          }
+          if (brandId) {
+            autoResolved.push({
+              rawMention: m.rawMention,
+              brandId,
+              rank: m.rank,
+              sentiment: m.sentiment,
+              context: m.context,
+              confidence: m.confidence,
+            });
+          }
+        }
+
+        const allResolved = [...resolved, ...autoResolved];
+        if (allResolved.length > 0) {
           await ctx.db.insert(benchmarkBrandMentions).values(
-            resolved.map((m) => ({
+            allResolved.map((m) => ({
               runId: input.runId,
               rawMention: m.rawMention,
               brandId: m.brandId,
@@ -354,51 +466,15 @@ export const benchmarkRouter = createTRPCRouter({
           );
         }
 
-        if (unresolved.length > 0) {
-          await ctx.db.insert(benchmarkBrandMentions).values(
-            unresolved.map((m) => ({
-              runId: input.runId,
-              rawMention: m.rawMention,
-              brandId: null,
-              rank: m.rank,
-              sentiment: m.sentiment,
-              context: m.context,
-              confidence: m.confidence.toString(),
-              extractorVersion: input.extractorVersion,
-            })),
-          );
-          for (const m of unresolved) {
-            const [existing] = await ctx.db
-              .select({ id: brandAliasQueue.id })
-              .from(brandAliasQueue)
-              .where(
-                sql`lower(${brandAliasQueue.rawMention}) = lower(${m.rawMention})`,
-              )
-              .limit(1);
-            if (existing) {
-              await ctx.db
-                .update(brandAliasQueue)
-                .set({
-                  occurrenceCount: sql`${brandAliasQueue.occurrenceCount} + 1`,
-                })
-                .where(eq(brandAliasQueue.id, existing.id));
-            } else {
-              await ctx.db.insert(brandAliasQueue).values({
-                rawMention: m.rawMention,
-                runId: input.runId,
-                occurrenceCount: 1,
-                status: "pending",
-              });
-            }
-          }
-        }
-
         await ctx.db
           .update(benchmarkRuns)
           .set({ extractionStatus: "done" })
           .where(eq(benchmarkRuns.id, input.runId));
 
-        return { resolved: resolved.length, unresolved: unresolved.length };
+        return {
+          resolved: resolved.length,
+          autoCreated: autoResolved.length,
+        };
       } catch (err) {
         await ctx.db
           .update(benchmarkRuns)
@@ -525,5 +601,296 @@ export const benchmarkRouter = createTRPCRouter({
         .from(benchmarkRuns)
         .orderBy(desc(benchmarkRuns.capturedAt))
         .limit(input.limit);
+    }),
+
+  getHeroTopBrand: publicProcedure
+    .input(
+      z.object({
+        categoryId: z.string().uuid(),
+        windowDays: z
+          .union([z.literal(7), z.literal(30), z.literal(90)])
+          .default(30),
+        modelScope: z.string().max(32).default("all"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .select()
+        .from(aggTopBrandByCategory)
+        .where(
+          and(
+            eq(aggTopBrandByCategory.categoryId, input.categoryId),
+            eq(aggTopBrandByCategory.windowDays, input.windowDays),
+            eq(aggTopBrandByCategory.modelScope, input.modelScope),
+          ),
+        )
+        .limit(1);
+
+      if (!row) return null;
+
+      const [brand] = await ctx.db
+        .select({
+          id: brands.id,
+          slug: brands.slug,
+          canonicalName: brands.canonicalName,
+          website: brands.website,
+        })
+        .from(brands)
+        .where(eq(brands.id, row.brandId))
+        .limit(1);
+
+      if (!brand) return null;
+
+      return {
+        brand,
+        mentionCount: row.mentionCount,
+        totalAnswers: row.totalAnswers,
+        sharePct: Number(row.sharePct),
+        modelsSampled: row.modelsSampled,
+        runnerUp: row.runnerUpBrandId
+          ? {
+              brandId: row.runnerUpBrandId,
+              canonicalName: row.runnerUpCanonicalName,
+              sharePct:
+                row.runnerUpSharePct !== null
+                  ? Number(row.runnerUpSharePct)
+                  : null,
+            }
+          : null,
+        windowDays: row.windowDays as 7 | 30 | 90,
+        updatedAt: row.updatedAt,
+      };
+    }),
+
+  getHeroOverview: publicProcedure
+    .input(
+      z.object({
+        windowDays: z
+          .union([z.literal(7), z.literal(30), z.literal(90)])
+          .default(30),
+        modelScope: z.string().max(32).default("all"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({
+          categoryId: aggTopBrandByCategory.categoryId,
+          sharePct: aggTopBrandByCategory.sharePct,
+        })
+        .from(aggTopBrandByCategory)
+        .where(
+          and(
+            eq(aggTopBrandByCategory.windowDays, input.windowDays),
+            eq(aggTopBrandByCategory.modelScope, input.modelScope),
+          ),
+        );
+      return rows.map((r) => ({
+        categoryId: r.categoryId,
+        sharePct: Number(r.sharePct),
+      }));
+    }),
+
+  getCategoryBrandList: publicProcedure
+    .input(
+      z.object({
+        categoryId: z.string().uuid(),
+        windowDays: z
+          .union([z.literal(7), z.literal(30), z.literal(90)])
+          .default(30),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const totalRow = (await ctx.db.execute(sql`
+        SELECT COUNT(DISTINCT r.id)::int AS total
+        FROM "app"."benchmark_run" r
+        JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
+        WHERE p.category_id = ${input.categoryId}
+          AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
+          AND r.extraction_status = 'done'
+      `)) as unknown as { rows?: Array<{ total: number }> };
+      const totalAnswers =
+        (totalRow.rows ?? (totalRow as unknown as Array<{ total: number }>))[0]
+          ?.total ?? 0;
+
+      const trendRows = (await ctx.db.execute(sql`
+        SELECT
+          t.brand_id,
+          b.slug AS brand_slug,
+          b.canonical_name AS brand_canonical_name,
+          t.date::text AS day,
+          t.mention_pct::numeric AS mention_pct,
+          t.run_count
+        FROM "app"."agg_brand_trends_by_day" t
+        JOIN "app"."brand" b ON b.id = t.brand_id
+        WHERE t.category_id = ${input.categoryId}
+          AND t.date >= (CURRENT_DATE - (${input.windowDays} || ' days')::interval)::date
+      `)) as unknown as {
+        rows?: Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          day: string;
+          mention_pct: string;
+          run_count: number;
+        }>;
+      };
+      const rows =
+        trendRows.rows ??
+        (trendRows as unknown as Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          day: string;
+          mention_pct: string;
+          run_count: number;
+        }>);
+
+      type Accum = {
+        brandId: string;
+        slug: string;
+        canonicalName: string;
+        mentionCount: number;
+        pctSum: number;
+        pctCount: number;
+        points: Array<{ date: string; value: number }>;
+      };
+      const byBrand = new Map<string, Accum>();
+      for (const r of rows) {
+        let a = byBrand.get(r.brand_id);
+        if (!a) {
+          a = {
+            brandId: r.brand_id,
+            slug: r.brand_slug,
+            canonicalName: r.brand_canonical_name,
+            mentionCount: 0,
+            pctSum: 0,
+            pctCount: 0,
+            points: [],
+          };
+          byBrand.set(r.brand_id, a);
+        }
+        a.mentionCount += r.run_count;
+        a.pctSum += Number(r.mention_pct);
+        a.pctCount += 1;
+        a.points.push({ date: r.day, value: Number(r.mention_pct) });
+      }
+
+      const brands = [...byBrand.values()]
+        .map((a) => ({
+          brandId: a.brandId,
+          slug: a.slug,
+          canonicalName: a.canonicalName,
+          sharePct: a.pctCount > 0 ? a.pctSum / a.pctCount : 0,
+          mentionCount: a.mentionCount,
+          sparkline: buildSparkline(a.points, input.windowDays, 30),
+          rank: 0,
+        }))
+        .sort((x, y) => {
+          if (y.mentionCount !== x.mentionCount)
+            return y.mentionCount - x.mentionCount;
+          return x.canonicalName.localeCompare(y.canonicalName);
+        });
+
+      brands.forEach((b, i) => {
+        b.rank = i + 1;
+      });
+
+      return {
+        brands,
+        totalAnswers,
+        lowData: totalAnswers < 5,
+      };
+    }),
+
+  getCategoryBrandTrend: publicProcedure
+    .input(
+      z.object({
+        categoryId: z.string().uuid(),
+        windowDays: z
+          .union([z.literal(7), z.literal(30), z.literal(90)])
+          .default(30),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const trendRows = (await ctx.db.execute(sql`
+        SELECT
+          t.brand_id,
+          b.slug AS brand_slug,
+          b.canonical_name AS brand_canonical_name,
+          t.date::text AS day,
+          AVG(t.mention_pct::numeric) AS mention_pct
+        FROM "app"."agg_brand_trends_by_day" t
+        JOIN "app"."brand" b ON b.id = t.brand_id
+        WHERE t.category_id = ${input.categoryId}
+          AND t.date >= (CURRENT_DATE - (${input.windowDays} || ' days')::interval)::date
+        GROUP BY t.brand_id, b.slug, b.canonical_name, t.date
+        ORDER BY t.brand_id, t.date
+      `)) as unknown as {
+        rows?: Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          day: string;
+          mention_pct: string;
+        }>;
+      };
+      const rows =
+        trendRows.rows ??
+        (trendRows as unknown as Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          day: string;
+          mention_pct: string;
+        }>);
+
+      type Series = {
+        brandId: string;
+        slug: string;
+        canonicalName: string;
+        rawPoints: Array<{ date: string; value: number }>;
+      };
+      const byBrand = new Map<string, Series>();
+      for (const r of rows) {
+        let s = byBrand.get(r.brand_id);
+        if (!s) {
+          s = {
+            brandId: r.brand_id,
+            slug: r.brand_slug,
+            canonicalName: r.brand_canonical_name,
+            rawPoints: [],
+          };
+          byBrand.set(r.brand_id, s);
+        }
+        s.rawPoints.push({ date: r.day, value: Number(r.mention_pct) });
+      }
+
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const dayMs = 86_400_000;
+
+      const allDates: string[] = [];
+      for (let i = input.windowDays - 1; i >= 0; i--) {
+        const d = new Date(today.getTime() - i * dayMs);
+        allDates.push(d.toISOString().slice(0, 10));
+      }
+
+      const series = [...byBrand.values()].map((s) => {
+        const byDate = new Map(s.rawPoints.map((p) => [p.date, p.value]));
+        const points = allDates.map((d) => ({
+          date: d,
+          value: byDate.get(d) ?? 0,
+        }));
+        return {
+          brandId: s.brandId,
+          slug: s.slug,
+          canonicalName: s.canonicalName,
+          points,
+        };
+      });
+
+      series.sort((a, b) => a.canonicalName.localeCompare(b.canonicalName));
+
+      return { series };
     }),
 });
