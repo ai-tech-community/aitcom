@@ -28,6 +28,8 @@ import {
 } from "@/lib/benchmark-constants";
 import { splitMentions } from "@/server/benchmark/ingest-extraction";
 import { slugifyBrandName } from "@/server/benchmark/slugify";
+import { extractRunInline } from "@/server/benchmark/extract-run";
+import { after } from "next/server";
 import {
   EXTRACTOR_VERSION,
   buildExtractorPrompt,
@@ -268,6 +270,13 @@ export const benchmarkRouter = createTRPCRouter({
             modelId: input.modelId,
             modelProvider: input.modelProvider,
           },
+        });
+
+        // Fire-and-forget: extractor runs after the response is returned to
+        // the client. Failures are logged and the run stays pending for retry.
+        const runId = run.id;
+        after(async () => {
+          await extractRunInline(ctx.db, runId);
         });
 
         return run;
