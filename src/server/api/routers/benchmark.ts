@@ -20,6 +20,7 @@ import {
   aggBrandRankByPrompt,
   aggBrandTrendsByDay,
   aggModelBiasMatrix,
+  aggTopBrandByCategory,
 } from "@/server/db/schema";
 import {
   BENCHMARK_DEFAULT_LOCALE,
@@ -525,5 +526,92 @@ export const benchmarkRouter = createTRPCRouter({
         .from(benchmarkRuns)
         .orderBy(desc(benchmarkRuns.capturedAt))
         .limit(input.limit);
+    }),
+
+  getHeroTopBrand: publicProcedure
+    .input(
+      z.object({
+        categoryId: z.string().uuid(),
+        windowDays: z
+          .union([z.literal(7), z.literal(30), z.literal(90)])
+          .default(30),
+        modelScope: z.string().max(32).default("all"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .select()
+        .from(aggTopBrandByCategory)
+        .where(
+          and(
+            eq(aggTopBrandByCategory.categoryId, input.categoryId),
+            eq(aggTopBrandByCategory.windowDays, input.windowDays),
+            eq(aggTopBrandByCategory.modelScope, input.modelScope),
+          ),
+        )
+        .limit(1);
+
+      if (!row) return null;
+
+      const [brand] = await ctx.db
+        .select({
+          id: brands.id,
+          slug: brands.slug,
+          canonicalName: brands.canonicalName,
+          website: brands.website,
+        })
+        .from(brands)
+        .where(eq(brands.id, row.brandId))
+        .limit(1);
+
+      if (!brand) return null;
+
+      return {
+        brand,
+        mentionCount: row.mentionCount,
+        totalAnswers: row.totalAnswers,
+        sharePct: Number(row.sharePct),
+        modelsSampled: row.modelsSampled,
+        runnerUp: row.runnerUpBrandId
+          ? {
+              brandId: row.runnerUpBrandId,
+              canonicalName: row.runnerUpCanonicalName,
+              sharePct:
+                row.runnerUpSharePct !== null
+                  ? Number(row.runnerUpSharePct)
+                  : null,
+            }
+          : null,
+        windowDays: row.windowDays as 7 | 30 | 90,
+        updatedAt: row.updatedAt,
+      };
+    }),
+
+  getHeroOverview: publicProcedure
+    .input(
+      z.object({
+        windowDays: z
+          .union([z.literal(7), z.literal(30), z.literal(90)])
+          .default(30),
+        modelScope: z.string().max(32).default("all"),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({
+          categoryId: aggTopBrandByCategory.categoryId,
+          sharePct: aggTopBrandByCategory.sharePct,
+        })
+        .from(aggTopBrandByCategory)
+        .where(
+          and(
+            eq(aggTopBrandByCategory.windowDays, input.windowDays),
+            eq(aggTopBrandByCategory.modelScope, input.modelScope),
+          ),
+        );
+      return rows.map((r) => ({
+        categoryId: r.categoryId,
+        sharePct: Number(r.sharePct),
+      }));
     }),
 });
