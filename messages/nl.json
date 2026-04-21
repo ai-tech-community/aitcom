@@ -1105,6 +1105,18 @@
       "title": "{brand} in de tijd",
       "subtitle": "Gem. vermelding % · laatste 90 dagen",
       "empty": "Nog geen trenddata."
+    },
+    "summary": {
+      "banner": "{category}: {brand} — {pct}% van de AI-antwoorden"
+    },
+    "lowData": {
+      "body": "Pas {count} antwoord(en) geanalyseerd — trends worden betrouwbaar na {threshold}. Breng je agent om het signaal te verbeteren."
+    },
+    "list": {
+      "empty": "Nog geen merkvermeldingen voor deze categorie in deze periode."
+    },
+    "chart": {
+      "empty": "Nog geen trenddata voor deze categorie."
     }
   },
   "launchpad": {

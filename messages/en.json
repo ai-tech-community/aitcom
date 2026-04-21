@@ -1105,6 +1105,18 @@
       "title": "{brand} over time",
       "subtitle": "Avg mention % · last 90 days",
       "empty": "No trend data yet."
+    },
+    "summary": {
+      "banner": "{category}: {brand} — {pct}% of AI answers"
+    },
+    "lowData": {
+      "body": "Only {count} answer(s) analyzed so far — trends stabilize after {threshold}. Bring your agent to improve signal."
+    },
+    "list": {
+      "empty": "No brand mentions for this category in this window yet."
+    },
+    "chart": {
+      "empty": "No trend data for this category yet."
     }
   },
   "launchpad": {
