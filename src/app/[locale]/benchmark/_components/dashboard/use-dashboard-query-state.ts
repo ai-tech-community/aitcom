@@ -10,6 +10,7 @@ export type DashboardState = {
   categorySlug: string | null;
   windowDays: WindowDays;
   modelScope: string;
+  activeBrandSlug: string | null;
 };
 
 const VALID_WINDOWS = [7, 30, 90] as const;
@@ -31,6 +32,7 @@ export function useDashboardQueryState() {
       categorySlug: params.get("c"),
       windowDays: coerceWindow(params.get("w")),
       modelScope: params.get("m") ?? "all",
+      activeBrandSlug: params.get("b"),
     }),
     [params],
   );
@@ -48,6 +50,9 @@ export function useDashboardQueryState() {
 
       if (merged.modelScope !== "all") next.set("m", merged.modelScope);
       else next.delete("m");
+
+      if (merged.activeBrandSlug) next.set("b", merged.activeBrandSlug);
+      else next.delete("b");
 
       const qs = next.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
