@@ -19,7 +19,11 @@ export default function BenchmarkPage() {
         <p className="text-muted-foreground">{t("pageTagline")}</p>
       </header>
 
-      <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="w-full">
+      <Tabs
+        value={tab}
+        onValueChange={(v) => setTab(v as typeof tab)}
+        className="w-full"
+      >
         <TabsList>
           <TabsTrigger value="dashboard">{t("tabs.dashboard")}</TabsTrigger>
           <TabsTrigger value="run">{t("tabs.run")}</TabsTrigger>

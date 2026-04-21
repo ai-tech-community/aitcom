@@ -56,7 +56,8 @@ export function DashboardTab({ onChangeTab }: Props) {
   );
 
   const categoriesLoaded = categories.isFetched;
-  const categoriesEmpty = categoriesLoaded && (categories.data ?? []).length === 0;
+  const categoriesEmpty =
+    categoriesLoaded && (categories.data ?? []).length === 0;
 
   if (categoriesEmpty) {
     return (
@@ -122,7 +123,5 @@ export function DashboardTab({ onChangeTab }: Props) {
 }
 
 function HeroCardSkeleton() {
-  return (
-    <div className="bg-muted h-64 w-full animate-pulse rounded-lg" />
-  );
+  return <div className="bg-muted h-64 w-full animate-pulse rounded-lg" />;
 }

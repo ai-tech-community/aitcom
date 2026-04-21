@@ -27,7 +27,7 @@ export function HeroMetrics({
     <div className="divide-border grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0">
       {stats.map((s) => (
         <div key={s.label} className="flex flex-col gap-1 p-4 text-center">
-          <span className="text-muted-foreground text-xs uppercase tracking-wide">
+          <span className="text-muted-foreground text-xs tracking-wide uppercase">
             {s.label}
           </span>
           <span className="text-2xl tabular-nums">{s.value}</span>

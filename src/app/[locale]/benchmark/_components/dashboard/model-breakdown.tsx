@@ -23,10 +23,7 @@ export function ModelBreakdown({ brandId, brandName, onClose }: Props) {
 
   const perModel = useMemo(() => {
     const rows = trend.data ?? [];
-    const byModel = new Map<
-      string,
-      { totalPct: number; days: number }
-    >();
+    const byModel = new Map<string, { totalPct: number; days: number }>();
     for (const r of rows) {
       const cur = byModel.get(r.modelId) ?? { totalPct: 0, days: 0 };
       byModel.set(r.modelId, {
@@ -50,7 +47,12 @@ export function ModelBreakdown({ brandId, brandName, onClose }: Props) {
         <h3 className="text-lg font-medium">
           {t("modelBreakdown.title", { brand: brandName })}
         </h3>
-        <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClose}
+          aria-label="Close"
+        >
           <X className="h-4 w-4" />
         </Button>
       </header>

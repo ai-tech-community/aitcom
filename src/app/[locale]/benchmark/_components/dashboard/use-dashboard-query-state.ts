@@ -1,7 +1,7 @@
 // src/app/[locale]/benchmark/_components/dashboard/use-dashboard-query-state.ts
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 export type WindowDays = 7 | 30 | 90;
@@ -16,7 +16,9 @@ const VALID_WINDOWS = [7, 30, 90] as const;
 
 function coerceWindow(raw: string | null): WindowDays {
   const n = raw ? Number(raw) : NaN;
-  return (VALID_WINDOWS as readonly number[]).includes(n) ? (n as WindowDays) : 30;
+  return (VALID_WINDOWS as readonly number[]).includes(n)
+    ? (n as WindowDays)
+    : 30;
 }
 
 export function useDashboardQueryState() {
@@ -24,11 +26,14 @@ export function useDashboardQueryState() {
   const pathname = usePathname();
   const params = useSearchParams();
 
-  const state: DashboardState = {
-    categorySlug: params.get("c"),
-    windowDays: coerceWindow(params.get("w")),
-    modelScope: params.get("m") ?? "all",
-  };
+  const state: DashboardState = useMemo(
+    () => ({
+      categorySlug: params.get("c"),
+      windowDays: coerceWindow(params.get("w")),
+      modelScope: params.get("m") ?? "all",
+    }),
+    [params],
+  );
 
   const update = useCallback(
     (patch: Partial<DashboardState>) => {
@@ -53,8 +58,7 @@ export function useDashboardQueryState() {
   const buildShareUrl = useCallback(
     (base?: string) => {
       const origin =
-        base ??
-        (typeof window !== "undefined" ? window.location.origin : "");
+        base ?? (typeof window !== "undefined" ? window.location.origin : "");
       const qs = params.toString();
       return qs ? `${origin}${pathname}?${qs}` : `${origin}${pathname}`;
     },

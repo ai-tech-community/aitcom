@@ -77,8 +77,7 @@ export function HeroCard({
             runnerUp={
               hero.data.runnerUp
                 ? {
-                    canonicalName:
-                      hero.data.runnerUp.canonicalName ?? "",
+                    canonicalName: hero.data.runnerUp.canonicalName ?? "",
                     sharePct: hero.data.runnerUp.sharePct,
                   }
                 : null

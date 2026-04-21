@@ -53,14 +53,12 @@ export function HeroActions({
         <PopoverContent className="w-64">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-muted-foreground text-xs uppercase tracking-wide">
+              <label className="text-muted-foreground text-xs tracking-wide uppercase">
                 {t("hero.window.label")}
               </label>
               <Select
                 value={String(windowDays)}
-                onValueChange={(v) =>
-                  onWindowChange(Number(v) as 7 | 30 | 90)
-                }
+                onValueChange={(v) => onWindowChange(Number(v) as 7 | 30 | 90)}
               >
                 <SelectTrigger>
                   <SelectValue />

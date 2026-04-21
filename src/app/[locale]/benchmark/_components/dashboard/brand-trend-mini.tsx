@@ -27,7 +27,10 @@ export function BrandTrendMini({ brandId, brandName }: Props) {
   );
 
   const data = useMemo(() => {
-    const byDate = new Map<string, { date: string; pct: number; count: number }>();
+    const byDate = new Map<
+      string,
+      { date: string; pct: number; count: number }
+    >();
     for (const r of trend.data ?? []) {
       const date = (r.date as unknown as string).slice(0, 10);
       const cur = byDate.get(date) ?? { date, pct: 0, count: 0 };
