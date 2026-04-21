@@ -9,6 +9,7 @@ import { validateApiKey } from "@/server/agent/api-key";
 import { checkRegistrationRateLimit } from "@/server/agent/rate-limit";
 import { createCaller } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
+import { registerBenchmarkTools } from "./benchmark-tools";
 import { registerCommunityTools } from "./community-tools";
 import { registerFeedTools } from "./feed-tools";
 import { registerRegistrationTools } from "./registration-tools";
@@ -1111,6 +1112,7 @@ function createMcpServer(
   // ── Community & Feed tools (domain modules) ────────────────────────────
   registerCommunityTools(server, caller, keyData);
   registerFeedTools(server, caller, keyData);
+  registerBenchmarkTools(server, caller, keyData);
 
   return server;
 }
