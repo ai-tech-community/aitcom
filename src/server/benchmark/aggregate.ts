@@ -5,12 +5,17 @@ type DB = typeof _db;
 
 const WINDOWS = [7, 30, 90] as const;
 
+// Neon HTTP driver rejects multi-statement queries. Each DELETE and INSERT
+// lives in its own db.execute(sql`...`) call.
+
 export async function rebuildBrandRankByPrompt(db: DB): Promise<void> {
   for (const w of WINDOWS) {
     await db.execute(sql`
       DELETE FROM "app"."agg_brand_rank_by_prompt"
-      WHERE "window_days" = ${w};
+      WHERE "window_days" = ${w}
+    `);
 
+    await db.execute(sql`
       INSERT INTO "app"."agg_brand_rank_by_prompt" (
         "prompt_id", "brand_id", "model_id", "window_days",
         "mention_count", "weighted_score", "avg_rank",
@@ -34,7 +39,7 @@ export async function rebuildBrandRankByPrompt(db: DB): Promise<void> {
       WHERE m.brand_id IS NOT NULL
         AND r.captured_at >= now() - (${w} || ' days')::interval
         AND r.extraction_status = 'done'
-      GROUP BY r.prompt_id, m.brand_id, r.model_id;
+      GROUP BY r.prompt_id, m.brand_id, r.model_id
     `);
   }
 }
@@ -42,37 +47,55 @@ export async function rebuildBrandRankByPrompt(db: DB): Promise<void> {
 export async function rebuildBrandTrendsByDay(db: DB): Promise<void> {
   await db.execute(sql`
     DELETE FROM "app"."agg_brand_trends_by_day"
-    WHERE "date" >= (CURRENT_DATE - INTERVAL '365 days');
+    WHERE "date" >= (CURRENT_DATE - INTERVAL '365 days')
+  `);
 
+  await db.execute(sql`
+    WITH day_totals AS (
+      SELECT
+        model_id,
+        date_trunc('day', captured_at)::date AS d,
+        COUNT(*)::int AS total
+      FROM "app"."benchmark_run"
+      WHERE extraction_status = 'done'
+        AND captured_at >= now() - INTERVAL '365 days'
+      GROUP BY model_id, date_trunc('day', captured_at)::date
+    ),
+    brand_days AS (
+      SELECT
+        m.brand_id,
+        r.model_id,
+        p.category_id,
+        date_trunc('day', r.captured_at)::date AS d,
+        COUNT(DISTINCT r.id)::int AS run_count
+      FROM "app"."benchmark_brand_mention" m
+      JOIN "app"."benchmark_run" r ON r.id = m.run_id
+      JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
+      WHERE m.brand_id IS NOT NULL
+        AND r.extraction_status = 'done'
+        AND r.captured_at >= now() - INTERVAL '365 days'
+      GROUP BY m.brand_id, r.model_id, p.category_id, date_trunc('day', r.captured_at)::date
+    )
     INSERT INTO "app"."agg_brand_trends_by_day" (
       "brand_id", "model_id", "category_id", "date", "mention_pct", "run_count", "updated_at"
     )
     SELECT
-      m.brand_id,
-      r.model_id,
-      p.category_id,
-      date_trunc('day', r.captured_at)::date AS d,
-      (COUNT(DISTINCT r.id)::numeric / NULLIF((
-        SELECT COUNT(*) FROM "app"."benchmark_run" r2
-        WHERE r2.model_id = r.model_id
-          AND date_trunc('day', r2.captured_at) = date_trunc('day', r.captured_at)
-      ), 0)) * 100 AS mention_pct,
-      COUNT(DISTINCT r.id)::int,
+      bd.brand_id,
+      bd.model_id,
+      bd.category_id,
+      bd.d,
+      (bd.run_count::numeric / NULLIF(dt.total, 0)) * 100,
+      bd.run_count,
       now()
-    FROM "app"."benchmark_brand_mention" m
-    JOIN "app"."benchmark_run" r ON r.id = m.run_id
-    JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
-    WHERE m.brand_id IS NOT NULL
-      AND r.extraction_status = 'done'
-      AND r.captured_at >= now() - INTERVAL '365 days'
-    GROUP BY m.brand_id, r.model_id, p.category_id, d;
+    FROM brand_days bd
+    JOIN day_totals dt ON dt.model_id = bd.model_id AND dt.d = bd.d
   `);
 }
 
 export async function rebuildModelBiasMatrix(db: DB): Promise<void> {
-  await db.execute(sql`
-    DELETE FROM "app"."agg_model_bias_matrix";
+  await db.execute(sql`DELETE FROM "app"."agg_model_bias_matrix"`);
 
+  await db.execute(sql`
     INSERT INTO "app"."agg_model_bias_matrix" ("prompt_id", "model_id", "top_brand_ids", "updated_at")
     SELECT
       prompt_id,
@@ -86,7 +109,7 @@ export async function rebuildModelBiasMatrix(db: DB): Promise<void> {
       FROM "app"."agg_brand_rank_by_prompt"
       WHERE window_days = 30
     ) t
-    GROUP BY prompt_id, model_id;
+    GROUP BY prompt_id, model_id
   `);
 }
 
@@ -94,8 +117,10 @@ export async function rebuildTopBrandByCategory(db: DB): Promise<void> {
   for (const w of WINDOWS) {
     await db.execute(sql`
       DELETE FROM "app"."agg_top_brand_by_category"
-      WHERE "window_days" = ${w} AND "model_scope" = 'all';
+      WHERE "window_days" = ${w} AND "model_scope" = 'all'
+    `);
 
+    await db.execute(sql`
       WITH category_totals AS (
         SELECT
           p.category_id,
@@ -176,7 +201,7 @@ export async function rebuildTopBrandByCategory(db: DB): Promise<void> {
         ct.models_sampled,
         now()
       FROM top_two tt
-      JOIN category_totals ct ON ct.category_id = tt.category_id;
+      JOIN category_totals ct ON ct.category_id = tt.category_id
     `);
   }
 }
