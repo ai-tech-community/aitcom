@@ -65,16 +65,19 @@ export async function rebuildBrandTrendsByDay(db: DB): Promise<void> {
       SELECT
         m.brand_id,
         r.model_id,
-        p.category_id,
+        cat.category_id,
         date_trunc('day', r.captured_at)::date AS d,
         COUNT(DISTINCT r.id)::int AS run_count
       FROM "app"."benchmark_brand_mention" m
       JOIN "app"."benchmark_run" r ON r.id = m.run_id
       JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
+      CROSS JOIN LATERAL (
+        SELECT unnest(ARRAY[p.category_id] || p.inferred_category_ids) AS category_id
+      ) cat
       WHERE m.brand_id IS NOT NULL
         AND r.extraction_status = 'done'
         AND r.captured_at >= now() - INTERVAL '365 days'
-      GROUP BY m.brand_id, r.model_id, p.category_id, date_trunc('day', r.captured_at)::date
+      GROUP BY m.brand_id, r.model_id, cat.category_id, date_trunc('day', r.captured_at)::date
     )
     INSERT INTO "app"."agg_brand_trends_by_day" (
       "brand_id", "model_id", "category_id", "date", "mention_pct", "run_count", "updated_at"
@@ -123,18 +126,21 @@ export async function rebuildTopBrandByCategory(db: DB): Promise<void> {
     await db.execute(sql`
       WITH category_totals AS (
         SELECT
-          p.category_id,
+          cat.category_id,
           COUNT(DISTINCT r.id) AS total_answers,
           COUNT(DISTINCT r.model_id) AS models_sampled
         FROM "app"."benchmark_run" r
         JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
+        CROSS JOIN LATERAL (
+          SELECT unnest(ARRAY[p.category_id] || p.inferred_category_ids) AS category_id
+        ) cat
         WHERE r.captured_at >= now() - (${w} || ' days')::interval
           AND r.extraction_status = 'done'
-        GROUP BY p.category_id
+        GROUP BY cat.category_id
       ),
       brand_totals AS (
         SELECT
-          p.category_id,
+          cat.category_id,
           m.brand_id,
           b.slug AS brand_slug,
           b.canonical_name AS brand_canonical_name,
@@ -143,10 +149,13 @@ export async function rebuildTopBrandByCategory(db: DB): Promise<void> {
         JOIN "app"."benchmark_run" r ON r.id = m.run_id
         JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
         JOIN "app"."brand" b ON b.id = m.brand_id
+        CROSS JOIN LATERAL (
+          SELECT unnest(ARRAY[p.category_id] || p.inferred_category_ids) AS category_id
+        ) cat
         WHERE m.brand_id IS NOT NULL
           AND r.captured_at >= now() - (${w} || ' days')::interval
           AND r.extraction_status = 'done'
-        GROUP BY p.category_id, m.brand_id, b.slug, b.canonical_name
+        GROUP BY cat.category_id, m.brand_id, b.slug, b.canonical_name
       ),
       ranked AS (
         SELECT

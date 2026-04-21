@@ -11,6 +11,7 @@ import * as migration_20260419_143000_events_geocoding from "./20260419_143000_e
 import * as migration_20260420_events_summary_audience_backfill from "./20260420_events_summary_audience_backfill";
 import * as migration_20260420_brand_benchmark from "./20260420_brand_benchmark";
 import * as migration_20260421_benchmark_hero_aggregate from "./20260421_benchmark_hero_aggregate";
+import * as migration_20260421_benchmark_prompt_inferred_categories from "./20260421_benchmark_prompt_inferred_categories";
 
 export const migrations = [
   {
@@ -77,5 +78,10 @@ export const migrations = [
     up: migration_20260421_benchmark_hero_aggregate.up,
     down: migration_20260421_benchmark_hero_aggregate.down,
     name: "20260421_benchmark_hero_aggregate",
+  },
+  {
+    up: migration_20260421_benchmark_prompt_inferred_categories.up,
+    down: migration_20260421_benchmark_prompt_inferred_categories.down,
+    name: "20260421_benchmark_prompt_inferred_categories",
   },
 ];

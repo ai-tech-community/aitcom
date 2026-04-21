@@ -1140,6 +1140,13 @@ export const benchmarkPrompts = appSchema.table(
     id: uuid("id").primaryKey().defaultRandom(),
     text: text("text").notNull(),
     categoryId: uuid("category_id").notNull(),
+    // Category slugs inferred by the extractor LLM after it sees an
+    // answer. Supplements the author's primary categoryId so a prompt
+    // can surface under multiple categories it actually covers.
+    inferredCategoryIds: uuid("inferred_category_ids")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::uuid[]`),
     intentId: uuid("intent_id").notNull(),
     locale: text("locale").notNull().default("en-US"),
     status: text("status").notNull().default("pending"),

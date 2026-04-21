@@ -1148,7 +1148,9 @@
       "processing": "Extracting brand mentions… auto-refreshing",
       "failed": "Extraction failed. Admin will retry.",
       "retry": "Retry",
-      "retrying": "Retrying…"
+      "retrying": "Retrying…",
+      "viewRaw": "View raw answer",
+      "hideRaw": "Hide raw answer"
     },
     "dashboard": {
       "sectionHeader": "Brand share in this category",

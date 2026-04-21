@@ -30,6 +30,7 @@ export function RunPromptsTab() {
   const [search, setSearch] = useState("");
   const [manualFor, setManualFor] = useState<string | null>(null);
   const [agentFor, setAgentFor] = useState<string | null>(null);
+  const [rawOpen, setRawOpen] = useState<Record<string, boolean>>({});
 
   const prompts = api.benchmark.listApprovedPrompts.useQuery({
     categoryId: categoryId === ALL ? undefined : categoryId,
@@ -205,7 +206,21 @@ export function RunPromptsTab() {
                       {unresolved > 0 && ` · ${unresolved} in alias queue`}
                     </span>
                   )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRawOpen((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
+                    }
+                    className="underline-offset-2 hover:underline"
+                  >
+                    {rawOpen[r.id] ? t("hideRaw") : t("viewRaw")}
+                  </button>
                 </div>
+                {rawOpen[r.id] && (
+                  <pre className="bg-muted/40 mt-2 max-h-80 overflow-auto rounded p-3 text-xs whitespace-pre-wrap">
+                    {r.rawAnswer}
+                  </pre>
+                )}
               </li>
             );
           })}

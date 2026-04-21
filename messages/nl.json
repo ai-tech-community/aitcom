@@ -1148,7 +1148,9 @@
       "processing": "Merkvermeldingen extraheren… automatisch vernieuwen",
       "failed": "Extractie mislukt. Beheerder probeert opnieuw.",
       "retry": "Opnieuw",
-      "retrying": "Bezig…"
+      "retrying": "Bezig…",
+      "viewRaw": "Ruw antwoord tonen",
+      "hideRaw": "Ruw antwoord verbergen"
     },
     "dashboard": {
       "sectionHeader": "Merkaandeel in deze categorie",

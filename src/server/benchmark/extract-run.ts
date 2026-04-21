@@ -9,6 +9,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { db as _db } from "@/server/db";
 import {
   benchmarkBrandMentions,
+  benchmarkCategories,
   benchmarkPrompts,
   benchmarkRuns,
   brands,
@@ -24,6 +25,11 @@ type ExtractorMention = {
   sentiment: "positive" | "neutral" | "negative";
   context: string;
   confidence: number;
+};
+
+type ExtractorOutput = {
+  mentions: ExtractorMention[];
+  inferredCategorySlugs?: string[];
 };
 
 const EXTRACTOR_VERSION = "v1-openrouter";
@@ -61,6 +67,7 @@ export async function extractRunInline(db: DB, runId: string): Promise<void> {
     .select({
       text: benchmarkPrompts.text,
       categoryId: benchmarkPrompts.categoryId,
+      inferredCategoryIds: benchmarkPrompts.inferredCategoryIds,
     })
     .from(benchmarkPrompts)
     .where(eq(benchmarkPrompts.id, run.promptId))
@@ -69,6 +76,14 @@ export async function extractRunInline(db: DB, runId: string): Promise<void> {
     console.error(`[extract-run] prompt for run ${runId} not found`);
     return;
   }
+
+  const allCategories = await db
+    .select({
+      id: benchmarkCategories.id,
+      slug: benchmarkCategories.slug,
+      name: benchmarkCategories.name,
+    })
+    .from(benchmarkCategories);
 
   const knownBrands = await db
     .select({
@@ -93,7 +108,14 @@ export async function extractRunInline(db: DB, runId: string): Promise<void> {
       )
       .join("\n");
 
-    const rendered = `You are a brand-extraction assistant. Given an AI model's answer to a user prompt, identify every brand, product, or company name the answer mentions. Return ONLY JSON matching the schema below.
+    const categoryCatalog = allCategories
+      .map((c) => `- ${c.slug}: ${c.name}`)
+      .join("\n");
+
+    const primarySlug =
+      allCategories.find((c) => c.id === prompt.categoryId)?.slug ?? "unknown";
+
+    const rendered = `You are a brand-extraction assistant. Given an AI model's answer to a user prompt, identify every brand, product, or company name the answer mentions, and classify which high-level categories the prompt and answer together actually cover. Return ONLY JSON matching the schema below.
 
 INPUT PROMPT:
 ${prompt.text}
@@ -103,6 +125,11 @@ ${run.rawAnswer}
 
 KNOWN BRANDS IN THIS CATEGORY:
 ${brandList || "(none — this is a new category)"}
+
+CATEGORY CATALOG (slug: display name):
+${categoryCatalog}
+
+PRIMARY CATEGORY (author-assigned, already tagged): ${primarySlug}
 
 OUTPUT SCHEMA:
 {
@@ -115,7 +142,8 @@ OUTPUT SCHEMA:
       "context": "short (<= 280 chars) snippet of the answer around the mention",
       "confidence": "number 0-1, how sure you are this is a real brand mention"
     }
-  ]
+  ],
+  "inferredCategorySlugs": ["zero to 3 slugs from the catalog above, excluding the primary"]
 }
 
 RULES:
@@ -123,6 +151,7 @@ RULES:
 - Only set suggestedBrandSlug if the rawMention clearly matches a known brand's canonical name or alias (case-insensitive).
 - If the answer has no brand mentions, return {"mentions": []}.
 - Do not invent brands. Do not include generic terms ("the database", "an editor").
+- inferredCategorySlugs: pick only categories the answer truly covers (e.g. the prompt is about email-newsletter tools → inferred may include "saas" and "media" if the answer discusses both). Do NOT include the primary slug. Use only slugs from the catalog. If nothing else clearly applies, return [].
 - Output ONLY the JSON object. No prose, no markdown fencing.`;
 
     const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -150,7 +179,7 @@ RULES:
     if (!text)
       throw new Error(`Empty OpenRouter response: ${JSON.stringify(body)}`);
 
-    const parsed = JSON.parse(text) as { mentions: ExtractorMention[] };
+    const parsed = JSON.parse(text) as ExtractorOutput;
 
     const bySlug = new Map<string, string>();
     const byName = new Map<string, string>();
@@ -209,6 +238,35 @@ RULES:
         confidence: m.confidence.toString(),
         extractorVersion: EXTRACTOR_VERSION,
       });
+    }
+
+    // Merge LLM-inferred co-categories into the prompt. Drop duplicates,
+    // drop the primary, and only accept slugs that exist in the catalog.
+    const inferredSlugs = (parsed.inferredCategorySlugs ?? [])
+      .map((s) => (typeof s === "string" ? s.trim().toLowerCase() : ""))
+      .filter((s): s is string => s.length > 0);
+    if (inferredSlugs.length > 0) {
+      const slugToId = new Map(
+        allCategories.map((c) => [c.slug.toLowerCase(), c.id]),
+      );
+      const newInferredIds = Array.from(
+        new Set(
+          inferredSlugs
+            .map((s) => slugToId.get(s))
+            .filter((id): id is string => Boolean(id))
+            .filter((id) => id !== prompt.categoryId),
+        ),
+      );
+      if (newInferredIds.length > 0) {
+        const existing = new Set(prompt.inferredCategoryIds ?? []);
+        const merged = Array.from(new Set([...existing, ...newInferredIds]));
+        if (merged.length !== existing.size) {
+          await db
+            .update(benchmarkPrompts)
+            .set({ inferredCategoryIds: merged })
+            .where(eq(benchmarkPrompts.id, run.promptId));
+        }
+      }
     }
 
     await db

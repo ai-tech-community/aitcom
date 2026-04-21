@@ -139,6 +139,7 @@ export const benchmarkRouter = createTRPCRouter({
         extractionStatus: benchmarkRuns.extractionStatus,
         capturedAt: benchmarkRuns.capturedAt,
         createdAt: benchmarkRuns.createdAt,
+        rawAnswer: benchmarkRuns.rawAnswer,
       })
       .from(benchmarkRuns)
       .innerJoin(
@@ -149,20 +150,23 @@ export const benchmarkRouter = createTRPCRouter({
       .orderBy(desc(benchmarkRuns.createdAt))
       .limit(50);
 
-    const mentionCounts = await ctx.db
-      .select({
-        runId: benchmarkBrandMentions.runId,
-        total: sql<number>`count(*)::int`,
-        resolved: sql<number>`count(${benchmarkBrandMentions.brandId})::int`,
-      })
-      .from(benchmarkBrandMentions)
-      .where(
-        inArray(
-          benchmarkBrandMentions.runId,
-          myRuns.map((r) => r.id),
-        ),
-      )
-      .groupBy(benchmarkBrandMentions.runId);
+    const mentionCounts =
+      myRuns.length === 0
+        ? []
+        : await ctx.db
+            .select({
+              runId: benchmarkBrandMentions.runId,
+              total: sql<number>`count(*)::int`,
+              resolved: sql<number>`count(${benchmarkBrandMentions.brandId})::int`,
+            })
+            .from(benchmarkBrandMentions)
+            .where(
+              inArray(
+                benchmarkBrandMentions.runId,
+                myRuns.map((r) => r.id),
+              ),
+            )
+            .groupBy(benchmarkBrandMentions.runId);
     const countsByRun = new Map(mentionCounts.map((c) => [c.runId, c]));
 
     const runs = myRuns.map((r) => {
@@ -691,7 +695,10 @@ export const benchmarkRouter = createTRPCRouter({
           COUNT(DISTINCT r.model_id)::int AS models_sampled
         FROM "app"."benchmark_run" r
         JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
-        WHERE p.category_id = ${input.categoryId}
+        WHERE (
+            p.category_id = ${input.categoryId}
+            OR ${input.categoryId} = ANY(p.inferred_category_ids)
+          )
           AND r.extraction_status = 'done'
           AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
       `)) as unknown as {
@@ -720,7 +727,10 @@ export const benchmarkRouter = createTRPCRouter({
         JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
         JOIN "app"."brand" b ON b.id = m.brand_id
         WHERE m.brand_id IS NOT NULL
-          AND p.category_id = ${input.categoryId}
+          AND (
+            p.category_id = ${input.categoryId}
+            OR ${input.categoryId} = ANY(p.inferred_category_ids)
+          )
           AND r.extraction_status = 'done'
           AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
         GROUP BY m.brand_id, b.slug, b.canonical_name, b.website
@@ -814,7 +824,10 @@ export const benchmarkRouter = createTRPCRouter({
         SELECT COUNT(DISTINCT r.id)::int AS total
         FROM "app"."benchmark_run" r
         JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
-        WHERE p.category_id = ${input.categoryId}
+        WHERE (
+            p.category_id = ${input.categoryId}
+            OR ${input.categoryId} = ANY(p.inferred_category_ids)
+          )
           AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
           AND r.extraction_status = 'done'
       `)) as unknown as { rows?: Array<{ total: number }> };
@@ -837,7 +850,10 @@ export const benchmarkRouter = createTRPCRouter({
         JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
         JOIN "app"."brand" b ON b.id = m.brand_id
         WHERE m.brand_id IS NOT NULL
-          AND p.category_id = ${input.categoryId}
+          AND (
+            p.category_id = ${input.categoryId}
+            OR ${input.categoryId} = ANY(p.inferred_category_ids)
+          )
           AND r.extraction_status = 'done'
           AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
         GROUP BY m.brand_id, b.slug, b.canonical_name
@@ -1049,7 +1065,10 @@ export const benchmarkRouter = createTRPCRouter({
           COUNT(DISTINCT r.id)::int AS total_runs
         FROM "app"."benchmark_run" r
         JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
-        WHERE p.category_id = ${input.categoryId}
+        WHERE (
+            p.category_id = ${input.categoryId}
+            OR ${input.categoryId} = ANY(p.inferred_category_ids)
+          )
           AND r.extraction_status = 'done'
           AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
         GROUP BY r.model_id, r.model_provider
@@ -1080,7 +1099,10 @@ export const benchmarkRouter = createTRPCRouter({
         JOIN "app"."benchmark_run" r ON r.id = m.run_id
         JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
         JOIN "app"."brand" b ON b.id = m.brand_id
-        WHERE p.category_id = ${input.categoryId}
+        WHERE (
+            p.category_id = ${input.categoryId}
+            OR ${input.categoryId} = ANY(p.inferred_category_ids)
+          )
           AND r.extraction_status = 'done'
           AND m.brand_id IS NOT NULL
           AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
