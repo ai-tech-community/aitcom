@@ -32,6 +32,7 @@ import {
   EXTRACTOR_VERSION,
   buildExtractorPrompt,
 } from "@/server/benchmark/extractor-prompt";
+import { buildSparkline } from "@/server/benchmark/build-sparkline";
 
 export const benchmarkRouter = createTRPCRouter({
   listCategories: publicProcedure.query(async ({ ctx }) => {
@@ -677,5 +678,117 @@ export const benchmarkRouter = createTRPCRouter({
         categoryId: r.categoryId,
         sharePct: Number(r.sharePct),
       }));
+    }),
+
+  getCategoryBrandList: publicProcedure
+    .input(
+      z.object({
+        categoryId: z.string().uuid(),
+        windowDays: z
+          .union([z.literal(7), z.literal(30), z.literal(90)])
+          .default(30),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const totalRow = (await ctx.db.execute(sql`
+        SELECT COUNT(DISTINCT r.id)::int AS total
+        FROM "app"."benchmark_run" r
+        JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
+        WHERE p.category_id = ${input.categoryId}
+          AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
+          AND r.extraction_status = 'done'
+      `)) as unknown as { rows?: Array<{ total: number }> };
+      const totalAnswers =
+        (totalRow.rows ?? (totalRow as unknown as Array<{ total: number }>))[0]
+          ?.total ?? 0;
+
+      const trendRows = (await ctx.db.execute(sql`
+        SELECT
+          t.brand_id,
+          b.slug AS brand_slug,
+          b.canonical_name AS brand_canonical_name,
+          t.date::text AS day,
+          t.mention_pct::numeric AS mention_pct,
+          t.run_count
+        FROM "app"."agg_brand_trends_by_day" t
+        JOIN "app"."brand" b ON b.id = t.brand_id
+        WHERE t.category_id = ${input.categoryId}
+          AND t.date >= (CURRENT_DATE - (${input.windowDays} || ' days')::interval)::date
+      `)) as unknown as {
+        rows?: Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          day: string;
+          mention_pct: string;
+          run_count: number;
+        }>;
+      };
+      const rows =
+        trendRows.rows ??
+        (trendRows as unknown as Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          day: string;
+          mention_pct: string;
+          run_count: number;
+        }>);
+
+      type Accum = {
+        brandId: string;
+        slug: string;
+        canonicalName: string;
+        mentionCount: number;
+        pctSum: number;
+        pctCount: number;
+        points: Array<{ date: string; value: number }>;
+      };
+      const byBrand = new Map<string, Accum>();
+      for (const r of rows) {
+        let a = byBrand.get(r.brand_id);
+        if (!a) {
+          a = {
+            brandId: r.brand_id,
+            slug: r.brand_slug,
+            canonicalName: r.brand_canonical_name,
+            mentionCount: 0,
+            pctSum: 0,
+            pctCount: 0,
+            points: [],
+          };
+          byBrand.set(r.brand_id, a);
+        }
+        a.mentionCount += r.run_count;
+        a.pctSum += Number(r.mention_pct);
+        a.pctCount += 1;
+        a.points.push({ date: r.day, value: Number(r.mention_pct) });
+      }
+
+      const brands = [...byBrand.values()]
+        .map((a) => ({
+          brandId: a.brandId,
+          slug: a.slug,
+          canonicalName: a.canonicalName,
+          sharePct: a.pctCount > 0 ? a.pctSum / a.pctCount : 0,
+          mentionCount: a.mentionCount,
+          sparkline: buildSparkline(a.points, input.windowDays, 30),
+          rank: 0,
+        }))
+        .sort((x, y) => {
+          if (y.mentionCount !== x.mentionCount)
+            return y.mentionCount - x.mentionCount;
+          return x.canonicalName.localeCompare(y.canonicalName);
+        });
+
+      brands.forEach((b, i) => {
+        b.rank = i + 1;
+      });
+
+      return {
+        brands,
+        totalAnswers,
+        lowData: totalAnswers < 5,
+      };
     }),
 });
