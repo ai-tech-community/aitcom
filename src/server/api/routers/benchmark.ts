@@ -31,6 +31,7 @@ import {
 import { splitMentions } from "@/server/benchmark/ingest-extraction";
 import { slugifyBrandName } from "@/server/benchmark/slugify";
 import { extractRunInline } from "@/server/benchmark/extract-run";
+import { after } from "next/server";
 import {
   EXTRACTOR_VERSION,
   buildExtractorPrompt,
@@ -176,6 +177,55 @@ export const benchmarkRouter = createTRPCRouter({
     return { prompts: myPrompts, runs };
   }),
 
+  // Retry extraction for a run that is stuck `pending` or that `failed`.
+  // Owner-only. Re-kicks extractRunInline via after().
+  retryRunExtraction: protectedProcedure
+    .input(z.object({ runId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [run] = await ctx.db
+        .select({
+          id: benchmarkRuns.id,
+          submittedByUserId: benchmarkRuns.submittedByUserId,
+          extractionStatus: benchmarkRuns.extractionStatus,
+        })
+        .from(benchmarkRuns)
+        .where(eq(benchmarkRuns.id, input.runId))
+        .limit(1);
+      if (!run) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Run not found." });
+      }
+      if (run.submittedByUserId !== userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only retry your own runs.",
+        });
+      }
+      if (
+        run.extractionStatus !== "pending" &&
+        run.extractionStatus !== "failed"
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot retry a run in state "${run.extractionStatus}".`,
+        });
+      }
+      // Reset attempts so the run has a fresh shot.
+      await ctx.db
+        .update(benchmarkRuns)
+        .set({ extractionStatus: "pending", extractionAttempts: 0 })
+        .where(eq(benchmarkRuns.id, run.id));
+      const runId = run.id;
+      after(async () => {
+        try {
+          await extractRunInline(ctx.db, runId);
+        } catch (err) {
+          console.error(`[extract-run] retry failure for ${runId}:`, err);
+        }
+      });
+      return { ok: true };
+    }),
+
   submitRun: protectedProcedure
     .input(
       z.object({
@@ -273,12 +323,21 @@ export const benchmarkRouter = createTRPCRouter({
           },
         });
 
-        // Fire-and-forget: kick off extraction immediately. Using a direct
-        // void call (not Next's `after`) because `after` can stall under the
-        // MCP streamable HTTP transport and leave runs stuck in `pending`.
+        // Kick off extraction via Next's `after()` so the serverless
+        // runtime waits for it to complete before tearing down. A bare
+        // `void extractRunInline(...)` promise was getting killed on
+        // Vercel after the response flushed, leaving runs stuck in
+        // `pending` with no `processing` update.
         const runId = run.id;
-        void extractRunInline(ctx.db, runId).catch((err) => {
-          console.error(`[extract-run] background failure for ${runId}:`, err);
+        after(async () => {
+          try {
+            await extractRunInline(ctx.db, runId);
+          } catch (err) {
+            console.error(
+              `[extract-run] after() failure for ${runId}:`,
+              err,
+            );
+          }
         });
 
         return run;
@@ -622,51 +681,94 @@ export const benchmarkRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const [row] = await ctx.db
-        .select()
-        .from(aggTopBrandByCategory)
-        .where(
-          and(
-            eq(aggTopBrandByCategory.categoryId, input.categoryId),
-            eq(aggTopBrandByCategory.windowDays, input.windowDays),
-            eq(aggTopBrandByCategory.modelScope, input.modelScope),
-          ),
-        )
-        .limit(1);
+      // Compute live from raw runs/mentions so it stays consistent with
+      // the ranked list. The materialized agg table is still rebuilt by
+      // cron for the homepage overview, but relying on it here caused
+      // the hero to lag behind the list after new extractions.
+      const totalsRes = (await ctx.db.execute(sql`
+        SELECT
+          COUNT(DISTINCT r.id)::int AS total_answers,
+          COUNT(DISTINCT r.model_id)::int AS models_sampled
+        FROM "app"."benchmark_run" r
+        JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
+        WHERE p.category_id = ${input.categoryId}
+          AND r.extraction_status = 'done'
+          AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
+      `)) as unknown as {
+        rows?: Array<{ total_answers: number; models_sampled: number }>;
+      };
+      const totals =
+        (totalsRes.rows ??
+          (totalsRes as unknown as Array<{
+            total_answers: number;
+            models_sampled: number;
+          }>))[0] ?? { total_answers: 0, models_sampled: 0 };
+      const totalAnswers = totals.total_answers;
+      const modelsSampled = totals.models_sampled;
 
-      if (!row) return null;
+      if (totalAnswers === 0) return null;
 
-      const [brand] = await ctx.db
-        .select({
-          id: brands.id,
-          slug: brands.slug,
-          canonicalName: brands.canonicalName,
-          website: brands.website,
-        })
-        .from(brands)
-        .where(eq(brands.id, row.brandId))
-        .limit(1);
+      const brandRowsRes = (await ctx.db.execute(sql`
+        SELECT
+          m.brand_id,
+          b.slug AS brand_slug,
+          b.canonical_name AS brand_canonical_name,
+          b.website AS brand_website,
+          COUNT(DISTINCT r.id)::int AS mention_count
+        FROM "app"."benchmark_brand_mention" m
+        JOIN "app"."benchmark_run" r ON r.id = m.run_id
+        JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
+        JOIN "app"."brand" b ON b.id = m.brand_id
+        WHERE m.brand_id IS NOT NULL
+          AND p.category_id = ${input.categoryId}
+          AND r.extraction_status = 'done'
+          AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
+        GROUP BY m.brand_id, b.slug, b.canonical_name, b.website
+        ORDER BY mention_count DESC, b.canonical_name ASC
+        LIMIT 2
+      `)) as unknown as {
+        rows?: Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          brand_website: string | null;
+          mention_count: number;
+        }>;
+      };
+      const brandRows =
+        brandRowsRes.rows ??
+        (brandRowsRes as unknown as Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          brand_website: string | null;
+          mention_count: number;
+        }>);
 
-      if (!brand) return null;
+      const top = brandRows[0];
+      if (!top) return null;
+      const runner = brandRows[1];
 
       return {
-        brand,
-        mentionCount: row.mentionCount,
-        totalAnswers: row.totalAnswers,
-        sharePct: Number(row.sharePct),
-        modelsSampled: row.modelsSampled,
-        runnerUp: row.runnerUpBrandId
+        brand: {
+          id: top.brand_id,
+          slug: top.brand_slug,
+          canonicalName: top.brand_canonical_name,
+          website: top.brand_website,
+        },
+        mentionCount: top.mention_count,
+        totalAnswers,
+        sharePct: (top.mention_count / totalAnswers) * 100,
+        modelsSampled,
+        runnerUp: runner
           ? {
-              brandId: row.runnerUpBrandId,
-              canonicalName: row.runnerUpCanonicalName,
-              sharePct:
-                row.runnerUpSharePct !== null
-                  ? Number(row.runnerUpSharePct)
-                  : null,
+              brandId: runner.brand_id,
+              canonicalName: runner.brand_canonical_name,
+              sharePct: (runner.mention_count / totalAnswers) * 100,
             }
           : null,
-        windowDays: row.windowDays as 7 | 30 | 90,
-        updatedAt: row.updatedAt,
+        windowDays: input.windowDays,
+        updatedAt: new Date(),
       };
     }),
 
@@ -720,37 +822,64 @@ export const benchmarkRouter = createTRPCRouter({
         (totalRow.rows ?? (totalRow as unknown as Array<{ total: number }>))[0]
           ?.total ?? 0;
 
-      const trendRows = (await ctx.db.execute(sql`
+      // Live brand mention counts (COUNT DISTINCT run) so mentionCount
+      // matches totalAnswers' window. The agg_brand_trends_by_day table
+      // is rebuilt on cron and lags behind new extractions, so we only
+      // use it for sparklines below.
+      const brandCountsRes = (await ctx.db.execute(sql`
         SELECT
-          t.brand_id,
+          m.brand_id,
           b.slug AS brand_slug,
           b.canonical_name AS brand_canonical_name,
-          t.date::text AS day,
-          t.mention_pct::numeric AS mention_pct,
-          t.run_count
-        FROM "app"."agg_brand_trends_by_day" t
-        JOIN "app"."brand" b ON b.id = t.brand_id
-        WHERE t.category_id = ${input.categoryId}
-          AND t.date >= (CURRENT_DATE - (${input.windowDays} || ' days')::interval)::date
+          COUNT(DISTINCT r.id)::int AS mention_count
+        FROM "app"."benchmark_brand_mention" m
+        JOIN "app"."benchmark_run" r ON r.id = m.run_id
+        JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
+        JOIN "app"."brand" b ON b.id = m.brand_id
+        WHERE m.brand_id IS NOT NULL
+          AND p.category_id = ${input.categoryId}
+          AND r.extraction_status = 'done'
+          AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
+        GROUP BY m.brand_id, b.slug, b.canonical_name
       `)) as unknown as {
         rows?: Array<{
           brand_id: string;
           brand_slug: string;
           brand_canonical_name: string;
+          mention_count: number;
+        }>;
+      };
+      const brandCounts =
+        brandCountsRes.rows ??
+        (brandCountsRes as unknown as Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          mention_count: number;
+        }>);
+
+      const trendRows = (await ctx.db.execute(sql`
+        SELECT
+          t.brand_id,
+          t.date::text AS day,
+          AVG(t.mention_pct::numeric) AS mention_pct
+        FROM "app"."agg_brand_trends_by_day" t
+        WHERE t.category_id = ${input.categoryId}
+          AND t.date >= (CURRENT_DATE - (${input.windowDays} || ' days')::interval)::date
+        GROUP BY t.brand_id, t.date
+      `)) as unknown as {
+        rows?: Array<{
+          brand_id: string;
           day: string;
           mention_pct: string;
-          run_count: number;
         }>;
       };
       const rows =
         trendRows.rows ??
         (trendRows as unknown as Array<{
           brand_id: string;
-          brand_slug: string;
-          brand_canonical_name: string;
           day: string;
           mention_pct: string;
-          run_count: number;
         }>);
 
       type Accum = {
@@ -758,28 +887,21 @@ export const benchmarkRouter = createTRPCRouter({
         slug: string;
         canonicalName: string;
         mentionCount: number;
-        pctSum: number;
-        pctCount: number;
         points: Array<{ date: string; value: number }>;
       };
       const byBrand = new Map<string, Accum>();
+      for (const bc of brandCounts) {
+        byBrand.set(bc.brand_id, {
+          brandId: bc.brand_id,
+          slug: bc.brand_slug,
+          canonicalName: bc.brand_canonical_name,
+          mentionCount: bc.mention_count,
+          points: [],
+        });
+      }
       for (const r of rows) {
-        let a = byBrand.get(r.brand_id);
-        if (!a) {
-          a = {
-            brandId: r.brand_id,
-            slug: r.brand_slug,
-            canonicalName: r.brand_canonical_name,
-            mentionCount: 0,
-            pctSum: 0,
-            pctCount: 0,
-            points: [],
-          };
-          byBrand.set(r.brand_id, a);
-        }
-        a.mentionCount += r.run_count;
-        a.pctSum += Number(r.mention_pct);
-        a.pctCount += 1;
+        const a = byBrand.get(r.brand_id);
+        if (!a) continue;
         a.points.push({ date: r.day, value: Number(r.mention_pct) });
       }
 
@@ -788,7 +910,12 @@ export const benchmarkRouter = createTRPCRouter({
           brandId: a.brandId,
           slug: a.slug,
           canonicalName: a.canonicalName,
-          sharePct: a.pctCount > 0 ? a.pctSum / a.pctCount : 0,
+          // Share = runs-that-mention-brand / total-runs-in-category-window.
+          // (Not the average of daily mention_pct values: that averages a
+          // string of 100%s when each day has one run, so every brand
+          // trivially reads 100%.)
+          sharePct:
+            totalAnswers > 0 ? (a.mentionCount / totalAnswers) * 100 : 0,
           mentionCount: a.mentionCount,
           sparkline: buildSparkline(a.points, input.windowDays, 30),
           rank: 0,
@@ -898,6 +1025,209 @@ export const benchmarkRouter = createTRPCRouter({
       });
 
       series.sort((a, b) => a.canonicalName.localeCompare(b.canonicalName));
+
+      return { series };
+    }),
+
+  // Brand × Model share matrix for a category+window. Cell =
+  // mentions(brand,model) / total_runs(model). Used by the heatmap.
+  getCategoryBrandModelMatrix: publicProcedure
+    .input(
+      z.object({
+        categoryId: z.string().uuid(),
+        windowDays: z
+          .union([z.literal(7), z.literal(30), z.literal(90)])
+          .default(30),
+        topBrands: z.number().int().min(1).max(50).default(10),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const modelsRes = (await ctx.db.execute(sql`
+        SELECT
+          r.model_id,
+          r.model_provider,
+          COUNT(DISTINCT r.id)::int AS total_runs
+        FROM "app"."benchmark_run" r
+        JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
+        WHERE p.category_id = ${input.categoryId}
+          AND r.extraction_status = 'done'
+          AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
+        GROUP BY r.model_id, r.model_provider
+        ORDER BY total_runs DESC, r.model_id ASC
+      `)) as unknown as {
+        rows?: Array<{
+          model_id: string;
+          model_provider: string;
+          total_runs: number;
+        }>;
+      };
+      const modelRows =
+        modelsRes.rows ??
+        (modelsRes as unknown as Array<{
+          model_id: string;
+          model_provider: string;
+          total_runs: number;
+        }>);
+
+      const cellsRes = (await ctx.db.execute(sql`
+        SELECT
+          m.brand_id,
+          b.slug AS brand_slug,
+          b.canonical_name AS brand_canonical_name,
+          r.model_id,
+          COUNT(DISTINCT r.id)::int AS mention_count
+        FROM "app"."benchmark_brand_mention" m
+        JOIN "app"."benchmark_run" r ON r.id = m.run_id
+        JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
+        JOIN "app"."brand" b ON b.id = m.brand_id
+        WHERE p.category_id = ${input.categoryId}
+          AND r.extraction_status = 'done'
+          AND m.brand_id IS NOT NULL
+          AND r.captured_at >= now() - (${input.windowDays} || ' days')::interval
+        GROUP BY m.brand_id, b.slug, b.canonical_name, r.model_id
+      `)) as unknown as {
+        rows?: Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          model_id: string;
+          mention_count: number;
+        }>;
+      };
+      const cellRows =
+        cellsRes.rows ??
+        (cellsRes as unknown as Array<{
+          brand_id: string;
+          brand_slug: string;
+          brand_canonical_name: string;
+          model_id: string;
+          mention_count: number;
+        }>);
+
+      const models = modelRows.map((m) => ({
+        modelId: m.model_id,
+        modelProvider: m.model_provider,
+        totalRuns: m.total_runs,
+      }));
+      const totalRunsByModel = new Map(
+        models.map((m) => [m.modelId, m.totalRuns]),
+      );
+
+      type Agg = {
+        brandId: string;
+        slug: string;
+        canonicalName: string;
+        totalMentions: number;
+        cells: Map<string, number>;
+      };
+      const byBrand = new Map<string, Agg>();
+      for (const c of cellRows) {
+        let a = byBrand.get(c.brand_id);
+        if (!a) {
+          a = {
+            brandId: c.brand_id,
+            slug: c.brand_slug,
+            canonicalName: c.brand_canonical_name,
+            totalMentions: 0,
+            cells: new Map(),
+          };
+          byBrand.set(c.brand_id, a);
+        }
+        a.totalMentions += c.mention_count;
+        a.cells.set(c.model_id, c.mention_count);
+      }
+
+      const brandsAgg = [...byBrand.values()]
+        .sort((x, y) => {
+          if (y.totalMentions !== x.totalMentions)
+            return y.totalMentions - x.totalMentions;
+          return x.canonicalName.localeCompare(y.canonicalName);
+        })
+        .slice(0, input.topBrands);
+
+      const brands = brandsAgg.map((a) => ({
+        brandId: a.brandId,
+        slug: a.slug,
+        canonicalName: a.canonicalName,
+        totalMentions: a.totalMentions,
+        cells: models.map((m) => {
+          const mentions = a.cells.get(m.modelId) ?? 0;
+          const total = totalRunsByModel.get(m.modelId) ?? 0;
+          return {
+            modelId: m.modelId,
+            mentions,
+            totalRuns: total,
+            sharePct: total > 0 ? (mentions / total) * 100 : 0,
+          };
+        }),
+      }));
+
+      return { models, brands };
+    }),
+
+  // Per-model time series for a single brand in a category. Used by the
+  // "Per model" overlay on the trend chart.
+  getBrandModelTrend: publicProcedure
+    .input(
+      z.object({
+        categoryId: z.string().uuid(),
+        brandSlug: z.string().min(1).max(120),
+        windowDays: z
+          .union([z.literal(7), z.literal(30), z.literal(90)])
+          .default(30),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rowsRes = (await ctx.db.execute(sql`
+        SELECT
+          t.model_id,
+          t.date::text AS day,
+          t.mention_pct::numeric AS mention_pct
+        FROM "app"."agg_brand_trends_by_day" t
+        JOIN "app"."brand" b ON b.id = t.brand_id
+        WHERE t.category_id = ${input.categoryId}
+          AND b.slug = ${input.brandSlug}
+          AND t.date >= (CURRENT_DATE - (${input.windowDays} || ' days')::interval)::date
+      `)) as unknown as {
+        rows?: Array<{ model_id: string; day: string; mention_pct: string }>;
+      };
+      const rows =
+        rowsRes.rows ??
+        (rowsRes as unknown as Array<{
+          model_id: string;
+          day: string;
+          mention_pct: string;
+        }>);
+
+      type S = {
+        modelId: string;
+        raw: Map<string, number>;
+      };
+      const byModel = new Map<string, S>();
+      for (const r of rows) {
+        let s = byModel.get(r.model_id);
+        if (!s) {
+          s = { modelId: r.model_id, raw: new Map() };
+          byModel.set(r.model_id, s);
+        }
+        s.raw.set(r.day, Number(r.mention_pct));
+      }
+
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const dayMs = 86_400_000;
+      const allDates: string[] = [];
+      for (let i = input.windowDays - 1; i >= 0; i--) {
+        allDates.push(
+          new Date(today.getTime() - i * dayMs).toISOString().slice(0, 10),
+        );
+      }
+
+      const series = [...byModel.values()].map((s) => ({
+        modelId: s.modelId,
+        points: allDates.map((d) => ({ date: d, value: s.raw.get(d) ?? 0 })),
+      }));
+      series.sort((a, b) => a.modelId.localeCompare(b.modelId));
 
       return { series };
     }),
@@ -1041,8 +1371,12 @@ export const benchmarkRouter = createTRPCRouter({
       });
 
       const runId = run.id;
-      void extractRunInline(ctx.db, runId).catch((err) => {
-        console.error(`[extract-run] background failure for ${runId}:`, err);
+      after(async () => {
+        try {
+          await extractRunInline(ctx.db, runId);
+        } catch (err) {
+          console.error(`[extract-run] after() failure for ${runId}:`, err);
+        }
       });
 
       return {

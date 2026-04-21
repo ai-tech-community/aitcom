@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,6 +18,11 @@ import { AgentRunModal } from "./agent-run-modal";
 const ALL = "__all__";
 
 export function RunPromptsTab() {
+  const t = useTranslations("benchmark.runTab");
+  const utils = api.useUtils();
+  const retryExtraction = api.benchmark.retryRunExtraction.useMutation({
+    onSuccess: () => utils.benchmark.listMySubmissions.invalidate(),
+  });
   const categories = api.benchmark.listCategories.useQuery();
   const intents = api.benchmark.listIntents.useQuery();
   const [categoryId, setCategoryId] = useState<string>(ALL);
@@ -113,25 +119,28 @@ export function RunPromptsTab() {
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-medium">My recent runs</h2>
+          <h2 className="text-lg font-medium">{t("myRecentRuns")}</h2>
           <Button
             size="sm"
             variant="outline"
             onClick={() => mine.refetch()}
             disabled={mine.isFetching}
           >
-            {mine.isFetching ? "Refreshing…" : "Refresh"}
+            {mine.isFetching ? t("refreshing") : t("refresh")}
           </Button>
         </div>
         <ul className="flex flex-col divide-y rounded-md border text-sm">
           {mine.data?.runs.length === 0 && (
-            <li className="text-muted-foreground p-3">No runs yet.</li>
+            <li className="text-muted-foreground p-3">{t("noRunsYet")}</li>
           )}
           {mine.data?.runs.map((r) => {
             const unresolved = r.mentionsTotal - r.mentionsResolved;
             const isActive =
               r.extractionStatus === "pending" ||
               r.extractionStatus === "processing";
+            const canRetry =
+              r.extractionStatus === "pending" ||
+              r.extractionStatus === "failed";
             const statusClass =
               r.extractionStatus === "done"
                 ? "text-emerald-600"
@@ -142,17 +151,38 @@ export function RunPromptsTab() {
               <li key={r.id} className="flex flex-col gap-1 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <p className="line-clamp-2 font-medium">{r.promptText}</p>
-                  <span
-                    className={`flex shrink-0 items-center gap-1.5 text-xs tracking-wide uppercase ${statusClass}`}
-                  >
-                    {isActive && (
-                      <span
-                        className="inline-block h-2 w-2 animate-pulse rounded-full bg-current"
-                        aria-hidden
-                      />
+                  <div className="flex shrink-0 items-center gap-2">
+                    {canRetry && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[11px]"
+                        onClick={() =>
+                          retryExtraction.mutate({ runId: r.id })
+                        }
+                        disabled={
+                          retryExtraction.isPending &&
+                          retryExtraction.variables?.runId === r.id
+                        }
+                      >
+                        {retryExtraction.isPending &&
+                        retryExtraction.variables?.runId === r.id
+                          ? t("retrying")
+                          : t("retry")}
+                      </Button>
                     )}
-                    {r.extractionStatus}
-                  </span>
+                    <span
+                      className={`flex items-center gap-1.5 text-xs tracking-wide uppercase ${statusClass}`}
+                    >
+                      {isActive && (
+                        <span
+                          className="inline-block h-2 w-2 animate-pulse rounded-full bg-current"
+                          aria-hidden
+                        />
+                      )}
+                      {r.extractionStatus}
+                    </span>
+                  </div>
                 </div>
                 <div className="text-muted-foreground flex flex-wrap gap-3 text-xs">
                   <span className="font-mono">
@@ -163,11 +193,9 @@ export function RunPromptsTab() {
                       r.capturedAt as unknown as string,
                     ).toLocaleString()}
                   </span>
-                  {isActive && (
-                    <span>Extracting brand mentions… auto-refreshing</span>
-                  )}
+                  {isActive && <span>{t("processing")}</span>}
                   {r.extractionStatus === "failed" && (
-                    <span>Extraction failed. Admin will retry.</span>
+                    <span>{t("failed")}</span>
                   )}
                   {r.extractionStatus === "done" && (
                     <span>

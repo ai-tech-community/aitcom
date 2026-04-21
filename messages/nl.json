@@ -1117,6 +1117,42 @@
     },
     "chart": {
       "empty": "Nog geen trenddata voor deze categorie."
+    },
+    "heatmap": {
+      "title": "Merk × Model aandeel",
+      "subtitle": "Aandeel van antwoorden per model dat het merk noemt.",
+      "empty": "Nog niet genoeg data — draai meer prompts om de merk × model-matrix te zien.",
+      "brandHeader": "Merk",
+      "runsSuffix": "n={n}",
+      "detailsLink": "details →",
+      "noData": "—",
+      "cellTitle": "{mentions}/{total} runs = {pct}%",
+      "cellEmpty": "Geen runs"
+    },
+    "modelTrend": {
+      "header": "{brand} — per model",
+      "subheader": "aandeel van antwoorden per model dat het merk noemt",
+      "pickBrand": "Kies een merk om trends per model te zien.",
+      "emptyForBrand": "Geen modeldata voor {brand} in deze periode."
+    },
+    "viewToggle": {
+      "brands": "Merken",
+      "models": "Per model",
+      "disabledTitle": "Kies een merk uit de lijst voor trends per model"
+    },
+    "runTab": {
+      "myRecentRuns": "Mijn recente runs",
+      "refresh": "Vernieuwen",
+      "refreshing": "Vernieuwen…",
+      "noRunsYet": "Nog geen runs.",
+      "processing": "Merkvermeldingen extraheren… automatisch vernieuwen",
+      "failed": "Extractie mislukt. Beheerder probeert opnieuw.",
+      "retry": "Opnieuw",
+      "retrying": "Bezig…"
+    },
+    "dashboard": {
+      "sectionHeader": "Merkaandeel in deze categorie",
+      "metricHelp": "Aandeel = runs die het merk noemen ÷ totaal aantal runs in de periode. Het kleine getal onder elke rij toont die breuk (bijv. 1/2)."
     }
   },
   "launchpad": {

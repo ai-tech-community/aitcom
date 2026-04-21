@@ -1117,6 +1117,42 @@
     },
     "chart": {
       "empty": "No trend data for this category yet."
+    },
+    "heatmap": {
+      "title": "Brand × Model share",
+      "subtitle": "Share of each model's answers that mention the brand.",
+      "empty": "Not enough data yet — run more prompts to see the brand × model matrix.",
+      "brandHeader": "Brand",
+      "runsSuffix": "n={n}",
+      "detailsLink": "details →",
+      "noData": "—",
+      "cellTitle": "{mentions}/{total} runs = {pct}%",
+      "cellEmpty": "No runs"
+    },
+    "modelTrend": {
+      "header": "{brand} — by model",
+      "subheader": "share of each model's answers that mention the brand",
+      "pickBrand": "Select a brand to see how it trends across models.",
+      "emptyForBrand": "No per-model data for {brand} in this window."
+    },
+    "viewToggle": {
+      "brands": "Brands",
+      "models": "By model",
+      "disabledTitle": "Pick a brand from the list to see per-model trends"
+    },
+    "runTab": {
+      "myRecentRuns": "My recent runs",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing…",
+      "noRunsYet": "No runs yet.",
+      "processing": "Extracting brand mentions… auto-refreshing",
+      "failed": "Extraction failed. Admin will retry.",
+      "retry": "Retry",
+      "retrying": "Retrying…"
+    },
+    "dashboard": {
+      "sectionHeader": "Brand share in this category",
+      "metricHelp": "Share = runs that mention the brand ÷ total runs in the window. The small number under each row shows that fraction (e.g. 1/2)."
     }
   },
   "launchpad": {

@@ -7,6 +7,7 @@ import { RankedBrandRow, type RankedBrand } from "./ranked-brand-row";
 
 type Props = {
   brands: RankedBrand[];
+  totalAnswers: number;
   activeBrandSlug: string | null;
   onToggleBrand: (slug: string) => void;
   isLoading?: boolean;
@@ -14,6 +15,7 @@ type Props = {
 
 export function BrandRankedList({
   brands,
+  totalAnswers,
   activeBrandSlug,
   onToggleBrand,
   isLoading,
@@ -49,6 +51,7 @@ export function BrandRankedList({
           key={b.brandId}
           brand={b}
           active={b.slug === activeBrandSlug}
+          totalAnswers={totalAnswers}
           onToggle={onToggleBrand}
         />
       ))}

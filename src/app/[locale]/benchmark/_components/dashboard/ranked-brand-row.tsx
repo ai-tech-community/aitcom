@@ -21,10 +21,16 @@ export type RankedBrand = {
 type Props = {
   brand: RankedBrand;
   active: boolean;
+  totalAnswers: number;
   onToggle: (slug: string) => void;
 };
 
-export function RankedBrandRow({ brand, active, onToggle }: Props) {
+export function RankedBrandRow({
+  brand,
+  active,
+  totalAnswers,
+  onToggle,
+}: Props) {
   const color = colorFor(brand.slug);
   return (
     <button
@@ -45,8 +51,11 @@ export function RankedBrandRow({ brand, active, onToggle }: Props) {
       >
         {brand.canonicalName}
       </Link>
-      <span className="w-14 text-right text-sm tabular-nums">
-        {brand.sharePct.toFixed(1)}%
+      <span className="flex flex-col items-end text-sm tabular-nums">
+        <span>{brand.sharePct.toFixed(0)}%</span>
+        <span className="text-muted-foreground text-[11px]">
+          {brand.mentionCount}/{totalAnswers}
+        </span>
       </span>
       <div className="h-8 w-20">
         <ResponsiveContainer width="100%" height="100%">
