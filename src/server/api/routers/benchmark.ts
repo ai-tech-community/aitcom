@@ -125,12 +125,51 @@ export const benchmarkRouter = createTRPCRouter({
       .orderBy(desc(benchmarkPrompts.createdAt))
       .limit(50);
     const myRuns = await ctx.db
-      .select()
+      .select({
+        id: benchmarkRuns.id,
+        promptId: benchmarkRuns.promptId,
+        promptText: benchmarkPrompts.text,
+        modelProvider: benchmarkRuns.modelProvider,
+        modelId: benchmarkRuns.modelId,
+        extractionStatus: benchmarkRuns.extractionStatus,
+        capturedAt: benchmarkRuns.capturedAt,
+        createdAt: benchmarkRuns.createdAt,
+      })
       .from(benchmarkRuns)
+      .innerJoin(
+        benchmarkPrompts,
+        eq(benchmarkPrompts.id, benchmarkRuns.promptId),
+      )
       .where(eq(benchmarkRuns.submittedByUserId, userId))
       .orderBy(desc(benchmarkRuns.createdAt))
       .limit(50);
-    return { prompts: myPrompts, runs: myRuns };
+
+    const mentionCounts = await ctx.db
+      .select({
+        runId: benchmarkBrandMentions.runId,
+        total: sql<number>`count(*)::int`,
+        resolved: sql<number>`count(${benchmarkBrandMentions.brandId})::int`,
+      })
+      .from(benchmarkBrandMentions)
+      .where(
+        inArray(
+          benchmarkBrandMentions.runId,
+          myRuns.map((r) => r.id),
+        ),
+      )
+      .groupBy(benchmarkBrandMentions.runId);
+    const countsByRun = new Map(mentionCounts.map((c) => [c.runId, c]));
+
+    const runs = myRuns.map((r) => {
+      const c = countsByRun.get(r.id);
+      return {
+        ...r,
+        mentionsTotal: c?.total ?? 0,
+        mentionsResolved: c?.resolved ?? 0,
+      };
+    });
+
+    return { prompts: myPrompts, runs };
   }),
 
   submitRun: protectedProcedure
