@@ -32,7 +32,17 @@ export function RunPromptsTab() {
     page: 1,
     pageSize: 24,
   });
-  const mine = api.benchmark.listMySubmissions.useQuery();
+  const mine = api.benchmark.listMySubmissions.useQuery(undefined, {
+    refetchInterval: (query) => {
+      const runs = query.state.data?.runs ?? [];
+      const active = runs.some(
+        (r) =>
+          r.extractionStatus === "pending" ||
+          r.extractionStatus === "processing",
+      );
+      return active ? 3000 : false;
+    },
+  });
 
   return (
     <div className="flex flex-col gap-6 py-4">
@@ -102,18 +112,45 @@ export function RunPromptsTab() {
       </ul>
 
       <section className="flex flex-col gap-2">
-        <h2 className="text-lg font-medium">My recent runs</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-medium">My recent runs</h2>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => mine.refetch()}
+            disabled={mine.isFetching}
+          >
+            {mine.isFetching ? "Refreshing…" : "Refresh"}
+          </Button>
+        </div>
         <ul className="flex flex-col divide-y rounded-md border text-sm">
           {mine.data?.runs.length === 0 && (
             <li className="text-muted-foreground p-3">No runs yet.</li>
           )}
           {mine.data?.runs.map((r) => {
             const unresolved = r.mentionsTotal - r.mentionsResolved;
+            const isActive =
+              r.extractionStatus === "pending" ||
+              r.extractionStatus === "processing";
+            const statusClass =
+              r.extractionStatus === "done"
+                ? "text-emerald-600"
+                : r.extractionStatus === "failed"
+                  ? "text-red-600"
+                  : "text-muted-foreground";
             return (
               <li key={r.id} className="flex flex-col gap-1 p-3">
                 <div className="flex items-start justify-between gap-3">
                   <p className="line-clamp-2 font-medium">{r.promptText}</p>
-                  <span className="text-muted-foreground shrink-0 text-xs tracking-wide uppercase">
+                  <span
+                    className={`flex shrink-0 items-center gap-1.5 text-xs tracking-wide uppercase ${statusClass}`}
+                  >
+                    {isActive && (
+                      <span
+                        className="inline-block h-2 w-2 animate-pulse rounded-full bg-current"
+                        aria-hidden
+                      />
+                    )}
                     {r.extractionStatus}
                   </span>
                 </div>
@@ -126,6 +163,12 @@ export function RunPromptsTab() {
                       r.capturedAt as unknown as string,
                     ).toLocaleString()}
                   </span>
+                  {isActive && (
+                    <span>Extracting brand mentions… auto-refreshing</span>
+                  )}
+                  {r.extractionStatus === "failed" && (
+                    <span>Extraction failed. Admin will retry.</span>
+                  )}
                   {r.extractionStatus === "done" && (
                     <span>
                       {r.mentionsTotal} mention
