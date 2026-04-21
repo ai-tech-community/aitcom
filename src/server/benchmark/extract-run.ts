@@ -54,7 +54,10 @@ export async function extractRunInline(db: DB, runId: string): Promise<void> {
   }
 
   const [prompt] = await db
-    .select({ text: benchmarkPrompts.text, categoryId: benchmarkPrompts.categoryId })
+    .select({
+      text: benchmarkPrompts.text,
+      categoryId: benchmarkPrompts.categoryId,
+    })
     .from(benchmarkPrompts)
     .where(eq(benchmarkPrompts.id, run.promptId))
     .limit(1);
@@ -140,7 +143,8 @@ RULES:
       choices?: Array<{ message?: { content?: string } }>;
     };
     const text = body.choices?.[0]?.message?.content;
-    if (!text) throw new Error(`Empty OpenRouter response: ${JSON.stringify(body)}`);
+    if (!text)
+      throw new Error(`Empty OpenRouter response: ${JSON.stringify(body)}`);
 
     const parsed = JSON.parse(text) as { mentions: ExtractorMention[] };
 
@@ -212,8 +216,7 @@ RULES:
     await db
       .update(benchmarkRuns)
       .set({
-        extractionStatus:
-          run.extractionAttempts >= 2 ? "failed" : "pending",
+        extractionStatus: run.extractionAttempts >= 2 ? "failed" : "pending",
         extractionAttempts: run.extractionAttempts + 1,
       })
       .where(eq(benchmarkRuns.id, runId));
