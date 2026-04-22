@@ -63,6 +63,7 @@ export const benchmarkRouter = createTRPCRouter({
         categoryId: z.string().uuid().optional(),
         intentId: z.string().uuid().optional(),
         search: z.string().max(200).optional(),
+        tag: z.string().min(1).max(40).optional(),
         page: z.number().int().min(1).default(1),
         pageSize: z.number().int().min(1).max(100).default(24),
       }),
@@ -76,6 +77,11 @@ export const benchmarkRouter = createTRPCRouter({
       if (input.search) {
         conds.push(
           sql`lower(${benchmarkPrompts.text}) like ${"%" + input.search.toLowerCase() + "%"}`,
+        );
+      }
+      if (input.tag) {
+        conds.push(
+          sql`${input.tag.toLowerCase()} = ANY(${benchmarkPrompts.tags})`,
         );
       }
       const offset = (input.page - 1) * input.pageSize;
@@ -96,6 +102,7 @@ export const benchmarkRouter = createTRPCRouter({
         categoryId: z.string().uuid(),
         intentId: z.string().uuid(),
         locale: z.string().max(16).default(BENCHMARK_DEFAULT_LOCALE),
+        tags: z.array(z.string().min(1).max(40)).max(10).default([]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -108,6 +115,7 @@ export const benchmarkRouter = createTRPCRouter({
             categoryId: input.categoryId,
             intentId: input.intentId,
             locale: input.locale,
+            tags: input.tags.map((t) => t.trim().toLowerCase()).filter((t) => t.length > 0),
             submittedByUserId: userId,
             status: "pending",
           })
