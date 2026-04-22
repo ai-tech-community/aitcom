@@ -13,6 +13,7 @@ import { CompetitorTable } from "./_components/CompetitorTable";
 import { CitationsPanel } from "./_components/CitationsPanel";
 import { TopPromptsPanel } from "./_components/TopPromptsPanel";
 import { SentimentStacked } from "./_components/SentimentStacked";
+import { SuggestPromptsModal } from "./_components/SuggestPromptsModal";
 
 const parseWindow = (v: string | null): 7 | 30 | 90 =>
   v === "7" || v === "90" ? (Number(v) as 7 | 90) : 30;
@@ -105,6 +106,12 @@ export default function BrandProfilePage({
           >
             Contribute a run →
           </Link>
+          <div className="mt-2">
+            <SuggestPromptsModal
+              brandSlug={s.brand.slug}
+              brandName={s.brand.canonicalName}
+            />
+          </div>
         </section>
       ) : (
         <>
