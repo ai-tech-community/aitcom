@@ -22,11 +22,13 @@ export function SubmitPromptTab() {
   const [text, setText] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [intentId, setIntentId] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
 
   const submit = api.benchmark.submitPrompt.useMutation({
     onSuccess: () => {
       toast.success("Prompt submitted for review.");
       setText("");
+      setTagsInput("");
       void utils.benchmark.listMySubmissions.invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -72,15 +74,27 @@ export function SubmitPromptTab() {
             </SelectContent>
           </Select>
         </div>
+        <input
+          type="text"
+          placeholder="Tags (comma-separated, e.g. b2b, saas)"
+          value={tagsInput}
+          onChange={(e) => setTagsInput(e.target.value)}
+          className="w-full rounded border px-3 py-2 text-sm"
+        />
         <Button
-          onClick={() =>
+          onClick={() => {
+            const parsedTags = tagsInput
+              .split(",")
+              .map((t) => t.trim())
+              .filter((t) => t.length > 0);
             submit.mutate({
               text: text.trim(),
               categoryId,
               intentId,
               locale: "en-US",
-            })
-          }
+              tags: parsedTags,
+            });
+          }}
           disabled={!canSubmit}
         >
           {submit.isPending ? "Submitting…" : "Submit for review"}
@@ -94,11 +108,22 @@ export function SubmitPromptTab() {
             <li className="text-muted-foreground p-3">No submissions yet.</li>
           )}
           {submissions.data?.prompts.map((p) => (
-            <li key={p.id} className="flex justify-between gap-3 p-3">
-              <span className="truncate">{p.text}</span>
-              <span className="text-muted-foreground text-xs tracking-wide uppercase">
-                {p.status}
-              </span>
+            <li key={p.id} className="flex flex-col gap-2 p-3">
+              <div className="flex justify-between gap-3">
+                <span className="truncate">{p.text}</span>
+                <span className="text-muted-foreground text-xs tracking-wide uppercase">
+                  {p.status}
+                </span>
+              </div>
+              {p.tags && p.tags.length > 0 && (
+                <span className="flex flex-wrap gap-1">
+                  {p.tags.map((t: string) => (
+                    <span key={t} className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                      {t}
+                    </span>
+                  ))}
+                </span>
+              )}
             </li>
           ))}
         </ul>

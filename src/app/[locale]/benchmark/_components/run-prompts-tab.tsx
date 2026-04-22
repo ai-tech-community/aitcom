@@ -28,6 +28,7 @@ export function RunPromptsTab() {
   const [categoryId, setCategoryId] = useState<string>(ALL);
   const [intentId, setIntentId] = useState<string>(ALL);
   const [search, setSearch] = useState("");
+  const [tagInput, setTagInput] = useState("");
   const [manualFor, setManualFor] = useState<string | null>(null);
   const [agentFor, setAgentFor] = useState<string | null>(null);
   const [rawOpen, setRawOpen] = useState<Record<string, boolean>>({});
@@ -36,6 +37,7 @@ export function RunPromptsTab() {
     categoryId: categoryId === ALL ? undefined : categoryId,
     intentId: intentId === ALL ? undefined : intentId,
     search: search || undefined,
+    tag: tagInput || undefined,
     page: 1,
     pageSize: 24,
   });
@@ -88,12 +90,28 @@ export function RunPromptsTab() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+
+        <Input
+          className="w-64"
+          placeholder="Filter by tag…"
+          value={tagInput}
+          onChange={(e) => setTagInput(e.target.value)}
+        />
       </div>
 
       <ul className="grid gap-3 md:grid-cols-2">
         {prompts.data?.map((p) => (
           <li key={p.id} className="flex flex-col gap-3 rounded-md border p-4">
             <p className="leading-snug font-medium">{p.text}</p>
+            {p.tags && p.tags.length > 0 && (
+              <span className="flex flex-wrap gap-1">
+                {p.tags.map((t: string) => (
+                  <span key={t} className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                    {t}
+                  </span>
+                ))}
+              </span>
+            )}
             <div className="flex gap-2">
               <Button size="sm" onClick={() => setAgentFor(p.id)}>
                 Run with my agent
