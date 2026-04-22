@@ -17,6 +17,7 @@ import {
 } from "@/server/db/schema";
 import { slugifyBrandName } from "@/server/benchmark/slugify";
 import { normalizeCitations } from "./extract-citations-ingest";
+import { normalizeWebsite } from "./normalize-website";
 
 type DB = typeof _db;
 
@@ -27,6 +28,7 @@ type ExtractorMention = {
   sentiment: "positive" | "neutral" | "negative";
   context: string;
   confidence: number;
+  suggestedWebsite?: string | null;
 };
 
 type ExtractorOutput = {
@@ -149,7 +151,8 @@ OUTPUT SCHEMA:
       "rank": "number | null, 1-based if the answer is a ranked list",
       "sentiment": "positive" | "neutral" | "negative",
       "context": "short (<= 280 chars) snippet of the answer around the mention",
-      "confidence": "number 0-1, how sure you are this is a real brand mention"
+      "confidence": "number 0-1, how sure you are this is a real brand mention",
+      "suggestedWebsite": "string | null, the brand's homepage URL (e.g. 'reddit.com' or 'https://anthropic.com') if you know it, else null"
     }
   ],
   "inferredCategorySlugs": ["zero to 3 slugs from the catalog above, excluding the primary"],
@@ -171,6 +174,7 @@ RULES:
 - Do not invent brands. Do not include generic terms ("the database", "an editor").
 - inferredCategorySlugs: pick only categories the answer truly covers (e.g. the prompt is about email-newsletter tools → inferred may include "saas" and "media" if the answer discusses both). Do NOT include the primary slug. Use only slugs from the catalog. If nothing else clearly applies, return [].
 - citations: extract every URL present in the answer (inline links, footnotes, "Sources:" sections, bracketed references). Strip www. when computing domain. If no URLs present, return "citations": []. Dedupe by url.
+- suggestedWebsite: populate only when confident (well-known brand). If unsure, return null — never invent domains. Use the main homepage, not a subpage.
 - Output ONLY the JSON object. No prose, no markdown fencing.`;
 
     const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
