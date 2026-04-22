@@ -11,8 +11,16 @@ import {
   brandWatches,
 } from "@/server/db/schema";
 import { parseCountry } from "@/server/benchmark/locale";
+import { generateStrategy, type Recommendation } from "@/server/benchmark/strategy";
+import { checkStrategyRateLimit } from "@/server/benchmark/user-rate-limit";
 
 const WINDOWS = z.union([z.literal(7), z.literal(30), z.literal(90)]);
+
+const strategyCache = new Map<
+  string,
+  { data: Recommendation[]; expiresAt: number }
+>();
+const STRATEGY_CACHE_MS = 60 * 60 * 1000; // 1 hour
 
 export const benchmarkBrandsRouter = createTRPCRouter({
   search: publicProcedure
@@ -455,4 +463,68 @@ export const benchmarkBrandsRouter = createTRPCRouter({
       .orderBy(desc(brandWatches.createdAt));
     return { watches: rows };
   }),
+
+  getStrategy: protectedProcedure
+    .input(
+      z.object({
+        brandSlug: z.string().min(1),
+        window: WINDOWS.default(30),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const cacheKey = `${input.brandSlug}|${input.window}`;
+      const cached = strategyCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        return { recommendations: cached.data, cached: true };
+      }
+
+      const rl = checkStrategyRateLimit(userId);
+      if (!rl.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limited. Retry after ${rl.retryAfterSecs}s.`,
+        });
+      }
+
+      // Reuse the same caller to fetch stats (minor layering sin but keeps
+      // this self-contained; `ctx.db` path would duplicate the stats query).
+      const caller = (await import("@/server/api/root")).createCaller(ctx);
+      const stats = await caller.benchmark.brands.stats({
+        slug: input.brandSlug,
+        window: input.window,
+      });
+      if (!stats) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Brand not found" });
+      }
+
+      const recs = await generateStrategy({
+        brandName: stats.brand.canonicalName,
+        hero: {
+          visibilityPct: stats.hero.visibilityPct,
+          totalMentions: stats.hero.totalMentions,
+          totalRuns: stats.hero.totalRuns,
+        },
+        perModel: stats.perModel.map((m) => ({
+          modelId: m.modelId,
+          visibilityPct: m.visibilityPct,
+          sentimentPosPct: m.sentimentPosPct,
+        })),
+        competitors: stats.competitors as Array<{
+          canonical_name: string;
+          visibility_pct: string | number;
+        }>,
+        citations: stats.citations.map((c: { domain: string; count: number | string }) => ({
+          domain: c.domain,
+          count: c.count,
+        })),
+        topPrompts: stats.topPrompts as Array<{ text: string; mentions: number }>,
+      });
+
+      strategyCache.set(cacheKey, {
+        data: recs,
+        expiresAt: Date.now() + STRATEGY_CACHE_MS,
+      });
+      return { recommendations: recs, cached: false };
+    }),
 });
