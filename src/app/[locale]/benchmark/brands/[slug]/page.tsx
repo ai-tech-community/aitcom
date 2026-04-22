@@ -10,6 +10,9 @@ import { BrandHero } from "./_components/BrandHero";
 import { PerModelBar } from "./_components/PerModelBar";
 import { VisibilityTrendChart } from "./_components/VisibilityTrendChart";
 import { CompetitorTable } from "./_components/CompetitorTable";
+import { CitationsPanel } from "./_components/CitationsPanel";
+import { TopPromptsPanel } from "./_components/TopPromptsPanel";
+import { SentimentStacked } from "./_components/SentimentStacked";
 
 const parseWindow = (v: string | null): 7 | 30 | 90 =>
   v === "7" || v === "90" ? (Number(v) as 7 | 90) : 30;
@@ -125,6 +128,40 @@ export default function BrandProfilePage({
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-medium">Competitors</h2>
             <CompetitorTable competitors={s.competitors as never} />
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">Top citing sources</h2>
+            <CitationsPanel
+              rows={s.citations.map((c: { domain: string; count: number | string; lastSeenAt: Date | string }) => ({
+                domain: c.domain,
+                count: Number(c.count),
+                lastSeenAt: c.lastSeenAt,
+              }))}
+            />
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">Top prompts</h2>
+            <TopPromptsPanel rows={s.topPrompts as never} />
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">Sentiment</h2>
+            <SentimentStacked
+              pos={
+                s.perModel.reduce((a, r) => a + r.sentimentPosPct * r.mentionsCount, 0) /
+                Math.max(s.hero.totalMentions, 1)
+              }
+              neu={
+                s.perModel.reduce((a, r) => a + r.sentimentNeuPct * r.mentionsCount, 0) /
+                Math.max(s.hero.totalMentions, 1)
+              }
+              neg={
+                s.perModel.reduce((a, r) => a + r.sentimentNegPct * r.mentionsCount, 0) /
+                Math.max(s.hero.totalMentions, 1)
+              }
+            />
           </section>
         </>
       )}
