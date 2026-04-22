@@ -14,6 +14,7 @@ import { CitationsPanel } from "./_components/CitationsPanel";
 import { TopPromptsPanel } from "./_components/TopPromptsPanel";
 import { SentimentStacked } from "./_components/SentimentStacked";
 import { SuggestPromptsModal } from "./_components/SuggestPromptsModal";
+import { CountryPanel } from "./_components/CountryPanel";
 
 const parseWindow = (v: string | null): 7 | 30 | 90 =>
   v === "7" || v === "90" ? (Number(v) as 7 | 90) : 30;
@@ -170,6 +171,11 @@ export default function BrandProfilePage({
                 Math.max(s.hero.totalMentions, 1)
               }
             />
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">By country</h2>
+            <CountryPanel rows={s.byCountry} />
           </section>
         </>
       )}
