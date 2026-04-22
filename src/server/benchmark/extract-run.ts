@@ -10,11 +10,13 @@ import type { db as _db } from "@/server/db";
 import {
   benchmarkBrandMentions,
   benchmarkCategories,
+  benchmarkCitations,
   benchmarkPrompts,
   benchmarkRuns,
   brands,
 } from "@/server/db/schema";
 import { slugifyBrandName } from "@/server/benchmark/slugify";
+import { normalizeCitations } from "./extract-citations-ingest";
 
 type DB = typeof _db;
 
@@ -283,6 +285,32 @@ RULES:
             .set({ inferredCategoryIds: merged })
             .where(eq(benchmarkPrompts.id, run.promptId));
         }
+      }
+    }
+
+    const citations = normalizeCitations(parsed.citations);
+    if (citations.length > 0) {
+      try {
+        await db
+          .insert(benchmarkCitations)
+          .values(
+            citations.map((c) => ({
+              runId,
+              url: c.url,
+              domain: c.domain,
+              title: c.title,
+              snippet: c.snippet,
+              position: c.position,
+            })),
+          )
+          .onConflictDoNothing({
+            target: [benchmarkCitations.runId, benchmarkCitations.url],
+          });
+      } catch (err) {
+        console.warn(
+          `[extractRunInline] citation insert failed for run ${runId}:`,
+          err,
+        );
       }
     }
 
