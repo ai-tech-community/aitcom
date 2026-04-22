@@ -13,7 +13,11 @@ interface Props {
 export function StrategyPanel({ brandSlug, window }: Props) {
   const [hasFetched, setHasFetched] = useState(false);
   const [data, setData] = useState<{
-    recommendations: Array<{ title: string; rationale: string; severity: "low" | "medium" | "high" }>;
+    recommendations: Array<{
+      title: string;
+      rationale: string;
+      severity: "low" | "medium" | "high";
+    }>;
     cached: boolean;
   } | null>(null);
 

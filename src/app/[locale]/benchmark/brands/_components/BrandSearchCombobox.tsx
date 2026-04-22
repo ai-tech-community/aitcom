@@ -28,21 +28,23 @@ export function BrandSearchCombobox() {
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
-      {debounced.length > 0 && results.data && results.data.brands.length > 0 && (
-        <ul className="bg-background absolute left-0 right-0 top-full z-10 max-h-80 overflow-auto rounded border shadow">
-          {results.data.brands.map((b) => (
-            <li key={b.id}>
-              <Link
-                href={`/benchmark/brands/${b.slug}`}
-                className="hover:bg-muted block px-3 py-2 text-sm"
-                onClick={() => setQ("")}
-              >
-                {b.canonicalName}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      {debounced.length > 0 &&
+        results.data &&
+        results.data.brands.length > 0 && (
+          <ul className="bg-background absolute top-full right-0 left-0 z-10 max-h-80 overflow-auto rounded border shadow">
+            {results.data.brands.map((b) => (
+              <li key={b.id}>
+                <Link
+                  href={`/benchmark/brands/${b.slug}`}
+                  className="hover:bg-muted block px-3 py-2 text-sm"
+                  onClick={() => setQ("")}
+                >
+                  {b.canonicalName}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
     </div>
   );
 }

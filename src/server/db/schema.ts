@@ -1207,7 +1207,10 @@ export const brandWatches = appSchema.table(
   (t) => ({
     userIdx: index("brand_watch_user_idx").on(t.userId),
     brandIdx: index("brand_watch_brand_idx").on(t.brandId),
-    userBrandUq: uniqueIndex("brand_watch_user_brand_uq").on(t.userId, t.brandId),
+    userBrandUq: uniqueIndex("brand_watch_user_brand_uq").on(
+      t.userId,
+      t.brandId,
+    ),
   }),
 );
 

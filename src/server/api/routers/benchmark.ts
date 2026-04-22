@@ -117,7 +117,9 @@ export const benchmarkRouter = createTRPCRouter({
             categoryId: input.categoryId,
             intentId: input.intentId,
             locale: input.locale,
-            tags: input.tags.map((t) => t.trim().toLowerCase()).filter((t) => t.length > 0),
+            tags: input.tags
+              .map((t) => t.trim().toLowerCase())
+              .filter((t) => t.length > 0),
             submittedByUserId: userId,
             status: "pending",
           })
@@ -408,10 +410,7 @@ export const benchmarkRouter = createTRPCRouter({
           try {
             await extractRunInline(ctx.db, runId);
           } catch (err) {
-            console.error(
-              `[extract-run] after() failure for ${runId}:`,
-              err,
-            );
+            console.error(`[extract-run] after() failure for ${runId}:`, err);
           }
         });
 
@@ -775,12 +774,11 @@ export const benchmarkRouter = createTRPCRouter({
       `)) as unknown as {
         rows?: Array<{ total_answers: number; models_sampled: number }>;
       };
-      const totals =
-        (totalsRes.rows ??
-          (totalsRes as unknown as Array<{
-            total_answers: number;
-            models_sampled: number;
-          }>))[0] ?? { total_answers: 0, models_sampled: 0 };
+      const totals = (totalsRes.rows ??
+        (totalsRes as unknown as Array<{
+          total_answers: number;
+          models_sampled: number;
+        }>))[0] ?? { total_answers: 0, models_sampled: 0 };
       const totalAnswers = totals.total_answers;
       const modelsSampled = totals.models_sampled;
 

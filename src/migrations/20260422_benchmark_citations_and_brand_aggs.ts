@@ -77,12 +77,18 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 }
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
-  await db.execute(sql`DROP TABLE IF EXISTS "app"."agg_brand_visibility_by_day";`);
-  await db.execute(sql`DROP TABLE IF EXISTS "app"."agg_brand_visibility_by_model";`);
+  await db.execute(
+    sql`DROP TABLE IF EXISTS "app"."agg_brand_visibility_by_day";`,
+  );
+  await db.execute(
+    sql`DROP TABLE IF EXISTS "app"."agg_brand_visibility_by_model";`,
+  );
   await db.execute(sql`DROP TABLE IF EXISTS "app"."agg_citation_by_brand";`);
   await db.execute(sql`
     ALTER TABLE "app"."agg_brand_rank_by_prompt"
     DROP COLUMN IF EXISTS "citation_domains_top5";
   `);
-  await db.execute(sql`DROP TABLE IF EXISTS "app"."benchmark_citation" CASCADE;`);
+  await db.execute(
+    sql`DROP TABLE IF EXISTS "app"."benchmark_citation" CASCADE;`,
+  );
 }

@@ -25,9 +25,11 @@ export function parseStrategyResponse(raw: string): Recommendation[] {
     if (!r || typeof r !== "object") continue;
     const o = r as { title?: unknown; rationale?: unknown; severity?: unknown };
     if (typeof o.title !== "string" || o.title.trim().length === 0) continue;
-    if (typeof o.rationale !== "string" || o.rationale.trim().length === 0) continue;
+    if (typeof o.rationale !== "string" || o.rationale.trim().length === 0)
+      continue;
     const sev =
-      typeof o.severity === "string" && SEVERITIES.includes(o.severity as Severity)
+      typeof o.severity === "string" &&
+      SEVERITIES.includes(o.severity as Severity)
         ? (o.severity as Severity)
         : "medium";
     out.push({
@@ -43,8 +45,15 @@ export function parseStrategyResponse(raw: string): Recommendation[] {
 export interface StrategyInput {
   brandName: string;
   hero: { visibilityPct: number; totalMentions: number; totalRuns: number };
-  perModel: Array<{ modelId: string; visibilityPct: number; sentimentPosPct: number }>;
-  competitors: Array<{ canonical_name: string; visibility_pct: string | number }>;
+  perModel: Array<{
+    modelId: string;
+    visibilityPct: number;
+    sentimentPosPct: number;
+  }>;
+  competitors: Array<{
+    canonical_name: string;
+    visibility_pct: string | number;
+  }>;
   citations: Array<{ domain: string; count: number | string }>;
   topPrompts: Array<{ text: string; mentions: number }>;
 }
@@ -62,28 +71,39 @@ CURRENT STATS:
 - Overall visibility: ${input.hero.visibilityPct.toFixed(1)}% (${input.hero.totalMentions} mentions across ${input.hero.totalRuns} runs)
 
 PER MODEL (mentions / visibility %):
-${input.perModel
-  .map(
-    (m) =>
-      `- ${m.modelId}: ${m.visibilityPct.toFixed(1)}% visibility, ${m.sentimentPosPct.toFixed(0)}% positive sentiment`,
-  )
-  .join("\n") || "(no per-model data)"}
+${
+  input.perModel
+    .map(
+      (m) =>
+        `- ${m.modelId}: ${m.visibilityPct.toFixed(1)}% visibility, ${m.sentimentPosPct.toFixed(0)}% positive sentiment`,
+    )
+    .join("\n") || "(no per-model data)"
+}
 
 TOP COMPETITORS:
-${input.competitors
-  .map((c) => `- ${c.canonical_name}: ${Number(c.visibility_pct).toFixed(1)}% visibility`)
-  .join("\n") || "(none)"}
+${
+  input.competitors
+    .map(
+      (c) =>
+        `- ${c.canonical_name}: ${Number(c.visibility_pct).toFixed(1)}% visibility`,
+    )
+    .join("\n") || "(none)"
+}
 
 TOP CITATION SOURCES (domains LLMs cite when discussing this category):
-${input.citations
-  .map((c) => `- ${c.domain}: ${Number(c.count)} citations`)
-  .join("\n") || "(no citations)"}
+${
+  input.citations
+    .map((c) => `- ${c.domain}: ${Number(c.count)} citations`)
+    .join("\n") || "(no citations)"
+}
 
 TOP PROMPTS (questions where this brand gets mentioned):
-${input.topPrompts
-  .slice(0, 5)
-  .map((p) => `- "${p.text}" — ${p.mentions} mentions`)
-  .join("\n") || "(none)"}
+${
+  input.topPrompts
+    .slice(0, 5)
+    .map((p) => `- "${p.text}" — ${p.mentions} mentions`)
+    .join("\n") || "(none)"
+}
 
 TASK: Produce 3-5 specific, actionable recommendations to improve this brand's visibility in AI search answers. Focus on concrete actions (content to publish, platforms to target, gaps vs competitors). Avoid generic advice.
 

@@ -60,9 +60,7 @@ export function WatchBrandButton({ brandSlug, isAuthenticated }: Props) {
         else watch.mutate({ brandSlug });
       }}
     >
-      <Star
-        className={`mr-1 h-3.5 w-3.5 ${watched ? "fill-current" : ""}`}
-      />
+      <Star className={`mr-1 h-3.5 w-3.5 ${watched ? "fill-current" : ""}`} />
       {watched ? "Watching" : "Watch"}
     </Button>
   );

@@ -147,11 +147,17 @@ export default function BrandProfilePage({
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-medium">Top citing sources</h2>
             <CitationsPanel
-              rows={s.citations.map((c: { domain: string; count: number | string; lastSeenAt: Date | string }) => ({
-                domain: c.domain,
-                count: Number(c.count),
-                lastSeenAt: c.lastSeenAt,
-              }))}
+              rows={s.citations.map(
+                (c: {
+                  domain: string;
+                  count: number | string;
+                  lastSeenAt: Date | string;
+                }) => ({
+                  domain: c.domain,
+                  count: Number(c.count),
+                  lastSeenAt: c.lastSeenAt,
+                }),
+              )}
             />
           </section>
 
@@ -164,16 +170,22 @@ export default function BrandProfilePage({
             <h2 className="text-lg font-medium">Sentiment</h2>
             <SentimentStacked
               pos={
-                s.perModel.reduce((a, r) => a + r.sentimentPosPct * r.mentionsCount, 0) /
-                Math.max(s.hero.totalMentions, 1)
+                s.perModel.reduce(
+                  (a, r) => a + r.sentimentPosPct * r.mentionsCount,
+                  0,
+                ) / Math.max(s.hero.totalMentions, 1)
               }
               neu={
-                s.perModel.reduce((a, r) => a + r.sentimentNeuPct * r.mentionsCount, 0) /
-                Math.max(s.hero.totalMentions, 1)
+                s.perModel.reduce(
+                  (a, r) => a + r.sentimentNeuPct * r.mentionsCount,
+                  0,
+                ) / Math.max(s.hero.totalMentions, 1)
               }
               neg={
-                s.perModel.reduce((a, r) => a + r.sentimentNegPct * r.mentionsCount, 0) /
-                Math.max(s.hero.totalMentions, 1)
+                s.perModel.reduce(
+                  (a, r) => a + r.sentimentNegPct * r.mentionsCount,
+                  0,
+                ) / Math.max(s.hero.totalMentions, 1)
               }
             />
           </section>

@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { and, desc, eq, or, sql } from "drizzle-orm";
-import { createTRPCRouter, publicProcedure, protectedProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  publicProcedure,
+  protectedProcedure,
+} from "@/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import {
   brands,
@@ -11,7 +15,10 @@ import {
   brandWatches,
 } from "@/server/db/schema";
 import { parseCountry } from "@/server/benchmark/locale";
-import { generateStrategy, type Recommendation } from "@/server/benchmark/strategy";
+import {
+  generateStrategy,
+  type Recommendation,
+} from "@/server/benchmark/strategy";
 import { checkStrategyRateLimit } from "@/server/benchmark/user-rate-limit";
 
 const WINDOWS = z.union([z.literal(7), z.literal(30), z.literal(90)]);
@@ -115,8 +122,7 @@ export const benchmarkBrandsRouter = createTRPCRouter({
         OFFSET ${offset}
       `);
 
-      const rawRows = ((result as { rows?: unknown }).rows ??
-        result) as Array<{
+      const rawRows = ((result as { rows?: unknown }).rows ?? result) as Array<{
         id: string;
         slug: string;
         canonical_name: string;
@@ -514,11 +520,16 @@ export const benchmarkBrandsRouter = createTRPCRouter({
           canonical_name: string;
           visibility_pct: string | number;
         }>,
-        citations: stats.citations.map((c: { domain: string; count: number | string }) => ({
-          domain: c.domain,
-          count: c.count,
-        })),
-        topPrompts: stats.topPrompts as Array<{ text: string; mentions: number }>,
+        citations: stats.citations.map(
+          (c: { domain: string; count: number | string }) => ({
+            domain: c.domain,
+            count: c.count,
+          }),
+        ),
+        topPrompts: stats.topPrompts as Array<{
+          text: string;
+          mentions: number;
+        }>,
       });
 
       strategyCache.set(cacheKey, {

@@ -6,8 +6,16 @@ describe("parseStrategyResponse", () => {
     const r = parseStrategyResponse(
       JSON.stringify({
         recommendations: [
-          { title: "Invest in Reddit content", rationale: "40% of citations come from reddit.com", severity: "high" },
-          { title: "Improve Perplexity visibility", rationale: "12% vs 34% on ChatGPT", severity: "medium" },
+          {
+            title: "Invest in Reddit content",
+            rationale: "40% of citations come from reddit.com",
+            severity: "high",
+          },
+          {
+            title: "Improve Perplexity visibility",
+            rationale: "12% vs 34% on ChatGPT",
+            severity: "medium",
+          },
         ],
       }),
     );
@@ -61,6 +69,8 @@ describe("parseStrategyResponse", () => {
   });
 
   it("returns [] when recommendations is not an array", () => {
-    expect(parseStrategyResponse(JSON.stringify({ recommendations: "no" }))).toEqual([]);
+    expect(
+      parseStrategyResponse(JSON.stringify({ recommendations: "no" })),
+    ).toEqual([]);
   });
 });

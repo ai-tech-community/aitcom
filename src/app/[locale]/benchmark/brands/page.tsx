@@ -86,7 +86,8 @@ export default function BrandsDirectoryPage() {
               <Card className="flex flex-col gap-1 p-3 transition-shadow hover:shadow">
                 <div className="truncate font-medium">{b.canonicalName}</div>
                 <div className="text-muted-foreground text-xs">
-                  {b.visibilityPct.toFixed(1)}% visibility · {b.mentions} mentions
+                  {b.visibilityPct.toFixed(1)}% visibility · {b.mentions}{" "}
+                  mentions
                 </div>
               </Card>
             </Link>
@@ -104,7 +105,9 @@ export default function BrandsDirectoryPage() {
       )}
 
       {page.data?.brands.length === 0 && !page.isLoading && (
-        <p className="text-muted-foreground text-sm">No brands match the filters.</p>
+        <p className="text-muted-foreground text-sm">
+          No brands match the filters.
+        </p>
       )}
     </main>
   );

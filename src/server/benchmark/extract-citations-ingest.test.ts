@@ -9,14 +9,30 @@ describe("normalizeCitations", () => {
       { url: "https://b.com", domain: "b.com", position: 2 },
     ]);
     expect(result).toEqual([
-      { url: "https://a.com", domain: "a.com", position: 1, title: null, snippet: null },
-      { url: "https://b.com", domain: "b.com", position: 2, title: null, snippet: null },
+      {
+        url: "https://a.com",
+        domain: "a.com",
+        position: 1,
+        title: null,
+        snippet: null,
+      },
+      {
+        url: "https://b.com",
+        domain: "b.com",
+        position: 2,
+        title: null,
+        snippet: null,
+      },
     ]);
   });
 
   it("strips www. and lowercases the domain", () => {
     const result = normalizeCitations([
-      { url: "https://WWW.Reddit.com/r/x", domain: "WWW.Reddit.com", position: 1 },
+      {
+        url: "https://WWW.Reddit.com/r/x",
+        domain: "WWW.Reddit.com",
+        position: 1,
+      },
     ]);
     expect(result[0]?.domain).toBe("reddit.com");
   });

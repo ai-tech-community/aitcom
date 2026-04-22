@@ -15,7 +15,9 @@ describe("normalizeWebsite", () => {
   });
 
   it("trims whitespace", () => {
-    expect(normalizeWebsite("  https://reddit.com  ")).toBe("https://reddit.com");
+    expect(normalizeWebsite("  https://reddit.com  ")).toBe(
+      "https://reddit.com",
+    );
   });
 
   it("strips trailing slash", () => {

@@ -87,7 +87,7 @@ export function BrandHero({
 
       <div className="flex items-end justify-between">
         <div>
-          <div className="text-muted-foreground text-xs uppercase tracking-wide">
+          <div className="text-muted-foreground text-xs tracking-wide uppercase">
             Visibility ({windowDays}d)
           </div>
           <div className="text-4xl font-semibold tabular-nums">
@@ -104,7 +104,10 @@ export function BrandHero({
         </div>
 
         <div className="flex items-center gap-3">
-          <WatchBrandButton brandSlug={slug} isAuthenticated={isAuthenticated} />
+          <WatchBrandButton
+            brandSlug={slug}
+            isAuthenticated={isAuthenticated}
+          />
           <a
             href={`/api/benchmark/export/brand/${encodeURIComponent(slug)}?window=${windowDays}`}
             className="text-muted-foreground hover:text-foreground text-xs underline"

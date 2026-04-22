@@ -118,7 +118,10 @@ export function SubmitPromptTab() {
               {p.tags && p.tags.length > 0 && (
                 <span className="flex flex-wrap gap-1">
                   {p.tags.map((t: string) => (
-                    <span key={t} className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                    <span
+                      key={t}
+                      className="bg-muted rounded px-1.5 py-0.5 text-xs"
+                    >
                       {t}
                     </span>
                   ))}

@@ -69,7 +69,8 @@ export function SuggestPromptsModal({ brandSlug, brandName, trigger }: Props) {
           <div className="flex flex-col gap-3 py-4">
             <p className="text-muted-foreground text-sm">
               We&apos;ll ask an LLM to generate ~12 prompts that would naturally
-              surface {brandName}. Nothing is submitted until you click each row.
+              surface {brandName}. Nothing is submitted until you click each
+              row.
             </p>
             <Button onClick={fetch}>Generate suggestions</Button>
           </div>
@@ -134,7 +135,9 @@ export function SuggestPromptsModal({ brandSlug, brandName, trigger }: Props) {
                       );
                     }}
                   >
-                    {submittedIdx.has(i) ? "Submitted ✓" : "Submit to community"}
+                    {submittedIdx.has(i)
+                      ? "Submitted ✓"
+                      : "Submit to community"}
                   </Button>
                 </div>
               );

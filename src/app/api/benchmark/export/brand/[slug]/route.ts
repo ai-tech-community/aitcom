@@ -39,7 +39,10 @@ export async function GET(
 
   const ctx = await createTRPCContext({ headers: new Headers(req.headers) });
   const caller = createCaller(ctx);
-  const stats = await caller.benchmark.brands.stats({ slug, window: windowDays });
+  const stats = await caller.benchmark.brands.stats({
+    slug,
+    window: windowDays,
+  });
 
   if (!stats) {
     return NextResponse.json({ error: "brand-not-found" }, { status: 404 });

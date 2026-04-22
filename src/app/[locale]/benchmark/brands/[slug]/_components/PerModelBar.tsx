@@ -28,7 +28,7 @@ export function PerModelBar({ rows, activeModelId, onModelSelect }: Props) {
             <button
               key={r.modelId}
               onClick={() => onModelSelect(isActive ? null : r.modelId)}
-              className={`flex items-center gap-3 rounded px-2 py-1 text-left text-sm hover:bg-muted ${
+              className={`hover:bg-muted flex items-center gap-3 rounded px-2 py-1 text-left text-sm ${
                 isActive ? "bg-muted" : ""
               }`}
             >

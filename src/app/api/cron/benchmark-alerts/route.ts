@@ -55,9 +55,7 @@ export async function GET(request: Request) {
     }
 
     const shiftByBrand = new Map(shifts.map((s) => [s.brandId, s]));
-    const silenceCutoff = new Date(
-      Date.now() - SILENCE_HOURS * 60 * 60 * 1000,
-    );
+    const silenceCutoff = new Date(Date.now() - SILENCE_HOURS * 60 * 60 * 1000);
 
     // Fetch all active watches whose brand is in `shifts`.
     const watchRows = await db
@@ -74,7 +72,12 @@ export async function GET(request: Request) {
       .from(brandWatches)
       .innerJoin(user, eq(user.id, brandWatches.userId))
       .innerJoin(brands, eq(brands.id, brandWatches.brandId))
-      .where(inArray(brandWatches.brandId, shifts.map((s) => s.brandId)));
+      .where(
+        inArray(
+          brandWatches.brandId,
+          shifts.map((s) => s.brandId),
+        ),
+      );
 
     let notified = 0;
     for (const w of watchRows) {
