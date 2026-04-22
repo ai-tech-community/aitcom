@@ -90,6 +90,7 @@ export default function BrandProfilePage({
         hero={s.hero}
         windowDays={s.window}
         onWindowChange={(w) => setParam("window", String(w))}
+        slug={slug}
       />
 
       {!hasData ? (

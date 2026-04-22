@@ -18,6 +18,7 @@ interface Props {
   };
   windowDays: 7 | 30 | 90;
   onWindowChange: (w: 7 | 30 | 90) => void;
+  slug: string;
 }
 
 export function BrandHero({
@@ -27,6 +28,7 @@ export function BrandHero({
   hero,
   windowDays,
   onWindowChange,
+  slug,
 }: Props) {
   const favicon = brand.website
     ? `https://www.google.com/s2/favicons?domain=${safeHost(brand.website)}&sz=64`
@@ -98,18 +100,27 @@ export function BrandHero({
           </div>
         </div>
 
-        <div className="flex gap-1">
-          {([7, 30, 90] as const).map((w) => (
-            <button
-              key={w}
-              onClick={() => onWindowChange(w)}
-              className={`rounded border px-3 py-1 text-sm ${
-                w === windowDays ? "bg-primary text-primary-foreground" : ""
-              }`}
-            >
-              {w}d
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <a
+            href={`/api/benchmark/export/brand/${encodeURIComponent(slug)}?window=${windowDays}`}
+            className="text-muted-foreground hover:text-foreground text-xs underline"
+            download
+          >
+            Download CSV
+          </a>
+          <div className="flex gap-1">
+            {([7, 30, 90] as const).map((w) => (
+              <button
+                key={w}
+                onClick={() => onWindowChange(w)}
+                className={`rounded border px-3 py-1 text-sm ${
+                  w === windowDays ? "bg-primary text-primary-foreground" : ""
+                }`}
+              >
+                {w}d
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </header>
