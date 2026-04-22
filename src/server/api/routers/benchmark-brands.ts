@@ -1,7 +1,15 @@
 import { z } from "zod";
-import { eq, or, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
-import { brands, benchmarkCategories } from "@/server/db/schema";
+import {
+  brands,
+  benchmarkCategories,
+  aggBrandVisibilityByModel,
+  aggBrandVisibilityByDay,
+  aggCitationByBrand,
+} from "@/server/db/schema";
+
+const WINDOWS = z.union([z.literal(7), z.literal(30), z.literal(90)]);
 
 export const benchmarkBrandsRouter = createTRPCRouter({
   search: publicProcedure
@@ -122,6 +130,194 @@ export const benchmarkBrandsRouter = createTRPCRouter({
           mentions: r.mentions,
         })),
         nextCursor,
+      };
+    }),
+
+  stats: publicProcedure
+    .input(
+      z.object({
+        slug: z.string().min(1),
+        window: WINDOWS.default(30),
+        modelId: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const [brand] = await ctx.db
+        .select()
+        .from(brands)
+        .where(eq(brands.slug, input.slug))
+        .limit(1);
+      if (!brand) return null;
+
+      const w = input.window;
+
+      const perModel = await ctx.db
+        .select()
+        .from(aggBrandVisibilityByModel)
+        .where(
+          and(
+            eq(aggBrandVisibilityByModel.brandId, brand.id),
+            eq(aggBrandVisibilityByModel.windowDays, w),
+          ),
+        );
+
+      const primaryCategoryId =
+        perModel.find((r) => r.primaryCategoryId)?.primaryCategoryId ?? null;
+
+      const filteredPerModel = input.modelId
+        ? perModel.filter((r) => r.modelId === input.modelId)
+        : perModel;
+
+      const totalMentions = filteredPerModel.reduce(
+        (a, r) => a + r.mentionsCount,
+        0,
+      );
+      const totalRuns = filteredPerModel.reduce((a, r) => a + r.runsTotal, 0);
+      const visibilityPct =
+        totalRuns === 0 ? 0 : (totalMentions / totalRuns) * 100;
+
+      // Δ vs prior-window: only meaningful if prior window aggregate was stored.
+      // Windows are 7/30/90 only, so for w=7 there is no prior; for w=30 look at 7;
+      // for w=90 look at 30. Best-effort — plan's caveat acknowledges this.
+      const priorW: 7 | 30 | null = w === 90 ? 30 : w === 30 ? 7 : null;
+      let priorVisibility = 0;
+      if (priorW !== null) {
+        const priorRows = await ctx.db
+          .select({
+            mentions: aggBrandVisibilityByModel.mentionsCount,
+            runs: aggBrandVisibilityByModel.runsTotal,
+          })
+          .from(aggBrandVisibilityByModel)
+          .where(
+            and(
+              eq(aggBrandVisibilityByModel.brandId, brand.id),
+              eq(aggBrandVisibilityByModel.windowDays, priorW),
+            ),
+          );
+        const pMentions = priorRows.reduce((a, r) => a + r.mentions, 0);
+        const pRuns = priorRows.reduce((a, r) => a + r.runs, 0);
+        priorVisibility = pRuns === 0 ? 0 : (pMentions / pRuns) * 100;
+      }
+      const deltaPct = visibilityPct - priorVisibility;
+
+      const trendDays = await ctx.db
+        .select()
+        .from(aggBrandVisibilityByDay)
+        .where(eq(aggBrandVisibilityByDay.brandId, brand.id))
+        .orderBy(aggBrandVisibilityByDay.date);
+
+      const competitorsResult = primaryCategoryId
+        ? await ctx.db.execute(sql`
+            WITH totals AS (
+              SELECT
+                v.brand_id,
+                SUM(v.mentions_count) AS mentions,
+                SUM(v.runs_total) AS runs,
+                AVG(v.visibility_pct) AS visibility_pct,
+                AVG(v.avg_rank) AS avg_rank,
+                AVG(v.sentiment_pos_pct) AS sent_pos
+              FROM "app"."agg_brand_visibility_by_model" v
+              WHERE v.window_days = ${w}
+                AND v.primary_category_id = ${primaryCategoryId}
+                AND v.brand_id <> ${brand.id}
+              GROUP BY v.brand_id
+            )
+            SELECT b.id, b.slug, b.canonical_name,
+                   t.visibility_pct, t.avg_rank, t.sent_pos
+            FROM totals t
+            JOIN "app"."brand" b ON b.id = t.brand_id
+            ORDER BY t.visibility_pct DESC
+            LIMIT 5
+          `)
+        : [];
+      const competitors = ((competitorsResult as { rows?: unknown }).rows ??
+        competitorsResult) as Array<{
+        id: string;
+        slug: string;
+        canonical_name: string;
+        visibility_pct: string | number;
+        avg_rank: string | number | null;
+        sent_pos: string | number;
+      }>;
+
+      const citationRows = await ctx.db
+        .select({
+          domain: aggCitationByBrand.domain,
+          count: sql<number>`SUM(${aggCitationByBrand.citationCount})::int`,
+          lastSeenAt: sql<Date>`MAX(${aggCitationByBrand.lastSeenAt})`,
+        })
+        .from(aggCitationByBrand)
+        .where(
+          and(
+            eq(aggCitationByBrand.brandId, brand.id),
+            eq(aggCitationByBrand.windowDays, w),
+          ),
+        )
+        .groupBy(aggCitationByBrand.domain)
+        .orderBy(desc(sql`SUM(${aggCitationByBrand.citationCount})`))
+        .limit(10);
+
+      const topPromptsResult = await ctx.db.execute(sql`
+        SELECT
+          p.id AS prompt_id,
+          p.text,
+          p.category_id,
+          SUM(a.mention_count)::int AS mentions,
+          AVG(a.avg_rank) AS avg_rank
+        FROM "app"."agg_brand_rank_by_prompt" a
+        JOIN "app"."benchmark_prompt" p ON p.id = a.prompt_id
+        WHERE a.brand_id = ${brand.id} AND a.window_days = ${w}
+        GROUP BY p.id, p.text, p.category_id
+        ORDER BY mentions DESC
+        LIMIT 10
+      `);
+      const topPrompts = ((topPromptsResult as { rows?: unknown }).rows ??
+        topPromptsResult) as Array<{
+        prompt_id: string;
+        text: string;
+        category_id: string;
+        mentions: number;
+        avg_rank: string | number | null;
+      }>;
+
+      return {
+        brand: {
+          id: brand.id,
+          slug: brand.slug,
+          canonicalName: brand.canonicalName,
+          website: brand.website,
+          aliases: brand.aliases,
+          categoryIds: brand.categoryIds,
+          verified: brand.verified,
+        },
+        window: w,
+        modelIdFilter: input.modelId ?? null,
+        primaryCategoryId,
+        hero: {
+          visibilityPct: Number(visibilityPct.toFixed(2)),
+          deltaPct: Number(deltaPct.toFixed(2)),
+          totalMentions,
+          totalRuns,
+        },
+        perModel: perModel.map((r) => ({
+          modelId: r.modelId,
+          mentionsCount: r.mentionsCount,
+          runsTotal: r.runsTotal,
+          visibilityPct: Number(r.visibilityPct),
+          avgRank: r.avgRank ? Number(r.avgRank) : null,
+          sentimentPosPct: Number(r.sentimentPosPct),
+          sentimentNeuPct: Number(r.sentimentNeuPct),
+          sentimentNegPct: Number(r.sentimentNegPct),
+        })),
+        trendDays: trendDays.map((r) => ({
+          date: (r.date as unknown as string).slice(0, 10),
+          modelId: r.modelId,
+          mentionsCount: r.mentionsCount,
+          runsTotal: r.runsTotal,
+        })),
+        competitors,
+        citations: citationRows,
+        topPrompts,
       };
     }),
 });
