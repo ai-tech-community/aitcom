@@ -1359,6 +1359,7 @@ export const benchmarkCitations = appSchema.table(
   (t) => ({
     runIdx: index("benchmark_citation_run_idx").on(t.runId),
     domainIdx: index("benchmark_citation_domain_idx").on(t.domain),
+    runUrlUq: uniqueIndex("benchmark_citation_run_url_uq").on(t.runId, t.url),
   }),
 );
 
