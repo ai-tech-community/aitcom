@@ -8,6 +8,7 @@ import {
   aggBrandVisibilityByDay,
   aggCitationByBrand,
 } from "@/server/db/schema";
+import { parseCountry } from "@/server/benchmark/locale";
 
 const WINDOWS = z.union([z.literal(7), z.literal(30), z.literal(90)]);
 
@@ -206,6 +207,53 @@ export const benchmarkBrandsRouter = createTRPCRouter({
         .where(eq(aggBrandVisibilityByDay.brandId, brand.id))
         .orderBy(aggBrandVisibilityByDay.date);
 
+      // Country breakdown — raw query over runs + mentions, joined to parse locale.
+      const byCountryRaw = await ctx.db.execute(sql`
+        SELECT
+          r.locale,
+          COUNT(DISTINCT r.id)::int AS runs_total,
+          COUNT(DISTINCT CASE WHEN m.brand_id = ${brand.id} THEN r.id ELSE NULL END)::int AS mentions_count
+        FROM "app"."benchmark_run" r
+        LEFT JOIN "app"."benchmark_brand_mention" m
+          ON m.run_id = r.id AND m.brand_id = ${brand.id}
+        WHERE r.extraction_status = 'done'
+          AND r.captured_at >= now() - (${w} || ' days')::interval
+        GROUP BY r.locale
+      `);
+
+      type CountryRow = {
+        locale: string;
+        runs_total: number;
+        mentions_count: number;
+      };
+      const countryRows = ((byCountryRaw as { rows?: unknown }).rows ??
+        byCountryRaw) as CountryRow[];
+
+      const byCountryMap = new Map<
+        string,
+        { mentionsCount: number; runsTotal: number }
+      >();
+      for (const r of countryRows) {
+        const country = parseCountry(r.locale) ?? "UNKNOWN";
+        const cur = byCountryMap.get(country) ?? {
+          mentionsCount: 0,
+          runsTotal: 0,
+        };
+        cur.mentionsCount += r.mentions_count;
+        cur.runsTotal += r.runs_total;
+        byCountryMap.set(country, cur);
+      }
+      const byCountry = [...byCountryMap.entries()]
+        .map(([country, v]) => ({
+          country,
+          mentionsCount: v.mentionsCount,
+          runsTotal: v.runsTotal,
+          visibilityPct:
+            v.runsTotal === 0 ? 0 : (v.mentionsCount / v.runsTotal) * 100,
+        }))
+        .filter((r) => r.mentionsCount > 0)
+        .sort((a, b) => b.mentionsCount - a.mentionsCount);
+
       const competitorsResult = primaryCategoryId
         ? await ctx.db.execute(sql`
             WITH totals AS (
@@ -318,6 +366,7 @@ export const benchmarkBrandsRouter = createTRPCRouter({
         competitors,
         citations: citationRows,
         topPrompts,
+        byCountry,
       };
     }),
 });
