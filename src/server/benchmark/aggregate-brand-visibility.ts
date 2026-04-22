@@ -82,7 +82,7 @@ export async function rebuildAggBrandVisibilityByModel(db: DB): Promise<void> {
         SELECT
           m.brand_id,
           r.model_id,
-          COUNT(*)::int AS mentions_count,
+          COUNT(DISTINCT m.run_id)::int AS mentions_count,
           AVG(m.rank)::numeric(10,2) AS avg_rank,
           (SUM(CASE WHEN m.sentiment = 'positive' THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(*),0)) * 100 AS sp,
           (SUM(CASE WHEN m.sentiment = 'neutral'  THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(*),0)) * 100 AS sn,
