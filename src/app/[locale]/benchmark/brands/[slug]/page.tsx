@@ -16,6 +16,7 @@ import { TopPromptsPanel } from "./_components/TopPromptsPanel";
 import { SentimentStacked } from "./_components/SentimentStacked";
 import { SuggestPromptsModal } from "./_components/SuggestPromptsModal";
 import { CountryPanel } from "./_components/CountryPanel";
+import { StrategyPanel } from "./_components/StrategyPanel";
 
 const parseWindow = (v: string | null): 7 | 30 | 90 =>
   v === "7" || v === "90" ? (Number(v) as 7 | 90) : 30;
@@ -180,6 +181,11 @@ export default function BrandProfilePage({
           <section className="flex flex-col gap-3">
             <h2 className="text-lg font-medium">By country</h2>
             <CountryPanel rows={s.byCountry} />
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">Strategy</h2>
+            <StrategyPanel brandSlug={s.brand.slug} window={s.window} />
           </section>
         </>
       )}
