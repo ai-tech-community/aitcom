@@ -1,20 +1,21 @@
 "use client";
 
-import { use, useMemo } from "react";
+import { use } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/trpc/react";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { BrandHero } from "./_components/BrandHero";
+import { PerModelBar } from "./_components/PerModelBar";
+import { VisibilityTrendChart } from "./_components/VisibilityTrendChart";
+import { CompetitorTable } from "./_components/CompetitorTable";
+import { CitationsPanel } from "./_components/CitationsPanel";
+import { TopPromptsPanel } from "./_components/TopPromptsPanel";
+import { SentimentStacked } from "./_components/SentimentStacked";
+
+const parseWindow = (v: string | null): 7 | 30 | 90 =>
+  v === "7" || v === "90" ? (Number(v) as 7 | 90) : 30;
 
 export default function BrandProfilePage({
   params,
@@ -22,40 +23,41 @@ export default function BrandProfilePage({
   params: Promise<{ slug: string; locale: string }>;
 }) {
   const { slug } = use(params);
-  const profile = api.benchmark.getBrandProfile.useQuery({ slug });
-  const trend = api.benchmark.getTrend.useQuery(
-    { brandId: profile.data?.brand.id ?? "", windowDays: 90 },
-    { enabled: Boolean(profile.data?.brand.id) },
+  const search = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const windowDays = parseWindow(search.get("window"));
+  const modelId = search.get("model");
+
+  const setParam = (key: string, value: string | null) => {
+    const sp = new URLSearchParams(search.toString());
+    if (value === null) sp.delete(key);
+    else sp.set(key, value);
+    router.replace(`${pathname}?${sp.toString()}`);
+  };
+
+  const stats = api.benchmark.brands.stats.useQuery({
+    slug,
+    window: windowDays,
+    modelId: modelId ?? undefined,
+  });
+
+  const categories = api.benchmark.listCategories.useQuery();
+  const categoriesById = Object.fromEntries(
+    (categories.data ?? []).map((c) => [c.id, { slug: c.slug, name: c.name }]),
   );
 
-  const trendData = useMemo(() => {
-    const byDate = new Map<
-      string,
-      { date: string; pct: number; count: number }
-    >();
-    for (const r of trend.data ?? []) {
-      const date = (r.date as unknown as string).slice(0, 10);
-      const cur = byDate.get(date) ?? { date, pct: 0, count: 0 };
-      cur.pct += Number(r.mentionPct);
-      cur.count += 1;
-      byDate.set(date, cur);
-    }
-    return [...byDate.values()]
-      .map((x) => ({
-        date: x.date,
-        value: x.count > 0 ? x.pct / x.count : 0,
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [trend.data]);
+  const legacyProfile = api.benchmark.getBrandProfile.useQuery({ slug });
 
-  if (profile.isLoading) {
+  if (stats.isLoading) {
     return (
       <main className="container mx-auto p-6">
         <div className="bg-muted/50 h-40 w-full animate-pulse rounded" />
       </main>
     );
   }
-  if (profile.error || !profile.data) {
+  if (!stats.data) {
     return (
       <main className="container mx-auto flex flex-col gap-4 p-6">
         <Link
@@ -69,37 +71,8 @@ export default function BrandProfilePage({
     );
   }
 
-  const { brand, mentions } = profile.data;
-
-  const modelSet = new Set(
-    mentions.map((m) => `${m.modelProvider}/${m.modelId}`),
-  );
-  const sentimentCounts = mentions.reduce(
-    (acc, m) => {
-      acc[m.sentiment] = (acc[m.sentiment] ?? 0) + 1;
-      return acc;
-    },
-    { positive: 0, neutral: 0, negative: 0 } as Record<string, number>,
-  );
-  const firstSeen = mentions.length
-    ? mentions.reduce((a, b) =>
-        new Date(a.capturedAt as unknown as string) <
-        new Date(b.capturedAt as unknown as string)
-          ? a
-          : b,
-      ).capturedAt
-    : null;
-  const lastSeen = mentions.length
-    ? mentions.reduce((a, b) =>
-        new Date(a.capturedAt as unknown as string) >
-        new Date(b.capturedAt as unknown as string)
-          ? a
-          : b,
-      ).capturedAt
-    : null;
-
-  const fmtDate = (d: string | Date | null) =>
-    d ? new Date(d as unknown as string).toLocaleDateString() : "—";
+  const s = stats.data;
+  const hasData = s.perModel.length > 0 && s.hero.totalMentions > 0;
 
   return (
     <main className="container mx-auto flex flex-col gap-6 p-6">
@@ -110,96 +83,108 @@ export default function BrandProfilePage({
         <ArrowLeft className="h-4 w-4" /> Back to dashboard
       </Link>
 
-      <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold">{brand.canonicalName}</h1>
-        {brand.website && (
-          <a
-            className="text-sm text-blue-600 underline"
-            href={brand.website}
-            target="_blank"
-            rel="noreferrer"
+      <BrandHero
+        brand={s.brand}
+        primaryCategoryId={s.primaryCategoryId}
+        categoriesById={categoriesById}
+        hero={s.hero}
+        windowDays={s.window}
+        onWindowChange={(w) => setParam("window", String(w))}
+      />
+
+      {!hasData ? (
+        <section className="rounded border p-6 text-center">
+          <p className="font-medium">Not enough data yet.</p>
+          <p className="text-muted-foreground text-sm">
+            Contribute a run to help benchmark this brand.
+          </p>
+          <Link
+            href={`/benchmark?tab=run&promptBrand=${s.brand.slug}`}
+            className="text-primary mt-2 inline-block underline"
           >
-            {brand.website}
-          </a>
-        )}
-        {brand.aliases.length > 0 && (
+            Contribute a run →
+          </Link>
+        </section>
+      ) : (
+        <>
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">Per model</h2>
+            <PerModelBar
+              rows={s.perModel}
+              activeModelId={modelId}
+              onModelSelect={(id) => setParam("model", id)}
+            />
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">Trend ({s.window}d)</h2>
+            <VisibilityTrendChart
+              rows={s.trendDays}
+              windowDays={s.window}
+              activeModelId={modelId}
+            />
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">Competitors</h2>
+            <CompetitorTable competitors={s.competitors as never} />
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">Top citing sources</h2>
+            <CitationsPanel
+              rows={s.citations.map((c: { domain: string; count: number | string; lastSeenAt: Date | string }) => ({
+                domain: c.domain,
+                count: Number(c.count),
+                lastSeenAt: c.lastSeenAt,
+              }))}
+            />
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">Top prompts</h2>
+            <TopPromptsPanel rows={s.topPrompts as never} />
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-medium">Sentiment</h2>
+            <SentimentStacked
+              pos={
+                s.perModel.reduce((a, r) => a + r.sentimentPosPct * r.mentionsCount, 0) /
+                Math.max(s.hero.totalMentions, 1)
+              }
+              neu={
+                s.perModel.reduce((a, r) => a + r.sentimentNeuPct * r.mentionsCount, 0) /
+                Math.max(s.hero.totalMentions, 1)
+              }
+              neg={
+                s.perModel.reduce((a, r) => a + r.sentimentNegPct * r.mentionsCount, 0) /
+                Math.max(s.hero.totalMentions, 1)
+              }
+            />
+          </section>
+        </>
+      )}
+
+      {s.brand.aliases.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h2 className="text-lg font-medium">Also known as</h2>
           <div className="flex flex-wrap gap-1">
-            {brand.aliases.map((a) => (
+            {s.brand.aliases.map((a) => (
               <Badge key={a} variant="secondary">
                 {a}
               </Badge>
             ))}
           </div>
-        )}
-      </header>
-
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Stat label="Mentions" value={mentions.length.toLocaleString()} />
-        <Stat label="Models" value={modelSet.size.toLocaleString()} />
-        <Stat label="Positive" value={`${sentimentCounts.positive}`} />
-        <Stat label="First seen" value={fmtDate(firstSeen)} />
-        <Stat label="Last seen" value={fmtDate(lastSeen)} />
-      </section>
+        </section>
+      )}
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Trend over 90 days</h2>
-        <Card className="h-64 p-4">
-          {trendData.length === 0 ? (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-muted-foreground text-sm">
-                No trend data yet.
-              </p>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(d: string) => d.slice(5)}
-                  fontSize={11}
-                />
-                <YAxis
-                  tickFormatter={(v: number) => `${Math.round(v)}%`}
-                  fontSize={11}
-                  domain={[0, "auto"]}
-                />
-                <Tooltip
-                  formatter={(v: unknown) =>
-                    typeof v === "number" ? `${v.toFixed(1)}%` : ""
-                  }
-                  labelFormatter={(l: unknown) =>
-                    typeof l === "string"
-                      ? l
-                      : typeof l === "number"
-                        ? String(l)
-                        : ""
-                  }
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Recent mentions across models</h2>
-        {mentions.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No mentions yet.</p>
-        ) : (
+        <h2 className="text-lg font-medium">Recent mentions</h2>
+        {legacyProfile.data?.mentions.length ? (
           <ul className="flex flex-col gap-2">
-            {mentions.map((m, i) => (
-              <li
-                key={i}
-                className="flex flex-col gap-1 rounded-md border p-3 text-sm"
-              >
+            {legacyProfile.data.mentions.slice(0, 100).map((m, i) => (
+              <li key={i} className="rounded border p-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs">
                     {m.modelProvider}/{m.modelId}
@@ -217,7 +202,7 @@ export default function BrandProfilePage({
                   </Badge>
                 </div>
                 {m.context && (
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground pt-1">
                     &ldquo;{m.context}&rdquo;
                   </p>
                 )}
@@ -227,19 +212,10 @@ export default function BrandProfilePage({
               </li>
             ))}
           </ul>
+        ) : (
+          <p className="text-muted-foreground text-sm">No mentions yet.</p>
         )}
       </section>
     </main>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <Card className="flex flex-col gap-1 p-4 text-center">
-      <span className="text-muted-foreground text-xs tracking-wide uppercase">
-        {label}
-      </span>
-      <span className="text-xl tabular-nums">{value}</span>
-    </Card>
   );
 }

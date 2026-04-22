@@ -37,8 +37,11 @@ import {
   buildExtractorPrompt,
 } from "@/server/benchmark/extractor-prompt";
 import { buildSparkline } from "@/server/benchmark/build-sparkline";
+import { benchmarkBrandsRouter } from "./benchmark-brands";
 
 export const benchmarkRouter = createTRPCRouter({
+  brands: benchmarkBrandsRouter,
+
   listCategories: publicProcedure.query(async ({ ctx }) => {
     const rows = await ctx.db
       .select()
