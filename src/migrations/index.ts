@@ -13,6 +13,7 @@ import * as migration_20260420_brand_benchmark from "./20260420_brand_benchmark"
 import * as migration_20260421_benchmark_hero_aggregate from "./20260421_benchmark_hero_aggregate";
 import * as migration_20260421_benchmark_prompt_inferred_categories from "./20260421_benchmark_prompt_inferred_categories";
 import * as migration_20260422_benchmark_citations_and_brand_aggs from "./20260422_benchmark_citations_and_brand_aggs";
+import * as migration_20260422_prompt_tags from "./20260422_prompt_tags";
 
 export const migrations = [
   {
@@ -89,5 +90,10 @@ export const migrations = [
     up: migration_20260422_benchmark_citations_and_brand_aggs.up,
     down: migration_20260422_benchmark_citations_and_brand_aggs.down,
     name: "20260422_benchmark_citations_and_brand_aggs",
+  },
+  {
+    up: migration_20260422_prompt_tags.up,
+    down: migration_20260422_prompt_tags.down,
+    name: "20260422_prompt_tags",
   },
 ];

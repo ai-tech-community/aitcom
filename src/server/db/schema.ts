@@ -1147,6 +1147,10 @@ export const benchmarkPrompts = appSchema.table(
       .array()
       .notNull()
       .default(sql`ARRAY[]::uuid[]`),
+    tags: text("tags")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     intentId: uuid("intent_id").notNull(),
     locale: text("locale").notNull().default("en-US"),
     status: text("status").notNull().default("pending"),
