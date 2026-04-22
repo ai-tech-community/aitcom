@@ -1286,6 +1286,10 @@ export const aggBrandRankByPrompt = appSchema.table(
     sentimentNegativePct: numeric("sentiment_negative_pct")
       .notNull()
       .default("0"),
+    citationDomainsTop5: text("citation_domains_top5")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1335,6 +1339,94 @@ export const aggTopBrandByCategory = appSchema.table(
   },
   (t) => ({
     windowIdx: index("agg_top_brand_window_idx").on(t.windowDays),
+  }),
+);
+
+export const benchmarkCitations = appSchema.table(
+  "benchmark_citation",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id").notNull(),
+    url: text("url").notNull(),
+    domain: text("domain").notNull(),
+    title: text("title"),
+    snippet: text("snippet"),
+    position: integer("position").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    runIdx: index("benchmark_citation_run_idx").on(t.runId),
+    domainIdx: index("benchmark_citation_domain_idx").on(t.domain),
+  }),
+);
+
+export const aggCitationByBrand = appSchema.table(
+  "agg_citation_by_brand",
+  {
+    brandId: uuid("brand_id").notNull(),
+    categoryId: uuid("category_id"),
+    modelId: text("model_id").notNull(),
+    windowDays: integer("window_days").notNull(),
+    domain: text("domain").notNull(),
+    citationCount: integer("citation_count").notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    brandIdx: index("agg_citation_by_brand_brand_idx").on(
+      t.brandId,
+      t.windowDays,
+    ),
+  }),
+);
+
+export const aggBrandVisibilityByModel = appSchema.table(
+  "agg_brand_visibility_by_model",
+  {
+    brandId: uuid("brand_id").notNull(),
+    modelId: text("model_id").notNull(),
+    windowDays: integer("window_days").notNull(),
+    primaryCategoryId: uuid("primary_category_id"),
+    mentionsCount: integer("mentions_count").notNull(),
+    runsTotal: integer("runs_total").notNull(),
+    visibilityPct: numeric("visibility_pct").notNull(),
+    avgRank: numeric("avg_rank"),
+    sentimentPosPct: numeric("sentiment_pos_pct").notNull().default("0"),
+    sentimentNeuPct: numeric("sentiment_neu_pct").notNull().default("0"),
+    sentimentNegPct: numeric("sentiment_neg_pct").notNull().default("0"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    brandIdx: index("agg_brand_visibility_by_model_brand_idx").on(
+      t.brandId,
+      t.windowDays,
+    ),
+  }),
+);
+
+export const aggBrandVisibilityByDay = appSchema.table(
+  "agg_brand_visibility_by_day",
+  {
+    brandId: uuid("brand_id").notNull(),
+    date: date("date").notNull(),
+    modelId: text("model_id").notNull(),
+    mentionsCount: integer("mentions_count").notNull(),
+    runsTotal: integer("runs_total").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    brandIdx: index("agg_brand_visibility_by_day_brand_idx").on(
+      t.brandId,
+      t.date,
+    ),
   }),
 );
 
