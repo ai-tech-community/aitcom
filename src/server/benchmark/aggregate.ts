@@ -1,5 +1,10 @@
 import { sql } from "drizzle-orm";
 import type { db as _db } from "@/server/db";
+import { rebuildAggCitationByBrand } from "./aggregate-citations";
+import {
+  rebuildAggBrandVisibilityByModel,
+  rebuildAggBrandVisibilityByDay,
+} from "./aggregate-brand-visibility";
 
 type DB = typeof _db;
 
@@ -257,7 +262,15 @@ export async function rebuildTopBrandByCategory(db: DB): Promise<void> {
 
 export async function rebuildAllAggregates(db: DB): Promise<{
   ok: true;
-  durations: { rank: number; trends: number; matrix: number; hero: number };
+  durations: {
+    rank: number;
+    trends: number;
+    matrix: number;
+    hero: number;
+    citation: number;
+    visibilityByModel: number;
+    visibilityByDay: number;
+  };
 }> {
   const t0 = Date.now();
   await rebuildBrandRankByPrompt(db);
@@ -268,6 +281,12 @@ export async function rebuildAllAggregates(db: DB): Promise<{
   const t3 = Date.now();
   await rebuildTopBrandByCategory(db);
   const t4 = Date.now();
+  await rebuildAggCitationByBrand(db);
+  const t5 = Date.now();
+  await rebuildAggBrandVisibilityByModel(db);
+  const t6 = Date.now();
+  await rebuildAggBrandVisibilityByDay(db);
+  const t7 = Date.now();
   return {
     ok: true,
     durations: {
@@ -275,6 +294,9 @@ export async function rebuildAllAggregates(db: DB): Promise<{
       trends: t2 - t1,
       matrix: t3 - t2,
       hero: t4 - t3,
+      citation: t5 - t4,
+      visibilityByModel: t6 - t5,
+      visibilityByDay: t7 - t6,
     },
   };
 }
