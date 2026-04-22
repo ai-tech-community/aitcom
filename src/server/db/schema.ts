@@ -1193,6 +1193,24 @@ export const brands = appSchema.table("brand", {
     .defaultNow(),
 });
 
+export const brandWatches = appSchema.table(
+  "brand_watch",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    brandId: uuid("brand_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastNotifiedAt: timestamp("last_notified_at", { withTimezone: true }),
+  },
+  (t) => ({
+    userIdx: index("brand_watch_user_idx").on(t.userId),
+    brandIdx: index("brand_watch_brand_idx").on(t.brandId),
+    userBrandUq: uniqueIndex("brand_watch_user_brand_uq").on(t.userId, t.brandId),
+  }),
+);
+
 export const benchmarkRuns = appSchema.table(
   "benchmark_run",
   {
