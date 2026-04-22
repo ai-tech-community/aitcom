@@ -31,6 +31,8 @@ import {
 import { splitMentions } from "@/server/benchmark/ingest-extraction";
 import { slugifyBrandName } from "@/server/benchmark/slugify";
 import { extractRunInline } from "@/server/benchmark/extract-run";
+import { suggestPromptsForBrand } from "@/server/benchmark/suggest-prompts";
+import { checkSuggestPromptsRateLimit } from "@/server/benchmark/user-rate-limit";
 import { after } from "next/server";
 import {
   EXTRACTOR_VERSION,
@@ -130,6 +132,64 @@ export const benchmarkRouter = createTRPCRouter({
         }
         throw err;
       }
+    }),
+
+  suggestPrompts: protectedProcedure
+    .input(
+      z.object({
+        brandSlug: z.string().min(1),
+        limit: z.number().int().min(1).max(20).default(12),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const rl = checkSuggestPromptsRateLimit(userId);
+      if (!rl.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limited. Retry after ${rl.retryAfterSecs}s.`,
+        });
+      }
+
+      const [brand] = await ctx.db
+        .select({
+          canonicalName: brands.canonicalName,
+          aliases: brands.aliases,
+        })
+        .from(brands)
+        .where(eq(brands.slug, input.brandSlug))
+        .limit(1);
+      if (!brand) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Brand not found" });
+      }
+
+      const [cats, ints] = await Promise.all([
+        ctx.db
+          .select({
+            slug: benchmarkCategories.slug,
+            name: benchmarkCategories.name,
+          })
+          .from(benchmarkCategories),
+        ctx.db
+          .select({
+            slug: benchmarkIntents.slug,
+            name: benchmarkIntents.name,
+            description: benchmarkIntents.description,
+          })
+          .from(benchmarkIntents),
+      ]);
+
+      const suggestions = await suggestPromptsForBrand({
+        brand: {
+          canonicalName: brand.canonicalName,
+          aliases: brand.aliases ?? [],
+        },
+        categories: cats,
+        intents: ints,
+        limit: input.limit,
+      });
+
+      return { suggestions, remaining: rl.remaining };
     }),
 
   listMySubmissions: protectedProcedure.query(async ({ ctx }) => {
