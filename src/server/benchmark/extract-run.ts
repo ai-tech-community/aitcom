@@ -30,9 +30,16 @@ type ExtractorMention = {
 type ExtractorOutput = {
   mentions: ExtractorMention[];
   inferredCategorySlugs?: string[];
+  citations?: Array<{
+    url: string;
+    domain: string;
+    title?: string | null;
+    snippet?: string | null;
+    position: number;
+  }>;
 };
 
-const EXTRACTOR_VERSION = "v1-openrouter";
+const EXTRACTOR_VERSION = "v2-openrouter-citations";
 
 export async function extractRunInline(db: DB, runId: string): Promise<void> {
   const openrouterKey = process.env.OPENROUTER_API_KEY;
@@ -143,7 +150,16 @@ OUTPUT SCHEMA:
       "confidence": "number 0-1, how sure you are this is a real brand mention"
     }
   ],
-  "inferredCategorySlugs": ["zero to 3 slugs from the catalog above, excluding the primary"]
+  "inferredCategorySlugs": ["zero to 3 slugs from the catalog above, excluding the primary"],
+  "citations": [
+    {
+      "url": "full URL exactly as it appears in the answer",
+      "domain": "registrable domain only (eTLD+1), e.g. 'reddit.com' not 'www.reddit.com'",
+      "title": "link text if the URL came from a markdown link, else null",
+      "snippet": "up to 280 chars of surrounding answer text, or null",
+      "position": "1-based ordinal position of first appearance in the answer"
+    }
+  ]
 }
 
 RULES:
@@ -152,6 +168,7 @@ RULES:
 - If the answer has no brand mentions, return {"mentions": []}.
 - Do not invent brands. Do not include generic terms ("the database", "an editor").
 - inferredCategorySlugs: pick only categories the answer truly covers (e.g. the prompt is about email-newsletter tools → inferred may include "saas" and "media" if the answer discusses both). Do NOT include the primary slug. Use only slugs from the catalog. If nothing else clearly applies, return [].
+- citations: extract every URL present in the answer (inline links, footnotes, "Sources:" sections, bracketed references). Strip www. when computing domain. If no URLs present, return "citations": []. Dedupe by url.
 - Output ONLY the JSON object. No prose, no markdown fencing.`;
 
     const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
