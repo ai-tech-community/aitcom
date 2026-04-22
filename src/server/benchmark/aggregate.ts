@@ -16,30 +16,70 @@ export async function rebuildBrandRankByPrompt(db: DB): Promise<void> {
     `);
 
     await db.execute(sql`
+      WITH mention_rows AS (
+        SELECT
+          r.prompt_id,
+          m.brand_id,
+          r.model_id,
+          r.id AS run_id,
+          r.weight,
+          m.rank,
+          m.sentiment
+        FROM "app"."benchmark_brand_mention" m
+        JOIN "app"."benchmark_run" r ON r.id = m.run_id
+        WHERE m.brand_id IS NOT NULL
+          AND r.captured_at >= now() - (${w} || ' days')::interval
+          AND r.extraction_status = 'done'
+      ),
+      citation_domains AS (
+        SELECT
+          mr.prompt_id,
+          mr.brand_id,
+          mr.model_id,
+          c.domain,
+          COUNT(DISTINCT c.run_id) AS cnt
+        FROM mention_rows mr
+        JOIN "app"."benchmark_citation" c ON c.run_id = mr.run_id
+        GROUP BY mr.prompt_id, mr.brand_id, mr.model_id, c.domain
+      ),
+      top5_domains AS (
+        SELECT prompt_id, brand_id, model_id,
+               array_agg(domain ORDER BY cnt DESC, domain ASC)
+                 FILTER (WHERE rn <= 5) AS domains
+        FROM (
+          SELECT *, ROW_NUMBER() OVER (
+            PARTITION BY prompt_id, brand_id, model_id
+            ORDER BY cnt DESC, domain ASC
+          ) AS rn
+          FROM citation_domains
+        ) t
+        GROUP BY prompt_id, brand_id, model_id
+      )
       INSERT INTO "app"."agg_brand_rank_by_prompt" (
         "prompt_id", "brand_id", "model_id", "window_days",
         "mention_count", "weighted_score", "avg_rank",
         "sentiment_positive_pct", "sentiment_neutral_pct", "sentiment_negative_pct",
-        "updated_at"
+        "citation_domains_top5", "updated_at"
       )
       SELECT
-        r.prompt_id,
-        m.brand_id,
-        r.model_id,
+        mr.prompt_id,
+        mr.brand_id,
+        mr.model_id,
         ${w} AS window_days,
         COUNT(*)::int AS mention_count,
-        SUM(r.weight) AS weighted_score,
-        AVG(m.rank)::numeric(10,2) AS avg_rank,
-        (SUM(CASE WHEN m.sentiment = 'positive' THEN 1 ELSE 0 END)::numeric / COUNT(*)) * 100 AS sp,
-        (SUM(CASE WHEN m.sentiment = 'neutral'  THEN 1 ELSE 0 END)::numeric / COUNT(*)) * 100 AS sn,
-        (SUM(CASE WHEN m.sentiment = 'negative' THEN 1 ELSE 0 END)::numeric / COUNT(*)) * 100 AS sx,
+        SUM(mr.weight) AS weighted_score,
+        AVG(mr.rank)::numeric(10,2) AS avg_rank,
+        (SUM(CASE WHEN mr.sentiment = 'positive' THEN 1 ELSE 0 END)::numeric / COUNT(*)) * 100 AS sp,
+        (SUM(CASE WHEN mr.sentiment = 'neutral'  THEN 1 ELSE 0 END)::numeric / COUNT(*)) * 100 AS sn,
+        (SUM(CASE WHEN mr.sentiment = 'negative' THEN 1 ELSE 0 END)::numeric / COUNT(*)) * 100 AS sx,
+        COALESCE(td.domains, ARRAY[]::text[]),
         now()
-      FROM "app"."benchmark_brand_mention" m
-      JOIN "app"."benchmark_run" r ON r.id = m.run_id
-      WHERE m.brand_id IS NOT NULL
-        AND r.captured_at >= now() - (${w} || ' days')::interval
-        AND r.extraction_status = 'done'
-      GROUP BY r.prompt_id, m.brand_id, r.model_id
+      FROM mention_rows mr
+      LEFT JOIN top5_domains td
+        ON td.prompt_id = mr.prompt_id
+       AND td.brand_id = mr.brand_id
+       AND td.model_id = mr.model_id
+      GROUP BY mr.prompt_id, mr.brand_id, mr.model_id, td.domains
     `);
   }
 }
