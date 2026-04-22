@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubmitPromptTab } from "./_components/submit-prompt-tab";
 import { RunPromptsTab } from "./_components/run-prompts-tab";
 import { DashboardTab } from "./_components/dashboard-tab";
+import { BrandSearchCombobox } from "./brands/_components/BrandSearchCombobox";
 import { useTranslations } from "next-intl";
 
 const VALID_TABS = ["dashboard", "run", "submit"] as const;
@@ -38,9 +39,12 @@ export default function BenchmarkPage() {
 
   return (
     <main className="container mx-auto flex flex-col gap-6 p-6">
-      <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold">{t("pageTitle")}</h1>
-        <p className="text-muted-foreground">{t("pageTagline")}</p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-semibold">{t("pageTitle")}</h1>
+          <p className="text-muted-foreground">{t("pageTagline")}</p>
+        </div>
+        <BrandSearchCombobox />
       </header>
 
       <Tabs
