@@ -40,4 +40,14 @@ describe("normalizeCitations", () => {
   it("returns [] when input is undefined", () => {
     expect(normalizeCitations(undefined)).toEqual([]);
   });
+
+  it("falls back to insertion order when position is not a finite number", () => {
+    const result = normalizeCitations([
+      { url: "https://a.com", domain: "a.com", position: "1" as never },
+      { url: "https://b.com", domain: "b.com", position: undefined as never },
+      { url: "https://c.com", domain: "c.com", position: NaN as never },
+      { url: "https://d.com", domain: "d.com", position: 1.9 },
+    ]);
+    expect(result.map((r) => r.position)).toEqual([1, 2, 3, 1]);
+  });
 });

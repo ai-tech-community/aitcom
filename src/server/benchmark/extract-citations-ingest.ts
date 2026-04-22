@@ -25,12 +25,16 @@ export function normalizeCitations(
     if (typeof c.domain !== "string" || c.domain.length === 0) continue;
     if (seen.has(c.url)) continue;
     seen.add(c.url);
+    const position =
+      typeof c.position === "number" && Number.isFinite(c.position)
+        ? Math.trunc(c.position)
+        : out.length + 1;
     out.push({
       url: c.url,
       domain: c.domain.replace(/^www\./i, "").toLowerCase(),
       title: c.title ?? null,
       snippet: c.snippet ? c.snippet.slice(0, 280) : null,
-      position: c.position,
+      position,
     });
   }
   return out;
