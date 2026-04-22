@@ -234,6 +234,7 @@ RULES:
               aliases: [],
               categoryIds: [prompt.categoryId],
               verified: false,
+              website: normalizeWebsite(m.suggestedWebsite),
             })
             .onConflictDoNothing({ target: brands.slug })
             .returning({ id: brands.id });
