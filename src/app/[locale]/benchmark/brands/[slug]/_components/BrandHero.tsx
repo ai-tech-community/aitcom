@@ -1,5 +1,6 @@
 "use client";
 import { Badge } from "@/components/ui/badge";
+import { WatchBrandButton } from "./WatchBrandButton";
 
 interface Props {
   brand: {
@@ -19,6 +20,7 @@ interface Props {
   windowDays: 7 | 30 | 90;
   onWindowChange: (w: 7 | 30 | 90) => void;
   slug: string;
+  isAuthenticated: boolean;
 }
 
 export function BrandHero({
@@ -29,6 +31,7 @@ export function BrandHero({
   windowDays,
   onWindowChange,
   slug,
+  isAuthenticated,
 }: Props) {
   const favicon = brand.website
     ? `https://www.google.com/s2/favicons?domain=${safeHost(brand.website)}&sz=64`
@@ -101,6 +104,7 @@ export function BrandHero({
         </div>
 
         <div className="flex items-center gap-3">
+          <WatchBrandButton brandSlug={slug} isAuthenticated={isAuthenticated} />
           <a
             href={`/api/benchmark/export/brand/${encodeURIComponent(slug)}?window=${windowDays}`}
             className="text-muted-foreground hover:text-foreground text-xs underline"

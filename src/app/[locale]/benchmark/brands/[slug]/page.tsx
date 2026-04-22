@@ -4,6 +4,7 @@ import { use } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { authClient } from "@/server/better-auth/client";
 import { api } from "@/trpc/react";
 import { Badge } from "@/components/ui/badge";
 import { BrandHero } from "./_components/BrandHero";
@@ -28,6 +29,8 @@ export default function BrandProfilePage({
   const search = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const session = authClient.useSession();
+  const isAuthenticated = !!session.data?.user;
 
   const windowDays = parseWindow(search.get("window"));
   const modelId = search.get("model");
@@ -93,6 +96,7 @@ export default function BrandProfilePage({
         windowDays={s.window}
         onWindowChange={(w) => setParam("window", String(w))}
         slug={slug}
+        isAuthenticated={isAuthenticated}
       />
 
       {!hasData ? (

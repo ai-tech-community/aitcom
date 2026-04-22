@@ -1,12 +1,14 @@
 import { z } from "zod";
 import { and, desc, eq, or, sql } from "drizzle-orm";
-import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
+import { createTRPCRouter, publicProcedure, protectedProcedure } from "@/server/api/trpc";
+import { TRPCError } from "@trpc/server";
 import {
   brands,
   benchmarkCategories,
   aggBrandVisibilityByModel,
   aggBrandVisibilityByDay,
   aggCitationByBrand,
+  brandWatches,
 } from "@/server/db/schema";
 import { parseCountry } from "@/server/benchmark/locale";
 
@@ -369,4 +371,88 @@ export const benchmarkBrandsRouter = createTRPCRouter({
         byCountry,
       };
     }),
+
+  watch: protectedProcedure
+    .input(z.object({ brandSlug: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [brand] = await ctx.db
+        .select({ id: brands.id })
+        .from(brands)
+        .where(eq(brands.slug, input.brandSlug))
+        .limit(1);
+      if (!brand) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Brand not found" });
+      }
+      await ctx.db
+        .insert(brandWatches)
+        .values({ userId, brandId: brand.id })
+        .onConflictDoNothing({
+          target: [brandWatches.userId, brandWatches.brandId],
+        });
+      return { watched: true };
+    }),
+
+  unwatch: protectedProcedure
+    .input(z.object({ brandSlug: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [brand] = await ctx.db
+        .select({ id: brands.id })
+        .from(brands)
+        .where(eq(brands.slug, input.brandSlug))
+        .limit(1);
+      if (!brand) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Brand not found" });
+      }
+      await ctx.db
+        .delete(brandWatches)
+        .where(
+          and(
+            eq(brandWatches.userId, userId),
+            eq(brandWatches.brandId, brand.id),
+          ),
+        );
+      return { watched: false };
+    }),
+
+  isWatched: protectedProcedure
+    .input(z.object({ brandSlug: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [brand] = await ctx.db
+        .select({ id: brands.id })
+        .from(brands)
+        .where(eq(brands.slug, input.brandSlug))
+        .limit(1);
+      if (!brand) return { watched: false };
+      const [row] = await ctx.db
+        .select({ id: brandWatches.id })
+        .from(brandWatches)
+        .where(
+          and(
+            eq(brandWatches.userId, userId),
+            eq(brandWatches.brandId, brand.id),
+          ),
+        )
+        .limit(1);
+      return { watched: Boolean(row) };
+    }),
+
+  listMyWatches: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const rows = await ctx.db
+      .select({
+        id: brandWatches.id,
+        createdAt: brandWatches.createdAt,
+        lastNotifiedAt: brandWatches.lastNotifiedAt,
+        slug: brands.slug,
+        canonicalName: brands.canonicalName,
+      })
+      .from(brandWatches)
+      .innerJoin(brands, eq(brands.id, brandWatches.brandId))
+      .where(eq(brandWatches.userId, userId))
+      .orderBy(desc(brandWatches.createdAt));
+    return { watches: rows };
+  }),
 });
