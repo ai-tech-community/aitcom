@@ -22,6 +22,7 @@ export interface MapDatacenter {
   primaryPowerSource: string | null;
   coolingType: string | null;
   verified: boolean;
+  supplierCount: number;
   operator: { slug: string; canonicalName: string };
 }
 
@@ -70,16 +71,17 @@ export function DatacentersMapView({ datacenters }: DatacentersMapViewProps) {
         />
         {datacenters.map((dc) => {
           const color = STATUS_COLOR[dc.status] ?? "#94a3b8";
+          const hasSuppliers = dc.supplierCount > 0;
           return (
             <CircleMarker
               key={dc.id}
               center={[dc.lat, dc.lng]}
               radius={radiusForMw(dc.capacityMw)}
               pathOptions={{
-                color,
+                color: hasSuppliers ? "#0ea5e9" : color,
                 fillColor: color,
                 fillOpacity: dc.aiDedicated ? 0.8 : 0.5,
-                weight: dc.aiDedicated ? 2 : 1,
+                weight: hasSuppliers ? 3 : dc.aiDedicated ? 2 : 1,
               }}
             >
               <Popup>
@@ -114,6 +116,12 @@ export function DatacentersMapView({ datacenters }: DatacentersMapViewProps) {
                           {dc.capacityMwPlanned} MW planned
                         </span>
                       )}
+                    {hasSuppliers && (
+                      <span className="rounded bg-sky-600 px-1.5 py-0.5 text-white">
+                        {dc.supplierCount} supplier
+                        {dc.supplierCount === 1 ? "" : "s"}
+                      </span>
+                    )}
                   </div>
                   <Link
                     href={`/datacenters/${dc.slug}`}

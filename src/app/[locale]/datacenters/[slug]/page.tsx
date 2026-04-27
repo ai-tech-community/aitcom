@@ -10,6 +10,8 @@ import { SubmitFindingDialog } from "@/components/datacenters/submit-finding-dia
 import { FindingActions } from "@/components/datacenters/finding-actions";
 import { SupplierAdminActions } from "@/components/datacenters/supplier-admin-actions";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }

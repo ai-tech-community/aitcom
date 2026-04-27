@@ -62,6 +62,7 @@ export const datacentersRouter = createTRPCRouter({
           aiOnly: z.boolean().optional(),
           includeUnverified: z.boolean().optional(),
           q: z.string().min(1).max(100).optional(),
+          withSuppliers: z.boolean().optional(),
           limit: z.number().int().min(1).max(500).optional(),
         })
         .optional(),
@@ -74,6 +75,11 @@ export const datacentersRouter = createTRPCRouter({
       if (i.status) conds.push(eq(datacenters.status, i.status));
       if (i.aiOnly) conds.push(eq(datacenters.aiDedicated, true));
       if (!i.includeUnverified) conds.push(eq(datacenters.verified, true));
+      if (i.withSuppliers) {
+        conds.push(
+          sql`EXISTS (SELECT 1 FROM "app"."datacenter_supplier" s WHERE s.datacenter_id = ${datacenters.id})`,
+        );
+      }
       if (i.minMw !== undefined) {
         conds.push(sql`${datacenters.capacityMw} >= ${i.minMw}`);
       }
@@ -115,6 +121,10 @@ export const datacentersRouter = createTRPCRouter({
             slug: brands.slug,
             canonicalName: brands.canonicalName,
           },
+          supplierCount: sql<number>`(
+            SELECT COUNT(*)::int FROM "app"."datacenter_supplier" s
+            WHERE s.datacenter_id = ${datacenters.id}
+          )`,
         })
         .from(datacenters)
         .innerJoin(brands, eq(brands.id, datacenters.operatorId))

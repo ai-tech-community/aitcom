@@ -27,6 +27,7 @@ interface PageProps {
     status?: string;
     ai?: string;
     unverified?: string;
+    suppliers?: string;
   }>;
 }
 
@@ -34,6 +35,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const aiOnly = sp.ai === "1";
   const includeUnverified = sp.unverified === "1";
+  const withSuppliers = sp.suppliers === "1";
 
   const [list, stats] = await Promise.all([
     api.datacenters.list({
@@ -41,6 +43,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
       status: sp.status as never,
       aiOnly,
       includeUnverified,
+      withSuppliers,
       limit: 500,
     }),
     api.datacenters.stats(),
@@ -63,11 +66,14 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
     primaryPowerSource: d.primaryPowerSource,
     coolingType: d.coolingType,
     verified: d.verified,
+    supplierCount: d.supplierCount,
     operator: {
       slug: d.operator.slug,
       canonicalName: d.operator.canonicalName,
     },
   }));
+
+  const withSupplierTotal = list.filter((d) => d.supplierCount > 0).length;
 
   return (
     <main className="container mx-auto flex flex-col gap-6 p-6">
@@ -117,6 +123,11 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
           ),
         )}
         <FilterLink
+          label={`with suppliers (${withSupplierTotal})`}
+          active={withSuppliers}
+          href={`/datacenters?${new URLSearchParams({ ...sp, suppliers: withSuppliers ? "" : "1" } as Record<string, string>).toString()}`}
+        />
+        <FilterLink
           label="include unverified"
           active={includeUnverified}
           href={`/datacenters?${new URLSearchParams({ ...sp, unverified: includeUnverified ? "" : "1" } as Record<string, string>).toString()}`}
@@ -142,11 +153,18 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
             >
               <div className="flex items-start justify-between gap-2">
                 <span className="font-medium">{d.name}</span>
-                {d.aiDedicated && (
-                  <span className="rounded bg-purple-600 px-1.5 py-0.5 text-xs text-white">
-                    AI
-                  </span>
-                )}
+                <div className="flex shrink-0 gap-1">
+                  {d.aiDedicated && (
+                    <span className="rounded bg-purple-600 px-1.5 py-0.5 text-xs text-white">
+                      AI
+                    </span>
+                  )}
+                  {d.supplierCount > 0 && (
+                    <span className="rounded bg-sky-600 px-1.5 py-0.5 text-xs text-white">
+                      {d.supplierCount}↘
+                    </span>
+                  )}
+                </div>
               </div>
               <span className="text-muted-foreground text-xs">
                 {d.operator.canonicalName} ·{" "}
