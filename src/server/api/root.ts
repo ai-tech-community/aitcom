@@ -20,6 +20,7 @@ import { notificationsRouter } from "@/server/api/routers/notifications";
 import { onboardingRouter } from "@/server/api/routers/onboarding";
 import { postRouter } from "@/server/api/routers/post";
 import { sponsorsRouter } from "@/server/api/routers/sponsors";
+import { datacentersRouter } from "@/server/api/routers/datacenters";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -50,6 +51,7 @@ export const appRouter = createTRPCRouter({
   communities: communitiesRouter,
   feed: feedRouter,
   luma: lumaRouter,
+  datacenters: datacentersRouter,
 });
 
 // export type definition of API

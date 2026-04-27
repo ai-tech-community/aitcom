@@ -14,10 +14,11 @@ import {
   integer,
   serial,
   varchar,
-  timestamp,
   numeric,
+  timestamp,
   boolean,
   jsonb,
+  type AnyPgColumn,
   pgEnum,
 } from "@payloadcms/db-postgres/drizzle/pg-core";
 import { sql, relations } from "@payloadcms/db-postgres/drizzle";
@@ -257,6 +258,14 @@ export const enum_community_rules_sections_icon = pgEnum(
   "enum_community_rules_sections_icon",
   ["shield", "users", "flag", "scale", "brain", "gavel"],
 );
+export const enum_benchmark_prompt_status = pgEnum(
+  "enum_benchmark_prompt_status",
+  ["pending", "approved", "rejected"],
+);
+export const enum_brand_alias_queue_status = pgEnum(
+  "enum_brand_alias_queue_status",
+  ["pending", "merged", "rejected"],
+);
 export const enum_users_role = pgEnum("enum_users_role", ["admin", "editor"]);
 
 export const events_audience = pgTable(
@@ -308,6 +317,13 @@ export const events = pgTable(
     region: varchar("region"),
     country: varchar("country"),
     city: varchar("city"),
+    latitude: numeric("latitude", { mode: "number" }),
+    longitude: numeric("longitude", { mode: "number" }),
+    geocodedAt: timestamp("geocoded_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
     date: timestamp("date", {
       mode: "string",
       withTimezone: true,
@@ -477,6 +493,13 @@ export const _events_v = pgTable(
     version_region: varchar("version_region"),
     version_country: varchar("version_country"),
     version_city: varchar("version_city"),
+    version_latitude: numeric("version_latitude", { mode: "number" }),
+    version_longitude: numeric("version_longitude", { mode: "number" }),
+    version_geocodedAt: timestamp("version_geocoded_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
     version_date: timestamp("version_date", {
       mode: "string",
       withTimezone: true,
@@ -1857,6 +1880,249 @@ export const community_rules = pgTable(
   ],
 );
 
+export const benchmark_category = pgTable(
+  "benchmark_category",
+  {
+    id: serial("id").primaryKey(),
+    slug: varchar("slug").notNull(),
+    name: varchar("name").notNull(),
+    parent: integer("parent_id").references(
+      (): AnyPgColumn => benchmark_category.id,
+      {
+        onDelete: "set null",
+      },
+    ),
+    description: varchar("description"),
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    uniqueIndex("benchmark_category_slug_idx").on(columns.slug),
+    index("benchmark_category_parent_idx").on(columns.parent),
+    index("benchmark_category_updated_at_idx").on(columns.updatedAt),
+    index("benchmark_category_created_at_idx").on(columns.createdAt),
+  ],
+);
+
+export const benchmark_intent = pgTable(
+  "benchmark_intent",
+  {
+    id: serial("id").primaryKey(),
+    slug: varchar("slug").notNull(),
+    name: varchar("name").notNull(),
+    description: varchar("description"),
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    uniqueIndex("benchmark_intent_slug_idx").on(columns.slug),
+    index("benchmark_intent_updated_at_idx").on(columns.updatedAt),
+    index("benchmark_intent_created_at_idx").on(columns.createdAt),
+  ],
+);
+
+export const benchmark_prompt = pgTable(
+  "benchmark_prompt",
+  {
+    id: serial("id").primaryKey(),
+    text: varchar("text").notNull(),
+    status: enum_benchmark_prompt_status("status").notNull().default("pending"),
+    category: integer("category_id")
+      .notNull()
+      .references(() => benchmark_category.id, {
+        onDelete: "set null",
+      }),
+    intent: integer("intent_id")
+      .notNull()
+      .references(() => benchmark_intent.id, {
+        onDelete: "set null",
+      }),
+    locale: varchar("locale").notNull().default("en-US"),
+    submittedByUser: integer("submitted_by_user_id")
+      .notNull()
+      .references(() => users.id, {
+        onDelete: "set null",
+      }),
+    approvedByUser: integer("approved_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    approvedAt: timestamp("approved_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
+    notes: varchar("notes"),
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index("benchmark_prompt_category_idx").on(columns.category),
+    index("benchmark_prompt_intent_idx").on(columns.intent),
+    index("benchmark_prompt_submitted_by_user_idx").on(columns.submittedByUser),
+    index("benchmark_prompt_approved_by_user_idx").on(columns.approvedByUser),
+    index("benchmark_prompt_updated_at_idx").on(columns.updatedAt),
+    index("benchmark_prompt_created_at_idx").on(columns.createdAt),
+  ],
+);
+
+export const brand_aliases = pgTable(
+  "brand_aliases",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    value: varchar("value").notNull(),
+  },
+  (columns) => [
+    index("brand_aliases_order_idx").on(columns._order),
+    index("brand_aliases_parent_id_idx").on(columns._parentID),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [brand.id],
+      name: "brand_aliases_parent_id_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
+export const brand = pgTable(
+  "brand",
+  {
+    id: serial("id").primaryKey(),
+    canonicalName: varchar("canonical_name").notNull(),
+    slug: varchar("slug").notNull(),
+    website: varchar("website"),
+    verified: boolean("verified").default(false),
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    uniqueIndex("brand_slug_idx").on(columns.slug),
+    index("brand_updated_at_idx").on(columns.updatedAt),
+    index("brand_created_at_idx").on(columns.createdAt),
+  ],
+);
+
+export const brand_rels = pgTable(
+  "brand_rels",
+  {
+    id: serial("id").primaryKey(),
+    order: integer("order"),
+    parent: integer("parent_id").notNull(),
+    path: varchar("path").notNull(),
+    "benchmark-categoriesID": integer("benchmark_category_id"),
+  },
+  (columns) => [
+    index("brand_rels_order_idx").on(columns.order),
+    index("brand_rels_parent_idx").on(columns.parent),
+    index("brand_rels_path_idx").on(columns.path),
+    index("brand_rels_benchmark_category_id_idx").on(
+      columns["benchmark-categoriesID"],
+    ),
+    foreignKey({
+      columns: [columns["parent"]],
+      foreignColumns: [brand.id],
+      name: "brand_rels_parent_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["benchmark-categoriesID"]],
+      foreignColumns: [benchmark_category.id],
+      name: "brand_rels_benchmark_categories_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
+export const brand_alias_queue = pgTable(
+  "brand_alias_queue",
+  {
+    id: serial("id").primaryKey(),
+    rawMention: varchar("raw_mention").notNull(),
+    suggestedBrand: integer("suggested_brand_id").references(() => brand.id, {
+      onDelete: "set null",
+    }),
+    runId: varchar("run_id"),
+    occurrenceCount: numeric("occurrence_count", { mode: "number" }).default(1),
+    status: enum_brand_alias_queue_status("status")
+      .notNull()
+      .default("pending"),
+    reviewedByUser: integer("reviewed_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reviewedAt: timestamp("reviewed_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    index("brand_alias_queue_suggested_brand_idx").on(columns.suggestedBrand),
+    index("brand_alias_queue_reviewed_by_user_idx").on(columns.reviewedByUser),
+    index("brand_alias_queue_updated_at_idx").on(columns.updatedAt),
+    index("brand_alias_queue_created_at_idx").on(columns.createdAt),
+  ],
+);
+
 export const users_sessions = pgTable(
   "users_sessions",
   {
@@ -1992,6 +2258,11 @@ export const payload_locked_documents_rels = pgTable(
     jobsID: integer("jobs_id"),
     "rules-acceptanceID": integer("rules_acceptance_id"),
     "community-rulesID": integer("community_rules_id"),
+    "benchmark-categoriesID": integer("benchmark_category_id"),
+    "benchmark-intentsID": integer("benchmark_intent_id"),
+    "benchmark-promptsID": integer("benchmark_prompt_id"),
+    brandsID: integer("brand_id"),
+    "brand-alias-queueID": integer("brand_alias_queue_id"),
     usersID: integer("users_id"),
   },
   (columns) => [
@@ -2049,6 +2320,19 @@ export const payload_locked_documents_rels = pgTable(
     ),
     index("payload_locked_documents_rels_community_rules_id_idx").on(
       columns["community-rulesID"],
+    ),
+    index("payload_locked_documents_rels_benchmark_category_id_idx").on(
+      columns["benchmark-categoriesID"],
+    ),
+    index("payload_locked_documents_rels_benchmark_intent_id_idx").on(
+      columns["benchmark-intentsID"],
+    ),
+    index("payload_locked_documents_rels_benchmark_prompt_id_idx").on(
+      columns["benchmark-promptsID"],
+    ),
+    index("payload_locked_documents_rels_brand_id_idx").on(columns.brandsID),
+    index("payload_locked_documents_rels_brand_alias_queue_id_idx").on(
+      columns["brand-alias-queueID"],
     ),
     index("payload_locked_documents_rels_users_id_idx").on(columns.usersID),
     foreignKey({
@@ -2155,6 +2439,31 @@ export const payload_locked_documents_rels = pgTable(
       columns: [columns["community-rulesID"]],
       foreignColumns: [community_rules.id],
       name: "payload_locked_documents_rels_community_rules_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["benchmark-categoriesID"]],
+      foreignColumns: [benchmark_category.id],
+      name: "payload_locked_documents_rels_benchmark_categories_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["benchmark-intentsID"]],
+      foreignColumns: [benchmark_intent.id],
+      name: "payload_locked_documents_rels_benchmark_intents_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["benchmark-promptsID"]],
+      foreignColumns: [benchmark_prompt.id],
+      name: "payload_locked_documents_rels_benchmark_prompts_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["brandsID"]],
+      foreignColumns: [brand.id],
+      name: "payload_locked_documents_rels_brands_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["brand-alias-queueID"]],
+      foreignColumns: [brand_alias_queue.id],
+      name: "payload_locked_documents_rels_brand_alias_queue_fk",
     }).onDelete("cascade"),
     foreignKey({
       columns: [columns["usersID"]],
@@ -2671,6 +2980,87 @@ export const relations_community_rules = relations(
     }),
   }),
 );
+export const relations_benchmark_category = relations(
+  benchmark_category,
+  ({ one }) => ({
+    parent: one(benchmark_category, {
+      fields: [benchmark_category.parent],
+      references: [benchmark_category.id],
+      relationName: "parent",
+    }),
+  }),
+);
+export const relations_benchmark_intent = relations(
+  benchmark_intent,
+  () => ({}),
+);
+export const relations_benchmark_prompt = relations(
+  benchmark_prompt,
+  ({ one }) => ({
+    category: one(benchmark_category, {
+      fields: [benchmark_prompt.category],
+      references: [benchmark_category.id],
+      relationName: "category",
+    }),
+    intent: one(benchmark_intent, {
+      fields: [benchmark_prompt.intent],
+      references: [benchmark_intent.id],
+      relationName: "intent",
+    }),
+    submittedByUser: one(users, {
+      fields: [benchmark_prompt.submittedByUser],
+      references: [users.id],
+      relationName: "submittedByUser",
+    }),
+    approvedByUser: one(users, {
+      fields: [benchmark_prompt.approvedByUser],
+      references: [users.id],
+      relationName: "approvedByUser",
+    }),
+  }),
+);
+export const relations_brand_aliases = relations(brand_aliases, ({ one }) => ({
+  _parentID: one(brand, {
+    fields: [brand_aliases._parentID],
+    references: [brand.id],
+    relationName: "aliases",
+  }),
+}));
+export const relations_brand_rels = relations(brand_rels, ({ one }) => ({
+  parent: one(brand, {
+    fields: [brand_rels.parent],
+    references: [brand.id],
+    relationName: "_rels",
+  }),
+  "benchmark-categoriesID": one(benchmark_category, {
+    fields: [brand_rels["benchmark-categoriesID"]],
+    references: [benchmark_category.id],
+    relationName: "benchmark-categories",
+  }),
+}));
+export const relations_brand = relations(brand, ({ many }) => ({
+  aliases: many(brand_aliases, {
+    relationName: "aliases",
+  }),
+  _rels: many(brand_rels, {
+    relationName: "_rels",
+  }),
+}));
+export const relations_brand_alias_queue = relations(
+  brand_alias_queue,
+  ({ one }) => ({
+    suggestedBrand: one(brand, {
+      fields: [brand_alias_queue.suggestedBrand],
+      references: [brand.id],
+      relationName: "suggestedBrand",
+    }),
+    reviewedByUser: one(users, {
+      fields: [brand_alias_queue.reviewedByUser],
+      references: [users.id],
+      relationName: "reviewedByUser",
+    }),
+  }),
+);
 export const relations_users_sessions = relations(
   users_sessions,
   ({ one }) => ({
@@ -2795,6 +3185,31 @@ export const relations_payload_locked_documents_rels = relations(
       references: [community_rules.id],
       relationName: "community-rules",
     }),
+    "benchmark-categoriesID": one(benchmark_category, {
+      fields: [payload_locked_documents_rels["benchmark-categoriesID"]],
+      references: [benchmark_category.id],
+      relationName: "benchmark-categories",
+    }),
+    "benchmark-intentsID": one(benchmark_intent, {
+      fields: [payload_locked_documents_rels["benchmark-intentsID"]],
+      references: [benchmark_intent.id],
+      relationName: "benchmark-intents",
+    }),
+    "benchmark-promptsID": one(benchmark_prompt, {
+      fields: [payload_locked_documents_rels["benchmark-promptsID"]],
+      references: [benchmark_prompt.id],
+      relationName: "benchmark-prompts",
+    }),
+    brandsID: one(brand, {
+      fields: [payload_locked_documents_rels.brandsID],
+      references: [brand.id],
+      relationName: "brands",
+    }),
+    "brand-alias-queueID": one(brand_alias_queue, {
+      fields: [payload_locked_documents_rels["brand-alias-queueID"]],
+      references: [brand_alias_queue.id],
+      relationName: "brand-alias-queue",
+    }),
     usersID: one(users, {
       fields: [payload_locked_documents_rels.usersID],
       references: [users.id],
@@ -2891,6 +3306,8 @@ type DatabaseSchema = {
   enum_jobs_type: typeof enum_jobs_type;
   enum_jobs_status: typeof enum_jobs_status;
   enum_community_rules_sections_icon: typeof enum_community_rules_sections_icon;
+  enum_benchmark_prompt_status: typeof enum_benchmark_prompt_status;
+  enum_brand_alias_queue_status: typeof enum_brand_alias_queue_status;
   enum_users_role: typeof enum_users_role;
   events_audience: typeof events_audience;
   events_tags: typeof events_tags;
@@ -2937,6 +3354,13 @@ type DatabaseSchema = {
   community_rules_sections: typeof community_rules_sections;
   community_rules_sections_locales: typeof community_rules_sections_locales;
   community_rules: typeof community_rules;
+  benchmark_category: typeof benchmark_category;
+  benchmark_intent: typeof benchmark_intent;
+  benchmark_prompt: typeof benchmark_prompt;
+  brand_aliases: typeof brand_aliases;
+  brand: typeof brand;
+  brand_rels: typeof brand_rels;
+  brand_alias_queue: typeof brand_alias_queue;
   users_sessions: typeof users_sessions;
   users: typeof users;
   payload_kv: typeof payload_kv;
@@ -2990,6 +3414,13 @@ type DatabaseSchema = {
   relations_community_rules_sections_locales: typeof relations_community_rules_sections_locales;
   relations_community_rules_sections: typeof relations_community_rules_sections;
   relations_community_rules: typeof relations_community_rules;
+  relations_benchmark_category: typeof relations_benchmark_category;
+  relations_benchmark_intent: typeof relations_benchmark_intent;
+  relations_benchmark_prompt: typeof relations_benchmark_prompt;
+  relations_brand_aliases: typeof relations_brand_aliases;
+  relations_brand_rels: typeof relations_brand_rels;
+  relations_brand: typeof relations_brand;
+  relations_brand_alias_queue: typeof relations_brand_alias_queue;
   relations_users_sessions: typeof relations_users_sessions;
   relations_users: typeof relations_users;
   relations_payload_kv: typeof relations_payload_kv;

@@ -1746,3 +1746,367 @@ export const communityInviteRelations = relations(
     }),
   }),
 );
+
+// ────────────────────────────────────────────────────────────────────
+// Datacenter research (community-tracked AI datacenter ecosystem)
+// ────────────────────────────────────────────────────────────────────
+
+export const DATACENTER_STATUS = [
+  "announced",
+  "under-construction",
+  "operational",
+  "expanding",
+  "decommissioned",
+  "cancelled",
+] as const;
+export type DatacenterStatus = (typeof DATACENTER_STATUS)[number];
+
+export const POWER_SOURCE = [
+  "grid-mixed",
+  "gas",
+  "nuclear",
+  "solar",
+  "wind",
+  "hydro",
+  "geothermal",
+  "hybrid",
+] as const;
+export type PowerSource = (typeof POWER_SOURCE)[number];
+
+export const COOLING_TYPE = [
+  "air",
+  "open-loop",
+  "closed-loop",
+  "direct-to-chip",
+  "immersion",
+] as const;
+export type CoolingType = (typeof COOLING_TYPE)[number];
+
+export const SUPPLIER_CATEGORY = [
+  "gc",
+  "civil",
+  "electrical",
+  "transformer",
+  "backup-power",
+  "cooling",
+  "fiber",
+  "hardware",
+  "security",
+  "staffing",
+  "other",
+] as const;
+export type SupplierCategory = (typeof SUPPLIER_CATEGORY)[number];
+
+export const ENERGY_DEAL_TYPE = [
+  "ppa",
+  "vppa",
+  "grid",
+  "behind-meter",
+  "nuclear",
+  "on-site",
+] as const;
+export type EnergyDealType = (typeof ENERGY_DEAL_TYPE)[number];
+
+export const ENERGY_TYPE = [
+  "solar",
+  "wind",
+  "nuclear",
+  "gas",
+  "hydro",
+  "geothermal",
+  "mixed",
+] as const;
+export type EnergyType = (typeof ENERGY_TYPE)[number];
+
+export const FINDING_STATUS = [
+  "draft",
+  "review",
+  "verified",
+  "disputed",
+] as const;
+export type FindingStatus = (typeof FINDING_STATUS)[number];
+
+export type DatacenterSource = {
+  url: string;
+  title?: string;
+  type?: "news" | "pr" | "filing" | "permit" | "operator" | "other";
+  publishedAt?: string;
+};
+
+export type DatacenterGpu = {
+  model: string;
+  count?: number;
+};
+
+export const datacenters = appSchema.table(
+  "datacenter",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    operatorId: uuid("operator_id")
+      .notNull()
+      .references(() => brands.id, { onDelete: "restrict" }),
+    status: text("status").notNull().default("announced"),
+    aiDedicated: boolean("ai_dedicated").notNull().default(false),
+
+    lat: numeric("lat", { mode: "number" }).notNull(),
+    lng: numeric("lng", { mode: "number" }).notNull(),
+    address: text("address"),
+    city: text("city"),
+    region: text("region"),
+    country: text("country").notNull(),
+
+    capacityMw: numeric("capacity_mw", { mode: "number" }),
+    capacityMwPlanned: numeric("capacity_mw_planned", { mode: "number" }),
+    squareFootage: numeric("square_footage", { mode: "number" }),
+    rackCount: integer("rack_count"),
+    gpus: jsonb("gpus")
+      .$type<DatacenterGpu[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+
+    primaryPowerSource: text("primary_power_source"),
+    utilityId: uuid("utility_id").references(() => brands.id, {
+      onDelete: "set null",
+    }),
+    puePledged: numeric("pue_pledged", { mode: "number" }),
+
+    coolingType: text("cooling_type"),
+    waterDrawMgd: numeric("water_draw_mgd", { mode: "number" }),
+    waterDrawCubicM: numeric("water_draw_cubic_m", { mode: "number" }),
+    wuePledged: numeric("wue_pledged", { mode: "number" }),
+
+    announcedDate: date("announced_date"),
+    groundbreakDate: date("groundbreak_date"),
+    onlineDate: date("online_date"),
+    fullCapacityDate: date("full_capacity_date"),
+
+    capexUsd: numeric("capex_usd", { mode: "number" }),
+    description: text("description"),
+
+    sources: jsonb("sources")
+      .$type<DatacenterSource[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+
+    submittedByUserId: text("submitted_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    verified: boolean("verified").notNull().default(false),
+    verifiedCount: integer("verified_count").notNull().default(0),
+
+    extractorMetadata: jsonb("extractor_metadata"),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    operatorIdx: index("datacenter_operator_idx").on(t.operatorId),
+    countryIdx: index("datacenter_country_idx").on(t.country),
+    statusIdx: index("datacenter_status_idx").on(t.status),
+    verifiedIdx: index("datacenter_verified_idx").on(t.verified),
+    locIdx: index("datacenter_loc_idx").on(t.lat, t.lng),
+  }),
+);
+
+export const datacenterSuppliers = appSchema.table(
+  "datacenter_supplier",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    datacenterId: uuid("datacenter_id")
+      .notNull()
+      .references(() => datacenters.id, { onDelete: "cascade" }),
+    supplierId: uuid("supplier_id")
+      .notNull()
+      .references(() => brands.id, { onDelete: "restrict" }),
+    category: text("category").notNull(),
+    role: text("role"),
+    contractValueUsd: numeric("contract_value_usd", { mode: "number" }),
+    isLocal: boolean("is_local").notNull().default(false),
+    sources: jsonb("sources")
+      .$type<DatacenterSource[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    verified: boolean("verified").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    dcIdx: index("dc_supplier_dc_idx").on(t.datacenterId),
+    supplierIdx: index("dc_supplier_supplier_idx").on(t.supplierId),
+    categoryIdx: index("dc_supplier_category_idx").on(t.category),
+    uq: uniqueIndex("dc_supplier_dc_supplier_category_uq").on(
+      t.datacenterId,
+      t.supplierId,
+      t.category,
+    ),
+  }),
+);
+
+export const energyDeals = appSchema.table(
+  "energy_deal",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    datacenterId: uuid("datacenter_id").references(() => datacenters.id, {
+      onDelete: "set null",
+    }),
+    buyerId: uuid("buyer_id")
+      .notNull()
+      .references(() => brands.id, { onDelete: "restrict" }),
+    counterpartyId: uuid("counterparty_id")
+      .notNull()
+      .references(() => brands.id, { onDelete: "restrict" }),
+    type: text("type").notNull(),
+    energyType: text("energy_type"),
+    mw: numeric("mw", { mode: "number" }),
+    termYears: numeric("term_years", { mode: "number" }),
+    signedDate: date("signed_date"),
+    startDate: date("start_date"),
+    valueUsd: numeric("value_usd", { mode: "number" }),
+    sources: jsonb("sources")
+      .$type<DatacenterSource[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    verified: boolean("verified").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    dcIdx: index("energy_deal_dc_idx").on(t.datacenterId),
+    buyerIdx: index("energy_deal_buyer_idx").on(t.buyerId),
+    counterpartyIdx: index("energy_deal_counterparty_idx").on(t.counterpartyId),
+    signedIdx: index("energy_deal_signed_idx").on(t.signedDate),
+  }),
+);
+
+export const datacenterFindings = appSchema.table(
+  "datacenter_finding",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    datacenterId: uuid("datacenter_id").references(() => datacenters.id, {
+      onDelete: "set null",
+    }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body"),
+    claim: text("claim"),
+    evidenceUrls: jsonb("evidence_urls")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    status: text("status").notNull().default("review"),
+    upvotes: integer("upvotes").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    dcIdx: index("dc_finding_dc_idx").on(t.datacenterId),
+    userIdx: index("dc_finding_user_idx").on(t.userId),
+    statusIdx: index("dc_finding_status_idx").on(t.status),
+  }),
+);
+
+export const datacenterFindingVotes = appSchema.table(
+  "datacenter_finding_vote",
+  {
+    findingId: uuid("finding_id")
+      .notNull()
+      .references(() => datacenterFindings.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    vote: integer("vote").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    pk: uniqueIndex("dc_finding_vote_pk").on(t.findingId, t.userId),
+    findingIdx: index("dc_finding_vote_finding_idx").on(t.findingId),
+  }),
+);
+
+export const datacenterRelations = relations(datacenters, ({ one, many }) => ({
+  operator: one(brands, {
+    fields: [datacenters.operatorId],
+    references: [brands.id],
+    relationName: "datacenter_operator",
+  }),
+  utility: one(brands, {
+    fields: [datacenters.utilityId],
+    references: [brands.id],
+    relationName: "datacenter_utility",
+  }),
+  submittedBy: one(user, {
+    fields: [datacenters.submittedByUserId],
+    references: [user.id],
+  }),
+  suppliers: many(datacenterSuppliers),
+  energyDeals: many(energyDeals),
+  findings: many(datacenterFindings),
+}));
+
+export const datacenterSupplierRelations = relations(
+  datacenterSuppliers,
+  ({ one }) => ({
+    datacenter: one(datacenters, {
+      fields: [datacenterSuppliers.datacenterId],
+      references: [datacenters.id],
+    }),
+    supplier: one(brands, {
+      fields: [datacenterSuppliers.supplierId],
+      references: [brands.id],
+    }),
+  }),
+);
+
+export const energyDealRelations = relations(energyDeals, ({ one }) => ({
+  datacenter: one(datacenters, {
+    fields: [energyDeals.datacenterId],
+    references: [datacenters.id],
+  }),
+  buyer: one(brands, {
+    fields: [energyDeals.buyerId],
+    references: [brands.id],
+    relationName: "energy_deal_buyer",
+  }),
+  counterparty: one(brands, {
+    fields: [energyDeals.counterpartyId],
+    references: [brands.id],
+    relationName: "energy_deal_counterparty",
+  }),
+}));
+
+export const datacenterFindingRelations = relations(
+  datacenterFindings,
+  ({ one }) => ({
+    datacenter: one(datacenters, {
+      fields: [datacenterFindings.datacenterId],
+      references: [datacenters.id],
+    }),
+    user: one(user, {
+      fields: [datacenterFindings.userId],
+      references: [user.id],
+    }),
+  }),
+);

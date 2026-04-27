@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "benchmark:seed": "pnpm dlx tsx --env-file=.env src/scripts/seed-benchmark.ts",
+    "datacenters:seed": "pnpm dlx tsx --env-file=.env src/scripts/seed-datacenters.ts",
+    "suppliers:seed": "pnpm dlx tsx --env-file=.env src/scripts/seed-suppliers.ts",
     "build": "next build",
     "check": "next lint && tsc --noEmit",
     "db:generate": "drizzle-kit generate",

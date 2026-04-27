@@ -24,6 +24,7 @@ const navLinks = [
   { href: "/blog", key: "blog", shortcut: "B" },
   { href: "/jobs", key: "jobs", shortcut: "W" },
   { href: "/benchmark", key: "benchmark", shortcut: "K" },
+  { href: "/datacenters", key: "datacenters", shortcut: "D" },
   { href: "/impact", key: "impact", shortcut: "I" },
   { href: "/sponsors", key: "sponsors", shortcut: "S" },
   { href: "/members", key: "members", shortcut: "M" },

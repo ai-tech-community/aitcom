@@ -15,6 +15,8 @@ import * as migration_20260421_benchmark_prompt_inferred_categories from "./2026
 import * as migration_20260422_benchmark_citations_and_brand_aggs from "./20260422_benchmark_citations_and_brand_aggs";
 import * as migration_20260422_prompt_tags from "./20260422_prompt_tags";
 import * as migration_20260422_brand_watch from "./20260422_brand_watch";
+import * as migration_20260427_datacenter_research from "./20260427_datacenter_research";
+import * as migration_20260427_datacenter_finding_votes from "./20260427_datacenter_finding_votes";
 
 export const migrations = [
   {
@@ -101,5 +103,15 @@ export const migrations = [
     up: migration_20260422_brand_watch.up,
     down: migration_20260422_brand_watch.down,
     name: "20260422_brand_watch",
+  },
+  {
+    up: migration_20260427_datacenter_research.up,
+    down: migration_20260427_datacenter_research.down,
+    name: "20260427_datacenter_research",
+  },
+  {
+    up: migration_20260427_datacenter_finding_votes.up,
+    down: migration_20260427_datacenter_finding_votes.down,
+    name: "20260427_datacenter_finding_votes",
   },
 ];
