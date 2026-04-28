@@ -53,7 +53,7 @@ export function GreenwashPanel({ data }: { data: GreenwashRow[] }) {
               >
                 <td className="py-1.5 font-medium">
                   <Link
-                    href={`/investigations/datacenters?operator=${r.operator_slug}`}
+                    href={`/investigations/operators/${r.operator_slug}`}
                     className="hover:underline"
                   >
                     {r.operator_name}

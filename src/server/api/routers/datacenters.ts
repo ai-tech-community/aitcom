@@ -210,6 +210,181 @@ export const datacentersRouter = createTRPCRouter({
       return { datacenter: dc, operator, utility, suppliers, deals, findings };
     }),
 
+  operatorBySlug: publicProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [brand] = await ctx.db
+        .select()
+        .from(brands)
+        .where(eq(brands.slug, input.slug))
+        .limit(1);
+      if (!brand) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Operator not found",
+        });
+      }
+
+      const facilityRows = await ctx.db
+        .select()
+        .from(datacenters)
+        .where(eq(datacenters.operatorId, brand.id))
+        .orderBy(asc(datacenters.country), asc(datacenters.name));
+
+      const facilityIds = facilityRows.map((f) => f.id);
+
+      const supplierLinks = facilityIds.length
+        ? await ctx.db
+            .select({
+              link: datacenterSuppliers,
+              supplier: {
+                id: brands.id,
+                slug: brands.slug,
+                canonicalName: brands.canonicalName,
+              },
+              datacenterId: datacenterSuppliers.datacenterId,
+            })
+            .from(datacenterSuppliers)
+            .innerJoin(brands, eq(brands.id, datacenterSuppliers.supplierId))
+            .where(
+              sql`${datacenterSuppliers.datacenterId} = ANY(ARRAY[${sql.join(
+                facilityIds.map((id) => sql`${id}::uuid`),
+                sql`, `,
+              )}])`,
+            )
+        : [];
+
+      const deals = facilityIds.length
+        ? await ctx.db
+            .select({
+              deal: energyDeals,
+              counterparty: {
+                slug: brands.slug,
+                canonicalName: brands.canonicalName,
+              },
+            })
+            .from(energyDeals)
+            .innerJoin(brands, eq(brands.id, energyDeals.counterpartyId))
+            .where(
+              sql`${energyDeals.datacenterId} = ANY(ARRAY[${sql.join(
+                facilityIds.map((id) => sql`${id}::uuid`),
+                sql`, `,
+              )}])`,
+            )
+            .orderBy(desc(energyDeals.signedDate))
+        : [];
+
+      const countryCounts = new Map<string, number>();
+      const statusCounts = new Map<string, number>();
+      const powerCounts = new Map<string, { count: number; mw: number }>();
+      let totalMw = 0;
+      let plannedMw = 0;
+      let carbonFreeMw = 0;
+      const carbonFreeSet = new Set([
+        "solar",
+        "wind",
+        "hydro",
+        "geothermal",
+        "nuclear",
+      ]);
+
+      for (const f of facilityRows) {
+        countryCounts.set(f.country, (countryCounts.get(f.country) ?? 0) + 1);
+        statusCounts.set(f.status, (statusCounts.get(f.status) ?? 0) + 1);
+        const cap =
+          Number(f.capacityMw ?? 0) + Number(f.capacityMwPlanned ?? 0);
+        totalMw += Number(f.capacityMw ?? 0);
+        plannedMw += Number(f.capacityMwPlanned ?? 0);
+        const src = f.primaryPowerSource ?? "unknown";
+        const prev = powerCounts.get(src) ?? { count: 0, mw: 0 };
+        powerCounts.set(src, {
+          count: prev.count + 1,
+          mw: prev.mw + cap,
+        });
+        if (f.primaryPowerSource && carbonFreeSet.has(f.primaryPowerSource)) {
+          carbonFreeMw += cap;
+        }
+      }
+
+      const supplierAggregates = new Map<
+        string,
+        {
+          slug: string;
+          name: string;
+          facilityIds: Set<string>;
+          categories: Set<string>;
+        }
+      >();
+      const categoryCounts = new Map<string, number>();
+      for (const l of supplierLinks) {
+        const existing = supplierAggregates.get(l.supplier.slug) ?? {
+          slug: l.supplier.slug,
+          name: l.supplier.canonicalName,
+          facilityIds: new Set<string>(),
+          categories: new Set<string>(),
+        };
+        existing.facilityIds.add(l.datacenterId);
+        existing.categories.add(l.link.category);
+        supplierAggregates.set(l.supplier.slug, existing);
+        categoryCounts.set(
+          l.link.category,
+          (categoryCounts.get(l.link.category) ?? 0) + 1,
+        );
+      }
+
+      const supplierBreakdown = Array.from(supplierAggregates.values())
+        .map((s) => ({
+          slug: s.slug,
+          name: s.name,
+          facilityCount: s.facilityIds.size,
+          categoryCount: s.categories.size,
+          categories: Array.from(s.categories).sort(),
+        }))
+        .sort((a, b) => b.facilityCount - a.facilityCount);
+
+      const countryBreakdown = Array.from(countryCounts.entries())
+        .map(([country, count]) => ({ country, count }))
+        .sort((a, b) => b.count - a.count);
+
+      const statusBreakdown = Array.from(statusCounts.entries())
+        .map(([status, count]) => ({ status, count }))
+        .sort((a, b) => b.count - a.count);
+
+      const powerMix = Array.from(powerCounts.entries())
+        .map(([source, v]) => ({
+          source,
+          count: v.count,
+          mw: v.mw,
+        }))
+        .sort((a, b) => b.mw - a.mw);
+
+      const totalCap = totalMw + plannedMw;
+      const carbonFreePct = totalCap > 0 ? (carbonFreeMw / totalCap) * 100 : 0;
+
+      return {
+        brand,
+        facilities: facilityRows,
+        suppliers: supplierBreakdown,
+        deals,
+        totals: {
+          facilityCount: facilityRows.length,
+          countryCount: countryCounts.size,
+          supplierCount: supplierAggregates.size,
+          totalMw,
+          plannedMw,
+          carbonFreeMw,
+          carbonFreePct: Math.round(carbonFreePct * 10) / 10,
+          dealsCount: deals.length,
+        },
+        countryBreakdown,
+        statusBreakdown,
+        powerMix,
+        categoryBreakdown: Array.from(categoryCounts.entries())
+          .map(([category, count]) => ({ category, count }))
+          .sort((a, b) => b.count - a.count),
+      };
+    }),
+
   supplierBySlug: publicProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx, input }) => {

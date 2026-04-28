@@ -232,7 +232,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
                 >
                   <td className="py-1.5">
                     <Link
-                      href={`/investigations/datacenters?operator=${o.slug}`}
+                      href={`/investigations/operators/${o.slug}`}
                       className="hover:underline"
                     >
                       {o.canonicalName}
@@ -361,10 +361,14 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
               country: <strong>{sp.country.toUpperCase()}</strong>
             </span>
           )}
-          {activeOperator && (
-            <span className="bg-background border-border rounded-full border px-2 py-0.5 text-xs">
-              operator: <strong>{activeOperator}</strong>
-            </span>
+          {activeOperator && sp.operator && (
+            <Link
+              href={`/investigations/operators/${sp.operator}`}
+              className="bg-background border-border hover:bg-muted rounded-full border px-2 py-0.5 text-xs"
+            >
+              operator: <strong>{activeOperator}</strong>{" "}
+              <span className="text-muted-foreground">↗</span>
+            </Link>
           )}
           {activeSupplier && sp.supplier && (
             <Link

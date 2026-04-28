@@ -277,7 +277,7 @@ function ConcentrationDetail({
               className="border-border flex items-center justify-between gap-3 rounded border p-2 text-sm"
             >
               <Link
-                href={`/investigations/datacenters?operator=${o.operator_slug}&country=${row.country}`}
+                href={`/investigations/operators/${o.operator_slug}`}
                 className="flex-1 font-medium hover:underline"
               >
                 {o.operator_name}
