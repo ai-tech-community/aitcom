@@ -108,11 +108,13 @@ async function main() {
       edgesSkipped++;
       continue;
     }
+    const fullDate = (s: string | undefined): string | null =>
+      s && s.length === 10 ? s : null;
     await db.insert(ownershipEdges).values({
       parentBrandId: parent,
       childBrandId: child,
       ownershipPct: e.ownershipPct ?? null,
-      effectiveFrom: e.effectiveFrom ?? null,
+      effectiveFrom: fullDate(e.effectiveFrom),
       sourceUrl: e.sourceUrl,
       notes: e.notes ?? null,
       verified: true,
