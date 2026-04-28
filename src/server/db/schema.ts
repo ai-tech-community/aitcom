@@ -1187,6 +1187,7 @@ export const brands = appSchema.table("brand", {
   commitmentRenewablePct: numeric("commitment_renewable_pct", { mode: "number" }),
   commitmentTargetYear: integer("commitment_target_year"),
   commitmentSourceUrl: text("commitment_source_url"),
+  commitmentNotes: text("commitment_notes"),
   jurisdiction: text("jurisdiction"),
   jurisdictionRegion: text("jurisdiction_region"),
   entityType: text("entity_type"),

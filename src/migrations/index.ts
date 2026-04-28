@@ -19,6 +19,7 @@ import * as migration_20260427_datacenter_research from "./20260427_datacenter_r
 import * as migration_20260427_datacenter_finding_votes from "./20260427_datacenter_finding_votes";
 import * as migration_20260428_brand_commitments from "./20260428_brand_commitments";
 import * as migration_20260428_ownership_subsidies_permits from "./20260428_ownership_subsidies_permits";
+import * as migration_20260428_brand_commitment_notes from "./20260428_brand_commitment_notes";
 
 export const migrations = [
   {
@@ -125,5 +126,10 @@ export const migrations = [
     up: migration_20260428_ownership_subsidies_permits.up,
     down: migration_20260428_ownership_subsidies_permits.down,
     name: "20260428_ownership_subsidies_permits",
+  },
+  {
+    up: migration_20260428_brand_commitment_notes.up,
+    down: migration_20260428_brand_commitment_notes.down,
+    name: "20260428_brand_commitment_notes",
   },
 ];
