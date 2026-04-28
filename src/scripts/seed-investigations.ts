@@ -197,12 +197,16 @@ async function main() {
       permsSkipped++;
       continue;
     }
+    // Coerce partial dates to null — only YYYY-MM-DD (10 char) accepted by postgres date type.
+    // Year-only / month-level dates from audit live in notes; precision can be improved later.
+    const fullDate = (s: string | undefined): string | null =>
+      s && s.length === 10 ? s : null;
     await db.insert(permits).values({
       datacenterId: dcId,
       kind: p.kind,
       issuingBody: p.issuingBody,
-      appliedDate: p.appliedDate ?? null,
-      issuedDate: p.issuedDate ?? null,
+      appliedDate: fullDate(p.appliedDate),
+      issuedDate: fullDate(p.issuedDate),
       status: p.status,
       sources: p.sources,
       verified: true,
