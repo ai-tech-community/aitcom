@@ -362,10 +362,10 @@ function DependencyDetail({ row }: { row: DepRow }) {
           Open facility →
         </Link>
         <Link
-          href={`/investigations/datacenters?supplier=${row.supplier_slug}`}
+          href={`/investigations/suppliers/${row.supplier_slug}`}
           className="text-muted-foreground hover:underline"
         >
-          All {row.supplier_name} sites →
+          {row.supplier_name} profile →
         </Link>
       </div>
     </>

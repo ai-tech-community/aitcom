@@ -278,7 +278,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
                 >
                   <td className="py-1.5">
                     <Link
-                      href={`/investigations/datacenters?supplier=${s.slug}`}
+                      href={`/investigations/suppliers/${s.slug}`}
                       className="hover:underline"
                     >
                       {s.canonicalName}
@@ -373,10 +373,14 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
               operator: <strong>{activeOperator}</strong>
             </span>
           )}
-          {activeSupplier && (
-            <span className="bg-background border-border rounded-full border px-2 py-0.5 text-xs">
-              supplier: <strong>{activeSupplier}</strong>
-            </span>
+          {activeSupplier && sp.supplier && (
+            <Link
+              href={`/investigations/suppliers/${sp.supplier}`}
+              className="bg-background border-border hover:bg-muted rounded-full border px-2 py-0.5 text-xs"
+            >
+              supplier: <strong>{activeSupplier}</strong>{" "}
+              <span className="text-muted-foreground">↗</span>
+            </Link>
           )}
           <Link
             href={clearHref}

@@ -210,6 +210,127 @@ export const datacentersRouter = createTRPCRouter({
       return { datacenter: dc, operator, utility, suppliers, deals, findings };
     }),
 
+  supplierBySlug: publicProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [brand] = await ctx.db
+        .select()
+        .from(brands)
+        .where(eq(brands.slug, input.slug))
+        .limit(1);
+      if (!brand) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Supplier not found",
+        });
+      }
+
+      const facilities = await ctx.db
+        .select({
+          link: datacenterSuppliers,
+          datacenter: {
+            id: datacenters.id,
+            slug: datacenters.slug,
+            name: datacenters.name,
+            country: datacenters.country,
+            city: datacenters.city,
+            region: datacenters.region,
+            status: datacenters.status,
+            capacityMw: datacenters.capacityMw,
+            capacityMwPlanned: datacenters.capacityMwPlanned,
+            verified: datacenters.verified,
+            operatorId: datacenters.operatorId,
+          },
+        })
+        .from(datacenterSuppliers)
+        .innerJoin(
+          datacenters,
+          eq(datacenters.id, datacenterSuppliers.datacenterId),
+        )
+        .where(eq(datacenterSuppliers.supplierId, brand.id))
+        .orderBy(asc(datacenters.country), asc(datacenters.name));
+
+      const operatorIds = Array.from(
+        new Set(facilities.map((f) => f.datacenter.operatorId)),
+      );
+      const operators = operatorIds.length
+        ? await ctx.db
+            .select({
+              id: brands.id,
+              slug: brands.slug,
+              canonicalName: brands.canonicalName,
+            })
+            .from(brands)
+            .where(
+              sql`${brands.id} = ANY(ARRAY[${sql.join(
+                operatorIds.map((id) => sql`${id}::uuid`),
+                sql`, `,
+              )}])`,
+            )
+        : [];
+
+      const operatorById = new Map(operators.map((o) => [o.id, o]));
+
+      const categoryCounts = new Map<string, number>();
+      const countryCounts = new Map<string, number>();
+      const operatorFacilityCounts = new Map<string, number>();
+      let totalContractValue = 0;
+      for (const f of facilities) {
+        categoryCounts.set(
+          f.link.category,
+          (categoryCounts.get(f.link.category) ?? 0) + 1,
+        );
+        countryCounts.set(
+          f.datacenter.country,
+          (countryCounts.get(f.datacenter.country) ?? 0) + 1,
+        );
+        const op = operatorById.get(f.datacenter.operatorId);
+        if (op) {
+          operatorFacilityCounts.set(
+            op.slug,
+            (operatorFacilityCounts.get(op.slug) ?? 0) + 1,
+          );
+        }
+        if (f.link.contractValueUsd != null) {
+          totalContractValue += Number(f.link.contractValueUsd);
+        }
+      }
+
+      const categoryBreakdown = Array.from(categoryCounts.entries())
+        .map(([category, count]) => ({ category, count }))
+        .sort((a, b) => b.count - a.count);
+      const countryBreakdown = Array.from(countryCounts.entries())
+        .map(([country, count]) => ({ country, count }))
+        .sort((a, b) => b.count - a.count);
+      const operatorBreakdown = Array.from(operatorFacilityCounts.entries())
+        .map(([slug, count]) => ({
+          slug,
+          name:
+            operators.find((o) => o.slug === slug)?.canonicalName ?? slug,
+          count,
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      return {
+        brand,
+        facilities: facilities.map((f) => ({
+          ...f,
+          operator: operatorById.get(f.datacenter.operatorId) ?? null,
+        })),
+        totals: {
+          facilityCount: facilities.length,
+          categoryCount: categoryCounts.size,
+          operatorCount: operators.length,
+          countryCount: countryCounts.size,
+          contractValueUsd: totalContractValue,
+          verifiedLinks: facilities.filter((f) => f.link.verified).length,
+        },
+        categoryBreakdown,
+        countryBreakdown,
+        operatorBreakdown,
+      };
+    }),
+
   stats: publicProcedure.query(async ({ ctx }) => {
     const [totals] = await ctx.db
       .select({
