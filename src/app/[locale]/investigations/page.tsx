@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { MissionDialog } from "@/components/datacenters/mission-dialog";
 
 export const metadata: Metadata = {
   title: "Investigations",
@@ -23,9 +24,12 @@ export default async function InvestigationsPage() {
   return (
     <main className="container mx-auto flex flex-col gap-8 p-6">
       <header className="flex flex-col gap-3">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Investigations
-        </h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-3xl font-semibold tracking-tight">
+            Investigations
+          </h1>
+          <MissionDialog label="Why this matters" variant="outline" />
+        </div>
         <p className="text-muted-foreground max-w-3xl text-sm leading-relaxed">
           Community research on the AI economy. Each investigation tracks
           facilities, companies, supply chains, and money flows behind the

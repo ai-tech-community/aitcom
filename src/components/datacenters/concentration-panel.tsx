@@ -1,3 +1,5 @@
+import { Link } from "@/i18n/navigation";
+
 type ConcentrationRow = {
   country: string;
   total_mw: number;
@@ -35,7 +37,7 @@ export function ConcentrationPanel({
             Operator concentration by country
           </h3>
           <span className="text-muted-foreground text-[10px]">
-            HHI on operator MW shares
+            click country → see operators
           </span>
         </div>
         <table className="w-full text-sm">
@@ -52,17 +54,53 @@ export function ConcentrationPanel({
             {data.slice(0, 12).map((r) => {
               const band = hhiBand(r.hhi);
               return (
-                <tr key={r.country} className="border-border border-t">
-                  <td className="py-1.5 font-medium">{r.country}</td>
-                  <td className="text-right">{r.operator_count}</td>
-                  <td className="text-right">{r.top3_share}%</td>
-                  <td className="text-right">{Math.round(r.hhi)}</td>
-                  <td className="pl-3">
-                    <span
-                      className={`inline-block rounded ${band.color} px-1.5 py-0.5 text-[10px] text-white`}
+                <tr
+                  key={r.country}
+                  className="border-border hover:bg-muted/40 group cursor-pointer border-t transition"
+                >
+                  <td className="py-1.5 font-medium">
+                    <Link
+                      href={`/investigations/datacenters?country=${r.country}`}
+                      className="block hover:underline"
                     >
-                      {band.label}
-                    </span>
+                      {r.country}
+                    </Link>
+                  </td>
+                  <td className="text-right">
+                    <Link
+                      href={`/investigations/datacenters?country=${r.country}`}
+                      className="block"
+                    >
+                      {r.operator_count}
+                    </Link>
+                  </td>
+                  <td className="text-right">
+                    <Link
+                      href={`/investigations/datacenters?country=${r.country}`}
+                      className="block"
+                    >
+                      {r.top3_share}%
+                    </Link>
+                  </td>
+                  <td className="text-right">
+                    <Link
+                      href={`/investigations/datacenters?country=${r.country}`}
+                      className="block"
+                    >
+                      {Math.round(r.hhi)}
+                    </Link>
+                  </td>
+                  <td className="pl-3">
+                    <Link
+                      href={`/investigations/datacenters?country=${r.country}`}
+                      className="block"
+                    >
+                      <span
+                        className={`inline-block rounded ${band.color} px-1.5 py-0.5 text-[10px] text-white`}
+                      >
+                        {band.label}
+                      </span>
+                    </Link>
                   </td>
                 </tr>
               );
@@ -93,17 +131,25 @@ export function ConcentrationPanel({
             {dependency.slice(0, 12).map((d, i) => (
               <li
                 key={i}
-                className="flex items-start justify-between gap-2 border-b py-1.5 last:border-0"
+                className="border-b last:border-0"
               >
-                <div className="flex-1">
-                  <div className="font-medium">{d.datacenter_name}</div>
-                  <div className="text-muted-foreground text-xs">
-                    {d.supplier_name} —{" "}
-                    <span className="text-amber-600">
-                      {d.categories} categories
-                    </span>
+                <Link
+                  href={`/investigations/datacenters/${d.datacenter_slug}`}
+                  className="hover:bg-muted/40 -mx-2 flex items-start justify-between gap-2 rounded px-2 py-1.5 transition"
+                >
+                  <div className="flex-1">
+                    <div className="font-medium hover:underline">
+                      {d.datacenter_name}
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      {d.supplier_name} —{" "}
+                      <span className="text-amber-600">
+                        {d.categories} categories
+                      </span>
+                    </div>
                   </div>
-                </div>
+                  <span className="text-muted-foreground text-xs">→</span>
+                </Link>
               </li>
             ))}
           </ul>

@@ -1,3 +1,5 @@
+import { Link } from "@/i18n/navigation";
+
 type GreenwashRow = {
   operator_slug: string;
   operator_name: string;
@@ -45,8 +47,18 @@ export function GreenwashPanel({ data }: { data: GreenwashRow[] }) {
           {data.map((r) => {
             const tone = gapTone(r.gap_pp);
             return (
-              <tr key={r.operator_slug} className="border-border border-t">
-                <td className="py-1.5 font-medium">{r.operator_name}</td>
+              <tr
+                key={r.operator_slug}
+                className="border-border hover:bg-muted/40 border-t transition"
+              >
+                <td className="py-1.5 font-medium">
+                  <Link
+                    href={`/investigations/datacenters?operator=${r.operator_slug}`}
+                    className="hover:underline"
+                  >
+                    {r.operator_name}
+                  </Link>
+                </td>
                 <td className="text-right">
                   {r.commitment_pct != null ? `${r.commitment_pct}%` : "—"}
                 </td>

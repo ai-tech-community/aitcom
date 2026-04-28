@@ -63,6 +63,7 @@ export const datacentersRouter = createTRPCRouter({
           country: z.string().length(2).toUpperCase().optional(),
           status: z.enum(DATACENTER_STATUS).optional(),
           operatorSlug: z.string().optional(),
+          supplierSlug: z.string().optional(),
           minMw: z.number().nonnegative().optional(),
           aiOnly: z.boolean().optional(),
           includeUnverified: z.boolean().optional(),
@@ -91,6 +92,15 @@ export const datacentersRouter = createTRPCRouter({
       if (i.operatorSlug) {
         conds.push(
           sql`${datacenters.operatorId} = (SELECT id FROM "app"."brand" WHERE slug = ${i.operatorSlug} LIMIT 1)`,
+        );
+      }
+      if (i.supplierSlug) {
+        conds.push(
+          sql`EXISTS (
+            SELECT 1 FROM "app"."datacenter_supplier" s
+            JOIN "app"."brand" b ON b.id = s.supplier_id
+            WHERE s.datacenter_id = ${datacenters.id} AND b.slug = ${i.supplierSlug}
+          )`,
         );
       }
       if (i.q) {

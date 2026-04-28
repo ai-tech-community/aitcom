@@ -17,6 +17,7 @@ import { ConcentrationPanel } from "@/components/datacenters/concentration-panel
 import { GreenwashPanel } from "@/components/datacenters/greenwash-panel";
 import { RedFlagsPanel } from "@/components/datacenters/red-flags-panel";
 import { RelationshipGraphLoader } from "@/components/datacenters/relationship-graph-loader";
+import { MissionDialog } from "@/components/datacenters/mission-dialog";
 
 export const metadata: Metadata = {
   title: "AI Datacenters",
@@ -39,6 +40,8 @@ interface PageProps {
     ai?: string;
     unverified?: string;
     suppliers?: string;
+    operator?: string;
+    supplier?: string;
   }>;
 }
 
@@ -52,6 +55,8 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
     api.datacenters.list({
       country: sp.country?.toUpperCase(),
       status: sp.status as never,
+      operatorSlug: sp.operator,
+      supplierSlug: sp.supplier,
       aiOnly,
       includeUnverified,
       withSuppliers,
@@ -105,6 +110,20 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
 
   const withSupplierTotal = list.filter((d) => d.supplierCount > 0).length;
 
+  const activeOperator = sp.operator
+    ? dash.topOperators.find((o) => o.slug === sp.operator)?.canonicalName ??
+      sp.operator
+    : null;
+  const activeSupplier = sp.supplier
+    ? dash.topSuppliers.find((s) => s.slug === sp.supplier)?.canonicalName ??
+      sp.supplier
+    : null;
+  const hasFocus =
+    !!sp.country || !!activeOperator || !!activeSupplier;
+  const clearHref = `/investigations/datacenters${
+    aiOnly ? "?ai=1" : ""
+  }`;
+
   return (
     <main className="container mx-auto flex flex-col gap-6 p-6">
       <nav className="text-muted-foreground text-xs">
@@ -113,10 +132,13 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
         </Link>
       </nav>
 
-      <header className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          AI Datacenters
-        </h1>
+      <header className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-3xl font-semibold tracking-tight">
+            AI Datacenters
+          </h1>
+          <MissionDialog />
+        </div>
         <p className="text-muted-foreground max-w-2xl text-sm">
           Community research on the AI datacenter ecosystem — facilities,
           operators, capacity, power sources, water draw, suppliers, and energy
@@ -195,7 +217,10 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
       </section>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ChartCard title="Top operators by capacity">
+        <ChartCard
+          title="Top operators by capacity"
+          hint="click row → see operator's facilities"
+        >
           <table className="w-full text-sm">
             <thead className="text-muted-foreground text-xs uppercase tracking-wider">
               <tr>
@@ -207,8 +232,18 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
             </thead>
             <tbody>
               {dash.topOperators.slice(0, 7).map((o) => (
-                <tr key={o.slug} className="border-border border-t">
-                  <td className="py-1.5">{o.canonicalName}</td>
+                <tr
+                  key={o.slug}
+                  className="border-border hover:bg-muted/40 border-t transition"
+                >
+                  <td className="py-1.5">
+                    <Link
+                      href={`/investigations/datacenters?operator=${o.slug}`}
+                      className="hover:underline"
+                    >
+                      {o.canonicalName}
+                    </Link>
+                  </td>
                   <td className="text-right">{o.count}</td>
                   <td className="text-right">
                     {Math.round(o.mw).toLocaleString()}
@@ -222,7 +257,10 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
           </table>
         </ChartCard>
 
-        <ChartCard title="Top suppliers by facility coverage">
+        <ChartCard
+          title="Top suppliers by facility coverage"
+          hint="click row → see supplier's facilities"
+        >
           <table className="w-full text-sm">
             <thead className="text-muted-foreground text-xs uppercase tracking-wider">
               <tr>
@@ -233,8 +271,18 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
             </thead>
             <tbody>
               {dash.topSuppliers.slice(0, 7).map((s) => (
-                <tr key={s.slug} className="border-border border-t">
-                  <td className="py-1.5">{s.canonicalName}</td>
+                <tr
+                  key={s.slug}
+                  className="border-border hover:bg-muted/40 border-t transition"
+                >
+                  <td className="py-1.5">
+                    <Link
+                      href={`/investigations/datacenters?supplier=${s.slug}`}
+                      className="hover:underline"
+                    >
+                      {s.canonicalName}
+                    </Link>
+                  </td>
                   <td className="text-right">{s.facilities}</td>
                   <td className="text-muted-foreground text-right">
                     {s.categoryCount}
@@ -309,6 +357,35 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
         />
       </section>
 
+      {hasFocus && (
+        <div className="border-primary/40 bg-primary/5 flex flex-wrap items-center gap-2 rounded-lg border p-3 text-sm">
+          <span className="text-muted-foreground text-xs uppercase tracking-wider">
+            Focus
+          </span>
+          {sp.country && (
+            <span className="bg-background border-border rounded-full border px-2 py-0.5 text-xs">
+              country: <strong>{sp.country.toUpperCase()}</strong>
+            </span>
+          )}
+          {activeOperator && (
+            <span className="bg-background border-border rounded-full border px-2 py-0.5 text-xs">
+              operator: <strong>{activeOperator}</strong>
+            </span>
+          )}
+          {activeSupplier && (
+            <span className="bg-background border-border rounded-full border px-2 py-0.5 text-xs">
+              supplier: <strong>{activeSupplier}</strong>
+            </span>
+          )}
+          <Link
+            href={clearHref}
+            className="text-muted-foreground hover:text-foreground ml-auto text-xs underline"
+          >
+            clear focus
+          </Link>
+        </div>
+      )}
+
       {mapPoints.length === 0 ? (
         <EmptyState includeUnverified={includeUnverified} />
       ) : (
@@ -318,6 +395,11 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
       <section className="mt-2">
         <h2 className="mb-3 text-lg font-semibold">
           {list.length} {list.length === 1 ? "facility" : "facilities"}
+          {hasFocus && (
+            <span className="text-muted-foreground ml-2 text-sm font-normal">
+              matching focus
+            </span>
+          )}
         </h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {list.map((d) => (
@@ -399,18 +481,25 @@ function ChartCard({
   title,
   children,
   wide,
+  hint,
 }: {
   title: string;
   children: React.ReactNode;
   wide?: boolean;
+  hint?: string;
 }) {
   return (
     <div
       className={`border-border rounded-lg border p-4 ${wide ? "lg:col-span-2" : ""}`}
     >
-      <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
-        {title}
-      </h2>
+      <div className="mb-3 flex items-baseline justify-between gap-2">
+        <h2 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+          {title}
+        </h2>
+        {hint && (
+          <span className="text-muted-foreground/70 text-[10px]">{hint}</span>
+        )}
+      </div>
       {children}
     </div>
   );
