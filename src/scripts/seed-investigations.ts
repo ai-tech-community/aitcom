@@ -109,7 +109,7 @@ async function main() {
       continue;
     }
     const fullDate = (s: string | undefined): string | null =>
-      s && s.length === 10 ? s : null;
+      s?.length === 10 ? s : null;
     await db.insert(ownershipEdges).values({
       parentBrandId: parent,
       childBrandId: child,
@@ -202,7 +202,7 @@ async function main() {
     // Coerce partial dates to null — only YYYY-MM-DD (10 char) accepted by postgres date type.
     // Year-only / month-level dates from audit live in notes; precision can be improved later.
     const fullDate = (s: string | undefined): string | null =>
-      s && s.length === 10 ? s : null;
+      s?.length === 10 ? s : null;
     await db.insert(permits).values({
       datacenterId: dcId,
       kind: p.kind,
