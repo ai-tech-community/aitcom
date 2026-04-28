@@ -124,7 +124,7 @@ export function DatacentersMapView({ datacenters }: DatacentersMapViewProps) {
                     )}
                   </div>
                   <Link
-                    href={`/datacenters/${dc.slug}`}
+                    href={`/investigations/datacenters/${dc.slug}`}
                     className="mt-1 inline-block text-xs underline"
                   >
                     Details →

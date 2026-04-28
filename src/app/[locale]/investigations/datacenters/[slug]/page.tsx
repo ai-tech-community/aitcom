@@ -9,6 +9,10 @@ import { AddSupplierDialog } from "@/components/datacenters/add-supplier-dialog"
 import { SubmitFindingDialog } from "@/components/datacenters/submit-finding-dialog";
 import { FindingActions } from "@/components/datacenters/finding-actions";
 import { SupplierAdminActions } from "@/components/datacenters/supplier-admin-actions";
+import { PeerComparison } from "@/components/datacenters/peer-comparison";
+import { OwnershipChain } from "@/components/datacenters/ownership-chain";
+import { SubsidiesPanel } from "@/components/datacenters/subsidies-panel";
+import { PermitsTimeline } from "@/components/datacenters/permits-timeline";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +35,7 @@ export async function generateMetadata({
       title,
       description: desc,
       ...buildOgMeta(title, desc, "Datacenter"),
-      alternates: buildAlternates(`/datacenters/${slug}`),
+      alternates: buildAlternates(`/investigations/datacenters/${slug}`),
     };
   } catch {
     return { title: "Datacenter not found" };
@@ -41,8 +45,16 @@ export async function generateMetadata({
 export default async function DatacenterDetailPage({ params }: PageProps) {
   const { slug } = await params;
   let data;
+  let peers;
+  let subsidiesData;
+  let permitsData;
   try {
-    data = await api.datacenters.getBySlug({ slug });
+    [data, peers, subsidiesData, permitsData] = await Promise.all([
+      api.datacenters.getBySlug({ slug }),
+      api.datacenters.peerComparison({ slug }),
+      api.datacenters.subsidiesFor({ slug }),
+      api.datacenters.permitsFor({ slug }),
+    ]);
   } catch (e) {
     if (e instanceof TRPCError && e.code === "NOT_FOUND") notFound();
     throw e;
@@ -66,10 +78,16 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
     (session?.user as { role?: string } | undefined)?.role === "admin";
   const isLoggedIn = !!currentUserId;
 
+  const ownership = operator
+    ? await api.datacenters
+        .ownershipChain({ slug: operator.slug })
+        .catch(() => null)
+    : null;
+
   return (
     <main className="container mx-auto flex flex-col gap-8 p-6">
       <nav className="text-muted-foreground text-xs">
-        <Link href="/datacenters" className="hover:underline">
+        <Link href="/investigations/datacenters" className="hover:underline">
           ← All datacenters
         </Link>
       </nav>
@@ -88,19 +106,60 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
             </span>
           )}
         </div>
-        <p className="text-muted-foreground text-sm">
-          Operated by{" "}
-          {operator ? (
-            <span className="font-medium">{operator.canonicalName}</span>
-          ) : (
-            "—"
-          )}
-          {where ? ` · ${where}` : ""}
+        <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+          <span>
+            Operated by{" "}
+            {operator ? (
+              <span className="font-medium">{operator.canonicalName}</span>
+            ) : (
+              "—"
+            )}
+            {where ? ` · ${where}` : ""}
+          </span>
+          <SourceBadge count={dc.sources?.length ?? 0} />
+          <span className="text-muted-foreground/70 text-xs">
+            updated {timeAgo(dc.updatedAt)}
+          </span>
         </p>
         {dc.description && (
           <p className="max-w-3xl text-sm leading-relaxed">{dc.description}</p>
         )}
       </header>
+
+      <section className="border-border rounded-lg border p-4">
+        <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+          Compared to peers
+        </h2>
+        <PeerComparison data={peers} />
+      </section>
+
+      {ownership && (
+        <section className="border-border rounded-lg border p-4">
+          <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+            Ownership chain ({operator?.canonicalName ?? "operator"})
+          </h2>
+          <OwnershipChain
+            chain={ownership.chain}
+            depth={ownership.depth}
+            opacityScore={ownership.opacityScore}
+            ultimateBeneficialOwner={ownership.ultimateBeneficialOwner}
+          />
+        </section>
+      )}
+
+      <section className="border-border rounded-lg border p-4">
+        <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+          Public subsidies & incentives
+        </h2>
+        <SubsidiesPanel data={subsidiesData as never} />
+      </section>
+
+      <section className="border-border rounded-lg border p-4">
+        <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+          Permits
+        </h2>
+        <PermitsTimeline data={permitsData as never} />
+      </section>
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Status" value={dc.status} />
@@ -255,6 +314,7 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
                 <div>
                   <div className="flex items-center gap-1.5 font-medium">
                     {s.supplier.canonicalName}
+                    <SourceBadge count={s.link.sources?.length ?? 0} />
                     {!s.link.verified && (
                       <span className="bg-muted text-muted-foreground rounded px-1 py-0.5 text-[10px]">
                         unverified
@@ -433,6 +493,48 @@ function Row({ label, value }: { label: string; value: string | number }) {
       <dd>{value}</dd>
     </>
   );
+}
+
+function SourceBadge({ count }: { count: number }) {
+  if (count === 0) {
+    return (
+      <span
+        title="No sources"
+        className="rounded border border-amber-500/60 px-1 py-0.5 text-[10px] text-amber-600"
+      >
+        ⚠ no sources
+      </span>
+    );
+  }
+  const tone =
+    count >= 3
+      ? "border-green-600/60 text-green-700"
+      : count >= 2
+        ? "border-sky-500/60 text-sky-700"
+        : "border-muted-foreground/40 text-muted-foreground";
+  return (
+    <span
+      title={`${count} source${count === 1 ? "" : "s"}`}
+      className={`rounded border px-1 py-0.5 text-[10px] ${tone}`}
+    >
+      {count} src
+    </span>
+  );
+}
+
+function timeAgo(d: string | Date | null | undefined): string {
+  if (!d) return "—";
+  const dt = typeof d === "string" ? new Date(d) : d;
+  if (isNaN(dt.getTime())) return "—";
+  const diff = Date.now() - dt.getTime();
+  const day = 86_400_000;
+  if (diff < day) return "today";
+  const days = Math.floor(diff / day);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(months / 12);
+  return `${years}y ago`;
 }
 
 function fmtDate(d: string | null | undefined): string {

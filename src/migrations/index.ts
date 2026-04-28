@@ -17,6 +17,8 @@ import * as migration_20260422_prompt_tags from "./20260422_prompt_tags";
 import * as migration_20260422_brand_watch from "./20260422_brand_watch";
 import * as migration_20260427_datacenter_research from "./20260427_datacenter_research";
 import * as migration_20260427_datacenter_finding_votes from "./20260427_datacenter_finding_votes";
+import * as migration_20260428_brand_commitments from "./20260428_brand_commitments";
+import * as migration_20260428_ownership_subsidies_permits from "./20260428_ownership_subsidies_permits";
 
 export const migrations = [
   {
@@ -113,5 +115,15 @@ export const migrations = [
     up: migration_20260427_datacenter_finding_votes.up,
     down: migration_20260427_datacenter_finding_votes.down,
     name: "20260427_datacenter_finding_votes",
+  },
+  {
+    up: migration_20260428_brand_commitments.up,
+    down: migration_20260428_brand_commitments.down,
+    name: "20260428_brand_commitments",
+  },
+  {
+    up: migration_20260428_ownership_subsidies_permits.up,
+    down: migration_20260428_ownership_subsidies_permits.down,
+    name: "20260428_ownership_subsidies_permits",
   },
 ];

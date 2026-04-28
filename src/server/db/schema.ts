@@ -1184,6 +1184,13 @@ export const brands = appSchema.table("brand", {
     .array()
     .notNull()
     .default(sql`ARRAY[]::uuid[]`),
+  commitmentRenewablePct: numeric("commitment_renewable_pct", { mode: "number" }),
+  commitmentTargetYear: integer("commitment_target_year"),
+  commitmentSourceUrl: text("commitment_source_url"),
+  jurisdiction: text("jurisdiction"),
+  jurisdictionRegion: text("jurisdiction_region"),
+  entityType: text("entity_type"),
+  ultimateBeneficialOwner: text("ultimate_beneficial_owner"),
   verified: boolean("verified").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -1192,6 +1199,150 @@ export const brands = appSchema.table("brand", {
     .notNull()
     .defaultNow(),
 });
+
+export const SUBSIDY_KINDS = [
+  "tax-abatement",
+  "grant",
+  "infrastructure",
+  "ppa-discount",
+  "land",
+  "training",
+  "other",
+] as const;
+export type SubsidyKind = (typeof SUBSIDY_KINDS)[number];
+
+export const PERMIT_KINDS = [
+  "zoning",
+  "environmental",
+  "water",
+  "grid-interconnect",
+  "building",
+  "other",
+] as const;
+export type PermitKind = (typeof PERMIT_KINDS)[number];
+
+export const PERMIT_STATUS = [
+  "pending",
+  "granted",
+  "denied",
+  "withdrawn",
+] as const;
+export type PermitStatus = (typeof PERMIT_STATUS)[number];
+
+export const ownershipEdges = appSchema.table(
+  "ownership_edge",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    parentBrandId: uuid("parent_brand_id")
+      .notNull()
+      .references(() => brands.id, { onDelete: "cascade" }),
+    childBrandId: uuid("child_brand_id")
+      .notNull()
+      .references(() => brands.id, { onDelete: "cascade" }),
+    ownershipPct: numeric("ownership_pct", { mode: "number" }),
+    effectiveFrom: date("effective_from"),
+    effectiveTo: date("effective_to"),
+    sourceUrl: text("source_url"),
+    notes: text("notes"),
+    verified: boolean("verified").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    parentIdx: index("ownership_edge_parent_idx").on(t.parentBrandId),
+    childIdx: index("ownership_edge_child_idx").on(t.childBrandId),
+  }),
+);
+
+export const subsidies = appSchema.table(
+  "subsidy",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    datacenterId: uuid("datacenter_id").references(() => datacenters.id, {
+      onDelete: "set null",
+    }),
+    recipientBrandId: uuid("recipient_brand_id").references(() => brands.id, {
+      onDelete: "set null",
+    }),
+    kind: text("kind").notNull(),
+    awardedBy: text("awarded_by").notNull(),
+    jurisdiction: text("jurisdiction").notNull(),
+    amountUsd: numeric("amount_usd", { mode: "number" }),
+    announcedDate: date("announced_date"),
+    effectiveDate: date("effective_date"),
+    termYears: integer("term_years"),
+    claimedJobs: integer("claimed_jobs"),
+    claimedCapexUsd: numeric("claimed_capex_usd", { mode: "number" }),
+    sources: jsonb("sources")
+      .$type<DatacenterSource[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    verified: boolean("verified").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    dcIdx: index("subsidy_datacenter_idx").on(t.datacenterId),
+    recipientIdx: index("subsidy_recipient_idx").on(t.recipientBrandId),
+    jurisdictionIdx: index("subsidy_jurisdiction_idx").on(t.jurisdiction),
+  }),
+);
+
+export const permits = appSchema.table(
+  "permit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    datacenterId: uuid("datacenter_id")
+      .notNull()
+      .references(() => datacenters.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    issuingBody: text("issuing_body").notNull(),
+    appliedDate: date("applied_date"),
+    issuedDate: date("issued_date"),
+    status: text("status").notNull().default("granted"),
+    sources: jsonb("sources")
+      .$type<DatacenterSource[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    verified: boolean("verified").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    dcIdx: index("permit_datacenter_idx").on(t.datacenterId),
+    kindIdx: index("permit_kind_idx").on(t.kind),
+  }),
+);
+
+export const datacenterStatusHistory = appSchema.table(
+  "datacenter_status_history",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    datacenterId: uuid("datacenter_id")
+      .notNull()
+      .references(() => datacenters.id, { onDelete: "cascade" }),
+    status: text("status").notNull(),
+    effectiveDate: date("effective_date").notNull(),
+    sourceUrl: text("source_url"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    dcIdx: index("dc_status_history_dc_idx").on(t.datacenterId),
+    dateIdx: index("dc_status_history_date_idx").on(t.effectiveDate),
+  }),
+);
 
 export const brandWatches = appSchema.table(
   "brand_watch",
