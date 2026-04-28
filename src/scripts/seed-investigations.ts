@@ -276,16 +276,28 @@ async function main() {
 
   // ── Report missing slugs ──
   if (missingBrandsForEdges.size) {
-    console.warn(`Missing brand slugs (ownership):`, [...missingBrandsForEdges].sort());
+    console.warn(
+      `Missing brand slugs (ownership):`,
+      [...missingBrandsForEdges].sort(),
+    );
   }
   if (missingDcsForSubs.size) {
-    console.warn(`Missing datacenter slugs (subsidies):`, [...missingDcsForSubs].sort());
+    console.warn(
+      `Missing datacenter slugs (subsidies):`,
+      [...missingDcsForSubs].sort(),
+    );
   }
   if (missingDcsForPermits.size) {
-    console.warn(`Missing datacenter slugs (permits):`, [...missingDcsForPermits].sort());
+    console.warn(
+      `Missing datacenter slugs (permits):`,
+      [...missingDcsForPermits].sort(),
+    );
   }
   if (missingDcsForCapex.size) {
-    console.warn(`Missing datacenter slugs (capex):`, [...missingDcsForCapex].sort());
+    console.warn(
+      `Missing datacenter slugs (capex):`,
+      [...missingDcsForCapex].sort(),
+    );
   }
   console.log("Done.");
   process.exit(0);

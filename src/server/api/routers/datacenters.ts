@@ -305,8 +305,7 @@ export const datacentersRouter = createTRPCRouter({
       const operatorBreakdown = Array.from(operatorFacilityCounts.entries())
         .map(([slug, count]) => ({
           slug,
-          name:
-            operators.find((o) => o.slug === slug)?.canonicalName ?? slug,
+          name: operators.find((o) => o.slug === slug)?.canonicalName ?? slug,
           count,
         }))
         .sort((a, b) => b.count - a.count);
@@ -401,7 +400,9 @@ export const datacentersRouter = createTRPCRouter({
       .where(eq(datacenters.verified, true))
       .groupBy(brands.slug, brands.canonicalName)
       .orderBy(
-        desc(sql`COALESCE(SUM(${datacenters.capacityMw}),0) + COALESCE(SUM(${datacenters.capacityMwPlanned}),0)`),
+        desc(
+          sql`COALESCE(SUM(${datacenters.capacityMw}),0) + COALESCE(SUM(${datacenters.capacityMwPlanned}),0)`,
+        ),
       )
       .limit(15);
 
@@ -543,7 +544,11 @@ export const datacentersRouter = createTRPCRouter({
       .from(datacenters)
       .innerJoin(brands, eq(brands.id, datacenters.operatorId))
       .where(eq(datacenters.verified, true))
-      .groupBy(brands.slug, brands.canonicalName, datacenters.primaryPowerSource);
+      .groupBy(
+        brands.slug,
+        brands.canonicalName,
+        datacenters.primaryPowerSource,
+      );
 
     // ── Single-supplier dependency: facilities where one supplier covers ≥3 categories ──
     const singleSupplierDep = await ctx.db.execute<{
@@ -644,18 +649,27 @@ export const datacentersRouter = createTRPCRouter({
     `);
 
     // ── Build/lag stats: avg days announced→online for facilities with both dates ──
-    const [lagStats] = await ctx.db.execute<{
-      sample_size: number;
-      avg_lag_days: number;
-      median_lag_days: number;
-    }>(sql`
+    const [lagStats] = await ctx.db
+      .execute<{
+        sample_size: number;
+        avg_lag_days: number;
+        median_lag_days: number;
+      }>(
+        sql`
       SELECT
         COUNT(*)::int AS sample_size,
         ROUND(AVG((online_date - announced_date)))::int AS avg_lag_days,
         ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY (online_date - announced_date)))::int AS median_lag_days
       FROM "app"."datacenter"
       WHERE announced_date IS NOT NULL AND online_date IS NOT NULL AND verified = true;
-    `).then((r) => ({ rows: r.rows.length ? r.rows : [{ sample_size: 0, avg_lag_days: 0, median_lag_days: 0 }] })).then((r) => r.rows);
+    `,
+      )
+      .then((r) => ({
+        rows: r.rows.length
+          ? r.rows
+          : [{ sample_size: 0, avg_lag_days: 0, median_lag_days: 0 }],
+      }))
+      .then((r) => r.rows);
 
     // ── Red flags: counts + sample slugs for top-of-dashboard panel ──
     const noSources = await ctx.db.execute<{
@@ -798,7 +812,11 @@ export const datacentersRouter = createTRPCRouter({
       operatorPowerMix,
       greenwashGap: greenwashGap.rows ?? [],
       announceTrend: announceTrend.rows ?? [],
-      lagStats: lagStats ?? { sample_size: 0, avg_lag_days: 0, median_lag_days: 0 },
+      lagStats: lagStats ?? {
+        sample_size: 0,
+        avg_lag_days: 0,
+        median_lag_days: 0,
+      },
       redFlags,
     };
   }),
@@ -955,13 +973,17 @@ export const datacentersRouter = createTRPCRouter({
           slug: brands.slug,
           name: brands.canonicalName,
           facilityCount: sql<number>`COUNT(DISTINCT ${datacenterSuppliers.datacenterId})::int`,
-          categories: sql<string[]>`array_agg(DISTINCT ${datacenterSuppliers.category})`,
+          categories: sql<
+            string[]
+          >`array_agg(DISTINCT ${datacenterSuppliers.category})`,
         })
         .from(datacenterSuppliers)
         .innerJoin(brands, eq(brands.id, datacenterSuppliers.supplierId))
         .where(conds.length ? and(...conds) : undefined)
         .groupBy(brands.slug, brands.canonicalName)
-        .having(sql`COUNT(DISTINCT ${datacenterSuppliers.datacenterId}) >= ${minFac}`);
+        .having(
+          sql`COUNT(DISTINCT ${datacenterSuppliers.datacenterId}) >= ${minFac}`,
+        );
 
       // Edges: operator -> supplier (when both meet threshold), weighted by shared facility count
       const opSlugs = new Set(operatorRows.map((o) => o.slug));
@@ -1188,15 +1210,21 @@ export const datacentersRouter = createTRPCRouter({
 
   // ───── Aggregate red-flag counts that depend on Phase 5 tables ─────
   phase5RedFlags: publicProcedure.query(async ({ ctx }) => {
-    const [fastPermitRow] = await ctx.db.execute<{ count: number }>(sql`
+    const [fastPermitRow] = await ctx.db
+      .execute<{ count: number }>(
+        sql`
       SELECT COUNT(*)::int AS count FROM "app"."permit"
       WHERE applied_date IS NOT NULL
         AND issued_date IS NOT NULL
         AND (issued_date - applied_date) < 14
         AND verified = true;
-    `).then((r) => r.rows);
+    `,
+      )
+      .then((r) => r.rows);
 
-    const [deepOwnershipRow] = await ctx.db.execute<{ count: number }>(sql`
+    const [deepOwnershipRow] = await ctx.db
+      .execute<{ count: number }>(
+        sql`
       WITH RECURSIVE chain AS (
         SELECT child_brand_id, parent_brand_id, 1 AS depth
         FROM "app"."ownership_edge"
@@ -1209,15 +1237,21 @@ export const datacentersRouter = createTRPCRouter({
       SELECT COUNT(DISTINCT child_brand_id)::int AS count
       FROM chain
       WHERE depth >= 3;
-    `).then((r) => r.rows);
+    `,
+      )
+      .then((r) => r.rows);
 
-    const [subsidyMismatchRow] = await ctx.db.execute<{ count: number }>(sql`
+    const [subsidyMismatchRow] = await ctx.db
+      .execute<{ count: number }>(
+        sql`
       SELECT COUNT(*)::int AS count FROM "app"."subsidy"
       WHERE claimed_jobs IS NOT NULL
         AND claimed_jobs > 0
         AND amount_usd IS NOT NULL
         AND (amount_usd / NULLIF(claimed_jobs, 0)) > 1000000;
-    `).then((r) => r.rows);
+    `,
+      )
+      .then((r) => r.rows);
 
     return {
       fastPermitCount: fastPermitRow?.count ?? 0,

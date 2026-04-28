@@ -1184,7 +1184,9 @@ export const brands = appSchema.table("brand", {
     .array()
     .notNull()
     .default(sql`ARRAY[]::uuid[]`),
-  commitmentRenewablePct: numeric("commitment_renewable_pct", { mode: "number" }),
+  commitmentRenewablePct: numeric("commitment_renewable_pct", {
+    mode: "number",
+  }),
   commitmentTargetYear: integer("commitment_target_year"),
   commitmentSourceUrl: text("commitment_source_url"),
   commitmentNotes: text("commitment_notes"),

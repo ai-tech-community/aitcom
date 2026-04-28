@@ -50,7 +50,12 @@ export function RelationshipGraph({ nodes, edges }: Props) {
         position: { x: 0, y: i * opSpacing },
         data: { label: n.name, kind: n.kind, weight: n.weight },
         style: {
-          background: highlight && n.id !== highlight && !isConnected(highlight, n.id, edges) ? "#1e293b40" : "#0ea5e9",
+          background:
+            highlight &&
+            n.id !== highlight &&
+            !isConnected(highlight, n.id, edges)
+              ? "#1e293b40"
+              : "#0ea5e9",
           color: "#fff",
           border: "1px solid #0284c7",
           borderRadius: 6,
@@ -65,7 +70,9 @@ export function RelationshipGraph({ nodes, edges }: Props) {
         data: { label: n.name, kind: n.kind, weight: n.weight },
         style: {
           background:
-            highlight && n.id !== highlight && !isConnected(highlight, n.id, edges)
+            highlight &&
+            n.id !== highlight &&
+            !isConnected(highlight, n.id, edges)
               ? "#1e293b40"
               : "#a855f7",
           color: "#fff",
@@ -81,9 +88,7 @@ export function RelationshipGraph({ nodes, edges }: Props) {
     const maxW = Math.max(1, ...edges.map((e) => e.weight));
     const rfEdges: Edge[] = edges.map((e) => {
       const dim =
-        highlight !== null &&
-        e.source !== highlight &&
-        e.target !== highlight;
+        highlight !== null && e.source !== highlight && e.target !== highlight;
       return {
         id: `${e.source}->${e.target}`,
         source: e.source,
@@ -132,7 +137,9 @@ export function RelationshipGraph({ nodes, edges }: Props) {
       <ReactFlow
         nodes={rfNodes}
         edges={rfEdges}
-        onNodeClick={(_, n) => setHighlight((curr) => (curr === n.id ? null : n.id))}
+        onNodeClick={(_, n) =>
+          setHighlight((curr) => (curr === n.id ? null : n.id))
+        }
         fitView
         nodesDraggable
         nodesConnectable={false}

@@ -89,7 +89,7 @@ export function OwnershipChain({
                 href={c.sourceUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-muted-foreground hover:underline text-xs"
+                className="text-muted-foreground text-xs hover:underline"
               >
                 src ↗
               </a>
@@ -106,8 +106,8 @@ export function OwnershipChain({
       )}
 
       <p className="text-muted-foreground/70 mt-3 text-[10px]">
-        Opacity score combines jurisdiction secrecy and chain depth (≥3 layers
-        = +10, ≥4 = +20). Descriptive only — high opacity warrants review, not
+        Opacity score combines jurisdiction secrecy and chain depth (≥3 layers =
+        +10, ≥4 = +20). Descriptive only — high opacity warrants review, not
         accusation.
       </p>
     </div>

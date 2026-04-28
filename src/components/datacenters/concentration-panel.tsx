@@ -58,13 +58,15 @@ function hhiBand(hhi: number): {
     return {
       label: "highly concentrated",
       color: "bg-red-600",
-      meaning: "One or few operators dominate. Limited choice for landowners, utilities, and policymakers.",
+      meaning:
+        "One or few operators dominate. Limited choice for landowners, utilities, and policymakers.",
     };
   if (hhi >= 1500)
     return {
       label: "moderately concentrated",
       color: "bg-amber-500",
-      meaning: "A handful of operators hold most capacity. Watch for further consolidation.",
+      meaning:
+        "A handful of operators hold most capacity. Watch for further consolidation.",
     };
   return {
     label: "competitive",
@@ -80,8 +82,7 @@ function hhiPlainEnglish(hhi: number, opCount: number): string {
     return "One operator dominates with a commanding share of capacity.";
   if (hhi >= 2500)
     return "Top operators hold so much share that a single deal could shift the market.";
-  if (hhi >= 1500)
-    return "A small group of operators control most capacity.";
+  if (hhi >= 1500) return "A small group of operators control most capacity.";
   return "Capacity is spread across enough operators that no single one sets the market.";
 }
 
@@ -100,15 +101,13 @@ export function ConcentrationPanel({
   const [activeDep, setActiveDep] = useState<DepRow | null>(null);
 
   const breakdownFor = (country: string) =>
-    breakdown
-      .filter((b) => b.country === country)
-      .sort((a, b) => b.mw - a.mw);
+    breakdown.filter((b) => b.country === country).sort((a, b) => b.mw - a.mw);
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="border-border rounded-lg border p-4">
         <div className="mb-3 flex items-baseline justify-between">
-          <h3 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+          <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Operator concentration by country
           </h3>
           <span className="text-muted-foreground text-[10px]">
@@ -116,13 +115,13 @@ export function ConcentrationPanel({
           </span>
         </div>
         <table className="w-full text-sm">
-          <thead className="text-muted-foreground text-xs uppercase tracking-wider">
+          <thead className="text-muted-foreground text-xs tracking-wider uppercase">
             <tr>
               <th className="pb-2 text-left">Country</th>
               <th className="pb-2 text-right">Operators</th>
               <th className="pb-2 text-right">Top-3 %</th>
               <th className="pb-2 text-right">HHI</th>
-              <th className="pb-2 text-left pl-3">Status</th>
+              <th className="pb-2 pl-3 text-left">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -158,7 +157,7 @@ export function ConcentrationPanel({
 
       <div className="border-border rounded-lg border p-4">
         <div className="mb-3 flex items-baseline justify-between">
-          <h3 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+          <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Single-supplier dependency
           </h3>
           <span className="text-muted-foreground text-[10px]">
@@ -268,7 +267,7 @@ function ConcentrationDetail({
       </div>
 
       <div>
-        <p className="text-muted-foreground mb-2 text-xs uppercase tracking-wider">
+        <p className="text-muted-foreground mb-2 text-xs tracking-wider uppercase">
           Operators in {row.country}
         </p>
         <ul className="flex flex-col gap-1.5">
@@ -322,7 +321,7 @@ function DependencyDetail({ row }: { row: DepRow }) {
         <DialogTitle>{row.datacenter_name}</DialogTitle>
         <DialogDescription>
           {row.supplier_name} covers{" "}
-          <span className="text-amber-600 font-medium">
+          <span className="font-medium text-amber-600">
             {row.categories} categories
           </span>{" "}
           at this facility
@@ -333,13 +332,13 @@ function DependencyDetail({ row }: { row: DepRow }) {
         <p className="font-medium">Why this gets flagged</p>
         <p className="text-muted-foreground mt-1">
           When one supplier serves 3+ categories at the same facility, a single
-          contract dispute, bankruptcy, or supply-chain shock can stop the
-          whole site. Diversified suppliers reduce single-point failure risk.
+          contract dispute, bankruptcy, or supply-chain shock can stop the whole
+          site. Diversified suppliers reduce single-point failure risk.
         </p>
       </div>
 
       <div>
-        <p className="text-muted-foreground mb-2 text-xs uppercase tracking-wider">
+        <p className="text-muted-foreground mb-2 text-xs tracking-wider uppercase">
           Categories handled by {row.supplier_name}
         </p>
         <ul className="flex flex-wrap gap-1.5">

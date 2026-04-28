@@ -42,36 +42,34 @@ export function MissionDialog({
         <div className="flex flex-col gap-4 text-sm leading-relaxed">
           <p>
             The AI build-out is unprecedented in <strong>scale</strong> and{" "}
-            <strong>capital</strong>. Humanity has never deployed
-            infrastructure of this size, this fast, with this much
-            concentration of power, water, money, and influence in so few
-            hands.
+            <strong>capital</strong>. Humanity has never deployed infrastructure
+            of this size, this fast, with this much concentration of power,
+            water, money, and influence in so few hands.
           </p>
           <p>
             We are not anti-AI. We want it to grow. But growth without
             visibility is how communities lose their power grids, their
-            aquifers, their tax base, and their voice — before anyone
-            notices.
+            aquifers, their tax base, and their voice — before anyone notices.
           </p>
           <div className="border-border bg-muted/30 rounded-lg border p-4">
             <p className="font-medium">What this dashboard does</p>
             <ul className="text-muted-foreground mt-2 flex list-disc flex-col gap-1 pl-5 text-xs">
               <li>
-                Maps every announced AI datacenter — operators, suppliers,
-                power source, water draw, energy deals.
+                Maps every announced AI datacenter — operators, suppliers, power
+                source, water draw, energy deals.
               </li>
               <li>
-                Surfaces concentration risk (one operator dominates a
-                country), single-supplier dependencies, and commitment-vs-
-                actual gaps (greenwash).
+                Surfaces concentration risk (one operator dominates a country),
+                single-supplier dependencies, and commitment-vs- actual gaps
+                (greenwash).
               </li>
               <li>
                 Flags facilities with no public sources, stuck announcements,
                 and undisclosed power mix.
               </li>
               <li>
-                Lets any member submit findings, dispute claims, and add
-                sourced facts.
+                Lets any member submit findings, dispute claims, and add sourced
+                facts.
               </li>
             </ul>
           </div>
@@ -79,9 +77,9 @@ export function MissionDialog({
             <p className="font-medium">What we ask of you</p>
             <p className="text-muted-foreground mt-1">
               Click into the panels. Drill into a country, an operator, a
-              supplier. If something looks off — submit a finding. If
-              something is missing — add it. Investigation is a community
-              act, not a spectator sport.
+              supplier. If something looks off — submit a finding. If something
+              is missing — add it. Investigation is a community act, not a
+              spectator sport.
             </p>
           </div>
           <p className="text-muted-foreground/80 border-t pt-3 text-xs italic">

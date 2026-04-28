@@ -72,12 +72,8 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
   const top3Mw = dash.topOperators
     .slice(0, 3)
     .reduce((s, o) => s + o.mw + o.plannedMw, 0);
-  const allOpMw = dash.topOperators.reduce(
-    (s, o) => s + o.mw + o.plannedMw,
-    0,
-  );
-  const top3Pct =
-    allOpMw > 0 ? Math.round((top3Mw / allOpMw) * 100) : 0;
+  const allOpMw = dash.topOperators.reduce((s, o) => s + o.mw + o.plannedMw, 0);
+  const top3Pct = allOpMw > 0 ? Math.round((top3Mw / allOpMw) * 100) : 0;
 
   const totalCapacityMw = Math.round(
     stats.totals.totalMw + stats.totals.plannedMw,
@@ -111,18 +107,15 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
   const withSupplierTotal = list.filter((d) => d.supplierCount > 0).length;
 
   const activeOperator = sp.operator
-    ? dash.topOperators.find((o) => o.slug === sp.operator)?.canonicalName ??
-      sp.operator
+    ? (dash.topOperators.find((o) => o.slug === sp.operator)?.canonicalName ??
+      sp.operator)
     : null;
   const activeSupplier = sp.supplier
-    ? dash.topSuppliers.find((s) => s.slug === sp.supplier)?.canonicalName ??
-      sp.supplier
+    ? (dash.topSuppliers.find((s) => s.slug === sp.supplier)?.canonicalName ??
+      sp.supplier)
     : null;
-  const hasFocus =
-    !!sp.country || !!activeOperator || !!activeSupplier;
-  const clearHref = `/investigations/datacenters${
-    aiOnly ? "?ai=1" : ""
-  }`;
+  const hasFocus = !!sp.country || !!activeOperator || !!activeSupplier;
+  const clearHref = `/investigations/datacenters${aiOnly ? "?ai=1" : ""}`;
 
   return (
     <main className="container mx-auto flex flex-col gap-6 p-6">
@@ -167,7 +160,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
 
       <section>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+          <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Anomalies that warrant review
           </h2>
           <span className="text-muted-foreground text-[10px]">
@@ -179,7 +172,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
 
       <section>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+          <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Greenwash gap
           </h2>
           <span className="text-muted-foreground text-[10px]">
@@ -192,7 +185,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
       </section>
 
       <section>
-        <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+        <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
           Concentration & dependency
         </h2>
         <ConcentrationPanel
@@ -204,7 +197,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
 
       <section>
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+          <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Operator ↔ supplier relationships
           </h2>
           <span className="text-muted-foreground text-[10px]">
@@ -223,7 +216,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
           hint="click row → see operator's facilities"
         >
           <table className="w-full text-sm">
-            <thead className="text-muted-foreground text-xs uppercase tracking-wider">
+            <thead className="text-muted-foreground text-xs tracking-wider uppercase">
               <tr>
                 <th className="pb-2 text-left">Operator</th>
                 <th className="pb-2 text-right">Sites</th>
@@ -263,7 +256,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
           hint="click row → see supplier's facilities"
         >
           <table className="w-full text-sm">
-            <thead className="text-muted-foreground text-xs uppercase tracking-wider">
+            <thead className="text-muted-foreground text-xs tracking-wider uppercase">
               <tr>
                 <th className="pb-2 text-left">Supplier</th>
                 <th className="pb-2 text-right">Facilities</th>
@@ -360,7 +353,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
 
       {hasFocus && (
         <div className="border-primary/40 bg-primary/5 flex flex-wrap items-center gap-2 rounded-lg border p-3 text-sm">
-          <span className="text-muted-foreground text-xs uppercase tracking-wider">
+          <span className="text-muted-foreground text-xs tracking-wider uppercase">
             Focus
           </span>
           {sp.country && (
@@ -475,9 +468,7 @@ function StatCard({
         {label}
       </div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
-      {sub && (
-        <div className="text-muted-foreground mt-0.5 text-xs">{sub}</div>
-      )}
+      {sub && <div className="text-muted-foreground mt-0.5 text-xs">{sub}</div>}
     </div>
   );
 }
@@ -498,7 +489,7 @@ function ChartCard({
       className={`border-border rounded-lg border p-4 ${wide ? "lg:col-span-2" : ""}`}
     >
       <div className="mb-3 flex items-baseline justify-between gap-2">
-        <h2 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+        <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
           {title}
         </h2>
         {hint && (

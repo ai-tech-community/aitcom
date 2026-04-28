@@ -47,8 +47,8 @@ export default async function InvestigationsPage() {
             <div>
               <h2 className="text-xl font-semibold">AI Datacenters</h2>
               <p className="text-muted-foreground mt-1 text-sm">
-                Locations, operators, capacity, power, water, suppliers,
-                energy deals.
+                Locations, operators, capacity, power, water, suppliers, energy
+                deals.
               </p>
             </div>
             <span className="text-muted-foreground group-hover:text-primary text-sm">
@@ -67,10 +67,7 @@ export default async function InvestigationsPage() {
               ).toLocaleString()}
             />
             <Stat label="Countries" value={stats.totals.countries} />
-            <Stat
-              label="AI-dedicated"
-              value={stats.totals.aiDedicated}
-            />
+            <Stat label="AI-dedicated" value={stats.totals.aiDedicated} />
             <Stat
               label="Supplier links"
               value={stats.supplierTotals.linkCount}
@@ -102,7 +99,7 @@ export default async function InvestigationsPage() {
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
-      <dt className="text-muted-foreground text-xs uppercase tracking-wider">
+      <dt className="text-muted-foreground text-xs tracking-wider uppercase">
         {label}
       </dt>
       <dd className="text-lg font-semibold">{value}</dd>

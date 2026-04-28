@@ -18,13 +18,17 @@ type PeerData = {
   };
 };
 
-function bandLabel(this_: number, median: number): { label: string; tone: string } {
+function bandLabel(
+  this_: number,
+  median: number,
+): { label: string; tone: string } {
   if (median === 0) return { label: "no peers", tone: "text-muted-foreground" };
   const ratio = this_ / median;
   if (ratio >= 5) return { label: "5×+ above median", tone: "text-red-600" };
   if (ratio >= 2) return { label: "2×+ above median", tone: "text-amber-600" };
   if (ratio >= 1.25) return { label: "above median", tone: "text-sky-600" };
-  if (ratio >= 0.75) return { label: "near median", tone: "text-muted-foreground" };
+  if (ratio >= 0.75)
+    return { label: "near median", tone: "text-muted-foreground" };
   return { label: "below median", tone: "text-muted-foreground" };
 }
 
@@ -37,10 +41,7 @@ export function PeerComparison({ data }: { data: PeerData }) {
     );
   }
 
-  const mwBand = bandLabel(
-    data.thisFacility.mw,
-    data.countryStats.medianMw,
-  );
+  const mwBand = bandLabel(data.thisFacility.mw, data.countryStats.medianMw);
   const supBand = bandLabel(
     data.thisFacility.supplierCount,
     data.countryStats.medianSuppliers,
@@ -69,12 +70,12 @@ export function PeerComparison({ data }: { data: PeerData }) {
           label="Announce → online lag"
           thisValue={
             data.thisFacility.lagDays != null
-              ? `${Math.round(data.thisFacility.lagDays / 365 * 10) / 10}y`
+              ? `${Math.round((data.thisFacility.lagDays / 365) * 10) / 10}y`
               : "in progress"
           }
           peerValue={
             data.countryStats.medianLagDays != null
-              ? `country median ${Math.round(data.countryStats.medianLagDays / 365 * 10) / 10}y`
+              ? `country median ${Math.round((data.countryStats.medianLagDays / 365) * 10) / 10}y`
               : "no completions yet"
           }
           band={null}
@@ -100,14 +101,12 @@ function Row({
 }) {
   return (
     <div className="border-border rounded border p-3">
-      <dt className="text-muted-foreground text-xs uppercase tracking-wider">
+      <dt className="text-muted-foreground text-xs tracking-wider uppercase">
         {label}
       </dt>
       <dd className="mt-1 flex items-baseline justify-between gap-2">
         <span className="text-lg font-semibold">{thisValue}</span>
-        {band && (
-          <span className={`text-xs ${band.tone}`}>{band.label}</span>
-        )}
+        {band && <span className={`text-xs ${band.tone}`}>{band.label}</span>}
       </dd>
       <dd className="text-muted-foreground mt-0.5 text-xs">{peerValue}</dd>
     </div>

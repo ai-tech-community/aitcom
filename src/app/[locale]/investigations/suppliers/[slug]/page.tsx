@@ -62,15 +62,19 @@ export default async function SupplierDetailPage({ params }: PageProps) {
     throw e;
   }
 
-  const { brand, facilities, totals, categoryBreakdown, countryBreakdown, operatorBreakdown } = data;
+  const {
+    brand,
+    facilities,
+    totals,
+    categoryBreakdown,
+    countryBreakdown,
+    operatorBreakdown,
+  } = data;
 
   return (
     <main className="container mx-auto flex flex-col gap-6 p-6">
       <nav className="text-muted-foreground text-xs">
-        <Link
-          href="/investigations/datacenters"
-          className="hover:underline"
-        >
+        <Link href="/investigations/datacenters" className="hover:underline">
           ← Datacenter dashboard
         </Link>
       </nav>
@@ -85,9 +89,7 @@ export default async function SupplierDetailPage({ params }: PageProps) {
               verified
             </span>
           )}
-          <span className="text-muted-foreground text-sm">
-            · supplier
-          </span>
+          <span className="text-muted-foreground text-sm">· supplier</span>
         </div>
         <div className="text-muted-foreground flex flex-wrap items-center gap-3 text-sm">
           {brand.website && (
@@ -128,15 +130,19 @@ export default async function SupplierDetailPage({ params }: PageProps) {
 
       {totals.contractValueUsd > 0 && (
         <section className="border-border bg-muted/20 rounded-lg border p-4">
-          <p className="text-muted-foreground text-xs uppercase tracking-wider">
+          <p className="text-muted-foreground text-xs tracking-wider uppercase">
             Disclosed contract value
           </p>
           <p className="mt-1 text-2xl font-semibold">
-            ${(totals.contractValueUsd / 1_000_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}M
+            $
+            {(totals.contractValueUsd / 1_000_000).toLocaleString(undefined, {
+              maximumFractionDigits: 1,
+            })}
+            M
           </p>
           <p className="text-muted-foreground/70 mt-1 text-xs">
-            Sum of disclosed USD values across linked contracts. Many links
-            have no disclosed value — actual total is higher.
+            Sum of disclosed USD values across linked contracts. Many links have
+            no disclosed value — actual total is higher.
           </p>
         </section>
       )}
@@ -225,7 +231,7 @@ export default async function SupplierDetailPage({ params }: PageProps) {
         ) : (
           <div className="border-border overflow-hidden rounded-lg border">
             <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wider">
+              <thead className="bg-muted/40 text-muted-foreground text-xs tracking-wider uppercase">
                 <tr>
                   <th className="px-3 py-2 text-left">Facility</th>
                   <th className="px-3 py-2 text-left">Operator</th>
@@ -311,7 +317,7 @@ export default async function SupplierDetailPage({ params }: PageProps) {
 
       {brand.commitmentRenewablePct != null && (
         <section className="border-border rounded-lg border p-4">
-          <h2 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+          <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Public commitments
           </h2>
           <p className="mt-2 text-sm">
@@ -344,16 +350,10 @@ export default async function SupplierDetailPage({ params }: PageProps) {
   );
 }
 
-function StatCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
+function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="border-border rounded-lg border p-4">
-      <div className="text-muted-foreground text-xs uppercase tracking-wider">
+      <div className="text-muted-foreground text-xs tracking-wider uppercase">
         {label}
       </div>
       <div className="mt-1 text-2xl font-semibold">{value}</div>
@@ -373,7 +373,7 @@ function Panel({
   return (
     <div className="border-border rounded-lg border p-4">
       <div className="mb-3 flex items-baseline justify-between gap-2">
-        <h3 className="text-muted-foreground text-xs font-semibold uppercase tracking-wider">
+        <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
           {title}
         </h3>
         {hint && (

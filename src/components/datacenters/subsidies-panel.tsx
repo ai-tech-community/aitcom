@@ -26,8 +26,7 @@ export function SubsidiesPanel({ data }: { data: SubsidyRow[] }) {
 
   const total = data.reduce((s, r) => s + (Number(r.amountUsd) || 0), 0);
   const totalJobs = data.reduce((s, r) => s + (r.claimedJobs ?? 0), 0);
-  const perJob =
-    totalJobs > 0 ? Math.round(total / totalJobs) : null;
+  const perJob = totalJobs > 0 ? Math.round(total / totalJobs) : null;
 
   return (
     <div>
@@ -78,7 +77,7 @@ export function SubsidiesPanel({ data }: { data: SubsidyRow[] }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-border rounded border p-2">
-      <div className="text-muted-foreground text-xs uppercase tracking-wider">
+      <div className="text-muted-foreground text-xs tracking-wider uppercase">
         {label}
       </div>
       <div className="mt-0.5 text-base font-semibold">{value}</div>

@@ -110,7 +110,9 @@ export function CountryScatter({
             return (
               <div className="border-border bg-background rounded border px-2 py-1 text-xs shadow">
                 <div className="font-semibold">{d.country}</div>
-                <div>{d.facilities} facilities · {d.mw.toLocaleString()} MW</div>
+                <div>
+                  {d.facilities} facilities · {d.mw.toLocaleString()} MW
+                </div>
               </div>
             );
           }}
@@ -243,15 +245,16 @@ export function SupplierCategoryBar({
     <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} layout="vertical">
         <XAxis type="number" tick={{ fontSize: 11 }} />
-        <YAxis dataKey="category" type="category" tick={{ fontSize: 11 }} width={100} />
+        <YAxis
+          dataKey="category"
+          type="category"
+          tick={{ fontSize: 11 }}
+          width={100}
+        />
         <Tooltip />
         <Legend />
         <Bar dataKey="count" name="Links" fill="#0ea5e9" />
-        <Bar
-          dataKey="uniqueSuppliers"
-          name="Unique companies"
-          fill="#06b6d4"
-        />
+        <Bar dataKey="uniqueSuppliers" name="Unique companies" fill="#06b6d4" />
       </BarChart>
     </ResponsiveContainer>
   );

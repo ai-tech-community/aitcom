@@ -32,7 +32,7 @@ export function GreenwashPanel({ data }: { data: GreenwashRow[] }) {
   return (
     <div>
       <table className="w-full text-sm">
-        <thead className="text-muted-foreground text-xs uppercase tracking-wider">
+        <thead className="text-muted-foreground text-xs tracking-wider uppercase">
           <tr>
             <th className="pb-2 text-left">Operator</th>
             <th className="pb-2 text-right">Commitment</th>
@@ -86,7 +86,7 @@ export function GreenwashPanel({ data }: { data: GreenwashRow[] }) {
                       href={r.source_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-muted-foreground hover:underline text-xs"
+                      className="text-muted-foreground text-xs hover:underline"
                     >
                       src ↗
                     </a>
@@ -98,9 +98,11 @@ export function GreenwashPanel({ data }: { data: GreenwashRow[] }) {
         </tbody>
       </table>
       <p className="text-muted-foreground/70 mt-3 text-[10px]">
-        Gap = commitment % − actual carbon-free MW % (solar/wind/hydro/geothermal/nuclear).
-        Public commitments per operator press; actual derived from facility power-source field.
-        Operator press claims and sourced facility data — community findings flow can dispute either side.
+        Gap = commitment % − actual carbon-free MW %
+        (solar/wind/hydro/geothermal/nuclear). Public commitments per operator
+        press; actual derived from facility power-source field. Operator press
+        claims and sourced facility data — community findings flow can dispute
+        either side.
       </p>
     </div>
   );

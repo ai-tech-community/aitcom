@@ -127,7 +127,7 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
       </header>
 
       <section className="border-border rounded-lg border p-4">
-        <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+        <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
           Compared to peers
         </h2>
         <PeerComparison data={peers} />
@@ -135,7 +135,7 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
 
       {ownership && (
         <section className="border-border rounded-lg border p-4">
-          <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+          <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
             Ownership chain ({operator?.canonicalName ?? "operator"})
           </h2>
           <OwnershipChain
@@ -148,14 +148,14 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
       )}
 
       <section className="border-border rounded-lg border p-4">
-        <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+        <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
           Public subsidies & incentives
         </h2>
         <SubsidiesPanel data={subsidiesData as never} />
       </section>
 
       <section className="border-border rounded-lg border p-4">
-        <h2 className="text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider">
+        <h2 className="text-muted-foreground mb-3 text-xs font-semibold tracking-wider uppercase">
           Permits
         </h2>
         <PermitsTimeline data={permitsData as never} />

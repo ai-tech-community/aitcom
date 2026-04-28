@@ -84,9 +84,9 @@ export function RedFlagsPanel({
         <strong className="text-amber-700 dark:text-amber-400">
           Patterns warrant review, not accusations.
         </strong>{" "}
-        These flags surface entries that deviate from peers or expose data
-        gaps. They are descriptive, not editorial. Investigative judgments
-        belong in published findings with sourcing and right of reply.
+        These flags surface entries that deviate from peers or expose data gaps.
+        They are descriptive, not editorial. Investigative judgments belong in
+        published findings with sourcing and right of reply.
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
         {phase5 && (
@@ -140,7 +140,7 @@ export function RedFlagsPanel({
               <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
                 {f.description}
               </p>
-              <p className="text-muted-foreground/70 mt-1 text-[10px] uppercase tracking-wider">
+              <p className="text-muted-foreground/70 mt-1 text-[10px] tracking-wider uppercase">
                 → {f.warrants}
               </p>
               {bucket.samples.length > 0 && (
@@ -182,7 +182,9 @@ function Phase5Card({
 }) {
   const empty = count === 0;
   return (
-    <div className={`border-border rounded-lg border p-3 ${empty ? "opacity-60" : ""}`}>
+    <div
+      className={`border-border rounded-lg border p-3 ${empty ? "opacity-60" : ""}`}
+    >
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold">{label}</h3>
         <span
@@ -200,7 +202,7 @@ function Phase5Card({
       <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
         {description}
       </p>
-      <p className="text-muted-foreground/70 mt-1 text-[10px] uppercase tracking-wider">
+      <p className="text-muted-foreground/70 mt-1 text-[10px] tracking-wider uppercase">
         → {warrants}
       </p>
       {empty && (

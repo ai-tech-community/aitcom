@@ -100,7 +100,9 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 }
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
-  await db.execute(sql`DROP TABLE IF EXISTS "app"."datacenter_status_history" CASCADE;`);
+  await db.execute(
+    sql`DROP TABLE IF EXISTS "app"."datacenter_status_history" CASCADE;`,
+  );
   await db.execute(sql`DROP TABLE IF EXISTS "app"."permit" CASCADE;`);
   await db.execute(sql`DROP TABLE IF EXISTS "app"."subsidy" CASCADE;`);
   await db.execute(sql`DROP TABLE IF EXISTS "app"."ownership_edge" CASCADE;`);
