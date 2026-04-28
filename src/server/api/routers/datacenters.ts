@@ -375,6 +375,41 @@ export const datacentersRouter = createTRPCRouter({
       LIMIT 25;
     `);
 
+    // ── Operator MW shares per country (for concentration drill-down) ──
+    const concentrationBreakdown = await ctx.db.execute<{
+      country: string;
+      operator_slug: string;
+      operator_name: string;
+      mw: number;
+      share_pct: number;
+    }>(sql`
+      WITH op AS (
+        SELECT
+          d.country,
+          d.operator_id,
+          COALESCE(SUM(COALESCE(d.capacity_mw,0) + COALESCE(d.capacity_mw_planned,0)), 0)::float AS op_mw
+        FROM "app"."datacenter" d
+        WHERE d.verified = true
+        GROUP BY d.country, d.operator_id
+      ),
+      country_total AS (
+        SELECT country, SUM(op_mw) AS total_mw
+        FROM op
+        GROUP BY country
+      )
+      SELECT
+        op.country,
+        b.slug AS operator_slug,
+        b.canonical_name AS operator_name,
+        op.op_mw::float AS mw,
+        ROUND((op.op_mw / NULLIF(ct.total_mw, 0) * 100)::numeric, 1)::float AS share_pct
+      FROM op
+      JOIN country_total ct ON ct.country = op.country
+      JOIN "app"."brand" b ON b.id = op.operator_id
+      WHERE ct.total_mw > 0
+      ORDER BY op.country ASC, op.op_mw DESC;
+    `);
+
     // ── Power mix per top operator (for stacked bar) ──
     const operatorPowerMix = await ctx.db
       .select({
@@ -393,18 +428,22 @@ export const datacentersRouter = createTRPCRouter({
     const singleSupplierDep = await ctx.db.execute<{
       datacenter_slug: string;
       datacenter_name: string;
+      supplier_slug: string;
       supplier_name: string;
       categories: number;
+      category_list: string[];
     }>(sql`
       SELECT
         d.slug AS datacenter_slug,
         d.name AS datacenter_name,
+        b.slug AS supplier_slug,
         b.canonical_name AS supplier_name,
-        COUNT(DISTINCT s.category)::int AS categories
+        COUNT(DISTINCT s.category)::int AS categories,
+        ARRAY_AGG(DISTINCT s.category ORDER BY s.category) AS category_list
       FROM "app"."datacenter_supplier" s
       JOIN "app"."datacenter" d ON d.id = s.datacenter_id
       JOIN "app"."brand" b ON b.id = s.supplier_id
-      GROUP BY d.slug, d.name, b.canonical_name
+      GROUP BY d.slug, d.name, b.slug, b.canonical_name
       HAVING COUNT(DISTINCT s.category) >= 3
       ORDER BY categories DESC
       LIMIT 25;
@@ -633,6 +672,7 @@ export const datacentersRouter = createTRPCRouter({
       byPowerSource,
       byCoolingType,
       concentration: concentration.rows ?? [],
+      concentrationBreakdown: concentrationBreakdown.rows ?? [],
       singleSupplierDep: singleSupplierDep.rows ?? [],
       operatorPowerMix,
       greenwashGap: greenwashGap.rows ?? [],

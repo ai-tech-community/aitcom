@@ -197,6 +197,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
         </h2>
         <ConcentrationPanel
           data={dash.concentration as never}
+          breakdown={dash.concentrationBreakdown as never}
           dependency={dash.singleSupplierDep as never}
         />
       </section>
