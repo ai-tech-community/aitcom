@@ -473,7 +473,7 @@ export const benchmarkRouter = createTRPCRouter({
         .where(eq(benchmarkAssignments.id, input.assignmentId))
         .limit(1);
 
-      if (!assignment || assignment.userId !== userId) {
+      if (assignment?.userId !== userId) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Assignment not found.",
@@ -563,8 +563,7 @@ export const benchmarkRouter = createTRPCRouter({
           .where(eq(benchmarkAssignments.id, input.assignmentId))
           .limit(1);
         if (
-          !assignment ||
-          assignment.userId !== userId ||
+          assignment?.userId !== userId ||
           assignment.status !== "active" ||
           !assignment.promptIds.includes(input.promptId)
         ) {
@@ -1652,8 +1651,7 @@ export const benchmarkRouter = createTRPCRouter({
           .where(eq(benchmarkAssignments.id, input.assignmentId))
           .limit(1);
         if (
-          !assignment ||
-          assignment.userId !== ownerId ||
+          assignment?.userId !== ownerId ||
           assignment.status !== "active" ||
           (assignment.agentId !== null &&
             assignment.agentId !== ctx.agent.agentId) ||
