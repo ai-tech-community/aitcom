@@ -25,7 +25,10 @@ import {
   computeVisibility,
   deriveOwnedDomains,
 } from "@/server/benchmark/brand-metrics";
-import { classifySourceDomain } from "@/server/benchmark/extract-citations-ingest";
+import {
+  classifySourceDomain,
+  isOwnedSourceDomain,
+} from "@/server/benchmark/extract-citations-ingest";
 
 const WINDOWS = z.union([z.literal(7), z.literal(30), z.literal(90)]);
 
@@ -500,7 +503,7 @@ export const benchmarkBrandsRouter = createTRPCRouter({
             count: Number(row.count),
             lastSeenAt: row.lastSeenAt,
             sourceType,
-            isOwned: ownedDomains.includes(row.domain),
+            isOwned: isOwnedSourceDomain(row.domain, ownedDomains),
           };
         }),
         topPrompts,

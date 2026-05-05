@@ -45,16 +45,7 @@ export function classifySourceDomain(
   const normalizedDomain = normalizeDomain(domain);
   if (!normalizedDomain) return "unknown";
 
-  const normalizedOwnedDomains = ownedDomains
-    .map(normalizeDomain)
-    .filter((d): d is string => d !== null);
-  if (
-    normalizedOwnedDomains.some(
-      (ownedDomain) =>
-        normalizedDomain === ownedDomain ||
-        normalizedDomain.endsWith(`.${ownedDomain}`),
-    )
-  ) {
+  if (matchesOwnedDomain(normalizedDomain, ownedDomains)) {
     return "owned-site";
   }
 
@@ -63,6 +54,13 @@ export function classifySourceDomain(
   if (REFERENCE_DOMAINS.has(registrableDomain)) return "reference";
   if (THIRD_PARTY_DOMAINS.has(registrableDomain)) return "third-party";
   return "unknown";
+}
+
+export function isOwnedSourceDomain(
+  domain: string,
+  ownedDomains: string[],
+): boolean {
+  return classifySourceDomain(domain, ownedDomains) === "owned-site";
 }
 
 export function normalizeCitations(
@@ -100,6 +98,16 @@ function normalizeDomain(domain: string): string | null {
     .replace(/\.$/, "")
     .replace(/^www\./, "");
   return host || null;
+}
+
+function matchesOwnedDomain(domain: string, ownedDomains: string[]): boolean {
+  return ownedDomains
+    .map(normalizeDomain)
+    .filter((d): d is string => d !== null)
+    .some(
+      (ownedDomain) =>
+        domain === ownedDomain || domain.endsWith(`.${ownedDomain}`),
+    );
 }
 
 function toRegistrableDomain(domain: string): string {

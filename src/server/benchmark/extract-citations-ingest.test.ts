@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   classifySourceDomain,
+  isOwnedSourceDomain,
   normalizeCitations,
 } from "./extract-citations-ingest";
 
@@ -96,5 +97,11 @@ describe("classifySourceDomain", () => {
 
   it("classifies subdomains by their registrable domain", () => {
     expect(classifySourceDomain("en.wikipedia.org", [])).toBe("reference");
+  });
+
+  it("uses the same owned subdomain semantics for owned markers", () => {
+    expect(isOwnedSourceDomain("docs.example.com", ["example.com"])).toBe(
+      true,
+    );
   });
 });
