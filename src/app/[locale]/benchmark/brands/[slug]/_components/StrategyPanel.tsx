@@ -15,8 +15,14 @@ export function StrategyPanel({ brandSlug, window }: Props) {
   const [data, setData] = useState<{
     recommendations: Array<{
       title: string;
-      rationale: string;
-      severity: "low" | "medium" | "high";
+      priority: "low" | "medium" | "high";
+      why: string;
+      evidence: string[];
+      suggestedAction: string;
+      relatedPrompts: string[];
+      relatedCompetitors: string[];
+      relatedSources: string[];
+      expectedMetricImpact: string;
     }>;
     cached: boolean;
   } | null>(null);
@@ -55,7 +61,7 @@ export function StrategyPanel({ brandSlug, window }: Props) {
     );
   }
 
-  const sevColor = {
+  const priorityColor = {
     high: "bg-red-100 text-red-800",
     medium: "bg-yellow-100 text-yellow-800",
     low: "bg-slate-100 text-slate-700",
@@ -73,11 +79,50 @@ export function StrategyPanel({ brandSlug, window }: Props) {
           <li key={i} className="rounded border p-3 text-sm">
             <div className="flex items-start justify-between gap-2">
               <p className="font-medium">{r.title}</p>
-              <Badge className={sevColor[r.severity]} variant="outline">
-                {r.severity}
+              <Badge className={priorityColor[r.priority]} variant="outline">
+                {r.priority}
               </Badge>
             </div>
-            <p className="text-muted-foreground mt-1 text-xs">{r.rationale}</p>
+            <p className="text-muted-foreground mt-1 text-xs">{r.why}</p>
+            {r.suggestedAction && (
+              <p className="mt-2 text-xs">
+                <span className="font-medium">Action: </span>
+                {r.suggestedAction}
+              </p>
+            )}
+            {r.evidence.length > 0 && (
+              <ul className="text-muted-foreground mt-2 list-disc space-y-1 pl-4 text-xs">
+                {r.evidence.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            )}
+            {(r.relatedPrompts.length > 0 ||
+              r.relatedSources.length > 0 ||
+              r.relatedCompetitors.length > 0) && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {r.relatedPrompts.map((prompt) => (
+                  <Badge key={`prompt-${prompt}`} variant="secondary">
+                    {prompt}
+                  </Badge>
+                ))}
+                {r.relatedSources.map((source) => (
+                  <Badge key={`source-${source}`} variant="outline">
+                    {source}
+                  </Badge>
+                ))}
+                {r.relatedCompetitors.map((competitor) => (
+                  <Badge key={`competitor-${competitor}`} variant="outline">
+                    {competitor}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            {r.expectedMetricImpact && (
+              <p className="text-muted-foreground mt-2 text-xs">
+                {r.expectedMetricImpact}
+              </p>
+            )}
           </li>
         ))}
       </ul>

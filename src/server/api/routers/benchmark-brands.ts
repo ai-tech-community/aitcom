@@ -516,20 +516,24 @@ export const benchmarkBrandsRouter = createTRPCRouter({
           visibilityPct: m.visibilityPct,
           sentimentPosPct: m.sentimentPosPct,
         })),
-        competitors: stats.competitors as Array<{
-          canonical_name: string;
-          visibility_pct: string | number;
-        }>,
+        competitors: stats.competitors.map(
+          (c: { canonical_name: string; visibility_pct: string | number }) => ({
+            canonical_name: c.canonical_name,
+            visibility_pct: Number(c.visibility_pct),
+          }),
+        ),
         citations: stats.citations.map(
           (c: { domain: string; count: number | string }) => ({
             domain: c.domain,
-            count: c.count,
+            count: Number(c.count),
           }),
         ),
-        topPrompts: stats.topPrompts as Array<{
-          text: string;
-          mentions: number;
-        }>,
+        topPrompts: stats.topPrompts.map(
+          (p: { text: string; mentions: number | string }) => ({
+            text: p.text,
+            mentions: Number(p.mentions),
+          }),
+        ),
       });
 
       strategyCache.set(cacheKey, {
