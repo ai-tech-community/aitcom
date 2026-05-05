@@ -231,6 +231,12 @@ export const benchmarkBrandsRouter = createTRPCRouter({
             WHERE m.brand_id = ${brand.id}
           ) AS brand_mentions,
           (
+            SELECT COUNT(DISTINCT cr.id)::int
+            FROM "app"."benchmark_brand_mention" m
+            JOIN category_runs cr ON cr.id = m.run_id
+            WHERE m.brand_id = ${brand.id}
+          ) AS brand_mention_runs,
+          (
             SELECT ARRAY_REMOVE(ARRAY_AGG(m.rank), NULL)::int[]
             FROM "app"."benchmark_brand_mention" m
             JOIN category_runs cr ON cr.id = m.run_id
@@ -256,6 +262,7 @@ export const benchmarkBrandsRouter = createTRPCRouter({
         category_runs: number | string | null;
         total_mentions: number | string | null;
         brand_mentions: number | string | null;
+        brand_mention_runs: number | string | null;
         brand_ranks: Array<number | string | null> | null;
         owned_source_runs: number | string | null;
         cited_runs: number | string | null;
@@ -266,6 +273,7 @@ export const benchmarkBrandsRouter = createTRPCRouter({
       const brandCategoryMentions = Number(
         metricRow?.brand_mentions ?? totalMentions,
       );
+      const brandMentionRuns = Number(metricRow?.brand_mention_runs ?? 0);
       const brandRanks = (metricRow?.brand_ranks ?? []).map((rank) =>
         rank === null ? null : Number(rank),
       );
@@ -286,6 +294,7 @@ export const benchmarkBrandsRouter = createTRPCRouter({
               ).toFixed(2),
             );
       const metricSummary = computeBrandMetricSummary({
+        brandMentionRuns,
         brandMentions: brandCategoryMentions,
         totalMentions: totalCategoryMentions,
         eligibleRuns,

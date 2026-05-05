@@ -50,6 +50,7 @@ export interface BrandMetricSummary {
 }
 
 export function computeBrandMetricSummary(input: {
+  brandMentionRuns: number;
   brandMentions: number;
   totalMentions: number;
   eligibleRuns: number;
@@ -62,7 +63,7 @@ export function computeBrandMetricSummary(input: {
 
   return {
     visibilityPct: computeVisibility({
-      mentions: safeCount(input.brandMentions),
+      mentions: safeCount(input.brandMentionRuns),
       totalRuns: eligibleRuns,
     }),
     shareOfVoicePct: computeShareOfVoice({
@@ -89,11 +90,34 @@ export function deriveOwnedDomains(
     const url = new URL(
       website.includes("://") ? website : `https://${website}`,
     );
-    const domain = url.hostname.toLowerCase().replace(/\.$/, "");
-    return domain ? [domain.replace(/^www\./, "")] : [];
+    const domain = toRegistrableDomain(url.hostname);
+    return domain ? [domain] : [];
   } catch {
     return [];
   }
+}
+
+function toRegistrableDomain(hostname: string): string | null {
+  const host = hostname.toLowerCase().replace(/\.$/, "").replace(/^www\./, "");
+  if (!host || host === "localhost" || /^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+    return host || null;
+  }
+
+  const parts = host.split(".").filter(Boolean);
+  if (parts.length <= 2) return host;
+
+  const twoPartPublicSuffixes = new Set([
+    "co.uk",
+    "com.au",
+    "com.br",
+    "co.jp",
+    "co.nz",
+    "com.sg",
+  ]);
+  const suffix = parts.slice(-2).join(".");
+  const labelCount = twoPartPublicSuffixes.has(suffix) ? 3 : 2;
+
+  return parts.slice(-labelCount).join(".");
 }
 
 function safeCount(value: number): number {

@@ -42,12 +42,22 @@ describe("brand metrics", () => {
     expect(deriveOwnedDomains("https://www.Example.com/products")).toEqual([
       "example.com",
     ]);
+    expect(deriveOwnedDomains("https://aws.amazon.com")).toContain(
+      "amazon.com",
+    );
+    expect(deriveOwnedDomains("https://cloud.google.com")).toContain(
+      "google.com",
+    );
     expect(deriveOwnedDomains("acme.io")).toEqual(["acme.io"]);
+    expect(deriveOwnedDomains("https://docs.python.org/3/")).toEqual([
+      "python.org",
+    ]);
     expect(deriveOwnedDomains(null)).toEqual([]);
   });
 
-  it("uses eligible runs as the visibility and sample-size denominator", () => {
+  it("uses distinct brand-mentioned runs as the visibility numerator", () => {
     const summary = computeBrandMetricSummary({
+      brandMentionRuns: 2,
       brandMentions: 4,
       totalMentions: 20,
       eligibleRuns: 10,
@@ -57,7 +67,7 @@ describe("brand metrics", () => {
       citedRuns: 3,
     });
 
-    expect(summary.visibilityPct).toBe(40);
+    expect(summary.visibilityPct).toBe(20);
     expect(summary.sampleSize).toBe(10);
     expect(summary.shareOfVoicePct).toBe(20);
     expect(summary.avgPosition).toBe(2);
@@ -68,6 +78,7 @@ describe("brand metrics", () => {
 
   it("keeps source visibility and citation rate bounded and null safe", () => {
     const summary = computeBrandMetricSummary({
+      brandMentionRuns: 0,
       brandMentions: 0,
       totalMentions: 0,
       eligibleRuns: 4,
