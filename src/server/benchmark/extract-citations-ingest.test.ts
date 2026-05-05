@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { normalizeCitations } from "./extract-citations-ingest";
+import {
+  classifySourceDomain,
+  normalizeCitations,
+} from "./extract-citations-ingest";
 
 describe("normalizeCitations", () => {
   it("dedupes by url keeping first occurrence", () => {
@@ -65,5 +68,33 @@ describe("normalizeCitations", () => {
       { url: "https://d.com", domain: "d.com", position: 1.9 },
     ]);
     expect(result.map((r) => r.position)).toEqual([1, 2, 3, 1]);
+  });
+});
+
+describe("classifySourceDomain", () => {
+  it("classifies exact owned domains as owned sites", () => {
+    expect(classifySourceDomain("example.com", ["example.com"])).toBe(
+      "owned-site",
+    );
+  });
+
+  it("classifies user-generated communities", () => {
+    expect(classifySourceDomain("reddit.com", [])).toBe("user-generated");
+  });
+
+  it("classifies reference domains", () => {
+    expect(classifySourceDomain("wikipedia.org", [])).toBe("reference");
+  });
+
+  it("classifies known third-party editorial and listing domains", () => {
+    expect(classifySourceDomain("g2.com", [])).toBe("third-party");
+  });
+
+  it("normalizes case and www prefixes before classifying", () => {
+    expect(classifySourceDomain("WWW.Reddit.com", [])).toBe("user-generated");
+  });
+
+  it("classifies subdomains by their registrable domain", () => {
+    expect(classifySourceDomain("en.wikipedia.org", [])).toBe("reference");
   });
 });

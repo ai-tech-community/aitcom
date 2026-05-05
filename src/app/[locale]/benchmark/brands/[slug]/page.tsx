@@ -155,10 +155,19 @@ export default function BrandProfilePage({
                   domain: string;
                   count: number | string;
                   lastSeenAt: Date | string;
+                  sourceType:
+                    | "owned-site"
+                    | "user-generated"
+                    | "reference"
+                    | "third-party"
+                    | "unknown";
+                  isOwned: boolean;
                 }) => ({
                   domain: c.domain,
                   count: Number(c.count),
                   lastSeenAt: c.lastSeenAt,
+                  sourceType: c.sourceType,
+                  isOwned: c.isOwned,
                 }),
               )}
             />
