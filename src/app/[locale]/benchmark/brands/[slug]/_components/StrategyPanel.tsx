@@ -11,7 +11,6 @@ interface Props {
 }
 
 export function StrategyPanel({ brandSlug, window }: Props) {
-  const [hasFetched, setHasFetched] = useState(false);
   const [data, setData] = useState<{
     recommendations: Array<{
       title: string;
@@ -30,12 +29,11 @@ export function StrategyPanel({ brandSlug, window }: Props) {
   const getStrategy = api.benchmark.brands.getStrategy.useMutation({
     onSuccess: (r) => {
       setData(r);
-      setHasFetched(true);
     },
     onError: (err) => toast.error(err.message),
   });
 
-  if (!hasFetched) {
+  if (!data) {
     return (
       <div className="rounded border p-4 text-sm">
         <p className="text-muted-foreground mb-3">
@@ -75,8 +73,11 @@ export function StrategyPanel({ brandSlug, window }: Props) {
         </span>
       )}
       <ul className="flex flex-col gap-2">
-        {data.recommendations.map((r, i) => (
-          <li key={i} className="rounded border p-3 text-sm">
+        {data.recommendations.map((r) => (
+          <li
+            key={`${r.priority}-${r.title}-${r.suggestedAction}`}
+            className="rounded border p-3 text-sm"
+          >
             <div className="flex items-start justify-between gap-2">
               <p className="font-medium">{r.title}</p>
               <Badge className={priorityColor[r.priority]} variant="outline">

@@ -141,10 +141,18 @@ export function BenchmarkAssignmentPanel({
       </div>
 
       <div className="grid gap-2 sm:grid-cols-[minmax(9rem,13rem)_minmax(10rem,1fr)_minmax(7rem,9rem)_auto] sm:items-end">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-muted-foreground text-xs">Provider</span>
+        <div className="flex flex-col gap-1 text-sm">
+          <label
+            className="text-muted-foreground text-xs"
+            htmlFor="benchmark-assignment-provider"
+          >
+            Provider
+          </label>
           <Select value={modelProvider} onValueChange={setModelProvider}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger
+              id="benchmark-assignment-provider"
+              className="w-full"
+            >
               <SelectValue placeholder="Optional" />
             </SelectTrigger>
             <SelectContent>
@@ -156,20 +164,28 @@ export function BenchmarkAssignmentPanel({
               ))}
             </SelectContent>
           </Select>
-        </label>
+        </div>
 
-        <label className="flex flex-col gap-1 text-sm">
+        <label
+          className="flex flex-col gap-1 text-sm"
+          htmlFor="benchmark-assignment-model-id"
+        >
           <span className="text-muted-foreground text-xs">Model id</span>
           <Input
+            id="benchmark-assignment-model-id"
             placeholder="Optional model id"
             value={modelId}
             onChange={(event) => setModelId(event.target.value)}
           />
         </label>
 
-        <label className="flex flex-col gap-1 text-sm">
+        <label
+          className="flex flex-col gap-1 text-sm"
+          htmlFor="benchmark-assignment-locale"
+        >
           <span className="text-muted-foreground text-xs">Locale</span>
           <Input
+            id="benchmark-assignment-locale"
             value={locale}
             onChange={(event) => setLocale(event.target.value)}
             placeholder={BENCHMARK_DEFAULT_LOCALE}
