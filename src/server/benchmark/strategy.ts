@@ -203,6 +203,92 @@ export function buildStrategyInsights(input: StrategyInput): StrategyInsight[] {
   return insights.slice(0, 20);
 }
 
+function knownSet(values: string[]): Map<string, string> {
+  return new Map(
+    values
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .map((value) => [value.toLowerCase(), value]),
+  );
+}
+
+function filterKnown(values: string[], known: Map<string, string>): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const match = known.get(value.trim().toLowerCase());
+    if (!match || seen.has(match)) continue;
+    seen.add(match);
+    out.push(match);
+  }
+  return out;
+}
+
+export function normalizeStrategyRecommendations(
+  recommendations: Recommendation[],
+  input: StrategyInput,
+): Recommendation[] {
+  const promptSet = knownSet(input.topPrompts.map((prompt) => prompt.text));
+  const competitorSet = knownSet(
+    input.competitors.map((competitor) => competitor.canonical_name),
+  );
+  const sourceSet = knownSet(
+    input.citations.map((citation) => citation.domain),
+  );
+  const evidenceSet = knownSet(
+    buildStrategyInsights(input).flatMap((insight) => insight.evidence),
+  );
+
+  const normalized = recommendations.map((recommendation) => {
+    const relatedPrompts = filterKnown(
+      recommendation.relatedPrompts,
+      promptSet,
+    );
+    const relatedCompetitors = filterKnown(
+      recommendation.relatedCompetitors,
+      competitorSet,
+    );
+    const relatedSources = filterKnown(
+      recommendation.relatedSources,
+      sourceSet,
+    );
+    const evidence = filterKnown(recommendation.evidence, evidenceSet);
+    return {
+      ...recommendation,
+      evidence,
+      relatedPrompts,
+      relatedCompetitors,
+      relatedSources,
+    };
+  });
+
+  const grounded = normalized.filter(
+    (recommendation) =>
+      recommendation.evidence.length > 0 ||
+      recommendation.relatedPrompts.length > 0 ||
+      recommendation.relatedCompetitors.length > 0 ||
+      recommendation.relatedSources.length > 0,
+  );
+  if (grounded.length > 0) return grounded;
+
+  const hasKnownGrounding =
+    promptSet.size > 0 ||
+    competitorSet.size > 0 ||
+    sourceSet.size > 0 ||
+    evidenceSet.size > 0;
+  if (!hasKnownGrounding) return normalized;
+
+  return normalized.filter(
+    (recommendation) =>
+      recommendation.evidence.length === 0 &&
+      recommendation.relatedPrompts.length === 0 &&
+      recommendation.relatedCompetitors.length === 0 &&
+      recommendation.relatedSources.length === 0 &&
+      !recommendation.suggestedAction &&
+      !recommendation.expectedMetricImpact,
+  );
+}
+
 export async function generateStrategy(
   input: StrategyInput,
 ): Promise<Recommendation[]> {
@@ -298,5 +384,5 @@ Return ONLY the JSON object. No prose, no markdown fences.`;
   };
   const text = body.choices?.[0]?.message?.content;
   if (!text) throw new Error("Empty OpenRouter response");
-  return parseStrategyResponse(text);
+  return normalizeStrategyRecommendations(parseStrategyResponse(text), input);
 }

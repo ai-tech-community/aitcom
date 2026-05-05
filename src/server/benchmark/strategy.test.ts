@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildStrategyInsights, parseStrategyResponse } from "./strategy";
+import {
+  buildStrategyInsights,
+  normalizeStrategyRecommendations,
+  parseStrategyResponse,
+} from "./strategy";
 
 describe("parseStrategyResponse", () => {
   it("parses grounded recommendations with evidence fields", () => {
@@ -155,5 +159,91 @@ describe("buildStrategyInsights", () => {
         }),
       ]),
     );
+  });
+});
+
+describe("normalizeStrategyRecommendations", () => {
+  const input = {
+    brandName: "Acme",
+    hero: { visibilityPct: 12, totalMentions: 3, totalRuns: 25 },
+    perModel: [
+      { modelId: "openai/gpt-5", visibilityPct: 15, sentimentPosPct: 35 },
+    ],
+    competitors: [
+      { canonical_name: "HubSpot", visibility_pct: 28 },
+      { canonical_name: "Salesforce", visibility_pct: 24 },
+    ],
+    citations: [
+      { domain: "g2.com", count: 3 },
+      { domain: "zapier.com", count: 2 },
+    ],
+    topPrompts: [
+      { text: "Best CRM for small teams?", mentions: 2 },
+      { text: "CRM with AI notes?", mentions: 1 },
+    ],
+  };
+
+  it("filters invented related prompts, competitors, and sources", () => {
+    const recommendations = parseStrategyResponse(
+      JSON.stringify({
+        recommendations: [
+          {
+            title: "Publish comparison content",
+            priority: "high",
+            why: "HubSpot is ahead and g2.com appears in citations.",
+            evidence: ["g2.com appears in 3 category citations."],
+            suggestedAction: "Create comparison content for the known prompt.",
+            relatedPrompts: [
+              "Best CRM for small teams?",
+              "Invented enterprise CRM prompt",
+            ],
+            relatedCompetitors: ["HubSpot", "InventedSoft"],
+            relatedSources: ["g2.com", "forbes.com"],
+            expectedMetricImpact: "Improve visibility.",
+          },
+        ],
+      }),
+    );
+
+    const normalized = normalizeStrategyRecommendations(recommendations, input);
+
+    expect(normalized[0]?.relatedPrompts).toEqual([
+      "Best CRM for small teams?",
+    ]);
+    expect(normalized[0]?.relatedCompetitors).toEqual(["HubSpot"]);
+    expect(normalized[0]?.relatedSources).toEqual(["g2.com"]);
+  });
+
+  it("drops ungrounded rich recommendations when grounded ones are available", () => {
+    const recommendations = parseStrategyResponse(
+      JSON.stringify({
+        recommendations: [
+          {
+            title: "Chase invented publication",
+            priority: "high",
+            why: "Forbes is supposedly driving the category.",
+            evidence: ["forbes.com dominates citations"],
+            suggestedAction: "Pitch Forbes.",
+            relatedPrompts: ["Invented prompt"],
+            relatedCompetitors: ["InventedSoft"],
+            relatedSources: ["forbes.com"],
+            expectedMetricImpact: "Improve everything.",
+          },
+          {
+            title: "Improve known source coverage",
+            priority: "medium",
+            why: "g2.com appears in category citations.",
+            evidence: ["g2.com appears in 3 category citations."],
+            suggestedAction: "Update G2 profile and comparison content.",
+            relatedSources: ["g2.com"],
+          },
+        ],
+      }),
+    );
+
+    const normalized = normalizeStrategyRecommendations(recommendations, input);
+
+    expect(normalized).toHaveLength(1);
+    expect(normalized[0]?.title).toBe("Improve known source coverage");
   });
 });
