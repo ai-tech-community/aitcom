@@ -13,6 +13,7 @@
 ### Task 1: Grounded Recommendation Model
 
 **Files:**
+
 - Modify: `src/server/benchmark/strategy.ts`
 - Modify: `src/server/benchmark/strategy.test.ts`
 - Modify: `src/server/api/routers/benchmark-brands.ts`
@@ -31,12 +32,17 @@ it("parses grounded recommendations with evidence fields", () => {
           title: "Publish comparison pages for small-team CRM prompts",
           priority: "high",
           why: "Competitors appear in prompts where this brand has no visibility.",
-          evidence: ["HubSpot appears in 4 weak prompts", "Salesforce appears in 3 weak prompts"],
-          suggestedAction: "Create comparison and use-case pages matching those prompts.",
+          evidence: [
+            "HubSpot appears in 4 weak prompts",
+            "Salesforce appears in 3 weak prompts",
+          ],
+          suggestedAction:
+            "Create comparison and use-case pages matching those prompts.",
           relatedPrompts: ["Best CRM for small teams?"],
           relatedCompetitors: ["HubSpot", "Salesforce"],
           relatedSources: ["g2.com", "zapier.com"],
-          expectedMetricImpact: "Improve visibility and average position on comparison prompts.",
+          expectedMetricImpact:
+            "Improve visibility and average position on comparison prompts.",
         },
       ],
     }),
@@ -45,7 +51,8 @@ it("parses grounded recommendations with evidence fields", () => {
   expect(r[0]).toMatchObject({
     title: "Publish comparison pages for small-team CRM prompts",
     priority: "high",
-    suggestedAction: "Create comparison and use-case pages matching those prompts.",
+    suggestedAction:
+      "Create comparison and use-case pages matching those prompts.",
   });
   expect(r[0]?.evidence).toHaveLength(2);
 });
@@ -83,7 +90,8 @@ Keep backward compatibility in `parseStrategyResponse` by accepting old `severit
 const priority =
   typeof o.priority === "string" && PRIORITIES.includes(o.priority as Priority)
     ? (o.priority as Priority)
-    : typeof o.severity === "string" && PRIORITIES.includes(o.severity as Priority)
+    : typeof o.severity === "string" &&
+        PRIORITIES.includes(o.severity as Priority)
       ? (o.severity as Priority)
       : "medium";
 
@@ -93,7 +101,11 @@ const why = stringOrEmpty(o.why) || stringOrEmpty(o.rationale);
 Add a helper:
 
 ```ts
-function stringArray(value: unknown, maxItems: number, maxLen: number): string[] {
+function stringArray(
+  value: unknown,
+  maxItems: number,
+  maxLen: number,
+): string[] {
   if (!Array.isArray(value)) return [];
   return value
     .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
@@ -109,10 +121,30 @@ In `strategy.ts`, add:
 ```ts
 export type StrategyInsight =
   | { type: "low_visibility"; severity: Priority; evidence: string[] }
-  | { type: "competitor_gap"; severity: Priority; competitor: string; evidence: string[] }
-  | { type: "source_gap"; severity: Priority; domain: string; evidence: string[] }
-  | { type: "prompt_opportunity"; severity: Priority; prompt: string; evidence: string[] }
-  | { type: "sentiment_gap"; severity: Priority; modelId: string; evidence: string[] };
+  | {
+      type: "competitor_gap";
+      severity: Priority;
+      competitor: string;
+      evidence: string[];
+    }
+  | {
+      type: "source_gap";
+      severity: Priority;
+      domain: string;
+      evidence: string[];
+    }
+  | {
+      type: "prompt_opportunity";
+      severity: Priority;
+      prompt: string;
+      evidence: string[];
+    }
+  | {
+      type: "sentiment_gap";
+      severity: Priority;
+      modelId: string;
+      evidence: string[];
+    };
 ```
 
 Add `buildStrategyInsights(input: StrategyInput): StrategyInsight[]` using simple thresholds:
@@ -161,6 +193,7 @@ git commit -m "feat(benchmark): ground brand recommendations in evidence"
 ### Task 2: PEEC-Style Metric Summary For Brand Stats
 
 **Files:**
+
 - Modify: `src/server/api/routers/benchmark-brands.ts`
 - Create: `src/server/benchmark/brand-metrics.ts`
 - Create: `src/server/benchmark/brand-metrics.test.ts`
@@ -194,21 +227,34 @@ export function pct(part: number, total: number): number {
   return Number(((part / total) * 100).toFixed(2));
 }
 
-export function computeVisibility(input: { mentions: number; totalRuns: number }): number {
+export function computeVisibility(input: {
+  mentions: number;
+  totalRuns: number;
+}): number {
   return pct(input.mentions, input.totalRuns);
 }
 
-export function computeShareOfVoice(input: { brandMentions: number; totalMentions: number }): number {
+export function computeShareOfVoice(input: {
+  brandMentions: number;
+  totalMentions: number;
+}): number {
   return pct(input.brandMentions, input.totalMentions);
 }
 
-export function computeAveragePosition(ranks: Array<number | null | undefined>): number | null {
-  const valid = ranks.filter((r): r is number => typeof r === "number" && Number.isFinite(r));
+export function computeAveragePosition(
+  ranks: Array<number | null | undefined>,
+): number | null {
+  const valid = ranks.filter(
+    (r): r is number => typeof r === "number" && Number.isFinite(r),
+  );
   if (valid.length === 0) return null;
   return Number((valid.reduce((a, r) => a + r, 0) / valid.length).toFixed(2));
 }
 
-export function computeCitationRate(input: { citedRuns: number; totalRuns: number }): number {
+export function computeCitationRate(input: {
+  citedRuns: number;
+  totalRuns: number;
+}): number {
   return pct(input.citedRuns, input.totalRuns);
 }
 ```
@@ -275,6 +321,7 @@ git commit -m "feat(benchmark): add peec-style brand metric summary"
 ### Task 3: Source Intelligence Upgrade
 
 **Files:**
+
 - Modify: `src/server/benchmark/extract-citations-ingest.ts`
 - Modify: `src/server/benchmark/extract-citations-ingest.test.ts`
 - Modify: `src/server/api/routers/benchmark-brands.ts`
@@ -329,7 +376,7 @@ citations: citationRows.map((row) => ({
   lastSeenAt: row.lastSeenAt,
   sourceType: classifySourceDomain(row.domain, ownedDomains),
   isOwned: ownedDomains.includes(row.domain),
-}))
+}));
 ```
 
 Build `ownedDomains` from `brand.website` for now. Defer multiple owned domains to a later migration.
@@ -365,6 +412,7 @@ git commit -m "feat(benchmark): classify brand citation sources"
 ### Task 4: Guided Agent Assignment Foundation
 
 **Files:**
+
 - Modify: `src/server/db/schema.ts`
 - Create: `src/migrations/20260505_benchmark_assignments.ts`
 - Modify: `src/server/api/routers/benchmark.ts`
@@ -397,13 +445,13 @@ Expected: FAIL because helper file does not exist.
 Create:
 
 ```ts
-export function selectAssignmentPrompts<T extends { approvedAt: Date | string; id: string }>(
-  prompts: T[],
-  limit: number,
-): T[] {
+export function selectAssignmentPrompts<
+  T extends { approvedAt: Date | string; id: string },
+>(prompts: T[], limit: number): T[] {
   return [...prompts]
     .sort((a, b) => {
-      const byDate = new Date(b.approvedAt).getTime() - new Date(a.approvedAt).getTime();
+      const byDate =
+        new Date(b.approvedAt).getTime() - new Date(a.approvedAt).getTime();
       return byDate || a.id.localeCompare(b.id);
     })
     .slice(0, limit);
@@ -470,6 +518,7 @@ git commit -m "feat(benchmark): add guided agent assignments"
 ### Task 5: Assignment UI Entry Point
 
 **Files:**
+
 - Modify: `src/app/[locale]/benchmark/_components/run-prompts-tab.tsx`
 - Modify: `src/app/[locale]/benchmark/_components/agent-run-modal.tsx`
 - Create: `src/app/[locale]/benchmark/_components/benchmark-assignment-panel.tsx`
@@ -538,6 +587,7 @@ git commit -m "feat(benchmark): add assignment workflow for user agents"
 ### Task 6: Final Verification And Documentation
 
 **Files:**
+
 - Modify: `docs/plans/2026-05-05-peec-style-agent-benchmark-design.md`
 - Modify: `docs/plans/2026-05-05-peec-style-agent-benchmark.md`
 
@@ -579,3 +629,67 @@ Update this plan with:
 git add docs/plans/2026-05-05-peec-style-agent-benchmark-design.md docs/plans/2026-05-05-peec-style-agent-benchmark.md
 git commit -m "docs: record peec-style benchmark implementation notes"
 ```
+
+---
+
+## Implementation Notes
+
+Completed on branch `feature/peec-style-agent-benchmark`.
+
+### Completed Tasks
+
+- Task 1: Grounded recommendation model.
+  - Added richer recommendation shape, deterministic insight candidates, conservative post-parse grounding, and grounded strategy UI.
+  - Review loops added filtering and deterministic rewrite so LLM prose does not pass through as evidence-backed output unless grounded by known prompts, competitors, sources, or insights.
+- Task 2: PEEC-style metric summary.
+  - Added metric helpers and metric cards.
+  - Review loops corrected visibility to use distinct brand-mentioned eligible runs, corrected eligible-run denominators, and made owned-domain source visibility use brand website-derived domains.
+- Task 3: Source intelligence upgrade.
+  - Added conservative source domain classification and owned-source markers on the citation panel.
+- Task 4: Guided agent assignment foundation.
+  - Added `benchmark_assignment`, nullable `benchmark_run.assignment_id`, migration registration, helper tests, tRPC assignment procedures, assignment-aware run submission, and MCP `assignmentId` pass-through.
+  - Review loops added unknown filter rejection and assignment metadata validation for provider, model id, and locale.
+- Task 5: Assignment UI entry point.
+  - Added assignment panel on the Run tab, assignment-aware MCP instructions, latest assignment state, and modal sample payloads that use assignment metadata.
+  - React Doctor cleanup added label associations and removed an index key / unnecessary state pattern.
+
+### Migration Notes
+
+- Added `src/migrations/20260505_benchmark_assignments.ts`.
+- Registered the migration in `src/migrations/index.ts`.
+- Added `benchmarkAssignments` and `benchmarkRuns.assignmentId` to `src/server/db/schema.ts`.
+- `pnpm db:generate` was attempted:
+  - First run failed because required env vars were missing.
+  - With placeholder env vars, Drizzle reached an interactive create/rename prompt for existing schema state. No generated files were accepted or committed.
+
+### Verification
+
+Passed:
+
+```bash
+pnpm vitest run src/server/benchmark/strategy.test.ts src/server/benchmark/brand-metrics.test.ts src/server/benchmark/extract-citations-ingest.test.ts src/server/benchmark/assignment.test.ts "src/app/[locale]/benchmark/_components/benchmark-assignment-panel.test.ts"
+pnpm typecheck
+$env:BETTER_AUTH_SECRET='test-secret'; $env:BETTER_AUTH_GITHUB_CLIENT_ID='x'; $env:BETTER_AUTH_GITHUB_CLIENT_SECRET='x'; $env:DATABASE_URL='postgres://user:pass@localhost:5432/db'; pnpm lint
+pnpm exec prettier --check "<branch changed files>"
+npx -y react-doctor@latest . --verbose --diff
+```
+
+Results:
+
+- Focused branch tests: 47 passed.
+- Typecheck: passed.
+- Lint: passed with dummy env vars; Next warned about multiple lockfiles because the worktree has its own `pnpm-lock.yaml`.
+- Changed-file Prettier check: passed.
+- React Doctor: 96/100, 14 warnings across 3 changed files.
+
+Known verification caveats:
+
+- Full `pnpm test` currently fails one unrelated existing test: `src/components/dashboard-tabs.test.tsx` expects `notifications`, while the rendered dashboard nav contains `feed`, `communities`, `events`, and `settings`.
+- Full `pnpm format:check` reports broad existing formatting drift across hundreds of files. Changed branch files pass Prettier after targeted formatting.
+
+### Follow-Ups
+
+- Add router-level tests for assignment ownership, prompt membership, metadata mismatch rejection, and MCP assignment pass-through.
+- Add assignment progress/completion updates (`status`, `completedAt`) once the UI starts surfacing assignment history.
+- Replace the lightweight owned-domain/public-suffix approximation with a proper registrable-domain parser if source matching becomes high-stakes.
+- Consider a Suspense split for the brand profile page and client-only date formatting to address remaining React Doctor warnings.
