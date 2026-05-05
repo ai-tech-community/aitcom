@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { selectAssignmentPrompts } from "./assignment";
+import {
+  AssignmentFilterNotFoundError,
+  requireAssignmentFilter,
+  selectAssignmentPrompts,
+} from "./assignment";
 
 describe("selectAssignmentPrompts", () => {
   it("selects prompts with deterministic order and limit", () => {
@@ -30,5 +34,15 @@ describe("selectAssignmentPrompts", () => {
     const prompts = [{ id: "a", approvedAt: new Date("2026-01-01") }];
 
     expect(selectAssignmentPrompts(prompts, 0)).toEqual([]);
+  });
+});
+
+describe("requireAssignmentFilter", () => {
+  it("throws when a provided category slug is not resolved", () => {
+    expect(requireAssignmentFilter).toBeTypeOf("function");
+    expect(AssignmentFilterNotFoundError).toBeTypeOf("function");
+    expect(() =>
+      requireAssignmentFilter("Category", "typo", undefined),
+    ).toThrow("Category not found");
   });
 });

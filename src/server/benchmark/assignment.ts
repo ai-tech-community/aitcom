@@ -12,6 +12,25 @@ export function selectAssignmentPrompts<
     .slice(0, limit);
 }
 
+export class AssignmentFilterNotFoundError extends Error {
+  constructor(label: string, readonly slug: string) {
+    super(`${label} not found`);
+    this.name = "AssignmentFilterNotFoundError";
+  }
+}
+
+export function requireAssignmentFilter<T>(
+  label: string,
+  slug: string | undefined,
+  row: T | undefined,
+): T | undefined {
+  if (slug && !row) {
+    throw new AssignmentFilterNotFoundError(label, slug);
+  }
+
+  return row;
+}
+
 export function buildAssignmentInstructions(input: {
   assignmentId: string;
   prompts: Array<{ id: string; text: string }>;

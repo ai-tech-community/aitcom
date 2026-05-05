@@ -42,9 +42,29 @@ import {
 import { buildSparkline } from "@/server/benchmark/build-sparkline";
 import { benchmarkBrandsRouter } from "./benchmark-brands";
 import {
+  AssignmentFilterNotFoundError,
   buildAssignmentInstructions,
+  requireAssignmentFilter,
   selectAssignmentPrompts,
 } from "@/server/benchmark/assignment";
+
+function requireBenchmarkAssignmentFilter<T>(
+  label: string,
+  slug: string | undefined,
+  row: T | undefined,
+): T | undefined {
+  try {
+    return requireAssignmentFilter(label, slug, row);
+  } catch (err) {
+    if (err instanceof AssignmentFilterNotFoundError) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: err.message,
+      });
+    }
+    throw err;
+  }
+}
 
 export const benchmarkRouter = createTRPCRouter({
   brands: benchmarkBrandsRouter,
@@ -327,21 +347,35 @@ export const benchmarkRouter = createTRPCRouter({
       ];
 
       if (input.categorySlug) {
-        const [cat] = await ctx.db
+        const [categoryRow] = await ctx.db
           .select({ id: benchmarkCategories.id })
           .from(benchmarkCategories)
           .where(eq(benchmarkCategories.slug, input.categorySlug))
           .limit(1);
-        if (cat) conds.push(eq(benchmarkPrompts.categoryId, cat.id));
+        const category = requireBenchmarkAssignmentFilter(
+          "Category",
+          input.categorySlug,
+          categoryRow,
+        );
+        if (category) {
+          conds.push(eq(benchmarkPrompts.categoryId, category.id));
+        }
       }
 
       if (input.intentSlug) {
-        const [intent] = await ctx.db
+        const [intentRow] = await ctx.db
           .select({ id: benchmarkIntents.id })
           .from(benchmarkIntents)
           .where(eq(benchmarkIntents.slug, input.intentSlug))
           .limit(1);
-        if (intent) conds.push(eq(benchmarkPrompts.intentId, intent.id));
+        const intent = requireBenchmarkAssignmentFilter(
+          "Intent",
+          input.intentSlug,
+          intentRow,
+        );
+        if (intent) {
+          conds.push(eq(benchmarkPrompts.intentId, intent.id));
+        }
       }
 
       const rows = await ctx.db
