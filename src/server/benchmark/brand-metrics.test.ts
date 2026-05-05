@@ -11,9 +11,9 @@ import {
 
 describe("brand metrics", () => {
   it("computes share of voice as a percentage", () => {
-    expect(
-      computeShareOfVoice({ brandMentions: 5, totalMentions: 20 }),
-    ).toBe(25);
+    expect(computeShareOfVoice({ brandMentions: 5, totalMentions: 20 })).toBe(
+      25,
+    );
   });
 
   it("computes average position from known ranks only", () => {

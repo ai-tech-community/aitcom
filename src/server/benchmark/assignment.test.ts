@@ -15,9 +15,7 @@ describe("selectAssignmentPrompts", () => {
       { id: "a", approvedAt: new Date("2026-01-01") },
     ];
 
-    expect(selectAssignmentPrompts(prompts, 1).map((p) => p.id)).toEqual([
-      "b",
-    ]);
+    expect(selectAssignmentPrompts(prompts, 1).map((p) => p.id)).toEqual(["b"]);
   });
 
   it("breaks approvedAt ties by id ascending", () => {

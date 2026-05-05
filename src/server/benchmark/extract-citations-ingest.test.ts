@@ -100,8 +100,6 @@ describe("classifySourceDomain", () => {
   });
 
   it("uses the same owned subdomain semantics for owned markers", () => {
-    expect(isOwnedSourceDomain("docs.example.com", ["example.com"])).toBe(
-      true,
-    );
+    expect(isOwnedSourceDomain("docs.example.com", ["example.com"])).toBe(true);
   });
 });

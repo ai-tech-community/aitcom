@@ -23,8 +23,7 @@ export function computeAveragePosition(
   ranks: Array<number | null | undefined>,
 ): number | null {
   const valid = ranks.filter(
-    (rank): rank is number =>
-      typeof rank === "number" && Number.isFinite(rank),
+    (rank): rank is number => typeof rank === "number" && Number.isFinite(rank),
   );
   if (valid.length === 0) return null;
   return Number(
@@ -98,7 +97,10 @@ export function deriveOwnedDomains(
 }
 
 function toRegistrableDomain(hostname: string): string | null {
-  const host = hostname.toLowerCase().replace(/\.$/, "").replace(/^www\./, "");
+  const host = hostname
+    .toLowerCase()
+    .replace(/\.$/, "")
+    .replace(/^www\./, "");
   if (!host || host === "localhost" || /^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
     return host || null;
   }

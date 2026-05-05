@@ -13,7 +13,10 @@ export function selectAssignmentPrompts<
 }
 
 export class AssignmentFilterNotFoundError extends Error {
-  constructor(label: string, readonly slug: string) {
+  constructor(
+    label: string,
+    readonly slug: string,
+  ) {
     super(`${label} not found`);
     this.name = "AssignmentFilterNotFoundError";
   }

@@ -204,7 +204,8 @@ export const benchmarkBrandsRouter = createTRPCRouter({
         totalRuns,
       });
 
-      const metricCategoryId = primaryCategoryId ?? brand.categoryIds[0] ?? null;
+      const metricCategoryId =
+        primaryCategoryId ?? brand.categoryIds[0] ?? null;
       const ownedDomains = deriveOwnedDomains(brand.website);
       const metricRowsResult = await ctx.db.execute(sql`
         WITH category_runs AS (
