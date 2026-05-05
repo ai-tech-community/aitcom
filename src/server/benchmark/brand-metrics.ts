@@ -2,7 +2,7 @@ export function pct(part: number, total: number): number {
   if (!Number.isFinite(part) || !Number.isFinite(total) || total <= 0) {
     return 0;
   }
-  return Number(((part / total) * 100).toFixed(2));
+  return Number(clamp((part / total) * 100, 0, 100).toFixed(2));
 }
 
 export function computeVisibility(input: {
@@ -37,4 +37,75 @@ export function computeCitationRate(input: {
   totalRuns: number;
 }): number {
   return pct(input.citedRuns, input.totalRuns);
+}
+
+export interface BrandMetricSummary {
+  visibilityPct: number;
+  shareOfVoicePct: number;
+  avgPosition: number | null;
+  sentimentScore: number;
+  sourceVisibilityPct: number;
+  citationRatePct: number;
+  sampleSize: number;
+}
+
+export function computeBrandMetricSummary(input: {
+  brandMentions: number;
+  totalMentions: number;
+  eligibleRuns: number;
+  ranks: Array<number | null | undefined>;
+  sentimentScore: number;
+  ownedSourceRuns: number;
+  citedRuns: number;
+}): BrandMetricSummary {
+  const eligibleRuns = safeCount(input.eligibleRuns);
+
+  return {
+    visibilityPct: computeVisibility({
+      mentions: safeCount(input.brandMentions),
+      totalRuns: eligibleRuns,
+    }),
+    shareOfVoicePct: computeShareOfVoice({
+      brandMentions: safeCount(input.brandMentions),
+      totalMentions: safeCount(input.totalMentions),
+    }),
+    avgPosition: computeAveragePosition(input.ranks),
+    sentimentScore: Number(safeSentimentScore(input.sentimentScore).toFixed(2)),
+    sourceVisibilityPct: pct(safeCount(input.ownedSourceRuns), eligibleRuns),
+    citationRatePct: computeCitationRate({
+      citedRuns: safeCount(input.citedRuns),
+      totalRuns: eligibleRuns,
+    }),
+    sampleSize: eligibleRuns,
+  };
+}
+
+export function deriveOwnedDomains(
+  website: string | null | undefined,
+): string[] {
+  if (!website?.trim()) return [];
+
+  try {
+    const url = new URL(
+      website.includes("://") ? website : `https://${website}`,
+    );
+    const domain = url.hostname.toLowerCase().replace(/\.$/, "");
+    return domain ? [domain.replace(/^www\./, "")] : [];
+  } catch {
+    return [];
+  }
+}
+
+function safeCount(value: number): number {
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function safeSentimentScore(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return clamp(value, -100, 100);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(value, min), max);
 }

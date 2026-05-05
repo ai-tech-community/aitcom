@@ -21,11 +21,9 @@ import {
 } from "@/server/benchmark/strategy";
 import { checkStrategyRateLimit } from "@/server/benchmark/user-rate-limit";
 import {
-  computeAveragePosition,
-  computeCitationRate,
-  computeShareOfVoice,
+  computeBrandMetricSummary,
   computeVisibility,
-  pct,
+  deriveOwnedDomains,
 } from "@/server/benchmark/brand-metrics";
 
 const WINDOWS = z.union([z.literal(7), z.literal(30), z.literal(90)]);
@@ -203,6 +201,7 @@ export const benchmarkBrandsRouter = createTRPCRouter({
       });
 
       const metricCategoryId = primaryCategoryId ?? brand.categoryIds[0] ?? null;
+      const ownedDomains = deriveOwnedDomains(brand.website);
       const metricRowsResult = await ctx.db.execute(sql`
         WITH category_runs AS (
           SELECT r.id
@@ -241,7 +240,9 @@ export const benchmarkBrandsRouter = createTRPCRouter({
             SELECT COUNT(DISTINCT cr.id)::int
             FROM category_runs cr
             JOIN "app"."benchmark_citation" c ON c.run_id = cr.id
-          ) AS source_runs,
+            WHERE ${ownedDomains.length > 0}
+              AND regexp_replace(lower(c.domain), '^www\.', '') = ANY(${ownedDomains}::text[])
+          ) AS owned_source_runs,
           (
             SELECT COUNT(DISTINCT cr.id)::int
             FROM category_runs cr
@@ -256,10 +257,11 @@ export const benchmarkBrandsRouter = createTRPCRouter({
         total_mentions: number | string | null;
         brand_mentions: number | string | null;
         brand_ranks: Array<number | string | null> | null;
-        source_runs: number | string | null;
+        owned_source_runs: number | string | null;
         cited_runs: number | string | null;
       }>;
       const metricRow = metricRows[0];
+      const eligibleRuns = Number(metricRow?.category_runs ?? 0);
       const totalCategoryMentions = Number(metricRow?.total_mentions ?? 0);
       const brandCategoryMentions = Number(
         metricRow?.brand_mentions ?? totalMentions,
@@ -267,7 +269,7 @@ export const benchmarkBrandsRouter = createTRPCRouter({
       const brandRanks = (metricRow?.brand_ranks ?? []).map((rank) =>
         rank === null ? null : Number(rank),
       );
-      const sourceRuns = Number(metricRow?.source_runs ?? 0);
+      const ownedSourceRuns = Number(metricRow?.owned_source_runs ?? 0);
       const citedRuns = Number(metricRow?.cited_runs ?? 0);
       const sentimentScore =
         totalMentions === 0
@@ -283,18 +285,15 @@ export const benchmarkBrandsRouter = createTRPCRouter({
                 ) / totalMentions
               ).toFixed(2),
             );
-      const metricSummary = {
-        visibilityPct: Number(visibilityPct.toFixed(2)),
-        shareOfVoicePct: computeShareOfVoice({
-          brandMentions: brandCategoryMentions,
-          totalMentions: totalCategoryMentions,
-        }),
-        avgPosition: computeAveragePosition(brandRanks),
+      const metricSummary = computeBrandMetricSummary({
+        brandMentions: brandCategoryMentions,
+        totalMentions: totalCategoryMentions,
+        eligibleRuns,
+        ranks: brandRanks,
         sentimentScore,
-        sourceVisibilityPct: pct(sourceRuns, totalRuns),
-        citationRatePct: computeCitationRate({ citedRuns, totalRuns }),
-        sampleSize: totalRuns,
-      };
+        ownedSourceRuns,
+        citedRuns,
+      });
 
       // Δ vs prior-window: only meaningful if prior window aggregate was stored.
       // Windows are 7/30/90 only, so for w=7 there is no prior; for w=30 look at 7;
