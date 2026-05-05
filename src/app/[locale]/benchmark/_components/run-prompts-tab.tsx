@@ -14,8 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { ManualRunForm } from "./manual-run-form";
 import { AgentRunModal } from "./agent-run-modal";
-
-const ALL = "__all__";
+import {
+  ALL_FILTER_VALUE,
+  BenchmarkAssignmentPanel,
+  type LatestBenchmarkAssignment,
+} from "./benchmark-assignment-panel";
 
 export function RunPromptsTab() {
   const t = useTranslations("benchmark.runTab");
@@ -25,17 +28,19 @@ export function RunPromptsTab() {
   });
   const categories = api.benchmark.listCategories.useQuery();
   const intents = api.benchmark.listIntents.useQuery();
-  const [categoryId, setCategoryId] = useState<string>(ALL);
-  const [intentId, setIntentId] = useState<string>(ALL);
+  const [categoryId, setCategoryId] = useState<string>(ALL_FILTER_VALUE);
+  const [intentId, setIntentId] = useState<string>(ALL_FILTER_VALUE);
   const [search, setSearch] = useState("");
   const [tagInput, setTagInput] = useState("");
   const [manualFor, setManualFor] = useState<string | null>(null);
   const [agentFor, setAgentFor] = useState<string | null>(null);
   const [rawOpen, setRawOpen] = useState<Record<string, boolean>>({});
+  const [latestAssignment, setLatestAssignment] =
+    useState<LatestBenchmarkAssignment | null>(null);
 
   const prompts = api.benchmark.listApprovedPrompts.useQuery({
-    categoryId: categoryId === ALL ? undefined : categoryId,
-    intentId: intentId === ALL ? undefined : intentId,
+    categoryId: categoryId === ALL_FILTER_VALUE ? undefined : categoryId,
+    intentId: intentId === ALL_FILTER_VALUE ? undefined : intentId,
     search: search || undefined,
     tag: tagInput || undefined,
     page: 1,
@@ -61,7 +66,7 @@ export function RunPromptsTab() {
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>All categories</SelectItem>
+            <SelectItem value={ALL_FILTER_VALUE}>All categories</SelectItem>
             {categories.data?.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.name}
@@ -75,7 +80,7 @@ export function RunPromptsTab() {
             <SelectValue placeholder="All intents" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>All intents</SelectItem>
+            <SelectItem value={ALL_FILTER_VALUE}>All intents</SelectItem>
             {intents.data?.map((i) => (
               <SelectItem key={i.id} value={i.id}>
                 {i.name}
@@ -98,6 +103,14 @@ export function RunPromptsTab() {
           onChange={(e) => setTagInput(e.target.value)}
         />
       </div>
+
+      <BenchmarkAssignmentPanel
+        categories={categories.data}
+        intents={intents.data}
+        categoryId={categoryId}
+        intentId={intentId}
+        onAssignmentCreated={setLatestAssignment}
+      />
 
       <ul className="grid gap-3 md:grid-cols-2">
         {prompts.data?.map((p) => (
@@ -247,7 +260,15 @@ export function RunPromptsTab() {
       </section>
 
       {agentFor && (
-        <AgentRunModal promptId={agentFor} onClose={() => setAgentFor(null)} />
+        <AgentRunModal
+          promptId={agentFor}
+          assignmentId={
+            latestAssignment?.promptIds.includes(agentFor)
+              ? latestAssignment.assignmentId
+              : undefined
+          }
+          onClose={() => setAgentFor(null)}
+        />
       )}
     </div>
   );
