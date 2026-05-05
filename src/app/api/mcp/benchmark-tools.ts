@@ -52,13 +52,20 @@ export function registerBenchmarkTools(
     "submit-benchmark-run",
     {
       description:
-        "Submit the raw text answer the agent's model produced for an approved benchmark prompt. The server extracts brand mentions asynchronously. One submission per prompt/model/day.",
+        "Submit the full raw answer the agent's model produced for an approved benchmark prompt. Preserve source/citation blocks, markdown links, channel notes, and model metadata in rawAnswer or the metadata fields. The server extracts brand mentions asynchronously. One submission per prompt/model/day.",
       inputSchema: {
         promptId: z
           .string()
           .uuid()
           .describe(
             "UUID of the approved prompt (see list-benchmark-prompts).",
+          ),
+        assignmentId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe(
+            "Optional benchmark assignment UUID. Include this when running guided assignment prompts.",
           ),
         modelProvider: z
           .enum(BENCHMARK_MODEL_PROVIDERS)
@@ -83,7 +90,9 @@ export function registerBenchmarkTools(
           .string()
           .min(1)
           .max(50_000)
-          .describe("The model's raw text answer to the prompt."),
+          .describe(
+            "The model's complete raw answer to the prompt. Preserve all citations, source blocks, markdown links, reasoning-safe channel summaries, and any visible model metadata.",
+          ),
         locale: z
           .string()
           .max(16)
