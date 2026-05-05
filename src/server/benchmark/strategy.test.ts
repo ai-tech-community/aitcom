@@ -244,6 +244,57 @@ describe("normalizeStrategyRecommendations", () => {
     const normalized = normalizeStrategyRecommendations(recommendations, input);
 
     expect(normalized).toHaveLength(1);
-    expect(normalized[0]?.title).toBe("Improve known source coverage");
+    expect(normalized[0]?.title).toBe("Act on grounded source evidence");
+  });
+
+  it("rewrites grounded recommendations instead of passing through unsupported prose", () => {
+    const recommendations = parseStrategyResponse(
+      JSON.stringify({
+        recommendations: [
+          {
+            title: "Pitch Forbes against InventedSoft",
+            priority: "high",
+            why: "Forbes says InventedSoft owns this category.",
+            evidence: ["g2.com appears in 3 category citations."],
+            suggestedAction:
+              "Ask Forbes to publish a teardown of InventedSoft and Acme.",
+            relatedSources: ["g2.com"],
+            expectedMetricImpact:
+              "Forbes coverage will double Acme enterprise conversions.",
+          },
+        ],
+      }),
+    );
+
+    const normalized = normalizeStrategyRecommendations(recommendations, input);
+
+    expect(normalized).toHaveLength(1);
+    expect(normalized[0]).toMatchObject({
+      title: "Act on grounded source evidence",
+      why: "Grounded evidence: g2.com appears in 3 category citations.",
+      suggestedAction: "Improve presence on g2.com.",
+      expectedMetricImpact: "Improve visibility for the related source.",
+      relatedSources: ["g2.com"],
+    });
+    expect(JSON.stringify(normalized[0])).not.toContain("Forbes");
+    expect(JSON.stringify(normalized[0])).not.toContain("InventedSoft");
+  });
+
+  it("drops all-ungrounded sparse legacy recommendations", () => {
+    const recommendations = parseStrategyResponse(
+      JSON.stringify({
+        recommendations: [
+          {
+            title: "Try broad content marketing",
+            rationale: "Publish more thought leadership.",
+            severity: "medium",
+          },
+        ],
+      }),
+    );
+
+    expect(normalizeStrategyRecommendations(recommendations, input)).toEqual(
+      [],
+    );
   });
 });

@@ -224,6 +224,58 @@ function filterKnown(values: string[], known: Map<string, string>): string[] {
   return out;
 }
 
+function recommendationTitle(recommendation: {
+  relatedCompetitors: string[];
+  relatedPrompts: string[];
+  relatedSources: string[];
+  evidence: string[];
+}): string {
+  if (recommendation.relatedCompetitors.length > 0) {
+    return "Act on grounded competitor evidence";
+  }
+  if (recommendation.relatedPrompts.length > 0) {
+    return "Act on grounded prompt evidence";
+  }
+  if (recommendation.relatedSources.length > 0) {
+    return "Act on grounded source evidence";
+  }
+  return "Act on grounded benchmark evidence";
+}
+
+function recommendationAction(recommendation: {
+  relatedCompetitors: string[];
+  relatedPrompts: string[];
+  relatedSources: string[];
+}): string {
+  if (recommendation.relatedCompetitors.length > 0) {
+    return `Close the visibility gap with ${recommendation.relatedCompetitors.join(", ")}.`;
+  }
+  if (recommendation.relatedPrompts.length > 0) {
+    return `Improve content coverage for "${recommendation.relatedPrompts[0]}".`;
+  }
+  if (recommendation.relatedSources.length > 0) {
+    return `Improve presence on ${recommendation.relatedSources.join(", ")}.`;
+  }
+  return "Act on the grounded benchmark evidence.";
+}
+
+function metricImpact(recommendation: {
+  relatedCompetitors: string[];
+  relatedPrompts: string[];
+  relatedSources: string[];
+}): string {
+  if (recommendation.relatedCompetitors.length > 0) {
+    return "Improve visibility against the related competitor.";
+  }
+  if (recommendation.relatedPrompts.length > 0) {
+    return "Improve visibility for the related prompt.";
+  }
+  if (recommendation.relatedSources.length > 0) {
+    return "Improve visibility for the related source.";
+  }
+  return "Improve benchmark visibility.";
+}
+
 export function normalizeStrategyRecommendations(
   recommendations: Recommendation[],
   input: StrategyInput,
@@ -239,7 +291,7 @@ export function normalizeStrategyRecommendations(
     buildStrategyInsights(input).flatMap((insight) => insight.evidence),
   );
 
-  const normalized = recommendations.map((recommendation) => {
+  const normalized = recommendations.flatMap((recommendation) => {
     const relatedPrompts = filterKnown(
       recommendation.relatedPrompts,
       promptSet,
@@ -253,40 +305,35 @@ export function normalizeStrategyRecommendations(
       sourceSet,
     );
     const evidence = filterKnown(recommendation.evidence, evidenceSet);
-    return {
-      ...recommendation,
+    const grounded = {
       evidence,
       relatedPrompts,
       relatedCompetitors,
       relatedSources,
     };
+    const hasGrounding =
+      evidence.length > 0 ||
+      relatedPrompts.length > 0 ||
+      relatedCompetitors.length > 0 ||
+      relatedSources.length > 0;
+    if (!hasGrounding) return [];
+
+    return [
+      {
+        title: recommendationTitle(grounded),
+        priority: recommendation.priority,
+        why: `Grounded evidence: ${evidence[0] ?? "related benchmark evidence is available."}`,
+        evidence,
+        suggestedAction: recommendationAction(grounded),
+        relatedPrompts,
+        relatedCompetitors,
+        relatedSources,
+        expectedMetricImpact: metricImpact(grounded),
+      },
+    ];
   });
 
-  const grounded = normalized.filter(
-    (recommendation) =>
-      recommendation.evidence.length > 0 ||
-      recommendation.relatedPrompts.length > 0 ||
-      recommendation.relatedCompetitors.length > 0 ||
-      recommendation.relatedSources.length > 0,
-  );
-  if (grounded.length > 0) return grounded;
-
-  const hasKnownGrounding =
-    promptSet.size > 0 ||
-    competitorSet.size > 0 ||
-    sourceSet.size > 0 ||
-    evidenceSet.size > 0;
-  if (!hasKnownGrounding) return normalized;
-
-  return normalized.filter(
-    (recommendation) =>
-      recommendation.evidence.length === 0 &&
-      recommendation.relatedPrompts.length === 0 &&
-      recommendation.relatedCompetitors.length === 0 &&
-      recommendation.relatedSources.length === 0 &&
-      !recommendation.suggestedAction &&
-      !recommendation.expectedMetricImpact,
-  );
+  return normalized.slice(0, 8);
 }
 
 export async function generateStrategy(
