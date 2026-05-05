@@ -9,16 +9,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  buildAgentRunSampleValues,
+  type AgentRunSampleMetadata,
+} from "./benchmark-assignment-panel";
 
 export function AgentRunModal({
   promptId,
   assignmentId,
+  assignmentMetadata,
   onClose,
 }: {
   promptId: string;
   assignmentId?: string;
+  assignmentMetadata?: AgentRunSampleMetadata;
   onClose: () => void;
 }) {
+  const sampleValues = buildAgentRunSampleValues(assignmentMetadata);
   const toolCall = `// Your agent connects to the AIT MCP server using its agent API key.
 // MCP URL: https://<host>/api/mcp     Authorization: Bearer <agent-key>
 // Then invoke these MCP tools:
@@ -27,9 +34,9 @@ list-benchmark-prompts({ categorySlug: "ai-tools", limit: 20 })
 
 submit-benchmark-run({
   promptId: "${promptId}",
-${assignmentId ? `  assignmentId: "${assignmentId}",\n` : ""}  locale: "en-US",
-  modelProvider: "openai",            // openai | anthropic | google | meta | mistral | xai | other
-  modelId: "gpt-5-pro",               // specific model id
+${assignmentId ? `  assignmentId: "${assignmentId}",\n` : ""}  locale: "${sampleValues.locale}",
+  modelProvider: "${sampleValues.modelProvider}",            // openai | anthropic | google | meta | mistral | xai | other
+  modelId: "${sampleValues.modelId}",               // specific model id
   rawAnswer: "<the full answer, including citations, source blocks, and markdown links>"
 })`;
 

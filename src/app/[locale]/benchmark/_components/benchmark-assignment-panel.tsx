@@ -32,7 +32,26 @@ export type LatestBenchmarkAssignment = {
   promptIds: string[];
   promptCount: number;
   instructions: string;
+  modelProvider: string | null;
+  modelId: string | null;
+  locale: string;
 };
+
+export type AgentRunSampleMetadata = {
+  modelProvider?: string | null;
+  modelId?: string | null;
+  locale?: string | null;
+};
+
+export function buildAgentRunSampleValues(
+  metadata: AgentRunSampleMetadata | undefined,
+) {
+  return {
+    modelProvider: metadata?.modelProvider ?? "openai",
+    modelId: metadata?.modelId ?? "gpt-5-pro",
+    locale: metadata?.locale ?? BENCHMARK_DEFAULT_LOCALE,
+  };
+}
 
 export function resolveSelectedSlug(
   rows: Array<{ id: string; slug: string }> | undefined,
@@ -87,6 +106,9 @@ export function BenchmarkAssignmentPanel({
         promptIds: data.prompts.map((prompt) => prompt.id),
         promptCount: data.prompts.length,
         instructions: data.instructions,
+        modelProvider: data.assignment.modelProvider,
+        modelId: data.assignment.modelId,
+        locale: data.assignment.locale,
       };
       setLatest(assignment);
       onAssignmentCreated?.(assignment);

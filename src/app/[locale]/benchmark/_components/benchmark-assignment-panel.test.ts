@@ -12,6 +12,7 @@ vi.mock("@/trpc/react", () => ({
 
 import {
   ALL_FILTER_VALUE,
+  buildAgentRunSampleValues,
   resolveSelectedSlug,
 } from "./benchmark-assignment-panel";
 
@@ -31,5 +32,29 @@ describe("resolveSelectedSlug", () => {
 
   it("returns undefined when the selected id is not loaded", () => {
     expect(resolveSelectedSlug(rows, "missing")).toBeUndefined();
+  });
+});
+
+describe("buildAgentRunSampleValues", () => {
+  it("uses assignment metadata when present", () => {
+    expect(
+      buildAgentRunSampleValues({
+        modelProvider: "anthropic",
+        modelId: "claude-opus-4.5",
+        locale: "nl-NL",
+      }),
+    ).toEqual({
+      modelProvider: "anthropic",
+      modelId: "claude-opus-4.5",
+      locale: "nl-NL",
+    });
+  });
+
+  it("keeps placeholders for missing optional model metadata", () => {
+    expect(buildAgentRunSampleValues({ locale: "nl-NL" })).toEqual({
+      modelProvider: "openai",
+      modelId: "gpt-5-pro",
+      locale: "nl-NL",
+    });
   });
 });

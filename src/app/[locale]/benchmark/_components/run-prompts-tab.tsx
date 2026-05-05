@@ -267,6 +267,11 @@ export function RunPromptsTab() {
               ? latestAssignment.assignmentId
               : undefined
           }
+          assignmentMetadata={
+            latestAssignment?.promptIds.includes(agentFor)
+              ? latestAssignment
+              : undefined
+          }
           onClose={() => setAgentFor(null)}
         />
       )}
