@@ -31,9 +31,24 @@ describe("DashboardTabs", () => {
     mockUseTranslations.mockReturnValue((key: string) => key);
   });
 
-  it("includes notifications in the dashboard navigation", () => {
+  it("includes the dashboard section tabs", () => {
     render(<DashboardTabs />);
 
-    expect(screen.getByText("notifications")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /feed/i })).toHaveAttribute(
+      "href",
+      "/dashboard",
+    );
+    expect(screen.getByRole("link", { name: /communities/i })).toHaveAttribute(
+      "href",
+      "/dashboard/communities",
+    );
+    expect(screen.getByRole("link", { name: /events/i })).toHaveAttribute(
+      "href",
+      "/dashboard/events",
+    );
+    expect(screen.getByRole("link", { name: /settings/i })).toHaveAttribute(
+      "href",
+      "/dashboard/settings",
+    );
   });
 });
