@@ -43,9 +43,11 @@ import { buildSparkline } from "@/server/benchmark/build-sparkline";
 import { benchmarkBrandsRouter } from "./benchmark-brands";
 import {
   AssignmentFilterNotFoundError,
+  AssignmentMetadataMismatchError,
   buildAssignmentInstructions,
   requireAssignmentFilter,
   selectAssignmentPrompts,
+  validateAssignmentRunMetadata,
 } from "@/server/benchmark/assignment";
 
 function requireBenchmarkAssignmentFilter<T>(
@@ -59,6 +61,31 @@ function requireBenchmarkAssignmentFilter<T>(
     if (err instanceof AssignmentFilterNotFoundError) {
       throw new TRPCError({
         code: "NOT_FOUND",
+        message: err.message,
+      });
+    }
+    throw err;
+  }
+}
+
+function requireBenchmarkAssignmentRunMetadata(
+  assignment: {
+    modelProvider: string | null;
+    modelId: string | null;
+    locale: string | null;
+  },
+  run: {
+    modelProvider: string;
+    modelId: string;
+    locale: string;
+  },
+): void {
+  try {
+    validateAssignmentRunMetadata(assignment, run);
+  } catch (err) {
+    if (err instanceof AssignmentMetadataMismatchError) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
         message: err.message,
       });
     }
@@ -546,6 +573,11 @@ export const benchmarkRouter = createTRPCRouter({
             message: "Assignment not found for this prompt.",
           });
         }
+        requireBenchmarkAssignmentRunMetadata(assignment, {
+          modelProvider: input.modelProvider,
+          modelId: input.modelId,
+          locale: input.locale,
+        });
       }
 
       const capturedAt = input.capturedAt
@@ -1632,6 +1664,11 @@ export const benchmarkRouter = createTRPCRouter({
             message: "Assignment not found for this agent and prompt.",
           });
         }
+        requireBenchmarkAssignmentRunMetadata(assignment, {
+          modelProvider: input.modelProvider,
+          modelId: input.modelId,
+          locale: input.locale,
+        });
       }
 
       const capturedAt = input.capturedAt

@@ -31,6 +31,47 @@ export function requireAssignmentFilter<T>(
   return row;
 }
 
+export class AssignmentMetadataMismatchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AssignmentMetadataMismatchError";
+  }
+}
+
+export function validateAssignmentRunMetadata(
+  assignment: {
+    modelProvider: string | null;
+    modelId: string | null;
+    locale: string | null;
+  },
+  run: {
+    modelProvider: string;
+    modelId: string;
+    locale: string;
+  },
+): void {
+  if (
+    assignment.modelProvider &&
+    assignment.modelProvider !== run.modelProvider
+  ) {
+    throw new AssignmentMetadataMismatchError(
+      "Assignment model provider must match the submitted run.",
+    );
+  }
+
+  if (assignment.modelId && assignment.modelId !== run.modelId) {
+    throw new AssignmentMetadataMismatchError(
+      "Assignment model id must match the submitted run.",
+    );
+  }
+
+  if (assignment.locale && assignment.locale !== run.locale) {
+    throw new AssignmentMetadataMismatchError(
+      "Assignment locale must match the submitted run.",
+    );
+  }
+}
+
 export function buildAssignmentInstructions(input: {
   assignmentId: string;
   prompts: Array<{ id: string; text: string }>;
