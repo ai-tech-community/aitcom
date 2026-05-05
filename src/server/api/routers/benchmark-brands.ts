@@ -20,6 +20,13 @@ import {
   type Recommendation,
 } from "@/server/benchmark/strategy";
 import { checkStrategyRateLimit } from "@/server/benchmark/user-rate-limit";
+import {
+  computeAveragePosition,
+  computeCitationRate,
+  computeShareOfVoice,
+  computeVisibility,
+  pct,
+} from "@/server/benchmark/brand-metrics";
 
 const WINDOWS = z.union([z.literal(7), z.literal(30), z.literal(90)]);
 
@@ -190,8 +197,104 @@ export const benchmarkBrandsRouter = createTRPCRouter({
         0,
       );
       const totalRuns = filteredPerModel.reduce((a, r) => a + r.runsTotal, 0);
-      const visibilityPct =
-        totalRuns === 0 ? 0 : (totalMentions / totalRuns) * 100;
+      const visibilityPct = computeVisibility({
+        mentions: totalMentions,
+        totalRuns,
+      });
+
+      const metricCategoryId = primaryCategoryId ?? brand.categoryIds[0] ?? null;
+      const metricRowsResult = await ctx.db.execute(sql`
+        WITH category_runs AS (
+          SELECT r.id
+          FROM "app"."benchmark_run" r
+          JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
+          WHERE r.extraction_status = 'done'
+            AND r.captured_at >= now() - (${w} || ' days')::interval
+            AND (
+              ${metricCategoryId}::uuid IS NULL
+              OR p.category_id = ${metricCategoryId}::uuid
+              OR ${metricCategoryId}::uuid = ANY(p.inferred_category_ids)
+            )
+            AND (${input.modelId ?? null}::text IS NULL OR r.model_id = ${input.modelId ?? null})
+        )
+        SELECT
+          (SELECT COUNT(*)::int FROM category_runs) AS category_runs,
+          (
+            SELECT COUNT(*)::int
+            FROM "app"."benchmark_brand_mention" m
+            JOIN category_runs cr ON cr.id = m.run_id
+            WHERE m.brand_id IS NOT NULL
+          ) AS total_mentions,
+          (
+            SELECT COUNT(*)::int
+            FROM "app"."benchmark_brand_mention" m
+            JOIN category_runs cr ON cr.id = m.run_id
+            WHERE m.brand_id = ${brand.id}
+          ) AS brand_mentions,
+          (
+            SELECT ARRAY_REMOVE(ARRAY_AGG(m.rank), NULL)::int[]
+            FROM "app"."benchmark_brand_mention" m
+            JOIN category_runs cr ON cr.id = m.run_id
+            WHERE m.brand_id = ${brand.id}
+          ) AS brand_ranks,
+          (
+            SELECT COUNT(DISTINCT cr.id)::int
+            FROM category_runs cr
+            JOIN "app"."benchmark_citation" c ON c.run_id = cr.id
+          ) AS source_runs,
+          (
+            SELECT COUNT(DISTINCT cr.id)::int
+            FROM category_runs cr
+            JOIN "app"."benchmark_brand_mention" m
+              ON m.run_id = cr.id AND m.brand_id = ${brand.id}
+            JOIN "app"."benchmark_citation" c ON c.run_id = cr.id
+          ) AS cited_runs
+      `);
+      const metricRows = ((metricRowsResult as { rows?: unknown }).rows ??
+        metricRowsResult) as Array<{
+        category_runs: number | string | null;
+        total_mentions: number | string | null;
+        brand_mentions: number | string | null;
+        brand_ranks: Array<number | string | null> | null;
+        source_runs: number | string | null;
+        cited_runs: number | string | null;
+      }>;
+      const metricRow = metricRows[0];
+      const totalCategoryMentions = Number(metricRow?.total_mentions ?? 0);
+      const brandCategoryMentions = Number(
+        metricRow?.brand_mentions ?? totalMentions,
+      );
+      const brandRanks = (metricRow?.brand_ranks ?? []).map((rank) =>
+        rank === null ? null : Number(rank),
+      );
+      const sourceRuns = Number(metricRow?.source_runs ?? 0);
+      const citedRuns = Number(metricRow?.cited_runs ?? 0);
+      const sentimentScore =
+        totalMentions === 0
+          ? 0
+          : Number(
+              (
+                filteredPerModel.reduce(
+                  (a, r) =>
+                    a +
+                    (Number(r.sentimentPosPct) - Number(r.sentimentNegPct)) *
+                      r.mentionsCount,
+                  0,
+                ) / totalMentions
+              ).toFixed(2),
+            );
+      const metricSummary = {
+        visibilityPct: Number(visibilityPct.toFixed(2)),
+        shareOfVoicePct: computeShareOfVoice({
+          brandMentions: brandCategoryMentions,
+          totalMentions: totalCategoryMentions,
+        }),
+        avgPosition: computeAveragePosition(brandRanks),
+        sentimentScore,
+        sourceVisibilityPct: pct(sourceRuns, totalRuns),
+        citationRatePct: computeCitationRate({ citedRuns, totalRuns }),
+        sampleSize: totalRuns,
+      };
 
       // Δ vs prior-window: only meaningful if prior window aggregate was stored.
       // Windows are 7/30/90 only, so for w=7 there is no prior; for w=30 look at 7;
@@ -363,6 +466,7 @@ export const benchmarkBrandsRouter = createTRPCRouter({
           totalMentions,
           totalRuns,
         },
+        metricSummary,
         perModel: perModel.map((r) => ({
           modelId: r.modelId,
           mentionsCount: r.mentionsCount,

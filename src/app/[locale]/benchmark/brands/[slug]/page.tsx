@@ -17,6 +17,7 @@ import { SentimentStacked } from "./_components/SentimentStacked";
 import { SuggestPromptsModal } from "./_components/SuggestPromptsModal";
 import { CountryPanel } from "./_components/CountryPanel";
 import { StrategyPanel } from "./_components/StrategyPanel";
+import { MetricCards } from "./_components/MetricCards";
 
 const parseWindow = (v: string | null): 7 | 30 | 90 =>
   v === "7" || v === "90" ? (Number(v) as 7 | 90) : 30;
@@ -99,6 +100,8 @@ export default function BrandProfilePage({
         slug={slug}
         isAuthenticated={isAuthenticated}
       />
+
+      <MetricCards summary={s.metricSummary} />
 
       {!hasData ? (
         <section className="rounded border p-6 text-center">
