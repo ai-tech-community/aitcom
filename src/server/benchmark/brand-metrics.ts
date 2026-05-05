@@ -1,3 +1,5 @@
+import { sql } from "drizzle-orm";
+
 export function pct(part: number, total: number): number {
   if (!Number.isFinite(part) || !Number.isFinite(total) || total <= 0) {
     return 0;
@@ -94,6 +96,15 @@ export function deriveOwnedDomains(
   } catch {
     return [];
   }
+}
+
+export function buildOwnedDomainPredicate(domains: string[]) {
+  return domains.length === 0
+    ? sql`FALSE`
+    : sql`regexp_replace(lower(c.domain), '^www\\.', '') = ANY(ARRAY[${sql.join(
+        domains.map((domain) => sql`${domain}`),
+        sql`, `,
+      )}]::text[])`;
 }
 
 function toRegistrableDomain(hostname: string): string | null {

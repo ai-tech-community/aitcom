@@ -21,6 +21,7 @@ import {
 } from "@/server/benchmark/strategy";
 import { checkStrategyRateLimit } from "@/server/benchmark/user-rate-limit";
 import {
+  buildOwnedDomainPredicate,
   computeBrandMetricSummary,
   computeVisibility,
   deriveOwnedDomains,
@@ -207,6 +208,7 @@ export const benchmarkBrandsRouter = createTRPCRouter({
       const metricCategoryId =
         primaryCategoryId ?? brand.categoryIds[0] ?? null;
       const ownedDomains = deriveOwnedDomains(brand.website);
+      const ownedDomainPredicate = buildOwnedDomainPredicate(ownedDomains);
       const metricRowsResult = await ctx.db.execute(sql`
         WITH category_runs AS (
           SELECT r.id
@@ -251,8 +253,7 @@ export const benchmarkBrandsRouter = createTRPCRouter({
             SELECT COUNT(DISTINCT cr.id)::int
             FROM category_runs cr
             JOIN "app"."benchmark_citation" c ON c.run_id = cr.id
-            WHERE ${ownedDomains.length > 0}
-              AND regexp_replace(lower(c.domain), '^www\.', '') = ANY(${ownedDomains}::text[])
+            WHERE ${ownedDomainPredicate}
           ) AS owned_source_runs,
           (
             SELECT COUNT(DISTINCT cr.id)::int

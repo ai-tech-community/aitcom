@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildOwnedDomainPredicate,
   computeBrandMetricSummary,
   computeAveragePosition,
   computeCitationRate,
@@ -8,6 +9,22 @@ import {
   deriveOwnedDomains,
   pct,
 } from "./brand-metrics";
+
+function flattenSqlChunks(value: unknown): string {
+  const chunks = (value as { queryChunks?: unknown[] }).queryChunks ?? [];
+
+  return chunks
+    .map((chunk) => {
+      if (typeof chunk === "string") return chunk;
+      if (typeof chunk === "boolean") return String(chunk);
+      if (Array.isArray(chunk)) return JSON.stringify(chunk);
+      if (chunk && typeof chunk === "object" && "value" in chunk) {
+        return String((chunk as { value: unknown }).value);
+      }
+      return "";
+    })
+    .join("");
+}
 
 describe("brand metrics", () => {
   it("computes share of voice as a percentage", () => {
@@ -94,5 +111,19 @@ describe("brand metrics", () => {
     expect(summary.sentimentScore).toBe(0);
     expect(summary.sourceVisibilityPct).toBe(100);
     expect(summary.citationRatePct).toBe(100);
+  });
+
+  it("uses a false predicate instead of interpolating an empty owned-domain array", () => {
+    const predicate = buildOwnedDomainPredicate([]);
+
+    expect(flattenSqlChunks(predicate)).toBe("FALSE");
+  });
+
+  it("uses an explicit SQL text array for owned domains", () => {
+    const predicate = buildOwnedDomainPredicate(["anthropic.com"]);
+    const chunks = flattenSqlChunks(predicate);
+
+    expect(chunks).toContain("ANY(ARRAY[");
+    expect(chunks).toContain("]::text[])");
   });
 });
