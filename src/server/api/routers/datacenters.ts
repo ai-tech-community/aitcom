@@ -1728,20 +1728,26 @@ export const datacentersRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const [row] = await ctx.db
-        .insert(datacenterFindings)
-        .values({
-          datacenterId: input.datacenterId,
-          userId: ctx.session.user.id,
-          title: input.title,
-          claim: input.claim,
-          body: input.body,
-          evidenceUrls: input.evidenceUrls,
-          status: "review",
-          upvotes: 0,
-        })
-        .returning({ id: datacenterFindings.id });
-      return row;
+      const role = (ctx.session.user as { role?: string }).role;
+      const isAdmin = role === "admin";
+
+      const result = await recordedCreate(
+        { userId: ctx.session.user.id, isAdmin, db: ctx.db },
+        {
+          entityType: "datacenter_finding",
+          values: {
+            datacenterId: input.datacenterId,
+            userId: ctx.session.user.id,
+            title: input.title,
+            claim: input.claim,
+            body: input.body,
+            evidenceUrls: input.evidenceUrls,
+          },
+          sources: input.evidenceUrls.map((url) => ({ url })),
+        },
+      );
+
+      return { id: result.entity.id };
     }),
 
   upvoteFinding: protectedProcedure
