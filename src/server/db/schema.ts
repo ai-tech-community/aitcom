@@ -1,4 +1,5 @@
 import { relations, sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   boolean,
   date,
@@ -2242,15 +2243,20 @@ export const investigationEdit = appSchema.table(
       .$type<{ url: string; title?: string; type?: string; publishedAt?: string }[]>()
       .notNull()
       .default(sql`'[]'::jsonb`),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "set null" }),
-    agentId: uuid("agent_id"),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    agentId: uuid("agent_id").references(() => agentProfiles.id, {
+      onDelete: "set null",
+    }),
     status: text("status").notNull().default("live"),
     trueVotes: integer("true_votes").notNull().default(0),
     falseVotes: integer("false_votes").notNull().default(0),
-    revertedByEditId: uuid("reverted_by_edit_id"),
-    resolvedByUserId: text("resolved_by_user_id"),
+    revertedByEditId: uuid("reverted_by_edit_id").references(
+      (): AnyPgColumn => investigationEdit.id,
+      { onDelete: "set null" },
+    ),
+    resolvedByUserId: text("resolved_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     resolvedAt: timestamp("resolved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -2281,6 +2287,46 @@ export const investigationEditVote = appSchema.table(
   },
   (t) => ({
     pk: uniqueIndex("inv_edit_vote_pk").on(t.editId, t.userId),
+  }),
+);
+
+export const investigationEditRelations = relations(
+  investigationEdit,
+  ({ one, many }) => ({
+    user: one(user, {
+      fields: [investigationEdit.userId],
+      references: [user.id],
+      relationName: "investigation_edit_author",
+    }),
+    resolvedBy: one(user, {
+      fields: [investigationEdit.resolvedByUserId],
+      references: [user.id],
+      relationName: "investigation_edit_resolved_by",
+    }),
+    revertedBy: one(investigationEdit, {
+      fields: [investigationEdit.revertedByEditId],
+      references: [investigationEdit.id],
+      relationName: "investigation_edit_revert",
+    }),
+    agent: one(agentProfiles, {
+      fields: [investigationEdit.agentId],
+      references: [agentProfiles.id],
+    }),
+    votes: many(investigationEditVote),
+  }),
+);
+
+export const investigationEditVoteRelations = relations(
+  investigationEditVote,
+  ({ one }) => ({
+    edit: one(investigationEdit, {
+      fields: [investigationEditVote.editId],
+      references: [investigationEdit.id],
+    }),
+    user: one(user, {
+      fields: [investigationEditVote.userId],
+      references: [user.id],
+    }),
   }),
 );
 
