@@ -171,3 +171,59 @@ export async function recordedUpdate(
     return { entity: { id: args.entityId }, editId: edit!.id };
   });
 }
+
+interface RecordedDeleteArgs {
+  entityType: EntityType;
+  entityId: string;
+  reason: string;
+}
+
+export async function recordedDelete(
+  ctx: RecordedWriteCtx,
+  args: RecordedDeleteArgs,
+): Promise<{ editId: string }> {
+  if (!ctx.isAdmin) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Delete is admin-only.",
+    });
+  }
+
+  const cfg = ENTITY_CONFIG[args.entityType];
+  const dbi = ctx.db ?? defaultDb;
+
+  return await dbi.transaction(async (tx) => {
+    const beforeRow = await tx
+      .select()
+      .from(cfg.table)
+      // @ts-expect-error polymorphic table — id column known via cfg
+      .where(eq(cfg.table.id, args.entityId))
+      .limit(1);
+
+    if (beforeRow.length === 0) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Entity not found." });
+    }
+
+    await tx
+      .delete(cfg.table)
+      // @ts-expect-error polymorphic table — id column known via cfg
+      .where(eq(cfg.table.id, args.entityId));
+
+    const [edit] = await tx
+      .insert(investigationEdit)
+      .values({
+        entityType: args.entityType,
+        entityId: args.entityId,
+        op: "delete",
+        patch: {},
+        before: beforeRow[0] as Record<string, unknown>,
+        sources: [],
+        userId: ctx.userId,
+        agentId: ctx.agentId ?? null,
+        status: "live",
+      })
+      .returning({ id: investigationEdit.id });
+
+    return { editId: edit!.id };
+  });
+}
