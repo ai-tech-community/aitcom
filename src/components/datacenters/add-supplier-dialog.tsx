@@ -54,6 +54,8 @@ export function AddSupplierDialog({ datacenterId }: { datacenterId: string }) {
   const [contractValueUsd, setContractValueUsd] = useState("");
   const [isLocal, setIsLocal] = useState(false);
   const [sourceUrl, setSourceUrl] = useState("");
+  const sourceUrlTrimmed = sourceUrl.trim();
+  const sourceUrlValid = /^https?:\/\/\S+/.test(sourceUrlTrimmed);
 
   const router = useRouter();
   const search = api.datacenters.searchBrands.useQuery(
@@ -79,6 +81,7 @@ export function AddSupplierDialog({ datacenterId }: { datacenterId: string }) {
       if (!brand && q.trim().length >= 2) {
         const created = await createBrand.mutateAsync({
           canonicalName: q.trim(),
+          website: sourceUrlTrimmed,
         });
         if (!created) throw new Error("Failed to create brand");
         brand = {
@@ -101,7 +104,7 @@ export function AddSupplierDialog({ datacenterId }: { datacenterId: string }) {
           ? Number(contractValueUsd)
           : undefined,
         isLocal,
-        sources: sourceUrl.trim() ? [{ url: sourceUrl.trim() }] : [],
+        sources: [{ url: sourceUrlTrimmed }],
       });
       toast.success("Supplier added (pending verification)");
       setOpen(false);
@@ -221,13 +224,20 @@ export function AddSupplierDialog({ datacenterId }: { datacenterId: string }) {
           </div>
 
           <div>
-            <Label>Source URL (optional)</Label>
+            <Label htmlFor="source-url">Source URL (required)</Label>
             <Input
+              id="source-url"
               type="url"
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}
               placeholder="https://..."
+              required
+              aria-required="true"
             />
+            <p className="text-muted-foreground mt-1 text-xs">
+              A public link that documents this supplier relationship. Reused
+              as the brand source if a new supplier is created.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2">
@@ -236,7 +246,12 @@ export function AddSupplierDialog({ datacenterId }: { datacenterId: string }) {
             </Button>
             <Button
               onClick={submit}
-              disabled={addSupplier.isPending || createBrand.isPending}
+              disabled={
+                addSupplier.isPending ||
+                createBrand.isPending ||
+                !sourceUrlValid ||
+                (!selectedBrand && q.trim().length < 2)
+              }
             >
               {addSupplier.isPending || createBrand.isPending
                 ? "Saving..."
