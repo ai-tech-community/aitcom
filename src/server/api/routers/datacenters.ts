@@ -25,6 +25,7 @@ import {
   type DatacenterSource,
 } from "@/server/db/schema";
 import { opacityScore } from "@/server/datacenters/jurisdiction-secrecy";
+import { recordedCreate } from "@/server/investigations/recorded-write";
 
 function isAdmin(ctx: { session: { user: unknown } }): boolean {
   return (ctx.session.user as { role?: string }).role === "admin";
@@ -1495,43 +1496,56 @@ export const datacentersRouter = createTRPCRouter({
         });
       }
 
+      const role = (ctx.session.user as { role?: string }).role;
+      const result = await recordedCreate(
+        {
+          userId: ctx.session.user.id,
+          isAdmin: role === "admin",
+          db: ctx.db,
+        },
+        {
+          entityType: "datacenter",
+          values: {
+            name: input.name,
+            slug: input.slug,
+            operatorId: input.operatorBrandId,
+            status: input.status,
+            aiDedicated: input.aiDedicated,
+            lat: input.lat,
+            lng: input.lng,
+            address: input.address,
+            city: input.city,
+            region: input.region,
+            country: input.country,
+            capacityMw: input.capacityMw,
+            capacityMwPlanned: input.capacityMwPlanned,
+            squareFootage: input.squareFootage,
+            rackCount: input.rackCount,
+            gpus: input.gpus,
+            primaryPowerSource: input.primaryPowerSource,
+            utilityId: input.utilityBrandId,
+            puePledged: input.puePledged,
+            coolingType: input.coolingType,
+            waterDrawMgd: input.waterDrawMgd,
+            waterDrawCubicM: input.waterDrawCubicM,
+            wuePledged: input.wuePledged,
+            announcedDate: input.announcedDate,
+            groundbreakDate: input.groundbreakDate,
+            onlineDate: input.onlineDate,
+            fullCapacityDate: input.fullCapacityDate,
+            capexUsd: input.capexUsd,
+            description: input.description,
+            sources: input.sources satisfies DatacenterSource[],
+          },
+          sources: input.sources,
+        },
+      );
+
       const [created] = await ctx.db
-        .insert(datacenters)
-        .values({
-          name: input.name,
-          slug: input.slug,
-          operatorId: input.operatorBrandId,
-          status: input.status,
-          aiDedicated: input.aiDedicated,
-          lat: input.lat,
-          lng: input.lng,
-          address: input.address,
-          city: input.city,
-          region: input.region,
-          country: input.country,
-          capacityMw: input.capacityMw,
-          capacityMwPlanned: input.capacityMwPlanned,
-          squareFootage: input.squareFootage,
-          rackCount: input.rackCount,
-          gpus: input.gpus,
-          primaryPowerSource: input.primaryPowerSource,
-          utilityId: input.utilityBrandId,
-          puePledged: input.puePledged,
-          coolingType: input.coolingType,
-          waterDrawMgd: input.waterDrawMgd,
-          waterDrawCubicM: input.waterDrawCubicM,
-          wuePledged: input.wuePledged,
-          announcedDate: input.announcedDate,
-          groundbreakDate: input.groundbreakDate,
-          onlineDate: input.onlineDate,
-          fullCapacityDate: input.fullCapacityDate,
-          capexUsd: input.capexUsd,
-          description: input.description,
-          sources: input.sources satisfies DatacenterSource[],
-          submittedByUserId: ctx.session.user.id,
-          verified: false,
-        })
-        .returning({ id: datacenters.id, slug: datacenters.slug });
+        .select({ id: datacenters.id, slug: datacenters.slug })
+        .from(datacenters)
+        .where(eq(datacenters.id, result.entity.id))
+        .limit(1);
 
       return created;
     }),
@@ -1587,19 +1601,36 @@ export const datacentersRouter = createTRPCRouter({
       if (exists.length) {
         slug = `${slug}-${Math.floor(Math.random() * 9999)}`;
       }
+
+      const role = (ctx.session.user as { role?: string }).role;
+      const isAdmin = role === "admin";
+
+      const result = await recordedCreate(
+        { userId: ctx.session.user.id, isAdmin, db: ctx.db },
+        {
+          entityType: "brand",
+          values: {
+            slug,
+            canonicalName: input.canonicalName,
+            website: input.website,
+          },
+          // Use website as the canonical source when provided. If absent, the
+          // wrapper's citation rule will surface a BAD_REQUEST — by design, until
+          // Phase B introduces propose-brand with explicit sources.
+          sources: input.website ? [{ url: input.website, type: "operator" }] : [],
+        },
+      );
+
       const [row] = await ctx.db
-        .insert(brands)
-        .values({
-          slug,
-          canonicalName: input.canonicalName,
-          website: input.website,
-          verified: false,
-        })
-        .returning({
+        .select({
           id: brands.id,
           slug: brands.slug,
           canonicalName: brands.canonicalName,
-        });
+        })
+        .from(brands)
+        .where(eq(brands.id, result.entity.id))
+        .limit(1);
+
       return row;
     }),
 
@@ -1613,7 +1644,7 @@ export const datacentersRouter = createTRPCRouter({
         role: z.string().max(200).optional(),
         contractValueUsd: z.number().nonnegative().optional(),
         isLocal: z.boolean().default(false),
-        sources: z.array(sourceSchema).max(20).default([]),
+        sources: z.array(sourceSchema).min(1).max(20),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1634,20 +1665,28 @@ export const datacentersRouter = createTRPCRouter({
           message: "Supplier already linked with that category",
         });
       }
-      const [row] = await ctx.db
-        .insert(datacenterSuppliers)
-        .values({
-          datacenterId: input.datacenterId,
-          supplierId: input.supplierBrandId,
-          category: input.category,
-          role: input.role,
-          contractValueUsd: input.contractValueUsd,
-          isLocal: input.isLocal,
-          sources: input.sources satisfies DatacenterSource[],
-          verified: false,
-        })
-        .returning({ id: datacenterSuppliers.id });
-      return row;
+
+      const role = (ctx.session.user as { role?: string }).role;
+      const isAdmin = role === "admin";
+
+      const result = await recordedCreate(
+        { userId: ctx.session.user.id, isAdmin, db: ctx.db },
+        {
+          entityType: "datacenter_supplier",
+          values: {
+            datacenterId: input.datacenterId,
+            supplierId: input.supplierBrandId,
+            category: input.category,
+            role: input.role,
+            contractValueUsd: input.contractValueUsd,
+            isLocal: input.isLocal,
+            sources: input.sources satisfies DatacenterSource[],
+          },
+          sources: input.sources,
+        },
+      );
+
+      return { id: result.entity.id };
     }),
 
   removeSupplier: protectedProcedure
@@ -1689,20 +1728,26 @@ export const datacentersRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const [row] = await ctx.db
-        .insert(datacenterFindings)
-        .values({
-          datacenterId: input.datacenterId,
-          userId: ctx.session.user.id,
-          title: input.title,
-          claim: input.claim,
-          body: input.body,
-          evidenceUrls: input.evidenceUrls,
-          status: "review",
-          upvotes: 0,
-        })
-        .returning({ id: datacenterFindings.id });
-      return row;
+      const role = (ctx.session.user as { role?: string }).role;
+      const isAdmin = role === "admin";
+
+      const result = await recordedCreate(
+        { userId: ctx.session.user.id, isAdmin, db: ctx.db },
+        {
+          entityType: "datacenter_finding",
+          values: {
+            datacenterId: input.datacenterId,
+            userId: ctx.session.user.id,
+            title: input.title,
+            claim: input.claim,
+            body: input.body,
+            evidenceUrls: input.evidenceUrls,
+          },
+          sources: input.evidenceUrls.map((url) => ({ url })),
+        },
+      );
+
+      return { id: result.entity.id };
     }),
 
   upvoteFinding: protectedProcedure

@@ -21,6 +21,7 @@ import * as migration_20260428_brand_commitments from "./20260428_brand_commitme
 import * as migration_20260428_ownership_subsidies_permits from "./20260428_ownership_subsidies_permits";
 import * as migration_20260428_brand_commitment_notes from "./20260428_brand_commitment_notes";
 import * as migration_20260505_benchmark_assignments from "./20260505_benchmark_assignments";
+import * as migration_20260509_investigation_edit_log from "./20260509_investigation_edit_log";
 
 export const migrations = [
   {
@@ -137,5 +138,10 @@ export const migrations = [
     up: migration_20260505_benchmark_assignments.up,
     down: migration_20260505_benchmark_assignments.down,
     name: "20260505_benchmark_assignments",
+  },
+  {
+    up: migration_20260509_investigation_edit_log.up,
+    down: migration_20260509_investigation_edit_log.down,
+    name: "20260509_investigation_edit_log",
   },
 ];

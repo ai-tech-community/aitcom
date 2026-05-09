@@ -1,4 +1,5 @@
 import { relations, sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   boolean,
   date,
@@ -2224,6 +2225,108 @@ export const datacenterFindingVotes = appSchema.table(
   (t) => ({
     pk: uniqueIndex("dc_finding_vote_pk").on(t.findingId, t.userId),
     findingIdx: index("dc_finding_vote_finding_idx").on(t.findingId),
+  }),
+);
+
+export const investigationEdit = appSchema.table(
+  "investigation_edit",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    op: text("op").notNull(),
+    patch: jsonb("patch")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    before: jsonb("before").$type<Record<string, unknown>>(),
+    sources: jsonb("sources")
+      .$type<{ url: string; title?: string; type?: string; publishedAt?: string }[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    agentId: text("agent_id").references(() => agentProfiles.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("live"),
+    trueVotes: integer("true_votes").notNull().default(0),
+    falseVotes: integer("false_votes").notNull().default(0),
+    revertedByEditId: uuid("reverted_by_edit_id").references(
+      (): AnyPgColumn => investigationEdit.id,
+      { onDelete: "set null" },
+    ),
+    resolvedByUserId: text("resolved_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    entityIdx: index("inv_edit_entity_idx").on(t.entityType, t.entityId),
+    userIdx: index("inv_edit_user_idx").on(t.userId),
+    statusIdx: index("inv_edit_status_idx").on(t.status),
+    createdIdx: index("inv_edit_created_idx").on(t.createdAt),
+  }),
+);
+
+export const investigationEditVote = appSchema.table(
+  "investigation_edit_vote",
+  {
+    editId: uuid("edit_id")
+      .notNull()
+      .references(() => investigationEdit.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    vote: integer("vote").notNull(),
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    pk: uniqueIndex("inv_edit_vote_pk").on(t.editId, t.userId),
+  }),
+);
+
+export const investigationEditRelations = relations(
+  investigationEdit,
+  ({ one, many }) => ({
+    user: one(user, {
+      fields: [investigationEdit.userId],
+      references: [user.id],
+      relationName: "investigation_edit_author",
+    }),
+    resolvedBy: one(user, {
+      fields: [investigationEdit.resolvedByUserId],
+      references: [user.id],
+      relationName: "investigation_edit_resolved_by",
+    }),
+    revertedBy: one(investigationEdit, {
+      fields: [investigationEdit.revertedByEditId],
+      references: [investigationEdit.id],
+      relationName: "investigation_edit_revert",
+    }),
+    agent: one(agentProfiles, {
+      fields: [investigationEdit.agentId],
+      references: [agentProfiles.id],
+    }),
+    votes: many(investigationEditVote),
+  }),
+);
+
+export const investigationEditVoteRelations = relations(
+  investigationEditVote,
+  ({ one }) => ({
+    edit: one(investigationEdit, {
+      fields: [investigationEditVote.editId],
+      references: [investigationEdit.id],
+    }),
+    user: one(user, {
+      fields: [investigationEditVote.userId],
+      references: [user.id],
+    }),
   }),
 );
 
