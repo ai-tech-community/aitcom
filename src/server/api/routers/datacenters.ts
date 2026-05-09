@@ -1644,7 +1644,7 @@ export const datacentersRouter = createTRPCRouter({
         role: z.string().max(200).optional(),
         contractValueUsd: z.number().nonnegative().optional(),
         isLocal: z.boolean().default(false),
-        sources: z.array(sourceSchema).max(20).default([]),
+        sources: z.array(sourceSchema).min(1).max(20),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1665,20 +1665,28 @@ export const datacentersRouter = createTRPCRouter({
           message: "Supplier already linked with that category",
         });
       }
-      const [row] = await ctx.db
-        .insert(datacenterSuppliers)
-        .values({
-          datacenterId: input.datacenterId,
-          supplierId: input.supplierBrandId,
-          category: input.category,
-          role: input.role,
-          contractValueUsd: input.contractValueUsd,
-          isLocal: input.isLocal,
-          sources: input.sources satisfies DatacenterSource[],
-          verified: false,
-        })
-        .returning({ id: datacenterSuppliers.id });
-      return row;
+
+      const role = (ctx.session.user as { role?: string }).role;
+      const isAdmin = role === "admin";
+
+      const result = await recordedCreate(
+        { userId: ctx.session.user.id, isAdmin, db: ctx.db },
+        {
+          entityType: "datacenter_supplier",
+          values: {
+            datacenterId: input.datacenterId,
+            supplierId: input.supplierBrandId,
+            category: input.category,
+            role: input.role,
+            contractValueUsd: input.contractValueUsd,
+            isLocal: input.isLocal,
+            sources: input.sources satisfies DatacenterSource[],
+          },
+          sources: input.sources,
+        },
+      );
+
+      return { id: result.entity.id };
     }),
 
   removeSupplier: protectedProcedure
