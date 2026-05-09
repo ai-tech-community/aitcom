@@ -12,7 +12,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       "before" jsonb,
       "sources" jsonb NOT NULL DEFAULT '[]'::jsonb,
       "user_id" text REFERENCES "app"."user"("id") ON DELETE SET NULL,
-      "agent_id" uuid REFERENCES "app"."agent_profile"("id") ON DELETE SET NULL,
+      "agent_id" text REFERENCES "app"."agent_profile"("id") ON DELETE SET NULL,
       "status" text NOT NULL DEFAULT 'live',
       "true_votes" integer NOT NULL DEFAULT 0,
       "false_votes" integer NOT NULL DEFAULT 0,

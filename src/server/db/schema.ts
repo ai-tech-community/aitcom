@@ -2244,7 +2244,7 @@ export const investigationEdit = appSchema.table(
       .notNull()
       .default(sql`'[]'::jsonb`),
     userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
-    agentId: uuid("agent_id").references(() => agentProfiles.id, {
+    agentId: text("agent_id").references(() => agentProfiles.id, {
       onDelete: "set null",
     }),
     status: text("status").notNull().default("live"),
