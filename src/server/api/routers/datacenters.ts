@@ -1601,19 +1601,36 @@ export const datacentersRouter = createTRPCRouter({
       if (exists.length) {
         slug = `${slug}-${Math.floor(Math.random() * 9999)}`;
       }
+
+      const role = (ctx.session.user as { role?: string }).role;
+      const isAdmin = role === "admin";
+
+      const result = await recordedCreate(
+        { userId: ctx.session.user.id, isAdmin, db: ctx.db },
+        {
+          entityType: "brand",
+          values: {
+            slug,
+            canonicalName: input.canonicalName,
+            website: input.website,
+          },
+          // Use website as the canonical source when provided. If absent, the
+          // wrapper's citation rule will surface a BAD_REQUEST — by design, until
+          // Phase B introduces propose-brand with explicit sources.
+          sources: input.website ? [{ url: input.website, type: "operator" }] : [],
+        },
+      );
+
       const [row] = await ctx.db
-        .insert(brands)
-        .values({
-          slug,
-          canonicalName: input.canonicalName,
-          website: input.website,
-          verified: false,
-        })
-        .returning({
+        .select({
           id: brands.id,
           slug: brands.slug,
           canonicalName: brands.canonicalName,
-        });
+        })
+        .from(brands)
+        .where(eq(brands.id, result.entity.id))
+        .limit(1);
+
       return row;
     }),
 
