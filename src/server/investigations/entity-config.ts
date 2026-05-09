@@ -65,7 +65,9 @@ export const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
       "address",
       "gpus",
     ]),
-    adminOnlyFields: new Set(["verified", "slug"]),
+    // slug is set by users on create. Phase B will gate post-create slug
+    // edits via an update-only admin set when update procs land.
+    adminOnlyFields: new Set(["verified"]),
     editableFields: new Set([
       "name",
       "slug",
@@ -116,7 +118,7 @@ export const ENTITY_CONFIG: Record<EntityType, EntityConfig> = {
       "aliases",
       "categoryIds",
     ]),
-    adminOnlyFields: new Set(["verified", "slug"]),
+    adminOnlyFields: new Set(["verified"]),
     editableFields: new Set([
       "canonicalName",
       "slug",

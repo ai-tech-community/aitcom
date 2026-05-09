@@ -83,7 +83,7 @@ export const investigationEdit = appSchema.table("investigation_edit", {
     .default(sql`'[]'::jsonb`),
   userId: text("user_id")
     .references(() => user.id, { onDelete: "set null" }),
-  agentId: uuid("agent_id"),                   // null for human, set for MCP edits
+  agentId: text("agent_id"),                   // null for human, set for MCP edits; references agent_profile.id (varchar 255)
   status: text("status").notNull().default("live"),
     // 'live' | 'contested' | 'reverted' | 'accepted'
   trueVotes: integer("true_votes").notNull().default(0),

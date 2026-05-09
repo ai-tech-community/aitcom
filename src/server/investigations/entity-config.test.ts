@@ -45,7 +45,7 @@ describe("ENTITY_CONFIG", () => {
   it("datacenter has expected admin-only fields per spec", () => {
     const cfg = ENTITY_CONFIG["datacenter" satisfies EntityType];
     expect(cfg.adminOnlyFields.has("verified")).toBe(true);
-    expect(cfg.adminOnlyFields.has("slug")).toBe(true);
+    expect(cfg.adminOnlyFields.has("slug")).toBe(false);
   });
 
   it("datacenter has expected factual fields per spec", () => {
@@ -65,7 +65,7 @@ describe("ENTITY_CONFIG", () => {
   it("brand has expected admin-only fields", () => {
     const cfg = ENTITY_CONFIG["brand" satisfies EntityType];
     expect(cfg.adminOnlyFields.has("verified")).toBe(true);
-    expect(cfg.adminOnlyFields.has("slug")).toBe(true);
+    expect(cfg.adminOnlyFields.has("slug")).toBe(false);
   });
 
   it("datacenter_supplier marks verified as admin-only", () => {
