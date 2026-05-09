@@ -25,6 +25,7 @@ import {
   type DatacenterSource,
 } from "@/server/db/schema";
 import { opacityScore } from "@/server/datacenters/jurisdiction-secrecy";
+import { recordedCreate } from "@/server/investigations/recorded-write";
 
 function isAdmin(ctx: { session: { user: unknown } }): boolean {
   return (ctx.session.user as { role?: string }).role === "admin";
@@ -1495,43 +1496,56 @@ export const datacentersRouter = createTRPCRouter({
         });
       }
 
+      const role = (ctx.session.user as { role?: string }).role;
+      const result = await recordedCreate(
+        {
+          userId: ctx.session.user.id,
+          isAdmin: role === "admin",
+          db: ctx.db,
+        },
+        {
+          entityType: "datacenter",
+          values: {
+            name: input.name,
+            slug: input.slug,
+            operatorId: input.operatorBrandId,
+            status: input.status,
+            aiDedicated: input.aiDedicated,
+            lat: input.lat,
+            lng: input.lng,
+            address: input.address,
+            city: input.city,
+            region: input.region,
+            country: input.country,
+            capacityMw: input.capacityMw,
+            capacityMwPlanned: input.capacityMwPlanned,
+            squareFootage: input.squareFootage,
+            rackCount: input.rackCount,
+            gpus: input.gpus,
+            primaryPowerSource: input.primaryPowerSource,
+            utilityId: input.utilityBrandId,
+            puePledged: input.puePledged,
+            coolingType: input.coolingType,
+            waterDrawMgd: input.waterDrawMgd,
+            waterDrawCubicM: input.waterDrawCubicM,
+            wuePledged: input.wuePledged,
+            announcedDate: input.announcedDate,
+            groundbreakDate: input.groundbreakDate,
+            onlineDate: input.onlineDate,
+            fullCapacityDate: input.fullCapacityDate,
+            capexUsd: input.capexUsd,
+            description: input.description,
+            sources: input.sources satisfies DatacenterSource[],
+          },
+          sources: input.sources,
+        },
+      );
+
       const [created] = await ctx.db
-        .insert(datacenters)
-        .values({
-          name: input.name,
-          slug: input.slug,
-          operatorId: input.operatorBrandId,
-          status: input.status,
-          aiDedicated: input.aiDedicated,
-          lat: input.lat,
-          lng: input.lng,
-          address: input.address,
-          city: input.city,
-          region: input.region,
-          country: input.country,
-          capacityMw: input.capacityMw,
-          capacityMwPlanned: input.capacityMwPlanned,
-          squareFootage: input.squareFootage,
-          rackCount: input.rackCount,
-          gpus: input.gpus,
-          primaryPowerSource: input.primaryPowerSource,
-          utilityId: input.utilityBrandId,
-          puePledged: input.puePledged,
-          coolingType: input.coolingType,
-          waterDrawMgd: input.waterDrawMgd,
-          waterDrawCubicM: input.waterDrawCubicM,
-          wuePledged: input.wuePledged,
-          announcedDate: input.announcedDate,
-          groundbreakDate: input.groundbreakDate,
-          onlineDate: input.onlineDate,
-          fullCapacityDate: input.fullCapacityDate,
-          capexUsd: input.capexUsd,
-          description: input.description,
-          sources: input.sources satisfies DatacenterSource[],
-          submittedByUserId: ctx.session.user.id,
-          verified: false,
-        })
-        .returning({ id: datacenters.id, slug: datacenters.slug });
+        .select({ id: datacenters.id, slug: datacenters.slug })
+        .from(datacenters)
+        .where(eq(datacenters.id, result.entity.id))
+        .limit(1);
 
       return created;
     }),
