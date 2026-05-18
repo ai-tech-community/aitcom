@@ -27,8 +27,22 @@ export function ManualRunForm({
   onDone: () => void;
 }) {
   const utils = api.useUtils();
+  // If the contributor has a held assignment that covers this prompt
+  // and pins a surface, the form starts pre-selected to that surface
+  // and stamps the assignmentId on submit. See ADR-0008 Step 5.
+  const myAssignments = api.benchmark.listMyAssignments.useQuery();
+  const matchingHeld = myAssignments.data?.find(
+    (a) =>
+      a.status === "held" &&
+      a.modelSurface &&
+      a.promptIds.includes(promptId),
+  );
+  const heldSurface = matchingHeld?.modelSurface as
+    | BenchmarkModelSurface
+    | undefined;
+
   const [modelSurface, setModelSurface] = useState<BenchmarkModelSurface | "">(
-    "",
+    heldSurface ?? "",
   );
   const [modelId, setModelId] = useState("");
   const [rawAnswer, setRawAnswer] = useState("");
@@ -90,6 +104,7 @@ export function ManualRunForm({
               modelSurface,
               modelId: modelId.trim() || undefined,
               rawAnswer,
+              assignmentId: matchingHeld?.id,
             });
           }}
         >

@@ -17,7 +17,6 @@ import { AgentRunModal } from "./agent-run-modal";
 import {
   ALL_FILTER_VALUE,
   BenchmarkAssignmentPanel,
-  type LatestBenchmarkAssignment,
 } from "./benchmark-assignment-panel";
 import { PromptCoverageStrip } from "./coverage-map";
 
@@ -36,8 +35,6 @@ export function RunPromptsTab() {
   const [manualFor, setManualFor] = useState<string | null>(null);
   const [agentFor, setAgentFor] = useState<string | null>(null);
   const [rawOpen, setRawOpen] = useState<Record<string, boolean>>({});
-  const [latestAssignment, setLatestAssignment] =
-    useState<LatestBenchmarkAssignment | null>(null);
 
   const prompts = api.benchmark.listApprovedPrompts.useQuery({
     categoryId: categoryId === ALL_FILTER_VALUE ? undefined : categoryId,
@@ -110,13 +107,7 @@ export function RunPromptsTab() {
         />
       </div>
 
-      <BenchmarkAssignmentPanel
-        categories={categories.data}
-        intents={intents.data}
-        categoryId={categoryId}
-        intentId={intentId}
-        onAssignmentCreated={setLatestAssignment}
-      />
+      <BenchmarkAssignmentPanel />
 
       <ul className="grid gap-3 md:grid-cols-2">
         {prompts.data?.map((p) => (
@@ -272,16 +263,6 @@ export function RunPromptsTab() {
       {agentFor && (
         <AgentRunModal
           promptId={agentFor}
-          assignmentId={
-            latestAssignment?.promptIds.includes(agentFor)
-              ? latestAssignment.assignmentId
-              : undefined
-          }
-          assignmentMetadata={
-            latestAssignment?.promptIds.includes(agentFor)
-              ? latestAssignment
-              : undefined
-          }
           onClose={() => setAgentFor(null)}
         />
       )}

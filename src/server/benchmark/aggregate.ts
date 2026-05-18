@@ -7,6 +7,7 @@ import {
   rebuildAggBrandVisibilityByDay,
   rebuildAggCoverageByCell,
 } from "./aggregate-brand-visibility";
+import { recomputeCoverageBadges } from "./coverage-badges";
 
 type DB = typeof _db;
 
@@ -274,6 +275,7 @@ export async function rebuildAllAggregates(db: DB): Promise<{
     coverageByCell: number;
     visibilityBySurface: number;
     visibilityByDay: number;
+    coverageBadges: number;
   };
 }> {
   const t0 = Date.now();
@@ -298,6 +300,10 @@ export async function rebuildAllAggregates(db: DB): Promise<{
   const t7 = Date.now();
   await rebuildAggBrandVisibilityByDay(db);
   const t8 = Date.now();
+  // Cosmetic coverage badges (ADR-0008 decision 4). Must run after the
+  // coverage rebuild — it reads `agg_coverage_by_cell.meets_threshold`.
+  await recomputeCoverageBadges(db);
+  const t9 = Date.now();
   return {
     ok: true,
     durations: {
@@ -310,6 +316,7 @@ export async function rebuildAllAggregates(db: DB): Promise<{
       coverageByCell: t6b - t6,
       visibilityBySurface: t7 - t6b,
       visibilityByDay: t8 - t7,
+      coverageBadges: t9 - t8,
     },
   };
 }

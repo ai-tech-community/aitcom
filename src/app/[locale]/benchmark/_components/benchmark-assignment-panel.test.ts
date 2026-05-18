@@ -2,10 +2,17 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/trpc/react", () => ({
   api: {
-    benchmark: {
-      createAssignment: {
-        useMutation: vi.fn(),
+    useUtils: vi.fn(() => ({
+      benchmark: {
+        listOpenAssignments: { invalidate: vi.fn() },
+        listMyAssignments: { invalidate: vi.fn() },
       },
+    })),
+    benchmark: {
+      listOpenAssignments: { useQuery: vi.fn() },
+      listMyAssignments: { useQuery: vi.fn() },
+      grabAssignment: { useMutation: vi.fn() },
+      releaseAssignment: { useMutation: vi.fn() },
     },
   },
 }));

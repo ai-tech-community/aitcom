@@ -3,23 +3,17 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   BENCHMARK_DEFAULT_LOCALE,
-  BENCHMARK_MODEL_PROVIDERS,
-  type BenchmarkModelProvider,
+  BENCHMARK_MODEL_SURFACE_LABELS,
+  type BenchmarkModelSurface,
 } from "@/lib/benchmark-constants";
 import { api } from "@/trpc/react";
 
+// Kept for backward compatibility with `run-prompts-tab.tsx` and
+// the existing tests, even though create-assignment is no longer the
+// primary flow under BYOA.
 export const ALL_FILTER_VALUE = "__all__";
-const ANY_PROVIDER_VALUE = "__any_provider__";
 
 type FilterRow = {
   id: string;
@@ -61,173 +55,155 @@ export function resolveSelectedSlug(
   return rows?.find((row) => row.id === selectedId)?.slug;
 }
 
-function selectedName(rows: FilterRow[] | undefined, selectedId: string) {
-  if (selectedId === ALL_FILTER_VALUE) return undefined;
-  return rows?.find((row) => row.id === selectedId)?.name;
-}
-
-function formatScope(
-  categories: FilterRow[] | undefined,
-  intents: FilterRow[] | undefined,
-  categoryId: string,
-  intentId: string,
-) {
-  const categoryName = selectedName(categories, categoryId);
-  const intentName = selectedName(intents, intentId);
-
-  if (categoryName && intentName) return `${categoryName} / ${intentName}`;
-  if (categoryName) return categoryName;
-  if (intentName) return intentName;
-  return "all approved prompts";
-}
-
-export function BenchmarkAssignmentPanel({
-  categories,
-  intents,
-  categoryId,
-  intentId,
-  onAssignmentCreated,
-}: {
-  categories: FilterRow[] | undefined;
-  intents: FilterRow[] | undefined;
-  categoryId: string;
-  intentId: string;
+/**
+ * BYOA assignment panel: shows open assignments (virtual pool of
+ * under-covered cells) and the contributor's held assignments. There is
+ * no claim-then-system-executes flow — the contributor runs the prompts
+ * in their own AI product session and submits manually. Abandoning or
+ * partially completing has no penalty (ADR-0008 Step 5).
+ *
+ * `categories` / `intents` / `categoryId` / `intentId` /
+ * `onAssignmentCreated` are accepted for backward compatibility with
+ * the surrounding tab but are not used by this version of the panel.
+ */
+export function BenchmarkAssignmentPanel(_props: {
+  categories?: FilterRow[] | undefined;
+  intents?: FilterRow[] | undefined;
+  categoryId?: string;
+  intentId?: string;
   onAssignmentCreated?: (assignment: LatestBenchmarkAssignment) => void;
 }) {
-  const [modelProvider, setModelProvider] = useState(ANY_PROVIDER_VALUE);
-  const [modelId, setModelId] = useState("");
-  const [locale, setLocale] = useState(BENCHMARK_DEFAULT_LOCALE);
-  const [latest, setLatest] = useState<LatestBenchmarkAssignment | null>(null);
+  const utils = api.useUtils();
+  const open = api.benchmark.listOpenAssignments.useQuery({});
+  const mine = api.benchmark.listMyAssignments.useQuery();
+  const myHeld = mine.data?.filter((a) => a.status === "held") ?? [];
 
-  const createAssignment = api.benchmark.createAssignment.useMutation({
-    onSuccess: (data) => {
-      const assignment = {
-        assignmentId: data.assignment.id,
-        promptIds: data.prompts.map((prompt) => prompt.id),
-        promptCount: data.prompts.length,
-        instructions: data.instructions,
-        modelProvider: data.assignment.modelProvider,
-        modelId: data.assignment.modelId,
-        locale: data.assignment.locale,
-      };
-      setLatest(assignment);
-      onAssignmentCreated?.(assignment);
+  const grab = api.benchmark.grabAssignment.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.benchmark.listOpenAssignments.invalidate(),
+        utils.benchmark.listMyAssignments.invalidate(),
+      ]);
+    },
+  });
+  const release = api.benchmark.releaseAssignment.useMutation({
+    onSuccess: async () => {
+      await utils.benchmark.listMyAssignments.invalidate();
     },
   });
 
-  const scope = formatScope(categories, intents, categoryId, intentId);
-  const categorySlug = resolveSelectedSlug(categories, categoryId);
-  const intentSlug = resolveSelectedSlug(intents, intentId);
-  const trimmedModelId = modelId.trim();
-  const trimmedLocale = locale.trim();
-  const isResolvingSelectedFilters =
-    (categoryId !== ALL_FILTER_VALUE && !categorySlug) ||
-    (intentId !== ALL_FILTER_VALUE && !intentSlug);
-
   return (
-    <section className="flex flex-col gap-3 rounded-md border p-4">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-base font-medium">Agent assignment</h2>
-          <p className="text-muted-foreground text-sm">
-            Your agent runs these prompts and submits results through MCP.
-          </p>
-        </div>
-        {latest && (
-          <span className="bg-muted rounded px-2 py-1 text-xs">
-            {latest.promptCount} prompt{latest.promptCount === 1 ? "" : "s"}
-          </span>
-        )}
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-[minmax(9rem,13rem)_minmax(10rem,1fr)_minmax(7rem,9rem)_auto] sm:items-end">
-        <div className="flex flex-col gap-1 text-sm">
-          <label
-            className="text-muted-foreground text-xs"
-            htmlFor="benchmark-assignment-provider"
-          >
-            Provider
-          </label>
-          <Select value={modelProvider} onValueChange={setModelProvider}>
-            <SelectTrigger
-              id="benchmark-assignment-provider"
-              className="w-full"
-            >
-              <SelectValue placeholder="Optional" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY_PROVIDER_VALUE}>Any provider</SelectItem>
-              {BENCHMARK_MODEL_PROVIDERS.map((provider) => (
-                <SelectItem key={provider} value={provider}>
-                  {provider}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <label
-          className="flex flex-col gap-1 text-sm"
-          htmlFor="benchmark-assignment-model-id"
-        >
-          <span className="text-muted-foreground text-xs">Model id</span>
-          <Input
-            id="benchmark-assignment-model-id"
-            placeholder="Optional model id"
-            value={modelId}
-            onChange={(event) => setModelId(event.target.value)}
-          />
-        </label>
-
-        <label
-          className="flex flex-col gap-1 text-sm"
-          htmlFor="benchmark-assignment-locale"
-        >
-          <span className="text-muted-foreground text-xs">Locale</span>
-          <Input
-            id="benchmark-assignment-locale"
-            value={locale}
-            onChange={(event) => setLocale(event.target.value)}
-            placeholder={BENCHMARK_DEFAULT_LOCALE}
-          />
-        </label>
-
-        <Button
-          type="button"
-          onClick={() =>
-            createAssignment.mutate({
-              categorySlug,
-              intentSlug,
-              modelProvider:
-                modelProvider === ANY_PROVIDER_VALUE
-                  ? undefined
-                  : (modelProvider as BenchmarkModelProvider),
-              modelId: trimmedModelId || undefined,
-              locale: trimmedLocale || BENCHMARK_DEFAULT_LOCALE,
-            })
-          }
-          disabled={createAssignment.isPending || isResolvingSelectedFilters}
-        >
-          {createAssignment.isPending ? "Creating..." : `Create for ${scope}`}
-        </Button>
-      </div>
-
-      {createAssignment.error && (
-        <p className="text-destructive text-sm">
-          {createAssignment.error.message}
+    <section className="flex flex-col gap-4 rounded-md border p-4">
+      <div>
+        <h2 className="text-base font-medium">Assignments</h2>
+        <p className="text-muted-foreground text-sm">
+          You run these prompts in your own AI product session and paste
+          the answers back. Grabbing an assignment holds it for 7 days;
+          you can release it any time. Nothing penalises you for not
+          finishing.
         </p>
+      </div>
+
+      {myHeld.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium">Your held assignments</h3>
+          <ul className="flex flex-col gap-2">
+            {myHeld.map((a) => (
+              <li
+                key={a.id}
+                className="flex flex-col gap-1 rounded-md border p-3 text-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">
+                    {a.modelSurface
+                      ? BENCHMARK_MODEL_SURFACE_LABELS[
+                          a.modelSurface as BenchmarkModelSurface
+                        ]
+                      : "Any surface"}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={release.isPending}
+                    onClick={() =>
+                      release.mutate({ assignmentId: a.id })
+                    }
+                  >
+                    Release
+                  </Button>
+                </div>
+                <span className="text-muted-foreground text-xs">
+                  {a.promptIds.length} prompt
+                  {a.promptIds.length === 1 ? "" : "s"} ·{" "}
+                  {a.expiresAt
+                    ? `expires ${new Date(a.expiresAt as unknown as string).toLocaleDateString()}`
+                    : "no expiry"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
-      {latest && (
-        <div className="flex flex-col gap-2">
-          <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
-            <span>Assignment {latest.assignmentId}</span>
-            <span>{latest.promptCount} prompts selected</span>
-          </div>
-          <pre className="bg-muted/40 max-h-72 overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap">
-            {latest.instructions}
-          </pre>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">Open assignments</h3>
+          {open.isFetching && (
+            <span className="text-muted-foreground text-xs">Loading…</span>
+          )}
         </div>
+        {open.data && open.data.bundles.length === 0 && (
+          <p className="text-muted-foreground text-sm">
+            No gap cells right now — everything is covered. Browse the
+            prompt list below to submit anyway.
+          </p>
+        )}
+        <ul className="flex flex-col gap-2">
+          {open.data?.bundles.map((b) => (
+            <li
+              key={b.pseudoId}
+              className="flex flex-col gap-2 rounded-md border p-3 text-sm"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium">
+                  {BENCHMARK_MODEL_SURFACE_LABELS[b.modelSurface]}
+                </span>
+                <Button
+                  size="sm"
+                  disabled={grab.isPending}
+                  onClick={() =>
+                    grab.mutate({
+                      modelSurface: b.modelSurface,
+                      promptIds: b.promptIds,
+                    })
+                  }
+                >
+                  Grab
+                </Button>
+              </div>
+              <span className="text-muted-foreground text-xs">
+                {b.gapSummary}
+              </span>
+              <ul className="text-muted-foreground flex flex-col gap-0.5 text-xs">
+                {b.prompts.slice(0, 3).map((p) => (
+                  <li key={p.id} className="truncate">
+                    · {p.text}
+                  </li>
+                ))}
+                {b.prompts.length > 3 && (
+                  <li>+ {b.prompts.length - 3} more</li>
+                )}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {grab.error && (
+        <p className="text-destructive text-sm">{grab.error.message}</p>
+      )}
+      {release.error && (
+        <p className="text-destructive text-sm">{release.error.message}</p>
       )}
     </section>
   );

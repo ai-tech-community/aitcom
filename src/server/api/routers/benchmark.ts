@@ -620,6 +620,194 @@ export const benchmarkRouter = createTRPCRouter({
       .limit(50);
   }),
 
+  // Virtual pool of open assignments derived from coverage gaps. Each
+  // returned item bundles a small set of under-covered prompts on a
+  // single surface; contributors can `grabAssignment` to materialise
+  // it as a held row. See ADR-0008 Step 5.
+  listOpenAssignments: protectedProcedure
+    .input(
+      z.object({
+        windowDays: z
+          .union([z.literal(7), z.literal(30), z.literal(90)])
+          .default(30),
+        promptsPerBundle: z.number().int().min(1).max(10).default(5),
+        maxBundles: z.number().int().min(1).max(20).default(8),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Cells that don't yet meet the threshold (i.e. still need
+      // contributors). Excludes legacy_unverified by construction
+      // (the coverage rebuild excludes those rows).
+      const gaps = await ctx.db
+        .select({
+          promptId: aggCoverageByCell.promptId,
+          modelSurface: aggCoverageByCell.modelSurface,
+          distinctContributors: aggCoverageByCell.distinctContributors,
+        })
+        .from(aggCoverageByCell)
+        .where(
+          and(
+            eq(aggCoverageByCell.windowDays, input.windowDays),
+            eq(aggCoverageByCell.meetsThreshold, false),
+          ),
+        );
+
+      // Rank surfaces by what this contributor has previously
+      // submitted to (ADR-0008 decision 3: simple self-serve heuristic).
+      const myRecentSurfaces = await ctx.db
+        .select({
+          modelSurface: benchmarkRuns.modelSurface,
+          n: sql<number>`count(*)`.mapWith(Number),
+        })
+        .from(benchmarkRuns)
+        .where(eq(benchmarkRuns.submittedByUserId, userId))
+        .groupBy(benchmarkRuns.modelSurface);
+      const surfaceAffinity = new Map<string, number>();
+      for (const r of myRecentSurfaces) {
+        surfaceAffinity.set(r.modelSurface, r.n);
+      }
+
+      // Fetch prompt text for gap cells in a single round-trip.
+      const promptIds = Array.from(new Set(gaps.map((g) => g.promptId)));
+      const promptRows =
+        promptIds.length === 0
+          ? []
+          : await ctx.db
+              .select({
+                id: benchmarkPrompts.id,
+                text: benchmarkPrompts.text,
+              })
+              .from(benchmarkPrompts)
+              .where(
+                and(
+                  inArray(benchmarkPrompts.id, promptIds),
+                  eq(benchmarkPrompts.status, "approved"),
+                ),
+              );
+      const promptText = new Map(promptRows.map((p) => [p.id, p.text]));
+
+      // Group gap cells by surface; within each surface, take the most-
+      // under-covered prompts first (smallest distinct_contributors).
+      const bySurface = new Map<
+        string,
+        Array<{ promptId: string; distinctContributors: number }>
+      >();
+      for (const g of gaps) {
+        if (!promptText.has(g.promptId)) continue;
+        const arr = bySurface.get(g.modelSurface) ?? [];
+        arr.push({
+          promptId: g.promptId,
+          distinctContributors: g.distinctContributors,
+        });
+        bySurface.set(g.modelSurface, arr);
+      }
+
+      const bundles: Array<{
+        pseudoId: string;
+        modelSurface: BenchmarkModelSurface;
+        promptIds: string[];
+        prompts: Array<{ id: string; text: string }>;
+        gapSummary: string;
+      }> = [];
+      for (const [surface, cells] of bySurface) {
+        cells.sort((a, b) => a.distinctContributors - b.distinctContributors);
+        const chunk = cells.slice(0, input.promptsPerBundle);
+        if (chunk.length === 0) continue;
+        const chunkPromptIds = chunk.map((c) => c.promptId);
+        bundles.push({
+          pseudoId: `${surface}:${chunkPromptIds.slice().sort().join(",")}`,
+          modelSurface: surface as BenchmarkModelSurface,
+          promptIds: chunkPromptIds,
+          prompts: chunkPromptIds.map((id) => ({
+            id,
+            text: promptText.get(id) ?? "",
+          })),
+          gapSummary: `${chunk.length} prompts on this surface need more contributors`,
+        });
+      }
+      bundles.sort(
+        (a, b) =>
+          (surfaceAffinity.get(b.modelSurface) ?? 0) -
+          (surfaceAffinity.get(a.modelSurface) ?? 0),
+      );
+
+      return { bundles: bundles.slice(0, input.maxBundles) };
+    }),
+
+  grabAssignment: protectedProcedure
+    .input(
+      z.object({
+        modelSurface: z.enum(BENCHMARK_MODEL_SURFACES),
+        promptIds: z.array(z.string().uuid()).min(1).max(10),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const approved = await ctx.db
+        .select({ id: benchmarkPrompts.id })
+        .from(benchmarkPrompts)
+        .where(
+          and(
+            inArray(benchmarkPrompts.id, input.promptIds),
+            eq(benchmarkPrompts.status, "approved"),
+          ),
+        );
+      if (approved.length !== input.promptIds.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "One or more prompts are not approved.",
+        });
+      }
+
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const [assignment] = await ctx.db
+        .insert(benchmarkAssignments)
+        .values({
+          userId,
+          promptIds: input.promptIds,
+          modelSurface: input.modelSurface,
+          modelProvider: providerForSurface(input.modelSurface),
+          locale: BENCHMARK_DEFAULT_LOCALE,
+          status: "held",
+          expiresAt,
+        })
+        .returning();
+      if (!assignment) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to grab assignment.",
+        });
+      }
+      return { assignment };
+    }),
+
+  releaseAssignment: protectedProcedure
+    .input(z.object({ assignmentId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const result = await ctx.db
+        .update(benchmarkAssignments)
+        .set({ status: "expired" })
+        .where(
+          and(
+            eq(benchmarkAssignments.id, input.assignmentId),
+            eq(benchmarkAssignments.userId, userId),
+            eq(benchmarkAssignments.status, "held"),
+          ),
+        )
+        .returning({ id: benchmarkAssignments.id });
+      if (result.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Assignment not found or not held by you.",
+        });
+      }
+      return { ok: true as const };
+    }),
+
   submitRun: protectedProcedure
     .input(
       z.object({
