@@ -23,14 +23,6 @@
     {
       "path": "/api/cron/benchmark-alerts",
       "schedule": "30 9 * * *"
-    },
-    {
-      "path": "/api/cron/benchmark-proxy-runner",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/benchmark-router",
-      "schedule": "0 * * * *"
     }
   ]
 }
