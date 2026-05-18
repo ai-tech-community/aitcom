@@ -1369,6 +1369,12 @@ export const brandWatches = appSchema.table(
   }),
 );
 
+// BYOA assignment statuses. `held` = contributor has it and may submit
+// runs against its prompts; `completed` = explicitly marked done by the
+// contributor (or all prompts submitted); `expired` = past `expiresAt`
+// or explicitly released. See ADR-0008 Step 5.
+export type BenchmarkAssignmentStatus = "held" | "completed" | "expired";
+
 export const benchmarkAssignments = appSchema.table(
   "benchmark_assignment",
   {
@@ -1378,11 +1384,16 @@ export const benchmarkAssignments = appSchema.table(
     promptIds: uuid("prompt_ids").array().notNull(),
     modelProvider: text("model_provider"),
     modelId: text("model_id"),
+    modelSurface: text("model_surface").$type<ModelSurface>(),
     locale: text("locale").notNull().default("en-US"),
-    status: text("status").notNull().default("active"),
+    status: text("status")
+      .notNull()
+      .default("held")
+      .$type<BenchmarkAssignmentStatus>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
   (t) => ({
@@ -1391,6 +1402,10 @@ export const benchmarkAssignments = appSchema.table(
       t.status,
     ),
     agentIdx: index("benchmark_assignment_agent_idx").on(t.agentId),
+    statusExpiresIdx: index("benchmark_assignment_status_expires_idx").on(
+      t.status,
+      t.expiresAt,
+    ),
   }),
 );
 
@@ -1423,7 +1438,10 @@ export const benchmarkRuns = appSchema.table(
     agentId: uuid("agent_id"),
     assignmentId: uuid("assignment_id"),
     modelProvider: text("model_provider").notNull(),
-    modelId: text("model_id").notNull(),
+    // Nullable under BYOA: contributors generally don't know the specific
+    // model id / SKU their AI product shipped. `model_surface` is the
+    // primary slicing key. See ADR-0006 + migration 20260518b.
+    modelId: text("model_id"),
     modelVersion: text("model_version"),
     modelSurface: text("model_surface")
       .notNull()
@@ -1728,6 +1746,37 @@ export const aggBrandVisibilityBySurface = appSchema.table(
   (t) => ({
     brandIdx: index("agg_brand_visibility_by_surface_brand_idx").on(
       t.brandId,
+      t.windowDays,
+    ),
+  }),
+);
+
+/**
+ * Per-cell coverage status: distinct contributors per
+ * (prompt, model_surface) per window. Powers the coverage map and the
+ * ≥3-distinct-contributor surface threshold from ADR-0007 decision 2.
+ * `legacy_unverified` runs are excluded.
+ */
+export const aggCoverageByCell = appSchema.table(
+  "agg_coverage_by_cell",
+  {
+    promptId: uuid("prompt_id").notNull(),
+    modelSurface: text("model_surface").notNull().$type<ModelSurface>(),
+    windowDays: integer("window_days").notNull(),
+    distinctContributors: integer("distinct_contributors").notNull(),
+    runsTotal: integer("runs_total").notNull(),
+    meetsThreshold: boolean("meets_threshold").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    thresholdIdx: index("agg_coverage_by_cell_threshold_idx").on(
+      t.windowDays,
+      t.meetsThreshold,
+    ),
+    promptIdx: index("agg_coverage_by_cell_prompt_idx").on(
+      t.promptId,
       t.windowDays,
     ),
   }),
