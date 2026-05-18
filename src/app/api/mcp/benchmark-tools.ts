@@ -60,13 +60,6 @@ export function registerBenchmarkTools(
           .describe(
             "UUID of the approved prompt (see list-benchmark-prompts).",
           ),
-        assignmentId: z
-          .string()
-          .uuid()
-          .optional()
-          .describe(
-            "Optional benchmark assignment UUID. Include this when running guided assignment prompts.",
-          ),
         modelProvider: z
           .enum(BENCHMARK_MODEL_PROVIDERS)
           .describe("Provider of the model the answer came from."),
