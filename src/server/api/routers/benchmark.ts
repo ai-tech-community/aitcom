@@ -23,15 +23,21 @@ import {
   aggBrandTrendsByDay,
   aggModelBiasMatrix,
   aggTopBrandByCategory,
+  aggCoverageByCell,
 } from "@/server/db/schema";
 import {
   BENCHMARK_DEFAULT_LOCALE,
   BENCHMARK_MODEL_PROVIDERS,
+  BENCHMARK_MODEL_SURFACES,
   BENCHMARK_SENTIMENTS,
+  BENCHMARK_SURFACE_THRESHOLD_CONTRIBUTORS,
+  providerForSurface,
+  type BenchmarkModelSurface,
 } from "@/lib/benchmark-constants";
 import { splitMentions } from "@/server/benchmark/ingest-extraction";
 import { slugifyBrandName } from "@/server/benchmark/slugify";
 import { extractRunInline } from "@/server/benchmark/extract-run";
+import { computeContributorWeight } from "@/server/benchmark/contributor-weight";
 import { suggestPromptsForBrand } from "@/server/benchmark/suggest-prompts";
 import { checkSuggestPromptsRateLimit } from "@/server/benchmark/user-rate-limit";
 import { after } from "next/server";
@@ -76,7 +82,7 @@ function requireBenchmarkAssignmentRunMetadata(
   },
   run: {
     modelProvider: string;
-    modelId: string;
+    modelId: string | null;
     locale: string;
   },
 ): void {
@@ -147,6 +153,95 @@ export const benchmarkRouter = createTRPCRouter({
         .limit(input.pageSize)
         .offset(offset);
       return rows;
+    }),
+
+  // Coverage status per (prompt, model_surface) cell. Used by the
+  // coverage map UI on the run-prompts tab and (later) the brand page.
+  // Returns one row per surface for each requested prompt, including
+  // surfaces with zero submissions (synthesised on the read side so the
+  // UI always shows the full surface matrix).
+  // See [[adr-0007-byoa-trust-model]] decision 2 and
+  // [[adr-0008-byoa-coverage-strategy]].
+  listPromptCoverage: publicProcedure
+    .input(
+      z.object({
+        promptIds: z.array(z.string().uuid()).min(1).max(100),
+        windowDays: z.union([z.literal(7), z.literal(30), z.literal(90)]),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({
+          promptId: aggCoverageByCell.promptId,
+          modelSurface: aggCoverageByCell.modelSurface,
+          distinctContributors: aggCoverageByCell.distinctContributors,
+          runsTotal: aggCoverageByCell.runsTotal,
+          meetsThreshold: aggCoverageByCell.meetsThreshold,
+        })
+        .from(aggCoverageByCell)
+        .where(
+          and(
+            inArray(aggCoverageByCell.promptId, input.promptIds),
+            eq(aggCoverageByCell.windowDays, input.windowDays),
+          ),
+        );
+
+      const byPrompt = new Map<
+        string,
+        Map<
+          BenchmarkModelSurface,
+          {
+            modelSurface: BenchmarkModelSurface;
+            distinctContributors: number;
+            runsTotal: number;
+            meetsThreshold: boolean;
+          }
+        >
+      >();
+      for (const r of rows) {
+        const surface = r.modelSurface as BenchmarkModelSurface;
+        if (surface === ("legacy_unverified" as BenchmarkModelSurface)) continue;
+        const inner =
+          byPrompt.get(r.promptId) ??
+          new Map<BenchmarkModelSurface, never>();
+        inner.set(surface, {
+          modelSurface: surface,
+          distinctContributors: r.distinctContributors,
+          runsTotal: r.runsTotal,
+          meetsThreshold: r.meetsThreshold,
+        });
+        byPrompt.set(r.promptId, inner);
+      }
+
+      const threshold = BENCHMARK_SURFACE_THRESHOLD_CONTRIBUTORS;
+      const result: Record<
+        string,
+        Array<{
+          modelSurface: BenchmarkModelSurface;
+          distinctContributors: number;
+          runsTotal: number;
+          meetsThreshold: boolean;
+          needed: number;
+        }>
+      > = {};
+      for (const promptId of input.promptIds) {
+        const inner = byPrompt.get(promptId);
+        result[promptId] = BENCHMARK_MODEL_SURFACES.map((surface) => {
+          const cell = inner?.get(surface);
+          const distinctContributors = cell?.distinctContributors ?? 0;
+          const runsTotal = cell?.runsTotal ?? 0;
+          const meetsThreshold = cell?.meetsThreshold ?? false;
+          return {
+            modelSurface: surface,
+            distinctContributors,
+            runsTotal,
+            meetsThreshold,
+            needed: Math.max(0, threshold - distinctContributors),
+          };
+        });
+      }
+
+      return { threshold, byPrompt: result };
     }),
 
   submitPrompt: protectedProcedure
@@ -439,7 +534,7 @@ export const benchmarkRouter = createTRPCRouter({
           modelProvider: input.modelProvider ?? null,
           modelId: input.modelId ?? null,
           locale: input.locale,
-          status: "active",
+          status: "held",
         })
         .returning();
 
@@ -529,8 +624,8 @@ export const benchmarkRouter = createTRPCRouter({
     .input(
       z.object({
         promptId: z.string().uuid(),
-        modelProvider: z.enum(BENCHMARK_MODEL_PROVIDERS),
-        modelId: z.string().min(1).max(120),
+        modelSurface: z.enum(BENCHMARK_MODEL_SURFACES),
+        modelId: z.string().min(1).max(120).optional(),
         modelVersion: z.string().max(120).optional(),
         temperature: z.number().min(0).max(2).optional(),
         rawAnswer: z.string().min(1).max(50_000),
@@ -542,6 +637,8 @@ export const benchmarkRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      const modelProvider = providerForSurface(input.modelSurface);
+      const modelId = input.modelId?.trim() || null;
 
       // Confirm prompt exists and is approved
       const [prompt] = await ctx.db
@@ -564,7 +661,7 @@ export const benchmarkRouter = createTRPCRouter({
           .limit(1);
         if (
           assignment?.userId !== userId ||
-          assignment.status !== "active" ||
+          assignment.status !== "held" ||
           !assignment.promptIds.includes(input.promptId)
         ) {
           throw new TRPCError({
@@ -573,8 +670,8 @@ export const benchmarkRouter = createTRPCRouter({
           });
         }
         requireBenchmarkAssignmentRunMetadata(assignment, {
-          modelProvider: input.modelProvider,
-          modelId: input.modelId,
+          modelProvider,
+          modelId,
           locale: input.locale,
         });
       }
@@ -583,30 +680,11 @@ export const benchmarkRouter = createTRPCRouter({
         ? new Date(input.capturedAt)
         : new Date();
 
-      const dayStart = new Date(capturedAt);
-      dayStart.setUTCHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-      const [existing] = await ctx.db
-        .select({ id: benchmarkRuns.id })
-        .from(benchmarkRuns)
-        .where(
-          and(
-            eq(benchmarkRuns.submittedByUserId, userId),
-            eq(benchmarkRuns.promptId, input.promptId),
-            eq(benchmarkRuns.modelId, input.modelId),
-            sql`${benchmarkRuns.capturedAt} >= ${dayStart.toISOString()}`,
-            sql`${benchmarkRuns.capturedAt} < ${dayEnd.toISOString()}`,
-          ),
-        )
-        .limit(1);
-      if (existing) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message:
-            "You already submitted this prompt/model combo today. Try again tomorrow.",
-        });
-      }
+      // Per ADR-0007 decision 3: no dedup. Every submission is a separate
+      // evidence point. The surface threshold (≥3 distinct contributors)
+      // prevents a single contributor from flooding a cell into visibility.
+
+      const weight = await computeContributorWeight(ctx.db, userId);
 
       try {
         const [run] = await ctx.db
@@ -616,14 +694,16 @@ export const benchmarkRouter = createTRPCRouter({
             submittedByUserId: userId,
             agentId: input.agentId ?? null,
             assignmentId: input.assignmentId ?? null,
-            modelProvider: input.modelProvider,
-            modelId: input.modelId,
+            modelProvider,
+            modelId,
             modelVersion: input.modelVersion ?? null,
+            modelSurface: input.modelSurface,
             temperature: input.temperature?.toString() ?? null,
             rawAnswer: input.rawAnswer,
             locale: input.locale,
             capturedAt,
             extractionStatus: "pending",
+            weight: weight.toString(),
           })
           .returning();
 
@@ -642,8 +722,9 @@ export const benchmarkRouter = createTRPCRouter({
           targetId: run.id,
           metadata: {
             promptId: input.promptId,
-            modelId: input.modelId,
-            modelProvider: input.modelProvider,
+            modelSurface: input.modelSurface,
+            modelProvider,
+            modelId,
             assignmentId: input.assignmentId ?? null,
           },
         });
@@ -1619,8 +1700,8 @@ export const benchmarkRouter = createTRPCRouter({
     .input(
       z.object({
         promptId: z.string().uuid(),
-        modelProvider: z.enum(BENCHMARK_MODEL_PROVIDERS),
-        modelId: z.string().min(1).max(120),
+        modelSurface: z.enum(BENCHMARK_MODEL_SURFACES),
+        modelId: z.string().min(1).max(120).optional(),
         modelVersion: z.string().max(120).optional(),
         temperature: z.number().min(0).max(2).optional(),
         rawAnswer: z.string().min(1).max(50_000),
@@ -1631,6 +1712,8 @@ export const benchmarkRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const ownerId = requireOwner(ctx.agent.ownerId);
+      const modelProvider = providerForSurface(input.modelSurface);
+      const modelId = input.modelId?.trim() || null;
 
       const [prompt] = await ctx.db
         .select()
@@ -1652,7 +1735,7 @@ export const benchmarkRouter = createTRPCRouter({
           .limit(1);
         if (
           assignment?.userId !== ownerId ||
-          assignment.status !== "active" ||
+          assignment.status !== "held" ||
           (assignment.agentId !== null &&
             assignment.agentId !== ctx.agent.agentId) ||
           !assignment.promptIds.includes(input.promptId)
@@ -1663,8 +1746,8 @@ export const benchmarkRouter = createTRPCRouter({
           });
         }
         requireBenchmarkAssignmentRunMetadata(assignment, {
-          modelProvider: input.modelProvider,
-          modelId: input.modelId,
+          modelProvider,
+          modelId,
           locale: input.locale,
         });
       }
@@ -1672,30 +1755,10 @@ export const benchmarkRouter = createTRPCRouter({
       const capturedAt = input.capturedAt
         ? new Date(input.capturedAt)
         : new Date();
-      const dayStart = new Date(capturedAt);
-      dayStart.setUTCHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-      const [existing] = await ctx.db
-        .select({ id: benchmarkRuns.id })
-        .from(benchmarkRuns)
-        .where(
-          and(
-            eq(benchmarkRuns.submittedByUserId, ownerId),
-            eq(benchmarkRuns.promptId, input.promptId),
-            eq(benchmarkRuns.modelId, input.modelId),
-            sql`${benchmarkRuns.capturedAt} >= ${dayStart.toISOString()}`,
-            sql`${benchmarkRuns.capturedAt} < ${dayEnd.toISOString()}`,
-          ),
-        )
-        .limit(1);
-      if (existing) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message:
-            "You already submitted this prompt/model combo today. Try again tomorrow.",
-        });
-      }
+
+      // Per ADR-0007 decision 3: no dedup. See submitRun above.
+
+      const weight = await computeContributorWeight(ctx.db, ownerId);
 
       const [run] = await ctx.db
         .insert(benchmarkRuns)
@@ -1704,14 +1767,16 @@ export const benchmarkRouter = createTRPCRouter({
           submittedByUserId: ownerId,
           agentId: ctx.agent.agentId,
           assignmentId: input.assignmentId ?? null,
-          modelProvider: input.modelProvider,
-          modelId: input.modelId,
+          modelProvider,
+          modelId,
           modelVersion: input.modelVersion ?? null,
+          modelSurface: input.modelSurface,
           temperature: input.temperature?.toString() ?? null,
           rawAnswer: input.rawAnswer,
           locale: input.locale,
           capturedAt,
           extractionStatus: "pending",
+          weight: weight.toString(),
         })
         .returning();
 
@@ -1730,8 +1795,9 @@ export const benchmarkRouter = createTRPCRouter({
         targetId: run.id,
         metadata: {
           promptId: input.promptId,
-          modelId: input.modelId,
-          modelProvider: input.modelProvider,
+          modelSurface: input.modelSurface,
+          modelProvider,
+          modelId,
           agentId: ctx.agent.agentId,
           assignmentId: input.assignmentId ?? null,
         },

@@ -19,6 +19,7 @@ import {
   BenchmarkAssignmentPanel,
   type LatestBenchmarkAssignment,
 } from "./benchmark-assignment-panel";
+import { PromptCoverageStrip } from "./coverage-map";
 
 export function RunPromptsTab() {
   const t = useTranslations("benchmark.runTab");
@@ -46,6 +47,11 @@ export function RunPromptsTab() {
     page: 1,
     pageSize: 24,
   });
+  const promptIds = prompts.data?.map((p) => p.id) ?? [];
+  const coverage = api.benchmark.listPromptCoverage.useQuery(
+    { promptIds, windowDays: 30 },
+    { enabled: promptIds.length > 0 },
+  );
   const mine = api.benchmark.listMySubmissions.useQuery(undefined, {
     refetchInterval: (query) => {
       const runs = query.state.data?.runs ?? [];
@@ -128,6 +134,10 @@ export function RunPromptsTab() {
                 ))}
               </span>
             )}
+            <PromptCoverageStrip
+              cells={coverage.data?.byPrompt[p.id]}
+              threshold={coverage.data?.threshold ?? 3}
+            />
             <div className="flex gap-2">
               <Button size="sm" onClick={() => setAgentFor(p.id)}>
                 Run with my agent

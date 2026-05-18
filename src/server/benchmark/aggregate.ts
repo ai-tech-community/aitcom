@@ -5,6 +5,7 @@ import {
   rebuildAggBrandVisibilityByModel,
   rebuildAggBrandVisibilityBySurface,
   rebuildAggBrandVisibilityByDay,
+  rebuildAggCoverageByCell,
 } from "./aggregate-brand-visibility";
 
 type DB = typeof _db;
@@ -270,6 +271,7 @@ export async function rebuildAllAggregates(db: DB): Promise<{
     hero: number;
     citation: number;
     visibilityByModel: number;
+    coverageByCell: number;
     visibilityBySurface: number;
     visibilityByDay: number;
   };
@@ -287,6 +289,11 @@ export async function rebuildAllAggregates(db: DB): Promise<{
   const t5 = Date.now();
   await rebuildAggBrandVisibilityByModel(db);
   const t6 = Date.now();
+  // Coverage rebuild must run before the by-surface visibility rebuild;
+  // the latter joins to agg_coverage_by_cell to gate evidence by the
+  // ≥3-distinct-contributor surface threshold (ADR-0007 decision 2).
+  await rebuildAggCoverageByCell(db);
+  const t6b = Date.now();
   await rebuildAggBrandVisibilityBySurface(db);
   const t7 = Date.now();
   await rebuildAggBrandVisibilityByDay(db);
@@ -300,7 +307,8 @@ export async function rebuildAllAggregates(db: DB): Promise<{
       hero: t4 - t3,
       citation: t5 - t4,
       visibilityByModel: t6 - t5,
-      visibilityBySurface: t7 - t6,
+      coverageByCell: t6b - t6,
+      visibilityBySurface: t7 - t6b,
       visibilityByDay: t8 - t7,
     },
   };

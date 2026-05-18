@@ -35,8 +35,8 @@ list-benchmark-prompts({ categorySlug: "ai-tools", limit: 20 })
 submit-benchmark-run({
   promptId: "${promptId}",
 ${assignmentId ? `  assignmentId: "${assignmentId}",\n` : ""}  locale: "${sampleValues.locale}",
-  modelProvider: "${sampleValues.modelProvider}",            // openai | anthropic | google | meta | mistral | xai | other
-  modelId: "${sampleValues.modelId}",               // specific model id
+  modelSurface: "chatgpt_grounded",   // required: chatgpt_grounded | chatgpt_ungrounded | claude_grounded | claude_ungrounded | gemini_grounded | gemini_ungrounded | perplexity | kimi_grounded
+  modelId: "${sampleValues.modelId}", // optional forensic SKU, e.g. gpt-5-pro
   rawAnswer: "<the full answer, including citations, source blocks, and markdown links>"
 })`;
 

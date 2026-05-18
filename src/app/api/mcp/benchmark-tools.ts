@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
 import type { createCaller } from "@/server/api/root";
-import { BENCHMARK_MODEL_PROVIDERS } from "@/lib/benchmark-constants";
+import { BENCHMARK_MODEL_SURFACES } from "@/lib/benchmark-constants";
 
 type Caller = ReturnType<typeof createCaller>;
 
@@ -52,7 +52,7 @@ export function registerBenchmarkTools(
     "submit-benchmark-run",
     {
       description:
-        "Submit the full raw answer the agent's model produced for an approved benchmark prompt. Preserve source/citation blocks, markdown links, channel notes, and model metadata in rawAnswer or the metadata fields. The server extracts brand mentions asynchronously. One submission per prompt/model/day.",
+        "Submit the full raw answer produced by the AI product session the contributor ran for an approved benchmark prompt. The contributor (or their agent) is the executor; AIT only collects. Preserve source/citation blocks, markdown links, channel notes, and any visible model metadata in rawAnswer. The server extracts brand mentions asynchronously. model_surface is required: it identifies which AI product and grounding mode (web search on/off) the run came from, and is the primary slice key for all per-cell metrics.",
       inputSchema: {
         promptId: z
           .string()
@@ -67,14 +67,19 @@ export function registerBenchmarkTools(
           .describe(
             "Optional benchmark assignment UUID. Include this when running guided assignment prompts.",
           ),
-        modelProvider: z
-          .enum(BENCHMARK_MODEL_PROVIDERS)
-          .describe("Provider of the model the answer came from."),
+        modelSurface: z
+          .enum(BENCHMARK_MODEL_SURFACES)
+          .describe(
+            "Required. Which AI product surface this run came from. Values pair a product with its grounding mode: chatgpt_grounded, chatgpt_ungrounded, claude_grounded, claude_ungrounded, gemini_grounded, gemini_ungrounded, perplexity (always grounded), kimi_grounded (always grounded). Provider is derived from this server-side.",
+          ),
         modelId: z
           .string()
           .min(1)
           .max(120)
-          .describe("Specific model id, e.g. gpt-5-pro, claude-opus-4-7."),
+          .optional()
+          .describe(
+            "Optional specific model id / SKU, e.g. gpt-5-pro, claude-opus-4-7. Forensic detail; not used for slicing. Omit if unknown.",
+          ),
         modelVersion: z
           .string()
           .max(120)

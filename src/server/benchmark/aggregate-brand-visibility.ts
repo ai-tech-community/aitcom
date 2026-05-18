@@ -1,8 +1,48 @@
 import { sql } from "drizzle-orm";
 import type { db as _db } from "@/server/db";
+import { BENCHMARK_SURFACE_THRESHOLD_CONTRIBUTORS } from "@/lib/benchmark-constants";
 
 type DB = typeof _db;
 const WINDOWS = [7, 30, 90] as const;
+
+/**
+ * Per-cell coverage rebuild: distinct contributors per
+ * (prompt, model_surface, window). The cached `meets_threshold` boolean
+ * lets the visibility rebuild and the coverage map filter cheaply.
+ * `legacy_unverified` is excluded — those rows are not trust-grade
+ * evidence per ADR-0004 decision 3.
+ *
+ * See [[adr-0007-byoa-trust-model]] decision 2.
+ */
+export async function rebuildAggCoverageByCell(db: DB): Promise<void> {
+  for (const w of WINDOWS) {
+    await db.execute(sql`
+      DELETE FROM "app"."agg_coverage_by_cell"
+      WHERE "window_days" = ${w}
+    `);
+
+    await db.execute(sql`
+      INSERT INTO "app"."agg_coverage_by_cell" (
+        "prompt_id", "model_surface", "window_days",
+        "distinct_contributors", "runs_total", "meets_threshold", "updated_at"
+      )
+      SELECT
+        r.prompt_id,
+        r.model_surface,
+        ${w} AS window_days,
+        COUNT(DISTINCT r.submitted_by_user_id)::int AS distinct_contributors,
+        COUNT(*)::int AS runs_total,
+        (COUNT(DISTINCT r.submitted_by_user_id)
+          >= ${BENCHMARK_SURFACE_THRESHOLD_CONTRIBUTORS}) AS meets_threshold,
+        now()
+      FROM "app"."benchmark_run" r
+      WHERE r.model_surface <> 'legacy_unverified'
+        AND r.submitted_by_user_id IS NOT NULL
+        AND r.captured_at >= now() - (${w} || ' days')::interval
+      GROUP BY r.prompt_id, r.model_surface
+    `);
+  }
+}
 
 /**
  * Visibility % per (brand, model, window). Denominator is runs in the brand's
@@ -128,11 +168,22 @@ export async function rebuildAggBrandVisibilityByModel(db: DB): Promise<void> {
 }
 
 /**
- * Visibility % per (brand, model_surface, window). Mirrors
- * rebuildAggBrandVisibilityByModel but groups by model_surface and excludes
- * runs in `legacy_unverified` — those are pre-proxy contributor submissions
- * and are not trust-grade evidence (see ADR-0001, ADR-0004). The primary
- * category derivation is identical to the by-model rebuild.
+ * Visibility per (brand, model_surface, window) under the BYOA trust
+ * model.
+ *
+ * Per [[adr-0007-byoa-trust-model]]:
+ * - Decision 2: evidence is only drawn from `(prompt, model_surface)`
+ *   cells that have ≥ {@link BENCHMARK_SURFACE_THRESHOLD_CONTRIBUTORS}
+ *   distinct contributors in the window. Below-threshold cells stay
+ *   visible in `agg_coverage_by_cell` so the UI can say "needs N more"
+ *   but are excluded from headline metrics.
+ * - Decision 1: contributor weight is stamped on `benchmark_run.weight`.
+ *   Headline percentages (visibility, sentiment) are weighted by it;
+ *   the integer `mentions_count` / `runs_total` columns remain raw
+ *   counts so the UI can display "X mentions across Y runs" alongside
+ *   the weighted percentage. `avg_rank` is weighted.
+ *
+ * `legacy_unverified` is excluded throughout per ADR-0004 decision 3.
  */
 export async function rebuildAggBrandVisibilityBySurface(
   db: DB,
@@ -144,20 +195,27 @@ export async function rebuildAggBrandVisibilityBySurface(
     `);
 
     await db.execute(sql`
-      WITH brand_category_counts AS (
+      WITH qualified_cells AS (
+        SELECT prompt_id, model_surface
+        FROM "app"."agg_coverage_by_cell"
+        WHERE window_days = ${w}
+          AND meets_threshold = true
+      ),
+      brand_category_counts AS (
         SELECT
           m.brand_id,
           cat.category_id,
           COUNT(DISTINCT r.id) AS cnt
         FROM "app"."benchmark_brand_mention" m
         JOIN "app"."benchmark_run" r ON r.id = m.run_id
+        JOIN qualified_cells qc
+          ON qc.prompt_id = r.prompt_id AND qc.model_surface = r.model_surface
         JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
         CROSS JOIN LATERAL (
           SELECT unnest(ARRAY[p.category_id] || p.inferred_category_ids) AS category_id
         ) cat
         WHERE m.brand_id IS NOT NULL
           AND r.extraction_status = 'done'
-          AND r.model_surface <> 'legacy_unverified'
           AND r.captured_at >= now() - INTERVAL '90 days'
         GROUP BY m.brand_id, cat.category_id
       ),
@@ -185,22 +243,28 @@ export async function rebuildAggBrandVisibilityBySurface(
         SELECT
           r.model_surface,
           cat.category_id,
-          COUNT(DISTINCT r.id) AS runs_total
+          COUNT(DISTINCT r.id) AS runs_total,
+          SUM(r.weight)::numeric AS weight_total
         FROM "app"."benchmark_run" r
+        JOIN qualified_cells qc
+          ON qc.prompt_id = r.prompt_id AND qc.model_surface = r.model_surface
         JOIN "app"."benchmark_prompt" p ON p.id = r.prompt_id
         CROSS JOIN LATERAL (
           SELECT unnest(ARRAY[p.category_id] || p.inferred_category_ids) AS category_id
         ) cat
         WHERE r.extraction_status = 'done'
-          AND r.model_surface <> 'legacy_unverified'
           AND r.captured_at >= now() - (${w} || ' days')::interval
         GROUP BY r.model_surface, cat.category_id
       ),
       runs_by_surface_all AS (
-        SELECT r.model_surface, COUNT(DISTINCT r.id) AS runs_total
+        SELECT
+          r.model_surface,
+          COUNT(DISTINCT r.id) AS runs_total,
+          SUM(r.weight)::numeric AS weight_total
         FROM "app"."benchmark_run" r
+        JOIN qualified_cells qc
+          ON qc.prompt_id = r.prompt_id AND qc.model_surface = r.model_surface
         WHERE r.extraction_status = 'done'
-          AND r.model_surface <> 'legacy_unverified'
           AND r.captured_at >= now() - (${w} || ' days')::interval
         GROUP BY r.model_surface
       ),
@@ -209,15 +273,20 @@ export async function rebuildAggBrandVisibilityBySurface(
           m.brand_id,
           r.model_surface,
           COUNT(DISTINCT m.run_id)::int AS mentions_count,
-          AVG(m.rank)::numeric(10,2) AS avg_rank,
-          (SUM(CASE WHEN m.sentiment = 'positive' THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(*),0)) * 100 AS sp,
-          (SUM(CASE WHEN m.sentiment = 'neutral'  THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(*),0)) * 100 AS sn,
-          (SUM(CASE WHEN m.sentiment = 'negative' THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(*),0)) * 100 AS sx
+          SUM(r.weight)::numeric AS mention_weight,
+          (SUM(r.weight * m.rank) / NULLIF(SUM(r.weight), 0))::numeric(10,2) AS avg_rank,
+          (SUM(CASE WHEN m.sentiment = 'positive' THEN r.weight ELSE 0 END)::numeric
+            / NULLIF(SUM(r.weight), 0)) * 100 AS sp,
+          (SUM(CASE WHEN m.sentiment = 'neutral'  THEN r.weight ELSE 0 END)::numeric
+            / NULLIF(SUM(r.weight), 0)) * 100 AS sn,
+          (SUM(CASE WHEN m.sentiment = 'negative' THEN r.weight ELSE 0 END)::numeric
+            / NULLIF(SUM(r.weight), 0)) * 100 AS sx
         FROM "app"."benchmark_brand_mention" m
         JOIN "app"."benchmark_run" r ON r.id = m.run_id
+        JOIN qualified_cells qc
+          ON qc.prompt_id = r.prompt_id AND qc.model_surface = r.model_surface
         WHERE m.brand_id IS NOT NULL
           AND r.extraction_status = 'done'
-          AND r.model_surface <> 'legacy_unverified'
           AND r.captured_at >= now() - (${w} || ' days')::interval
         GROUP BY m.brand_id, r.model_surface
       )
@@ -234,9 +303,9 @@ export async function rebuildAggBrandVisibilityBySurface(
         bsm.mentions_count,
         COALESCE(rsc.runs_total, rsa.runs_total, 0)::int AS runs_total,
         CASE
-          WHEN COALESCE(rsc.runs_total, rsa.runs_total, 0) = 0 THEN 0
+          WHEN COALESCE(rsc.weight_total, rsa.weight_total, 0) = 0 THEN 0
           ELSE ROUND(
-            (bsm.mentions_count::numeric / COALESCE(rsc.runs_total, rsa.runs_total)) * 100, 2
+            (bsm.mention_weight / COALESCE(rsc.weight_total, rsa.weight_total)) * 100, 2
           )
         END AS visibility_pct,
         bsm.avg_rank,

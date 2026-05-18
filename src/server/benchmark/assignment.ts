@@ -49,7 +49,7 @@ export function validateAssignmentRunMetadata(
   },
   run: {
     modelProvider: string;
-    modelId: string;
+    modelId: string | null;
     locale: string;
   },
 ): void {

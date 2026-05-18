@@ -13,7 +13,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { BENCHMARK_MODEL_PROVIDERS } from "@/lib/benchmark-constants";
+import {
+  BENCHMARK_MODEL_SURFACES,
+  BENCHMARK_MODEL_SURFACE_LABELS,
+  type BenchmarkModelSurface,
+} from "@/lib/benchmark-constants";
 
 export function ManualRunForm({
   promptId,
@@ -23,7 +27,9 @@ export function ManualRunForm({
   onDone: () => void;
 }) {
   const utils = api.useUtils();
-  const [provider, setProvider] = useState<string>("openai");
+  const [modelSurface, setModelSurface] = useState<BenchmarkModelSurface | "">(
+    "",
+  );
   const [modelId, setModelId] = useState("");
   const [rawAnswer, setRawAnswer] = useState("");
 
@@ -38,25 +44,32 @@ export function ManualRunForm({
 
   return (
     <div className="bg-muted/30 flex flex-col gap-2 rounded-md p-3">
-      <div className="grid gap-2 md:grid-cols-2">
-        <Select value={provider} onValueChange={setProvider}>
+      <div className="flex flex-col gap-1">
+        <Select
+          value={modelSurface}
+          onValueChange={(v) => setModelSurface(v as BenchmarkModelSurface)}
+        >
           <SelectTrigger>
-            <SelectValue />
+            <SelectValue placeholder="Which AI product and mode did you use?" />
           </SelectTrigger>
           <SelectContent>
-            {BENCHMARK_MODEL_PROVIDERS.map((p) => (
-              <SelectItem key={p} value={p}>
-                {p}
+            {BENCHMARK_MODEL_SURFACES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {BENCHMARK_MODEL_SURFACE_LABELS[s]}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Input
-          placeholder="model id, e.g. gpt-5-pro"
-          value={modelId}
-          onChange={(e) => setModelId(e.target.value)}
-        />
+        <p className="text-muted-foreground text-xs">
+          Not sure if web search was on? If the answer contains source links or
+          citation chips, web search was on.
+        </p>
       </div>
+      <Input
+        placeholder="Model version (optional, e.g. gpt-5-pro)"
+        value={modelId}
+        onChange={(e) => setModelId(e.target.value)}
+      />
       <Textarea
         placeholder="Paste the model's raw answer…"
         value={rawAnswer}
@@ -69,16 +82,16 @@ export function ManualRunForm({
         </Button>
         <Button
           size="sm"
-          disabled={!modelId.trim() || !rawAnswer.trim() || submit.isPending}
-          onClick={() =>
+          disabled={!modelSurface || !rawAnswer.trim() || submit.isPending}
+          onClick={() => {
+            if (!modelSurface) return;
             submit.mutate({
               promptId,
-              modelProvider:
-                provider as (typeof BENCHMARK_MODEL_PROVIDERS)[number],
-              modelId: modelId.trim(),
+              modelSurface,
+              modelId: modelId.trim() || undefined,
               rawAnswer,
-            })
-          }
+            });
+          }}
         >
           {submit.isPending ? "Submitting…" : "Submit run"}
         </Button>
