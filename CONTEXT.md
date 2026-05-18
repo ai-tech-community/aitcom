@@ -83,15 +83,43 @@ runs.
 A curated bundle of prompts handed to a contributor as an affordance:
 "here are five prompts; run them in your ChatGPT/Claude/Gemini and submit
 the output." An assignment is *not* server-side executable work — the
-contributor decides whether and when to run it. See
-[[20260505_benchmark_assignments.ts]] and
-[[adr-0006-byoa-community-executes-ait-collects]].
+contributor decides whether and when to run it. Assignments are
+self-serve, expire if untouched, and **carry no penalty for abandonment
+or partial completion**. See [[20260505_benchmark_assignments.ts]] and
+[[adr-0008-byoa-coverage-strategy]].
 
 ### Coverage cell
 
-A `(prompt, product, grounding)` triple. The unit the assignment
-distribution thinks in: a cell with few recent runs across the contributor
-pool is under-covered.
+A `(prompt, model_surface)` pair — equivalently `(prompt, product,
+grounding)` since `model_surface` collapses product+grounding. The unit
+the coverage map thinks in: a cell with fewer than 3 distinct
+contributors is **under-covered** and its aggregated metric is not yet
+shown publicly. See [[adr-0007-byoa-trust-model]] decision 2.
+
+### Coverage map
+
+The UI affordance that makes gap cells legible — shows distinct
+contributor count per `(prompt, model_surface)` and how many more are
+needed to reach the surfacing threshold. Informational, not
+transactional: there is no "claim cell" button on the map. See
+[[adr-0008-byoa-coverage-strategy]].
+
+### Contributor weight
+
+A per-run numeric (`benchmark_run.weight`, range `[0.1, 1.0]`) stamped
+at submission time from the contributor's existing AIT profile —
+account age, post activity, `member_badge` entries, `verifiedAt`,
+brand-owner status, etc. Inherited from the broader social platform;
+**benchmark submissions do not themselves earn weight**. See
+[[adr-0007-byoa-trust-model]] decision 1.
+
+### Surface threshold
+
+The rule that per-cell aggregated metrics (visibility, share of voice,
+etc.) are only displayed publicly once at least **3 distinct
+contributors** have submitted to that cell. Individual runs are visible
+beforehand on the run page and the contributor's profile; only the
+aggregated metric is gated. See [[adr-0007-byoa-trust-model]] decision 2.
 
 ### Community role
 
@@ -103,12 +131,14 @@ See [[adr-0006-byoa-community-executes-ait-collects]].
 ### Trust
 
 Per-run fabrication is undetectable. The benchmark relies on:
-- volume across contributors per cell;
-- visible provenance (who submitted, when);
-- reputation / weighting / dispute mechanisms (specifics open — to be
-  designed).
+- volume across contributors per cell (≥3 distinct contributors before
+  per-cell metrics surface publicly — the **surface threshold**);
+- per-run **contributor weight** inherited from existing community
+  standing;
+- no dedup — every submission is a separate evidence point;
+- visible provenance (who submitted, when, which surface);
+- a **dispute mechanism deferred** until disputes actually occur.
 
 This is a deliberate tradeoff against the AIT-proxy alternative that was
-considered and rejected. See ADR-0006 for the reasoning and the
-[superseded ADR-0002](docs/adr/0002-ait-mediated-proxy-runs.md) for the
-alternative.
+considered and rejected. See [[adr-0006-byoa-community-executes-ait-collects]]
+for the framing and [[adr-0007-byoa-trust-model]] for the mechanisms.
