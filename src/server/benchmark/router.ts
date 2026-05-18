@@ -2,7 +2,10 @@ import type { db as _db } from "@/server/db";
 import type { ModelSurface } from "@/server/db/schema";
 
 import { ENABLED_SURFACES } from "./proxy";
-import { surfaceAllowsLocale } from "./proxy/locale-eligibility";
+import {
+  allowedLocalesForSurface,
+  surfaceAllowsLocale,
+} from "./proxy/locale-eligibility";
 import { seedQueuedRunsForApprovedPrompt } from "./seed-queued-runs";
 
 type DB = typeof _db;
@@ -73,32 +76,6 @@ export interface RouterTickResult {
   skippedSurfaces: ModelSurface[];
 }
 
-const DEFAULT_LOCALES: Record<ModelSurface, readonly string[]> = {
-  chatgpt_grounded: [
-    "en-US",
-    "en-GB",
-    "de-DE",
-    "fr-FR",
-    "es-ES",
-    "it-IT",
-    "nl-NL",
-    "pt-BR",
-    "pt-PT",
-    "ja-JP",
-  ],
-  chatgpt_ungrounded: [],
-  claude_grounded: [],
-  claude_ungrounded: [],
-  gemini_grounded: [],
-  gemini_ungrounded: [],
-  perplexity: [],
-  kimi_grounded: [],
-  legacy_unverified: [],
-};
-
-function defaultAllowedLocales(surface: ModelSurface): readonly string[] {
-  return DEFAULT_LOCALES[surface];
-}
 
 /**
  * Decide which surfaces still have budget remaining. Mirrors
@@ -163,7 +140,7 @@ export async function runBenchmarkRouterTick(
   const enabled = options.enabledSurfaces ?? ENABLED_SURFACES;
   const staleAfterDays = options.staleAfterDays ?? 14;
   const perSurfaceLimit = options.perSurfaceLimit ?? 10;
-  const allowedLocalesFn = options.allowedLocales ?? defaultAllowedLocales;
+  const allowedLocalesFn = options.allowedLocales ?? allowedLocalesForSurface;
 
   const spent = await routerDb.spentTodayBySurface();
   const { eligible, skipped } = decideRouterEligibleSurfaces(

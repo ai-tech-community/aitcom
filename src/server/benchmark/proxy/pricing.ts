@@ -26,6 +26,19 @@ const PRICING: Partial<Record<ModelSurface, SurfacePricing>> = {
     outputPer1MUsdCents: 1000,
     perCallSurchargeUsdCents: 3,
   },
+  claude_grounded: {
+    // Approximate Claude Sonnet 4.5 list pricing + per-search surcharge.
+    inputPer1MUsdCents: 300,
+    outputPer1MUsdCents: 1500,
+    perCallSurchargeUsdCents: 1,
+  },
+  perplexity: {
+    // Approximate Perplexity Sonar pricing. Per-call surcharge is the
+    // per-search request fee.
+    inputPer1MUsdCents: 100,
+    outputPer1MUsdCents: 100,
+    perCallSurchargeUsdCents: 1,
+  },
 };
 
 export function estimateCostCents(

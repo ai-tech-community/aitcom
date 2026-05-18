@@ -16,7 +16,7 @@ describe("surfaceAllowsLocale", () => {
   });
 
   it("rejects everything for a surface with no entry", () => {
-    expect(surfaceAllowsLocale("claude_grounded", "en-US")).toBe(false);
+    expect(surfaceAllowsLocale("kimi_grounded", "en-US")).toBe(false);
   });
 });
 
@@ -24,10 +24,10 @@ describe("surfacesForLocale", () => {
   it("returns only the surfaces whose set contains the locale", () => {
     expect(
       surfacesForLocale(
-        ["chatgpt_grounded", "claude_grounded", "perplexity"],
+        ["chatgpt_grounded", "claude_grounded", "kimi_grounded"],
         "en-US",
       ),
-    ).toEqual(["chatgpt_grounded"]);
+    ).toEqual(["chatgpt_grounded", "claude_grounded"]);
   });
 
   it("returns empty when no candidate accepts the locale", () => {

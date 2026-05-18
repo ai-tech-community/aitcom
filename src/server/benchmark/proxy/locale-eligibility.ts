@@ -21,6 +21,30 @@ const ALLOWED_LOCALES: Partial<Record<ModelSurface, ReadonlySet<string>>> = {
     "pt-PT",
     "ja-JP",
   ]),
+  claude_grounded: new Set([
+    "en-US",
+    "en-GB",
+    "de-DE",
+    "fr-FR",
+    "es-ES",
+    "it-IT",
+    "nl-NL",
+    "pt-BR",
+    "pt-PT",
+    "ja-JP",
+  ]),
+  perplexity: new Set([
+    "en-US",
+    "en-GB",
+    "de-DE",
+    "fr-FR",
+    "es-ES",
+    "it-IT",
+    "nl-NL",
+    "pt-BR",
+    "pt-PT",
+    "ja-JP",
+  ]),
 };
 
 export function surfaceAllowsLocale(
@@ -35,4 +59,11 @@ export function surfacesForLocale(
   locale: string,
 ): ModelSurface[] {
   return candidates.filter((s) => surfaceAllowsLocale(s, locale));
+}
+
+export function allowedLocalesForSurface(
+  surface: ModelSurface,
+): readonly string[] {
+  const set = ALLOWED_LOCALES[surface];
+  return set ? Array.from(set) : [];
 }

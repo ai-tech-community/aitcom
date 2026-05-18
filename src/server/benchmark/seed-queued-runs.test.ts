@@ -5,12 +5,12 @@ import { decideSurfacesToSeed } from "./seed-queued-runs";
 describe("decideSurfacesToSeed", () => {
   it("seeds locale-eligible surfaces with no existing queue entry", () => {
     const result = decideSurfacesToSeed(
-      ["chatgpt_grounded", "claude_grounded"],
+      ["chatgpt_grounded", "kimi_grounded"],
       "en-US",
       [],
     );
     expect(result.seeded).toEqual(["chatgpt_grounded"]);
-    expect(result.skippedLocale).toEqual(["claude_grounded"]);
+    expect(result.skippedLocale).toEqual(["kimi_grounded"]);
     expect(result.skippedExisting).toEqual([]);
   });
 
@@ -32,12 +32,12 @@ describe("decideSurfacesToSeed", () => {
 
   it("handles a mix of locale-skipped and already-queued surfaces", () => {
     const result = decideSurfacesToSeed(
-      ["chatgpt_grounded", "perplexity"],
+      ["chatgpt_grounded", "kimi_grounded"],
       "en-US",
       ["chatgpt_grounded"],
     );
     expect(result.seeded).toEqual([]);
     expect(result.skippedExisting).toEqual(["chatgpt_grounded"]);
-    expect(result.skippedLocale).toEqual(["perplexity"]);
+    expect(result.skippedLocale).toEqual(["kimi_grounded"]);
   });
 });

@@ -1,6 +1,8 @@
 import type { ModelSurface } from "@/server/db/schema";
 
 import { callChatGptGrounded } from "./chatgpt-grounded";
+import { callClaudeGrounded } from "./claude-grounded";
+import { callPerplexity } from "./perplexity";
 import type { ProxyRunInput, ProxyRunResult } from "./types";
 import { ProxyError } from "./types";
 
@@ -11,8 +13,11 @@ export { ProxyError } from "./types";
  * Surfaces with a working proxy client. Keep in sync with the per-surface
  * implementations below; auto-seed and the queue worker scan against this list.
  */
-export const ENABLED_SURFACES = ["chatgpt_grounded"] as const satisfies
-  readonly ModelSurface[];
+export const ENABLED_SURFACES = [
+  "chatgpt_grounded",
+  "claude_grounded",
+  "perplexity",
+] as const satisfies readonly ModelSurface[];
 
 export type EnabledSurface = (typeof ENABLED_SURFACES)[number];
 
@@ -35,6 +40,16 @@ export async function runOnSurface(
     case "chatgpt_grounded":
       return callChatGptGrounded(input, {
         apiKey: process.env.OPENAI_API_KEY ?? "",
+        fetchImpl: deps.fetchImpl,
+      });
+    case "claude_grounded":
+      return callClaudeGrounded(input, {
+        apiKey: process.env.ANTHROPIC_API_KEY ?? "",
+        fetchImpl: deps.fetchImpl,
+      });
+    case "perplexity":
+      return callPerplexity(input, {
+        apiKey: process.env.PERPLEXITY_API_KEY ?? "",
         fetchImpl: deps.fetchImpl,
       });
     default:

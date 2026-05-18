@@ -4,7 +4,7 @@ import { estimateCostCents } from "./pricing";
 
 describe("estimateCostCents", () => {
   it("returns null for a surface without pricing", () => {
-    expect(estimateCostCents("claude_grounded", 100, 100)).toBeNull();
+    expect(estimateCostCents("kimi_grounded", 100, 100)).toBeNull();
   });
 
   it("computes a non-trivial cost for chatgpt_grounded with usage", () => {
