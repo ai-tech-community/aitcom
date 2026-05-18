@@ -57,6 +57,10 @@ describe("normalizeChatGptGroundedResponse", () => {
     expect(result.providerModelVersion).toBe("2025-03-11");
     expect(result.promptTokens).toBe(42);
     expect(result.completionTokens).toBe(18);
+    // Cost estimate is non-null for chatgpt_grounded so daily budgets
+    // can decrement (see proxy/pricing.ts).
+    expect(result.costCents).not.toBeNull();
+    expect(result.costCents).toBeGreaterThan(0);
     expect(result.sources).toHaveLength(2);
     const [first, second] = result.sources;
     expect(first).toEqual({

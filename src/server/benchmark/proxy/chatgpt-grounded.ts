@@ -1,3 +1,4 @@
+import { estimateCostCents } from "./pricing";
 import type { NormalizedSource, ProxyRunInput, ProxyRunResult } from "./types";
 import { ProxyError } from "./types";
 
@@ -81,15 +82,17 @@ export function normalizeChatGptGroundedResponse(
     position += 1;
   }
 
+  const promptTokens = raw.usage?.prompt_tokens ?? null;
+  const completionTokens = raw.usage?.completion_tokens ?? null;
   return {
     rawAnswer: message.content,
     sources,
     providerResponseId: raw.id,
     providerModelId: raw.model,
     providerModelVersion: extractVersionSuffix(raw.model),
-    promptTokens: raw.usage?.prompt_tokens ?? null,
-    completionTokens: raw.usage?.completion_tokens ?? null,
-    costCents: null,
+    promptTokens,
+    completionTokens,
+    costCents: estimateCostCents(SURFACE, promptTokens, completionTokens),
     providerResponseRaw: raw,
   };
 }

@@ -1417,7 +1417,9 @@ export const benchmarkRuns = appSchema.table(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     promptId: uuid("prompt_id").notNull(),
-    submittedByUserId: text("submitted_by_user_id").notNull(),
+    // Nullable so auto-seeded proxy runs (no human submitter) can be stored.
+    // Contributor-submitted rows continue to populate this. See ADR-0005.
+    submittedByUserId: text("submitted_by_user_id"),
     agentId: uuid("agent_id"),
     assignmentId: uuid("assignment_id"),
     modelProvider: text("model_provider").notNull(),

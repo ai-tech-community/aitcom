@@ -1,4 +1,11 @@
-import type { CollectionBeforeChangeHook, CollectionConfig } from "payload";
+import type {
+  CollectionAfterChangeHook,
+  CollectionBeforeChangeHook,
+  CollectionConfig,
+} from "payload";
+
+import { db } from "@/server/db";
+import { seedQueuedRunsForApprovedPrompt } from "@/server/benchmark/seed-queued-runs";
 
 const autoApprovalHook: CollectionBeforeChangeHook = ({
   data,
@@ -15,6 +22,52 @@ const autoApprovalHook: CollectionBeforeChangeHook = ({
     data.approvedAt = new Date().toISOString();
   }
   return data;
+};
+
+/**
+ * When a prompt transitions to approved, queue one benchmark_run per enabled
+ * model surface (filtered by surface allowed-locales). See ADR-0005 and
+ * the brand-benchmark rebuild plan step 5.
+ *
+ * Errors are logged, not thrown: the prompt approval has already committed
+ * by the time afterChange fires; throwing here would leave the prompt
+ * approved with no auto-seeded runs and no signal to the moderator.
+ * A periodic reconciler can catch any missed approvals.
+ */
+const seedRunsOnApprovalHook: CollectionAfterChangeHook = async ({
+  doc,
+  previousDoc,
+  operation,
+  req,
+}) => {
+  const transitionedToApproved =
+    doc?.status === "approved" &&
+    (operation === "create" || previousDoc?.status !== "approved");
+  if (!transitionedToApproved) return doc;
+  if (!doc.locale) return doc;
+
+  try {
+    const result = await seedQueuedRunsForApprovedPrompt(db, {
+      promptId: String(doc.id),
+      locale: String(doc.locale),
+    });
+    req.payload.logger.info(
+      {
+        promptId: doc.id,
+        seeded: result.seeded,
+        skippedExisting: result.skippedExisting,
+        skippedLocale: result.skippedLocale,
+      },
+      "benchmark prompt auto-seed",
+    );
+  } catch (err) {
+    req.payload.logger.error(
+      { err, promptId: doc.id },
+      "benchmark prompt auto-seed failed",
+    );
+  }
+
+  return doc;
 };
 
 export const BenchmarkPrompts: CollectionConfig = {
@@ -41,6 +94,7 @@ export const BenchmarkPrompts: CollectionConfig = {
   },
   hooks: {
     beforeChange: [autoApprovalHook],
+    afterChange: [seedRunsOnApprovalHook],
   },
   fields: [
     {
