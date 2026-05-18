@@ -1369,6 +1369,31 @@ export const brandWatches = appSchema.table(
   }),
 );
 
+export const benchmarkAssignments = appSchema.table(
+  "benchmark_assignment",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id").notNull(),
+    agentId: uuid("agent_id"),
+    promptIds: uuid("prompt_ids").array().notNull(),
+    modelProvider: text("model_provider"),
+    modelId: text("model_id"),
+    locale: text("locale").notNull().default("en-US"),
+    status: text("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => ({
+    userStatusIdx: index("benchmark_assignment_user_status_idx").on(
+      t.userId,
+      t.status,
+    ),
+    agentIdx: index("benchmark_assignment_agent_idx").on(t.agentId),
+  }),
+);
+
 // model_surface and proxy_status are Postgres enums in the app schema.
 // See migration 20260518_benchmark_surface_and_proxy. We declare the
 // columns as text + $type<>() to follow the prevailing pattern in this
@@ -1396,6 +1421,7 @@ export const benchmarkRuns = appSchema.table(
     // Contributor-submitted rows continue to populate this. See ADR-0005.
     submittedByUserId: text("submitted_by_user_id"),
     agentId: uuid("agent_id"),
+    assignmentId: uuid("assignment_id"),
     modelProvider: text("model_provider").notNull(),
     modelId: text("model_id").notNull(),
     modelVersion: text("model_version"),
@@ -1433,6 +1459,7 @@ export const benchmarkRuns = appSchema.table(
     extractionStatusIdx: index("benchmark_run_extraction_status_idx").on(
       t.extractionStatus,
     ),
+    assignmentIdx: index("benchmark_run_assignment_idx").on(t.assignmentId),
     surfaceCapturedIdx: index("benchmark_run_surface_captured_idx").on(
       t.modelSurface,
       t.capturedAt,

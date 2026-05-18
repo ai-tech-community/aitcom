@@ -12,6 +12,7 @@ import {
 } from "@/server/api/trpc";
 import { logActivity } from "@/server/agent/activity";
 import {
+  benchmarkAssignments,
   benchmarkCategories,
   benchmarkIntents,
   benchmarkPrompts,
@@ -40,6 +41,57 @@ import {
 } from "@/server/benchmark/extractor-prompt";
 import { buildSparkline } from "@/server/benchmark/build-sparkline";
 import { benchmarkBrandsRouter } from "./benchmark-brands";
+import {
+  AssignmentFilterNotFoundError,
+  AssignmentMetadataMismatchError,
+  buildAssignmentInstructions,
+  requireAssignmentFilter,
+  selectAssignmentPrompts,
+  validateAssignmentRunMetadata,
+} from "@/server/benchmark/assignment";
+
+function requireBenchmarkAssignmentFilter<T>(
+  label: string,
+  slug: string | undefined,
+  row: T | undefined,
+): T | undefined {
+  try {
+    return requireAssignmentFilter(label, slug, row);
+  } catch (err) {
+    if (err instanceof AssignmentFilterNotFoundError) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: err.message,
+      });
+    }
+    throw err;
+  }
+}
+
+function requireBenchmarkAssignmentRunMetadata(
+  assignment: {
+    modelProvider: string | null;
+    modelId: string | null;
+    locale: string | null;
+  },
+  run: {
+    modelProvider: string;
+    modelId: string;
+    locale: string;
+  },
+): void {
+  try {
+    validateAssignmentRunMetadata(assignment, run);
+  } catch (err) {
+    if (err instanceof AssignmentMetadataMismatchError) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: err.message,
+      });
+    }
+    throw err;
+  }
+}
 
 export const benchmarkRouter = createTRPCRouter({
   brands: benchmarkBrandsRouter,
@@ -303,6 +355,175 @@ export const benchmarkRouter = createTRPCRouter({
       return { ok: true };
     }),
 
+  createAssignment: protectedProcedure
+    .input(
+      z.object({
+        categorySlug: z.string().optional(),
+        intentSlug: z.string().optional(),
+        limit: z.number().int().min(1).max(20).default(5),
+        modelProvider: z.enum(BENCHMARK_MODEL_PROVIDERS).optional(),
+        modelId: z.string().min(1).max(120).optional(),
+        locale: z.string().max(16).default(BENCHMARK_DEFAULT_LOCALE),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const conds = [
+        eq(benchmarkPrompts.status, "approved"),
+        sql`${benchmarkPrompts.approvedAt} IS NOT NULL`,
+      ];
+
+      if (input.categorySlug) {
+        const [categoryRow] = await ctx.db
+          .select({ id: benchmarkCategories.id })
+          .from(benchmarkCategories)
+          .where(eq(benchmarkCategories.slug, input.categorySlug))
+          .limit(1);
+        const category = requireBenchmarkAssignmentFilter(
+          "Category",
+          input.categorySlug,
+          categoryRow,
+        );
+        if (category) {
+          conds.push(eq(benchmarkPrompts.categoryId, category.id));
+        }
+      }
+
+      if (input.intentSlug) {
+        const [intentRow] = await ctx.db
+          .select({ id: benchmarkIntents.id })
+          .from(benchmarkIntents)
+          .where(eq(benchmarkIntents.slug, input.intentSlug))
+          .limit(1);
+        const intent = requireBenchmarkAssignmentFilter(
+          "Intent",
+          input.intentSlug,
+          intentRow,
+        );
+        if (intent) {
+          conds.push(eq(benchmarkPrompts.intentId, intent.id));
+        }
+      }
+
+      const rows = await ctx.db
+        .select({
+          id: benchmarkPrompts.id,
+          text: benchmarkPrompts.text,
+          categoryId: benchmarkPrompts.categoryId,
+          intentId: benchmarkPrompts.intentId,
+          locale: benchmarkPrompts.locale,
+          approvedAt: benchmarkPrompts.approvedAt,
+        })
+        .from(benchmarkPrompts)
+        .where(and(...conds))
+        .orderBy(desc(benchmarkPrompts.approvedAt), asc(benchmarkPrompts.id))
+        .limit(100);
+
+      const approvedPromptRows = rows.flatMap((prompt) =>
+        prompt.approvedAt ? [{ ...prompt, approvedAt: prompt.approvedAt }] : [],
+      );
+      const prompts = selectAssignmentPrompts(approvedPromptRows, input.limit);
+
+      if (prompts.length === 0) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No approved prompts matched this assignment.",
+        });
+      }
+
+      const [assignment] = await ctx.db
+        .insert(benchmarkAssignments)
+        .values({
+          userId,
+          promptIds: prompts.map((prompt) => prompt.id),
+          modelProvider: input.modelProvider ?? null,
+          modelId: input.modelId ?? null,
+          locale: input.locale,
+          status: "active",
+        })
+        .returning();
+
+      if (!assignment) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create benchmark assignment.",
+        });
+      }
+
+      return {
+        assignment,
+        prompts,
+        instructions: buildAssignmentInstructions({
+          assignmentId: assignment.id,
+          prompts,
+          modelProvider: assignment.modelProvider,
+          modelId: assignment.modelId,
+          locale: assignment.locale,
+        }),
+      };
+    }),
+
+  getAssignment: protectedProcedure
+    .input(z.object({ assignmentId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [assignment] = await ctx.db
+        .select()
+        .from(benchmarkAssignments)
+        .where(eq(benchmarkAssignments.id, input.assignmentId))
+        .limit(1);
+
+      if (assignment?.userId !== userId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Assignment not found.",
+        });
+      }
+
+      const prompts =
+        assignment.promptIds.length === 0
+          ? []
+          : await ctx.db
+              .select({
+                id: benchmarkPrompts.id,
+                text: benchmarkPrompts.text,
+                categoryId: benchmarkPrompts.categoryId,
+                intentId: benchmarkPrompts.intentId,
+                locale: benchmarkPrompts.locale,
+              })
+              .from(benchmarkPrompts)
+              .where(inArray(benchmarkPrompts.id, assignment.promptIds));
+      const promptOrder = new Map(
+        assignment.promptIds.map((id, index) => [id, index]),
+      );
+      prompts.sort(
+        (a, b) =>
+          (promptOrder.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+          (promptOrder.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+      );
+
+      return {
+        assignment,
+        prompts,
+        instructions: buildAssignmentInstructions({
+          assignmentId: assignment.id,
+          prompts,
+          modelProvider: assignment.modelProvider,
+          modelId: assignment.modelId,
+          locale: assignment.locale,
+        }),
+      };
+    }),
+
+  listMyAssignments: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    return ctx.db
+      .select()
+      .from(benchmarkAssignments)
+      .where(eq(benchmarkAssignments.userId, userId))
+      .orderBy(desc(benchmarkAssignments.createdAt))
+      .limit(50);
+  }),
 
   submitRun: protectedProcedure
     .input(
@@ -316,6 +537,7 @@ export const benchmarkRouter = createTRPCRouter({
         locale: z.string().max(16).default(BENCHMARK_DEFAULT_LOCALE),
         capturedAt: z.string().datetime().optional(),
         agentId: z.string().uuid().optional(),
+        assignmentId: z.string().uuid().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -331,6 +553,29 @@ export const benchmarkRouter = createTRPCRouter({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Prompt not found or not approved.",
+        });
+      }
+
+      if (input.assignmentId) {
+        const [assignment] = await ctx.db
+          .select()
+          .from(benchmarkAssignments)
+          .where(eq(benchmarkAssignments.id, input.assignmentId))
+          .limit(1);
+        if (
+          assignment?.userId !== userId ||
+          assignment.status !== "active" ||
+          !assignment.promptIds.includes(input.promptId)
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Assignment not found for this prompt.",
+          });
+        }
+        requireBenchmarkAssignmentRunMetadata(assignment, {
+          modelProvider: input.modelProvider,
+          modelId: input.modelId,
+          locale: input.locale,
         });
       }
 
@@ -370,6 +615,7 @@ export const benchmarkRouter = createTRPCRouter({
             promptId: input.promptId,
             submittedByUserId: userId,
             agentId: input.agentId ?? null,
+            assignmentId: input.assignmentId ?? null,
             modelProvider: input.modelProvider,
             modelId: input.modelId,
             modelVersion: input.modelVersion ?? null,
@@ -398,6 +644,7 @@ export const benchmarkRouter = createTRPCRouter({
             promptId: input.promptId,
             modelId: input.modelId,
             modelProvider: input.modelProvider,
+            assignmentId: input.assignmentId ?? null,
           },
         });
 
@@ -1379,6 +1626,7 @@ export const benchmarkRouter = createTRPCRouter({
         rawAnswer: z.string().min(1).max(50_000),
         locale: z.string().max(16).default(BENCHMARK_DEFAULT_LOCALE),
         capturedAt: z.string().datetime().optional(),
+        assignmentId: z.string().uuid().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1393,6 +1641,31 @@ export const benchmarkRouter = createTRPCRouter({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Prompt not found or not approved.",
+        });
+      }
+
+      if (input.assignmentId) {
+        const [assignment] = await ctx.db
+          .select()
+          .from(benchmarkAssignments)
+          .where(eq(benchmarkAssignments.id, input.assignmentId))
+          .limit(1);
+        if (
+          assignment?.userId !== ownerId ||
+          assignment.status !== "active" ||
+          (assignment.agentId !== null &&
+            assignment.agentId !== ctx.agent.agentId) ||
+          !assignment.promptIds.includes(input.promptId)
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Assignment not found for this agent and prompt.",
+          });
+        }
+        requireBenchmarkAssignmentRunMetadata(assignment, {
+          modelProvider: input.modelProvider,
+          modelId: input.modelId,
+          locale: input.locale,
         });
       }
 
@@ -1430,6 +1703,7 @@ export const benchmarkRouter = createTRPCRouter({
           promptId: input.promptId,
           submittedByUserId: ownerId,
           agentId: ctx.agent.agentId,
+          assignmentId: input.assignmentId ?? null,
           modelProvider: input.modelProvider,
           modelId: input.modelId,
           modelVersion: input.modelVersion ?? null,
@@ -1459,6 +1733,7 @@ export const benchmarkRouter = createTRPCRouter({
           modelId: input.modelId,
           modelProvider: input.modelProvider,
           agentId: ctx.agent.agentId,
+          assignmentId: input.assignmentId ?? null,
         },
       });
 
