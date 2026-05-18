@@ -1394,6 +1394,24 @@ export const benchmarkAssignments = appSchema.table(
   }),
 );
 
+// model_surface and proxy_status are Postgres enums in the app schema.
+// See migration 20260518_benchmark_surface_and_proxy. We declare the
+// columns as text + $type<>() to follow the prevailing pattern in this
+// file (see eventRegistrations.status) while still getting compile-time
+// safety and database-level enforcement.
+export type ModelSurface =
+  | "chatgpt_grounded"
+  | "chatgpt_ungrounded"
+  | "claude_grounded"
+  | "claude_ungrounded"
+  | "gemini_grounded"
+  | "gemini_ungrounded"
+  | "perplexity"
+  | "kimi_grounded"
+  | "legacy_unverified";
+
+export type ProxyStatus = "queued" | "running" | "done" | "failed";
+
 export const benchmarkRuns = appSchema.table(
   "benchmark_run",
   {
@@ -1405,6 +1423,10 @@ export const benchmarkRuns = appSchema.table(
     modelProvider: text("model_provider").notNull(),
     modelId: text("model_id").notNull(),
     modelVersion: text("model_version"),
+    modelSurface: text("model_surface")
+      .notNull()
+      .default("legacy_unverified")
+      .$type<ModelSurface>(),
     temperature: numeric("temperature"),
     rawAnswer: text("raw_answer").notNull(),
     locale: text("locale").notNull().default("en-US"),
@@ -1414,6 +1436,13 @@ export const benchmarkRuns = appSchema.table(
       .defaultNow(),
     extractionStatus: text("extraction_status").notNull().default("pending"),
     extractionAttempts: integer("extraction_attempts").notNull().default(0),
+    proxyStatus: text("proxy_status")
+      .notNull()
+      .default("done")
+      .$type<ProxyStatus>(),
+    proxyResponseRaw: jsonb("proxy_response_raw"),
+    costCents: integer("cost_cents"),
+    providerResponseId: text("provider_response_id"),
     weight: numeric("weight").notNull().default("1.0"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -1429,6 +1458,11 @@ export const benchmarkRuns = appSchema.table(
       t.extractionStatus,
     ),
     assignmentIdx: index("benchmark_run_assignment_idx").on(t.assignmentId),
+    surfaceCapturedIdx: index("benchmark_run_surface_captured_idx").on(
+      t.modelSurface,
+      t.capturedAt,
+    ),
+    proxyStatusIdx: index("benchmark_run_proxy_status_idx").on(t.proxyStatus),
   }),
 );
 
@@ -1451,6 +1485,53 @@ export const benchmarkBrandMentions = appSchema.table(
   (t) => ({
     brandIdx: index("benchmark_brand_mention_brand_idx").on(t.brandId),
     runIdx: index("benchmark_brand_mention_run_idx").on(t.runId),
+  }),
+);
+
+export type RunSourceKind = "source" | "citation";
+
+export type RunSourceType =
+  | "editorial"
+  | "corporate"
+  | "user_generated"
+  | "reference"
+  | "owned_site"
+  | "competitor_site"
+  | "unknown";
+
+export type RunSourceBrandRelation =
+  | "own"
+  | "competitor"
+  | "neutral"
+  | "unknown";
+
+export const benchmarkRunSources = appSchema.table(
+  "benchmark_run_source",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    runId: uuid("run_id").notNull(),
+    url: text("url").notNull(),
+    domain: text("domain").notNull(),
+    title: text("title"),
+    snippet: text("snippet"),
+    position: integer("position"),
+    kind: text("kind").notNull().$type<RunSourceKind>(),
+    sourceType: text("source_type")
+      .notNull()
+      .default("unknown")
+      .$type<RunSourceType>(),
+    brandRelation: text("brand_relation")
+      .notNull()
+      .default("unknown")
+      .$type<RunSourceBrandRelation>(),
+    explicitCitation: boolean("explicit_citation").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    runIdx: index("benchmark_run_source_run_idx").on(t.runId),
+    domainIdx: index("benchmark_run_source_domain_idx").on(t.domain),
   }),
 );
 
