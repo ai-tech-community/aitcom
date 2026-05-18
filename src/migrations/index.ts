@@ -23,6 +23,7 @@ import * as migration_20260428_brand_commitment_notes from "./20260428_brand_com
 import * as migration_20260505_benchmark_assignments from "./20260505_benchmark_assignments";
 import * as migration_20260509_investigation_edit_log from "./20260509_investigation_edit_log";
 import * as migration_20260518_benchmark_surface_and_proxy from "./20260518_benchmark_surface_and_proxy";
+import * as migration_20260518_agg_brand_visibility_by_surface from "./20260518_agg_brand_visibility_by_surface";
 
 export const migrations = [
   {
@@ -149,5 +150,10 @@ export const migrations = [
     up: migration_20260518_benchmark_surface_and_proxy.up,
     down: migration_20260518_benchmark_surface_and_proxy.down,
     name: "20260518_benchmark_surface_and_proxy",
+  },
+  {
+    up: migration_20260518_agg_brand_visibility_by_surface.up,
+    down: migration_20260518_agg_brand_visibility_by_surface.down,
+    name: "20260518_agg_brand_visibility_by_surface",
   },
 ];

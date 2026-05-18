@@ -9,6 +9,7 @@ import { api } from "@/trpc/react";
 import { Badge } from "@/components/ui/badge";
 import { BrandHero } from "./_components/BrandHero";
 import { PerModelBar } from "./_components/PerModelBar";
+import { SurfaceComparisonCard } from "./_components/SurfaceComparisonCard";
 import { VisibilityTrendChart } from "./_components/VisibilityTrendChart";
 import { CompetitorTable } from "./_components/CompetitorTable";
 import { CitationsPanel } from "./_components/CitationsPanel";
@@ -48,6 +49,11 @@ export default function BrandProfilePage({
     slug,
     window: windowDays,
     modelId: modelId ?? undefined,
+  });
+
+  const surfaceStats = api.benchmark.brands.statsBySurface.useQuery({
+    slug,
+    window: windowDays,
   });
 
   const categories = api.benchmark.listCategories.useQuery();
@@ -130,6 +136,19 @@ export default function BrandProfilePage({
               rows={s.perModel}
               activeModelId={modelId}
               onModelSelect={(id) => setParam("model", id)}
+            />
+          </section>
+
+          <section className="flex flex-col gap-3">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-lg font-medium">By surface</h2>
+              <span className="text-muted-foreground text-xs">
+                Proxy-grade runs only · {windowDays}d
+              </span>
+            </div>
+            <SurfaceComparisonCard
+              rows={surfaceStats.data?.surfaces ?? []}
+              windowDays={windowDays}
             />
           </section>
 

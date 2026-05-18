@@ -3,6 +3,7 @@ import type { db as _db } from "@/server/db";
 import { rebuildAggCitationByBrand } from "./aggregate-citations";
 import {
   rebuildAggBrandVisibilityByModel,
+  rebuildAggBrandVisibilityBySurface,
   rebuildAggBrandVisibilityByDay,
 } from "./aggregate-brand-visibility";
 
@@ -269,6 +270,7 @@ export async function rebuildAllAggregates(db: DB): Promise<{
     hero: number;
     citation: number;
     visibilityByModel: number;
+    visibilityBySurface: number;
     visibilityByDay: number;
   };
 }> {
@@ -285,8 +287,10 @@ export async function rebuildAllAggregates(db: DB): Promise<{
   const t5 = Date.now();
   await rebuildAggBrandVisibilityByModel(db);
   const t6 = Date.now();
-  await rebuildAggBrandVisibilityByDay(db);
+  await rebuildAggBrandVisibilityBySurface(db);
   const t7 = Date.now();
+  await rebuildAggBrandVisibilityByDay(db);
+  const t8 = Date.now();
   return {
     ok: true,
     durations: {
@@ -296,7 +300,8 @@ export async function rebuildAllAggregates(db: DB): Promise<{
       hero: t4 - t3,
       citation: t5 - t4,
       visibilityByModel: t6 - t5,
-      visibilityByDay: t7 - t6,
+      visibilityBySurface: t7 - t6,
+      visibilityByDay: t8 - t7,
     },
   };
 }

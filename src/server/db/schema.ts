@@ -1699,6 +1699,38 @@ export const aggBrandVisibilityByModel = appSchema.table(
   }),
 );
 
+/**
+ * Visibility per (brand, model_surface, window). Excludes runs with
+ * model_surface='legacy_unverified' from both numerator and denominator —
+ * legacy contributor-submitted runs are not trust-grade evidence.
+ * See ADR-0001 and ADR-0004.
+ */
+export const aggBrandVisibilityBySurface = appSchema.table(
+  "agg_brand_visibility_by_surface",
+  {
+    brandId: uuid("brand_id").notNull(),
+    modelSurface: text("model_surface").notNull().$type<ModelSurface>(),
+    windowDays: integer("window_days").notNull(),
+    primaryCategoryId: uuid("primary_category_id"),
+    mentionsCount: integer("mentions_count").notNull(),
+    runsTotal: integer("runs_total").notNull(),
+    visibilityPct: numeric("visibility_pct").notNull(),
+    avgRank: numeric("avg_rank"),
+    sentimentPosPct: numeric("sentiment_pos_pct").notNull().default("0"),
+    sentimentNeuPct: numeric("sentiment_neu_pct").notNull().default("0"),
+    sentimentNegPct: numeric("sentiment_neg_pct").notNull().default("0"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    brandIdx: index("agg_brand_visibility_by_surface_brand_idx").on(
+      t.brandId,
+      t.windowDays,
+    ),
+  }),
+);
+
 export const aggBrandVisibilityByDay = appSchema.table(
   "agg_brand_visibility_by_day",
   {

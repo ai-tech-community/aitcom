@@ -10,6 +10,7 @@ import {
   brands,
   benchmarkCategories,
   aggBrandVisibilityByModel,
+  aggBrandVisibilityBySurface,
   aggBrandVisibilityByDay,
   aggCitationByBrand,
   brandWatches,
@@ -668,5 +669,56 @@ export const benchmarkBrandsRouter = createTRPCRouter({
         expiresAt: Date.now() + STRATEGY_CACHE_MS,
       });
       return { recommendations: recs, cached: false };
+    }),
+
+  /**
+   * Brand visibility sliced by model_surface (ChatGPT-grounded, Claude-grounded,
+   * Perplexity, ...). Powers the surface-comparison card on the brand profile.
+   * Excludes legacy_unverified runs by construction (see ADR-0004).
+   */
+  statsBySurface: publicProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        window: z.union([z.literal(7), z.literal(30), z.literal(90)]),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const [brand] = await ctx.db
+        .select()
+        .from(brands)
+        .where(eq(brands.slug, input.slug))
+        .limit(1);
+      if (!brand) return null;
+
+      const rows = await ctx.db
+        .select({
+          modelSurface: aggBrandVisibilityBySurface.modelSurface,
+          mentionsCount: aggBrandVisibilityBySurface.mentionsCount,
+          runsTotal: aggBrandVisibilityBySurface.runsTotal,
+          visibilityPct: aggBrandVisibilityBySurface.visibilityPct,
+          avgRank: aggBrandVisibilityBySurface.avgRank,
+          sentimentPosPct: aggBrandVisibilityBySurface.sentimentPosPct,
+        })
+        .from(aggBrandVisibilityBySurface)
+        .where(
+          and(
+            eq(aggBrandVisibilityBySurface.brandId, brand.id),
+            eq(aggBrandVisibilityBySurface.windowDays, input.window),
+          ),
+        );
+
+      return {
+        brandId: brand.id,
+        window: input.window,
+        surfaces: rows.map((r) => ({
+          modelSurface: r.modelSurface,
+          mentionsCount: r.mentionsCount,
+          runsTotal: r.runsTotal,
+          visibilityPct: Number(r.visibilityPct),
+          avgRank: r.avgRank === null ? null : Number(r.avgRank),
+          sentimentPosPct: Number(r.sentimentPosPct),
+        })),
+      };
     }),
 });
