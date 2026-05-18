@@ -1476,4 +1476,105 @@ export const benchmarkRouter = createTRPCRouter({
         extractionStatus: run.extractionStatus,
       };
     }),
+
+  /**
+   * Public work-in-flight feed: per-surface counts and the most recent
+   * successful proxy runs. Powers the transparency panel on the benchmark
+   * page. Read-only; no privilege checks (see ADR-0003 — the community
+   * curates, the proxy is transparent).
+   */
+  workInFlight: publicProcedure.query(async ({ ctx }) => {
+    const startOfUtcDay = new Date();
+    startOfUtcDay.setUTCHours(0, 0, 0, 0);
+
+    const queuedRows = await ctx.db
+      .select({
+        surface: benchmarkRuns.modelSurface,
+        proxyStatus: benchmarkRuns.proxyStatus,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(benchmarkRuns)
+      .where(inArray(benchmarkRuns.proxyStatus, ["queued", "running"]))
+      .groupBy(benchmarkRuns.modelSurface, benchmarkRuns.proxyStatus);
+
+    const todayRows = await ctx.db
+      .select({
+        surface: benchmarkRuns.modelSurface,
+        proxyStatus: benchmarkRuns.proxyStatus,
+        count: sql<number>`COUNT(*)`,
+        costCents: sql<number>`COALESCE(SUM(${benchmarkRuns.costCents}), 0)`,
+      })
+      .from(benchmarkRuns)
+      .where(
+        and(
+          inArray(benchmarkRuns.proxyStatus, ["done", "failed"]),
+          sql`${benchmarkRuns.capturedAt} >= ${startOfUtcDay.toISOString()}`,
+        ),
+      )
+      .groupBy(benchmarkRuns.modelSurface, benchmarkRuns.proxyStatus);
+
+    const surfaceMap = new Map<
+      string,
+      {
+        queued: number;
+        running: number;
+        doneToday: number;
+        failedToday: number;
+        costCentsToday: number;
+      }
+    >();
+    const getEntry = (surface: string) => {
+      let e = surfaceMap.get(surface);
+      if (!e) {
+        e = {
+          queued: 0,
+          running: 0,
+          doneToday: 0,
+          failedToday: 0,
+          costCentsToday: 0,
+        };
+        surfaceMap.set(surface, e);
+      }
+      return e;
+    };
+    for (const r of queuedRows) {
+      const e = getEntry(r.surface);
+      if (r.proxyStatus === "queued") e.queued = Number(r.count);
+      else if (r.proxyStatus === "running") e.running = Number(r.count);
+    }
+    for (const r of todayRows) {
+      const e = getEntry(r.surface);
+      if (r.proxyStatus === "done") {
+        e.doneToday = Number(r.count);
+        e.costCentsToday = Number(r.costCents);
+      } else if (r.proxyStatus === "failed") {
+        e.failedToday = Number(r.count);
+      }
+    }
+    const perSurface = Array.from(surfaceMap.entries()).map(
+      ([surface, counts]) => ({ surface, ...counts }),
+    );
+
+    const recent = await ctx.db
+      .select({
+        runId: benchmarkRuns.id,
+        surface: benchmarkRuns.modelSurface,
+        capturedAt: benchmarkRuns.capturedAt,
+        promptText: benchmarkPrompts.text,
+      })
+      .from(benchmarkRuns)
+      .innerJoin(
+        benchmarkPrompts,
+        eq(benchmarkPrompts.id, benchmarkRuns.promptId),
+      )
+      .where(eq(benchmarkRuns.proxyStatus, "done"))
+      .orderBy(desc(benchmarkRuns.capturedAt))
+      .limit(10);
+
+    return {
+      perSurface,
+      recent,
+      asOf: new Date().toISOString(),
+    };
+  }),
 });

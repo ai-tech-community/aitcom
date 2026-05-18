@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SubmitPromptTab } from "./_components/submit-prompt-tab";
 import { RunPromptsTab } from "./_components/run-prompts-tab";
 import { DashboardTab } from "./_components/dashboard-tab";
+import { WorkInFlightPanel } from "./_components/WorkInFlightPanel";
 import { BrandSearchCombobox } from "./brands/_components/BrandSearchCombobox";
 import { useTranslations } from "next-intl";
 
@@ -58,7 +59,10 @@ export default function BenchmarkPage() {
           <TabsTrigger value="submit">{t("tabs.submit")}</TabsTrigger>
         </TabsList>
         <TabsContent value="dashboard">
-          <DashboardTab onChangeTab={setTab} />
+          <div className="flex flex-col gap-6">
+            <WorkInFlightPanel />
+            <DashboardTab onChangeTab={setTab} />
+          </div>
         </TabsContent>
         <TabsContent value="run">
           <RunPromptsTab />
