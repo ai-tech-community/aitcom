@@ -90,6 +90,7 @@ export function normalizeChatGptGroundedResponse(
     promptTokens: raw.usage?.prompt_tokens ?? null,
     completionTokens: raw.usage?.completion_tokens ?? null,
     costCents: null,
+    providerResponseRaw: raw,
   };
 }
 

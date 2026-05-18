@@ -31,6 +31,12 @@ export interface ProxyRunResult {
   promptTokens: number | null;
   completionTokens: number | null;
   costCents: number | null;
+  /**
+   * Full verbatim provider response. Stored in `benchmark_run.proxy_response_raw`
+   * so re-extraction is possible if the normaliser or source classifier
+   * improves later.
+   */
+  providerResponseRaw: unknown;
 }
 
 export class ProxyError extends Error {
