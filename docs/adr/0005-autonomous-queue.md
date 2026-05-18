@@ -1,6 +1,12 @@
 # Brand-benchmark runs execute on an autonomous queue, not on curator claims
 
-**Status:** accepted
+**Status:** superseded by [ADR-0006](0006-byoa-community-executes-ait-collects.md)
+
+> **Historical note.** This ADR described an autonomous AIT-driven queue
+> built on the (superseded) proxy execution model from ADR-0002. Under
+> BYOA there is no AIT-side execution, so the "autonomous queue" idea
+> does not apply. ADR-0006 sets the corrected direction. The text below
+> is preserved as the record of how the reasoning went wrong.
 
 Refines [[adr-0003-community-as-curators]] and revises the assignment-cell
 direction taken in an earlier draft of [[adr-0004-brand-benchmark-schema-reshape]].

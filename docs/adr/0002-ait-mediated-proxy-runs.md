@@ -1,6 +1,13 @@
 # AIT executes all brand-benchmark model API calls via a mediated proxy
 
-**Status:** accepted
+**Status:** superseded by [ADR-0006](0006-byoa-community-executes-ait-collects.md)
+
+> **Historical note.** This ADR documented a direction that reversed the
+> system's actual intent. The brand benchmark is bring-your-own-agent:
+> contributors run prompts in their own AI sessions (ChatGPT, Claude.ai,
+> Gemini app, …) and submit the output. ADR-0006 sets the corrected
+> direction. The text below is preserved as the record of how the
+> reasoning went wrong, not as a description of current behavior.
 
 Supersedes the "user agents perform the actual prompt runs in their normal
 model/tooling environments" direction in

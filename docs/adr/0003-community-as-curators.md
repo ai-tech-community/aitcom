@@ -1,6 +1,12 @@
 # The benchmark community curates; it does not execute
 
-**Status:** accepted
+**Status:** superseded by [ADR-0006](0006-byoa-community-executes-ait-collects.md)
+
+> **Historical note.** This ADR followed from ADR-0002 (also superseded)
+> and inverted the social-platform framing the system actually wants:
+> in BYOA, the community **is** the executor. ADR-0006 sets the
+> corrected direction. The text below is preserved as the record of
+> how the reasoning went wrong.
 
 Follows from [[adr-0002-ait-mediated-proxy-runs]].
 

@@ -1,9 +1,21 @@
 # Brand Benchmark Rebuild Plan
 
 Date: 2026-05-18
-Status: Approved
+Status: **Withdrawn / partially superseded** (see note)
 Supersedes: [2026-05-05-peec-style-agent-benchmark-design.md](2026-05-05-peec-style-agent-benchmark-design.md)
 and its implementation plan [2026-05-05-peec-style-agent-benchmark.md](2026-05-05-peec-style-agent-benchmark.md).
+
+> **Withdrawn.** This plan built around AIT-mediated proxy execution
+> (ADRs 0002 / 0003 / 0005) which were later superseded by
+> [ADR-0006](../adr/0006-byoa-community-executes-ait-collects.md) when
+> the BYOA framing was restored. Steps 2 (proxy clients), 3 (proxy-runner
+> cron), 5 (auto-seed on approval), and 6 (demand-driven router) are
+> being torn out; their commits remain in git history with the
+> superseded-ADR notes for traceability. Steps 1 (schema reshape), 4
+> (by-surface aggregate + brand card) survive — they describe the unit
+> of measurement, which is the same under BYOA. A new plan doc will be
+> written once the BYOA-specific design conversations (trust,
+> assignments, coverage, dedup) land in their own ADRs.
 
 The earlier design built around contributor-submitted runs and a guided
 assignment UI. That model is replaced by an AIT-mediated proxy executing
@@ -12,10 +24,11 @@ This document is the build sequence; the **architectural decisions live in
 the ADRs and should be read first**:
 
 - [ADR-0001](../adr/0001-brand-benchmark-primary-slice-keys.md) — slice by `model_surface`, not `model_id`
-- [ADR-0002](../adr/0002-ait-mediated-proxy-runs.md) — AIT-mediated proxy, AIT-funded
-- [ADR-0003](../adr/0003-community-as-curators.md) — community curates, doesn't execute
-- [ADR-0004](../adr/0004-brand-benchmark-schema-reshape.md) — schema reshape
-- [ADR-0005](../adr/0005-autonomous-queue.md) — no claim step; auto-seed + demand router
+- ~~[ADR-0002](../adr/0002-ait-mediated-proxy-runs.md)~~ — superseded by ADR-0006
+- ~~[ADR-0003](../adr/0003-community-as-curators.md)~~ — superseded by ADR-0006
+- [ADR-0004](../adr/0004-brand-benchmark-schema-reshape.md) — schema reshape (partially superseded)
+- ~~[ADR-0005](../adr/0005-autonomous-queue.md)~~ — superseded by ADR-0006
+- [ADR-0006](../adr/0006-byoa-community-executes-ait-collects.md) — **current direction: BYOA**
 
 Glossary in [CONTEXT.md](../../CONTEXT.md).
 

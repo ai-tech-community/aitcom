@@ -53,8 +53,13 @@ same datapoint.
 ### Run
 
 One submission of one **prompt** in one **model product** at one **grounding
-mode** by one contributor's agent. The atomic evidence unit. Brand mentions
+mode** by one human contributor. The atomic evidence unit. Brand mentions
 and citations hang off a run.
+
+The contributor runs the prompt in their own AI product session (ChatGPT,
+Claude.ai, Gemini app, Perplexity, Kimi, an MCP-driven local agent, etc.)
+and submits the raw answer text + self-declared metadata to AIT. AIT does
+**not** call model APIs. See [[adr-0006-byoa-community-executes-ait-collects]].
 
 ### Prompt
 
@@ -73,35 +78,37 @@ matched.
 A source URL the model attributed in its answer. Only meaningful for grounded
 runs.
 
-### Run queue
+### Assignment
 
-The brand-benchmark has no "assignment" concept. The queue is just
-`benchmark_run` rows in `proxy_status='queued'`. Rows arrive via auto-seed
-(on prompt approval, one row per enabled `model_surface`) and via the
-demand-driven router (cells that close cross-surface comparison gaps for
-demanded prompts). A cron worker executes queued rows through the proxy
-within each surface's daily budget. See
-[[adr-0005-autonomous-queue]]. The historical
-[20260505_benchmark_assignments.ts](src/migrations/20260505_benchmark_assignments.ts)
-table is obsolete and slated for removal.
-
-### Run authority
-
-All brand-benchmark model API calls are executed by AIT's proxy, not by
-contributor agents. AIT supplies the API keys, observes the full
-request/response, and stores the response verbatim as the run. Submission
-shape ("contributor sends raw answer") from the older design doc is
-deprecated. See [[adr-0002-ait-mediated-proxy-runs]].
+A curated bundle of prompts handed to a contributor as an affordance:
+"here are five prompts; run them in your ChatGPT/Claude/Gemini and submit
+the output." An assignment is *not* server-side executable work — the
+contributor decides whether and when to run it. See
+[[20260505_benchmark_assignments.ts]] and
+[[adr-0006-byoa-community-executes-ait-collects]].
 
 ### Coverage cell
 
-A `(prompt, product, grounding)` triple. The atomic unit the assignment
-router thinks in. A cell with too few recent runs is under-covered;
-assignments target under-covered cells.
+A `(prompt, product, grounding)` triple. The unit the assignment
+distribution thinks in: a cell with few recent runs across the contributor
+pool is under-covered.
 
 ### Community role
 
-Curators, not executors. The community proposes prompts, upvotes which
-prompts matter, claims brand profiles, flags wrong brand extractions, and
-discusses methodology. They do not operate the model API calls. See
-[[adr-0003-community-as-curators]].
+Executors and curators. The community **runs** the prompts (in their own
+AI product sessions) and submits the outputs. They also propose prompts,
+upvote, claim brand profiles, flag mentions, and discuss methodology.
+See [[adr-0006-byoa-community-executes-ait-collects]].
+
+### Trust
+
+Per-run fabrication is undetectable. The benchmark relies on:
+- volume across contributors per cell;
+- visible provenance (who submitted, when);
+- reputation / weighting / dispute mechanisms (specifics open — to be
+  designed).
+
+This is a deliberate tradeoff against the AIT-proxy alternative that was
+considered and rejected. See ADR-0006 for the reasoning and the
+[superseded ADR-0002](docs/adr/0002-ait-mediated-proxy-runs.md) for the
+alternative.

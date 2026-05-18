@@ -1,9 +1,19 @@
 # Brand benchmark schema: `model_surface`, normalized sources, queued proxy runs
 
-**Status:** accepted
+**Status:** accepted (partially superseded — see note)
 
-Implements the slicing keys from [[adr-0001-brand-benchmark-primary-slice-keys]]
-and the proxy execution model from [[adr-0002-ait-mediated-proxy-runs]].
+> **Note.** Decision 7 (`benchmark_run` doubling as the proxy queue + the
+> drop of `benchmark_assignment`) is superseded by
+> [ADR-0006](0006-byoa-community-executes-ait-collects.md). Under BYOA,
+> there is no proxy queue; runs are contributor submissions and the
+> assignment table is restored. The schema additions (`model_surface`,
+> `proxy_status` column repurposed or removed, `benchmark_run_source`,
+> by-surface aggregate, `submitted_by_user_id` nullable) are still
+> correct under BYOA — they describe the unit of measurement, not who
+> executes the work.
+
+Implements the slicing keys from [[adr-0001-brand-benchmark-primary-slice-keys]].
+The proxy execution model from ADR-0002 is superseded.
 
 ## Decisions
 
