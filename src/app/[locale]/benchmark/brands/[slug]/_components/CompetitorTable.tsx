@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { StatLabel } from "../../../_components/StatLabel";
 
 interface Competitor {
   id: string;
@@ -27,8 +28,12 @@ export function CompetitorTable({
       <thead className="text-muted-foreground text-xs uppercase">
         <tr>
           <th className="py-2 text-left">Brand</th>
-          <th className="py-2 text-right">Visibility</th>
-          <th className="py-2 text-right">Avg rank</th>
+          <th className="py-2 text-right">
+            <StatLabel stat="visibility" size="sm" />
+          </th>
+          <th className="py-2 text-right">
+            <StatLabel stat="avgRank" size="sm" />
+          </th>
           <th className="py-2 text-right">Positive %</th>
         </tr>
       </thead>

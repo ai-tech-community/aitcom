@@ -1,5 +1,8 @@
 "use client";
 
+import { StatLabel } from "../../../_components/StatLabel";
+import type { BenchmarkStatKey } from "@/lib/benchmark-stat-definitions";
+
 interface MetricSummary {
   visibilityPct: number;
   shareOfVoicePct: number;
@@ -11,33 +14,29 @@ interface MetricSummary {
 }
 
 interface MetricCard {
-  label: string;
+  stat: BenchmarkStatKey;
   value: string;
 }
 
 export function MetricCards({ summary }: { summary: MetricSummary }) {
   const cards: MetricCard[] = [
-    { label: "Visibility", value: formatPct(summary.visibilityPct) },
-    { label: "Share of Voice", value: formatPct(summary.shareOfVoicePct) },
+    { stat: "visibility", value: formatPct(summary.visibilityPct) },
+    { stat: "shareOfVoice", value: formatPct(summary.shareOfVoicePct) },
     {
-      label: "Avg Position",
+      stat: "avgRank",
       value:
         summary.avgPosition === null ? "-" : summary.avgPosition.toFixed(2),
     },
-    { label: "Sentiment", value: formatSigned(summary.sentimentScore) },
-    {
-      label: "Source Visibility",
-      value: formatPct(summary.sourceVisibilityPct),
-    },
-    { label: "Citation Rate", value: formatPct(summary.citationRatePct) },
+    { stat: "sentiment", value: formatSigned(summary.sentimentScore) },
+    { stat: "citationRate", value: formatPct(summary.citationRatePct) },
   ];
 
   return (
-    <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+    <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
       {cards.map((card) => (
-        <div key={card.label} className="rounded border p-3">
+        <div key={card.stat} className="rounded border p-3">
           <div className="text-muted-foreground text-xs font-medium uppercase">
-            {card.label}
+            <StatLabel stat={card.stat} size="sm" />
           </div>
           <div className="mt-1 text-2xl font-semibold tabular-nums">
             {card.value}

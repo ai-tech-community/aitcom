@@ -1,5 +1,6 @@
 "use client";
 import { Badge } from "@/components/ui/badge";
+import { StatLabel } from "../../../_components/StatLabel";
 import { WatchBrandButton } from "./WatchBrandButton";
 
 interface Props {
@@ -88,7 +89,7 @@ export function BrandHero({
       <div className="flex items-end justify-between">
         <div>
           <div className="text-muted-foreground text-xs tracking-wide uppercase">
-            Visibility ({windowDays}d)
+            <StatLabel stat="visibility" size="sm" /> ({windowDays}d)
           </div>
           <div className="text-4xl font-semibold tabular-nums">
             {hero.visibilityPct.toFixed(1)}%
