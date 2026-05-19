@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Search, Plus } from "lucide-react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Link } from "@/i18n/navigation";
 import { CategoryTabs, type Category } from "./category-tabs";
 import { ThreadCard } from "./thread-card";
@@ -22,6 +23,7 @@ interface ForumPageProps {
 export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
   const t = useTranslations("forum");
   const { data: session } = authClient.useSession();
+  const { promptAuth } = useRequireAuth();
 
   const [category, setCategory] = useState<Category>("all");
   const [sort, setSort] = useState<Sort>("newest");
@@ -113,12 +115,13 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
             {t("newThread")}
           </Link>
         ) : (
-          <Link
-            href="/auth/signin"
+          <button
+            type="button"
+            onClick={() => promptAuth("Sign in to post a thread")}
             className="text-muted-foreground hover:text-foreground shrink-0 font-mono text-[10px] underline underline-offset-4 transition-colors"
           >
             {t("loginToPost")}
-          </Link>
+          </button>
         )}
       </div>
 

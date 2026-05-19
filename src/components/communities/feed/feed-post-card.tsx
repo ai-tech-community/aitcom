@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -62,6 +63,7 @@ export function FeedPostCard({
   showComments: _showComments,
 }: FeedPostCardProps) {
   const t = useTranslations("communities.feed");
+  const { requireAuth } = useRequireAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
 
@@ -213,13 +215,14 @@ export function FeedPostCard({
       <div className="flex items-center gap-4 pt-1">
         <button
           type="button"
-          onClick={() => {
-            if (currentUserId) {
-              toggleLike.mutate({ postId: post.id });
-            }
-          }}
+          onClick={() =>
+            requireAuth(
+              () => toggleLike.mutate({ postId: post.id }),
+              "Sign in to like posts",
+            )
+          }
           className="flex items-center gap-1.5 text-sm transition-colors disabled:opacity-50"
-          disabled={!currentUserId || toggleLike.isPending}
+          disabled={toggleLike.isPending}
         >
           <Heart
             className={`size-4 ${post.hasLiked ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}

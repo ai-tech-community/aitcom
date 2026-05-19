@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 import { Trash2, CornerDownRight } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -298,6 +299,7 @@ export function ArticleComments({
 }: ArticleCommentsProps) {
   const t = useTranslations("blog.comments");
   const { data: session } = authClient.useSession();
+  const { promptAuth } = useRequireAuth();
   const { openRulesModal } = useRulesModal();
 
   const { data: comments } = api.comments.list.useQuery(
@@ -335,12 +337,13 @@ export function ArticleComments({
         />
       ) : (
         <p className="text-muted-foreground font-mono text-xs">
-          <Link
-            href="/signin"
+          <button
+            type="button"
+            onClick={() => promptAuth("Sign in to comment")}
             className="hover:text-foreground underline transition-colors"
           >
             {t("signIn")}
-          </Link>
+          </button>
         </p>
       )}
 

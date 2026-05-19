@@ -12,6 +12,7 @@ import {
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -40,6 +41,7 @@ export default function CommunityIdeasPage({
   const [ideaDesc, setIdeaDesc] = useState("");
 
   const { data: session } = authClient.useSession();
+  const { promptAuth, requireAuth } = useRequireAuth();
   const utils = api.useUtils();
 
   const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
@@ -146,13 +148,12 @@ export default function CommunityIdeasPage({
               className="border-border bg-secondary/30 flex items-start gap-3 rounded-lg border p-3"
             >
               <button
-                onClick={() => {
-                  if (!session?.user) {
-                    toast.info(t("loginToVote"));
-                    return;
-                  }
-                  voteMutation.mutate({ ideaId: idea.id });
-                }}
+                onClick={() =>
+                  requireAuth(
+                    () => voteMutation.mutate({ ideaId: idea.id }),
+                    "Sign in to vote on ideas",
+                  )
+                }
                 className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-[10px] font-bold transition-colors ${
                   idea.hasVoted
                     ? "bg-primary/10 text-primary"
@@ -238,9 +239,13 @@ export default function CommunityIdeasPage({
       {/* Submit idea section */}
       <div className="mt-4 border-t pt-4">
         {!session?.user ? (
-          <p className="text-muted-foreground font-mono text-[10px]">
+          <button
+            type="button"
+            onClick={() => promptAuth("Sign in to submit an idea")}
+            className="text-muted-foreground hover:text-foreground font-mono text-[10px] underline underline-offset-4"
+          >
             {t("loginToSubmit")}
-          </p>
+          </button>
         ) : !showForm ? (
           <button
             onClick={() => setShowForm(true)}
