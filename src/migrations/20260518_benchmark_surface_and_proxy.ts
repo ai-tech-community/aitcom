@@ -2,27 +2,33 @@ import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
 import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {
+  // CREATE TYPE has no IF NOT EXISTS in Postgres — wrap in DO blocks so
+  // the migration is idempotent against partial prior runs.
   await db.execute(sql`
-    CREATE TYPE "app"."model_surface" AS ENUM (
-      'chatgpt_grounded',
-      'chatgpt_ungrounded',
-      'claude_grounded',
-      'claude_ungrounded',
-      'gemini_grounded',
-      'gemini_ungrounded',
-      'perplexity',
-      'kimi_grounded',
-      'legacy_unverified'
-    );
+    DO $$ BEGIN
+      CREATE TYPE "app"."model_surface" AS ENUM (
+        'chatgpt_grounded',
+        'chatgpt_ungrounded',
+        'claude_grounded',
+        'claude_ungrounded',
+        'gemini_grounded',
+        'gemini_ungrounded',
+        'perplexity',
+        'kimi_grounded',
+        'legacy_unverified'
+      );
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
   `);
 
   await db.execute(sql`
-    CREATE TYPE "app"."proxy_status" AS ENUM (
-      'queued',
-      'running',
-      'done',
-      'failed'
-    );
+    DO $$ BEGIN
+      CREATE TYPE "app"."proxy_status" AS ENUM (
+        'queued',
+        'running',
+        'done',
+        'failed'
+      );
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
   `);
 
   await db.execute(sql`
