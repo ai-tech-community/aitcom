@@ -4,6 +4,7 @@ import { authClient } from "@/server/better-auth/client";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "@/i18n/navigation";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 
 interface EventRegisterButtonProps {
@@ -20,6 +21,7 @@ export function EventRegisterButton({
   sourceUrl = null,
 }: EventRegisterButtonProps) {
   const router = useRouter();
+  const { promptAuth } = useRequireAuth();
   const session = authClient.useSession();
 
   const isLoggedIn = !!session.data?.user;
@@ -101,7 +103,7 @@ export function EventRegisterButton({
         <Button
           variant="outline"
           className="w-full font-mono text-xs tracking-wider"
-          onClick={() => router.push("/auth/signin")}
+          onClick={() => promptAuth(signInLabel)}
         >
           {signInLabel}
         </Button>

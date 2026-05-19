@@ -2,6 +2,7 @@
 import { Star } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
 
 export function WatchBrandButton({ brandSlug, isAuthenticated }: Props) {
   const utils = api.useUtils();
+  const { promptAuth } = useRequireAuth();
   const isWatched = api.benchmark.brands.isWatched.useQuery(
     { brandSlug },
     { enabled: isAuthenticated },
@@ -38,8 +40,7 @@ export function WatchBrandButton({ brandSlug, isAuthenticated }: Props) {
       <Button
         size="sm"
         variant="outline"
-        disabled
-        title="Sign in to watch this brand"
+        onClick={() => promptAuth("Sign in to watch this brand")}
       >
         <Star className="mr-1 h-3.5 w-3.5" />
         Watch

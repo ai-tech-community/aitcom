@@ -7,6 +7,7 @@ import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "@/i18n/navigation";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 
 type JoinPolicy = "open" | "invite_only" | "approval_required";
@@ -28,6 +29,7 @@ export function JoinButton({
   const t = useTranslations("communities.profile");
   const { data: session } = authClient.useSession();
   const router = useRouter();
+  const { promptAuth } = useRequireAuth();
   const utils = api.useUtils();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -58,7 +60,7 @@ export function JoinButton({
 
   const handleAction = async () => {
     if (!session?.user) {
-      router.push("/auth/signin" as never);
+      promptAuth("Sign in to join this community");
       return;
     }
 
