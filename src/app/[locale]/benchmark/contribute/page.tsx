@@ -9,8 +9,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LogIn } from "lucide-react";
 import { api } from "@/trpc/react";
+import { authClient } from "@/server/better-auth/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +37,8 @@ const ALL_FILTER_VALUE = "__all__";
 export default function BenchmarkContributePage() {
   const router = useRouter();
   const params = useSearchParams();
+  const session = authClient.useSession();
+  const isAuthenticated = !!session.data?.user;
   const [surface, setSurface, hydrated] = useStoredSurface();
   const [changing, setChanging] = useState(false);
 
@@ -124,6 +127,7 @@ export default function BenchmarkContributePage() {
       {surface && !showPicker && (
         <ContributeBody
           surface={surface}
+          isAuthenticated={isAuthenticated}
           queryPrompts={queryPrompts}
           categoryId={categoryId}
           setCategoryId={setCategoryId}
@@ -147,6 +151,7 @@ export default function BenchmarkContributePage() {
 
 function ContributeBody({
   surface,
+  isAuthenticated,
   queryPrompts,
   categoryId,
   setCategoryId,
@@ -164,6 +169,7 @@ function ContributeBody({
   intents,
 }: {
   surface: BenchmarkModelSurface;
+  isAuthenticated: boolean;
   queryPrompts: string[];
   categoryId: string;
   setCategoryId: (v: string) => void;
@@ -183,13 +189,18 @@ function ContributeBody({
   const utils = api.useUtils();
   const surfaceLabel = BENCHMARK_MODEL_SURFACE_LABELS[surface];
 
-  const mine = api.benchmark.listMyAssignments.useQuery();
+  const mine = api.benchmark.listMyAssignments.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
   const myHeld = useMemo(
     () => (mine.data ?? []).filter((a) => a.status === "held"),
     [mine.data],
   );
 
-  const open = api.benchmark.listOpenAssignments.useQuery({});
+  const open = api.benchmark.listOpenAssignments.useQuery(
+    {},
+    { enabled: isAuthenticated },
+  );
   const matchingOpen = open.data?.bundles.find(
     (b) => b.modelSurface === surface,
   );
@@ -247,7 +258,9 @@ function ContributeBody({
 
   return (
     <>
-      {myHeld.length > 0 && (
+      {!isAuthenticated && <SignInCard />}
+
+      {isAuthenticated && myHeld.length > 0 && (
         <section className="flex flex-col gap-2">
           <h2 className="text-sm font-medium">Your held assignments</h2>
           <ul className="flex flex-col gap-2">
@@ -288,7 +301,7 @@ function ContributeBody({
         </section>
       )}
 
-      {matchingOpen && (
+      {isAuthenticated && matchingOpen && (
         <section className="bg-primary/5 flex flex-col gap-2 rounded-md border p-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex flex-col">
@@ -393,23 +406,35 @@ function ContributeBody({
                 onlySurface={surface}
               />
               <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    setManualFor(manualFor === p.id ? null : p.id)
-                  }
-                >
-                  Submit a run
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setAgentFor(p.id)}
-                >
-                  Run with my agent
-                </Button>
+                {isAuthenticated ? (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        setManualFor(manualFor === p.id ? null : p.id)
+                      }
+                    >
+                      Submit a run
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setAgentFor(p.id)}
+                    >
+                      Run with my agent
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" variant="outline" asChild>
+                    <Link
+                      href={`/auth/signin?redirect=${encodeURIComponent("/benchmark/contribute")}`}
+                    >
+                      <LogIn className="h-4 w-4" /> Sign in to submit
+                    </Link>
+                  </Button>
+                )}
               </div>
-              {manualFor === p.id && (
+              {isAuthenticated && manualFor === p.id && (
                 <ManualRunForm
                   promptId={p.id}
                   initialSurface={surface}
@@ -426,14 +451,16 @@ function ContributeBody({
         </ul>
       </section>
 
-      <section className="flex flex-col gap-2">
-        <details>
-          <summary className="text-muted-foreground cursor-pointer text-sm">
-            My recent runs
-          </summary>
-          <MyRecentRuns />
-        </details>
-      </section>
+      {isAuthenticated && (
+        <section className="flex flex-col gap-2">
+          <details>
+            <summary className="text-muted-foreground cursor-pointer text-sm">
+              My recent runs
+            </summary>
+            <MyRecentRuns />
+          </details>
+        </section>
+      )}
 
       {agentFor && (
         <AgentRunModal
@@ -442,6 +469,37 @@ function ContributeBody({
         />
       )}
     </>
+  );
+}
+
+function SignInCard() {
+  return (
+    <section className="bg-primary/5 border-primary/20 flex flex-col gap-3 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-1">
+        <h2 className="font-medium">Sign in to start submitting runs</h2>
+        <p className="text-muted-foreground text-sm">
+          You can browse the prompt list below without signing in. To grab an
+          assignment, submit answers, or track your runs, sign in or create a
+          free AIT account.
+        </p>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <Button asChild>
+          <Link
+            href={`/auth/signin?redirect=${encodeURIComponent("/benchmark/contribute")}`}
+          >
+            <LogIn className="h-4 w-4" /> Sign in
+          </Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link
+            href={`/auth/signup?redirect=${encodeURIComponent("/benchmark/contribute")}`}
+          >
+            Create account
+          </Link>
+        </Button>
+      </div>
+    </section>
   );
 }
 
