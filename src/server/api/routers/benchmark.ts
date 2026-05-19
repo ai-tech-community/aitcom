@@ -117,6 +117,28 @@ export const benchmarkRouter = createTRPCRouter({
       .orderBy(asc(benchmarkIntents.name));
   }),
 
+  // Activity strip on the /benchmark hub. Three integers; cheap to
+  // compute. See ADR-0009 decision 1 + 2026-05-19 plan Step 8.
+  hubStats: publicProcedure.query(async ({ ctx }) => {
+    const [runs] = await ctx.db
+      .select({
+        runsThisWeek: sql<number>`count(*)::int`,
+        contributorsThisWeek: sql<number>`count(distinct ${benchmarkRuns.submittedByUserId})::int`,
+      })
+      .from(benchmarkRuns)
+      .where(sql`${benchmarkRuns.capturedAt} >= now() - INTERVAL '7 days'`);
+
+    const [brandCount] = await ctx.db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(brands);
+
+    return {
+      runsThisWeek: runs?.runsThisWeek ?? 0,
+      contributorsThisWeek: runs?.contributorsThisWeek ?? 0,
+      brandsTracked: brandCount?.n ?? 0,
+    };
+  }),
+
   listApprovedPrompts: publicProcedure
     .input(
       z.object({
