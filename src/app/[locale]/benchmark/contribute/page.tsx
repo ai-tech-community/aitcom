@@ -12,6 +12,7 @@ import Link from "next/link";
 import { ArrowLeft, LogIn } from "lucide-react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -187,6 +188,7 @@ function ContributeBody({
   intents: Array<{ id: string; name: string }> | undefined;
 }) {
   const utils = api.useUtils();
+  const { requireAuth } = useRequireAuth();
   const surfaceLabel = BENCHMARK_MODEL_SURFACE_LABELS[surface];
 
   const mine = api.benchmark.listMyAssignments.useQuery(undefined, {
@@ -301,7 +303,7 @@ function ContributeBody({
         </section>
       )}
 
-      {isAuthenticated && matchingOpen && (
+      {matchingOpen && (
         <section className="bg-primary/5 flex flex-col gap-2 rounded-md border p-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex flex-col">
@@ -316,10 +318,14 @@ function ContributeBody({
             <Button
               disabled={grab.isPending}
               onClick={() =>
-                grab.mutate({
-                  modelSurface: matchingOpen.modelSurface,
-                  promptIds: matchingOpen.promptIds,
-                })
+                requireAuth(
+                  () =>
+                    grab.mutate({
+                      modelSurface: matchingOpen.modelSurface,
+                      promptIds: matchingOpen.promptIds,
+                    }),
+                  "Sign in to grab an assignment",
+                )
               }
             >
               Grab these prompts
@@ -406,33 +412,29 @@ function ContributeBody({
                 onlySurface={surface}
               />
               <div className="flex gap-2">
-                {isAuthenticated ? (
-                  <>
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        setManualFor(manualFor === p.id ? null : p.id)
-                      }
-                    >
-                      Submit a run
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setAgentFor(p.id)}
-                    >
-                      Run with my agent
-                    </Button>
-                  </>
-                ) : (
-                  <Button size="sm" variant="outline" asChild>
-                    <Link
-                      href={`/auth/signin?redirect=${encodeURIComponent("/benchmark/contribute")}`}
-                    >
-                      <LogIn className="h-4 w-4" /> Sign in to submit
-                    </Link>
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    requireAuth(
+                      () => setManualFor(manualFor === p.id ? null : p.id),
+                      "Sign in to submit a benchmark run",
+                    )
+                  }
+                >
+                  Submit a run
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    requireAuth(
+                      () => setAgentFor(p.id),
+                      "Sign in to use the MCP agent flow",
+                    )
+                  }
+                >
+                  Run with my agent
+                </Button>
               </div>
               {isAuthenticated && manualFor === p.id && (
                 <ManualRunForm

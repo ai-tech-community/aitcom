@@ -13,6 +13,7 @@ import { Toaster } from "sonner";
 import { InboxProvider } from "@/components/inbox/inbox-provider";
 import { InboxRoot } from "@/components/inbox/inbox-root";
 import { RulesProvider } from "@/components/community/rules-provider";
+import { AuthRequiredProvider } from "@/components/auth/auth-required-dialog";
 import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
@@ -71,15 +72,17 @@ export default async function LocaleLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <TRPCReactProvider>
             <RulesProvider>
-              <Navbar />
-              <InboxProvider>
-                <main className="to-background min-h-screen bg-linear-to-b from-orange-50/60 via-amber-50/30">
-                  {children}
-                </main>
-                <Footer />
-                <InboxRoot />
-              </InboxProvider>
-              <Toaster position="bottom-right" offset={60} />
+              <AuthRequiredProvider>
+                <Navbar />
+                <InboxProvider>
+                  <main className="to-background min-h-screen bg-linear-to-b from-orange-50/60 via-amber-50/30">
+                    {children}
+                  </main>
+                  <Footer />
+                  <InboxRoot />
+                </InboxProvider>
+                <Toaster position="bottom-right" offset={60} />
+              </AuthRequiredProvider>
             </RulesProvider>
           </TRPCReactProvider>
         </NextIntlClientProvider>
