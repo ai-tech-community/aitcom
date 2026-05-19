@@ -22,18 +22,28 @@ export type CoverageCell = {
  *
  * Informational only — no claim button, no transactional state. See
  * [[adr-0008-byoa-coverage-strategy]] decision 2.
+ *
+ * When `onlySurface` is set, only that surface's chip is rendered.
+ * Used by /benchmark/contribute under the surface-first model
+ * (ADR-0009 decision 2).
  */
 export function PromptCoverageStrip({
   cells,
   threshold,
+  onlySurface,
 }: {
   cells: CoverageCell[] | undefined;
   threshold: number;
+  onlySurface?: BenchmarkModelSurface;
 }) {
   if (!cells) return null;
+  const filtered = onlySurface
+    ? cells.filter((c) => c.modelSurface === onlySurface)
+    : cells;
+  if (filtered.length === 0) return null;
   return (
     <ul className="flex flex-wrap gap-1">
-      {cells.map((c) => (
+      {filtered.map((c) => (
         <CoverageChip key={c.modelSurface} cell={c} threshold={threshold} />
       ))}
     </ul>

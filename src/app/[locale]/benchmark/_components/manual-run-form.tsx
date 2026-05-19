@@ -21,9 +21,17 @@ import {
 
 export function ManualRunForm({
   promptId,
+  initialSurface,
   onDone,
 }: {
   promptId: string;
+  /**
+   * When set, the form starts pre-selected to this surface (used by
+   * /benchmark/contribute under the surface-first model — ADR-0009
+   * decision 2). Otherwise falls back to the held-assignment surface
+   * if a held assignment covers this prompt.
+   */
+  initialSurface?: BenchmarkModelSurface;
   onDone: () => void;
 }) {
   const utils = api.useUtils();
@@ -42,7 +50,7 @@ export function ManualRunForm({
     | undefined;
 
   const [modelSurface, setModelSurface] = useState<BenchmarkModelSurface | "">(
-    heldSurface ?? "",
+    initialSurface ?? heldSurface ?? "",
   );
   const [modelId, setModelId] = useState("");
   const [rawAnswer, setRawAnswer] = useState("");
