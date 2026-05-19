@@ -25,6 +25,9 @@ import * as migration_20260509_investigation_edit_log from "./20260509_investiga
 import * as migration_20260518_benchmark_surface_and_proxy from "./20260518_benchmark_surface_and_proxy";
 import * as migration_20260518_agg_brand_visibility_by_surface from "./20260518_agg_brand_visibility_by_surface";
 import * as migration_20260518_benchmark_run_nullable_submitter from "./20260518_benchmark_run_nullable_submitter";
+import * as migration_20260518b_benchmark_run_nullable_model_id from "./20260518b_benchmark_run_nullable_model_id";
+import * as migration_20260518c_benchmark_coverage_by_cell from "./20260518c_benchmark_coverage_by_cell";
+import * as migration_20260518d_benchmark_assignment_byoa from "./20260518d_benchmark_assignment_byoa";
 
 export const migrations = [
   {
@@ -161,5 +164,20 @@ export const migrations = [
     up: migration_20260518_benchmark_run_nullable_submitter.up,
     down: migration_20260518_benchmark_run_nullable_submitter.down,
     name: "20260518_benchmark_run_nullable_submitter",
+  },
+  {
+    up: migration_20260518b_benchmark_run_nullable_model_id.up,
+    down: migration_20260518b_benchmark_run_nullable_model_id.down,
+    name: "20260518b_benchmark_run_nullable_model_id",
+  },
+  {
+    up: migration_20260518c_benchmark_coverage_by_cell.up,
+    down: migration_20260518c_benchmark_coverage_by_cell.down,
+    name: "20260518c_benchmark_coverage_by_cell",
+  },
+  {
+    up: migration_20260518d_benchmark_assignment_byoa.up,
+    down: migration_20260518d_benchmark_assignment_byoa.down,
+    name: "20260518d_benchmark_assignment_byoa",
   },
 ];
