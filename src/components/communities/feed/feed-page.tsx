@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
-import { Loader2 } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { PostComposer } from "./post-composer";
 import { FeedPostCard } from "./feed-post-card";
 import { FeedComments } from "./feed-comments";
@@ -38,10 +39,15 @@ export function FeedPage({
         memberRole === "admin" ||
         memberRole === "moderator";
 
-  const { data, isFetching, refetch } = api.feed.getFeed.useQuery({
-    communitySlug: slug,
-    limit,
-  });
+  const { promptAuth } = useRequireAuth();
+  const isAuthenticated = !!currentUserId;
+  const { data, isFetching, refetch } = api.feed.getFeed.useQuery(
+    {
+      communitySlug: slug,
+      limit,
+    },
+    { enabled: isAuthenticated },
+  );
 
   const posts = (data?.posts ?? []) as Array<{
     id: number;
@@ -88,7 +94,19 @@ export function FeedPage({
       <div className="min-w-0 flex-1 space-y-4 lg:overflow-y-auto">
         <PostComposer slug={slug} canPost={canPost} />
 
-        {isFetching && posts.length === 0 ? (
+        {!isAuthenticated ? (
+          <div className="bg-primary/5 border-primary/20 flex flex-col items-start gap-3 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-1">
+              <h2 className="font-medium">Sign in to see the community feed</h2>
+              <p className="text-muted-foreground text-sm">
+                Posts in this community are visible to members.
+              </p>
+            </div>
+            <Button onClick={() => promptAuth("Sign in to see the community feed")}>
+              <LogIn className="h-4 w-4" /> Sign in
+            </Button>
+          </div>
+        ) : isFetching && posts.length === 0 ? (
           <div className="flex justify-center py-8">
             <Loader2 className="text-muted-foreground size-5 animate-spin" />
           </div>
