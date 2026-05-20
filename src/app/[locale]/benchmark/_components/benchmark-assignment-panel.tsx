@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import {
   BENCHMARK_DEFAULT_LOCALE,
@@ -152,7 +150,7 @@ export function BenchmarkAssignmentPanel(_props: {
             <span className="text-muted-foreground text-xs">Loading…</span>
           )}
         </div>
-        {open.data && open.data.bundles.length === 0 && (
+        {open.data?.bundles.length === 0 && (
           <p className="text-muted-foreground text-sm">
             No gap cells right now — everything is covered. Browse the
             prompt list below to submit anyway.

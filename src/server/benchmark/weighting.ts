@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type { db as _db } from "@/server/db";
 import { benchmarkRuns } from "@/server/db/schema";
 import { computeContributorWeight } from "./contributor-weight";

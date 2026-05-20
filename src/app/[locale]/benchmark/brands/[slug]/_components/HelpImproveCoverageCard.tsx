@@ -56,7 +56,7 @@ export function HelpImproveCoverageCard({ topPrompts }: { topPrompts: Row[] }) {
         <h2 className="font-medium">Help improve coverage</h2>
       </div>
       <p className="text-muted-foreground text-sm">
-        These AI products don't yet have enough community runs for this
+        These AI products don&rsquo;t yet have enough community runs for this
         brand. Grabbing a few prompts on any of them will lift the
         headline numbers above the threshold.
       </p>

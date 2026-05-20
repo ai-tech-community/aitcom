@@ -848,7 +848,11 @@ export const benchmarkRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       const modelProvider = providerForSurface(input.modelSurface);
-      const modelId = input.modelId?.trim() || null;
+      const trimmedModelId = input.modelId?.trim();
+      const modelId =
+        trimmedModelId === undefined || trimmedModelId === ""
+          ? null
+          : trimmedModelId;
 
       // Confirm prompt exists and is approved
       const [prompt] = await ctx.db
@@ -1923,7 +1927,11 @@ export const benchmarkRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const ownerId = requireOwner(ctx.agent.ownerId);
       const modelProvider = providerForSurface(input.modelSurface);
-      const modelId = input.modelId?.trim() || null;
+      const trimmedModelId = input.modelId?.trim();
+      const modelId =
+        trimmedModelId === undefined || trimmedModelId === ""
+          ? null
+          : trimmedModelId;
 
       const [prompt] = await ctx.db
         .select()

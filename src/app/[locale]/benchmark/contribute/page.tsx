@@ -7,7 +7,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, LogIn } from "lucide-react";
 import { api } from "@/trpc/react";
@@ -36,7 +36,6 @@ import { AgentRunModal } from "../_components/agent-run-modal";
 const ALL_FILTER_VALUE = "__all__";
 
 export default function BenchmarkContributePage() {
-  const router = useRouter();
   const params = useSearchParams();
   const session = authClient.useSession();
   const isAuthenticated = !!session.data?.user;
@@ -91,7 +90,7 @@ export default function BenchmarkContributePage() {
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">Help benchmark</h1>
         <p className="text-muted-foreground max-w-2xl text-sm">
-          Pick the AI product you're running this in. We'll show you the
+          Pick the AI product you&rsquo;re running this in. We&rsquo;ll show you the
           prompts that need coverage on that surface. You paste the raw
           answer back — about 30 seconds per run.
         </p>

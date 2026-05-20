@@ -8,7 +8,6 @@ import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 import { Trash2, CornerDownRight } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Link } from "@/i18n/navigation";
 import { useRulesModal } from "@/components/community/rules-provider";
 
 // ---------------------------------------------------------------------------

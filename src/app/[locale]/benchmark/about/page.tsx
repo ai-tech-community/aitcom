@@ -74,7 +74,7 @@ export default function BenchmarkAboutPage() {
             The AIT Brand Benchmark is a community-built measurement of how
             different AI products surface brands when asked real-world
             questions. Contributors take an approved prompt (e.g.{" "}
-            <em>"best CRM for small teams"</em>), run it in their own AI
+            <em>&ldquo;best CRM for small teams&rdquo;</em>), run it in their own AI
             session — ChatGPT, Claude.ai, Gemini app, Perplexity, Kimi, or an
             MCP-driven agent — and submit the raw answer back. AIT collects
             and aggregates the answers into per-AI-product visibility metrics.
@@ -106,7 +106,7 @@ export default function BenchmarkAboutPage() {
             </li>
             <li>
               Each submission is stored as one <em>run</em> with a contributor
-              weight stamped from the contributor's AIT profile.
+              weight stamped from the contributor&rsquo;s AIT profile.
             </li>
             <li>
               An extractor parses the answer text for brand mentions, ranks,
@@ -114,7 +114,7 @@ export default function BenchmarkAboutPage() {
             </li>
             <li>
               Once a (prompt, AI product) cell has at least 3 distinct
-              contributors, the cell's headline metrics — visibility, share of
+              contributors, the cell&rsquo;s headline metrics — visibility, share of
               voice, sentiment — become visible publicly. Below the threshold
               the individual runs are still visible on the run page; only the
               aggregated number is gated.
@@ -146,7 +146,7 @@ export default function BenchmarkAboutPage() {
             slice — what we call a <em>model surface</em>. Same prompt,
             different surfaces is the comparison the benchmark exists to
             make. We do not average across surfaces; averaging would hide
-            the very thing we're trying to measure.
+            the very thing we&rsquo;re trying to measure.
           </p>
         </section>
 
@@ -160,20 +160,20 @@ export default function BenchmarkAboutPage() {
           </p>
           <ul className="list-disc pl-6">
             <li>
-              <strong>Volume.</strong> Per-cell metrics aren't shown publicly
+              <strong>Volume.</strong> Per-cell metrics aren&rsquo;t shown publicly
               until at least 3 distinct contributors have submitted runs for
               the same prompt on the same AI product.
             </li>
             <li>
               <strong>Inherited weight.</strong> Every run carries a numeric
-              weight derived from the contributor's existing AIT standing —
+              weight derived from the contributor&rsquo;s existing AIT standing —
               account age, badges, verified status — not from anything they do
               inside the benchmark. New accounts contribute lightly; long-
               standing community members count more.
             </li>
             <li>
               <strong>Visible provenance.</strong> Every run shows who
-              submitted it and when. Outliers don't disappear; they sit next
+              submitted it and when. Outliers don&rsquo;t disappear; they sit next
               to the consensus.
             </li>
           </ul>
@@ -194,7 +194,7 @@ export default function BenchmarkAboutPage() {
           <p>
             Pick the AI product you use, browse prompts that need coverage on
             that surface, and submit one or more raw answers back. The form
-            takes about 30 seconds per submission. You don't need an API key,
+            takes about 30 seconds per submission. You don&rsquo;t need an API key,
             an agent, or any special access — just the AI product session you
             already have.
           </p>
@@ -210,7 +210,7 @@ export default function BenchmarkAboutPage() {
           <h2 className="text-xl font-semibold">FAQ</h2>
           <div className="flex flex-col gap-1">
             <h3 className="text-base font-semibold">
-              Why doesn't my submitted run change the headline number?
+              Why doesn&rsquo;t my submitted run change the headline number?
             </h3>
             <p>
               Per-cell metrics only become public once at least 3 distinct
