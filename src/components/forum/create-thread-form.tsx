@@ -27,10 +27,18 @@ export function CreateThreadForm() {
     category: "general" as Category,
   });
 
+  const backHref = (
+    communitySlug ? `/communities/${communitySlug}/forum` : "/forum"
+  ) as never;
+
   const createMutation = api.forum.createThread.useMutation({
     onSuccess: (thread) => {
       toast.success(t("threadCreated"));
-      router.push(`/forum/${thread.slug}`);
+      router.push(
+        communitySlug
+          ? (`/communities/${communitySlug}/forum/${thread.slug}` as never)
+          : `/forum/${thread.slug}`,
+      );
     },
     onError: (err) => {
       if (err.message === "RULES_NOT_ACCEPTED") {
@@ -53,7 +61,7 @@ export function CreateThreadForm() {
     <div>
       {/* Back to forum link */}
       <Link
-        href="/forum"
+        href={backHref}
         className="mb-6 inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase transition-colors hover:text-zinc-900"
       >
         <ArrowLeft className="h-3 w-3" />
@@ -136,7 +144,7 @@ export function CreateThreadForm() {
             {createMutation.isPending ? t("creating") : t("post")}
           </button>
           <Link
-            href="/forum"
+            href={backHref}
             className="rounded-md border border-zinc-200 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase transition-colors hover:bg-zinc-50"
           >
             {t("cancel")}

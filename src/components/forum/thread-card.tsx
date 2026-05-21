@@ -34,9 +34,15 @@ type ThreadCardProps = {
   thread: ForumThread;
   index: number;
   memberRole?: "owner" | "admin" | "moderator" | "member" | null;
+  communitySlug?: string;
 };
 
-export function ThreadCard({ thread, index, memberRole }: ThreadCardProps) {
+export function ThreadCard({
+  thread,
+  index,
+  memberRole,
+  communitySlug,
+}: ThreadCardProps) {
   const t = useTranslations("forum");
   const utils = api.useUtils();
   const canModerate =
@@ -53,7 +59,13 @@ export function ThreadCard({ thread, index, memberRole }: ThreadCardProps) {
 
   return (
     <LazyMotion features={domAnimation}>
-      <Link href={`/forum/${thread.slug}`}>
+      <Link
+        href={
+          communitySlug
+            ? (`/communities/${communitySlug}/forum/${thread.slug}` as never)
+            : `/forum/${thread.slug}`
+        }
+      >
         <m.div
           className="mb-3 w-full rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50"
           initial={{ opacity: 0, y: 4 }}

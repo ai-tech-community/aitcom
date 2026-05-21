@@ -124,7 +124,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
             {threads.map((thread) => (
               <Link
                 key={thread.id}
-                href={`/forum/${thread.slug}` as never}
+                href={`/communities/${slug}/forum/${thread.slug}` as never}
                 className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
               >
                 <MessageSquare className="text-muted-foreground size-4 shrink-0" />

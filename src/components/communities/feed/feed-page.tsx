@@ -41,12 +41,13 @@ export function FeedPage({
 
   const { promptAuth } = useRequireAuth();
   const isAuthenticated = !!currentUserId;
+  const isMember = !!memberRole;
   const { data, isFetching, refetch } = api.feed.getFeed.useQuery(
     {
       communitySlug: slug,
       limit,
     },
-    { enabled: isAuthenticated },
+    { enabled: isAuthenticated && isMember },
   );
 
   const posts = (data?.posts ?? []) as Array<{
@@ -105,6 +106,13 @@ export function FeedPage({
             <Button onClick={() => promptAuth("Sign in to see the community feed")}>
               <LogIn className="h-4 w-4" /> Sign in
             </Button>
+          </div>
+        ) : !isMember ? (
+          <div className="bg-primary/5 border-primary/20 rounded-md border p-4">
+            <h2 className="font-medium">Join this community to see the feed</h2>
+            <p className="text-muted-foreground text-sm">
+              Posts in this community are visible to members only.
+            </p>
           </div>
         ) : isFetching && posts.length === 0 ? (
           <div className="flex justify-center py-8">

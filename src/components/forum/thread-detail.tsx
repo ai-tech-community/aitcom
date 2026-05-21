@@ -45,9 +45,17 @@ function timeAgo(date: string | null | undefined): string {
 type ThreadDetailProps = {
   slug: string;
   memberRole?: "owner" | "admin" | "moderator" | "member" | null;
+  communitySlug?: string;
 };
 
-export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
+export function ThreadDetail({
+  slug,
+  memberRole,
+  communitySlug,
+}: ThreadDetailProps) {
+  const backHref = (
+    communitySlug ? `/communities/${communitySlug}/forum` : "/forum"
+  ) as never;
   const t = useTranslations("forum");
   const viewCountedRef = useRef(false);
   const utils = api.useUtils();
@@ -116,7 +124,7 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
     return (
       <div className="mx-auto max-w-6xl px-6 py-6 sm:px-12 sm:py-8">
         <Link
-          href="/forum"
+          href={backHref}
           className="font-mono text-xs tracking-wider text-zinc-400 transition-colors hover:text-zinc-600"
         >
           <ArrowLeft className="mr-1 inline h-3 w-3" />
@@ -136,7 +144,7 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
     return (
       <div className="mx-auto max-w-6xl px-6 py-6 sm:px-12 sm:py-8">
         <Link
-          href="/forum"
+          href={backHref}
           className="font-mono text-xs tracking-wider text-zinc-400 transition-colors hover:text-zinc-600"
         >
           {t("backToForum")}
@@ -152,7 +160,7 @@ export function ThreadDetail({ slug, memberRole }: ThreadDetailProps) {
     <div className="mx-auto max-w-6xl px-6 py-6 sm:px-12 sm:py-8">
       {/* Back link */}
       <Link
-        href="/forum"
+        href={backHref}
         className="font-mono text-xs tracking-wider text-zinc-400 transition-colors hover:text-zinc-600"
       >
         {t("backToForum")}

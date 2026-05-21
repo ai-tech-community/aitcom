@@ -168,6 +168,7 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
               thread={thread}
               index={i}
               memberRole={memberRole}
+              communitySlug={communitySlug}
             />
           ))}
         </div>
