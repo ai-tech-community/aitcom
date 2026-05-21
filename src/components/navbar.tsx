@@ -45,7 +45,13 @@ const primaryLinks = navLinks.filter((l) => l.primary);
 const overflowLinks = navLinks.filter((l) => !l.primary);
 
 function initialsFrom(name?: string | null, email?: string | null) {
-  const source = name?.trim() || email?.trim() || "";
+  const trimmedName = name?.trim();
+  const trimmedEmail = email?.trim();
+  const source = trimmedName && trimmedName.length > 0
+    ? trimmedName
+    : trimmedEmail && trimmedEmail.length > 0
+      ? trimmedEmail
+      : "";
   if (!source) return "?";
   const parts = source.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
