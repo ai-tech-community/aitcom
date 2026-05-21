@@ -30,8 +30,8 @@ export function ConnectTab({
             ⚠ SNIPPETS BELOW ARE NOT COPY-PASTE READY
           </p>
           <p className="text-muted-foreground mt-1 text-xs">
-            For security, AIT only stores a hash of your API key — once the
-            page reloads, only the prefix is visible (
+            For security, AIT only stores a hash of your API key — once the page
+            reloads, only the prefix is visible (
             <code className="bg-muted rounded px-1">{apiKey}</code>). To get
             snippets you can paste straight into your agent runtime,{" "}
             <Link

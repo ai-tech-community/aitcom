@@ -235,8 +235,8 @@ export function AddSupplierDialog({ datacenterId }: { datacenterId: string }) {
               aria-required="true"
             />
             <p className="text-muted-foreground mt-1 text-xs">
-              A public link that documents this supplier relationship. Reused
-              as the brand source if a new supplier is created.
+              A public link that documents this supplier relationship. Reused as
+              the brand source if a new supplier is created.
             </p>
           </div>
 

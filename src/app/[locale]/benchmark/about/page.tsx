@@ -60,7 +60,9 @@ export default function BenchmarkAboutPage() {
 
       <article className="prose prose-sm dark:prose-invert flex max-w-3xl flex-col gap-8">
         <header className="not-prose flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold">How the AIT Brand Benchmark works</h1>
+          <h1 className="text-3xl font-semibold">
+            How the AIT Brand Benchmark works
+          </h1>
           <p className="text-muted-foreground">
             Community-built measurement of how AI products talk about brands.
             This page explains the data model, the metrics, and the trust
@@ -74,12 +76,12 @@ export default function BenchmarkAboutPage() {
             The AIT Brand Benchmark is a community-built measurement of how
             different AI products surface brands when asked real-world
             questions. Contributors take an approved prompt (e.g.{" "}
-            <em>&ldquo;best CRM for small teams&rdquo;</em>), run it in their own AI
-            session — ChatGPT, Claude.ai, Gemini app, Perplexity, Kimi, or an
-            MCP-driven agent — and submit the raw answer back. AIT collects
-            and aggregates the answers into per-AI-product visibility metrics.
-            AIT does not call model APIs directly; the community runs the
-            prompts.
+            <em>&ldquo;best CRM for small teams&rdquo;</em>), run it in their
+            own AI session — ChatGPT, Claude.ai, Gemini app, Perplexity, Kimi,
+            or an MCP-driven agent — and submit the raw answer back. AIT
+            collects and aggregates the answers into per-AI-product visibility
+            metrics. AIT does not call model APIs directly; the community runs
+            the prompts.
           </p>
           <p className="text-muted-foreground text-xs">
             Full reasoning:{" "}
@@ -114,10 +116,10 @@ export default function BenchmarkAboutPage() {
             </li>
             <li>
               Once a (prompt, AI product) cell has at least 3 distinct
-              contributors, the cell&rsquo;s headline metrics — visibility, share of
-              voice, sentiment — become visible publicly. Below the threshold
-              the individual runs are still visible on the run page; only the
-              aggregated number is gated.
+              contributors, the cell&rsquo;s headline metrics — visibility,
+              share of voice, sentiment — become visible publicly. Below the
+              threshold the individual runs are still visible on the run page;
+              only the aggregated number is gated.
             </li>
           </ol>
         </section>
@@ -142,11 +144,11 @@ export default function BenchmarkAboutPage() {
           <p>
             Two ChatGPT runs with web search on vs off return wildly different
             brand answers for the same prompt. So we treat each
-            <em> (AI product, grounding mode)</em> combination as its own
-            slice — what we call a <em>model surface</em>. Same prompt,
-            different surfaces is the comparison the benchmark exists to
-            make. We do not average across surfaces; averaging would hide
-            the very thing we&rsquo;re trying to measure.
+            <em> (AI product, grounding mode)</em> combination as its own slice
+            — what we call a <em>model surface</em>. Same prompt, different
+            surfaces is the comparison the benchmark exists to make. We do not
+            average across surfaces; averaging would hide the very thing
+            we&rsquo;re trying to measure.
           </p>
         </section>
 
@@ -155,26 +157,26 @@ export default function BenchmarkAboutPage() {
             Trust, weighting, and the surface threshold
           </h2>
           <p>
-            Per-run fabrication is undetectable in a community-submitted
-            system. We tolerate that and rely on three things:
+            Per-run fabrication is undetectable in a community-submitted system.
+            We tolerate that and rely on three things:
           </p>
           <ul className="list-disc pl-6">
             <li>
-              <strong>Volume.</strong> Per-cell metrics aren&rsquo;t shown publicly
-              until at least 3 distinct contributors have submitted runs for
-              the same prompt on the same AI product.
+              <strong>Volume.</strong> Per-cell metrics aren&rsquo;t shown
+              publicly until at least 3 distinct contributors have submitted
+              runs for the same prompt on the same AI product.
             </li>
             <li>
               <strong>Inherited weight.</strong> Every run carries a numeric
-              weight derived from the contributor&rsquo;s existing AIT standing —
-              account age, badges, verified status — not from anything they do
+              weight derived from the contributor&rsquo;s existing AIT standing
+              — account age, badges, verified status — not from anything they do
               inside the benchmark. New accounts contribute lightly; long-
               standing community members count more.
             </li>
             <li>
-              <strong>Visible provenance.</strong> Every run shows who
-              submitted it and when. Outliers don&rsquo;t disappear; they sit next
-              to the consensus.
+              <strong>Visible provenance.</strong> Every run shows who submitted
+              it and when. Outliers don&rsquo;t disappear; they sit next to the
+              consensus.
             </li>
           </ul>
         </section>
@@ -183,9 +185,9 @@ export default function BenchmarkAboutPage() {
           <h2 className="text-xl font-semibold">Assignments</h2>
           <p>
             An assignment is a curated bundle of prompts you can grab as a
-            starting point. Grabbing one holds it for 7 days; you can release
-            it any time. Nothing penalises you for not finishing — assignments
-            are an affordance, not a queue the system processes.
+            starting point. Grabbing one holds it for 7 days; you can release it
+            any time. Nothing penalises you for not finishing — assignments are
+            an affordance, not a queue the system processes.
           </p>
         </section>
 
@@ -194,9 +196,9 @@ export default function BenchmarkAboutPage() {
           <p>
             Pick the AI product you use, browse prompts that need coverage on
             that surface, and submit one or more raw answers back. The form
-            takes about 30 seconds per submission. You don&rsquo;t need an API key,
-            an agent, or any special access — just the AI product session you
-            already have.
+            takes about 30 seconds per submission. You don&rsquo;t need an API
+            key, an agent, or any special access — just the AI product session
+            you already have.
           </p>
           <Link
             href="/benchmark/contribute"
@@ -215,8 +217,8 @@ export default function BenchmarkAboutPage() {
             <p>
               Per-cell metrics only become public once at least 3 distinct
               contributors have submitted for that prompt on that AI product.
-              Your run is stored, visible on the run page and your profile,
-              and will count toward the aggregate once the cell crosses the
+              Your run is stored, visible on the run page and your profile, and
+              will count toward the aggregate once the cell crosses the
               threshold.
             </p>
           </div>
@@ -225,8 +227,8 @@ export default function BenchmarkAboutPage() {
               How do I know if web search was on when I used ChatGPT?
             </h3>
             <p>
-              If the answer contains clickable source links or citation
-              chips, web search was on. Otherwise it was off.
+              If the answer contains clickable source links or citation chips,
+              web search was on. Otherwise it was off.
             </p>
           </div>
           <div className="flex flex-col gap-1">
@@ -234,9 +236,9 @@ export default function BenchmarkAboutPage() {
               Can I submit the same prompt more than once?
             </h3>
             <p>
-              Yes. LLMs are non-deterministic and AI products change over
-              time — multiple runs from the same contributor on the same
-              prompt are real evidence of drift. There is no per-day dedup.
+              Yes. LLMs are non-deterministic and AI products change over time —
+              multiple runs from the same contributor on the same prompt are
+              real evidence of drift. There is no per-day dedup.
             </p>
           </div>
         </section>

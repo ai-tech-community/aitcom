@@ -222,10 +222,10 @@ export const benchmarkRouter = createTRPCRouter({
       >();
       for (const r of rows) {
         const surface = r.modelSurface as BenchmarkModelSurface;
-        if (surface === ("legacy_unverified" as BenchmarkModelSurface)) continue;
+        if (surface === ("legacy_unverified" as BenchmarkModelSurface))
+          continue;
         const inner =
-          byPrompt.get(r.promptId) ??
-          new Map<BenchmarkModelSurface, never>();
+          byPrompt.get(r.promptId) ?? new Map<BenchmarkModelSurface, never>();
         inner.set(surface, {
           modelSurface: surface,
           distinctContributors: r.distinctContributors,

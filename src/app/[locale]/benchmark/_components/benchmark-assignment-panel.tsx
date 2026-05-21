@@ -95,10 +95,9 @@ export function BenchmarkAssignmentPanel(_props: {
       <div>
         <h2 className="text-base font-medium">Assignments</h2>
         <p className="text-muted-foreground text-sm">
-          You run these prompts in your own AI product session and paste
-          the answers back. Grabbing an assignment holds it for 7 days;
-          you can release it any time. Nothing penalises you for not
-          finishing.
+          You run these prompts in your own AI product session and paste the
+          answers back. Grabbing an assignment holds it for 7 days; you can
+          release it any time. Nothing penalises you for not finishing.
         </p>
       </div>
 
@@ -123,9 +122,7 @@ export function BenchmarkAssignmentPanel(_props: {
                     size="sm"
                     variant="ghost"
                     disabled={release.isPending}
-                    onClick={() =>
-                      release.mutate({ assignmentId: a.id })
-                    }
+                    onClick={() => release.mutate({ assignmentId: a.id })}
                   >
                     Release
                   </Button>
@@ -152,8 +149,8 @@ export function BenchmarkAssignmentPanel(_props: {
         </div>
         {open.data?.bundles.length === 0 && (
           <p className="text-muted-foreground text-sm">
-            No gap cells right now — everything is covered. Browse the
-            prompt list below to submit anyway.
+            No gap cells right now — everything is covered. Browse the prompt
+            list below to submit anyway.
           </p>
         )}
         <ul className="flex flex-col gap-2">
@@ -188,9 +185,7 @@ export function BenchmarkAssignmentPanel(_props: {
                     · {p.text}
                   </li>
                 ))}
-                {b.prompts.length > 3 && (
-                  <li>+ {b.prompts.length - 3} more</li>
-                )}
+                {b.prompts.length > 3 && <li>+ {b.prompts.length - 3} more</li>}
               </ul>
             </li>
           ))}

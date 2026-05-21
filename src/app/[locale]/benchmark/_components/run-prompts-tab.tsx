@@ -261,10 +261,7 @@ export function RunPromptsTab() {
       </section>
 
       {agentFor && (
-        <AgentRunModal
-          promptId={agentFor}
-          onClose={() => setAgentFor(null)}
-        />
+        <AgentRunModal promptId={agentFor} onClose={() => setAgentFor(null)} />
       )}
     </div>
   );

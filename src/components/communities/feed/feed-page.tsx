@@ -103,7 +103,9 @@ export function FeedPage({
                 Posts in this community are visible to members.
               </p>
             </div>
-            <Button onClick={() => promptAuth("Sign in to see the community feed")}>
+            <Button
+              onClick={() => promptAuth("Sign in to see the community feed")}
+            >
               <LogIn className="h-4 w-4" /> Sign in
             </Button>
           </div>

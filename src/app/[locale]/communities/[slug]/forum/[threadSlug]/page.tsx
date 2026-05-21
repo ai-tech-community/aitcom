@@ -60,7 +60,5 @@ export default async function Page({
   const thread = await findThreadInCommunity(slug, threadSlug);
   if (!thread) notFound();
 
-  return (
-    <CommunityThreadDetail communitySlug={slug} threadSlug={threadSlug} />
-  );
+  return <CommunityThreadDetail communitySlug={slug} threadSlug={threadSlug} />;
 }

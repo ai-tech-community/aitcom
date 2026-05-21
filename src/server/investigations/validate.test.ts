@@ -55,12 +55,9 @@ describe("validateCitationRule", () => {
 
   it("accepts create with sources", () => {
     expect(() =>
-      validateCitationRule(
-        dcCfg,
-        "create",
-        { name: "X" },
-        [{ url: "https://example.com" }],
-      ),
+      validateCitationRule(dcCfg, "create", { name: "X" }, [
+        { url: "https://example.com" },
+      ]),
     ).not.toThrow();
   });
 

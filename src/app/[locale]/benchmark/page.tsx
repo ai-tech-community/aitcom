@@ -47,8 +47,8 @@ export default function BenchmarkHubPage() {
           <p className="text-muted-foreground max-w-2xl">
             Community-built benchmark of how AI products surface brands.
             Contributors run prompts in their own ChatGPT, Claude, Gemini,
-            Perplexity, or Kimi sessions and submit the answers; AIT
-            aggregates them into per-product visibility metrics.
+            Perplexity, or Kimi sessions and submit the answers; AIT aggregates
+            them into per-product visibility metrics.
           </p>
         </div>
         <BrandSearchCombobox />

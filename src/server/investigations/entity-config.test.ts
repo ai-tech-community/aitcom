@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  ENTITY_CONFIG,
-  ENTITY_TYPES,
-  type EntityType,
-} from "./entity-config";
+import { ENTITY_CONFIG, ENTITY_TYPES, type EntityType } from "./entity-config";
 
 describe("ENTITY_CONFIG", () => {
   it("covers all 9 entity types", () => {

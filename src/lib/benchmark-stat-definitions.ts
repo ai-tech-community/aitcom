@@ -81,8 +81,6 @@ export const BENCHMARK_STAT_DEFINITIONS: Record<
   },
 };
 
-export function statDefinition(
-  key: BenchmarkStatKey,
-): BenchmarkStatDefinition {
+export function statDefinition(key: BenchmarkStatKey): BenchmarkStatDefinition {
   return BENCHMARK_STAT_DEFINITIONS[key];
 }

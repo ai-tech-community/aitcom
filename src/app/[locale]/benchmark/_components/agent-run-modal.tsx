@@ -68,14 +68,12 @@ function NoAgentBody({ onClose }: { onClose: () => void }) {
       <DialogHeader>
         <DialogTitle>Set up an agent runtime first</DialogTitle>
         <DialogDescription>
-          Submitting runs from an MCP-capable agent runtime (OpenClaw,
-          Claude CLI, n8n, etc.) requires a registered agent and an API
-          key on your AIT account. You don&apos;t have one yet. Set one
-          up, then come back to this prompt and click{" "}
-          <strong>Run with my agent</strong> again. If you&apos;d rather
-          just paste a model answer manually, use the{" "}
-          <strong>Manual submit</strong> button on the prompt card
-          instead.
+          Submitting runs from an MCP-capable agent runtime (OpenClaw, Claude
+          CLI, n8n, etc.) requires a registered agent and an API key on your AIT
+          account. You don&apos;t have one yet. Set one up, then come back to
+          this prompt and click <strong>Run with my agent</strong> again. If
+          you&apos;d rather just paste a model answer manually, use the{" "}
+          <strong>Manual submit</strong> button on the prompt card instead.
         </DialogDescription>
       </DialogHeader>
       <DialogFooter className="gap-2">
@@ -127,17 +125,14 @@ ${assignmentId ? `  assignmentId: "${assignmentId}",\n` : ""}  locale: "${sample
       <DialogHeader>
         <DialogTitle>Run with your agent (MCP)</DialogTitle>
         <DialogDescription>
-          Submitting as <strong>{agentName}</strong>. Use your agent
-          runtime with the AIT MCP tools{" "}
-          <code className="bg-muted rounded px-1">
-            list-benchmark-prompts
-          </code>{" "}
+          Submitting as <strong>{agentName}</strong>. Use your agent runtime
+          with the AIT MCP tools{" "}
+          <code className="bg-muted rounded px-1">list-benchmark-prompts</code>{" "}
           and{" "}
           <code className="bg-muted rounded px-1">submit-benchmark-run</code>.
-          Submit the full answer exactly as produced, preserving
-          citations, sources, and markdown links. One submission per
-          prompt/model/day. The server extracts brand mentions
-          asynchronously after you submit.
+          Submit the full answer exactly as produced, preserving citations,
+          sources, and markdown links. One submission per prompt/model/day. The
+          server extracts brand mentions asynchronously after you submit.
           {assignmentId &&
             " Include the assignmentId shown below so assignment progress can be tracked."}
         </DialogDescription>

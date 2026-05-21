@@ -2399,12 +2399,12 @@ export const investigationEdit = appSchema.table(
     entityType: text("entity_type").notNull(),
     entityId: text("entity_id").notNull(),
     op: text("op").notNull(),
-    patch: jsonb("patch")
-      .$type<Record<string, unknown>>()
-      .notNull(),
+    patch: jsonb("patch").$type<Record<string, unknown>>().notNull(),
     before: jsonb("before").$type<Record<string, unknown>>(),
     sources: jsonb("sources")
-      .$type<{ url: string; title?: string; type?: string; publishedAt?: string }[]>()
+      .$type<
+        { url: string; title?: string; type?: string; publishedAt?: string }[]
+      >()
       .notNull()
       .default(sql`'[]'::jsonb`),
     userId: text("user_id").references(() => user.id, { onDelete: "set null" }),

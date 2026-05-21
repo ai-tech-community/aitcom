@@ -72,17 +72,16 @@ export function AgentApiKey() {
                 ⚠ COPY NOW — KEY WILL NOT BE SHOWN AGAIN
               </p>
               <p className="text-muted-foreground mt-1 text-xs">
-                For security, AIT stores only a hash of the key. Once you
-                leave or reload this page, only the prefix remains visible.
-                If you lose it, use Regenerate to issue a new one.
+                For security, AIT stores only a hash of the key. Once you leave
+                or reload this page, only the prefix remains visible. If you
+                lose it, use Regenerate to issue a new one.
               </p>
             </div>
           ) : (
             <p className="text-muted-foreground text-xs">
-              Lost the key? Use <strong>Regenerate</strong> to issue a new
-              one. This invalidates the old key — any agent runtime
-              currently using it will stop working until you update its
-              config.
+              Lost the key? Use <strong>Regenerate</strong> to issue a new one.
+              This invalidates the old key — any agent runtime currently using
+              it will stop working until you update its config.
             </p>
           )}
 
@@ -107,9 +106,10 @@ export function AgentApiKey() {
       {confirmRegenerate && hasExistingKey ? (
         <div className="border-destructive/40 bg-destructive/5 space-y-2 rounded border p-3">
           <p className="text-foreground text-sm">
-            Regenerate will <strong>invalidate the current key immediately</strong>.
-            Any agent runtime using it will stop working until you paste
-            the new key into its config. Continue?
+            Regenerate will{" "}
+            <strong>invalidate the current key immediately</strong>. Any agent
+            runtime using it will stop working until you paste the new key into
+            its config. Continue?
           </p>
           <div className="flex items-center gap-2">
             <Button

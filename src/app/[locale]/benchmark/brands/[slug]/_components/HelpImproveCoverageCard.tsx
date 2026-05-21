@@ -57,14 +57,14 @@ export function HelpImproveCoverageCard({ topPrompts }: { topPrompts: Row[] }) {
       </div>
       <p className="text-muted-foreground text-sm">
         These AI products don&rsquo;t yet have enough community runs for this
-        brand. Grabbing a few prompts on any of them will lift the
-        headline numbers above the threshold.
+        brand. Grabbing a few prompts on any of them will lift the headline
+        numbers above the threshold.
       </p>
       <ul className="flex flex-col gap-2">
         {entries.map(([surface, prompts]) => (
           <li
             key={surface}
-            className="flex items-center justify-between gap-2 rounded-md border bg-background p-2 text-sm"
+            className="bg-background flex items-center justify-between gap-2 rounded-md border p-2 text-sm"
           >
             <span>
               <span className="font-medium">

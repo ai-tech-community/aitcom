@@ -1617,7 +1617,9 @@ export const datacentersRouter = createTRPCRouter({
           // Use website as the canonical source when provided. If absent, the
           // wrapper's citation rule will surface a BAD_REQUEST — by design, until
           // Phase B introduces propose-brand with explicit sources.
-          sources: input.website ? [{ url: input.website, type: "operator" }] : [],
+          sources: input.website
+            ? [{ url: input.website, type: "operator" }]
+            : [],
         },
       );
 

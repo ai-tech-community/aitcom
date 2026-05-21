@@ -46,10 +46,7 @@ export default function BenchmarkContributePage() {
   const querySurface = params.get("surface");
   const queryPromptsRaw = params.get("prompts");
   const queryPrompts = useMemo(
-    () =>
-      queryPromptsRaw
-        ? queryPromptsRaw.split(",").filter(Boolean)
-        : [],
+    () => (queryPromptsRaw ? queryPromptsRaw.split(",").filter(Boolean) : []),
     [queryPromptsRaw],
   );
 
@@ -90,8 +87,8 @@ export default function BenchmarkContributePage() {
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold">Help benchmark</h1>
         <p className="text-muted-foreground max-w-2xl text-sm">
-          Pick the AI product you&rsquo;re running this in. We&rsquo;ll show you the
-          prompts that need coverage on that surface. You paste the raw
+          Pick the AI product you&rsquo;re running this in. We&rsquo;ll show you
+          the prompts that need coverage on that surface. You paste the raw
           answer back — about 30 seconds per run.
         </p>
       </header>
@@ -251,9 +248,7 @@ function ContributeBody({
       const cb = coverage.data.byPrompt[b.id]?.find(
         (c) => c.modelSurface === surface,
       );
-      return (
-        (ca?.distinctContributors ?? 0) - (cb?.distinctContributors ?? 0)
-      );
+      return (ca?.distinctContributors ?? 0) - (cb?.distinctContributors ?? 0);
     });
   }, [filteredPrompts, coverage.data, surface]);
 
@@ -282,9 +277,7 @@ function ContributeBody({
                     size="sm"
                     variant="ghost"
                     disabled={release.isPending}
-                    onClick={() =>
-                      release.mutate({ assignmentId: a.id })
-                    }
+                    onClick={() => release.mutate({ assignmentId: a.id })}
                   >
                     Release
                   </Button>
@@ -335,7 +328,9 @@ function ContributeBody({
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-medium">Prompts needing coverage on {surfaceLabel}</h2>
+          <h2 className="font-medium">
+            Prompts needing coverage on {surfaceLabel}
+          </h2>
           {queryPrompts.length > 0 && (
             <Button size="sm" variant="outline" asChild>
               <Link href="/benchmark/contribute">Clear filter</Link>
@@ -464,10 +459,7 @@ function ContributeBody({
       )}
 
       {agentFor && (
-        <AgentRunModal
-          promptId={agentFor}
-          onClose={() => setAgentFor(null)}
-        />
+        <AgentRunModal promptId={agentFor} onClose={() => setAgentFor(null)} />
       )}
     </>
   );
@@ -526,8 +518,7 @@ function MyRecentRuns() {
           <span className="line-clamp-2 font-medium">{r.promptText}</span>
           <span className="text-muted-foreground text-xs">
             {r.modelProvider}
-            {r.modelId ? ` / ${r.modelId}` : ""} ·{" "}
-            {r.extractionStatus}
+            {r.modelId ? ` / ${r.modelId}` : ""} · {r.extractionStatus}
           </span>
         </li>
       ))}

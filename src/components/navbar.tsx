@@ -36,7 +36,12 @@ const navLinks = [
   { href: "/jobs", key: "jobs", shortcut: "W", primary: false },
   { href: "/members", key: "members", shortcut: "M", primary: false },
   { href: "/blog", key: "blog", shortcut: "B", primary: false },
-  { href: "/investigations", key: "investigations", shortcut: "I", primary: false },
+  {
+    href: "/investigations",
+    key: "investigations",
+    shortcut: "I",
+    primary: false,
+  },
   { href: "/impact", key: "impact", shortcut: "P", primary: false },
   { href: "/sponsors", key: "sponsors", shortcut: "S", primary: false },
 ] as const;
@@ -47,11 +52,12 @@ const overflowLinks = navLinks.filter((l) => !l.primary);
 function initialsFrom(name?: string | null, email?: string | null) {
   const trimmedName = name?.trim();
   const trimmedEmail = email?.trim();
-  const source = trimmedName && trimmedName.length > 0
-    ? trimmedName
-    : trimmedEmail && trimmedEmail.length > 0
-      ? trimmedEmail
-      : "";
+  const source =
+    trimmedName && trimmedName.length > 0
+      ? trimmedName
+      : trimmedEmail && trimmedEmail.length > 0
+        ? trimmedEmail
+        : "";
   if (!source) return "?";
   const parts = source.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
@@ -139,9 +145,7 @@ export function Navbar() {
               <DropdownMenuTrigger
                 className={cn(
                   "hover:text-foreground flex items-center gap-0.5 font-mono text-xs transition-colors outline-none",
-                  overflowActive
-                    ? "text-foreground"
-                    : "text-muted-foreground",
+                  overflowActive ? "text-foreground" : "text-muted-foreground",
                 )}
               >
                 {t("more").toUpperCase()}
@@ -174,12 +178,15 @@ export function Navbar() {
               <NotificationBell />
               <DropdownMenu>
                 <DropdownMenuTrigger
-                  className="ml-1 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="focus-visible:ring-ring ml-1 rounded-full outline-none focus-visible:ring-2"
                   aria-label="Account menu"
                 >
                   <Avatar className="h-7 w-7">
                     {user.image ? (
-                      <AvatarImage src={user.image} alt={user.name ?? "Account"} />
+                      <AvatarImage
+                        src={user.image}
+                        alt={user.name ?? "Account"}
+                      />
                     ) : null}
                     <AvatarFallback className="font-mono text-[10px]">
                       {initialsFrom(user.name, user.email)}

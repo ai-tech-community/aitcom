@@ -41,9 +41,7 @@ export function ManualRunForm({
   const myAssignments = api.benchmark.listMyAssignments.useQuery();
   const matchingHeld = myAssignments.data?.find(
     (a) =>
-      a.status === "held" &&
-      a.modelSurface &&
-      a.promptIds.includes(promptId),
+      a.status === "held" && a.modelSurface && a.promptIds.includes(promptId),
   );
   const heldSurface = matchingHeld?.modelSurface as
     | BenchmarkModelSurface

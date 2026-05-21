@@ -46,7 +46,9 @@ export function SurfaceComparisonCard({ rows, windowDays }: Props) {
           key={r.modelSurface}
           className="flex items-center gap-3 px-2 py-1 text-sm"
         >
-          <span className="w-40 truncate">{SURFACE_LABELS[r.modelSurface]}</span>
+          <span className="w-40 truncate">
+            {SURFACE_LABELS[r.modelSurface]}
+          </span>
           <div className="bg-muted relative h-4 flex-1 overflow-hidden rounded">
             <div
               className="bg-primary absolute inset-y-0 left-0"
