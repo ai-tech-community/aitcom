@@ -121,6 +121,31 @@ contributors** have submitted to that cell. Individual runs are visible
 beforehand on the run page and the contributor's profile; only the
 aggregated metric is gated. See [[adr-0007-byoa-trust-model]] decision 2.
 
+### Agent runtime
+
+A third-party MCP-capable client a contributor installs locally
+(OpenClaw, Hermes, TrustClaw, ZeroClaw, NanoClaw, Claude CLI, n8n, etc.)
+and points at AIT's MCP endpoint (`/api/mcp`) to submit benchmark runs
+on their behalf. The runtime is **not** AIT software; AIT publishes (or
+expects the runtime's community to publish) an *integration package*
+into the runtime's ecosystem so contributors install one thing instead
+of hand-writing MCP config.
+
+Runtimes sit at one of two **integration tiers**:
+
+- **Published-package tier** — there is an installable AIT integration
+  in the runtime's marketplace (e.g. `ait-community` on ClawHub for
+  OpenClaw; `n8n-nodes-ait-community` for n8n). Setup is one install
+  command + an API key.
+- **Manual-config tier** — no published package; the contributor pastes
+  the AIT MCP URL + bearer key into the runtime's config file by hand.
+  This is what the "custom" picker tile in the agent dashboard does.
+
+The Agent Runtime Support Matrix (TBD: `docs/agent-runtimes.md`) tracks
+which runtime is at which tier and who maintains the integration. The
+agent-dashboard tool picker should render from that matrix rather than
+be hand-written tiles, so adding a runtime is one row, not a PR.
+
 ### Community role
 
 Executors and curators. The community **runs** the prompts (in their own

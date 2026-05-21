@@ -5,10 +5,12 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/agent/shared";
+import { useRevealedKey } from "@/components/agent/revealed-key-context";
 
 export function AgentApiKey() {
   const t = useTranslations("agent");
-  const [fullKey, setFullKey] = useState<string | null>(null);
+  const { fullKey, setFullKey } = useRevealedKey();
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
 
   const keyInfo = api.agentManagement.getKeyInfo.useQuery();
   const utils = api.useUtils();
@@ -16,6 +18,7 @@ export function AgentApiKey() {
   const generateKey = api.agentManagement.generateKey.useMutation({
     onSuccess: (data) => {
       setFullKey(data.key);
+      setConfirmRegenerate(false);
       void utils.agentManagement.getKeyInfo.invalidate();
     },
   });
@@ -28,6 +31,18 @@ export function AgentApiKey() {
   });
 
   const hasExistingKey = !!keyInfo.data;
+
+  const handleRegenerateClick = () => {
+    if (!hasExistingKey) {
+      generateKey.mutate();
+      return;
+    }
+    if (!confirmRegenerate) {
+      setConfirmRegenerate(true);
+      return;
+    }
+    generateKey.mutate();
+  };
 
   return (
     <div className="space-y-4">
@@ -51,18 +66,23 @@ export function AgentApiKey() {
             </div>
           </div>
 
-          {fullKey && (
-            <div className="rounded border border-yellow-800 bg-yellow-950/30 px-3 py-2">
-              <p className="font-mono text-[11px] tracking-wider text-yellow-400">
-                Save this key now — it won&apos;t be shown again after you leave
-                this page.
+          {fullKey ? (
+            <div className="rounded border border-yellow-700 bg-yellow-950/40 px-3 py-3">
+              <p className="font-mono text-[11px] font-medium tracking-wider text-yellow-300">
+                ⚠ COPY NOW — KEY WILL NOT BE SHOWN AGAIN
+              </p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                For security, AIT stores only a hash of the key. Once you
+                leave or reload this page, only the prefix remains visible.
+                If you lose it, use Regenerate to issue a new one.
               </p>
             </div>
-          )}
-
-          {!fullKey && (
+          ) : (
             <p className="text-muted-foreground text-xs">
-              Full key was shown once at generation time.
+              Lost the key? Use <strong>Regenerate</strong> to issue a new
+              one. This invalidates the old key — any agent runtime
+              currently using it will stop working until you update its
+              config.
             </p>
           )}
 
@@ -84,18 +104,48 @@ export function AgentApiKey() {
         </p>
       )}
 
-      <Button
-        variant="outline"
-        className="w-full font-mono text-xs tracking-wider"
-        onClick={() => generateKey.mutate()}
-        disabled={generateKey.isPending}
-      >
-        {generateKey.isPending
-          ? "Generating..."
-          : hasExistingKey
-            ? t("regenerateKey")
-            : t("generateKey")}
-      </Button>
+      {confirmRegenerate && hasExistingKey ? (
+        <div className="border-destructive/40 bg-destructive/5 space-y-2 rounded border p-3">
+          <p className="text-foreground text-sm">
+            Regenerate will <strong>invalidate the current key immediately</strong>.
+            Any agent runtime using it will stop working until you paste
+            the new key into its config. Continue?
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              className="font-mono text-xs tracking-wider"
+              onClick={handleRegenerateClick}
+              disabled={generateKey.isPending}
+            >
+              {generateKey.isPending ? "..." : "YES, REGENERATE"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-mono text-xs tracking-wider"
+              onClick={() => setConfirmRegenerate(false)}
+              disabled={generateKey.isPending}
+            >
+              CANCEL
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button
+          variant="outline"
+          className="w-full font-mono text-xs tracking-wider"
+          onClick={handleRegenerateClick}
+          disabled={generateKey.isPending}
+        >
+          {generateKey.isPending
+            ? "Generating..."
+            : hasExistingKey
+              ? t("regenerateKey")
+              : t("generateKey")}
+        </Button>
+      )}
     </div>
   );
 }

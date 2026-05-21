@@ -7,6 +7,10 @@ import { AgentTabs, type AgentTab } from "@/components/agent/agent-tabs";
 import { ProfileTab } from "@/components/agent/profile-tab";
 import { ConnectTab } from "@/components/agent/connect-tab";
 import { ActivityTab } from "@/components/agent/activity-tab";
+import {
+  RevealedKeyProvider,
+  useRevealedKey,
+} from "@/components/agent/revealed-key-context";
 import { useTranslations } from "next-intl";
 
 interface AgentProfile {
@@ -26,7 +30,15 @@ interface AgentDashboardContentProps {
   initialAgent: AgentProfile | null;
 }
 
-export function AgentDashboardContent({
+export function AgentDashboardContent(props: AgentDashboardContentProps) {
+  return (
+    <RevealedKeyProvider>
+      <AgentDashboardContentInner {...props} />
+    </RevealedKeyProvider>
+  );
+}
+
+function AgentDashboardContentInner({
   initialAgent,
 }: AgentDashboardContentProps) {
   const t = useTranslations("agent");
@@ -64,7 +76,7 @@ export function AgentDashboardContent({
 
 function ConnectTabWrapper({ agent }: { agent: AgentProfile }) {
   const keyInfo = api.agentManagement.getKeyInfo.useQuery();
-  const apiKey = keyInfo.data?.prefix ? `${keyInfo.data.prefix}...` : "";
+  const { fullKey } = useRevealedKey();
 
   if (!keyInfo.data) {
     return (
@@ -74,7 +86,19 @@ function ConnectTabWrapper({ agent }: { agent: AgentProfile }) {
     );
   }
 
+  // Prefer the in-memory full key if one was generated in this tab; fall
+  // back to the masked prefix so snippets still render with the right
+  // shape. The connect-tab UI surfaces a "Regenerate to get a
+  // copy-paste-ready key" banner when only the prefix is available.
+  const apiKey = fullKey ?? `${keyInfo.data.prefix}...`;
+  const hasFullKey = !!fullKey;
+
   return (
-    <ConnectTab apiKey={apiKey} agentName={agent.name} agentId={agent.id} />
+    <ConnectTab
+      apiKey={apiKey}
+      hasFullKey={hasFullKey}
+      agentName={agent.name}
+      agentId={agent.id}
+    />
   );
 }
