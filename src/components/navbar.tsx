@@ -9,26 +9,48 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Menu, LogOut } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Menu, LogOut, ChevronDown } from "lucide-react";
 import { LanguageSwitcher } from "./language-switcher";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/server/better-auth/client";
 import { AitLogo } from "@/components/ait-logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 
+// Source of truth for the IA split — see ADR-0010.
+// New top-level destinations default to `primary: false` unless they are a
+// recurring action surface or a flagship product.
 const navLinks = [
-  { href: "/communities", key: "communities", shortcut: "C" },
-  { href: "/events", key: "events", shortcut: "E" },
-  { href: "/challenges", key: "challenges", shortcut: "G" },
-  { href: "/launchpad", key: "launchpad", shortcut: "L" },
-  { href: "/blog", key: "blog", shortcut: "B" },
-  { href: "/jobs", key: "jobs", shortcut: "W" },
-  { href: "/benchmark", key: "benchmark", shortcut: "K" },
-  { href: "/investigations", key: "investigations", shortcut: "D" },
-  { href: "/impact", key: "impact", shortcut: "I" },
-  { href: "/sponsors", key: "sponsors", shortcut: "S" },
-  { href: "/members", key: "members", shortcut: "M" },
+  { href: "/benchmark", key: "benchmark", shortcut: "K", primary: true },
+  { href: "/communities", key: "communities", shortcut: "C", primary: true },
+  { href: "/events", key: "events", shortcut: "E", primary: true },
+  { href: "/challenges", key: "challenges", shortcut: "G", primary: true },
+  { href: "/launchpad", key: "launchpad", shortcut: "L", primary: true },
+  { href: "/jobs", key: "jobs", shortcut: "W", primary: false },
+  { href: "/members", key: "members", shortcut: "M", primary: false },
+  { href: "/blog", key: "blog", shortcut: "B", primary: false },
+  { href: "/investigations", key: "investigations", shortcut: "I", primary: false },
+  { href: "/impact", key: "impact", shortcut: "P", primary: false },
+  { href: "/sponsors", key: "sponsors", shortcut: "S", primary: false },
 ] as const;
+
+const primaryLinks = navLinks.filter((l) => l.primary);
+const overflowLinks = navLinks.filter((l) => !l.primary);
+
+function initialsFrom(name?: string | null, email?: string | null) {
+  const source = name?.trim() || email?.trim() || "";
+  if (!source) return "?";
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
+  return source.slice(0, 2).toUpperCase();
+}
 
 export function Navbar() {
   const t = useTranslations("nav");
@@ -39,7 +61,6 @@ export function Navbar() {
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      // Ignore when typing in inputs, textareas, or contenteditable elements
       const tag = (e.target as HTMLElement).tagName;
       if (
         tag === "INPUT" ||
@@ -48,12 +69,10 @@ export function Navbar() {
       )
         return;
 
-      // Ignore when modifier keys are held
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       const key = e.key.toUpperCase();
 
-      // Check navLinks shortcuts
       const match = navLinks.find((link) => link.shortcut === key);
       if (match) {
         e.preventDefault();
@@ -61,7 +80,6 @@ export function Navbar() {
         return;
       }
 
-      // Additional shortcuts
       if (key === "D" && session?.user) {
         e.preventDefault();
         router.push("/dashboard");
@@ -81,19 +99,22 @@ export function Navbar() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  const overflowActive = overflowLinks.some((l) => pathname === l.href);
+  const user = session?.user;
+
   return (
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
       <div className="mx-auto flex h-12 items-center justify-between px-4 sm:px-8">
-        {/* Left: Logo + Nav Links */}
+        {/* Left: Logo + Primary Nav + More */}
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center" aria-label="AIT. home">
             <AitLogo className="h-4 w-auto" />
           </Link>
 
-          <div className="bg-border hidden h-4 w-px md:block" />
+          <div className="bg-border hidden h-4 w-px lg:block" />
 
-          <nav className="hidden items-center gap-4 md:flex">
-            {navLinks.map((link) => (
+          <nav className="hidden items-center gap-4 lg:flex">
+            {primaryLinks.map((link) => (
               <Link
                 key={link.key}
                 href={link.href}
@@ -107,45 +128,94 @@ export function Navbar() {
                 [{link.shortcut}] {t(link.key).toUpperCase()}
               </Link>
             ))}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  "hover:text-foreground flex items-center gap-0.5 font-mono text-xs transition-colors outline-none",
+                  overflowActive
+                    ? "text-foreground"
+                    : "text-muted-foreground",
+                )}
+              >
+                {t("more").toUpperCase()}
+                <ChevronDown className="h-3 w-3" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-44">
+                {overflowLinks.map((link) => (
+                  <DropdownMenuItem key={link.key} asChild>
+                    <Link
+                      href={link.href}
+                      className={cn(
+                        "font-mono text-xs",
+                        pathname === link.href && "text-foreground",
+                      )}
+                    >
+                      [{link.shortcut}] {t(link.key).toUpperCase()}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </nav>
         </div>
 
-        {/* Right: Language + Session */}
-        <div className="hidden items-center gap-2 md:flex">
+        {/* Right: Language + Session (lg+) */}
+        <div className="hidden items-center gap-2 lg:flex">
           <LanguageSwitcher />
-          {session?.user ? (
+          {user ? (
             <>
-              <Link
-                href="/dashboard"
-                className={cn(
-                  "hover:text-foreground font-mono text-xs transition-colors",
-                  pathname === "/dashboard"
-                    ? "text-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                [D] DASHBOARD
-              </Link>
-              <Link
-                href="/dashboard/agent"
-                className={cn(
-                  "hover:text-foreground font-mono text-xs transition-colors",
-                  pathname.startsWith("/dashboard/agent")
-                    ? "text-foreground"
-                    : "text-muted-foreground",
-                )}
-              >
-                [A] {t("myAgent").toUpperCase()}
-              </Link>
               <NotificationBell />
-              <button
-                onClick={() =>
-                  authClient.signOut().then(() => window.location.reload())
-                }
-                className="text-muted-foreground hover:text-foreground rounded p-1.5 transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  className="ml-1 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Account menu"
+                >
+                  <Avatar className="h-7 w-7">
+                    {user.image ? (
+                      <AvatarImage src={user.image} alt={user.name ?? "Account"} />
+                    ) : null}
+                    <AvatarFallback className="font-mono text-[10px]">
+                      {initialsFrom(user.name, user.email)}
+                    </AvatarFallback>
+                  </Avatar>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-48">
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/dashboard"
+                      className={cn(
+                        "font-mono text-xs",
+                        pathname === "/dashboard" && "text-foreground",
+                      )}
+                    >
+                      [D] DASHBOARD
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/dashboard/agent"
+                      className={cn(
+                        "font-mono text-xs",
+                        pathname.startsWith("/dashboard/agent") &&
+                          "text-foreground",
+                      )}
+                    >
+                      [A] {t("myAgent").toUpperCase()}
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      authClient.signOut().then(() => window.location.reload())
+                    }
+                    className="font-mono text-xs"
+                  >
+                    <LogOut className="mr-2 h-3.5 w-3.5" />
+                    SIGN OUT
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <Link
@@ -157,10 +227,10 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile Menu */}
-        <div className="flex items-center gap-2 md:hidden">
+        {/* Mobile / tablet (<lg) */}
+        <div className="flex items-center gap-2 lg:hidden">
           <LanguageSwitcher />
-          {session?.user && <NotificationBell />}
+          {user && <NotificationBell />}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger
               className="text-muted-foreground hover:text-foreground rounded p-1.5"
@@ -171,7 +241,23 @@ export function Navbar() {
             <SheetContent side="right" className="w-72">
               <SheetTitle className="sr-only">Navigation</SheetTitle>
               <nav className="mt-8 flex flex-col gap-4">
-                {navLinks.map((link) => (
+                {primaryLinks.map((link) => (
+                  <Link
+                    key={link.key}
+                    href={link.href}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "hover:text-foreground font-mono text-sm transition-colors",
+                      pathname === link.href
+                        ? "text-foreground"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    [{link.shortcut}] {t(link.key).toUpperCase()}
+                  </Link>
+                ))}
+                <div className="border-t" />
+                {overflowLinks.map((link) => (
                   <Link
                     key={link.key}
                     href={link.href}
@@ -187,7 +273,7 @@ export function Navbar() {
                   </Link>
                 ))}
                 <div className="mt-4 flex flex-col gap-3 border-t pt-4">
-                  {session?.user ? (
+                  {user ? (
                     <>
                       <Link
                         href="/dashboard"
