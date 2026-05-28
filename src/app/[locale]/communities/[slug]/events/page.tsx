@@ -1,8 +1,16 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Plus, Pencil, XCircle, ExternalLink } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  XCircle,
+  ExternalLink,
+  CheckCircle,
+  Clock,
+  XOctagon,
+} from "lucide-react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Link } from "@/i18n/navigation";
@@ -22,6 +30,8 @@ function formatDate(dateStr: string): string {
   return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
+type Tab = "published" | "pending" | "mine";
+
 export default function CommunityEventsPage({
   params,
 }: {
@@ -31,6 +41,7 @@ export default function CommunityEventsPage({
   const t = useTranslations("events");
   const { data: session } = authClient.useSession();
 
+  const [activeTab, setActiveTab] = useState<Tab>("published");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<{
     id: number;
@@ -45,12 +56,34 @@ export default function CommunityEventsPage({
   const isAdminOrOwner =
     myMembership?.status === "active" &&
     (myMembership.role === "owner" || myMembership.role === "admin");
+  const isModerator =
+    myMembership?.status === "active" && myMembership.role === "moderator";
+  const canModerate = isAdminOrOwner || isModerator;
+  const isActiveMember = myMembership?.status === "active";
+
+  useEffect(() => {
+    if (!canModerate && activeTab === "pending") setActiveTab("published");
+    if (!isActiveMember && activeTab === "mine") setActiveTab("published");
+  }, [canModerate, isActiveMember, activeTab]);
 
   const { data: eventsData, isLoading } =
     api.events.getCommunityEvents.useQuery({ communitySlug: slug });
   const events = eventsData ?? [];
 
+  const { data: pendingEvents, isLoading: pendingLoading } =
+    api.events.getPendingCommunityEvents.useQuery(
+      { communitySlug: slug },
+      { enabled: canModerate },
+    );
+
+  const { data: mySubmissions, isLoading: mySubmissionsLoading } =
+    api.events.getMyEventSubmissions.useQuery(
+      { communitySlug: slug },
+      { enabled: isActiveMember && !!session?.user },
+    );
+
   const utils = api.useUtils();
+
   const cancelMutation = api.events.cancelEvent.useMutation({
     onSuccess: () => {
       toast.success(t("eventCancelled"));
@@ -58,10 +91,258 @@ export default function CommunityEventsPage({
     },
   });
 
+  const approveMutation = api.events.approveEvent.useMutation({
+    onSuccess: () => {
+      toast.success("Event approved and published");
+      void utils.events.getPendingCommunityEvents.invalidate();
+      void utils.events.getCommunityEvents.invalidate();
+    },
+    onError: () => toast.error("Failed to approve event"),
+  });
+
+  const rejectMutation = api.events.rejectEvent.useMutation({
+    onSuccess: () => {
+      toast.success("Event rejected — submitter has been notified");
+      void utils.events.getPendingCommunityEvents.invalidate();
+    },
+    onError: () => toast.error("Failed to reject event"),
+  });
+
+  const pendingCount = pendingEvents?.length ?? 0;
+
+  const sharedRowClassName =
+    "border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0";
+
+  function renderEventRow(
+    event: {
+      id: number | string;
+      title: string;
+      type: string;
+      date: string;
+      startTime?: string | null;
+      endTime?: string | null;
+      location: string;
+      status: string;
+      source?: string;
+      lumaUrl?: string | null;
+      slug?: string | null;
+    },
+    opts: {
+      showAdminActions?: boolean;
+      showApproveReject?: boolean;
+      showStatus?: boolean;
+    } = {},
+  ) {
+    const isLuma = event.source === "luma";
+
+    const innerContent = (
+      <>
+        <span className="flex items-center gap-1.5 text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
+          {event.title}
+          {isLuma && (
+            <ExternalLink className="text-muted-foreground inline size-3" />
+          )}
+        </span>
+        <div className="flex items-center gap-3 sm:order-1 sm:w-32">
+          <div className="bg-foreground h-2 w-2 rounded-full" />
+          <span className="font-mono text-[12px] sm:text-[13px]">
+            {formatDate(event.date)}
+          </span>
+          <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden">
+            {typeLabels[event.type] ?? event.type}
+          </span>
+        </div>
+        <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline">
+          {typeLabels[event.type] ?? event.type}
+        </span>
+        {opts.showStatus && event.status === "rejected" && (
+          <span className="text-destructive font-mono text-[10px] font-medium sm:order-4 sm:ml-2 flex items-center gap-1">
+            <XOctagon className="size-3" /> REJECTED — edit and resubmit
+          </span>
+        )}
+        {opts.showStatus && event.status === "draft" && (
+          <span className="text-muted-foreground font-mono text-[10px] font-medium sm:order-4 sm:ml-2 flex items-center gap-1">
+            <Clock className="size-3" /> PENDING APPROVAL
+          </span>
+        )}
+        {event.status === "cancelled" && (
+          <span className="text-destructive font-mono text-[10px] font-medium sm:order-4 sm:ml-2">
+            {t("cancelled")}
+          </span>
+        )}
+        <span className="text-muted-foreground ml-4 hidden font-mono text-lg font-light sm:order-5 sm:inline">
+          +
+        </span>
+        {opts.showAdminActions && !isLuma && event.status !== "cancelled" && (
+          <div
+            className="flex shrink-0 items-center gap-1 sm:order-6"
+            onClick={(e) => e.preventDefault()}
+          >
+            <button
+              className="rounded p-1 hover:bg-zinc-100"
+              onClick={() => {
+                setEditingEvent({
+                  id: event.id as number,
+                  data: {
+                    title: event.title,
+                    description: "",
+                    type: event.type,
+                    date:
+                      typeof event.date === "string"
+                        ? (event.date.split("T")[0] ?? "")
+                        : "",
+                    startTime: event.startTime ?? "",
+                    endTime: event.endTime ?? "",
+                    location: event.location,
+                    maxAttendees: "",
+                  },
+                });
+                setDialogOpen(true);
+              }}
+            >
+              <Pencil className="size-3.5 text-zinc-400" />
+            </button>
+            <button
+              className="rounded p-1 hover:bg-zinc-100"
+              onClick={() => {
+                if (window.confirm(t("cancelEventConfirm"))) {
+                  cancelMutation.mutate({
+                    eventId: event.id as number,
+                    communitySlug: slug,
+                  });
+                }
+              }}
+            >
+              <XCircle className="size-3.5 text-zinc-400" />
+            </button>
+          </div>
+        )}
+        {opts.showApproveReject && (
+          <div
+            className="flex shrink-0 items-center gap-1 sm:order-6"
+            onClick={(e) => e.preventDefault()}
+          >
+            <button
+              className="flex items-center gap-1 rounded border border-green-600 px-2 py-0.5 text-[11px] font-mono text-green-600 hover:bg-green-50"
+              onClick={() =>
+                approveMutation.mutate({
+                  eventId: event.id as number,
+                  communitySlug: slug,
+                })
+              }
+            >
+              <CheckCircle className="size-3" /> Approve
+            </button>
+            <button
+              className="flex items-center gap-1 rounded border border-red-500 px-2 py-0.5 text-[11px] font-mono text-red-500 hover:bg-red-50"
+              onClick={() =>
+                rejectMutation.mutate({
+                  eventId: event.id as number,
+                  communitySlug: slug,
+                })
+              }
+            >
+              <XOctagon className="size-3" /> Reject
+            </button>
+          </div>
+        )}
+      </>
+    );
+
+    if (isLuma && event.lumaUrl) {
+      return (
+        <a
+          key={event.id}
+          href={event.lumaUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={sharedRowClassName}
+        >
+          {innerContent}
+        </a>
+      );
+    }
+
+    if (event.slug) {
+      return (
+        <Link
+          key={event.id}
+          href={`/events/${event.slug}` as never}
+          className={sharedRowClassName}
+        >
+          {innerContent}
+        </Link>
+      );
+    }
+
+    return (
+      <div key={event.id} className={sharedRowClassName}>
+        {innerContent}
+      </div>
+    );
+  }
+
+  const tableHeader = (
+    <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
+      <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
+        / DATE
+      </span>
+      <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
+        / NAME
+      </span>
+      <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+        / TYPE
+      </span>
+    </div>
+  );
+
   return (
     <div>
-      {isAdminOrOwner && (
-        <div className="mb-4 flex justify-end">
+      {/* Header row: tab switcher + action button */}
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex gap-1 font-mono text-[11px] tracking-wider">
+          <button
+            onClick={() => setActiveTab("published")}
+            className={`rounded border px-3 py-1.5 transition-colors ${
+              activeTab === "published"
+                ? "border-foreground bg-foreground text-background"
+                : "border-border text-muted-foreground hover:bg-secondary/40"
+            }`}
+          >
+            EVENTS
+          </button>
+          {canModerate && (
+            <button
+              onClick={() => setActiveTab("pending")}
+              className={`flex items-center gap-1.5 rounded border px-3 py-1.5 transition-colors ${
+                activeTab === "pending"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border text-muted-foreground hover:bg-secondary/40"
+              }`}
+            >
+              PENDING
+              {pendingCount > 0 && (
+                <span className="flex size-4 items-center justify-center rounded-full bg-orange-500 text-[9px] text-white">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+          )}
+          {isActiveMember && !canModerate && (
+            <button
+              onClick={() => setActiveTab("mine")}
+              className={`rounded border px-3 py-1.5 transition-colors ${
+                activeTab === "mine"
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-border text-muted-foreground hover:bg-secondary/40"
+              }`}
+            >
+              MY SUBMISSIONS
+            </button>
+          )}
+        </div>
+
+        {isActiveMember && (
           <Button
             size="sm"
             onClick={() => {
@@ -69,138 +350,81 @@ export default function CommunityEventsPage({
               setDialogOpen(true);
             }}
           >
-            <Plus className="mr-1.5 size-4" /> {t("createEvent")}
+            <Plus className="mr-1.5 size-4" />
+            {isAdminOrOwner ? t("createEvent") : "Submit Event"}
           </Button>
-        </div>
+        )}
+      </div>
+
+      {/* PUBLISHED tab */}
+      {activeTab === "published" && (
+        <>
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="bg-muted h-14 animate-pulse rounded-lg" />
+              ))}
+            </div>
+          ) : events.length === 0 ? (
+            <p className="text-muted-foreground mt-8 text-center">
+              {t("noEvents")}
+            </p>
+          ) : (
+            <>
+              {tableHeader}
+              {events.map((event) =>
+                renderEventRow(event, { showAdminActions: isAdminOrOwner }),
+              )}
+            </>
+          )}
+        </>
       )}
 
-      {isLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className="bg-muted h-14 animate-pulse rounded-lg" />
-          ))}
-        </div>
-      ) : events.length === 0 ? (
-        <p className="text-muted-foreground mt-8 text-center">
-          {t("noEvents")}
-        </p>
-      ) : (
+      {/* PENDING tab (admin/mod only) */}
+      {activeTab === "pending" && canModerate && (
         <>
-          {/* Table Header - desktop only */}
-          <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
-            <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
-              / DATE
-            </span>
-            <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
-              / NAME
-            </span>
-            <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
-              / TYPE
-            </span>
-          </div>
+          {pendingLoading ? (
+            <div className="space-y-2">
+              {[1, 2].map((n) => (
+                <div key={n} className="bg-muted h-14 animate-pulse rounded-lg" />
+              ))}
+            </div>
+          ) : (pendingEvents?.length ?? 0) === 0 ? (
+            <p className="text-muted-foreground mt-8 text-center">
+              No events pending approval.
+            </p>
+          ) : (
+            <>
+              {tableHeader}
+              {pendingEvents!.map((event) =>
+                renderEventRow(event, { showApproveReject: true }),
+              )}
+            </>
+          )}
+        </>
+      )}
 
-          {events.map((event) => {
-            const isLuma = event.source === "luma";
-            const sharedClassName =
-              "border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0";
-
-            const innerContent = (
-              <>
-                <span className="flex items-center gap-1.5 text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
-                  {event.title}
-                  {isLuma && (
-                    <ExternalLink className="text-muted-foreground inline size-3" />
-                  )}
-                </span>
-                <div className="flex items-center gap-3 sm:order-1 sm:w-32">
-                  <div className="bg-foreground h-2 w-2 rounded-full" />
-                  <span className="font-mono text-[12px] sm:text-[13px]">
-                    {formatDate(event.date)}
-                  </span>
-                  <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden">
-                    {typeLabels[event.type] ?? event.type}
-                  </span>
-                </div>
-                <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline">
-                  {typeLabels[event.type] ?? event.type}
-                </span>
-                {event.status === "cancelled" && (
-                  <span className="text-destructive font-mono text-[10px] font-medium sm:order-4 sm:ml-2">
-                    {t("cancelled")}
-                  </span>
-                )}
-                <span className="text-muted-foreground ml-4 hidden font-mono text-lg font-light sm:order-5 sm:inline">
-                  +
-                </span>
-                {isAdminOrOwner && !isLuma && event.status !== "cancelled" && (
-                  <div
-                    className="flex shrink-0 items-center gap-1 sm:order-6"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <button
-                      className="rounded p-1 hover:bg-zinc-100"
-                      onClick={() => {
-                        setEditingEvent({
-                          id: event.id as number,
-                          data: {
-                            title: event.title,
-                            description: "",
-                            type: event.type,
-                            date:
-                              typeof event.date === "string"
-                                ? (event.date.split("T")[0] ?? "")
-                                : "",
-                            startTime: event.startTime ?? "",
-                            endTime: event.endTime ?? "",
-                            location: event.location,
-                            maxAttendees: event.maxAttendees
-                              ? String(event.maxAttendees)
-                              : "",
-                          },
-                        });
-                        setDialogOpen(true);
-                      }}
-                    >
-                      <Pencil className="size-3.5 text-zinc-400" />
-                    </button>
-                    <button
-                      className="rounded p-1 hover:bg-zinc-100"
-                      onClick={() => {
-                        if (window.confirm(t("cancelEventConfirm"))) {
-                          cancelMutation.mutate({
-                            eventId: event.id as number,
-                            communitySlug: slug,
-                          });
-                        }
-                      }}
-                    >
-                      <XCircle className="size-3.5 text-zinc-400" />
-                    </button>
-                  </div>
-                )}
-              </>
-            );
-
-            return isLuma ? (
-              <a
-                key={event.id}
-                href={event.lumaUrl!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={sharedClassName}
-              >
-                {innerContent}
-              </a>
-            ) : (
-              <Link
-                key={event.id}
-                href={`/events/${event.slug}` as never}
-                className={sharedClassName}
-              >
-                {innerContent}
-              </Link>
-            );
-          })}
+      {/* MY SUBMISSIONS tab (active member, non-moderator) */}
+      {activeTab === "mine" && isActiveMember && (
+        <>
+          {mySubmissionsLoading ? (
+            <div className="space-y-2">
+              {[1, 2].map((n) => (
+                <div key={n} className="bg-muted h-14 animate-pulse rounded-lg" />
+              ))}
+            </div>
+          ) : (mySubmissions?.length ?? 0) === 0 ? (
+            <p className="text-muted-foreground mt-8 text-center">
+              No submissions yet.
+            </p>
+          ) : (
+            <>
+              {tableHeader}
+              {mySubmissions!.map((event) =>
+                renderEventRow(event, { showStatus: true }),
+              )}
+            </>
+          )}
         </>
       )}
 
@@ -211,6 +435,7 @@ export default function CommunityEventsPage({
         initialData={editingEvent?.data}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+        isAdminOrOwner={isAdminOrOwner}
       />
     </div>
   );
