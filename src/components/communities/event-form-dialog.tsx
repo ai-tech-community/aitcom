@@ -558,7 +558,7 @@ export function EventFormDialog({
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />
                 {mode === "edit"
-                  ? t("creating")
+                  ? "Saving..."
                   : isAdminOrOwner
                     ? t("creating")
                     : "Submitting..."}

@@ -905,16 +905,21 @@ export const eventsRouter = createTRPCRouter({
       const slug = `${baseSlug}-${Date.now()}`;
 
       const payload = await getPayloadClient();
-      const createData = {
-        slug,
-        status: "draft" as const,
-        communityId: community.id,
-        submittedBy: userId,
-        ...buildEventPayloadData(input),
-      };
       const event = await payload.create({
         collection: "events",
-        data: createData,
+        data: {
+          slug,
+          status: "draft" as const,
+          communityId: community.id,
+          submittedBy: userId,
+          ...buildEventPayloadData(input),
+          // Strip curation-only fields that members cannot set
+          aitFitScore: undefined,
+          curatedByAgent: false,
+          confidenceScore: undefined,
+          discoverySource: undefined,
+          lastVerifiedAt: undefined,
+        },
       });
 
       // Notify all admins/owners/moderators of this community
