@@ -328,10 +328,11 @@ export const Events: CollectionConfig = {
       required: true,
       defaultValue: "draft",
       options: [
-        { label: "Draft", value: "draft" },
+        { label: "Draft (pending approval)", value: "draft" },
         { label: "Published", value: "published" },
         { label: "Cancelled", value: "cancelled" },
         { label: "Completed", value: "completed" },
+        { label: "Rejected", value: "rejected" },
       ],
       admin: { position: "sidebar" },
     },
@@ -340,6 +341,16 @@ export const Events: CollectionConfig = {
       type: "text",
       index: true,
       admin: { position: "sidebar" },
+    },
+    {
+      name: "submittedBy",
+      type: "text",
+      index: true,
+      admin: {
+        position: "sidebar",
+        description: "User ID of the community member who submitted this event for review.",
+        readOnly: true,
+      },
     },
   ],
 };
