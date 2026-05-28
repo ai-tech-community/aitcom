@@ -914,8 +914,7 @@ export const eventsRouter = createTRPCRouter({
       };
       const event = await payload.create({
         collection: "events",
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data: createData as any,
+        data: createData,
       });
 
       // Notify all admins/owners/moderators of this community
@@ -1012,7 +1011,7 @@ export const eventsRouter = createTRPCRouter({
         date: e.date,
         location: e.location,
         status: e.status,
-        submittedBy: ((e as unknown as Record<string, unknown>).submittedBy as string | null | undefined) ?? null,
+        submittedBy: e.submittedBy ?? null,
         communityId: community.id,
       }));
     }),
@@ -1109,7 +1108,7 @@ export const eventsRouter = createTRPCRouter({
         });
       }
 
-      if ((existing.status as string) !== "draft") {
+      if (existing.status !== "draft") {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Only draft events can be approved",
@@ -1122,7 +1121,7 @@ export const eventsRouter = createTRPCRouter({
         data: { status: "published" },
       });
 
-      const submittedBy = (existing as unknown as Record<string, unknown>).submittedBy as string | undefined;
+      const submittedBy = existing.submittedBy ?? undefined;
       if (submittedBy) {
         await ctx.db.insert(notifications).values({
           userId: submittedBy,
@@ -1196,7 +1195,7 @@ export const eventsRouter = createTRPCRouter({
         });
       }
 
-      if ((existing.status as string) !== "draft") {
+      if (existing.status !== "draft") {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Only draft events can be rejected",
@@ -1206,11 +1205,10 @@ export const eventsRouter = createTRPCRouter({
       await payload.update({
         collection: "events",
         id: input.eventId,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        data: { status: "rejected" as any },
+        data: { status: "rejected" },
       });
 
-      const submittedBy = (existing as unknown as Record<string, unknown>).submittedBy as string | undefined;
+      const submittedBy = existing.submittedBy ?? undefined;
       if (submittedBy) {
         await ctx.db.insert(notifications).values({
           userId: submittedBy,
