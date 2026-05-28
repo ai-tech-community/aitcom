@@ -4,6 +4,9 @@ import Image from "next/image";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { Link } from "@/i18n/navigation";
+import { db } from "@/server/db";
+import { communities } from "@/server/db/schema";
+import { inArray } from "drizzle-orm";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import {
   EVENT_FORMAT_LABELS,
@@ -219,6 +222,32 @@ export default async function EventsPage({
     events = withDistance.map((x) => x.event);
   }
 
+  // Batch-fetch community metadata for events sourced from a community
+  const communityIds = [
+    ...new Set(
+      eventsFetched
+        .map((e) => e.communityId as string | undefined)
+        .filter((id): id is string => !!id),
+    ),
+  ];
+
+  const communityRows =
+    communityIds.length > 0
+      ? await db
+          .select({
+            id: communities.id,
+            name: communities.name,
+            slug: communities.slug,
+            logoUrl: communities.logoUrl,
+          })
+          .from(communities)
+          .where(inArray(communities.id, communityIds))
+      : [];
+
+  const communityMap = Object.fromEntries(
+    communityRows.map((c) => [c.id, c]),
+  ) as Record<string, { name: string; slug: string; logoUrl: string | null }>;
+
   const hasFilters =
     !!q ||
     !!type ||
@@ -347,11 +376,14 @@ export default async function EventsPage({
             const summary =
               typeof event.summary === "string" ? event.summary : "";
             const distanceKm = distanceByEventId.get(event.id);
+            const communityId = event.communityId as string | undefined;
+            const communityMeta = communityId
+              ? communityMap[communityId]
+              : undefined;
             return (
-              <Link
+              <div
                 key={event.id}
-                href={`/events/${event.slug}`}
-                className="group border-border hover:bg-secondary/40 overflow-hidden rounded-xl border transition-colors"
+                className="group border-border hover:bg-secondary/40 relative overflow-hidden rounded-xl border transition-colors"
               >
                 {imageUrl && (
                   <div className="border-border overflow-hidden border-b">
@@ -385,10 +417,36 @@ export default async function EventsPage({
                         </span>
                       </>
                     )}
+                    {communityMeta && (
+                      <>
+                        <span>•</span>
+                        <Link
+                          href={`/communities/${communityMeta.slug}` as never}
+                          className="relative z-10 flex items-center gap-1 hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {communityMeta.logoUrl && (
+                            <Image
+                              src={communityMeta.logoUrl}
+                              alt={communityMeta.name}
+                              width={14}
+                              height={14}
+                              className="rounded-full object-cover"
+                            />
+                          )}
+                          <span>{communityMeta.name}</span>
+                        </Link>
+                      </>
+                    )}
                   </div>
                   <div>
                     <h2 className="text-xl leading-tight font-semibold">
-                      {event.title}
+                      <Link
+                        href={`/events/${event.slug}`}
+                        className="after:absolute after:inset-0"
+                      >
+                        {event.title}
+                      </Link>
                     </h2>
                     <p className="text-muted-foreground mt-2 text-sm">
                       {event.location}
@@ -412,7 +470,7 @@ export default async function EventsPage({
                     )}
                   </div>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
