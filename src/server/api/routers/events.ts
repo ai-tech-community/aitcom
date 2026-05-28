@@ -1239,4 +1239,129 @@ export const eventsRouter = createTRPCRouter({
 
       return { success: true };
     }),
+
+  resubmitEvent: protectedProcedure
+    .input(
+      z
+        .object({ eventId: z.number(), communitySlug: z.string() })
+        .merge(eventUpsertSchema.partial()),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+      }
+
+      const payload = await getPayloadClient();
+      const existing = await payload.findByID({
+        collection: "events",
+        id: input.eventId,
+        depth: 0,
+      });
+
+      if (
+        !existing ||
+        existing.communityId !== community.id ||
+        existing.submittedBy !== userId
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only resubmit your own rejected events",
+        });
+      }
+
+      if ((existing.status as string) !== "rejected") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only rejected events can be resubmitted",
+        });
+      }
+
+      // Build partial update data (same pattern as updateEvent)
+      const data: Record<string, unknown> = { status: "draft" };
+      if (input.title !== undefined) data.title = input.title;
+      if (input.description !== undefined)
+        data.description = plainTextToLexical(input.description ?? "");
+      if (input.summary !== undefined)
+        data.summary = normalizeOptionalString(input.summary);
+      if (input.type !== undefined) data.type = input.type;
+      if (input.date !== undefined) data.date = input.date;
+      if (input.startTime !== undefined)
+        data.startTime = normalizeOptionalString(input.startTime);
+      if (input.endTime !== undefined)
+        data.endTime = normalizeOptionalString(input.endTime);
+      if (input.location !== undefined) data.location = input.location;
+      if (input.format !== undefined) data.format = input.format;
+      if (input.region !== undefined)
+        data.region = normalizeOptionalString(input.region);
+      if (input.country !== undefined)
+        data.country = normalizeOptionalString(input.country);
+      if (input.city !== undefined)
+        data.city = normalizeOptionalString(input.city);
+      if (input.focus !== undefined) data.focus = input.focus;
+      if (input.level !== undefined) data.level = input.level;
+      if (input.audience !== undefined) data.audience = input.audience;
+      if (input.sourceUrl !== undefined)
+        data.sourceUrl = normalizeOptionalString(input.sourceUrl);
+      if (input.tags !== undefined)
+        data.tags = (input.tags as string[])
+          .map((tag: string) => ({ tag: tag.trim() }))
+          .filter((entry: { tag: string }) => entry.tag.length > 0);
+      if (input.videoUrl !== undefined)
+        data.videoUrl = normalizeOptionalString(input.videoUrl);
+      if (input.maxAttendees !== undefined)
+        data.maxAttendees = input.maxAttendees;
+
+      const event = await payload.update({
+        collection: "events",
+        id: input.eventId,
+        data,
+      });
+
+      // Notify admins/mods that a resubmission is pending
+      const admins = await ctx.db
+        .select({ userId: communityMemberships.userId })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.status, "active"),
+            sql`${communityMemberships.role} IN ('owner', 'admin', 'moderator')`,
+          ),
+        );
+
+      if (admins.length > 0) {
+        await ctx.db.insert(notifications).values(
+          admins.map(({ userId: adminId }) => ({
+            userId: adminId,
+            type: "event_submitted",
+            title: "Event resubmitted for approval",
+            content: `"${existing.title}" was resubmitted for review in ${community.name}.`,
+            metadata: {
+              eventId: String(input.eventId),
+              communitySlug: input.communitySlug,
+            },
+            communityId: community.id,
+          })),
+        );
+      }
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "event.resubmit",
+        targetType: "event",
+        targetId: String(input.eventId),
+        metadata: { communitySlug: input.communitySlug },
+      });
+
+      return event;
+    }),
 });

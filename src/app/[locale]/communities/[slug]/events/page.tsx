@@ -46,6 +46,7 @@ export default function CommunityEventsPage({
   const [editingEvent, setEditingEvent] = useState<{
     id: number;
     data: Record<string, string>;
+    resubmit?: boolean;
   } | null>(null);
 
   const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
@@ -131,6 +132,7 @@ export default function CommunityEventsPage({
       showAdminActions?: boolean;
       showApproveReject?: boolean;
       showStatus?: boolean;
+      showResubmit?: boolean;
     } = {},
   ) {
     const isLuma = event.source === "luma";
@@ -164,6 +166,39 @@ export default function CommunityEventsPage({
           <span className="text-muted-foreground font-mono text-[10px] font-medium sm:order-4 sm:ml-2 flex items-center gap-1">
             <Clock className="size-3" /> PENDING APPROVAL
           </span>
+        )}
+        {opts.showResubmit && event.status === "rejected" && (
+          <div
+            className="flex shrink-0 items-center gap-1 sm:order-6"
+            onClick={(e) => e.preventDefault()}
+          >
+            <button
+              className="rounded p-1 hover:bg-zinc-100"
+              title="Edit and resubmit"
+              onClick={() => {
+                setEditingEvent({
+                  id: event.id as number,
+                  data: {
+                    title: event.title,
+                    description: "",
+                    type: event.type,
+                    date:
+                      typeof event.date === "string"
+                        ? (event.date.split("T")[0] ?? "")
+                        : "",
+                    startTime: event.startTime ?? "",
+                    endTime: event.endTime ?? "",
+                    location: event.location,
+                    maxAttendees: "",
+                  },
+                  resubmit: true,
+                });
+                setDialogOpen(true);
+              }}
+            >
+              <Pencil className="size-3.5 text-zinc-400" />
+            </button>
+          </div>
         )}
         {event.status === "cancelled" && (
           <span className="text-destructive font-mono text-[10px] font-medium sm:order-4 sm:ml-2">
@@ -223,7 +258,8 @@ export default function CommunityEventsPage({
             onClick={(e) => e.preventDefault()}
           >
             <button
-              className="flex items-center gap-1 rounded border border-green-600 px-2 py-0.5 text-[11px] font-mono text-green-600 hover:bg-green-50"
+              className="flex items-center gap-1 rounded border border-green-600 px-2 py-0.5 text-[11px] font-mono text-green-600 hover:bg-green-50 disabled:opacity-50"
+              disabled={approveMutation.isPending || rejectMutation.isPending}
               onClick={() =>
                 approveMutation.mutate({
                   eventId: event.id as number,
@@ -234,7 +270,8 @@ export default function CommunityEventsPage({
               <CheckCircle className="size-3" /> Approve
             </button>
             <button
-              className="flex items-center gap-1 rounded border border-red-500 px-2 py-0.5 text-[11px] font-mono text-red-500 hover:bg-red-50"
+              className="flex items-center gap-1 rounded border border-red-500 px-2 py-0.5 text-[11px] font-mono text-red-500 hover:bg-red-50 disabled:opacity-50"
+              disabled={approveMutation.isPending || rejectMutation.isPending}
               onClick={() =>
                 rejectMutation.mutate({
                   eventId: event.id as number,
@@ -328,7 +365,7 @@ export default function CommunityEventsPage({
               )}
             </button>
           )}
-          {isActiveMember && !canModerate && (
+          {isActiveMember && (
             <button
               onClick={() => setActiveTab("mine")}
               className={`rounded border px-3 py-1.5 transition-colors ${
@@ -351,7 +388,7 @@ export default function CommunityEventsPage({
             }}
           >
             <Plus className="mr-1.5 size-4" />
-            {isAdminOrOwner ? t("createEvent") : "Submit Event"}
+            {canModerate ? t("createEvent") : "Submit Event"}
           </Button>
         )}
       </div>
@@ -396,7 +433,7 @@ export default function CommunityEventsPage({
           ) : (
             <>
               {tableHeader}
-              {pendingEvents!.map((event) =>
+              {(pendingEvents ?? []).map((event) =>
                 renderEventRow(event, { showApproveReject: true }),
               )}
             </>
@@ -420,8 +457,8 @@ export default function CommunityEventsPage({
           ) : (
             <>
               {tableHeader}
-              {mySubmissions!.map((event) =>
-                renderEventRow(event, { showStatus: true }),
+              {(mySubmissions ?? []).map((event) =>
+                renderEventRow(event, { showStatus: true, showResubmit: true }),
               )}
             </>
           )}
@@ -430,7 +467,7 @@ export default function CommunityEventsPage({
 
       <EventFormDialog
         slug={slug}
-        mode={editingEvent ? "edit" : "create"}
+        mode={editingEvent?.resubmit ? "resubmit" : editingEvent ? "edit" : "create"}
         eventId={editingEvent?.id}
         initialData={editingEvent?.data}
         open={dialogOpen}

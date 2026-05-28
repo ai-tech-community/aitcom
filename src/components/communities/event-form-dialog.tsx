@@ -94,7 +94,7 @@ const emptyForm: EventFormData = {
 
 interface EventFormDialogProps {
   slug: string;
-  mode: "create" | "edit";
+  mode: "create" | "edit" | "resubmit";
   eventId?: number;
   initialData?: Partial<EventFormData>;
   open: boolean;
@@ -155,6 +155,16 @@ export function EventFormDialog({
     onError: () => toast.error("Failed to submit event"),
   });
 
+  const resubmitMutation = api.events.resubmitEvent.useMutation({
+    onSuccess: () => {
+      toast.success("Event resubmitted for approval");
+      onOpenChange(false);
+      void utils.events.getMyEventSubmissions.invalidate();
+      void utils.events.getPendingCommunityEvents.invalidate();
+    },
+    onError: () => toast.error("Failed to resubmit event"),
+  });
+
   const parsedTags = form.tags
     .split(",")
     .map((tag) => tag.trim())
@@ -194,7 +204,9 @@ export function EventFormDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === "edit" && eventId) {
+    if (mode === "resubmit" && eventId) {
+      resubmitMutation.mutate({ eventId, ...payload });
+    } else if (mode === "edit" && eventId) {
       updateMutation.mutate({ eventId, ...payload });
     } else if (isAdminOrOwner) {
       createMutation.mutate(payload);
@@ -215,14 +227,19 @@ export function EventFormDialog({
   const isPending =
     createMutation.isPending ||
     updateMutation.isPending ||
-    submitMutation.isPending;
+    submitMutation.isPending ||
+    resubmitMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? t("createEvent") : t("editEvent")}
+            {mode === "resubmit"
+              ? "Edit & Resubmit"
+              : mode === "create"
+                ? t("createEvent")
+                : t("editEvent")}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -557,12 +574,16 @@ export function EventFormDialog({
             {isPending ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />
-                {mode === "edit"
-                  ? "Saving..."
-                  : isAdminOrOwner
-                    ? t("creating")
-                    : "Submitting..."}
+                {mode === "resubmit"
+                  ? "Resubmitting..."
+                  : mode === "edit"
+                    ? "Saving..."
+                    : isAdminOrOwner
+                      ? t("creating")
+                      : "Submitting..."}
               </>
+            ) : mode === "resubmit" ? (
+              "Resubmit for Approval"
             ) : mode === "edit" ? (
               t("editEvent")
             ) : isAdminOrOwner ? (
