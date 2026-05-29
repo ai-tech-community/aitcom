@@ -1,0 +1,6 @@
+# Payload-generated files. `payload generate:types` / `generate:importmap`
+# rewrite these in an unformatted state, so prettier and the generator fight
+# over them and CI's format check fails whenever the generated output is
+# committed. Their formatting is irrelevant (they're generated), so ignore them.
+src/payload-types.ts
+src/app/(payload)/admin/importMap.js
