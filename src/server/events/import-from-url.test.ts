@@ -1,16 +1,28 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+vi.mock("@/server/agent/validate-webhook-url", () => ({
+  validateWebhookUrl: vi.fn(),
+}));
+
 import { fetchEventPageHtml, ingestRemoteImage } from "./import-from-url";
+import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
+
+const mockGuard = vi.mocked(validateWebhookUrl);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGuard.mockResolvedValue({ ok: true });
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("fetchEventPageHtml", () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("rejects non-HTTPS / private URLs via the SSRF guard", async () => {
-    await expect(fetchEventPageHtml("http://localhost/x")).rejects.toThrow();
+  it("rejects when the SSRF guard blocks the URL", async () => {
+    mockGuard.mockResolvedValue({ ok: false, reason: "blocked" });
+    await expect(
+      fetchEventPageHtml("https://evil.example/x"),
+    ).rejects.toThrow(/blocked/i);
   });
 
   it("rejects a non-HTML response", async () => {
@@ -44,10 +56,6 @@ describe("fetchEventPageHtml", () => {
 });
 
 describe("ingestRemoteImage", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   it("downloads an image and creates a media doc", async () => {
     vi.stubGlobal(
       "fetch",
@@ -90,11 +98,12 @@ describe("ingestRemoteImage", () => {
     expect(payload.create).not.toHaveBeenCalled();
   });
 
-  it("returns null when the image host fails the SSRF guard", async () => {
+  it("returns null when the SSRF guard blocks the image host", async () => {
+    mockGuard.mockResolvedValue({ ok: false, reason: "blocked" });
     const payload = { create: vi.fn() };
     const result = await ingestRemoteImage(
       payload as never,
-      "http://127.0.0.1/cover.png",
+      "https://cdn.example.com/cover.png",
       "alt",
     );
     expect(result).toBeNull();

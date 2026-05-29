@@ -1,8 +1,5 @@
 import type { getPayloadClient } from "@/server/payload";
-import {
-  validateWebhookUrl,
-  validateWebhookUrlSync,
-} from "@/server/agent/validate-webhook-url";
+import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 
 type PayloadClient = Awaited<ReturnType<typeof getPayloadClient>>;
 
@@ -64,7 +61,7 @@ export async function ingestRemoteImage(
   alt: string,
 ): Promise<{ id: number; url: string } | null> {
   try {
-    const guard = validateWebhookUrlSync(url);
+    const guard = await validateWebhookUrl(url);
     if (!guard.ok) return null;
 
     const res = await fetchWithLimits(url, MAX_IMAGE_BYTES);
