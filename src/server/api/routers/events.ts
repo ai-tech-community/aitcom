@@ -31,7 +31,10 @@ import {
 import { getMollie } from "@/server/mollie";
 import { env } from "@/env";
 import { TRPCError } from "@trpc/server";
-import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import {
+  plainTextToLexical,
+  lexicalToPlainText,
+} from "@/server/challenge-engine/lexical";
 import {
   eventUpsertSchema,
   normalizeOptionalString,
@@ -1092,6 +1095,111 @@ export const eventsRouter = createTRPCRouter({
             ? ((e.coverImage as { url?: string }).url ?? null)
             : null,
       }));
+    }),
+
+  // Full editable record for one event, used to pre-fill the edit/resubmit
+  // form. Authorized for community admins/owners (edit) or the original
+  // submitter (resubmit). Returns fields shaped for the form (strings, with
+  // rich-text description flattened to plain text).
+  getEventForEdit: protectedProcedure
+    .input(z.object({ eventId: z.number(), communitySlug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+        columns: { id: true },
+      });
+      if (!community) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
+      }
+
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (membership?.status !== "active") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You must be an active community member",
+        });
+      }
+
+      const payload = await getPayloadClient();
+      const e = await payload.findByID({
+        collection: "events",
+        id: input.eventId,
+        depth: 1,
+      });
+      if (e?.communityId !== community.id) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Event not found in this community",
+        });
+      }
+
+      const isAdmin =
+        membership.role === "owner" || membership.role === "admin";
+      const isSubmitter = e.submittedBy === userId;
+      if (!isAdmin && !isSubmitter) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only edit your own submissions",
+        });
+      }
+
+      const cover =
+        e.coverImage && typeof e.coverImage === "object"
+          ? (e.coverImage as { id: number; url?: string })
+          : null;
+
+      const tags = Array.isArray(e.tags)
+        ? (e.tags as { tag?: string }[])
+            .map((entry) => entry.tag?.trim())
+            .filter((tag): tag is string => Boolean(tag))
+            .join(", ")
+        : "";
+
+      return {
+        title: e.title ?? "",
+        summary: e.summary ?? "",
+        description: lexicalToPlainText(e.description),
+        type: e.type,
+        date: typeof e.date === "string" ? (e.date.split("T")[0] ?? "") : "",
+        startTime: e.startTime ?? "",
+        endTime: e.endTime ?? "",
+        location: e.location ?? "",
+        format: e.format ?? "",
+        region: e.region ?? "",
+        country: e.country ?? "",
+        city: e.city ?? "",
+        focus: e.focus ?? "",
+        level: e.level ?? "",
+        audience: Array.isArray(e.audience) ? e.audience : [],
+        sourceUrl: e.sourceUrl ?? "",
+        aitFitScore: e.aitFitScore != null ? String(e.aitFitScore) : "",
+        tags,
+        curatedByAgent: Boolean(e.curatedByAgent),
+        discoverySource: e.discoverySource ?? "",
+        confidenceScore:
+          e.confidenceScore != null ? String(e.confidenceScore) : "",
+        lastVerifiedAt:
+          typeof e.lastVerifiedAt === "string"
+            ? e.lastVerifiedAt.slice(0, 16)
+            : "",
+        videoUrl: e.videoUrl ?? "",
+        maxAttendees: e.maxAttendees != null ? String(e.maxAttendees) : "",
+        coverImageId: cover?.id ?? null,
+        coverImageUrl: cover?.url ?? null,
+      };
     }),
 
   approveEvent: protectedProcedure

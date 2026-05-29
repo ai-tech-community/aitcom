@@ -145,3 +145,30 @@ export function plainTextToLexical(description: string) {
 
   return lexical(...paragraphs.map((p) => paragraph(text(p))));
 }
+
+/**
+ * Convert Lexical rich text back into plain text — the inverse of
+ * `plainTextToLexical`, used to pre-fill plain-text edit forms. Walks the node
+ * tree collecting `text` leaves; top-level blocks (paragraphs, headings, list
+ * items) are separated by double newlines. Returns "" for empty/invalid input.
+ */
+export function lexicalToPlainText(value: unknown): string {
+  const root = (value as { root?: { children?: unknown[] } } | null)?.root;
+  if (!root || !Array.isArray(root.children)) return "";
+
+  const collectText = (node: unknown): string => {
+    if (!node || typeof node !== "object") return "";
+    const n = node as { type?: string; text?: unknown; children?: unknown[] };
+    if (n.type === "text" && typeof n.text === "string") return n.text;
+    if (Array.isArray(n.children)) {
+      return n.children.map(collectText).join("");
+    }
+    return "";
+  };
+
+  return root.children
+    .map(collectText)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .join("\n\n");
+}

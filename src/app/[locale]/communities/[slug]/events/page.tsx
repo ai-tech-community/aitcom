@@ -45,10 +45,7 @@ export default function CommunityEventsPage({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<{
     id: number;
-    data: Record<string, string>;
     resubmit?: boolean;
-    coverImageId?: number | null;
-    coverImageUrl?: string | null;
   } | null>(null);
 
   const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
@@ -180,25 +177,7 @@ export default function CommunityEventsPage({
               className="rounded p-1 hover:bg-zinc-100"
               title="Edit and resubmit"
               onClick={() => {
-                setEditingEvent({
-                  id: event.id as number,
-                  data: {
-                    title: event.title,
-                    description: "",
-                    type: event.type,
-                    date:
-                      typeof event.date === "string"
-                        ? (event.date.split("T")[0] ?? "")
-                        : "",
-                    startTime: event.startTime ?? "",
-                    endTime: event.endTime ?? "",
-                    location: event.location,
-                    maxAttendees: "",
-                  },
-                  resubmit: true,
-                  coverImageId: event.coverImageId ?? null,
-                  coverImageUrl: event.coverImageUrl ?? null,
-                });
+                setEditingEvent({ id: event.id as number, resubmit: true });
                 setDialogOpen(true);
               }}
             >
@@ -222,24 +201,7 @@ export default function CommunityEventsPage({
             <button
               className="rounded p-1 hover:bg-zinc-100"
               onClick={() => {
-                setEditingEvent({
-                  id: event.id as number,
-                  data: {
-                    title: event.title,
-                    description: "",
-                    type: event.type,
-                    date:
-                      typeof event.date === "string"
-                        ? (event.date.split("T")[0] ?? "")
-                        : "",
-                    startTime: event.startTime ?? "",
-                    endTime: event.endTime ?? "",
-                    location: event.location,
-                    maxAttendees: "",
-                  },
-                  coverImageId: event.coverImageId ?? null,
-                  coverImageUrl: event.coverImageUrl ?? null,
-                });
+                setEditingEvent({ id: event.id as number });
                 setDialogOpen(true);
               }}
             >
@@ -488,15 +450,6 @@ export default function CommunityEventsPage({
           editingEvent?.resubmit ? "resubmit" : editingEvent ? "edit" : "create"
         }
         eventId={editingEvent?.id}
-        initialData={
-          editingEvent
-            ? {
-                ...editingEvent.data,
-                coverImageId: editingEvent.coverImageId ?? null,
-                coverImageUrl: editingEvent.coverImageUrl ?? null,
-              }
-            : undefined
-        }
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         isAdminOrOwner={isAdminOrOwner}
