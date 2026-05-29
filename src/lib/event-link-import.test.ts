@@ -99,4 +99,50 @@ describe("parseEventFromHtml", () => {
     const r = parseEventFromHtml(html, "https://lu.ma/ai-builders");
     expect(r.coverImageUrl).toBe("https://lu.ma/img/cover.jpg");
   });
+
+  it("does not select a non-Event node whose @type merely contains 'Event'", () => {
+    const html = `
+      <script type="application/ld+json">
+      {"@type":"PublicationEvent","name":"Press Release","startDate":"2026-01-01T10:00"}
+      </script>
+      <script type="application/ld+json">
+      {"@type":"Event","name":"Real Meetup","startDate":"2026-06-12T18:00"}
+      </script>`;
+    const r = parseEventFromHtml(html, SOURCE);
+    expect(r.title).toBe("Real Meetup");
+    expect(r.date).toBe("2026-06-12");
+  });
+
+  it("matches a recognized event subtype (BusinessEvent)", () => {
+    const html = `
+      <script type="application/ld+json">
+      {"@type":"BusinessEvent","name":"Conf 2026","startDate":"2026-09-01T09:00"}
+      </script>`;
+    expect(parseEventFromHtml(html, SOURCE).title).toBe("Conf 2026");
+  });
+
+  it("handles @type as an array containing Event", () => {
+    const html = `
+      <script type="application/ld+json">
+      {"@type":["Thing","Event"],"name":"Multi-Type","startDate":"2026-06-01T09:00"}
+      </script>`;
+    const r = parseEventFromHtml(html, SOURCE);
+    expect(r.title).toBe("Multi-Type");
+    expect(r.date).toBe("2026-06-01");
+  });
+
+  it("extracts location from an array (hybrid event: VirtualLocation + Place)", () => {
+    const html = `
+      <script type="application/ld+json">
+      {"@type":"Event","name":"Hybrid","startDate":"2026-06-12T18:00",
+       "location":[
+         {"@type":"VirtualLocation","url":"https://zoom.us/x"},
+         {"@type":"Place","name":"TQ Amsterdam","address":{"addressLocality":"Amsterdam","addressCountry":"NL"}}
+       ]}
+      </script>`;
+    const r = parseEventFromHtml(html, SOURCE);
+    expect(r.location).toBe("TQ Amsterdam");
+    expect(r.city).toBe("Amsterdam");
+    expect(r.country).toBe("NL");
+  });
 });

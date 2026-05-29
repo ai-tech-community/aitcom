@@ -2,6 +2,32 @@ import type { EVENT_FORMAT_OPTIONS } from "@/lib/event-metadata";
 
 type EventFormat = (typeof EVENT_FORMAT_OPTIONS)[number];
 
+// schema.org Event + the common event subtypes worth importing.
+const EVENT_LD_TYPES = new Set([
+  "Event",
+  "BusinessEvent",
+  "SocialEvent",
+  "EducationEvent",
+  "Festival",
+  "MusicEvent",
+  "ScreeningEvent",
+  "TheaterEvent",
+  "ComedyEvent",
+  "SportsEvent",
+  "ExhibitionEvent",
+  "LiteraryEvent",
+  "DanceEvent",
+  "FoodEvent",
+  "ChildrensEvent",
+  "VisualArtsEvent",
+  "Hackathon",
+]);
+
+function isEventType(type: unknown): boolean {
+  if (Array.isArray(type)) return type.some((t) => isEventType(t));
+  return typeof type === "string" && EVENT_LD_TYPES.has(type);
+}
+
 export interface ParsedEventImport {
   title?: string;
   summary?: string;
@@ -50,11 +76,7 @@ function findEventNode(node: unknown): Record<string, unknown> | null {
   }
   if (node && typeof node === "object") {
     const obj = node as Record<string, unknown>;
-    const type = obj["@type"];
-    const isEvent = Array.isArray(type)
-      ? type.some((t) => String(t).includes("Event"))
-      : typeof type === "string" && type.includes("Event");
-    if (isEvent) return obj;
+    if (isEventType(obj["@type"])) return obj;
     if (Array.isArray(obj["@graph"])) return findEventNode(obj["@graph"]);
   }
   return null;
@@ -96,6 +118,27 @@ function str(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+/**
+ * Pick the best Place-like object from a location value.
+ * schema.org allows location to be a single object or an array (hybrid events).
+ * If an array, returns the first element that has a `name` or `address` property.
+ */
+function pickPlace(location: unknown): Record<string, unknown> | null {
+  if (Array.isArray(location)) {
+    for (const item of location) {
+      if (item && typeof item === "object" && !Array.isArray(item)) {
+        const obj = item as Record<string, unknown>;
+        if (obj.name !== undefined || obj.address !== undefined) return obj;
+      }
+    }
+    return null;
+  }
+  if (location && typeof location === "object") {
+    return location as Record<string, unknown>;
+  }
+  return null;
+}
+
 /** schema.org image can be a string, an array, or an ImageObject. */
 function firstImageUrl(value: unknown): string | undefined {
   if (typeof value === "string") return str(value);
@@ -125,9 +168,8 @@ function fromJsonLd(
   result.format = attendanceToFormat(event.eventAttendanceMode);
   result.coverImageUrl = firstImageUrl(event.image);
 
-  const location = event.location;
-  if (location && typeof location === "object") {
-    const loc = location as Record<string, unknown>;
+  const loc = pickPlace(event.location);
+  if (loc) {
     result.location = str(loc.name);
     const address = loc.address;
     if (address && typeof address === "object") {
