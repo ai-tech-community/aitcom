@@ -59,7 +59,6 @@ function getAppUrl(): string {
   return env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 }
 
-
 export const eventsRouter = createTRPCRouter({
   register: protectedProcedure
     .input(

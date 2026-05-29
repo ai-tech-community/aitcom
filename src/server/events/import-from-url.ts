@@ -11,7 +11,10 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_REDIRECTS = 5;
 
 /** Read a response body, throwing once it exceeds maxBytes (bounds memory). */
-async function readBodyCapped(res: Response, maxBytes: number): Promise<Buffer> {
+async function readBodyCapped(
+  res: Response,
+  maxBytes: number,
+): Promise<Buffer> {
   if (!res.body) {
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.byteLength > maxBytes) throw new Error("Response too large");

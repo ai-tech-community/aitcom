@@ -41,7 +41,9 @@ export function normalizeOptionalString(value?: string) {
   return trimmed ?? undefined;
 }
 
-export function buildEventPayloadData(input: z.infer<typeof eventUpsertSchema>) {
+export function buildEventPayloadData(
+  input: z.infer<typeof eventUpsertSchema>,
+) {
   return {
     title: input.title,
     description: plainTextToLexical(input.description ?? ""),

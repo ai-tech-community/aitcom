@@ -24,9 +24,9 @@ afterEach(() => {
 describe("fetchEventPageHtml", () => {
   it("rejects when the SSRF guard blocks the URL", async () => {
     mockGuard.mockResolvedValue({ ok: false, reason: "blocked" });
-    await expect(
-      fetchEventPageHtml("https://evil.example/x"),
-    ).rejects.toThrow(/blocked|refusing/i);
+    await expect(fetchEventPageHtml("https://evil.example/x")).rejects.toThrow(
+      /blocked|refusing/i,
+    );
   });
 
   it("rejects a non-HTML response", async () => {
@@ -54,9 +54,9 @@ describe("fetchEventPageHtml", () => {
         }),
       ),
     );
-    await expect(
-      fetchEventPageHtml("https://lu.ma/missing"),
-    ).rejects.toThrow(/status 404/i);
+    await expect(fetchEventPageHtml("https://lu.ma/missing")).rejects.toThrow(
+      /status 404/i,
+    );
   });
 
   it("returns HTML on success", async () => {
@@ -125,9 +125,9 @@ describe("fetchEventPageHtml", () => {
         }),
       ),
     );
-    await expect(
-      fetchEventPageHtml("https://evil.example/x"),
-    ).rejects.toThrow(/blocked|refusing/i);
+    await expect(fetchEventPageHtml("https://evil.example/x")).rejects.toThrow(
+      /blocked|refusing/i,
+    );
   });
 });
 

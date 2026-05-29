@@ -232,9 +232,7 @@ export function EventFormDialog({
     }));
   };
 
-  const handleCoverUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setCoverUploading(true);
