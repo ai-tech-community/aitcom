@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   EVENT_AUDIENCE_LABELS,
@@ -63,6 +63,8 @@ interface EventFormData {
   lastVerifiedAt: string;
   videoUrl: string;
   maxAttendees: string;
+  coverImageId: number | null;
+  coverImageUrl: string | null;
 }
 
 const emptyForm: EventFormData = {
@@ -90,6 +92,8 @@ const emptyForm: EventFormData = {
   lastVerifiedAt: "",
   videoUrl: "",
   maxAttendees: "",
+  coverImageId: null,
+  coverImageUrl: null,
 };
 
 interface EventFormDialogProps {
@@ -114,6 +118,8 @@ export function EventFormDialog({
   const t = useTranslations("events");
   const utils = api.useUtils();
   const [form, setForm] = useState<EventFormData>(emptyForm);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
 
   useEffect(() => {
     if (open && initialData) {
@@ -124,6 +130,7 @@ export function EventFormDialog({
       });
     } else if (open && mode === "create") {
       setForm(emptyForm);
+      setImportUrl("");
     }
   }, [open, initialData, mode]);
 
@@ -200,6 +207,7 @@ export function EventFormDialog({
     maxAttendees: form.maxAttendees
       ? parseInt(form.maxAttendees, 10)
       : undefined,
+    coverImage: form.coverImageId ?? undefined,
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -224,6 +232,58 @@ export function EventFormDialog({
     }));
   };
 
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("alt", form.title || "Event cover");
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = (await res.json()) as { url: string; id: number };
+      setForm((current) => ({
+        ...current,
+        coverImageId: data.id,
+        coverImageUrl: data.url,
+      }));
+    } catch {
+      toast.error("Image upload failed");
+    } finally {
+      setCoverUploading(false);
+      if (coverInputRef.current) coverInputRef.current.value = "";
+    }
+  };
+
+  const [importUrl, setImportUrl] = useState("");
+
+  const importMutation = api.events.importEventFromUrl.useMutation({
+    onSuccess: (data) => {
+      setForm((current) => ({
+        ...current,
+        title: data.title ?? current.title,
+        summary: data.summary ?? current.summary,
+        description: data.description ?? current.description,
+        date: data.date ?? current.date,
+        startTime: data.startTime ?? current.startTime,
+        endTime: data.endTime ?? current.endTime,
+        location: data.location ?? current.location,
+        city: data.city ?? current.city,
+        country: data.country ?? current.country,
+        format: data.format ?? current.format,
+        sourceUrl: data.sourceUrl ?? current.sourceUrl,
+        coverImageId: data.coverImageId ?? current.coverImageId,
+        coverImageUrl: data.coverImageUrl ?? current.coverImageUrl,
+      }));
+      toast.success("Imported — review the details and submit");
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
   const isPending =
     createMutation.isPending ||
     updateMutation.isPending ||
@@ -243,6 +303,37 @@ export function EventFormDialog({
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {mode === "create" && (
+            <div className="border-border bg-secondary/30 space-y-2 rounded-lg border p-3">
+              <Label htmlFor="event-import-url">
+                Import from a link (Meetup, Eventbrite, Luma)
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  id="event-import-url"
+                  type="url"
+                  placeholder="https://lu.ma/your-event"
+                  value={importUrl}
+                  onChange={(e) => setImportUrl(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!importUrl || importMutation.isPending}
+                  onClick={() => importMutation.mutate({ url: importUrl })}
+                >
+                  {importMutation.isPending ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  ) : null}
+                  {importMutation.isPending ? "Importing..." : "Import"}
+                </Button>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                We&apos;ll pre-fill what we can find. You can edit everything
+                before submitting.
+              </p>
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="event-title">{t("eventTitle")}</Label>
@@ -570,6 +661,54 @@ export function EventFormDialog({
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label>Cover image</Label>
+            {form.coverImageUrl ? (
+              <div className="relative w-fit">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={form.coverImageUrl}
+                  alt="Event cover preview"
+                  className="border-border h-28 rounded-lg border object-cover"
+                />
+                <button
+                  type="button"
+                  className="bg-background/80 absolute top-1 right-1 rounded-full border p-1"
+                  onClick={() =>
+                    setForm((c) => ({
+                      ...c,
+                      coverImageId: null,
+                      coverImageUrl: null,
+                    }))
+                  }
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={coverUploading}
+                onClick={() => coverInputRef.current?.click()}
+              >
+                {coverUploading ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="mr-2 size-4" />
+                )}
+                {coverUploading ? "Uploading..." : "Upload cover image"}
+              </Button>
+            )}
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCoverUpload}
+            />
+          </div>
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? (
               <>

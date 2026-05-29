@@ -47,6 +47,8 @@ export default function CommunityEventsPage({
     id: number;
     data: Record<string, string>;
     resubmit?: boolean;
+    coverImageId?: number | null;
+    coverImageUrl?: string | null;
   } | null>(null);
 
   const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
@@ -127,6 +129,8 @@ export default function CommunityEventsPage({
       source?: string;
       lumaUrl?: string | null;
       slug?: string | null;
+      coverImageId?: number | null;
+      coverImageUrl?: string | null;
     },
     opts: {
       showAdminActions?: boolean;
@@ -192,6 +196,8 @@ export default function CommunityEventsPage({
                     maxAttendees: "",
                   },
                   resubmit: true,
+                  coverImageId: event.coverImageId ?? null,
+                  coverImageUrl: event.coverImageUrl ?? null,
                 });
                 setDialogOpen(true);
               }}
@@ -231,6 +237,8 @@ export default function CommunityEventsPage({
                     location: event.location,
                     maxAttendees: "",
                   },
+                  coverImageId: event.coverImageId ?? null,
+                  coverImageUrl: event.coverImageUrl ?? null,
                 });
                 setDialogOpen(true);
               }}
@@ -480,7 +488,15 @@ export default function CommunityEventsPage({
           editingEvent?.resubmit ? "resubmit" : editingEvent ? "edit" : "create"
         }
         eventId={editingEvent?.id}
-        initialData={editingEvent?.data}
+        initialData={
+          editingEvent
+            ? {
+                ...editingEvent.data,
+                coverImageId: editingEvent.coverImageId ?? null,
+                coverImageUrl: editingEvent.coverImageUrl ?? null,
+              }
+            : undefined
+        }
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         isAdminOrOwner={isAdminOrOwner}

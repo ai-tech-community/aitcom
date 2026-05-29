@@ -33,12 +33,11 @@ import { env } from "@/env";
 import { TRPCError } from "@trpc/server";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import {
-  EVENT_AUDIENCE_OPTIONS,
-  EVENT_FOCUS_OPTIONS,
-  EVENT_FORMAT_OPTIONS,
-  EVENT_LEVEL_OPTIONS,
-  EVENT_TYPES,
-} from "@/lib/event-metadata";
+  eventUpsertSchema,
+  normalizeOptionalString,
+  buildEventPayloadData,
+} from "./event-upsert-data";
+import { runEventImport } from "@/server/events/import-from-url";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -58,73 +57,6 @@ async function getEventEmailData(eventId: number) {
 
 function getAppUrl(): string {
   return env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-}
-
-const eventUpsertSchema = z.object({
-  title: z.string().min(3).max(255),
-  description: z.string().max(5000).optional(),
-  summary: z.string().max(1000).optional(),
-  type: z.enum(EVENT_TYPES),
-  date: z.string(),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
-  location: z.string().min(1).max(255),
-  format: z.enum(EVENT_FORMAT_OPTIONS).optional(),
-  region: z.string().max(255).optional(),
-  country: z.string().max(255).optional(),
-  city: z.string().max(255).optional(),
-  focus: z.enum(EVENT_FOCUS_OPTIONS).optional(),
-  level: z.enum(EVENT_LEVEL_OPTIONS).optional(),
-  audience: z.array(z.enum(EVENT_AUDIENCE_OPTIONS)).max(6).optional(),
-  sourceUrl: z.string().url().optional().or(z.literal("")),
-  aitFitScore: z.number().min(1).max(10).optional(),
-  tags: z.array(z.string().min(1).max(50)).max(20).optional(),
-  curatedByAgent: z.boolean().optional(),
-  discoverySource: z.string().max(255).optional(),
-  confidenceScore: z.number().min(0).max(1).optional(),
-  lastVerifiedAt: z.string().optional(),
-  videoUrl: z.string().url().optional().or(z.literal("")),
-  maxAttendees: z.number().min(1).optional(),
-});
-
-function normalizeOptionalString(value?: string) {
-  const trimmed = value?.trim();
-  return trimmed ?? undefined;
-}
-
-function buildEventPayloadData(input: z.infer<typeof eventUpsertSchema>) {
-  return {
-    title: input.title,
-    description: plainTextToLexical(input.description ?? ""),
-    summary: normalizeOptionalString(input.summary),
-    type: input.type,
-    date: input.date,
-    startTime: normalizeOptionalString(input.startTime),
-    endTime: normalizeOptionalString(input.endTime),
-    location: input.location,
-    format: input.format,
-    region: normalizeOptionalString(input.region),
-    country: normalizeOptionalString(input.country),
-    city: normalizeOptionalString(input.city),
-    focus: input.focus,
-    level: input.level,
-    audience: input.audience?.length ? input.audience : undefined,
-    sourceUrl: normalizeOptionalString(input.sourceUrl),
-    aitFitScore: input.aitFitScore,
-    tags: input.tags?.length
-      ? input.tags
-          .map((tag) => ({ tag: tag.trim() }))
-          .filter((entry) => entry.tag.length > 0)
-      : undefined,
-    curatedByAgent: input.curatedByAgent ?? false,
-    discoverySource: normalizeOptionalString(input.discoverySource),
-    confidenceScore: input.confidenceScore,
-    lastVerifiedAt: input.lastVerifiedAt
-      ? new Date(input.lastVerifiedAt).toISOString()
-      : undefined,
-    videoUrl: normalizeOptionalString(input.videoUrl),
-    maxAttendees: input.maxAttendees,
-  };
 }
 
 export const eventsRouter = createTRPCRouter({
@@ -528,6 +460,7 @@ export const eventsRouter = createTRPCRouter({
         },
         sort: "date",
         draft: false,
+        depth: 1,
       });
 
       const nativeEvents: NormalizedEvent[] = docs.map((e) => ({
@@ -546,6 +479,14 @@ export const eventsRouter = createTRPCRouter({
         communityId: community.id,
         source: "native" as const,
         lumaUrl: null,
+        coverImageId:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { id: number }).id ?? null)
+            : null,
+        coverImageUrl:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { url?: string }).url ?? null)
+            : null,
       }));
 
       let lumaEvents: NormalizedEvent[] = [];
@@ -765,6 +706,7 @@ export const eventsRouter = createTRPCRouter({
         data.videoUrl = normalizeOptionalString(input.videoUrl);
       if (input.maxAttendees !== undefined)
         data.maxAttendees = input.maxAttendees;
+      if (input.coverImage !== undefined) data.coverImage = input.coverImage;
 
       const event = await payload.update({
         collection: "events",
@@ -965,6 +907,30 @@ export const eventsRouter = createTRPCRouter({
       return event;
     }),
 
+  importEventFromUrl: protectedProcedure
+    .input(
+      z.object({
+        url: z
+          .string()
+          .url()
+          .refine((u) => u.startsWith("https://"), {
+            message: "Event link must start with https://",
+          }),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const payload = await getPayloadClient();
+      try {
+        return await runEventImport(input.url, payload);
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Couldn't read that link — please check the URL or fill the form manually.",
+        });
+      }
+    }),
+
   getPendingCommunityEvents: protectedProcedure
     .input(z.object({ communitySlug: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -1009,6 +975,7 @@ export const eventsRouter = createTRPCRouter({
         },
         sort: "createdAt",
         draft: false,
+        depth: 1,
       });
 
       return docs.map((e) => ({
@@ -1021,6 +988,14 @@ export const eventsRouter = createTRPCRouter({
         status: e.status,
         submittedBy: e.submittedBy ?? null,
         communityId: community.id,
+        coverImageId:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { id: number }).id ?? null)
+            : null,
+        coverImageUrl:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { url?: string }).url ?? null)
+            : null,
       }));
     }),
 
@@ -1055,6 +1030,7 @@ export const eventsRouter = createTRPCRouter({
         },
         sort: "createdAt",
         draft: false,
+        depth: 1,
       });
 
       return docs.map((e) => ({
@@ -1066,6 +1042,14 @@ export const eventsRouter = createTRPCRouter({
         location: e.location,
         status: e.status,
         communityId: community.id,
+        coverImageId:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { id: number }).id ?? null)
+            : null,
+        coverImageUrl:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { url?: string }).url ?? null)
+            : null,
       }));
     }),
 
@@ -1327,6 +1311,7 @@ export const eventsRouter = createTRPCRouter({
         data.videoUrl = normalizeOptionalString(input.videoUrl);
       if (input.maxAttendees !== undefined)
         data.maxAttendees = input.maxAttendees;
+      if (input.coverImage !== undefined) data.coverImage = input.coverImage;
 
       const event = await payload.update({
         collection: "events",

@@ -16,6 +16,8 @@ export interface NormalizedEvent {
   communityId: string;
   source: "native" | "luma";
   lumaUrl: string | null;
+  coverImageId?: number | null;
+  coverImageUrl?: string | null;
 }
 
 function extractTime(isoString: string): string {
