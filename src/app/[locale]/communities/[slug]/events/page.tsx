@@ -158,12 +158,12 @@ export default function CommunityEventsPage({
           {typeLabels[event.type] ?? event.type}
         </span>
         {opts.showStatus && event.status === "rejected" && (
-          <span className="text-destructive font-mono text-[10px] font-medium sm:order-4 sm:ml-2 flex items-center gap-1">
+          <span className="text-destructive flex items-center gap-1 font-mono text-[10px] font-medium sm:order-4 sm:ml-2">
             <XOctagon className="size-3" /> REJECTED — edit and resubmit
           </span>
         )}
         {opts.showStatus && event.status === "draft" && (
-          <span className="text-muted-foreground font-mono text-[10px] font-medium sm:order-4 sm:ml-2 flex items-center gap-1">
+          <span className="text-muted-foreground flex items-center gap-1 font-mono text-[10px] font-medium sm:order-4 sm:ml-2">
             <Clock className="size-3" /> PENDING APPROVAL
           </span>
         )}
@@ -258,7 +258,7 @@ export default function CommunityEventsPage({
             onClick={(e) => e.preventDefault()}
           >
             <button
-              className="flex items-center gap-1 rounded border border-green-600 px-2 py-0.5 text-[11px] font-mono text-green-600 hover:bg-green-50 disabled:opacity-50"
+              className="flex items-center gap-1 rounded border border-green-600 px-2 py-0.5 font-mono text-[11px] text-green-600 hover:bg-green-50 disabled:opacity-50"
               disabled={approveMutation.isPending || rejectMutation.isPending}
               onClick={() =>
                 approveMutation.mutate({
@@ -270,7 +270,7 @@ export default function CommunityEventsPage({
               <CheckCircle className="size-3" /> Approve
             </button>
             <button
-              className="flex items-center gap-1 rounded border border-red-500 px-2 py-0.5 text-[11px] font-mono text-red-500 hover:bg-red-50 disabled:opacity-50"
+              className="flex items-center gap-1 rounded border border-red-500 px-2 py-0.5 font-mono text-[11px] text-red-500 hover:bg-red-50 disabled:opacity-50"
               disabled={approveMutation.isPending || rejectMutation.isPending}
               onClick={() =>
                 rejectMutation.mutate({
@@ -399,7 +399,10 @@ export default function CommunityEventsPage({
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((n) => (
-                <div key={n} className="bg-muted h-14 animate-pulse rounded-lg" />
+                <div
+                  key={n}
+                  className="bg-muted h-14 animate-pulse rounded-lg"
+                />
               ))}
             </div>
           ) : events.length === 0 ? (
@@ -423,7 +426,10 @@ export default function CommunityEventsPage({
           {pendingLoading ? (
             <div className="space-y-2">
               {[1, 2].map((n) => (
-                <div key={n} className="bg-muted h-14 animate-pulse rounded-lg" />
+                <div
+                  key={n}
+                  className="bg-muted h-14 animate-pulse rounded-lg"
+                />
               ))}
             </div>
           ) : (pendingEvents?.length ?? 0) === 0 ? (
@@ -447,7 +453,10 @@ export default function CommunityEventsPage({
           {mySubmissionsLoading ? (
             <div className="space-y-2">
               {[1, 2].map((n) => (
-                <div key={n} className="bg-muted h-14 animate-pulse rounded-lg" />
+                <div
+                  key={n}
+                  className="bg-muted h-14 animate-pulse rounded-lg"
+                />
               ))}
             </div>
           ) : (mySubmissions?.length ?? 0) === 0 ? (
@@ -467,7 +476,9 @@ export default function CommunityEventsPage({
 
       <EventFormDialog
         slug={slug}
-        mode={editingEvent?.resubmit ? "resubmit" : editingEvent ? "edit" : "create"}
+        mode={
+          editingEvent?.resubmit ? "resubmit" : editingEvent ? "edit" : "create"
+        }
         eventId={editingEvent?.id}
         initialData={editingEvent?.data}
         open={dialogOpen}

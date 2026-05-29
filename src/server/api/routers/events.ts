@@ -881,7 +881,10 @@ export const eventsRouter = createTRPCRouter({
         ),
       });
       if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
       }
 
       const membership = await ctx.db.query.communityMemberships.findFirst({
@@ -890,7 +893,7 @@ export const eventsRouter = createTRPCRouter({
           eq(communityMemberships.userId, userId),
         ),
       });
-      if (!membership || membership.status !== "active") {
+      if (membership?.status !== "active") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "You must be an active community member to submit events",
@@ -983,15 +986,15 @@ export const eventsRouter = createTRPCRouter({
         ),
       });
       if (
-        !membership ||
-        membership.status !== "active" ||
+        membership?.status !== "active" ||
         (membership.role !== "owner" &&
           membership.role !== "admin" &&
           membership.role !== "moderator")
       ) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Only community admins and moderators can view pending events",
+          message:
+            "Only community admins and moderators can view pending events",
         });
       }
 
@@ -1078,7 +1081,10 @@ export const eventsRouter = createTRPCRouter({
         ),
       });
       if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
       }
 
       const membership = await ctx.db.query.communityMemberships.findFirst({
@@ -1088,8 +1094,7 @@ export const eventsRouter = createTRPCRouter({
         ),
       });
       if (
-        !membership ||
-        membership.status !== "active" ||
+        membership?.status !== "active" ||
         (membership.role !== "owner" &&
           membership.role !== "admin" &&
           membership.role !== "moderator")
@@ -1106,7 +1111,7 @@ export const eventsRouter = createTRPCRouter({
         id: input.eventId,
         depth: 0,
       });
-      if (!existing || existing.communityId !== community.id) {
+      if (existing?.communityId !== community.id) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Event not found in this community",
@@ -1165,7 +1170,10 @@ export const eventsRouter = createTRPCRouter({
         ),
       });
       if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
       }
 
       const membership = await ctx.db.query.communityMemberships.findFirst({
@@ -1175,8 +1183,7 @@ export const eventsRouter = createTRPCRouter({
         ),
       });
       if (
-        !membership ||
-        membership.status !== "active" ||
+        membership?.status !== "active" ||
         (membership.role !== "owner" &&
           membership.role !== "admin" &&
           membership.role !== "moderator")
@@ -1193,7 +1200,7 @@ export const eventsRouter = createTRPCRouter({
         id: input.eventId,
         depth: 0,
       });
-      if (!existing || existing.communityId !== community.id) {
+      if (existing?.communityId !== community.id) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Event not found in this community",
@@ -1256,7 +1263,10 @@ export const eventsRouter = createTRPCRouter({
         ),
       });
       if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
       }
 
       const payload = await getPayloadClient();
@@ -1267,8 +1277,7 @@ export const eventsRouter = createTRPCRouter({
       });
 
       if (
-        !existing ||
-        existing.communityId !== community.id ||
+        existing?.communityId !== community.id ||
         existing.submittedBy !== userId
       ) {
         throw new TRPCError({
@@ -1311,7 +1320,7 @@ export const eventsRouter = createTRPCRouter({
       if (input.sourceUrl !== undefined)
         data.sourceUrl = normalizeOptionalString(input.sourceUrl);
       if (input.tags !== undefined)
-        data.tags = (input.tags as string[])
+        data.tags = input.tags
           .map((tag: string) => ({ tag: tag.trim() }))
           .filter((entry: { tag: string }) => entry.tag.length > 0);
       if (input.videoUrl !== undefined)

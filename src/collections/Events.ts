@@ -348,7 +348,8 @@ export const Events: CollectionConfig = {
       index: true,
       admin: {
         position: "sidebar",
-        description: "User ID of the community member who submitted this event for review.",
+        description:
+          "User ID of the community member who submitted this event for review.",
         readOnly: true,
       },
     },
