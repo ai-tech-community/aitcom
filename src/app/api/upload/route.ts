@@ -47,5 +47,5 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  return NextResponse.json({ url: media.url });
+  return NextResponse.json({ url: media.url, id: media.id });
 }
