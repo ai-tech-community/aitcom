@@ -37,6 +37,11 @@ import {
   normalizeOptionalString,
   buildEventPayloadData,
 } from "./event-upsert-data";
+import { parseEventFromHtml } from "@/lib/event-link-import";
+import {
+  fetchEventPageHtml,
+  ingestRemoteImage,
+} from "@/server/events/import-from-url";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -896,6 +901,49 @@ export const eventsRouter = createTRPCRouter({
       });
 
       return event;
+    }),
+
+  importEventFromUrl: protectedProcedure
+    .input(z.object({ url: z.string().url() }))
+    .mutation(async ({ input }) => {
+      let html: string;
+      try {
+        html = await fetchEventPageHtml(input.url);
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Couldn't read that link — please check the URL or fill the form manually.",
+        });
+      }
+
+      const parsed = parseEventFromHtml(html, input.url);
+
+      let coverImage: { id: number; url: string } | null = null;
+      if (parsed.coverImageUrl) {
+        const payload = await getPayloadClient();
+        coverImage = await ingestRemoteImage(
+          payload,
+          parsed.coverImageUrl,
+          parsed.title ?? "Event cover",
+        );
+      }
+
+      return {
+        title: parsed.title ?? null,
+        summary: parsed.summary ?? null,
+        description: parsed.description ?? null,
+        date: parsed.date ?? null,
+        startTime: parsed.startTime ?? null,
+        endTime: parsed.endTime ?? null,
+        location: parsed.location ?? null,
+        city: parsed.city ?? null,
+        country: parsed.country ?? null,
+        format: parsed.format ?? null,
+        sourceUrl: parsed.sourceUrl,
+        coverImageId: coverImage?.id ?? null,
+        coverImageUrl: coverImage?.url ?? null,
+      };
     }),
 
   getPendingCommunityEvents: protectedProcedure
