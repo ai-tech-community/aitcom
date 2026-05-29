@@ -33,7 +33,8 @@ export const eventUpsertSchema = z.object({
   lastVerifiedAt: z.string().optional(),
   videoUrl: z.string().url().optional().or(z.literal("")),
   maxAttendees: z.number().min(1).optional(),
-  coverImage: z.number().int().positive().optional(),
+  // number = set/replace cover, null = clear it, undefined = leave unchanged
+  coverImage: z.number().int().positive().nullable().optional(),
 });
 
 export function normalizeOptionalString(value?: string) {

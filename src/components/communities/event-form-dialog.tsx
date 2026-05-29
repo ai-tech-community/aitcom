@@ -207,7 +207,8 @@ export function EventFormDialog({
     maxAttendees: form.maxAttendees
       ? parseInt(form.maxAttendees, 10)
       : undefined,
-    coverImage: form.coverImageId ?? undefined,
+    // number = keep/replace, null = clear (server clears on null, leaves on undefined)
+    coverImage: form.coverImageId,
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -320,7 +321,12 @@ export function EventFormDialog({
                   type="button"
                   variant="secondary"
                   disabled={!importUrl || importMutation.isPending}
-                  onClick={() => importMutation.mutate({ url: importUrl })}
+                  onClick={() =>
+                    importMutation.mutate({
+                      communitySlug: slug,
+                      url: importUrl,
+                    })
+                  }
                 >
                   {importMutation.isPending ? (
                     <Loader2 className="mr-2 size-4 animate-spin" />
