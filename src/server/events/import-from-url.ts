@@ -42,6 +42,16 @@ async function readBodyCapped(
  * Fetch that re-validates EVERY hop against the SSRF guard. fetch() uses
  * redirect:"manual" so each redirect's Location is validated before we follow
  * it — preventing a public URL from redirecting into an internal host.
+ *
+ * Residual risk (accepted): validateWebhookUrl resolves DNS to check the IP,
+ * then fetch() resolves the hostname again independently, leaving a narrow
+ * TOCTOU window where a hostile low-TTL DNS server could rebind to an internal
+ * IP between the two lookups. Fully closing this requires pinning the
+ * connection to the validated IP (a custom undici Agent.connect.lookup), and
+ * undici is not a dependency here. We accept the window because it is heavily
+ * mitigated: this path is reachable only by an active community member, capped
+ * at 20 imports/hour, and the guard re-runs on every redirect hop. Revisit
+ * with IP-pinning if the importer is ever exposed more broadly.
  */
 async function safeFetch(url: string): Promise<Response> {
   let current = url;
