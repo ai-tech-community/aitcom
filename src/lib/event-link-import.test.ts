@@ -93,4 +93,10 @@ describe("parseEventFromHtml", () => {
       <meta property="og:title" content="Recovered" />`;
     expect(parseEventFromHtml(html, SOURCE).title).toBe("Recovered");
   });
+
+  it("resolves a relative og:image against the source URL", () => {
+    const html = `<meta property="og:image" content="/img/cover.jpg" />`;
+    const r = parseEventFromHtml(html, "https://lu.ma/ai-builders");
+    expect(r.coverImageUrl).toBe("https://lu.ma/img/cover.jpg");
+  });
 });

@@ -17,6 +17,16 @@ export interface ParsedEventImport {
   sourceUrl: string;
 }
 
+/** Resolve a possibly-relative URL against the page's source URL. */
+function resolveUrl(raw: string | undefined, base: string): string | undefined {
+  if (!raw) return undefined;
+  try {
+    return new URL(raw, base).href;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Pull the raw text of every <script type="application/ld+json"> block. */
 function extractJsonLdBlocks(html: string): string[] {
   const blocks: string[] = [];
@@ -175,6 +185,8 @@ export function parseEventFromHtml(
   if (event) fromJsonLd(event, result);
 
   applyOpenGraphFallback(html, result);
+
+  result.coverImageUrl = resolveUrl(result.coverImageUrl, sourceUrl);
 
   result.summary ??= result.description;
 

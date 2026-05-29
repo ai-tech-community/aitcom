@@ -53,6 +53,22 @@ describe("fetchEventPageHtml", () => {
     const html = await fetchEventPageHtml("https://lu.ma/ai-builders");
     expect(html).toContain("<html>ok</html>");
   });
+
+  it("aborts when the body exceeds the size cap (no content-length)", async () => {
+    const huge = "x".repeat(3 * 1024 * 1024); // 3 MB > 2 MB html cap
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(`<html>${huge}</html>`, {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+      ),
+    );
+    await expect(
+      fetchEventPageHtml("https://lu.ma/ai-builders"),
+    ).rejects.toThrow(/too large/i);
+  });
 });
 
 describe("ingestRemoteImage", () => {
