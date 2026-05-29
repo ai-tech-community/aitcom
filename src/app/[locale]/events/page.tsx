@@ -423,7 +423,6 @@ export default async function EventsPage({
                         <Link
                           href={`/communities/${communityMeta.slug}` as never}
                           className="relative z-10 flex items-center gap-1 hover:underline"
-                          onClick={(e) => e.stopPropagation()}
                         >
                           {communityMeta.logoUrl && (
                             <Image

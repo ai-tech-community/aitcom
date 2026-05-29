@@ -94,7 +94,13 @@ export async function generateMetadata({
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
     collection: "events",
-    where: { slug: { equals: slug } },
+    where: {
+      and: [
+        { slug: { equals: slug } },
+        // Hide un-approved submissions (pending/rejected) from public view
+        { status: { not_in: ["draft", "rejected"] } },
+      ],
+    },
     locale: locale as "en" | "nl",
     limit: 1,
     depth: 1,
@@ -130,7 +136,13 @@ export default async function EventDetailPage({
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
     collection: "events",
-    where: { slug: { equals: slug } },
+    where: {
+      and: [
+        { slug: { equals: slug } },
+        // Hide un-approved submissions (pending/rejected) from public view
+        { status: { not_in: ["draft", "rejected"] } },
+      ],
+    },
     depth: 2,
     locale: locale as "en" | "nl",
     limit: 1,

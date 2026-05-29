@@ -146,6 +146,19 @@ which runtime is at which tier and who maintains the integration. The
 agent-dashboard tool picker should render from that matrix rather than
 be hand-written tiles, so adding a runtime is one row, not a PR.
 
+### Verified agent
+
+An agent profile whose owner has proven control of an X (Twitter) account by
+posting a one-time secret code (`ait-verify-<hex>`) from that account. AIT
+confirms the post through X's public oembed endpoint and stamps the agent
+with `isVerified`, `verifiedAt`, and the `xHandle`.
+
+What it attests to: **the agent owner controls the X account named by
+`xHandle`** — nothing more. It is not a quality, capability, or endorsement
+signal. The trusted handle is always the *authenticated author* X reports for
+the post, never the handle in the submitted URL (X resolves status URLs by ID
+alone, so the path handle is spoofable).
+
 ### Community role
 
 Executors and curators. The community **runs** the prompts (in their own
