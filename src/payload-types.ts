@@ -13,53 +13,53 @@
  * via the `definition` "supportedTimezones".
  */
 export type SupportedTimezones =
-  | 'Pacific/Midway'
-  | 'Pacific/Niue'
-  | 'Pacific/Honolulu'
-  | 'Pacific/Rarotonga'
-  | 'America/Anchorage'
-  | 'Pacific/Gambier'
-  | 'America/Los_Angeles'
-  | 'America/Tijuana'
-  | 'America/Denver'
-  | 'America/Phoenix'
-  | 'America/Chicago'
-  | 'America/Guatemala'
-  | 'America/New_York'
-  | 'America/Bogota'
-  | 'America/Caracas'
-  | 'America/Santiago'
-  | 'America/Buenos_Aires'
-  | 'America/Sao_Paulo'
-  | 'Atlantic/South_Georgia'
-  | 'Atlantic/Azores'
-  | 'Atlantic/Cape_Verde'
-  | 'Europe/London'
-  | 'Europe/Berlin'
-  | 'Africa/Lagos'
-  | 'Europe/Athens'
-  | 'Africa/Cairo'
-  | 'Europe/Moscow'
-  | 'Asia/Riyadh'
-  | 'Asia/Dubai'
-  | 'Asia/Baku'
-  | 'Asia/Karachi'
-  | 'Asia/Tashkent'
-  | 'Asia/Calcutta'
-  | 'Asia/Dhaka'
-  | 'Asia/Almaty'
-  | 'Asia/Jakarta'
-  | 'Asia/Bangkok'
-  | 'Asia/Shanghai'
-  | 'Asia/Singapore'
-  | 'Asia/Tokyo'
-  | 'Asia/Seoul'
-  | 'Australia/Brisbane'
-  | 'Australia/Sydney'
-  | 'Pacific/Guam'
-  | 'Pacific/Noumea'
-  | 'Pacific/Auckland'
-  | 'Pacific/Fiji';
+  | "Pacific/Midway"
+  | "Pacific/Niue"
+  | "Pacific/Honolulu"
+  | "Pacific/Rarotonga"
+  | "America/Anchorage"
+  | "Pacific/Gambier"
+  | "America/Los_Angeles"
+  | "America/Tijuana"
+  | "America/Denver"
+  | "America/Phoenix"
+  | "America/Chicago"
+  | "America/Guatemala"
+  | "America/New_York"
+  | "America/Bogota"
+  | "America/Caracas"
+  | "America/Santiago"
+  | "America/Buenos_Aires"
+  | "America/Sao_Paulo"
+  | "Atlantic/South_Georgia"
+  | "Atlantic/Azores"
+  | "Atlantic/Cape_Verde"
+  | "Europe/London"
+  | "Europe/Berlin"
+  | "Africa/Lagos"
+  | "Europe/Athens"
+  | "Africa/Cairo"
+  | "Europe/Moscow"
+  | "Asia/Riyadh"
+  | "Asia/Dubai"
+  | "Asia/Baku"
+  | "Asia/Karachi"
+  | "Asia/Tashkent"
+  | "Asia/Calcutta"
+  | "Asia/Dhaka"
+  | "Asia/Almaty"
+  | "Asia/Jakarta"
+  | "Asia/Bangkok"
+  | "Asia/Shanghai"
+  | "Asia/Singapore"
+  | "Asia/Tokyo"
+  | "Asia/Seoul"
+  | "Australia/Brisbane"
+  | "Australia/Sydney"
+  | "Pacific/Guam"
+  | "Pacific/Noumea"
+  | "Pacific/Auckland"
+  | "Pacific/Fiji";
 
 export interface Config {
   auth: {
@@ -70,74 +70,99 @@ export interface Config {
     events: Event;
     speakers: Speaker;
     articles: Article;
-    'forum-threads': ForumThread;
-    'forum-replies': ForumReply;
-    'community-ideas': CommunityIdea;
-    'idea-votes': IdeaVote;
-    'launchpad-projects': LaunchpadProject;
+    "forum-threads": ForumThread;
+    "forum-replies": ForumReply;
+    "community-ideas": CommunityIdea;
+    "idea-votes": IdeaVote;
+    "launchpad-projects": LaunchpadProject;
     comments: Comment;
-    'feed-posts': FeedPost;
-    'feed-comments': FeedComment;
-    'feed-likes': FeedLike;
+    "feed-posts": FeedPost;
+    "feed-comments": FeedComment;
+    "feed-likes": FeedLike;
     challenges: Challenge;
     pages: Page;
     media: Media;
     sponsors: Sponsor;
-    'sponsor-applications': SponsorApplication;
+    "sponsor-applications": SponsorApplication;
     jobs: Job;
-    'rules-acceptance': RulesAcceptance;
-    'community-rules': CommunityRule;
-    'benchmark-categories': BenchmarkCategory;
-    'benchmark-intents': BenchmarkIntent;
-    'benchmark-prompts': BenchmarkPrompt;
+    "rules-acceptance": RulesAcceptance;
+    "community-rules": CommunityRule;
+    "benchmark-categories": BenchmarkCategory;
+    "benchmark-intents": BenchmarkIntent;
+    "benchmark-prompts": BenchmarkPrompt;
     brands: Brand;
-    'brand-alias-queue': BrandAliasQueue;
+    "brand-alias-queue": BrandAliasQueue;
     users: User;
-    'payload-kv': PayloadKv;
-    'payload-locked-documents': PayloadLockedDocument;
-    'payload-preferences': PayloadPreference;
-    'payload-migrations': PayloadMigration;
+    "payload-kv": PayloadKv;
+    "payload-locked-documents": PayloadLockedDocument;
+    "payload-preferences": PayloadPreference;
+    "payload-migrations": PayloadMigration;
   };
   collectionsJoins: {};
   collectionsSelect: {
     events: EventsSelect<false> | EventsSelect<true>;
     speakers: SpeakersSelect<false> | SpeakersSelect<true>;
     articles: ArticlesSelect<false> | ArticlesSelect<true>;
-    'forum-threads': ForumThreadsSelect<false> | ForumThreadsSelect<true>;
-    'forum-replies': ForumRepliesSelect<false> | ForumRepliesSelect<true>;
-    'community-ideas': CommunityIdeasSelect<false> | CommunityIdeasSelect<true>;
-    'idea-votes': IdeaVotesSelect<false> | IdeaVotesSelect<true>;
-    'launchpad-projects': LaunchpadProjectsSelect<false> | LaunchpadProjectsSelect<true>;
+    "forum-threads": ForumThreadsSelect<false> | ForumThreadsSelect<true>;
+    "forum-replies": ForumRepliesSelect<false> | ForumRepliesSelect<true>;
+    "community-ideas": CommunityIdeasSelect<false> | CommunityIdeasSelect<true>;
+    "idea-votes": IdeaVotesSelect<false> | IdeaVotesSelect<true>;
+    "launchpad-projects":
+      | LaunchpadProjectsSelect<false>
+      | LaunchpadProjectsSelect<true>;
     comments: CommentsSelect<false> | CommentsSelect<true>;
-    'feed-posts': FeedPostsSelect<false> | FeedPostsSelect<true>;
-    'feed-comments': FeedCommentsSelect<false> | FeedCommentsSelect<true>;
-    'feed-likes': FeedLikesSelect<false> | FeedLikesSelect<true>;
+    "feed-posts": FeedPostsSelect<false> | FeedPostsSelect<true>;
+    "feed-comments": FeedCommentsSelect<false> | FeedCommentsSelect<true>;
+    "feed-likes": FeedLikesSelect<false> | FeedLikesSelect<true>;
     challenges: ChallengesSelect<false> | ChallengesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     sponsors: SponsorsSelect<false> | SponsorsSelect<true>;
-    'sponsor-applications': SponsorApplicationsSelect<false> | SponsorApplicationsSelect<true>;
+    "sponsor-applications":
+      | SponsorApplicationsSelect<false>
+      | SponsorApplicationsSelect<true>;
     jobs: JobsSelect<false> | JobsSelect<true>;
-    'rules-acceptance': RulesAcceptanceSelect<false> | RulesAcceptanceSelect<true>;
-    'community-rules': CommunityRulesSelect<false> | CommunityRulesSelect<true>;
-    'benchmark-categories': BenchmarkCategoriesSelect<false> | BenchmarkCategoriesSelect<true>;
-    'benchmark-intents': BenchmarkIntentsSelect<false> | BenchmarkIntentsSelect<true>;
-    'benchmark-prompts': BenchmarkPromptsSelect<false> | BenchmarkPromptsSelect<true>;
+    "rules-acceptance":
+      | RulesAcceptanceSelect<false>
+      | RulesAcceptanceSelect<true>;
+    "community-rules": CommunityRulesSelect<false> | CommunityRulesSelect<true>;
+    "benchmark-categories":
+      | BenchmarkCategoriesSelect<false>
+      | BenchmarkCategoriesSelect<true>;
+    "benchmark-intents":
+      | BenchmarkIntentsSelect<false>
+      | BenchmarkIntentsSelect<true>;
+    "benchmark-prompts":
+      | BenchmarkPromptsSelect<false>
+      | BenchmarkPromptsSelect<true>;
     brands: BrandsSelect<false> | BrandsSelect<true>;
-    'brand-alias-queue': BrandAliasQueueSelect<false> | BrandAliasQueueSelect<true>;
+    "brand-alias-queue":
+      | BrandAliasQueueSelect<false>
+      | BrandAliasQueueSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
-    'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
-    'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
-    'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
-    'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
+    "payload-kv": PayloadKvSelect<false> | PayloadKvSelect<true>;
+    "payload-locked-documents":
+      | PayloadLockedDocumentsSelect<false>
+      | PayloadLockedDocumentsSelect<true>;
+    "payload-preferences":
+      | PayloadPreferencesSelect<false>
+      | PayloadPreferencesSelect<true>;
+    "payload-migrations":
+      | PayloadMigrationsSelect<false>
+      | PayloadMigrationsSelect<true>;
   };
   db: {
     defaultIDType: number;
   };
-  fallbackLocale: ('false' | 'none' | 'null') | false | null | ('en' | 'nl') | ('en' | 'nl')[];
+  fallbackLocale:
+    | ("false" | "none" | "null")
+    | false
+    | null
+    | ("en" | "nl")
+    | ("en" | "nl")[];
   globals: {};
   globalsSelect: {};
-  locale: 'en' | 'nl';
+  locale: "en" | "nl";
   user: User;
   jobs: {
     tasks: unknown;
@@ -178,8 +203,8 @@ export interface Event {
         version: number;
         [k: string]: unknown;
       }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      direction: ("ltr" | "rtl") | null;
+      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
       indent: number;
       version: number;
     };
@@ -189,11 +214,11 @@ export interface Event {
    * Short event summary for cards, SEO, and agent curation.
    */
   summary?: string | null;
-  type: 'workshop' | 'hackathon' | 'deep_dive' | 'meetup';
+  type: "workshop" | "hackathon" | "deep_dive" | "meetup";
   /**
    * How attendees join this event.
    */
-  format?: ('online' | 'in-person' | 'hybrid') | null;
+  format?: ("online" | "in-person" | "hybrid") | null;
   location: string;
   region?: string | null;
   country?: string | null;
@@ -212,13 +237,22 @@ export interface Event {
    * Price in EUR cents (e.g. 1500 = €15.00). Leave empty for free events.
    */
   price?: number | null;
-  focus?: ('technical' | 'marketing' | 'product' | 'research' | 'mixed') | null;
-  level?: ('junior' | 'mid' | 'senior' | 'expert' | 'mixed') | null;
+  focus?: ("technical" | "marketing" | "product" | "research" | "mixed") | null;
+  level?: ("junior" | "mid" | "senior" | "expert" | "mixed") | null;
   /**
    * 1-10 relevance score for AIT Community.
    */
   aitFitScore?: number | null;
-  audience?: ('engineers' | 'founders' | 'marketers' | 'product' | 'researchers' | 'mixed')[] | null;
+  audience?:
+    | (
+        | "engineers"
+        | "founders"
+        | "marketers"
+        | "product"
+        | "researchers"
+        | "mixed"
+      )[]
+    | null;
   /**
    * Optional keyword tags for search and curation.
    */
@@ -236,7 +270,7 @@ export interface Event {
   /**
    * Curation lifecycle; separate from publish status so existing flows keep working.
    */
-  reviewStatus?: ('discovered' | 'reviewing' | 'approved' | 'archived') | null;
+  reviewStatus?: ("discovered" | "reviewing" | "approved" | "archived") | null;
   /**
    * Legacy/compatible event image. Existing events continue using this.
    */
@@ -248,7 +282,7 @@ export interface Event {
   gallery?: (number | Media)[] | null;
   videoUrl?: string | null;
   speakers?: (number | Speaker)[] | null;
-  status: 'draft' | 'published' | 'cancelled' | 'completed' | 'rejected';
+  status: "draft" | "published" | "cancelled" | "completed" | "rejected";
   communityId?: string | null;
   /**
    * User ID of the community member who submitted this event for review.
@@ -256,7 +290,7 @@ export interface Event {
   submittedBy?: string | null;
   updatedAt: string;
   createdAt: string;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -334,14 +368,14 @@ export interface Article {
         version: number;
         [k: string]: unknown;
       }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      direction: ("ltr" | "rtl") | null;
+      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
       indent: number;
       version: number;
     };
     [k: string]: unknown;
   };
-  type: 'article' | 'tutorial' | 'talk_recording';
+  type: "article" | "tutorial" | "talk_recording";
   tags?:
     | {
         tag: string;
@@ -351,14 +385,16 @@ export interface Article {
   mediaUrl?: string | null;
   authorId?: string | null;
   authorName?: string | null;
-  authorType?: ('admin' | 'member') | null;
-  reviewStatus?: ('pending_review' | 'approved' | 'rejected' | 'changes_requested') | null;
+  authorType?: ("admin" | "member") | null;
+  reviewStatus?:
+    | ("pending_review" | "approved" | "rejected" | "changes_requested")
+    | null;
   reviewNote?: string | null;
-  status: 'draft' | 'published';
+  status: "draft" | "published";
   publishedAt?: string | null;
   updatedAt: string;
   createdAt: string;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * Community discussion threads. Pin important threads, lock spam, delete abuse.
@@ -381,20 +417,20 @@ export interface ForumThread {
         version: number;
         [k: string]: unknown;
       }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      direction: ("ltr" | "rtl") | null;
+      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
       indent: number;
       version: number;
     };
     [k: string]: unknown;
   };
-  category: 'general' | 'question' | 'showcase' | 'job';
+  category: "general" | "question" | "showcase" | "job";
   /**
    * Better Auth user ID (UUID).
    */
   authorId: string;
   authorName?: string | null;
-  authorRole?: ('admin' | 'moderator' | 'contributor' | 'member') | null;
+  authorRole?: ("admin" | "moderator" | "contributor" | "member") | null;
   /**
    * Pinned threads appear at the top.
    */
@@ -430,8 +466,8 @@ export interface ForumReply {
         version: number;
         [k: string]: unknown;
       }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      direction: ("ltr" | "rtl") | null;
+      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
       indent: number;
       version: number;
     };
@@ -442,8 +478,8 @@ export interface ForumReply {
    */
   authorId: string;
   authorName?: string | null;
-  authorType?: ('member' | 'agent') | null;
-  authorRole?: ('admin' | 'moderator' | 'contributor' | 'member') | null;
+  authorType?: ("member" | "agent") | null;
+  authorRole?: ("admin" | "moderator" | "contributor" | "member") | null;
   communityId?: string | null;
   isDeleted?: boolean | null;
   isEdited?: boolean | null;
@@ -466,7 +502,7 @@ export interface CommunityIdea {
    */
   authorId: string;
   authorName?: string | null;
-  status: 'open' | 'implemented' | 'rejected';
+  status: "open" | "implemented" | "rejected";
   voteCount?: number | null;
   communityId?: string | null;
   updatedAt: string;
@@ -510,14 +546,14 @@ export interface LaunchpadProject {
         version: number;
         [k: string]: unknown;
       }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      direction: ("ltr" | "rtl") | null;
+      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
       indent: number;
       version: number;
     };
     [k: string]: unknown;
   };
-  stage: 'idea' | 'prototype' | 'mvp' | 'launched';
+  stage: "idea" | "prototype" | "mvp" | "launched";
   tags?:
     | {
         tag: string;
@@ -537,7 +573,7 @@ export interface LaunchpadProject {
    */
   authorId: string;
   authorName?: string | null;
-  status: 'draft' | 'published' | 'archived';
+  status: "draft" | "published" | "archived";
   voteCount?: number | null;
   commentCount?: number | null;
   updateCount?: number | null;
@@ -640,16 +676,16 @@ export interface Challenge {
         version: number;
         [k: string]: unknown;
       }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      direction: ("ltr" | "rtl") | null;
+      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
       indent: number;
       version: number;
     };
     [k: string]: unknown;
   };
-  type: 'weekly' | 'monthly' | 'open-ended';
-  status: 'draft' | 'active' | 'completed' | 'archived';
-  difficulty: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  type: "weekly" | "monthly" | "open-ended";
+  status: "draft" | "active" | "completed" | "archived";
+  difficulty: "beginner" | "intermediate" | "advanced" | "expert";
   /**
    * Optional for open-ended challenges.
    */
@@ -658,11 +694,11 @@ export interface Challenge {
    * Optional for open-ended challenges.
    */
   endsAt?: string | null;
-  publishedBy: 'member' | 'sponsor';
+  publishedBy: "member" | "sponsor";
   /**
    * Whether this challenge was generated by AI or created by a human.
    */
-  generatedBy?: ('human' | 'ai') | null;
+  generatedBy?: ("human" | "ai") | null;
   /**
    * User ID or Sponsor ID of the challenge creator.
    */
@@ -690,11 +726,19 @@ export interface Challenge {
   };
   objectives: {
     description: string;
-    verification: 'platform-action' | 'test' | 'self-report' | 'peer-review';
+    verification: "platform-action" | "test" | "self-report" | "peer-review";
     /**
      * Only for platform-action verification.
      */
-    action?: ('thread.reply' | 'thread.create' | 'knowledge.share' | 'idea.submitted' | 'idea.voted') | null;
+    action?:
+      | (
+          | "thread.reply"
+          | "thread.create"
+          | "knowledge.share"
+          | "idea.submitted"
+          | "idea.voted"
+        )
+      | null;
     /**
      * Regex matching test names/files for test verification.
      */
@@ -751,7 +795,9 @@ export interface Challenge {
    * For AI-generated challenges: what triggered this challenge.
    */
   signalSource?: {
-    type?: ('community-thread' | 'member-request' | 'external' | 'insight-gap') | null;
+    type?:
+      | ("community-thread" | "member-request" | "external" | "insight-gap")
+      | null;
     /**
      * Thread ID, URL, or description of the signal source.
      */
@@ -764,11 +810,13 @@ export interface Challenge {
   /**
    * How the leaderboard is sorted.
    */
-  rankingMode?: ('speed' | 'thoroughness' | 'collaboration') | null;
+  rankingMode?: ("speed" | "thoroughness" | "collaboration") | null;
   /**
    * How humans and AIs collaborate in this challenge.
    */
-  collaborationModel?: ('solo-ai' | 'relay' | 'swarm' | 'adversarial' | 'blind' | 'escalation') | null;
+  collaborationModel?:
+    | ("solo-ai" | "relay" | "swarm" | "adversarial" | "blind" | "escalation")
+    | null;
   /**
    * User ID if community-proposed.
    */
@@ -794,8 +842,8 @@ export interface Page {
         version: number;
         [k: string]: unknown;
       }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      direction: ("ltr" | "rtl") | null;
+      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
       indent: number;
       version: number;
     };
@@ -803,7 +851,7 @@ export interface Page {
   };
   updatedAt: string;
   createdAt: string;
-  _status?: ('draft' | 'published') | null;
+  _status?: ("draft" | "published") | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -815,13 +863,13 @@ export interface Sponsor {
   slug: string;
   logo: number | Media;
   website?: string | null;
-  tier: 'gold' | 'silver' | 'bronze';
+  tier: "gold" | "silver" | "bronze";
   tagline?: string | null;
   /**
    * Show on homepage sponsor strip
    */
   featured?: boolean | null;
-  status: 'active' | 'inactive';
+  status: "active" | "inactive";
   updatedAt: string;
   createdAt: string;
 }
@@ -835,9 +883,9 @@ export interface SponsorApplication {
   website?: string | null;
   contactName: string;
   contactEmail: string;
-  tier: 'gold' | 'silver' | 'bronze';
+  tier: "gold" | "silver" | "bronze";
   message?: string | null;
-  status: 'pending' | 'in_review' | 'approved' | 'rejected';
+  status: "pending" | "in_review" | "approved" | "rejected";
   /**
    * Internal notes (not visible to applicant)
    */
@@ -862,15 +910,15 @@ export interface Job {
         version: number;
         [k: string]: unknown;
       }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      direction: ("ltr" | "rtl") | null;
+      format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
       indent: number;
       version: number;
     };
     [k: string]: unknown;
   };
   location: string;
-  type: 'remote' | 'hybrid' | 'onsite';
+  type: "remote" | "hybrid" | "onsite";
   /**
    * External apply link
    */
@@ -881,7 +929,7 @@ export interface Job {
         id?: string | null;
       }[]
     | null;
-  status: 'active' | 'expired';
+  status: "active" | "expired";
   postedAt?: string | null;
   expiresAt?: string | null;
   communityId?: string | null;
@@ -938,7 +986,7 @@ export interface CommunityRule {
      * URL-friendly identifier for anchor links (e.g. 'respect-others').
      */
     slug: string;
-    icon?: ('shield' | 'users' | 'flag' | 'scale' | 'brain' | 'gavel') | null;
+    icon?: ("shield" | "users" | "flag" | "scale" | "brain" | "gavel") | null;
     content: {
       root: {
         type: string;
@@ -947,8 +995,8 @@ export interface CommunityRule {
           version: number;
           [k: string]: unknown;
         }[];
-        direction: ('ltr' | 'rtl') | null;
-        format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+        direction: ("ltr" | "rtl") | null;
+        format: "left" | "start" | "center" | "right" | "end" | "justify" | "";
         indent: number;
         version: number;
       };
@@ -997,7 +1045,7 @@ export interface BenchmarkIntent {
 export interface BenchmarkPrompt {
   id: number;
   text: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: "pending" | "approved" | "rejected";
   category: number | BenchmarkCategory;
   intent: number | BenchmarkIntent;
   locale: string;
@@ -1018,7 +1066,7 @@ export interface BenchmarkPrompt {
 export interface User {
   id: number;
   name?: string | null;
-  role?: ('admin' | 'editor') | null;
+  role?: ("admin" | "editor") | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -1036,7 +1084,7 @@ export interface User {
       }[]
     | null;
   password?: string | null;
-  collection: 'users';
+  collection: "users";
 }
 /**
  * Canonical brand registry used for brand-bias benchmark scoring.
@@ -1078,7 +1126,7 @@ export interface BrandAliasQueue {
    */
   runId?: string | null;
   occurrenceCount?: number | null;
-  status: 'pending' | 'merged' | 'rejected';
+  status: "pending" | "merged" | "rejected";
   reviewedByUser?: (number | null) | User;
   reviewedAt?: string | null;
   updatedAt: string;
@@ -1109,112 +1157,112 @@ export interface PayloadLockedDocument {
   id: number;
   document?:
     | ({
-        relationTo: 'events';
+        relationTo: "events";
         value: number | Event;
       } | null)
     | ({
-        relationTo: 'speakers';
+        relationTo: "speakers";
         value: number | Speaker;
       } | null)
     | ({
-        relationTo: 'articles';
+        relationTo: "articles";
         value: number | Article;
       } | null)
     | ({
-        relationTo: 'forum-threads';
+        relationTo: "forum-threads";
         value: number | ForumThread;
       } | null)
     | ({
-        relationTo: 'forum-replies';
+        relationTo: "forum-replies";
         value: number | ForumReply;
       } | null)
     | ({
-        relationTo: 'community-ideas';
+        relationTo: "community-ideas";
         value: number | CommunityIdea;
       } | null)
     | ({
-        relationTo: 'idea-votes';
+        relationTo: "idea-votes";
         value: number | IdeaVote;
       } | null)
     | ({
-        relationTo: 'launchpad-projects';
+        relationTo: "launchpad-projects";
         value: number | LaunchpadProject;
       } | null)
     | ({
-        relationTo: 'comments';
+        relationTo: "comments";
         value: number | Comment;
       } | null)
     | ({
-        relationTo: 'feed-posts';
+        relationTo: "feed-posts";
         value: number | FeedPost;
       } | null)
     | ({
-        relationTo: 'feed-comments';
+        relationTo: "feed-comments";
         value: number | FeedComment;
       } | null)
     | ({
-        relationTo: 'feed-likes';
+        relationTo: "feed-likes";
         value: number | FeedLike;
       } | null)
     | ({
-        relationTo: 'challenges';
+        relationTo: "challenges";
         value: number | Challenge;
       } | null)
     | ({
-        relationTo: 'pages';
+        relationTo: "pages";
         value: number | Page;
       } | null)
     | ({
-        relationTo: 'media';
+        relationTo: "media";
         value: number | Media;
       } | null)
     | ({
-        relationTo: 'sponsors';
+        relationTo: "sponsors";
         value: number | Sponsor;
       } | null)
     | ({
-        relationTo: 'sponsor-applications';
+        relationTo: "sponsor-applications";
         value: number | SponsorApplication;
       } | null)
     | ({
-        relationTo: 'jobs';
+        relationTo: "jobs";
         value: number | Job;
       } | null)
     | ({
-        relationTo: 'rules-acceptance';
+        relationTo: "rules-acceptance";
         value: number | RulesAcceptance;
       } | null)
     | ({
-        relationTo: 'community-rules';
+        relationTo: "community-rules";
         value: number | CommunityRule;
       } | null)
     | ({
-        relationTo: 'benchmark-categories';
+        relationTo: "benchmark-categories";
         value: number | BenchmarkCategory;
       } | null)
     | ({
-        relationTo: 'benchmark-intents';
+        relationTo: "benchmark-intents";
         value: number | BenchmarkIntent;
       } | null)
     | ({
-        relationTo: 'benchmark-prompts';
+        relationTo: "benchmark-prompts";
         value: number | BenchmarkPrompt;
       } | null)
     | ({
-        relationTo: 'brands';
+        relationTo: "brands";
         value: number | Brand;
       } | null)
     | ({
-        relationTo: 'brand-alias-queue';
+        relationTo: "brand-alias-queue";
         value: number | BrandAliasQueue;
       } | null)
     | ({
-        relationTo: 'users';
+        relationTo: "users";
         value: number | User;
       } | null);
   globalSlug?: string | null;
   user: {
-    relationTo: 'users';
+    relationTo: "users";
     value: number | User;
   };
   updatedAt: string;
@@ -1227,7 +1275,7 @@ export interface PayloadLockedDocument {
 export interface PayloadPreference {
   id: number;
   user: {
-    relationTo: 'users';
+    relationTo: "users";
     value: number | User;
   };
   key?: string | null;
@@ -1863,7 +1911,6 @@ export interface Auth {
   [k: string]: unknown;
 }
 
-
-declare module 'payload' {
+declare module "payload" {
   export interface GeneratedTypes extends Config {}
 }
