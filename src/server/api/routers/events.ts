@@ -37,11 +37,7 @@ import {
   normalizeOptionalString,
   buildEventPayloadData,
 } from "./event-upsert-data";
-import { parseEventFromHtml } from "@/lib/event-link-import";
-import {
-  fetchEventPageHtml,
-  ingestRemoteImage,
-} from "@/server/events/import-from-url";
+import { runEventImport } from "@/server/events/import-from-url";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -465,6 +461,7 @@ export const eventsRouter = createTRPCRouter({
         },
         sort: "date",
         draft: false,
+        depth: 1,
       });
 
       const nativeEvents: NormalizedEvent[] = docs.map((e) => ({
@@ -483,6 +480,14 @@ export const eventsRouter = createTRPCRouter({
         communityId: community.id,
         source: "native" as const,
         lumaUrl: null,
+        coverImageId:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { id: number }).id ?? null)
+            : null,
+        coverImageUrl:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { url?: string }).url ?? null)
+            : null,
       }));
 
       let lumaEvents: NormalizedEvent[] = [];
@@ -904,11 +909,20 @@ export const eventsRouter = createTRPCRouter({
     }),
 
   importEventFromUrl: protectedProcedure
-    .input(z.object({ url: z.string().url() }))
+    .input(
+      z.object({
+        url: z
+          .string()
+          .url()
+          .refine((u) => u.startsWith("https://"), {
+            message: "Event link must start with https://",
+          }),
+      }),
+    )
     .mutation(async ({ input }) => {
-      let html: string;
+      const payload = await getPayloadClient();
       try {
-        html = await fetchEventPageHtml(input.url);
+        return await runEventImport(input.url, payload);
       } catch {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -916,34 +930,6 @@ export const eventsRouter = createTRPCRouter({
             "Couldn't read that link — please check the URL or fill the form manually.",
         });
       }
-
-      const parsed = parseEventFromHtml(html, input.url);
-
-      let coverImage: { id: number; url: string } | null = null;
-      if (parsed.coverImageUrl) {
-        const payload = await getPayloadClient();
-        coverImage = await ingestRemoteImage(
-          payload,
-          parsed.coverImageUrl,
-          parsed.title ?? "Event cover",
-        );
-      }
-
-      return {
-        title: parsed.title ?? null,
-        summary: parsed.summary ?? null,
-        description: parsed.description ?? null,
-        date: parsed.date ?? null,
-        startTime: parsed.startTime ?? null,
-        endTime: parsed.endTime ?? null,
-        location: parsed.location ?? null,
-        city: parsed.city ?? null,
-        country: parsed.country ?? null,
-        format: parsed.format ?? null,
-        sourceUrl: parsed.sourceUrl,
-        coverImageId: coverImage?.id ?? null,
-        coverImageUrl: coverImage?.url ?? null,
-      };
     }),
 
   getPendingCommunityEvents: protectedProcedure
@@ -990,6 +976,7 @@ export const eventsRouter = createTRPCRouter({
         },
         sort: "createdAt",
         draft: false,
+        depth: 1,
       });
 
       return docs.map((e) => ({
@@ -1002,6 +989,14 @@ export const eventsRouter = createTRPCRouter({
         status: e.status,
         submittedBy: e.submittedBy ?? null,
         communityId: community.id,
+        coverImageId:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { id: number }).id ?? null)
+            : null,
+        coverImageUrl:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { url?: string }).url ?? null)
+            : null,
       }));
     }),
 
@@ -1036,6 +1031,7 @@ export const eventsRouter = createTRPCRouter({
         },
         sort: "createdAt",
         draft: false,
+        depth: 1,
       });
 
       return docs.map((e) => ({
@@ -1047,6 +1043,14 @@ export const eventsRouter = createTRPCRouter({
         location: e.location,
         status: e.status,
         communityId: community.id,
+        coverImageId:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { id: number }).id ?? null)
+            : null,
+        coverImageUrl:
+          e.coverImage && typeof e.coverImage === "object"
+            ? ((e.coverImage as { url?: string }).url ?? null)
+            : null,
       }));
     }),
 

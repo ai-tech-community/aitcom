@@ -1,6 +1,7 @@
 import type { getPayloadClient } from "@/server/payload";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 import { parseEventFromHtml } from "@/lib/event-link-import";
+import type { EventFormat } from "@/lib/event-metadata";
 
 type PayloadClient = Awaited<ReturnType<typeof getPayloadClient>>;
 
@@ -133,7 +134,7 @@ export interface EventImportResult {
   location: string | null;
   city: string | null;
   country: string | null;
-  format: string | null;
+  format: EventFormat | null;
   sourceUrl: string;
   coverImageId: number | null;
   coverImageUrl: string | null;
