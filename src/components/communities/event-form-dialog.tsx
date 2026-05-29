@@ -38,6 +38,40 @@ import {
   type EventType,
 } from "@/lib/event-metadata";
 
+/**
+ * Pull a user-readable message out of a tRPC mutation error. Surfaces zod
+ * field/form validation messages (exposed via the router's errorFormatter)
+ * instead of swallowing them behind a generic toast.
+ */
+function getMutationErrorMessage(error: unknown, fallback: string): string {
+  const zod = (
+    error as {
+      data?: {
+        zodError?: {
+          fieldErrors?: Record<string, string[] | undefined>;
+          formErrors?: string[];
+        } | null;
+      } | null;
+    }
+  )?.data?.zodError;
+  if (zod) {
+    const fieldMessage = Object.values(zod.fieldErrors ?? {})
+      .flat()
+      .find((m): m is string => Boolean(m));
+    if (fieldMessage) return fieldMessage;
+    if (zod.formErrors?.[0]) return zod.formErrors[0];
+  }
+  const message = (error as { message?: unknown })?.message;
+  if (
+    typeof message === "string" &&
+    message.length > 0 &&
+    !message.trimStart().startsWith("[")
+  ) {
+    return message;
+  }
+  return fallback;
+}
+
 interface EventFormData {
   title: string;
   summary: string;
@@ -140,7 +174,8 @@ export function EventFormDialog({
       onOpenChange(false);
       void utils.events.getCommunityEvents.invalidate();
     },
-    onError: () => toast.error(t("eventCreateError")),
+    onError: (error) =>
+      toast.error(getMutationErrorMessage(error, t("eventCreateError"))),
   });
 
   const updateMutation = api.events.updateEvent.useMutation({
@@ -149,7 +184,8 @@ export function EventFormDialog({
       onOpenChange(false);
       void utils.events.getCommunityEvents.invalidate();
     },
-    onError: () => toast.error("Failed to update event"),
+    onError: (error) =>
+      toast.error(getMutationErrorMessage(error, "Failed to update event")),
   });
 
   const submitMutation = api.events.submitEvent.useMutation({
@@ -159,7 +195,8 @@ export function EventFormDialog({
       void utils.events.getCommunityEvents.invalidate();
       void utils.events.getMyEventSubmissions.invalidate();
     },
-    onError: () => toast.error("Failed to submit event"),
+    onError: (error) =>
+      toast.error(getMutationErrorMessage(error, "Failed to submit event")),
   });
 
   const resubmitMutation = api.events.resubmitEvent.useMutation({
@@ -169,7 +206,8 @@ export function EventFormDialog({
       void utils.events.getMyEventSubmissions.invalidate();
       void utils.events.getPendingCommunityEvents.invalidate();
     },
-    onError: () => toast.error("Failed to resubmit event"),
+    onError: (error) =>
+      toast.error(getMutationErrorMessage(error, "Failed to resubmit event")),
   });
 
   const parsedTags = form.tags

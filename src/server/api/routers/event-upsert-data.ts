@@ -11,7 +11,10 @@ import {
 export const eventUpsertSchema = z.object({
   title: z.string().min(3).max(255),
   description: z.string().max(5000).optional(),
-  summary: z.string().max(1000).optional(),
+  summary: z
+    .string()
+    .max(10000, "Summary is too long (max 10000 characters).")
+    .optional(),
   type: z.enum(EVENT_TYPES),
   date: z.string(),
   startTime: z.string().optional(),
