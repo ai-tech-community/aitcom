@@ -21,6 +21,11 @@ import { generateInviteCode } from "@/app/api/mcp/registration-tools";
 import { getPayloadClient } from "@/server/payload";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
+import {
+  TWEET_URL_REGEX,
+  verifyOembed,
+  type TweetOembed,
+} from "@/server/agent/verify-x-tweet";
 
 export const agentManagementRouter = createTRPCRouter({
   // ── Agent Profile ─────────────────────────────────────────────────────────
@@ -1077,10 +1082,7 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
-      const tweetUrlRegex =
-        /^https?:\/\/(twitter\.com|x\.com)\/(\w+)\/status\/(\d+)/;
-      const match = tweetUrlRegex.exec(input.tweetUrl);
-      if (!match) {
+      if (!TWEET_URL_REGEX.test(input.tweetUrl)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message:
@@ -1088,10 +1090,8 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
-      const xHandle = match[2]!;
-
       const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(input.tweetUrl)}&omit_script=true`;
-      let oembedData: { html?: string } | null = null;
+      let oembedData: TweetOembed | null = null;
 
       try {
         const response = await fetch(oembedUrl);
@@ -1102,7 +1102,7 @@ export const agentManagementRouter = createTRPCRouter({
               "Could not fetch tweet. Make sure it exists and is public.",
           });
         }
-        oembedData = (await response.json()) as { html?: string };
+        oembedData = (await response.json()) as TweetOembed;
       } catch (err) {
         if (err instanceof TRPCError) throw err;
         throw new TRPCError({
@@ -1111,12 +1111,11 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
-      if (!oembedData?.html?.includes(agent.verificationCode)) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Verification code not found in tweet. Make sure your tweet contains: ${agent.verificationCode}`,
-        });
+      const result = verifyOembed(oembedData, agent.verificationCode);
+      if (!result.ok) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: result.reason });
       }
+      const xHandle = result.xHandle;
 
       await ctx.db
         .update(agentProfiles)

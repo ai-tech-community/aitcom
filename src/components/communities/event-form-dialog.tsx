@@ -94,11 +94,12 @@ const emptyForm: EventFormData = {
 
 interface EventFormDialogProps {
   slug: string;
-  mode: "create" | "edit";
+  mode: "create" | "edit" | "resubmit";
   eventId?: number;
   initialData?: Partial<EventFormData>;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isAdminOrOwner?: boolean;
 }
 
 export function EventFormDialog({
@@ -108,6 +109,7 @@ export function EventFormDialog({
   initialData,
   open,
   onOpenChange,
+  isAdminOrOwner = false,
 }: EventFormDialogProps) {
   const t = useTranslations("events");
   const utils = api.useUtils();
@@ -141,6 +143,26 @@ export function EventFormDialog({
       void utils.events.getCommunityEvents.invalidate();
     },
     onError: () => toast.error("Failed to update event"),
+  });
+
+  const submitMutation = api.events.submitEvent.useMutation({
+    onSuccess: () => {
+      toast.success("Event submitted for approval");
+      onOpenChange(false);
+      void utils.events.getCommunityEvents.invalidate();
+      void utils.events.getMyEventSubmissions.invalidate();
+    },
+    onError: () => toast.error("Failed to submit event"),
+  });
+
+  const resubmitMutation = api.events.resubmitEvent.useMutation({
+    onSuccess: () => {
+      toast.success("Event resubmitted for approval");
+      onOpenChange(false);
+      void utils.events.getMyEventSubmissions.invalidate();
+      void utils.events.getPendingCommunityEvents.invalidate();
+    },
+    onError: () => toast.error("Failed to resubmit event"),
   });
 
   const parsedTags = form.tags
@@ -182,13 +204,14 @@ export function EventFormDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === "create") {
+    if (mode === "resubmit" && eventId) {
+      resubmitMutation.mutate({ eventId, ...payload });
+    } else if (mode === "edit" && eventId) {
+      updateMutation.mutate({ eventId, ...payload });
+    } else if (isAdminOrOwner) {
       createMutation.mutate(payload);
-    } else if (eventId) {
-      updateMutation.mutate({
-        eventId,
-        ...payload,
-      });
+    } else {
+      submitMutation.mutate(payload);
     }
   };
 
@@ -201,14 +224,22 @@ export function EventFormDialog({
     }));
   };
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isPending =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    submitMutation.isPending ||
+    resubmitMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>
-            {mode === "create" ? t("createEvent") : t("editEvent")}
+            {mode === "resubmit"
+              ? "Edit & Resubmit"
+              : mode === "create"
+                ? t("createEvent")
+                : t("editEvent")}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -419,33 +450,37 @@ export function EventFormDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="event-score">AIT fit score</Label>
-              <Input
-                id="event-score"
-                type="number"
-                min={1}
-                max={10}
-                value={form.aitFitScore}
-                onChange={(e) =>
-                  setForm({ ...form, aitFitScore: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="event-confidence">Confidence score</Label>
-              <Input
-                id="event-confidence"
-                type="number"
-                min={0}
-                max={1}
-                step="0.1"
-                value={form.confidenceScore}
-                onChange={(e) =>
-                  setForm({ ...form, confidenceScore: e.target.value })
-                }
-              />
-            </div>
+            {isAdminOrOwner && (
+              <div className="space-y-2">
+                <Label htmlFor="event-score">AIT fit score</Label>
+                <Input
+                  id="event-score"
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={form.aitFitScore}
+                  onChange={(e) =>
+                    setForm({ ...form, aitFitScore: e.target.value })
+                  }
+                />
+              </div>
+            )}
+            {isAdminOrOwner && (
+              <div className="space-y-2">
+                <Label htmlFor="event-confidence">Confidence score</Label>
+                <Input
+                  id="event-confidence"
+                  type="number"
+                  min={0}
+                  max={1}
+                  step="0.1"
+                  value={form.confidenceScore}
+                  onChange={(e) =>
+                    setForm({ ...form, confidenceScore: e.target.value })
+                  }
+                />
+              </div>
+            )}
             <div className="space-y-2 sm:col-span-2">
               <Label>Audience</Label>
               <div className="flex flex-wrap gap-2">
@@ -485,28 +520,32 @@ export function EventFormDialog({
                 placeholder="https://..."
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="event-discovery-source">Discovery source</Label>
-              <Input
-                id="event-discovery-source"
-                value={form.discoverySource}
-                onChange={(e) =>
-                  setForm({ ...form, discoverySource: e.target.value })
-                }
-                placeholder="luma, meetup, linkedin"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="event-last-verified">Last verified at</Label>
-              <Input
-                id="event-last-verified"
-                type="datetime-local"
-                value={form.lastVerifiedAt}
-                onChange={(e) =>
-                  setForm({ ...form, lastVerifiedAt: e.target.value })
-                }
-              />
-            </div>
+            {isAdminOrOwner && (
+              <div className="space-y-2">
+                <Label htmlFor="event-discovery-source">Discovery source</Label>
+                <Input
+                  id="event-discovery-source"
+                  value={form.discoverySource}
+                  onChange={(e) =>
+                    setForm({ ...form, discoverySource: e.target.value })
+                  }
+                  placeholder="luma, meetup, linkedin"
+                />
+              </div>
+            )}
+            {isAdminOrOwner && (
+              <div className="space-y-2">
+                <Label htmlFor="event-last-verified">Last verified at</Label>
+                <Input
+                  id="event-last-verified"
+                  type="datetime-local"
+                  value={form.lastVerifiedAt}
+                  onChange={(e) =>
+                    setForm({ ...form, lastVerifiedAt: e.target.value })
+                  }
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="event-video">Video URL</Label>
               <Input
@@ -517,28 +556,40 @@ export function EventFormDialog({
                 placeholder="https://youtube.com/..."
               />
             </div>
-            <label className="flex items-center gap-2 sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={form.curatedByAgent}
-                onChange={(e) =>
-                  setForm({ ...form, curatedByAgent: e.target.checked })
-                }
-              />
-              <span className="text-sm">Curated by agent</span>
-            </label>
+            {isAdminOrOwner && (
+              <label className="flex items-center gap-2 sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={form.curatedByAgent}
+                  onChange={(e) =>
+                    setForm({ ...form, curatedByAgent: e.target.checked })
+                  }
+                />
+                <span className="text-sm">Curated by agent</span>
+              </label>
+            )}
           </div>
 
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />
-                {t("creating")}
+                {mode === "resubmit"
+                  ? "Resubmitting..."
+                  : mode === "edit"
+                    ? "Saving..."
+                    : isAdminOrOwner
+                      ? t("creating")
+                      : "Submitting..."}
               </>
-            ) : mode === "create" ? (
+            ) : mode === "resubmit" ? (
+              "Resubmit for Approval"
+            ) : mode === "edit" ? (
+              t("editEvent")
+            ) : isAdminOrOwner ? (
               t("createEvent")
             ) : (
-              t("editEvent")
+              "Submit for Approval"
             )}
           </Button>
         </form>

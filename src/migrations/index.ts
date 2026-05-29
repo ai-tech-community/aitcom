@@ -28,6 +28,7 @@ import * as migration_20260518_benchmark_run_nullable_submitter from "./20260518
 import * as migration_20260518b_benchmark_run_nullable_model_id from "./20260518b_benchmark_run_nullable_model_id";
 import * as migration_20260518c_benchmark_coverage_by_cell from "./20260518c_benchmark_coverage_by_cell";
 import * as migration_20260518d_benchmark_assignment_byoa from "./20260518d_benchmark_assignment_byoa";
+import * as migration_20260528_event_submission from "./20260528_event_submission";
 
 export const migrations = [
   {
@@ -179,5 +180,10 @@ export const migrations = [
     up: migration_20260518d_benchmark_assignment_byoa.up,
     down: migration_20260518d_benchmark_assignment_byoa.down,
     name: "20260518d_benchmark_assignment_byoa",
+  },
+  {
+    up: migration_20260528_event_submission.up,
+    down: migration_20260528_event_submission.down,
+    name: "20260528_event_submission",
   },
 ];

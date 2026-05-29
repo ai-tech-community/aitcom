@@ -13,6 +13,7 @@ import {
   communities,
   communityMemberships,
   communityLumaIntegrations,
+  notifications,
 } from "@/server/db/schema";
 import { decryptApiKey } from "@/server/luma/crypto";
 import { getCalendarEvents } from "@/server/luma/client";
@@ -864,5 +865,503 @@ export const eventsRouter = createTRPCRouter({
       });
 
       return { success: true };
+    }),
+
+  submitEvent: protectedProcedure
+    .input(
+      z.object({ communitySlug: z.string() }).extend(eventUpsertSchema.shape),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+      }
+
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (!membership || membership.status !== "active") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You must be an active community member to submit events",
+        });
+      }
+
+      const baseSlug = input.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 80);
+      const slug = `${baseSlug}-${Date.now()}`;
+
+      const payload = await getPayloadClient();
+      const event = await payload.create({
+        collection: "events",
+        data: {
+          slug,
+          status: "draft" as const,
+          communityId: community.id,
+          submittedBy: userId,
+          ...buildEventPayloadData(input),
+          // Strip curation-only fields that members cannot set
+          aitFitScore: undefined,
+          curatedByAgent: false,
+          confidenceScore: undefined,
+          discoverySource: undefined,
+          lastVerifiedAt: undefined,
+        },
+      });
+
+      // Notify all admins/owners/moderators of this community
+      const admins = await ctx.db
+        .select({ userId: communityMemberships.userId })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.status, "active"),
+            sql`${communityMemberships.role} IN ('owner', 'admin', 'moderator')`,
+          ),
+        );
+
+      if (admins.length > 0) {
+        await ctx.db.insert(notifications).values(
+          admins.map(({ userId: adminId }) => ({
+            userId: adminId,
+            type: "event_submitted",
+            title: "New event pending approval",
+            content: `"${input.title}" was submitted for review in ${community.name}.`,
+            metadata: {
+              eventId: String(event.id),
+              communitySlug: input.communitySlug,
+            },
+            communityId: community.id,
+          })),
+        );
+      }
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "event.submit",
+        targetType: "event",
+        targetId: String(event.id),
+        metadata: { title: input.title, communitySlug: input.communitySlug },
+      });
+
+      return event;
+    }),
+
+  getPendingCommunityEvents: protectedProcedure
+    .input(z.object({ communitySlug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+        columns: { id: true, name: true },
+      });
+      if (!community) return [];
+
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (
+        !membership ||
+        membership.status !== "active" ||
+        (membership.role !== "owner" &&
+          membership.role !== "admin" &&
+          membership.role !== "moderator")
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only community admins and moderators can view pending events",
+        });
+      }
+
+      const payload = await getPayloadClient();
+      const { docs } = await payload.find({
+        collection: "events",
+        where: {
+          and: [
+            { status: { equals: "draft" } },
+            { communityId: { equals: community.id } },
+          ],
+        },
+        sort: "createdAt",
+        draft: false,
+      });
+
+      return docs.map((e) => ({
+        id: e.id,
+        title: e.title,
+        slug: e.slug,
+        type: e.type,
+        date: e.date,
+        location: e.location,
+        status: e.status,
+        submittedBy: e.submittedBy ?? null,
+        communityId: community.id,
+      }));
+    }),
+
+  getMyEventSubmissions: protectedProcedure
+    .input(z.object({ communitySlug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+        columns: { id: true },
+      });
+      if (!community) return [];
+
+      const payload = await getPayloadClient();
+      const { docs } = await payload.find({
+        collection: "events",
+        where: {
+          and: [
+            { submittedBy: { equals: userId } },
+            { communityId: { equals: community.id } },
+            {
+              or: [
+                { status: { equals: "draft" } },
+                { status: { equals: "rejected" } },
+              ],
+            },
+          ],
+        },
+        sort: "createdAt",
+        draft: false,
+      });
+
+      return docs.map((e) => ({
+        id: e.id,
+        title: e.title,
+        slug: e.slug,
+        type: e.type,
+        date: e.date,
+        location: e.location,
+        status: e.status,
+        communityId: community.id,
+      }));
+    }),
+
+  approveEvent: protectedProcedure
+    .input(z.object({ eventId: z.number(), communitySlug: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+      }
+
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (
+        !membership ||
+        membership.status !== "active" ||
+        (membership.role !== "owner" &&
+          membership.role !== "admin" &&
+          membership.role !== "moderator")
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only community admins and moderators can approve events",
+        });
+      }
+
+      const payload = await getPayloadClient();
+      const existing = await payload.findByID({
+        collection: "events",
+        id: input.eventId,
+        depth: 0,
+      });
+      if (!existing || existing.communityId !== community.id) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Event not found in this community",
+        });
+      }
+
+      if (existing.status !== "draft") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only draft events can be approved",
+        });
+      }
+
+      await payload.update({
+        collection: "events",
+        id: input.eventId,
+        data: { status: "published" },
+      });
+
+      const submittedBy = existing.submittedBy ?? undefined;
+      if (submittedBy) {
+        await ctx.db.insert(notifications).values({
+          userId: submittedBy,
+          type: "event_approved",
+          title: "Your event was approved",
+          content: `"${existing.title}" is now published in ${community.name}.`,
+          metadata: {
+            eventId: String(input.eventId),
+            communitySlug: input.communitySlug,
+          },
+          communityId: community.id,
+        });
+      }
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "event.approve",
+        targetType: "event",
+        targetId: String(input.eventId),
+        metadata: { communitySlug: input.communitySlug },
+      });
+
+      return { success: true };
+    }),
+
+  rejectEvent: protectedProcedure
+    .input(z.object({ eventId: z.number(), communitySlug: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+      }
+
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (
+        !membership ||
+        membership.status !== "active" ||
+        (membership.role !== "owner" &&
+          membership.role !== "admin" &&
+          membership.role !== "moderator")
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only community admins and moderators can reject events",
+        });
+      }
+
+      const payload = await getPayloadClient();
+      const existing = await payload.findByID({
+        collection: "events",
+        id: input.eventId,
+        depth: 0,
+      });
+      if (!existing || existing.communityId !== community.id) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Event not found in this community",
+        });
+      }
+
+      if (existing.status !== "draft") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only draft events can be rejected",
+        });
+      }
+
+      await payload.update({
+        collection: "events",
+        id: input.eventId,
+        data: { status: "rejected" },
+      });
+
+      const submittedBy = existing.submittedBy ?? undefined;
+      if (submittedBy) {
+        await ctx.db.insert(notifications).values({
+          userId: submittedBy,
+          type: "event_rejected",
+          title: "Your event needs revision",
+          content: `"${existing.title}" was not approved in ${community.name}. You can edit and resubmit.`,
+          metadata: {
+            eventId: String(input.eventId),
+            communitySlug: input.communitySlug,
+          },
+          communityId: community.id,
+        });
+      }
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "event.reject",
+        targetType: "event",
+        targetId: String(input.eventId),
+        metadata: { communitySlug: input.communitySlug },
+      });
+
+      return { success: true };
+    }),
+
+  resubmitEvent: protectedProcedure
+    .input(
+      z
+        .object({ eventId: z.number(), communitySlug: z.string() })
+        .merge(eventUpsertSchema.partial()),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+      }
+
+      const payload = await getPayloadClient();
+      const existing = await payload.findByID({
+        collection: "events",
+        id: input.eventId,
+        depth: 0,
+      });
+
+      if (
+        !existing ||
+        existing.communityId !== community.id ||
+        existing.submittedBy !== userId
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You can only resubmit your own rejected events",
+        });
+      }
+
+      if ((existing.status as string) !== "rejected") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Only rejected events can be resubmitted",
+        });
+      }
+
+      // Build partial update data (same pattern as updateEvent)
+      const data: Record<string, unknown> = { status: "draft" };
+      if (input.title !== undefined) data.title = input.title;
+      if (input.description !== undefined)
+        data.description = plainTextToLexical(input.description ?? "");
+      if (input.summary !== undefined)
+        data.summary = normalizeOptionalString(input.summary);
+      if (input.type !== undefined) data.type = input.type;
+      if (input.date !== undefined) data.date = input.date;
+      if (input.startTime !== undefined)
+        data.startTime = normalizeOptionalString(input.startTime);
+      if (input.endTime !== undefined)
+        data.endTime = normalizeOptionalString(input.endTime);
+      if (input.location !== undefined) data.location = input.location;
+      if (input.format !== undefined) data.format = input.format;
+      if (input.region !== undefined)
+        data.region = normalizeOptionalString(input.region);
+      if (input.country !== undefined)
+        data.country = normalizeOptionalString(input.country);
+      if (input.city !== undefined)
+        data.city = normalizeOptionalString(input.city);
+      if (input.focus !== undefined) data.focus = input.focus;
+      if (input.level !== undefined) data.level = input.level;
+      if (input.audience !== undefined) data.audience = input.audience;
+      if (input.sourceUrl !== undefined)
+        data.sourceUrl = normalizeOptionalString(input.sourceUrl);
+      if (input.tags !== undefined)
+        data.tags = (input.tags as string[])
+          .map((tag: string) => ({ tag: tag.trim() }))
+          .filter((entry: { tag: string }) => entry.tag.length > 0);
+      if (input.videoUrl !== undefined)
+        data.videoUrl = normalizeOptionalString(input.videoUrl);
+      if (input.maxAttendees !== undefined)
+        data.maxAttendees = input.maxAttendees;
+
+      const event = await payload.update({
+        collection: "events",
+        id: input.eventId,
+        data,
+      });
+
+      // Notify admins/mods that a resubmission is pending
+      const admins = await ctx.db
+        .select({ userId: communityMemberships.userId })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.status, "active"),
+            sql`${communityMemberships.role} IN ('owner', 'admin', 'moderator')`,
+          ),
+        );
+
+      if (admins.length > 0) {
+        await ctx.db.insert(notifications).values(
+          admins.map(({ userId: adminId }) => ({
+            userId: adminId,
+            type: "event_submitted",
+            title: "Event resubmitted for approval",
+            content: `"${existing.title}" was resubmitted for review in ${community.name}.`,
+            metadata: {
+              eventId: String(input.eventId),
+              communitySlug: input.communitySlug,
+            },
+            communityId: community.id,
+          })),
+        );
+      }
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "event.resubmit",
+        targetType: "event",
+        targetId: String(input.eventId),
+        metadata: { communitySlug: input.communitySlug },
+      });
+
+      return event;
     }),
 });
