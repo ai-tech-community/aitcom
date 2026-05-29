@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   EVENT_AUDIENCE_LABELS,
@@ -63,6 +63,8 @@ interface EventFormData {
   lastVerifiedAt: string;
   videoUrl: string;
   maxAttendees: string;
+  coverImageId: number | null;
+  coverImageUrl: string | null;
 }
 
 const emptyForm: EventFormData = {
@@ -90,6 +92,8 @@ const emptyForm: EventFormData = {
   lastVerifiedAt: "",
   videoUrl: "",
   maxAttendees: "",
+  coverImageId: null,
+  coverImageUrl: null,
 };
 
 interface EventFormDialogProps {
@@ -114,6 +118,8 @@ export function EventFormDialog({
   const t = useTranslations("events");
   const utils = api.useUtils();
   const [form, setForm] = useState<EventFormData>(emptyForm);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
 
   useEffect(() => {
     if (open && initialData) {
@@ -200,6 +206,7 @@ export function EventFormDialog({
     maxAttendees: form.maxAttendees
       ? parseInt(form.maxAttendees, 10)
       : undefined,
+    coverImage: form.coverImageId ?? undefined,
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -222,6 +229,35 @@ export function EventFormDialog({
         ? current.audience.filter((entry) => entry !== value)
         : [...current.audience, value],
     }));
+  };
+
+  const handleCoverUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("alt", form.title || "Event cover");
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = (await res.json()) as { url: string; id: number };
+      setForm((current) => ({
+        ...current,
+        coverImageId: data.id,
+        coverImageUrl: data.url,
+      }));
+    } catch {
+      toast.error("Image upload failed");
+    } finally {
+      setCoverUploading(false);
+      if (coverInputRef.current) coverInputRef.current.value = "";
+    }
   };
 
   const isPending =
@@ -570,6 +606,54 @@ export function EventFormDialog({
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label>Cover image</Label>
+            {form.coverImageUrl ? (
+              <div className="relative w-fit">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={form.coverImageUrl}
+                  alt="Event cover preview"
+                  className="border-border h-28 rounded-lg border object-cover"
+                />
+                <button
+                  type="button"
+                  className="bg-background/80 absolute top-1 right-1 rounded-full border p-1"
+                  onClick={() =>
+                    setForm((c) => ({
+                      ...c,
+                      coverImageId: null,
+                      coverImageUrl: null,
+                    }))
+                  }
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={coverUploading}
+                onClick={() => coverInputRef.current?.click()}
+              >
+                {coverUploading ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="mr-2 size-4" />
+                )}
+                {coverUploading ? "Uploading..." : "Upload cover image"}
+              </Button>
+            )}
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleCoverUpload}
+            />
+          </div>
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending ? (
               <>
