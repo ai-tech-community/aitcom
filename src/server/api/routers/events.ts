@@ -85,6 +85,7 @@ const eventUpsertSchema = z.object({
   lastVerifiedAt: z.string().optional(),
   videoUrl: z.string().url().optional().or(z.literal("")),
   maxAttendees: z.number().min(1).optional(),
+  coverImage: z.number().int().positive().optional(),
 });
 
 function normalizeOptionalString(value?: string) {
@@ -92,7 +93,7 @@ function normalizeOptionalString(value?: string) {
   return trimmed ?? undefined;
 }
 
-function buildEventPayloadData(input: z.infer<typeof eventUpsertSchema>) {
+export function buildEventPayloadData(input: z.infer<typeof eventUpsertSchema>) {
   return {
     title: input.title,
     description: plainTextToLexical(input.description ?? ""),
@@ -124,6 +125,7 @@ function buildEventPayloadData(input: z.infer<typeof eventUpsertSchema>) {
       : undefined,
     videoUrl: normalizeOptionalString(input.videoUrl),
     maxAttendees: input.maxAttendees,
+    coverImage: input.coverImage,
   };
 }
 
@@ -765,6 +767,7 @@ export const eventsRouter = createTRPCRouter({
         data.videoUrl = normalizeOptionalString(input.videoUrl);
       if (input.maxAttendees !== undefined)
         data.maxAttendees = input.maxAttendees;
+      if (input.coverImage !== undefined) data.coverImage = input.coverImage;
 
       const event = await payload.update({
         collection: "events",
@@ -1327,6 +1330,7 @@ export const eventsRouter = createTRPCRouter({
         data.videoUrl = normalizeOptionalString(input.videoUrl);
       if (input.maxAttendees !== undefined)
         data.maxAttendees = input.maxAttendees;
+      if (input.coverImage !== undefined) data.coverImage = input.coverImage;
 
       const event = await payload.update({
         collection: "events",
