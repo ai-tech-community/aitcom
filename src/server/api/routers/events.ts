@@ -38,6 +38,7 @@ import {
   buildEventPayloadData,
 } from "./event-upsert-data";
 import { runEventImport } from "@/server/events/import-from-url";
+import { checkEventImportRateLimit } from "@/server/events/import-rate-limit";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -910,6 +911,7 @@ export const eventsRouter = createTRPCRouter({
   importEventFromUrl: protectedProcedure
     .input(
       z.object({
+        communitySlug: z.string(),
         url: z
           .string()
           .url()
@@ -918,7 +920,46 @@ export const eventsRouter = createTRPCRouter({
           }),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      // Only active community members may use the importer (it makes outbound
+      // fetches and can create media docs), matching the submitEvent gate.
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+        columns: { id: true },
+      });
+      if (!community) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
+      }
+
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (membership?.status !== "active") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You must be an active community member to import events",
+        });
+      }
+
+      const rateLimit = checkEventImportRateLimit(userId);
+      if (!rateLimit.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Too many imports — try again in ${rateLimit.retryAfterSecs}s.`,
+        });
+      }
+
       const payload = await getPayloadClient();
       try {
         return await runEventImport(input.url, payload);
