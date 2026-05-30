@@ -5,7 +5,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS "app"."notification_optout" (
       "id" varchar(255) PRIMARY KEY NOT NULL,
-      "user_id" varchar(255) NOT NULL,
+      "user_id" varchar(255) NOT NULL REFERENCES "app"."user"("id"),
       "community_id" varchar(255),
       "category" varchar(20) NOT NULL,
       "created_at" timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -15,8 +15,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
     CREATE TABLE IF NOT EXISTS "app"."broadcast" (
       "id" varchar(255) PRIMARY KEY NOT NULL,
-      "community_id" varchar(255) NOT NULL,
-      "author_id" varchar(255) NOT NULL,
+      "community_id" varchar(255) NOT NULL REFERENCES "app"."community"("id"),
+      "author_id" varchar(255) NOT NULL REFERENCES "app"."user"("id"),
       "subject" varchar(255) NOT NULL,
       "body" text NOT NULL,
       "class" varchar(20) DEFAULT 'promotional' NOT NULL,
@@ -28,8 +28,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
     CREATE TABLE IF NOT EXISTS "app"."broadcast_delivery" (
       "id" varchar(255) PRIMARY KEY NOT NULL,
-      "broadcast_id" varchar(255),
-      "user_id" varchar(255) NOT NULL,
+      "broadcast_id" varchar(255) REFERENCES "app"."broadcast"("id"),
+      "user_id" varchar(255) NOT NULL REFERENCES "app"."user"("id"),
       "community_id" varchar(255),
       "class" varchar(20) NOT NULL,
       "email_sent" boolean DEFAULT false NOT NULL,
@@ -44,7 +44,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
     CREATE TABLE IF NOT EXISTS "app"."digest_send_log" (
       "id" varchar(255) PRIMARY KEY NOT NULL,
-      "user_id" varchar(255) NOT NULL,
+      "user_id" varchar(255) NOT NULL REFERENCES "app"."user"("id"),
       "period_key" varchar(16) NOT NULL,
       "created_at" timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL
     );
