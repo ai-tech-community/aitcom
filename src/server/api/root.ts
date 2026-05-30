@@ -17,6 +17,7 @@ import { membersRouter } from "@/server/api/routers/members";
 import { inboxRouter } from "@/server/api/routers/inbox";
 import { impactRouter } from "@/server/api/routers/impact";
 import { notificationsRouter } from "@/server/api/routers/notifications";
+import { notificationPrefsRouter } from "@/server/api/routers/notificationPrefs";
 import { onboardingRouter } from "@/server/api/routers/onboarding";
 import { postRouter } from "@/server/api/routers/post";
 import { sponsorsRouter } from "@/server/api/routers/sponsors";
@@ -42,6 +43,7 @@ export const appRouter = createTRPCRouter({
   inbox: inboxRouter,
   impact: impactRouter,
   notifications: notificationsRouter,
+  notificationPrefs: notificationPrefsRouter,
   onboarding: onboardingRouter,
   challengeChannel: challengeChannelRouter,
   challengeEngine: challengeEngineRouter,
