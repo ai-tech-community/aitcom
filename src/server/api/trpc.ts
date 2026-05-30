@@ -206,7 +206,7 @@ export async function requireHubOperator(ctx: {
 }): Promise<void> {
   if (!ctx.session?.user) throw new TRPCError({ code: "UNAUTHORIZED" });
   const hub = await ctx.db.query.communities.findFirst({
-    where: eq(communities.slug, HUB_SLUG),
+    where: and(eq(communities.slug, HUB_SLUG), isNull(communities.deletedAt)),
   });
   if (!hub) throw new TRPCError({ code: "FORBIDDEN" });
   const membership = await ctx.db.query.communityMemberships.findFirst({
