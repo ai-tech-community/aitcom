@@ -64,7 +64,13 @@ export const broadcastRouter = createTRPCRouter({
           ),
         );
       const memberIds = members.map((m) => m.userId);
-      if (memberIds.length === 0) return { broadcastId: broadcast!.id, emailed: 0 };
+      if (memberIds.length === 0) {
+        await ctx.db
+          .update(broadcasts)
+          .set({ sentAt: now })
+          .where(eq(broadcasts.id, broadcast!.id));
+        return { broadcastId: broadcast!.id, emailed: 0 };
+      }
 
       // Members who opted out of THIS community's broadcasts.
       const optedOut = new Set(
