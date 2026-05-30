@@ -896,25 +896,33 @@ export const challengesRouter = createTRPCRouter({
         })
         .returning();
 
-      // Update enrollment
-      await ctx.db
-        .update(challengeEnrollments)
-        .set({ submittedAt: new Date() })
-        .where(eq(challengeEnrollments.id, enrollment.id));
+      // Run the enrollment update and the best-effort challenge fetch concurrently —
+      // neither depends on the other, so their latencies overlap instead of stacking.
+      const fetchChallengeBestEffort = async (): Promise<
+        Challenge | undefined
+      > => {
+        try {
+          const payloadForFetch = await getPayloadClient();
+          return (await payloadForFetch.findByID({
+            collection: "challenges",
+            id: input.challengeId,
+            depth: 0,
+          })) as Challenge;
+        } catch {
+          // best-effort — instrumentation/email must not break solution submission
+          return undefined;
+        }
+      };
 
-      // Fetch challenge once for both activity instrumentation and email — best-effort:
-      // if the fetch fails (e.g. challenge deleted after enrollment) we continue without it.
-      let fetchedChallenge: Challenge | undefined;
-      try {
-        const payloadForFetch = await getPayloadClient();
-        fetchedChallenge = await payloadForFetch.findByID({
-          collection: "challenges",
-          id: input.challengeId,
-          depth: 0,
-        });
-      } catch {
-        // best-effort — instrumentation/email must not break solution submission
-      }
+      const [, fetchedChallenge] = await Promise.all([
+        // Update enrollment
+        ctx.db
+          .update(challengeEnrollments)
+          .set({ submittedAt: new Date() })
+          .where(eq(challengeEnrollments.id, enrollment.id)),
+        // Fetch challenge once for both activity instrumentation and email
+        fetchChallengeBestEffort(),
+      ]);
 
       await logActivity(ctx.db, {
         actorId: userId,
