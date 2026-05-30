@@ -6,7 +6,8 @@ export const CONTRIBUTION_ACTIONS = [
   "feed.comment_created",
   "thread.create",
   "thread.reply",
-  "comment.created",
+  // "comment.created" is intentionally excluded: article comments are Hub-wide
+  // (no communityId), so they cannot be attributed to a community — same as article.*.
   "idea.submitted",
   "idea.voted",
   "launchpad.project.published",
@@ -152,19 +153,22 @@ export type UnactivatedNewcomer = { userId: string; joinedAt: Date };
 
 export function selectUnactivated(opts: {
   memberships: MembershipRow[];
-  contributions: ActivityRow[];
+  contributorUserIds: Iterable<string>; // distinct userIds who have EVER contributed to this community
   now: Date;
-  minAgeDays: number;
+  minAgeDays: number; // joined at least this long ago (default caller: 3)
+  maxAgeDays: number; // joined at most this long ago (default caller: 30)
 }): UnactivatedNewcomer[] {
-  const { memberships, contributions, now, minAgeDays } = opts;
-  const cutoff = windowStart(now, minAgeDays); // joined on/before cutoff = old enough
-  const everContributed = new Set(contributions.map((c) => c.actorId));
+  const { memberships, contributorUserIds, now, minAgeDays, maxAgeDays } = opts;
+  const youngCutoff = windowStart(now, minAgeDays); // joined on/before this = old enough
+  const oldCutoff = windowStart(now, maxAgeDays); // joined on/after this = recent enough
+  const everContributed = new Set<string>(contributorUserIds);
 
   return memberships
     .filter(
       (m) =>
         m.status === "active" &&
-        m.joinedAt <= cutoff &&
+        m.joinedAt <= youngCutoff &&
+        m.joinedAt >= oldCutoff &&
         !everContributed.has(m.userId),
     )
     .map((m) => ({ userId: m.userId, joinedAt: m.joinedAt }))

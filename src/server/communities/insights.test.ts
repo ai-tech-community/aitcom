@@ -22,6 +22,9 @@ describe("isContribution", () => {
     expect(CONTRIBUTION_ACTIONS).toContain("event.register");
     expect(CONTRIBUTION_ACTIONS).not.toContain("feed.post_liked");
   });
+  it("CONTRIBUTION_ACTIONS does not contain comment.created (Hub-wide, no community attribution)", () => {
+    expect(CONTRIBUTION_ACTIONS).not.toContain("comment.created");
+  });
 });
 
 describe("windowStart", () => {
@@ -97,6 +100,20 @@ describe("summarizeHealth", () => {
     });
     expect(res.contributionCount).toBe(2);
     expect(res.contributionPrev).toBe(1);
+  });
+
+  it("counts a contribution at exactly the curStart boundary as current (inclusive)", () => {
+    const now = new Date("2026-05-30T00:00:00.000Z");
+    const res = summarizeHealth({
+      contributions: [at("2026-05-16T00:00:00Z", "u1")],
+      joins: [],
+      departures: [],
+      now,
+      windowDays: 14,
+    });
+    expect(res.activeNow).toBe(1);
+    expect(res.activePrev).toBe(0);
+    expect(res.contributionCount).toBe(1);
   });
 });
 
@@ -174,6 +191,22 @@ describe("selectAtRisk", () => {
     });
     expect(res.map((m) => m.userId)).toEqual(["u2"]); // u2 has 2 prior, capped to 1
   });
+
+  it("breaks ties in prior-contribution count by role rank (owner before member)", () => {
+    const now = new Date("2026-05-30T00:00:00.000Z");
+    const res = selectAtRisk({
+      memberships: [
+        { userId: "u1", role: "owner", status: "active", joinedAt: new Date("2026-01-01T00:00:00Z") },
+        { userId: "u2", role: "member", status: "active", joinedAt: new Date("2026-01-01T00:00:00Z") },
+      ],
+      contributions: [
+        at("2026-05-10T00:00:00Z", "u1"), at("2026-05-09T00:00:00Z", "u1"),
+        at("2026-05-10T00:00:00Z", "u2"), at("2026-05-09T00:00:00Z", "u2"),
+      ],
+      now, windowDays: 14, priorWindowDays: 45, cap: 50,
+    });
+    expect(res.map((m) => m.userId)).toEqual(["u1", "u2"]);
+  });
 });
 
 const memJoined = (userId: string, joinedIso: string, status = "active") => ({
@@ -189,9 +222,10 @@ describe("selectUnactivated", () => {
   it("flags a member who joined >=3d ago and never contributed", () => {
     const res = selectUnactivated({
       memberships: [memJoined("u1", "2026-05-20T00:00:00Z")],
-      contributions: [],
+      contributorUserIds: [],
       now,
       minAgeDays: 3,
+      maxAgeDays: 30,
     });
     expect(res.map((m) => m.userId)).toEqual(["u1"]);
   });
@@ -199,9 +233,10 @@ describe("selectUnactivated", () => {
   it("does NOT flag a member who joined too recently (<3d)", () => {
     const res = selectUnactivated({
       memberships: [memJoined("u1", "2026-05-29T00:00:00Z")],
-      contributions: [],
+      contributorUserIds: [],
       now,
       minAgeDays: 3,
+      maxAgeDays: 30,
     });
     expect(res).toEqual([]);
   });
@@ -209,9 +244,10 @@ describe("selectUnactivated", () => {
   it("does NOT flag a member who has contributed at all", () => {
     const res = selectUnactivated({
       memberships: [memJoined("u1", "2026-05-20T00:00:00Z")],
-      contributions: [at("2026-05-21T00:00:00Z", "u1")],
+      contributorUserIds: ["u1"],
       now,
       minAgeDays: 3,
+      maxAgeDays: 30,
     });
     expect(res).toEqual([]);
   });
@@ -219,9 +255,21 @@ describe("selectUnactivated", () => {
   it("excludes non-active memberships", () => {
     const res = selectUnactivated({
       memberships: [memJoined("u1", "2026-05-20T00:00:00Z", "banned")],
-      contributions: [],
+      contributorUserIds: [],
       now,
       minAgeDays: 3,
+      maxAgeDays: 30,
+    });
+    expect(res).toEqual([]);
+  });
+
+  it("does NOT flag a member who joined more than maxAgeDays ago (too old, not a newcomer)", () => {
+    const res = selectUnactivated({
+      memberships: [memJoined("u1", "2026-03-01T00:00:00Z")],
+      contributorUserIds: [],
+      now,
+      minAgeDays: 3,
+      maxAgeDays: 30,
     });
     expect(res).toEqual([]);
   });

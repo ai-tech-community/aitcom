@@ -69,9 +69,11 @@ activity event.
 
 ### Un-activated newcomer
 
-A member who joined ≥3 days ago and has **zero [[contribution-action]]s ever**
-in that community. The activation funnel's failure set: they arrived but
-never participated.
+A member who **joined between 3 and 30 days ago** and has **zero
+[[contribution-action]]s ever** in that community. The activation funnel's
+failure set: they arrived but never participated. The 30-day upper bound
+makes this a true newcomer-activation funnel and avoids forward-only false
+positives for legacy members (who predate contribution instrumentation).
 
 ### Ritual
 
