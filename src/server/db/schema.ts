@@ -455,6 +455,122 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   }),
 }));
 
+// --- Slice B: Notifications infra (digest prefs, broadcasts, ceiling ledger) ---
+
+/** Sparse opt-OUT rows. Absence = opted in. communityId null = global digest
+ *  opt-out. category: "digest" | "broadcast". (ADR-0014 preference center.) */
+export const notificationOptouts = appSchema.table(
+  "notification_optout",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    communityId: d.varchar("community_id", { length: 255 }),
+    category: d.varchar({ length: 20 }).notNull().$type<"digest" | "broadcast">(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [index("notification_optout_user_idx").on(t.userId)],
+);
+
+/** A community-admin broadcast. class "promotional" is ceiling-limited;
+ *  "transactional" is system-reserved (event reminders) and exempt. */
+export const broadcasts = appSchema.table(
+  "broadcast",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar("community_id", { length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    authorId: d
+      .varchar("author_id", { length: 255 })
+      .notNull()
+      .references(() => user.id),
+    subject: d.varchar({ length: 255 }).notNull(),
+    body: d.text().notNull(),
+    class: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("promotional")
+      .$type<"promotional" | "transactional">(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    sentAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [index("broadcast_community_idx").on(t.communityId)],
+);
+
+/** Per-recipient delivery ledger. Ceiling source of truth (count promotional
+ *  emailSent rows per (userId, windowKey)) AND dedupe for transactional event
+ *  reminders (dedupeKey = "event:<eventId>", broadcastId null). */
+export const broadcastDeliveries = appSchema.table(
+  "broadcast_delivery",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    broadcastId: d
+      .varchar("broadcast_id", { length: 255 })
+      .references(() => broadcasts.id),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    communityId: d.varchar("community_id", { length: 255 }),
+    class: d.varchar({ length: 20 }).notNull().$type<"promotional" | "transactional">(),
+    emailSent: d.boolean("email_sent").notNull().default(false),
+    windowKey: d.varchar("window_key", { length: 16 }).notNull(),
+    dedupeKey: d.varchar("dedupe_key", { length: 255 }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("broadcast_delivery_user_window_idx").on(t.userId, t.windowKey),
+    index("broadcast_delivery_user_dedupe_idx").on(t.userId, t.dedupeKey),
+  ],
+);
+
+/** Weekly digest idempotency: one row per (userId, periodKey). */
+export const digestSendLog = appSchema.table(
+  "digest_send_log",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    periodKey: d.varchar("period_key", { length: 16 }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [uniqueIndex("digest_send_log_user_period_uidx").on(t.userId, t.periodKey)],
+);
+
 // Agent webhooks (per-agent webhook configuration for event delivery)
 export const agentWebhooks = appSchema.table("agent_webhook", (d) => ({
   id: d

@@ -31,6 +31,7 @@ import * as migration_20260518d_benchmark_assignment_byoa from "./20260518d_benc
 import * as migration_20260528_event_submission from "./20260528_event_submission";
 import * as migration_20260530_backfill_membership_community_id from "./20260530_backfill_membership_community_id";
 import * as migration_20260530b_activity_event_community_action_created_idx from "./20260530b_activity_event_community_action_created_idx";
+import * as migration_20260530c_notifications_infra from "./20260530c_notifications_infra";
 
 export const migrations = [
   {
@@ -197,5 +198,10 @@ export const migrations = [
     up: migration_20260530b_activity_event_community_action_created_idx.up,
     down: migration_20260530b_activity_event_community_action_created_idx.down,
     name: "20260530b_activity_event_community_action_created_idx",
+  },
+  {
+    up: migration_20260530c_notifications_infra.up,
+    down: migration_20260530c_notifications_infra.down,
+    name: "20260530c_notifications_infra",
   },
 ];
