@@ -334,6 +334,32 @@ export async function sendBroadcastEmail(
   return true;
 }
 
+/** Send a transactional reminder to a member who registered for an event.
+ *  Ceiling-EXEMPT (member opted in by registering). */
+export async function sendEventReminderEmail(
+  to: string,
+  event: { title: string; whenText: string; slug: string },
+) {
+  const resend = getResend();
+  if (!resend) return false;
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `Reminder: ${event.title}`,
+    html: `
+      <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
+        <h2 style="font-size: 18px;">See you soon</h2>
+        <p style="font-size: 14px;">This is a reminder for <strong>${escapeHtml(event.title)}</strong>, ${escapeHtml(event.whenText)}.</p>
+        <p style="margin-top: 24px;">
+          <a href="https://www.aitcommunity.org/en/events/${encodeURIComponent(event.slug)}" style="color:#000;font-weight:bold;">View event details →</a>
+        </p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #999;">AIT Community</p>
+      </div>`,
+  });
+  return true;
+}
+
 /**
  * Notify thread author when someone replies to their forum thread.
  */
