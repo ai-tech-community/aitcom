@@ -337,6 +337,7 @@ export const communitiesRouter = createTRPCRouter({
         action: "community.joined",
         targetType: "community",
         targetId: community.id,
+        communityId: community.id,
       });
 
       return { success: true };
@@ -413,6 +414,7 @@ export const communitiesRouter = createTRPCRouter({
         action: "community.join_requested",
         targetType: "community",
         targetId: community.id,
+        communityId: community.id,
       });
 
       return { success: true };
@@ -506,6 +508,7 @@ export const communitiesRouter = createTRPCRouter({
         action: "community.joined",
         targetType: "community",
         targetId: invite.communityId,
+        communityId: invite.communityId,
         metadata: { via: "invite" },
       });
 
@@ -571,6 +574,7 @@ export const communitiesRouter = createTRPCRouter({
         action: "community.left",
         targetType: "community",
         targetId: community.id,
+        communityId: community.id,
       });
 
       return { success: true };
