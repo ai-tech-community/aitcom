@@ -32,6 +32,10 @@ export async function GET(req: Request) {
   );
   let reminded = 0;
 
+  // Collect rows for bulk inserts flushed after all events are processed.
+  const notificationRows: (typeof notifications.$inferInsert)[] = [];
+  const deliveryRows: (typeof broadcastDeliveries.$inferInsert)[] = [];
+
   const payload = await getPayloadClient();
   // Published events starting between now and the reminder horizon.
   // The events collection uses `date` (not startDate) as the start-date field.
@@ -48,6 +52,12 @@ export async function GET(req: Request) {
     depth: 0,
   });
 
+  if (events.length === 200) {
+    console.warn(
+      "event-reminders: hit 200-event page cap; some events may be skipped this run",
+    );
+  }
+
   for (const event of events) {
     const dedupeKey = `event:${event.id}`;
     const regs = await db
@@ -61,32 +71,40 @@ export async function GET(req: Request) {
         ),
       );
 
-    for (const reg of regs) {
-      // Dedupe: already reminded for this event?
-      const already = await db
-        .select({ id: broadcastDeliveries.id })
-        .from(broadcastDeliveries)
-        .where(
-          and(
-            eq(broadcastDeliveries.userId, reg.userId),
-            eq(broadcastDeliveries.dedupeKey, dedupeKey),
-          ),
-        )
-        .limit(1);
-      if (already.length > 0) continue;
+    // Batch dedupe: one query per event instead of one per registration (eliminates N+1 SELECT).
+    const regUserIds = regs.map((r) => r.userId);
+    const alreadyReminded = new Set(
+      regUserIds.length === 0
+        ? []
+        : (
+            await db
+              .select({ userId: broadcastDeliveries.userId })
+              .from(broadcastDeliveries)
+              .where(
+                and(
+                  inArray(broadcastDeliveries.userId, regUserIds),
+                  eq(broadcastDeliveries.dedupeKey, dedupeKey),
+                ),
+              )
+          ).map((r) => r.userId),
+    );
 
-      const title = String(event.title ?? "your event");
-      // `date` field is the event's start date in the events collection.
-      const whenText = new Date(String(event.date)).toUTCString();
+    const title = String(event.title ?? "your event");
+    // `date` field is the event's start date in the events collection.
+    const whenText = new Date(String(event.date)).toUTCString();
+
+    for (const reg of regs) {
+      if (alreadyReminded.has(reg.userId)) continue;
 
       // In-app (always) + transactional email (ceiling-EXEMPT — NO allowPromotional call).
-      await db.insert(notifications).values({
+      notificationRows.push({
         userId: reg.userId,
         type: "event_reminder",
         title: `Reminder: ${title}`,
         content: `${title} starts ${whenText}.`,
         metadata: { eventId: event.id },
       });
+
       let emailSent = false;
       try {
         emailSent = await sendEventReminderEmail(reg.email, {
@@ -100,7 +118,8 @@ export async function GET(req: Request) {
           err,
         );
       }
-      await db.insert(broadcastDeliveries).values({
+
+      deliveryRows.push({
         userId: reg.userId,
         class: "transactional",
         emailSent,
@@ -110,6 +129,10 @@ export async function GET(req: Request) {
       reminded++;
     }
   }
+
+  // Flush all collected rows in two bulk inserts after processing all events.
+  if (notificationRows.length) await db.insert(notifications).values(notificationRows);
+  if (deliveryRows.length) await db.insert(broadcastDeliveries).values(deliveryRows);
 
   return NextResponse.json({ success: true, reminded, windowKey });
 }
