@@ -43,8 +43,11 @@ export async function GET(req: Request) {
     .where(gte(activityEvents.createdAt, weekAgo))
     .groupBy(activityEvents.communityId, activityEvents.action);
 
+  const countMap = new Map(
+    counts.map((c) => [`${c.communityId}:${c.action}`, c.n]),
+  );
   const countOf = (communityId: string, action: string) =>
-    counts.find((c) => c.communityId === communityId && c.action === action)?.n ?? 0;
+    countMap.get(`${communityId}:${action}`) ?? 0;
 
   // All active members with their communities.
   const memberships = await db
@@ -111,7 +114,12 @@ export async function GET(req: Request) {
     });
     if (!digest) continue;
 
-    const ok = await sendHubDigestEmail(email, renderHubDigestHtml(digest));
+    let ok = false;
+    try {
+      ok = await sendHubDigestEmail(email, renderHubDigestHtml(digest));
+    } catch (err) {
+      console.error(`hub-digest: send failed for ${userId}`, err);
+    }
     if (ok) {
       await db.insert(digestSendLog).values({ userId, periodKey });
       sent++;
