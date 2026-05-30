@@ -5,6 +5,7 @@ import {
   windowStart,
   summarizeHealth,
   selectAtRisk,
+  selectUnactivated,
 } from "./insights";
 
 describe("isContribution", () => {
@@ -172,5 +173,56 @@ describe("selectAtRisk", () => {
       cap: 1,
     });
     expect(res.map((m) => m.userId)).toEqual(["u2"]); // u2 has 2 prior, capped to 1
+  });
+});
+
+const memJoined = (userId: string, joinedIso: string, status = "active") => ({
+  userId,
+  role: "member",
+  status,
+  joinedAt: new Date(joinedIso),
+});
+
+describe("selectUnactivated", () => {
+  const now = new Date("2026-05-30T00:00:00.000Z");
+
+  it("flags a member who joined >=3d ago and never contributed", () => {
+    const res = selectUnactivated({
+      memberships: [memJoined("u1", "2026-05-20T00:00:00Z")],
+      contributions: [],
+      now,
+      minAgeDays: 3,
+    });
+    expect(res.map((m) => m.userId)).toEqual(["u1"]);
+  });
+
+  it("does NOT flag a member who joined too recently (<3d)", () => {
+    const res = selectUnactivated({
+      memberships: [memJoined("u1", "2026-05-29T00:00:00Z")],
+      contributions: [],
+      now,
+      minAgeDays: 3,
+    });
+    expect(res).toEqual([]);
+  });
+
+  it("does NOT flag a member who has contributed at all", () => {
+    const res = selectUnactivated({
+      memberships: [memJoined("u1", "2026-05-20T00:00:00Z")],
+      contributions: [at("2026-05-21T00:00:00Z", "u1")],
+      now,
+      minAgeDays: 3,
+    });
+    expect(res).toEqual([]);
+  });
+
+  it("excludes non-active memberships", () => {
+    const res = selectUnactivated({
+      memberships: [memJoined("u1", "2026-05-20T00:00:00Z", "banned")],
+      contributions: [],
+      now,
+      minAgeDays: 3,
+    });
+    expect(res).toEqual([]);
   });
 });

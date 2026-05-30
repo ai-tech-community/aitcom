@@ -147,3 +147,26 @@ export function selectAtRisk(opts: {
   );
   return result.slice(0, cap);
 }
+
+export type UnactivatedNewcomer = { userId: string; joinedAt: Date };
+
+export function selectUnactivated(opts: {
+  memberships: MembershipRow[];
+  contributions: ActivityRow[];
+  now: Date;
+  minAgeDays: number;
+}): UnactivatedNewcomer[] {
+  const { memberships, contributions, now, minAgeDays } = opts;
+  const cutoff = windowStart(now, minAgeDays); // joined on/before cutoff = old enough
+  const everContributed = new Set(contributions.map((c) => c.actorId));
+
+  return memberships
+    .filter(
+      (m) =>
+        m.status === "active" &&
+        m.joinedAt <= cutoff &&
+        !everContributed.has(m.userId),
+    )
+    .map((m) => ({ userId: m.userId, joinedAt: m.joinedAt }))
+    .sort((a, b) => b.joinedAt.getTime() - a.joinedAt.getTime());
+}
