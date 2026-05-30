@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Switch } from "@/components/ui/switch";
 
@@ -10,7 +11,10 @@ export function NotificationPrefs() {
   const prefs = api.notificationPrefs.get.useQuery();
   const communities = api.communities.getMyCommunities.useQuery();
   const setOptout = api.notificationPrefs.setOptout.useMutation({
-    onSuccess: () => utils.notificationPrefs.get.invalidate(),
+    onSuccess: () => {
+      void utils.notificationPrefs.get.invalidate();
+      toast.success(t("saved"));
+    },
   });
 
   if (prefs.isLoading || communities.isLoading || !prefs.data) {
@@ -31,7 +35,9 @@ export function NotificationPrefs() {
           <p className="text-muted-foreground text-xs">{t("globalDigestHint")}</p>
         </div>
         <Switch
+          aria-label={t("globalDigest")}
           checked={!prefs.data.globalDigestOptOut}
+          disabled={setOptout.isPending}
           onCheckedChange={(on) =>
             setOptout.mutate({
               communityId: null,
@@ -56,7 +62,9 @@ export function NotificationPrefs() {
             >
               <span className="text-sm font-medium">{c.name}</span>
               <Switch
+                aria-label={`${c.name} – ${t("digestColumn")}`}
                 checked={!digestOut.has(c.communityId)}
+                disabled={setOptout.isPending}
                 onCheckedChange={(on) =>
                   setOptout.mutate({
                     communityId: c.communityId,
@@ -66,7 +74,9 @@ export function NotificationPrefs() {
                 }
               />
               <Switch
+                aria-label={`${c.name} – ${t("broadcastColumn")}`}
                 checked={!bcastOut.has(c.communityId)}
+                disabled={setOptout.isPending}
                 onCheckedChange={(on) =>
                   setOptout.mutate({
                     communityId: c.communityId,
