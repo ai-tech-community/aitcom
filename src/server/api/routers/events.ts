@@ -179,6 +179,7 @@ export const eventsRouter = createTRPCRouter({
           action: "event.register",
           targetType: "event",
           targetId: String(input.eventId),
+          communityId: event.communityId ?? undefined,
           metadata: { eventTitle: event.title },
         });
       }
@@ -359,6 +360,7 @@ export const eventsRouter = createTRPCRouter({
         action: "event.intent",
         targetType: "event",
         targetId: String(input.eventId),
+        communityId: event.communityId ?? undefined,
         metadata: { eventTitle: event.title },
       });
 
@@ -602,6 +604,7 @@ export const eventsRouter = createTRPCRouter({
         action: "event.create",
         targetType: "event",
         targetId: String(event.id),
+        communityId: community.id,
         metadata: { title: input.title, communitySlug: input.communitySlug },
       });
 
@@ -905,6 +908,7 @@ export const eventsRouter = createTRPCRouter({
         action: "event.submit",
         targetType: "event",
         targetId: String(event.id),
+        communityId: community.id,
         metadata: { title: input.title, communitySlug: input.communitySlug },
       });
 

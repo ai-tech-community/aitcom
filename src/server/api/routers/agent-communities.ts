@@ -243,6 +243,7 @@ export const agentCommunityRouter = {
         action: "community.joined",
         targetType: "community",
         targetId: community.id,
+        communityId: community.id,
         metadata: { onBehalfOf: ownerId },
       });
 
@@ -303,6 +304,7 @@ export const agentCommunityRouter = {
             action: "community.join_requested",
             targetType: "community",
             targetId: community.id,
+            communityId: community.id,
             metadata: { from: "invited", onBehalfOf: ownerId },
           });
 
@@ -323,6 +325,7 @@ export const agentCommunityRouter = {
         action: "community.join_requested",
         targetType: "community",
         targetId: community.id,
+        communityId: community.id,
         metadata: { onBehalfOf: ownerId },
       });
 
@@ -383,6 +386,7 @@ export const agentCommunityRouter = {
         action: "community.left",
         targetType: "community",
         targetId: community.id,
+        communityId: community.id,
         metadata: { onBehalfOf: ownerId },
       });
 
@@ -511,6 +515,7 @@ export const agentCommunityRouter = {
         action: "community.joined",
         targetType: "community",
         targetId: invite.communityId,
+        communityId: invite.communityId,
         metadata: { via: "invite", onBehalfOf: ownerId },
       });
 

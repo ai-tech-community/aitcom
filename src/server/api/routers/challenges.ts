@@ -2,6 +2,7 @@ import { z } from "zod";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import type { Where } from "payload";
+import type { Challenge } from "@/payload-types";
 
 import {
   createTRPCRouter,
@@ -288,6 +289,7 @@ export const challengesRouter = createTRPCRouter({
         action: "challenge.enrolled",
         targetType: "challenges",
         targetId: String(challengeId),
+        communityId: challenge.communityId ?? undefined,
         collabSessionId: progressLogThreadId,
         metadata: {
           title: challenge.title,
@@ -894,11 +896,33 @@ export const challengesRouter = createTRPCRouter({
         })
         .returning();
 
-      // Update enrollment
-      await ctx.db
-        .update(challengeEnrollments)
-        .set({ submittedAt: new Date() })
-        .where(eq(challengeEnrollments.id, enrollment.id));
+      // Run the enrollment update and the best-effort challenge fetch concurrently —
+      // neither depends on the other, so their latencies overlap instead of stacking.
+      const fetchChallengeBestEffort = async (): Promise<
+        Challenge | undefined
+      > => {
+        try {
+          const payloadForFetch = await getPayloadClient();
+          return await payloadForFetch.findByID({
+            collection: "challenges",
+            id: input.challengeId,
+            depth: 0,
+          });
+        } catch {
+          // best-effort — instrumentation/email must not break solution submission
+          return undefined;
+        }
+      };
+
+      const [, fetchedChallenge] = await Promise.all([
+        // Update enrollment
+        ctx.db
+          .update(challengeEnrollments)
+          .set({ submittedAt: new Date() })
+          .where(eq(challengeEnrollments.id, enrollment.id)),
+        // Fetch challenge once for both activity instrumentation and email
+        fetchChallengeBestEffort(),
+      ]);
 
       await logActivity(ctx.db, {
         actorId: userId,
@@ -906,6 +930,7 @@ export const challengesRouter = createTRPCRouter({
         action: "challenge.solution_submitted",
         targetType: "challenges",
         targetId: String(input.challengeId),
+        communityId: fetchedChallenge?.communityId ?? undefined,
         collabSessionId: enrollment.progressLogThreadId ?? undefined,
         metadata: { title: input.title, templateBased: false },
       });
@@ -916,17 +941,12 @@ export const challengesRouter = createTRPCRouter({
         const displayName =
           ctx.session.user.name ?? userEmail.split("@")[0] ?? "there";
         void (async () => {
-          const payload = await getPayloadClient();
-          const challenge = await payload.findByID({
-            collection: "challenges",
-            id: input.challengeId,
-            depth: 0,
-          });
+          if (!fetchedChallenge) return;
           await sendChallengeSubmissionConfirmation(
             userEmail,
             displayName,
-            challenge.title,
-            challenge.slug ?? String(input.challengeId),
+            fetchedChallenge.title,
+            fetchedChallenge.slug ?? String(input.challengeId),
           );
         })().catch(() => {
           /* non-blocking */

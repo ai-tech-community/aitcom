@@ -1268,7 +1268,8 @@
       "noIdeasYet": "No ideas yet.",
       "viewAll": "VIEW ALL +",
       "votes": "{count} votes",
-      "replies": "{count} replies"
+      "replies": "{count} replies",
+      "insights": "Insights"
     },
     "manage": {
       "settings": "Settings",
@@ -1469,6 +1470,24 @@
     "nav": {
       "myCommunities": "My Communities",
       "explore": "Explore"
+    },
+    "insights": {
+      "accessDenied": "You don't have access to this community's insights.",
+      "kpiActive": "Active (14d)",
+      "kpiNewJoins": "New joins",
+      "kpiDeparted": "Departed",
+      "kpiContributions": "Contributions",
+      "kpiVsPrior": "vs prior",
+      "atRiskTitle": "At-risk members",
+      "atRiskSubtitle": "Active before, silent the last 14 days",
+      "atRiskEmpty": "No at-risk members 🎉",
+      "atRiskPrior": "{count, plural, one {# prior contribution} other {# prior contributions}}",
+      "newcomersTitle": "Un-activated newcomers",
+      "newcomersSubtitle": "Joined 3–30 days ago, never contributed",
+      "newcomersEmpty": "Everyone's activated 🎉",
+      "newcomersJoined": "Joined {date}",
+      "healthSection": "Community health metrics",
+      "loading": "Loading"
     }
   }
 }

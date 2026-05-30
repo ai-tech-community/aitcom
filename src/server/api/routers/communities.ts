@@ -337,6 +337,7 @@ export const communitiesRouter = createTRPCRouter({
         action: "community.joined",
         targetType: "community",
         targetId: community.id,
+        communityId: community.id,
       });
 
       return { success: true };
@@ -413,6 +414,7 @@ export const communitiesRouter = createTRPCRouter({
         action: "community.join_requested",
         targetType: "community",
         targetId: community.id,
+        communityId: community.id,
       });
 
       return { success: true };
@@ -506,6 +508,7 @@ export const communitiesRouter = createTRPCRouter({
         action: "community.joined",
         targetType: "community",
         targetId: invite.communityId,
+        communityId: invite.communityId,
         metadata: { via: "invite" },
       });
 
@@ -571,6 +574,7 @@ export const communitiesRouter = createTRPCRouter({
         action: "community.left",
         targetType: "community",
         targetId: community.id,
+        communityId: community.id,
       });
 
       return { success: true };
@@ -697,6 +701,18 @@ export const communitiesRouter = createTRPCRouter({
         targetType: "community",
         targetId: ctx.community.id,
         recipientId: input.userId,
+      });
+
+      // Emit a community.joined event attributed to the approved member so that
+      // the Insights `newJoins` / `healthPulse` metric counts approval-path joins
+      // consistently with the open-join path.
+      await logActivity(ctx.db, {
+        actorId: input.userId,
+        actorType: "member",
+        action: "community.joined",
+        targetType: "community",
+        targetId: ctx.community.id,
+        communityId: ctx.community.id,
       });
 
       return { success: true };

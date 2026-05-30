@@ -3,6 +3,143 @@
 Glossary of canonical terms used across the codebase. Implementation details
 belong in code or ADRs, not here.
 
+## Community platform domain
+
+### Hub
+
+The AIT-wide level: the whole platform. Modelled as the **root community**
+(the `community` row with slug `ait`), into which every user is enrolled as a
+member. Hub-wide content is the form of a [[shared-surface]] where
+`communityId` is null. "AI Tech Community" the product *is* the Hub; the name
+may be reconsidered later. Default to **Hub** when you mean the platform-wide
+level, never the bare word "community".
+
+### Community
+
+A tenant space inside the [[Hub]] — a `community` row (other than the root
+`ait` row) with its own members, roles, and `communityId`-scoped content.
+Communities bring their own members but share the Hub's surfaces. A user can
+belong to many communities; the Hub root membership is universal.
+
+Roles within a community: `owner | admin | moderator | member`
+(see `role-utils.ts`). Membership status: `active | pending_approval |
+invited | banned`. Join policy: `open | invite_only | approval_required`.
+
+### Shared surface
+
+A feature that exists in **both** a Hub-wide form and a per-Community form,
+distinguished by `communityId` (null = Hub-wide, set = scoped to one
+community). The shared surfaces today: events, forum, launchpad, ideas,
+jobs, blog/articles, challenges, impact, benchmark, investigations. A
+**Community admin**'s primary content levers are the per-Community instances
+of these surfaces.
+
+### Community admin
+
+A member of a [[Community]] with role `owner` or `admin` — the **community
+organizer**. Distinct from a Hub-level platform operator. The actor these
+growth/management features are designed for: they manage their community's
+members, moderate its [[shared-surface]] content, and run growth.
+
+### Contribution action
+
+The subset of `activity_event` actions that count as a member genuinely
+*participating* in a community: posts, comments, threads/replies, idea
+submit/vote, event register/intent/create, launchpad publish/vote/update/
+comment, challenge participation, article submit/publish. **Excludes**
+passive signals (likes, views, logins) and admin operations (ban, role
+change, settings). The heartbeat used to derive [[active-member]] and
+[[at-risk-member]]. A lurker who only reads and likes is *not* contributing.
+
+### Active member
+
+A member who emitted ≥1 [[contribution-action]] attributable to their
+community in the trailing **14 days** (window is tunable per community).
+Distinguished from a bare member row, which only means enrolled.
+
+### At-risk member
+
+An `active`-status member who contributed in the prior window (~15–45 days
+ago) but has **zero [[contribution-action]]s in the last 14 days** — fading
+before they formally leave. Surfaced to the [[community-admin]] sorted by
+prior contribution volume and role, so known/valuable members are triaged
+first. The signal that drives retention outreach. Contrast with formal
+membership churn, which is a deleted membership row + a `community.left`
+activity event.
+
+### Un-activated newcomer
+
+A member who **joined between 3 and 30 days ago** and has **zero
+[[contribution-action]]s ever** in that community. The activation funnel's
+failure set: they arrived but never participated. The 30-day upper bound
+makes this a true newcomer-activation funnel and avoids forward-only false
+positives for legacy members (who predate contribution instrumentation).
+
+### Ritual
+
+A recurring, scheduled engagement prompt that manufactures a reliable
+heartbeat — e.g. a weekly "introduce yourself" thread, a "show your work"
+showcase, a standup. A ritual is **structural scaffolding** owned by the
+[[Community]] (a clearly-labelled recurring container, like a pinned thread),
+posted by the system/[[community-admin]] — *not* an agent masquerading as a
+participant (see [[adr-0015-community-surfaces-are-human-authored]]). The agent
+may *draft* a ritual's copy under [[agent-autonomy-level]] = Suggest for a human
+to approve. The supply side of the Engage loop (Ritual → content →
+[[community-digest]] → recall → participation → Ritual).
+
+### Community digest
+
+A recurring per-[[Community]] roll-up (new threads, events, top posts, new
+members, revival prompts) — rendered as a **section within the consolidated
+[[hub-digest]]**, not a standalone email. The admin controls the section's
+content and preferred cadence; the Hub bundles and schedules. Empty sections
+are suppressed. The distribution side of the Engage loop. Per-member opt-out,
+per section and globally. See [[adr-0014-consolidated-digest-broadcast-ceiling]].
+
+### Hub digest
+
+The single consolidated digest email a member receives from AIT, with one
+[[community-digest]] section per community they belong to. One email instead
+of one-per-community — the mechanism that stops multi-community notification
+pile-up from poisoning Hub-wide deliverability.
+
+### Broadcast
+
+A time-sensitive announcement an admin sends directly to a [[Community]]'s
+members (outside the [[hub-digest]] cadence). Stays per-community for
+immediacy, but is subject to the [[notification-ceiling]]. Transactional
+messages a member opted into (e.g. a reminder for an event they RSVP'd to)
+are exempt from the promotional cap.
+
+### Notification ceiling
+
+A **Hub-invariant** (not admin-tunable) cap on how many promotional
+[[broadcast]]s any single member receives across *all* their communities in a
+window, fair-shared across communities. Protects the member's relationship
+with the platform; a [[community-admin]]'s sending cadence is policy that
+operates *inside* this envelope. The notification-load application of
+[[adr-0013-hub-invariant-vs-community-policy]].
+
+### Agent autonomy level
+
+How proactive an agent's **suggestions to its human** are — **not** whether an
+agent posts on its own. Agents never publish conversational content as
+themselves in human [[Community]] surfaces (see
+[[adr-0015-community-surfaces-are-human-authored]]). The dial:
+**Off** (no agent suggestions) · **Suggest** (agent proactively drafts replies,
+posts, [[community-digest]] copy, revival nudges, and [[introduction-suggestion]]s;
+a human reviews and, if they choose, publishes **in their own name**). There is
+no autonomous-posting level. Bounded by the existing AI self-loop-prevention
+rules.
+
+### Introduction suggestion
+
+An agent-surfaced recommendation that two members who share an interest/skill
+should connect — matchmaking computed from `member_profile.interests`/`skills`.
+Delivered as a private suggestion to the human(s), who choose whether to act;
+the agent never introduces people on their behalf without consent. A
+connection mechanic that serves both engagement and acquisition.
+
 ## Benchmark domain
 
 ### Benchmark

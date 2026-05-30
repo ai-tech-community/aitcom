@@ -1268,7 +1268,8 @@
       "noIdeasYet": "Nog geen ideeën.",
       "viewAll": "ALLES BEKIJKEN +",
       "votes": "{count} stemmen",
-      "replies": "{count} reacties"
+      "replies": "{count} reacties",
+      "insights": "Insights"
     },
     "manage": {
       "settings": "Instellingen",
@@ -1469,6 +1470,24 @@
     "nav": {
       "myCommunities": "Mijn Communities",
       "explore": "Ontdekken"
+    },
+    "insights": {
+      "accessDenied": "Je hebt geen toegang tot de inzichten van deze community.",
+      "kpiActive": "Actief (14d)",
+      "kpiNewJoins": "Nieuwe leden",
+      "kpiDeparted": "Vertrokken",
+      "kpiContributions": "Bijdragen",
+      "kpiVsPrior": "t.o.v. vorige",
+      "atRiskTitle": "Leden met risico",
+      "atRiskSubtitle": "Eerder actief, de afgelopen 14 dagen stil",
+      "atRiskEmpty": "Geen leden met risico 🎉",
+      "atRiskPrior": "{count, plural, one {# eerdere bijdrage} other {# eerdere bijdragen}}",
+      "newcomersTitle": "Niet-geactiveerde nieuwkomers",
+      "newcomersSubtitle": "Lid geworden 3–30 dagen geleden, nog nooit bijgedragen",
+      "newcomersEmpty": "Iedereen is geactiveerd 🎉",
+      "newcomersJoined": "Lid geworden op {date}",
+      "healthSection": "Community gezondheidsstatistieken",
+      "loading": "Laden"
     }
   }
 }

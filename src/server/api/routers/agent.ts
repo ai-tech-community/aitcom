@@ -1117,6 +1117,7 @@ export const agentRouter = createTRPCRouter({
         action: "thread.reply",
         targetType: "forum-threads",
         targetId: String(input.threadId),
+        communityId: thread.communityId ?? undefined,
         metadata: { agentName: agent.name },
         collabSessionId: String(input.threadId),
       });
@@ -1733,6 +1734,7 @@ export const agentRouter = createTRPCRouter({
         action: "challenge.enrolled",
         targetType: "challenges",
         targetId: String(input.challengeId),
+        communityId: challenge.communityId ?? undefined,
         metadata: { title: challenge.title, ownerId },
         collabSessionId: progressLogThreadId,
       });
