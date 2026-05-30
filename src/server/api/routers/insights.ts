@@ -9,6 +9,7 @@ import {
   memberProfiles,
   user,
 } from "@/server/db/schema";
+import { db } from "@/server/db";
 import {
   CONTRIBUTION_ACTIONS,
   summarizeHealth,
@@ -22,6 +23,7 @@ import {
 const WINDOW_DAYS = 14;
 const PRIOR_WINDOW_DAYS = 45;
 const NEWCOMER_MIN_AGE_DAYS = 3;
+const NEWCOMER_MAX_AGE_DAYS = 30;
 const AT_RISK_CAP = 50;
 
 // CONTRIBUTION_ACTIONS is a readonly tuple; Drizzle inArray wants string[].
@@ -33,13 +35,38 @@ function requireAdmin(role: string | null) {
   }
 }
 
+/** Fetch display-name + avatar for a list of user IDs. Returns an empty map for empty input. */
+async function hydrateProfiles(
+  database: typeof db,
+  userIds: string[],
+): Promise<Map<string, { displayName: string | null; image: string | null }>> {
+  if (userIds.length === 0) return new Map();
+
+  const profileRows = await database
+    .select({
+      userId: memberProfiles.userId,
+      displayName: memberProfiles.displayName,
+      image: user.image,
+    })
+    .from(memberProfiles)
+    .innerJoin(user, eq(memberProfiles.userId, user.id))
+    .where(inArray(memberProfiles.userId, userIds));
+
+  return new Map(
+    profileRows.map((r) => [
+      r.userId,
+      { displayName: r.displayName, image: r.image },
+    ]),
+  );
+}
+
 export const insightsRouter = createTRPCRouter({
   healthPulse: communityProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
     requireAdmin(ctx.communityRole);
     const now = new Date();
-    const since = windowStart(now, PRIOR_WINDOW_DAYS); // widest needed window
+    const since = windowStart(now, WINDOW_DAYS * 2); // 28 days — 2× window is all summarizeHealth needs
 
     const events = await ctx.db
       .select({
@@ -52,6 +79,11 @@ export const insightsRouter = createTRPCRouter({
         and(
           eq(activityEvents.communityId, ctx.community.id),
           gte(activityEvents.createdAt, since),
+          inArray(activityEvents.action, [
+            ...CONTRIBUTION_ACTION_LIST,
+            "community.joined",
+            "community.left",
+          ]),
         ),
       );
 
@@ -90,7 +122,12 @@ export const insightsRouter = createTRPCRouter({
           joinedAt: communityMemberships.joinedAt,
         })
         .from(communityMemberships)
-        .where(eq(communityMemberships.communityId, ctx.community.id)),
+        .where(
+          and(
+            eq(communityMemberships.communityId, ctx.community.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        ),
       ctx.db
         .select({
           actorId: activityEvents.actorId,
@@ -119,22 +156,7 @@ export const insightsRouter = createTRPCRouter({
     if (atRisk.length === 0) return [];
 
     const userIds = atRisk.map((m) => m.userId);
-    const profileRows = await ctx.db
-      .select({
-        userId: memberProfiles.userId,
-        displayName: memberProfiles.displayName,
-        image: user.image,
-      })
-      .from(memberProfiles)
-      .innerJoin(user, eq(memberProfiles.userId, user.id))
-      .where(inArray(memberProfiles.userId, userIds));
-
-    const profileMap = new Map(
-      profileRows.map((r) => [
-        r.userId,
-        { displayName: r.displayName, image: r.image },
-      ]),
-    );
+    const profileMap = await hydrateProfiles(ctx.db, userIds);
 
     return atRisk.map((m) => ({
       ...m,
@@ -148,7 +170,7 @@ export const insightsRouter = createTRPCRouter({
     requireAdmin(ctx.communityRole);
     const now = new Date();
 
-    const [memberships, events] = await Promise.all([
+    const [memberships, contributorRows] = await Promise.all([
       ctx.db
         .select({
           userId: communityMemberships.userId,
@@ -157,14 +179,14 @@ export const insightsRouter = createTRPCRouter({
           joinedAt: communityMemberships.joinedAt,
         })
         .from(communityMemberships)
-        .where(eq(communityMemberships.communityId, ctx.community.id)),
-      // No time filter — "never contributed ever" requires all-time contribution rows
+        .where(
+          and(
+            eq(communityMemberships.communityId, ctx.community.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        ),
       ctx.db
-        .select({
-          actorId: activityEvents.actorId,
-          action: activityEvents.action,
-          createdAt: activityEvents.createdAt,
-        })
+        .selectDistinct({ actorId: activityEvents.actorId })
         .from(activityEvents)
         .where(
           and(
@@ -176,30 +198,16 @@ export const insightsRouter = createTRPCRouter({
 
     const newcomers = selectUnactivated({
       memberships: memberships as MembershipRow[],
-      contributions: events as ActivityRow[],
+      contributorUserIds: contributorRows.map((r) => r.actorId),
       now,
       minAgeDays: NEWCOMER_MIN_AGE_DAYS,
+      maxAgeDays: NEWCOMER_MAX_AGE_DAYS,
     });
 
     if (newcomers.length === 0) return [];
 
     const userIds = newcomers.map((m) => m.userId);
-    const profileRows = await ctx.db
-      .select({
-        userId: memberProfiles.userId,
-        displayName: memberProfiles.displayName,
-        image: user.image,
-      })
-      .from(memberProfiles)
-      .innerJoin(user, eq(memberProfiles.userId, user.id))
-      .where(inArray(memberProfiles.userId, userIds));
-
-    const profileMap = new Map(
-      profileRows.map((r) => [
-        r.userId,
-        { displayName: r.displayName, image: r.image },
-      ]),
-    );
+    const profileMap = await hydrateProfiles(ctx.db, userIds);
 
     return newcomers.map((m) => ({
       ...m,
