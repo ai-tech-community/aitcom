@@ -1268,7 +1268,8 @@
       "noIdeasYet": "Nog geen ideeën.",
       "viewAll": "ALLES BEKIJKEN +",
       "votes": "{count} stemmen",
-      "replies": "{count} reacties"
+      "replies": "{count} reacties",
+      "insights": "Insights"
     },
     "manage": {
       "settings": "Instellingen",
@@ -1469,6 +1470,9 @@
     "nav": {
       "myCommunities": "Mijn Communities",
       "explore": "Ontdekken"
+    },
+    "insights": {
+      "accessDenied": "You don't have access to this community's insights."
     }
   }
 }
