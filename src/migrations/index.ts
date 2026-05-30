@@ -30,6 +30,7 @@ import * as migration_20260518c_benchmark_coverage_by_cell from "./20260518c_ben
 import * as migration_20260518d_benchmark_assignment_byoa from "./20260518d_benchmark_assignment_byoa";
 import * as migration_20260528_event_submission from "./20260528_event_submission";
 import * as migration_20260530_backfill_membership_community_id from "./20260530_backfill_membership_community_id";
+import * as migration_20260530b_activity_event_community_created_idx from "./20260530b_activity_event_community_created_idx";
 
 export const migrations = [
   {
@@ -191,5 +192,10 @@ export const migrations = [
     up: migration_20260530_backfill_membership_community_id.up,
     down: migration_20260530_backfill_membership_community_id.down,
     name: "20260530_backfill_membership_community_id",
+  },
+  {
+    up: migration_20260530b_activity_event_community_created_idx.up,
+    down: migration_20260530b_activity_event_community_created_idx.down,
+    name: "20260530b_activity_event_community_created_idx",
   },
 ];

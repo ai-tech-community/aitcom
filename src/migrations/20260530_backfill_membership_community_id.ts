@@ -11,6 +11,6 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   `);
 }
 
-export async function down({ db }: MigrateDownArgs): Promise<void> {
+export async function down({ db: _db }: MigrateDownArgs): Promise<void> {
   // Safe no-op: cannot distinguish backfilled rows from originally-set rows
 }

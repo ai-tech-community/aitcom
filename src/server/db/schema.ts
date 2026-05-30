@@ -614,6 +614,7 @@ export const activityEvents = appSchema.table(
     index("activity_events_created_idx").on(t.createdAt),
     index("activity_events_session_idx").on(t.collabSessionId),
     index("activity_events_recipient_idx").on(t.recipientId),
+    index("activity_events_community_created_idx").on(t.communityId, t.createdAt),
   ],
 );
 
