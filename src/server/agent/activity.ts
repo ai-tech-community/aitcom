@@ -167,6 +167,7 @@ async function checkPlatformActionProgress(
           targetId: String(enrollment.challengeId),
           collabSessionId: enrollment.progressLogThreadId ?? null,
           contextType: "challenge",
+          communityId: challenge.communityId ?? null,
           metadata: {
             title: challenge.title,
             objectiveIndex: i,
@@ -284,6 +285,7 @@ export async function checkEnrollmentCompletion(
     targetId: String(challengeId),
     collabSessionId: enrollment.progressLogThreadId ?? null,
     contextType: "challenge",
+    communityId: challenge.communityId ?? null,
     metadata: {
       title: challenge.title,
       xp: xpAwarded,

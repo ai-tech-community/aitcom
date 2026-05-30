@@ -276,6 +276,7 @@ export const forumRouter = createTRPCRouter({
         action: "idea.submitted",
         targetType: "community-ideas",
         targetId: String(idea.id),
+        communityId: communityId ?? undefined,
         metadata: { title: input.title },
       });
 
@@ -341,6 +342,7 @@ export const forumRouter = createTRPCRouter({
           action: "idea.voted",
           targetType: "community-ideas",
           targetId: String(input.ideaId),
+          communityId: idea.communityId ?? undefined,
           metadata: { title: idea.title },
         });
 
@@ -510,6 +512,7 @@ export const forumRouter = createTRPCRouter({
         action: "thread.create",
         targetType: "forum-threads",
         targetId: String(thread.id),
+        communityId: communityId ?? undefined,
         metadata: { title: input.title, category: input.category, slug },
       });
 
@@ -568,6 +571,7 @@ export const forumRouter = createTRPCRouter({
         action: "thread.reply",
         targetType: "forum-threads",
         targetId: String(input.threadId),
+        communityId: thread.communityId ?? undefined,
         metadata: {
           threadTitle: thread.title,
           threadSlug: thread.slug,

@@ -210,6 +210,7 @@ export const feedRouter = createTRPCRouter({
         action: "feed.post_created",
         targetType: "feed-posts",
         targetId: String(post.id),
+        communityId: community.id,
         metadata: { communityId: community.id },
       });
 
@@ -465,6 +466,7 @@ export const feedRouter = createTRPCRouter({
         action: "feed.comment_created",
         targetType: "feed-comments",
         targetId: String(comment.id),
+        communityId: post.communityId ?? undefined,
         metadata: { postId: input.postId },
       });
 

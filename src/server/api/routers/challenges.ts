@@ -288,6 +288,7 @@ export const challengesRouter = createTRPCRouter({
         action: "challenge.enrolled",
         targetType: "challenges",
         targetId: String(challengeId),
+        communityId: challenge.communityId ?? undefined,
         collabSessionId: progressLogThreadId,
         metadata: {
           title: challenge.title,
@@ -900,12 +901,20 @@ export const challengesRouter = createTRPCRouter({
         .set({ submittedAt: new Date() })
         .where(eq(challengeEnrollments.id, enrollment.id));
 
+      const payloadForActivity = await getPayloadClient();
+      const challengeForActivity = await payloadForActivity.findByID({
+        collection: "challenges",
+        id: input.challengeId,
+        depth: 0,
+      });
+
       await logActivity(ctx.db, {
         actorId: userId,
         actorType: "member",
         action: "challenge.solution_submitted",
         targetType: "challenges",
         targetId: String(input.challengeId),
+        communityId: challengeForActivity.communityId ?? undefined,
         collabSessionId: enrollment.progressLogThreadId ?? undefined,
         metadata: { title: input.title, templateBased: false },
       });

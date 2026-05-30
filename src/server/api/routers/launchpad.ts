@@ -314,6 +314,7 @@ export const launchpadRouter = createTRPCRouter({
           action: "launchpad.project.published",
           targetType: "launchpad-projects",
           targetId: String(project.id),
+          communityId: project.communityId ?? undefined,
           metadata: { title: input.title, stage: input.stage },
         });
 
@@ -459,6 +460,7 @@ export const launchpadRouter = createTRPCRouter({
         action: "launchpad.update.posted",
         targetType: "launchpad-projects",
         targetId: String(input.projectId),
+        communityId: project.communityId ?? undefined,
         metadata: { title: input.title, projectTitle: project.title },
       });
 
@@ -525,6 +527,7 @@ export const launchpadRouter = createTRPCRouter({
           action: "launchpad.project.voted",
           targetType: "launchpad-projects",
           targetId: String(input.projectId),
+          communityId: project.communityId ?? undefined,
           metadata: { title: project.title },
         });
 
@@ -591,6 +594,7 @@ export const launchpadRouter = createTRPCRouter({
         action: "launchpad.comment.created",
         targetType: "launchpad-projects",
         targetId: String(input.projectId),
+        communityId: project.communityId ?? undefined,
         metadata: {
           projectTitle: project.title,
           isReply: !!input.parentId,
