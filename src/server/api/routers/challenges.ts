@@ -2,6 +2,7 @@ import { z } from "zod";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import type { Where } from "payload";
+import type { Challenge } from "@/payload-types";
 
 import {
   createTRPCRouter,
@@ -901,12 +902,19 @@ export const challengesRouter = createTRPCRouter({
         .set({ submittedAt: new Date() })
         .where(eq(challengeEnrollments.id, enrollment.id));
 
-      const payloadForActivity = await getPayloadClient();
-      const challengeForActivity = await payloadForActivity.findByID({
-        collection: "challenges",
-        id: input.challengeId,
-        depth: 0,
-      });
+      // Fetch challenge once for both activity instrumentation and email — best-effort:
+      // if the fetch fails (e.g. challenge deleted after enrollment) we continue without it.
+      let fetchedChallenge: Challenge | undefined;
+      try {
+        const payloadForFetch = await getPayloadClient();
+        fetchedChallenge = await payloadForFetch.findByID({
+          collection: "challenges",
+          id: input.challengeId,
+          depth: 0,
+        });
+      } catch {
+        // best-effort — instrumentation/email must not break solution submission
+      }
 
       await logActivity(ctx.db, {
         actorId: userId,
@@ -914,7 +922,7 @@ export const challengesRouter = createTRPCRouter({
         action: "challenge.solution_submitted",
         targetType: "challenges",
         targetId: String(input.challengeId),
-        communityId: challengeForActivity.communityId ?? undefined,
+        communityId: fetchedChallenge?.communityId ?? undefined,
         collabSessionId: enrollment.progressLogThreadId ?? undefined,
         metadata: { title: input.title, templateBased: false },
       });
@@ -925,17 +933,12 @@ export const challengesRouter = createTRPCRouter({
         const displayName =
           ctx.session.user.name ?? userEmail.split("@")[0] ?? "there";
         void (async () => {
-          const payload = await getPayloadClient();
-          const challenge = await payload.findByID({
-            collection: "challenges",
-            id: input.challengeId,
-            depth: 0,
-          });
+          if (!fetchedChallenge) return;
           await sendChallengeSubmissionConfirmation(
             userEmail,
             displayName,
-            challenge.title,
-            challenge.slug ?? String(input.challengeId),
+            fetchedChallenge.title,
+            fetchedChallenge.slug ?? String(input.challengeId),
           );
         })().catch(() => {
           /* non-blocking */
