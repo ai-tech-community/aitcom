@@ -1489,5 +1489,15 @@
       "healthSection": "Community gezondheidsstatistieken",
       "loading": "Laden"
     }
+  },
+  "notificationPrefs": {
+    "title": "Meldingen",
+    "description": "Kies wat je inbox bereikt. Je kunt je afmelden voor de wekelijkse samenvatting globaal of per community, en aankondigingen van een community stoppen.",
+    "globalDigest": "Wekelijkse samenvatting",
+    "globalDigestHint": "Één gecombineerde e-mail met een sectie per community.",
+    "perCommunity": "Per community",
+    "digestColumn": "Samenvattingssectie",
+    "broadcastColumn": "Aankondigingen",
+    "saved": "Opgeslagen"
   }
 }
