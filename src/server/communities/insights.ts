@@ -76,3 +76,74 @@ export function summarizeHealth(opts: {
     contributionPrev: prev.length,
   };
 }
+
+export type MembershipRow = {
+  userId: string;
+  role: string;
+  status: string;
+  joinedAt: Date;
+};
+
+export type AtRiskMember = {
+  userId: string;
+  role: string;
+  priorContributions: number;
+  lastContributionAt: Date | null;
+};
+
+const ROLE_RANK: Record<string, number> = {
+  owner: 4,
+  admin: 3,
+  moderator: 2,
+  member: 1,
+};
+
+export function selectAtRisk(opts: {
+  memberships: MembershipRow[];
+  contributions: ActivityRow[];
+  now: Date;
+  windowDays: number;
+  priorWindowDays: number;
+  cap: number;
+}): AtRiskMember[] {
+  const { memberships, contributions, now, windowDays, priorWindowDays, cap } =
+    opts;
+  const curStart = windowStart(now, windowDays);
+  const priorStart = windowStart(now, priorWindowDays);
+
+  const byUser = new Map<string, ActivityRow[]>();
+  for (const c of contributions) {
+    const list = byUser.get(c.actorId) ?? [];
+    list.push(c);
+    byUser.set(c.actorId, list);
+  }
+
+  const result: AtRiskMember[] = [];
+  for (const m of memberships) {
+    if (m.status !== "active") continue;
+    const rows = byUser.get(m.userId) ?? [];
+    const contributedRecently = rows.some((r) => r.createdAt >= curStart);
+    if (contributedRecently) continue; // still active → not at risk
+    const prior = rows.filter(
+      (r) => r.createdAt >= priorStart && r.createdAt < curStart,
+    );
+    if (prior.length === 0) continue; // never engaged in prior window → newcomer, not at-risk
+    const lastContributionAt = rows.reduce<Date | null>(
+      (max, r) => (max === null || r.createdAt > max ? r.createdAt : max),
+      null,
+    );
+    result.push({
+      userId: m.userId,
+      role: m.role,
+      priorContributions: prior.length,
+      lastContributionAt,
+    });
+  }
+
+  result.sort(
+    (a, b) =>
+      b.priorContributions - a.priorContributions ||
+      (ROLE_RANK[b.role] ?? 0) - (ROLE_RANK[a.role] ?? 0),
+  );
+  return result.slice(0, cap);
+}

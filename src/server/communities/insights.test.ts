@@ -4,6 +4,7 @@ import {
   isContribution,
   windowStart,
   summarizeHealth,
+  selectAtRisk,
 } from "./insights";
 
 describe("isContribution", () => {
@@ -95,5 +96,81 @@ describe("summarizeHealth", () => {
     });
     expect(res.contributionCount).toBe(2);
     expect(res.contributionPrev).toBe(1);
+  });
+});
+
+const mem = (userId: string, role = "member", status = "active") => ({
+  userId,
+  role,
+  status,
+  joinedAt: new Date("2026-01-01T00:00:00Z"),
+});
+
+describe("selectAtRisk", () => {
+  const now = new Date("2026-05-30T00:00:00.000Z");
+
+  it("flags a member active in the prior window but silent in the last 14d", () => {
+    const res = selectAtRisk({
+      memberships: [mem("u1")],
+      contributions: [at("2026-05-10T00:00:00Z", "u1")], // 20d ago: prior, not current
+      now,
+      windowDays: 14,
+      priorWindowDays: 45,
+      cap: 50,
+    });
+    expect(res.map((m) => m.userId)).toEqual(["u1"]);
+    expect(res[0]!.priorContributions).toBe(1);
+  });
+
+  it("does NOT flag a currently-active member", () => {
+    const res = selectAtRisk({
+      memberships: [mem("u1")],
+      contributions: [at("2026-05-29T00:00:00Z", "u1")], // current
+      now,
+      windowDays: 14,
+      priorWindowDays: 45,
+      cap: 50,
+    });
+    expect(res).toEqual([]);
+  });
+
+  it("does NOT flag someone who never contributed (that's a newcomer, not at-risk)", () => {
+    const res = selectAtRisk({
+      memberships: [mem("u1")],
+      contributions: [],
+      now,
+      windowDays: 14,
+      priorWindowDays: 45,
+      cap: 50,
+    });
+    expect(res).toEqual([]);
+  });
+
+  it("excludes banned/non-active memberships", () => {
+    const res = selectAtRisk({
+      memberships: [mem("u1", "member", "banned")],
+      contributions: [at("2026-05-10T00:00:00Z", "u1")],
+      now,
+      windowDays: 14,
+      priorWindowDays: 45,
+      cap: 50,
+    });
+    expect(res).toEqual([]);
+  });
+
+  it("sorts by prior contribution volume desc and respects cap", () => {
+    const res = selectAtRisk({
+      memberships: [mem("u1"), mem("u2")],
+      contributions: [
+        at("2026-05-10T00:00:00Z", "u1"),
+        at("2026-05-09T00:00:00Z", "u2"),
+        at("2026-05-08T00:00:00Z", "u2"),
+      ],
+      now,
+      windowDays: 14,
+      priorWindowDays: 45,
+      cap: 1,
+    });
+    expect(res.map((m) => m.userId)).toEqual(["u2"]); // u2 has 2 prior, capped to 1
   });
 });
