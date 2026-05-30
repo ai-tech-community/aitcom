@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 
 function delta(now: number, prev: number) {
@@ -8,26 +9,36 @@ function delta(now: number, prev: number) {
 }
 
 export function HealthPulse({ slug }: { slug: string }) {
+  const t = useTranslations("communities.insights");
   const { data, isLoading } = api.insights.healthPulse.useQuery({ slug });
   if (isLoading || !data) {
-    return <div className="h-24 animate-pulse rounded-lg border" />;
+    return (
+      <div
+        role="status"
+        aria-label={t("loading")}
+        className="h-24 animate-pulse rounded-lg border"
+      />
+    );
   }
   const cards = [
     {
-      label: "Active (14d)",
+      label: t("kpiActive"),
       value: data.activeNow,
       sub: delta(data.activeNow, data.activePrev),
     },
-    { label: "New joins", value: data.newJoins, sub: "" },
-    { label: "Departed", value: data.departures, sub: "" },
+    { label: t("kpiNewJoins"), value: data.newJoins, sub: "" },
+    { label: t("kpiDeparted"), value: data.departures, sub: "" },
     {
-      label: "Contributions",
+      label: t("kpiContributions"),
       value: data.contributionCount,
       sub: delta(data.contributionCount, data.contributionPrev),
     },
   ];
   return (
-    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section
+      aria-label={t("healthSection")}
+      className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+    >
       {cards.map((c) => (
         <article
           key={c.label}
@@ -41,7 +52,7 @@ export function HealthPulse({ slug }: { slug: string }) {
           </p>
           {c.sub ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              {c.sub} vs prior
+              {c.sub} {t("kpiVsPrior")}
             </p>
           ) : null}
         </article>
