@@ -1,5 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, gte, inArray } from "drizzle-orm";
+import { z } from "zod";
 
 import { createTRPCRouter, communityProcedure } from "@/server/api/trpc";
 import {
@@ -33,7 +34,9 @@ function requireAdmin(role: string | null) {
 }
 
 export const insightsRouter = createTRPCRouter({
-  healthPulse: communityProcedure.query(async ({ ctx }) => {
+  healthPulse: communityProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx }) => {
     requireAdmin(ctx.communityRole);
     const now = new Date();
     const since = windowStart(now, PRIOR_WINDOW_DAYS); // widest needed window
@@ -71,7 +74,9 @@ export const insightsRouter = createTRPCRouter({
     });
   }),
 
-  atRiskMembers: communityProcedure.query(async ({ ctx }) => {
+  atRiskMembers: communityProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx }) => {
     requireAdmin(ctx.communityRole);
     const now = new Date();
     const since = windowStart(now, PRIOR_WINDOW_DAYS);
@@ -137,7 +142,9 @@ export const insightsRouter = createTRPCRouter({
     }));
   }),
 
-  unactivatedNewcomers: communityProcedure.query(async ({ ctx }) => {
+  unactivatedNewcomers: communityProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx }) => {
     requireAdmin(ctx.communityRole);
     const now = new Date();
 
