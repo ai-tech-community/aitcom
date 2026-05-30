@@ -320,7 +320,7 @@ export async function sendBroadcastEmail(
   await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: subject,
+    subject,
     html: `
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
         <p style="font-size: 14px; white-space: pre-wrap;">${escapeHtml(body)}</p>

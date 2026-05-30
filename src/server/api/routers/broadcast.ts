@@ -49,6 +49,12 @@ export const broadcastRouter = createTRPCRouter({
         })
         .returning({ id: broadcasts.id });
 
+      // Idempotency gate: mark sent immediately so a crash/retry can't double-send.
+      await ctx.db
+        .update(broadcasts)
+        .set({ sentAt: now })
+        .where(eq(broadcasts.id, broadcast!.id));
+
       // Active members of this community.
       const members = await ctx.db
         .select({
@@ -63,12 +69,8 @@ export const broadcastRouter = createTRPCRouter({
             eq(communityMemberships.status, "active"),
           ),
         );
-      const memberIds = members.map((m) => m.userId);
+      const memberIds = members.map((member) => member.userId);
       if (memberIds.length === 0) {
-        await ctx.db
-          .update(broadcasts)
-          .set({ sentAt: now })
-          .where(eq(broadcasts.id, broadcast!.id));
         return { broadcastId: broadcast!.id, emailed: 0 };
       }
 
@@ -132,13 +134,16 @@ export const broadcastRouter = createTRPCRouter({
         sendsByUser.set(r.userId, m);
       }
 
+      const notificationRows: (typeof notifications.$inferInsert)[] = [];
+      const deliveryRows: (typeof broadcastDeliveries.$inferInsert)[] = [];
+
       let emailed = 0;
-      for (const m of members) {
-        if (optedOut.has(m.userId)) continue;
+      for (const member of members) {
+        if (optedOut.has(member.userId)) continue;
 
         // In-app notification: always (pull, not ceiling-limited).
-        await ctx.db.insert(notifications).values({
-          userId: m.userId,
+        notificationRows.push({
+          userId: member.userId,
           type: "broadcast",
           title: input.subject,
           content: input.body,
@@ -147,24 +152,24 @@ export const broadcastRouter = createTRPCRouter({
         });
 
         const emailAllowed = allowPromotional({
-          sendsByCommunity: sendsByUser.get(m.userId) ?? {},
+          sendsByCommunity: sendsByUser.get(member.userId) ?? {},
           communityId,
-          nCommunities: communityCounts.get(m.userId) ?? 1,
+          nCommunities: communityCounts.get(member.userId) ?? 1,
           ceiling: BROADCAST_CEILING,
         });
 
         let emailSent = false;
         if (emailAllowed) {
           try {
-            emailSent = await sendBroadcastEmail(m.email, input.subject, input.body);
+            emailSent = await sendBroadcastEmail(member.email, input.subject, input.body);
           } catch (err) {
-            console.error(`broadcast: send failed for ${m.userId}`, err);
+            console.error(`broadcast: send failed for ${member.userId}`, err);
           }
           if (emailSent) emailed++;
         }
-        await ctx.db.insert(broadcastDeliveries).values({
+        deliveryRows.push({
           broadcastId: broadcast!.id,
-          userId: m.userId,
+          userId: member.userId,
           communityId,
           class: "promotional",
           emailSent,
@@ -172,10 +177,8 @@ export const broadcastRouter = createTRPCRouter({
         });
       }
 
-      await ctx.db
-        .update(broadcasts)
-        .set({ sentAt: now })
-        .where(eq(broadcasts.id, broadcast!.id));
+      if (notificationRows.length) await ctx.db.insert(notifications).values(notificationRows);
+      if (deliveryRows.length) await ctx.db.insert(broadcastDeliveries).values(deliveryRows);
 
       return { broadcastId: broadcast!.id, emailed };
     }),
