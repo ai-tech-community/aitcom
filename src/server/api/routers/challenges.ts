@@ -903,11 +903,11 @@ export const challengesRouter = createTRPCRouter({
       > => {
         try {
           const payloadForFetch = await getPayloadClient();
-          return (await payloadForFetch.findByID({
+          return await payloadForFetch.findByID({
             collection: "challenges",
             id: input.challengeId,
             depth: 0,
-          })) as Challenge;
+          });
         } catch {
           // best-effort — instrumentation/email must not break solution submission
           return undefined;

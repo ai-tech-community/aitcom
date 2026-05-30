@@ -51,7 +51,7 @@ export function HealthPulse({ slug }: { slug: string }) {
             {c.value}
           </p>
           {c.sub ? (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-xs">
               {c.sub} {t("kpiVsPrior")}
             </p>
           ) : null}

@@ -13,7 +13,9 @@ export function UnactivatedList({ slug }: { slug: string }) {
     <div className="rounded-lg border">
       <div className="border-b p-4">
         <h3 className="text-sm font-semibold">{t("newcomersTitle")}</h3>
-        <p className="text-muted-foreground text-xs">{t("newcomersSubtitle")}</p>
+        <p className="text-muted-foreground text-xs">
+          {t("newcomersSubtitle")}
+        </p>
       </div>
       {isLoading ? (
         <div

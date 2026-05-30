@@ -196,14 +196,29 @@ describe("selectAtRisk", () => {
     const now = new Date("2026-05-30T00:00:00.000Z");
     const res = selectAtRisk({
       memberships: [
-        { userId: "u1", role: "owner", status: "active", joinedAt: new Date("2026-01-01T00:00:00Z") },
-        { userId: "u2", role: "member", status: "active", joinedAt: new Date("2026-01-01T00:00:00Z") },
+        {
+          userId: "u1",
+          role: "owner",
+          status: "active",
+          joinedAt: new Date("2026-01-01T00:00:00Z"),
+        },
+        {
+          userId: "u2",
+          role: "member",
+          status: "active",
+          joinedAt: new Date("2026-01-01T00:00:00Z"),
+        },
       ],
       contributions: [
-        at("2026-05-10T00:00:00Z", "u1"), at("2026-05-09T00:00:00Z", "u1"),
-        at("2026-05-10T00:00:00Z", "u2"), at("2026-05-09T00:00:00Z", "u2"),
+        at("2026-05-10T00:00:00Z", "u1"),
+        at("2026-05-09T00:00:00Z", "u1"),
+        at("2026-05-10T00:00:00Z", "u2"),
+        at("2026-05-09T00:00:00Z", "u2"),
       ],
-      now, windowDays: 14, priorWindowDays: 45, cap: 50,
+      now,
+      windowDays: 14,
+      priorWindowDays: 45,
+      cap: 50,
     });
     expect(res.map((m) => m.userId)).toEqual(["u1", "u2"]);
   });
