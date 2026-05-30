@@ -1316,7 +1316,8 @@
         "invites": "Uitnodigingen",
         "rules": "Regels",
         "ownership": "Eigenaarschap",
-        "integrations": "Integraties"
+        "integrations": "Integraties",
+        "broadcast": "Aankondigingen"
       },
       "members": {
         "activeTab": "Actief",
@@ -1499,5 +1500,14 @@
     "digestColumn": "Samenvattingssectie",
     "broadcastColumn": "Aankondigingen",
     "saved": "Opgeslagen"
+  },
+  "broadcast": {
+    "title": "Stuur een aankondiging",
+    "description": "Bereik de leden van je community. Promotionele aankondigingen zijn onderhevig aan een Hub-brede wekelijkse limiet per lid; evenementherinneringen aan geregistreerde deelnemers worden altijd afgeleverd.",
+    "subject": "Onderwerp",
+    "body": "Bericht",
+    "send": "Aankondiging versturen",
+    "sent": "Verzonden — {emailed} lid(leden) per e-mail bereikt; iedereen ziet het in de app.",
+    "sending": "Verzenden…"
   }
 }

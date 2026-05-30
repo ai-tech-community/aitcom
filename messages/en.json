@@ -1316,7 +1316,8 @@
         "invites": "Invites",
         "rules": "Rules",
         "ownership": "Ownership",
-        "integrations": "Integrations"
+        "integrations": "Integrations",
+        "broadcast": "Announcements"
       },
       "members": {
         "activeTab": "Active",
@@ -1499,5 +1500,14 @@
     "digestColumn": "Digest section",
     "broadcastColumn": "Announcements",
     "saved": "Saved"
+  },
+  "broadcast": {
+    "title": "Send an announcement",
+    "description": "Reach your community's members. Promotional announcements are subject to a Hub-wide weekly limit per member; event reminders to people who registered are always delivered.",
+    "subject": "Subject",
+    "body": "Message",
+    "send": "Send announcement",
+    "sent": "Sent — emailed {emailed} member(s); everyone sees it in-app.",
+    "sending": "Sending…"
   }
 }
