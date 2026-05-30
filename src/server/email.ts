@@ -296,6 +296,19 @@ export async function sendChallengeSubmissionConfirmation(
   });
 }
 
+/** Send the consolidated weekly Hub digest. */
+export async function sendHubDigestEmail(to: string, html: string) {
+  const resend = getResend();
+  if (!resend) return false;
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: "Your weekly AIT digest",
+    html,
+  });
+  return true;
+}
+
 /**
  * Notify thread author when someone replies to their forum thread.
  */
