@@ -309,6 +309,31 @@ export async function sendHubDigestEmail(to: string, html: string) {
   return true;
 }
 
+/** Send a community broadcast announcement email. Returns whether it was sent. */
+export async function sendBroadcastEmail(
+  to: string,
+  subject: string,
+  body: string,
+) {
+  const resend = getResend();
+  if (!resend) return false;
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: escapeHtml(subject),
+    html: `
+      <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
+        <p style="font-size: 14px; white-space: pre-wrap;">${escapeHtml(body)}</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="font-size: 12px; color: #999;">
+          AIT Community ·
+          <a href="https://www.aitcommunity.org/en/dashboard/notifications" style="color:#999;">Manage notifications</a>
+        </p>
+      </div>`,
+  });
+  return true;
+}
+
 /**
  * Notify thread author when someone replies to their forum thread.
  */

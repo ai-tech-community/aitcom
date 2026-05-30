@@ -23,6 +23,7 @@ import { postRouter } from "@/server/api/routers/post";
 import { sponsorsRouter } from "@/server/api/routers/sponsors";
 import { datacentersRouter } from "@/server/api/routers/datacenters";
 import { insightsRouter } from "@/server/api/routers/insights";
+import { broadcastRouter } from "@/server/api/routers/broadcast";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -56,6 +57,7 @@ export const appRouter = createTRPCRouter({
   luma: lumaRouter,
   datacenters: datacentersRouter,
   insights: insightsRouter,
+  broadcast: broadcastRouter,
 });
 
 // export type definition of API
