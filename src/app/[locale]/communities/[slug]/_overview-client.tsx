@@ -78,14 +78,16 @@ export function CommunityOverviewPageClient({
               </span>
             </div>
           </div>
-          <div className="shrink-0">
-            <JoinButton
-              slug={slug}
-              joinPolicy={community.joinPolicy}
-              membershipStatus={membershipStatus}
-              memberRole={memberRole}
-            />
-          </div>
+          {community.joinPolicy !== "invite_only" && (
+            <div className="shrink-0">
+              <JoinButton
+                slug={slug}
+                joinPolicy={community.joinPolicy}
+                membershipStatus={membershipStatus}
+                memberRole={memberRole}
+              />
+            </div>
+          )}
         </div>
       )}
 

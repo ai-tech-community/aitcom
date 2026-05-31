@@ -20,6 +20,7 @@ import type { db as _db } from "@/server/db";
 type DB = typeof _db;
 
 export const DISCOVERY_WINDOW_DAYS = 14;
+export const PUBLIC_LIVENESS_WINDOW_DAYS = 7;
 const CONTRIBUTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
 
 /** Listed communities (optionally only those opted into cross-promotion) with
@@ -150,7 +151,7 @@ export async function loadPublicLiveness(
   communityId: string,
   now: Date,
 ): Promise<PublicLiveness> {
-  const since = windowStart(now, DISCOVERY_WINDOW_DAYS);
+  const since = windowStart(now, PUBLIC_LIVENESS_WINDOW_DAYS);
   const rows = await db
     .select({
       actorId: activityEvents.actorId,
