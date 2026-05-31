@@ -19,6 +19,9 @@ export function DigestRecallSettings({ slug }: { slug: string }) {
     onSuccess: () => {
       void utils.engageConfig.get.invalidate({ slug });
     },
+    onError: () => {
+      if (data) setDraft(data);
+    },
   });
 
   useEffect(() => {
