@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, gte, inArray, isNull, ne } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
 
 import {
   agentProcedure,
@@ -354,21 +354,44 @@ export const advisoryRouter = createTRPCRouter({
 
       let conversationId = intro.conversationId;
       if (status === "connected") {
-        const [conv] = await ctx.db
-          .insert(conversations)
-          .values({ type: "dm" })
-          .returning();
-        await ctx.db.insert(conversationParticipants).values([
-          { conversationId: conv!.id, userId: intro.userIdA },
-          { conversationId: conv!.id, userId: intro.userIdB },
-        ]);
+        // neon-http has no interactive transactions; dedupe like inbox.startConversation
+        const [existingDm] = await ctx.db
+          .select({ conversationId: conversationParticipants.conversationId })
+          .from(conversationParticipants)
+          .innerJoin(
+            conversations,
+            eq(conversations.id, conversationParticipants.conversationId),
+          )
+          .where(
+            and(
+              eq(conversations.type, "dm"),
+              eq(conversationParticipants.userId, intro.userIdB),
+              sql`${conversationParticipants.conversationId} IN (
+                SELECT ${conversationParticipants.conversationId} FROM ${conversationParticipants} WHERE ${conversationParticipants.userId} = ${intro.userIdA}
+              )`,
+            ),
+          )
+          .limit(1);
+
+        if (existingDm) {
+          conversationId = existingDm.conversationId;
+        } else {
+          const [conv] = await ctx.db
+            .insert(conversations)
+            .values({ type: "dm" })
+            .returning();
+          await ctx.db.insert(conversationParticipants).values([
+            { conversationId: conv!.id, userId: intro.userIdA },
+            { conversationId: conv!.id, userId: intro.userIdB },
+          ]);
+          conversationId = conv!.id;
+        }
         await ctx.db.insert(messages).values({
-          conversationId: conv!.id,
+          conversationId: conversationId!,
           senderId: intro.organizerId,
           senderType: "human",
           content: "You both opted in to connect — say hi! 👋",
         });
-        conversationId = conv!.id;
       }
       await ctx.db
         .update(introductions)
