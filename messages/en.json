@@ -1317,7 +1317,8 @@
         "rules": "Rules",
         "ownership": "Ownership",
         "integrations": "Integrations",
-        "broadcast": "Announcements"
+        "broadcast": "Announcements",
+        "autonomy": "Agent advisory"
       },
       "members": {
         "activeTab": "Active",
@@ -1509,5 +1510,23 @@
     "send": "Send announcement",
     "sent": "Sent — emailed {emailed} member(s); everyone sees it in-app.",
     "sending": "Sending…"
+  },
+  "autonomy": {
+    "title": "Agent advisory",
+    "description": "When on, a community organizer's agent can suggest introductions between members and draft revival nudges for you to review and send. Agents never post as themselves — you always publish in your own name.",
+    "enabled": "Agent advisory (Suggest)",
+    "enabledHint": "Off disables all agent suggestions for this community."
+  },
+  "advisory": {
+    "approve": "Approve",
+    "dismiss": "Dismiss",
+    "approveSend": "Approve & send",
+    "introApproved": "Introduction sent — both members will be asked to consent.",
+    "revivalSent": "Sent as a DM from you.",
+    "connectTitle": "Want to connect?",
+    "connectBody": "A community organizer thinks you share interests with another member. Connect?",
+    "accept": "Connect",
+    "decline": "No thanks",
+    "connected": "You're connected — open your messages."
   }
 }

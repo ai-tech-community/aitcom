@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomBytes, createHmac } from "crypto";
-import { eq, and, desc, gt, lt, sql } from "drizzle-orm";
+import { eq, and, ne, desc, gt, lt, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
@@ -14,7 +14,12 @@ import {
   activityEvents,
   conversations,
   conversationParticipants,
+  messages,
+  introductions,
+  notifications,
+  communityMemberships,
 } from "@/server/db/schema";
+import { pairKey } from "@/server/agents/matching";
 import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
 import { generateInviteCode } from "@/app/api/mcp/registration-tools";
@@ -668,6 +673,7 @@ export const agentManagementRouter = createTRPCRouter({
           and(
             eq(agentDrafts.id, input.draftId),
             eq(agentDrafts.ownerId, userId),
+            eq(agentDrafts.status, "pending"),
           ),
         )
         .returning();
@@ -713,6 +719,51 @@ export const agentManagementRouter = createTRPCRouter({
             },
           });
         }
+      }
+
+      // Revival nudge: approving opens/sends a DM from the organizer to the member.
+      if (
+        input.action === "approved" &&
+        draft.type === "revival_nudge" &&
+        draft.targetId
+      ) {
+        const memberId = draft.targetId;
+        // dedupe an existing DM between organizer (userId) and member (mirror inbox.startConversation)
+        const [existing] = await ctx.db
+          .select({ conversationId: conversationParticipants.conversationId })
+          .from(conversationParticipants)
+          .innerJoin(
+            conversations,
+            eq(conversations.id, conversationParticipants.conversationId),
+          )
+          .where(
+            and(
+              eq(conversations.type, "dm"),
+              eq(conversationParticipants.userId, memberId),
+              sql`${conversationParticipants.conversationId} IN (
+                SELECT ${conversationParticipants.conversationId} FROM ${conversationParticipants} WHERE ${conversationParticipants.userId} = ${userId}
+              )`,
+            ),
+          )
+          .limit(1);
+        let conversationId = existing?.conversationId;
+        if (!conversationId) {
+          const [conv] = await ctx.db
+            .insert(conversations)
+            .values({ type: "dm" })
+            .returning();
+          await ctx.db.insert(conversationParticipants).values([
+            { conversationId: conv!.id, userId },
+            { conversationId: conv!.id, userId: memberId },
+          ]);
+          conversationId = conv!.id;
+        }
+        await ctx.db.insert(messages).values({
+          conversationId,
+          senderId: userId,
+          senderType: "human",
+          content: draft.content ?? "",
+        });
       }
 
       return draft;
@@ -771,6 +822,138 @@ export const agentManagementRouter = createTRPCRouter({
       }
 
       return suggestion;
+    }),
+
+  /** Approve an introduction suggestion → create the introduction (pending
+   *  consent) and notify both members to consent. */
+  approveIntroduction: protectedProcedure
+    .input(z.object({ suggestionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [sug] = await ctx.db
+        .select()
+        .from(agentSuggestions)
+        .where(
+          and(
+            eq(agentSuggestions.id, input.suggestionId),
+            eq(agentSuggestions.ownerId, userId),
+            eq(agentSuggestions.status, "pending"),
+          ),
+        )
+        .limit(1);
+      if (sug?.type !== "introduction") {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Introduction suggestion not found",
+        });
+      }
+      const meta = (sug.metadata ?? {}) as {
+        communityId?: string;
+        userIdA?: string;
+        userIdB?: string;
+        pairKey?: string;
+        sharedInterests?: string[];
+      };
+      if (!meta.communityId || !meta.userIdA || !meta.userIdB) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Malformed suggestion metadata",
+        });
+      }
+      const communityId = meta.communityId;
+      const userIdA = meta.userIdA;
+      const userIdB = meta.userIdB;
+      const key = meta.pairKey ?? pairKey(userIdA, userIdB);
+
+      // Defense-in-depth: verify the caller is still an active owner/admin of
+      // this community at the time of approval (role may have changed since the
+      // agent filed the suggestion).
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, communityId),
+          eq(communityMemberships.userId, userId),
+          eq(communityMemberships.status, "active"),
+        ),
+      });
+      if (
+        !membership ||
+        (membership.role !== "owner" && membership.role !== "admin")
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Requires admin/owner of this community",
+        });
+      }
+
+      // Pre-check for an existing non-declined intro for this pair before inserting.
+      const existingIntro = await ctx.db
+        .select({ id: introductions.id })
+        .from(introductions)
+        .where(
+          and(
+            eq(introductions.communityId, communityId),
+            eq(introductions.pairKey, key),
+            ne(introductions.status, "declined"),
+          ),
+        )
+        .limit(1);
+      if (existingIntro.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "An introduction for this pair already exists",
+        });
+      }
+
+      let introId: string;
+      try {
+        const [intro] = await ctx.db
+          .insert(introductions)
+          .values({
+            communityId,
+            suggestedByAgentId: sug.agentId,
+            organizerId: userId,
+            userIdA,
+            userIdB,
+            pairKey: key,
+            sharedInterests: meta.sharedInterests ?? [],
+          })
+          .returning({ id: introductions.id });
+        introId = intro!.id;
+      } catch (err) {
+        // Partial unique index (introduction_open_pair_uidx) → race backstop.
+        console.error("approveIntroduction: intro insert failed", err);
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "An open introduction for this pair already exists",
+        });
+      }
+
+      await ctx.db.insert(notifications).values([
+        {
+          userId: userIdA,
+          type: "introduction_request",
+          title: "Someone would like to connect",
+          content:
+            "A community organizer thinks you'd hit it off with another member. Want to connect?",
+          communityId,
+          metadata: { introId },
+        },
+        {
+          userId: userIdB,
+          type: "introduction_request",
+          title: "Someone would like to connect",
+          content:
+            "A community organizer thinks you'd hit it off with another member. Want to connect?",
+          communityId,
+          metadata: { introId },
+        },
+      ]);
+
+      await ctx.db
+        .update(agentSuggestions)
+        .set({ status: "approved" })
+        .where(eq(agentSuggestions.id, sug.id));
+      return { introId };
     }),
 
   // ── Invite Codes ─────────────────────────────────────────────────────────

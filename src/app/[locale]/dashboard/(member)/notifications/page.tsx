@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { api, HydrateClient } from "@/trpc/server";
 import { NotificationsPageContent } from "@/components/notifications/notifications-page-content";
 import { NotificationPrefs } from "@/components/notifications/notification-prefs";
+import { IntroductionConsent } from "@/components/notifications/introduction-consent";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -20,6 +21,7 @@ export default async function NotificationsPage() {
 
   return (
     <HydrateClient>
+      <IntroductionConsent />
       <NotificationsPageContent />
 
       <div className="mx-auto mt-10 max-w-2xl space-y-6">

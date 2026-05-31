@@ -11,7 +11,6 @@ import { agentProcedure, requireScope, requireOwner } from "@/server/api/trpc";
 import {
   communities,
   communityMemberships,
-  agentProfiles,
   agentDrafts,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
@@ -202,71 +201,24 @@ export const agentFeedRouter = {
         });
       }
 
-      // Fetch agent profile for ghost mode check and name
-      const [agent] = await ctx.db
-        .select({
-          visibilityMode: agentProfiles.visibilityMode,
-          name: agentProfiles.name,
-        })
-        .from(agentProfiles)
-        .where(eq(agentProfiles.id, ctx.agent.agentId))
-        .limit(1);
-
-      if (!agent) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Agent profile not found",
-        });
-      }
-
-      // Ghost mode: save as draft
-      if (agent.visibilityMode === "ghost") {
-        const [draft] = await ctx.db
-          .insert(agentDrafts)
-          .values({
-            agentId: ctx.agent.agentId,
-            ownerId,
-            type: "feed_post",
-            targetType: "community",
-            targetId: community.id,
-            content: input.content,
-            metadata: {
-              communitySlug: input.communitySlug,
-              imageUrl: input.imageUrl,
-            },
-          })
-          .returning();
-
-        return { mode: "draft" as const, draftId: draft!.id };
-      }
-
-      // Visible mode: post directly
-      const payload = await getPayloadClient();
-
-      const post = await payload.create({
-        collection: "feed-posts",
-        data: {
+      // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
+      const [draft] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: ctx.agent.agentId,
+          ownerId,
+          type: "feed_post",
+          targetType: "community",
+          targetId: community.id,
           content: input.content,
-          imageUrl: input.imageUrl ?? undefined,
-          authorId: ownerId,
-          authorName: `${agent.name} (AI)`,
-          communityId: community.id,
-          likeCount: 0,
-          commentCount: 0,
-        },
-      });
+          metadata: {
+            communitySlug: input.communitySlug,
+            imageUrl: input.imageUrl,
+          },
+        })
+        .returning();
 
-      await logActivity(ctx.db, {
-        actorId: ctx.agent.agentId,
-        actorType: "agent",
-        action: "feed.post_created",
-        targetType: "feed-posts",
-        targetId: String(post.id),
-        communityId: community.id,
-        metadata: { communityId: community.id, onBehalfOf: ownerId },
-      });
-
-      return { mode: "posted" as const, postId: post.id };
+      return { mode: "draft" as const, draftId: draft!.id };
     }),
 
   /** Comment on a feed post. Ghost mode -> draft. */
@@ -302,71 +254,21 @@ export const agentFeedRouter = {
       // Verify owner is an active member of the post's community
       await requireActiveMembership(ctx.db, post.communityId ?? "", ownerId);
 
-      // Fetch agent profile for ghost mode check and name
-      const [agent] = await ctx.db
-        .select({
-          visibilityMode: agentProfiles.visibilityMode,
-          name: agentProfiles.name,
-        })
-        .from(agentProfiles)
-        .where(eq(agentProfiles.id, ctx.agent.agentId))
-        .limit(1);
-
-      if (!agent) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Agent profile not found",
-        });
-      }
-
-      // Ghost mode: save as draft
-      if (agent.visibilityMode === "ghost") {
-        const [draft] = await ctx.db
-          .insert(agentDrafts)
-          .values({
-            agentId: ctx.agent.agentId,
-            ownerId,
-            type: "feed_comment",
-            targetType: "feed-posts",
-            targetId: String(input.postId),
-            content: input.content,
-            metadata: { postId: input.postId },
-          })
-          .returning();
-
-        return { mode: "draft" as const, draftId: draft!.id };
-      }
-
-      // Visible mode: post directly
-      const comment = await payload.create({
-        collection: "feed-comments",
-        data: {
-          post: input.postId,
+      // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
+      const [draft] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: ctx.agent.agentId,
+          ownerId,
+          type: "feed_comment",
+          targetType: "feed-posts",
+          targetId: String(input.postId),
           content: input.content,
-          authorId: ownerId,
-          authorName: `${agent.name} (AI)`,
-          communityId: post.communityId,
-        },
-      });
+          metadata: { postId: input.postId },
+        })
+        .returning();
 
-      // Increment comment count on the post
-      await payload.update({
-        collection: "feed-posts",
-        id: input.postId,
-        data: { commentCount: (post.commentCount ?? 0) + 1 },
-      });
-
-      await logActivity(ctx.db, {
-        actorId: ctx.agent.agentId,
-        actorType: "agent",
-        action: "feed.comment_created",
-        targetType: "feed-comments",
-        targetId: String(comment.id),
-        communityId: post.communityId ?? undefined,
-        metadata: { postId: input.postId, onBehalfOf: ownerId },
-      });
-
-      return { mode: "posted" as const, commentId: comment.id };
+      return { mode: "draft" as const, draftId: draft!.id };
     }),
 
   /** Like/unlike a feed post. Executes directly even in ghost mode (low risk). */

@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
@@ -8,9 +10,11 @@ const TYPE_LABELS: Record<string, string> = {
   topic: "TOPIC",
   reply: "REPLY",
   resource: "RESOURCE",
+  introduction: "INTRO",
 };
 
 export function AgentSuggestions() {
+  const t = useTranslations("advisory");
   const suggestions = api.agentManagement.getSuggestions.useQuery({
     status: "pending",
   });
@@ -18,6 +22,13 @@ export function AgentSuggestions() {
 
   const dismissSuggestion = api.agentManagement.dismissSuggestion.useMutation({
     onSuccess: () => {
+      void utils.agentManagement.getSuggestions.invalidate();
+    },
+  });
+
+  const approveIntro = api.agentManagement.approveIntroduction.useMutation({
+    onSuccess: () => {
+      toast.success(t("introApproved"));
       void utils.agentManagement.getSuggestions.invalidate();
     },
   });
@@ -67,6 +78,18 @@ export function AgentSuggestions() {
                   Create Thread
                 </Link>
               )}
+              {suggestion.type === "introduction" && (
+                <Button
+                  size="xs"
+                  className="font-mono text-[11px] tracking-wider"
+                  onClick={() =>
+                    approveIntro.mutate({ suggestionId: suggestion.id })
+                  }
+                  disabled={approveIntro.isPending}
+                >
+                  {t("approve")}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="xs"
@@ -76,7 +99,7 @@ export function AgentSuggestions() {
                     suggestionId: suggestion.id,
                   })
                 }
-                disabled={dismissSuggestion.isPending}
+                disabled={dismissSuggestion.isPending || approveIntro.isPending}
               >
                 Dismiss
               </Button>

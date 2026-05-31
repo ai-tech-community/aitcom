@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 
@@ -7,14 +9,23 @@ const TYPE_LABELS: Record<string, string> = {
   thread_reply: "REPLY",
   thread_create: "THREAD",
   profile_update: "PROFILE",
+  revival_nudge: "REVIVAL",
 };
 
 export function AgentDrafts() {
+  const t = useTranslations("advisory");
   const drafts = api.agentManagement.getDrafts.useQuery({ status: "pending" });
   const utils = api.useUtils();
 
   const reviewDraft = api.agentManagement.reviewDraft.useMutation({
     onSuccess: () => {
+      void utils.agentManagement.getDrafts.invalidate();
+    },
+  });
+
+  const sendRevival = api.agentManagement.reviewDraft.useMutation({
+    onSuccess: () => {
+      toast.success(t("revivalSent"));
       void utils.agentManagement.getDrafts.invalidate();
     },
   });
@@ -60,19 +71,35 @@ export function AgentDrafts() {
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
-                <Button
-                  size="xs"
-                  className="font-mono text-[11px] tracking-wider"
-                  onClick={() =>
-                    reviewDraft.mutate({
-                      draftId: draft.id,
-                      action: "approved",
-                    })
-                  }
-                  disabled={reviewDraft.isPending}
-                >
-                  Approve & Post
-                </Button>
+                {draft.type === "revival_nudge" ? (
+                  <Button
+                    size="xs"
+                    className="font-mono text-[11px] tracking-wider"
+                    onClick={() =>
+                      sendRevival.mutate({
+                        draftId: draft.id,
+                        action: "approved",
+                      })
+                    }
+                    disabled={sendRevival.isPending}
+                  >
+                    {t("approveSend")}
+                  </Button>
+                ) : (
+                  <Button
+                    size="xs"
+                    className="font-mono text-[11px] tracking-wider"
+                    onClick={() =>
+                      reviewDraft.mutate({
+                        draftId: draft.id,
+                        action: "approved",
+                      })
+                    }
+                    disabled={reviewDraft.isPending}
+                  >
+                    Approve & Post
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="xs"
@@ -83,7 +110,7 @@ export function AgentDrafts() {
                       action: "rejected",
                     })
                   }
-                  disabled={reviewDraft.isPending}
+                  disabled={reviewDraft.isPending || sendRevival.isPending}
                 >
                   Dismiss
                 </Button>

@@ -434,7 +434,7 @@ export const notifications = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder"
+    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "introduction_request"
     title: d.varchar({ length: 255 }).notNull(),
     content: d.text().notNull(),
     metadata: d.json().$type<Record<string, unknown>>().default({}).notNull(),
@@ -717,6 +717,76 @@ export const agentSuggestions = appSchema.table("agent_suggestion", (d) => ({
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 }));
+
+/** A double-opt-in introduction between two members, suggested by an agent and
+ *  approved by the community organizer. pairKey (= sorted user ids) + a partial
+ *  unique index prevents a second OPEN intro for the same pair. responseA/
+ *  responseB drive the consent state machine (see agents/advisory.ts). */
+export const introductions = appSchema.table(
+  "introduction",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar("community_id", { length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    suggestedByAgentId: d
+      .varchar("suggested_by_agent_id", { length: 255 })
+      .references(() => agentProfiles.id),
+    organizerId: d
+      .varchar("organizer_id", { length: 255 })
+      .notNull()
+      .references(() => user.id),
+    userIdA: d
+      .varchar("user_id_a", { length: 255 })
+      .notNull()
+      .references(() => user.id),
+    userIdB: d
+      .varchar("user_id_b", { length: 255 })
+      .notNull()
+      .references(() => user.id),
+    pairKey: d.varchar("pair_key", { length: 600 }).notNull(),
+    sharedInterests: d
+      .json("shared_interests")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    status: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("pending_consent")
+      .$type<"pending_consent" | "connected" | "declined">(),
+    responseA: d
+      .varchar("response_a", { length: 10 })
+      .notNull()
+      .default("pending")
+      .$type<"pending" | "accepted" | "declined">(),
+    responseB: d
+      .varchar("response_b", { length: 10 })
+      .notNull()
+      .default("pending")
+      .$type<"pending" | "accepted" | "declined">(),
+    conversationId: d
+      .varchar("conversation_id", { length: 255 })
+      .references(() => conversations.id),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("introduction_user_a_idx").on(t.userIdA),
+    index("introduction_user_b_idx").on(t.userIdB),
+    index("introduction_community_idx").on(t.communityId),
+    uniqueIndex("introduction_open_pair_uidx")
+      .on(t.communityId, t.pairKey)
+      .where(sql`${t.status} = 'pending_consent'`),
+  ],
+);
 
 // Activity events (audit log for all actor actions)
 export const activityEvents = appSchema.table(
@@ -2076,6 +2146,11 @@ export const communities = appSchema.table(
       .notNull()
       .default("all_members")
       .$type<"all_members" | "admins_only">(),
+    autonomyLevel: d
+      .varchar("autonomy_level", { length: 10 })
+      .notNull()
+      .default("suggest")
+      .$type<"off" | "suggest">(),
     createdBy: d
       .varchar({ length: 255 })
       .notNull()
