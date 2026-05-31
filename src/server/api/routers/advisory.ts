@@ -35,6 +35,7 @@ import {
 import {
   CONTRIBUTION_ACTIONS,
   selectAtRisk,
+  selectUnactivated,
   windowStart,
   type ActivityRow,
   type MembershipRow,
@@ -46,6 +47,9 @@ const WINDOW_DAYS = 14;
 const PRIOR_WINDOW_DAYS = 45;
 const AT_RISK_CAP = 50;
 const INTRO_CANDIDATE_CAP = 20;
+// Un-activated newcomer window — MUST match insights.ts (the organizer dashboard).
+const NEWCOMER_MIN_AGE_DAYS = 3;
+const NEWCOMER_MAX_AGE_DAYS = 30;
 
 // CONTRIBUTION_ACTIONS is a readonly tuple; Drizzle inArray wants string[].
 const CONTRIBUTION_ACTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
@@ -339,6 +343,103 @@ export const advisoryRouter = createTRPCRouter({
           agentId: ctx.agent.agentId,
           ownerId,
           type: "revival_nudge",
+          targetType: "user",
+          targetId: input.memberUserId,
+          content: input.message,
+          metadata: { communityId: community.id, communitySlug: input.slug },
+        })
+        .returning({ id: agentDrafts.id });
+      return { draftId: d!.id };
+    }),
+
+  /** Un-activated newcomers the agent can draft warm-welcome nudges for. */
+  unactivatedNewcomers: agentProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await requireAdvisoryAccess(
+        ctx.db,
+        input.slug,
+        ownerId,
+      );
+
+      const now = new Date();
+      const [memberships, contributorRows] = await Promise.all([
+        ctx.db
+          .select({
+            userId: communityMemberships.userId,
+            role: communityMemberships.role,
+            status: communityMemberships.status,
+            joinedAt: communityMemberships.joinedAt,
+          })
+          .from(communityMemberships)
+          .where(
+            and(
+              eq(communityMemberships.communityId, community.id),
+              eq(communityMemberships.status, "active"),
+            ),
+          ),
+        ctx.db
+          .selectDistinct({ actorId: activityEvents.actorId })
+          .from(activityEvents)
+          .where(
+            and(
+              eq(activityEvents.communityId, community.id),
+              inArray(activityEvents.action, CONTRIBUTION_ACTION_LIST),
+            ),
+          ),
+      ]);
+
+      return selectUnactivated({
+        memberships: memberships as MembershipRow[],
+        contributorUserIds: contributorRows.map((r) => r.actorId),
+        now,
+        minAgeDays: NEWCOMER_MIN_AGE_DAYS,
+        maxAgeDays: NEWCOMER_MAX_AGE_DAYS,
+      });
+    }),
+
+  /** File a warm-welcome draft for an un-activated newcomer, for the organizer to review/send. */
+  suggestWelcome: agentProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        memberUserId: z.string(),
+        message: z.string().min(1).max(2000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute"); // MATCH suggestRevival
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await requireAdvisoryAccess(
+        ctx.db,
+        input.slug,
+        ownerId,
+      );
+      const member = await ctx.db
+        .select({ userId: communityMemberships.userId })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.userId, input.memberUserId),
+            eq(communityMemberships.status, "active"),
+          ),
+        )
+        .limit(1);
+      if (member.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Target is not an active member",
+        });
+      }
+      const [d] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: ctx.agent.agentId,
+          ownerId,
+          type: "welcome_nudge",
           targetType: "user",
           targetId: input.memberUserId,
           content: input.message,

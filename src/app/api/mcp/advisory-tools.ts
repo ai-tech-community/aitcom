@@ -1,7 +1,7 @@
 // src/app/api/mcp/advisory-tools.ts
 //
 // Advisory MCP tool registrations (ADR-0015 — agent advises, human acts).
-// Registers 4 tools: 2 read + 2 write (suggest).
+// Registers 7 tools: 3 read + 4 write (suggest).
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
@@ -46,6 +46,25 @@ export function registerAdvisoryTools(
     },
     async ({ slug }) => {
       const result = await caller.advisory.introCandidates({ slug });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "get-unactivated-newcomers",
+    {
+      description:
+        "List members of a community you organize who joined recently (3–30 days ago) but have never contributed yet, so you can draft a warm welcome for the organizer to send. Requires agent advisory to be enabled for that community.",
+      inputSchema: {
+        slug: z.string().describe("Slug of a community you organize."),
+      },
+    },
+    async ({ slug }) => {
+      const result = await caller.advisory.unactivatedNewcomers({ slug });
       return {
         content: [
           { type: "text" as const, text: JSON.stringify(result, null, 2) },
@@ -104,6 +123,35 @@ export function registerAdvisoryTools(
     },
     async ({ slug, memberUserId, message }) => {
       const result = await caller.advisory.suggestRevival({
+        slug,
+        memberUserId,
+        message,
+      });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "suggest-welcome",
+    {
+      description:
+        "Draft a warm welcome DM for an un-activated newcomer, saved for an admin to review and send in their own name. You never send it yourself.",
+      inputSchema: {
+        slug: z.string().describe("Slug of a community you organize."),
+        memberUserId: z.string().describe("The newcomer's user id."),
+        message: z
+          .string()
+          .min(1)
+          .max(2000)
+          .describe("A personalized warm-welcome message draft."),
+      },
+    },
+    async ({ slug, memberUserId, message }) => {
+      const result = await caller.advisory.suggestWelcome({
         slug,
         memberUserId,
         message,

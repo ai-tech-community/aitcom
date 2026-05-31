@@ -10,6 +10,7 @@ import {
   user,
 } from "@/server/db/schema";
 import { db as _db } from "@/server/db";
+import { sendDirectMessage } from "@/server/inbox/dm";
 import {
   CONTRIBUTION_ACTIONS,
   summarizeHealth,
@@ -215,5 +216,38 @@ export const insightsRouter = createTRPCRouter({
         ...m,
         ...(profileMap.get(m.userId) ?? { displayName: null, image: null }),
       }));
+    }),
+
+  /** Organizer sends a warm-welcome DM (in their own name) to an un-activated
+   *  newcomer. owner/admin/moderator only; target must be an active member. */
+  sendWelcome: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        memberUserId: z.string(),
+        message: z.string().min(1).max(2000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.communityRole);
+      const [m] = await ctx.db
+        .select({ userId: communityMemberships.userId })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, ctx.community.id),
+            eq(communityMemberships.userId, input.memberUserId),
+            eq(communityMemberships.status, "active"),
+          ),
+        )
+        .limit(1);
+      if (!m) throw new TRPCError({ code: "NOT_FOUND" });
+      await sendDirectMessage(
+        ctx.db,
+        ctx.session.user.id,
+        input.memberUserId,
+        input.message,
+      );
+      return { ok: true };
     }),
 });

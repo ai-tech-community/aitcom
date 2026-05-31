@@ -14,7 +14,6 @@ import {
   activityEvents,
   conversations,
   conversationParticipants,
-  messages,
   introductions,
   notifications,
   communityMemberships,
@@ -31,6 +30,7 @@ import {
   verifyOembed,
   type TweetOembed,
 } from "@/server/agent/verify-x-tweet";
+import { sendDirectMessage } from "@/server/inbox/dm";
 
 export const agentManagementRouter = createTRPCRouter({
   // ── Agent Profile ─────────────────────────────────────────────────────────
@@ -666,13 +666,56 @@ export const agentManagementRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
+      // 1. Read the draft and authorize BEFORE the CAS status flip, branched
+      //    by draft type. Owner-scoped legacy types check ownerId; community-
+      //    scoped types check the caller's active role in the draft's community.
+      const [existing] = await ctx.db
+        .select()
+        .from(agentDrafts)
+        .where(eq(agentDrafts.id, input.draftId))
+        .limit(1);
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+      }
+
+      const OWNER_SCOPED = ["thread_reply", "revival_nudge"];
+      if (OWNER_SCOPED.includes(existing.type)) {
+        if (existing.ownerId !== userId) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+      } else {
+        const communityId = (existing.metadata as { communityId?: string })
+          ?.communityId;
+        if (!communityId) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+        const allowedRoles =
+          existing.type === "broadcast"
+            ? ["owner", "admin"]
+            : ["owner", "admin", "moderator"]; // welcome_nudge (and future community-scoped types)
+        const [m] = await ctx.db
+          .select({ role: communityMemberships.role })
+          .from(communityMemberships)
+          .where(
+            and(
+              eq(communityMemberships.communityId, communityId),
+              eq(communityMemberships.userId, userId),
+              eq(communityMemberships.status, "active"),
+            ),
+          )
+          .limit(1);
+        if (!m || !allowedRoles.includes(m.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+      }
+
+      // 2. CAS claim: only the caller who flips pending→action proceeds.
       const [draft] = await ctx.db
         .update(agentDrafts)
         .set({ status: input.action })
         .where(
           and(
             eq(agentDrafts.id, input.draftId),
-            eq(agentDrafts.ownerId, userId),
             eq(agentDrafts.status, "pending"),
           ),
         )
@@ -680,8 +723,8 @@ export const agentManagementRouter = createTRPCRouter({
 
       if (!draft) {
         throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Draft not found",
+          code: "CONFLICT",
+          message: "Already reviewed",
         });
       }
 
@@ -727,43 +770,26 @@ export const agentManagementRouter = createTRPCRouter({
         draft.type === "revival_nudge" &&
         draft.targetId
       ) {
-        const memberId = draft.targetId;
-        // dedupe an existing DM between organizer (userId) and member (mirror inbox.startConversation)
-        const [existing] = await ctx.db
-          .select({ conversationId: conversationParticipants.conversationId })
-          .from(conversationParticipants)
-          .innerJoin(
-            conversations,
-            eq(conversations.id, conversationParticipants.conversationId),
-          )
-          .where(
-            and(
-              eq(conversations.type, "dm"),
-              eq(conversationParticipants.userId, memberId),
-              sql`${conversationParticipants.conversationId} IN (
-                SELECT ${conversationParticipants.conversationId} FROM ${conversationParticipants} WHERE ${conversationParticipants.userId} = ${userId}
-              )`,
-            ),
-          )
-          .limit(1);
-        let conversationId = existing?.conversationId;
-        if (!conversationId) {
-          const [conv] = await ctx.db
-            .insert(conversations)
-            .values({ type: "dm" })
-            .returning();
-          await ctx.db.insert(conversationParticipants).values([
-            { conversationId: conv!.id, userId },
-            { conversationId: conv!.id, userId: memberId },
-          ]);
-          conversationId = conv!.id;
-        }
-        await ctx.db.insert(messages).values({
-          conversationId,
-          senderId: userId,
-          senderType: "human",
-          content: draft.content ?? "",
-        });
+        await sendDirectMessage(
+          ctx.db,
+          userId,
+          draft.targetId,
+          draft.content ?? "",
+        );
+      }
+
+      // Welcome nudge: approving opens/sends a warm-welcome DM to the newcomer.
+      if (
+        input.action === "approved" &&
+        draft.type === "welcome_nudge" &&
+        draft.targetId
+      ) {
+        await sendDirectMessage(
+          ctx.db,
+          userId,
+          draft.targetId,
+          draft.content ?? "",
+        );
       }
 
       return draft;
