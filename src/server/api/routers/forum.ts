@@ -572,6 +572,7 @@ export const forumRouter = createTRPCRouter({
         targetType: "forum-threads",
         targetId: String(input.threadId),
         communityId: thread.communityId ?? undefined,
+        recipientId: thread.authorId ?? undefined,
         metadata: {
           threadTitle: thread.title,
           threadSlug: thread.slug,
