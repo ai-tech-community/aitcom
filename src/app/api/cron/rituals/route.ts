@@ -27,7 +27,8 @@ export async function GET(req: Request) {
   const active = await db
     .select()
     .from(rituals)
-    .where(eq(rituals.status, "active"));
+    .where(eq(rituals.status, "active"))
+    .limit(500);
 
   for (const r of active) {
     if (
@@ -77,12 +78,14 @@ export async function GET(req: Request) {
           ritualId: r.id,
           communityId: r.communityId,
           scheduledFor: today,
-          status: r.mode === "auto" ? "posted" : "pending",
+          status: "pending",
         })
         .returning({ id: ritualOccurrences.id });
       occurrenceId = occ!.id;
-    } catch {
-      continue; // occurrence for today already exists
+    } catch (err) {
+      if ((err as { code?: string })?.code === "23505") continue; // race: occurrence for today already exists
+      console.error(`rituals: occurrence insert failed for ${r.id}`, err);
+      continue;
     }
 
     if (r.mode === "review") {
@@ -90,12 +93,17 @@ export async function GET(req: Request) {
       continue;
     }
 
-    const threadId = await postRitualThread(r);
-    await db
-      .update(ritualOccurrences)
-      .set({ status: "posted", threadId, postedAt: new Date() })
-      .where(eq(ritualOccurrences.id, occurrenceId));
-    posted++;
+    try {
+      const threadId = await postRitualThread(r);
+      await db
+        .update(ritualOccurrences)
+        .set({ status: "posted", threadId, postedAt: new Date() })
+        .where(eq(ritualOccurrences.id, occurrenceId));
+      posted++;
+    } catch (err) {
+      console.error(`rituals: post failed for ${r.id}`, err);
+      // leave the occurrence pending; it will be superseded on the next fire
+    }
   }
 
   return NextResponse.json({ success: true, posted, pending, today });
