@@ -1,4 +1,6 @@
-/** Pure referral-credit decision. No DB. ADR-0018: credit only on activation. */
+/** Pure referral-credit decision. No DB. ADR-0018: credit only on activation.
+ *  Callers must pre-filter on community_acquire_config.referralsEnabled and on
+ *  existing credit before calling decideReferralCredit (this function is pure). */
 
 import type { ActivationStage } from "@/server/communities/activation";
 

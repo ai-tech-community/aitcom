@@ -43,6 +43,10 @@
     {
       "path": "/api/cron/activation-newcomer-churn",
       "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/referral-reconcile",
+      "schedule": "0 4 * * *"
     }
   ]
 }
