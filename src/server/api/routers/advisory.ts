@@ -4,6 +4,7 @@ import { and, eq, gte, inArray, isNull, ne } from "drizzle-orm";
 
 import {
   agentProcedure,
+  protectedProcedure,
   requireScope,
   requireOwner,
   createTRPCRouter,
@@ -16,9 +17,16 @@ import {
   memberProfiles,
   activityEvents,
   introductions,
+  conversations,
+  conversationParticipants,
+  messages,
 } from "@/server/db/schema";
 import { db as _db } from "@/server/db";
-import { canAdvise } from "@/server/agents/advisory";
+import {
+  canAdvise,
+  nextIntroStatus,
+  type IntroResponse,
+} from "@/server/agents/advisory";
 import {
   pairKey,
   scoreIntroductions,
@@ -317,5 +325,55 @@ export const advisoryRouter = createTRPCRouter({
         })
         .returning({ id: agentDrafts.id });
       return { draftId: d!.id };
+    }),
+
+  /** A member accepts/declines an introduction. When BOTH accept, a DM opens. */
+  respondToIntroduction: protectedProcedure
+    .input(z.object({ introId: z.string(), accept: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [intro] = await ctx.db
+        .select()
+        .from(introductions)
+        .where(eq(introductions.id, input.introId))
+        .limit(1);
+      if (!intro || (intro.userIdA !== userId && intro.userIdB !== userId)) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Introduction not found",
+        });
+      }
+      if (intro.status !== "pending_consent") {
+        return { status: intro.status, conversationId: intro.conversationId };
+      }
+      const isA = intro.userIdA === userId;
+      const myResponse: IntroResponse = input.accept ? "accepted" : "declined";
+      const responseA = isA ? myResponse : intro.responseA;
+      const responseB = isA ? intro.responseB : myResponse;
+      const status = nextIntroStatus(responseA, responseB);
+
+      let conversationId = intro.conversationId;
+      if (status === "connected") {
+        const [conv] = await ctx.db
+          .insert(conversations)
+          .values({ type: "dm" })
+          .returning();
+        await ctx.db.insert(conversationParticipants).values([
+          { conversationId: conv!.id, userId: intro.userIdA },
+          { conversationId: conv!.id, userId: intro.userIdB },
+        ]);
+        await ctx.db.insert(messages).values({
+          conversationId: conv!.id,
+          senderId: intro.organizerId,
+          senderType: "human",
+          content: "You both opted in to connect — say hi! 👋",
+        });
+        conversationId = conv!.id;
+      }
+      await ctx.db
+        .update(introductions)
+        .set({ responseA, responseB, status, conversationId })
+        .where(eq(introductions.id, intro.id));
+      return { status, conversationId };
     }),
 });
