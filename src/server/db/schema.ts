@@ -1,5 +1,10 @@
 import { relations, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import type {
+  OccurrenceStatus,
+  RitualMode,
+  RitualStatus,
+} from "../communities/rituals";
 import {
   boolean,
   date,
@@ -717,6 +722,109 @@ export const agentSuggestions = appSchema.table("agent_suggestion", (d) => ({
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 }));
+
+export const rituals = appSchema.table(
+  "ritual",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    authorUserId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    suggestedByAgentId: d
+      .varchar({ length: 255 })
+      .references(() => agentProfiles.id),
+    title: d.varchar({ length: 255 }).notNull(),
+    body: d.text().notNull(),
+    category: d.varchar({ length: 20 }).notNull().default("general"),
+    weekday: d.integer().notNull(),
+    mode: d
+      .varchar({ length: 10 })
+      .$type<RitualMode>()
+      .notNull()
+      .default("review"),
+    status: d
+      .varchar({ length: 10 })
+      .$type<RitualStatus>()
+      .notNull()
+      .default("active"),
+    lastFiredOn: d.date(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("ritual_community_idx").on(t.communityId),
+    index("ritual_status_weekday_idx").on(t.status, t.weekday),
+  ],
+);
+
+export const ritualOccurrences = appSchema.table(
+  "ritual_occurrence",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    ritualId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => rituals.id),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    scheduledFor: d.date().notNull(),
+    status: d
+      .varchar({ length: 10 })
+      .$type<OccurrenceStatus>()
+      .notNull()
+      .default("pending"),
+    // Unenforced reference to public.forum_threads(id) (Payload-owned table; no cross-schema FK).
+    threadId: d.integer(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    postedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [
+    uniqueIndex("ritual_occurrence_ritual_date_uidx").on(
+      t.ritualId,
+      t.scheduledFor,
+    ),
+    index("ritual_occurrence_community_status_idx").on(t.communityId, t.status),
+    index("ritual_occurrence_status_posted_idx").on(t.status, t.postedAt),
+  ],
+);
+
+export const communityEngageConfig = appSchema.table(
+  "community_engage_config",
+  (d) => ({
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .references(() => communities.id),
+    ritualRecap: d.boolean().notNull().default(true),
+    ritualReminder: d.boolean().notNull().default(true),
+    atRiskLine: d.boolean().notNull().default(false),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+);
 
 /** A double-opt-in introduction between two members, suggested by an agent and
  *  approved by the community organizer. pairKey (= sorted user ids) + a partial

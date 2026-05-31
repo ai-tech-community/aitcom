@@ -10,6 +10,7 @@ import {
   user,
 } from "@/server/db/schema";
 import { db as _db } from "@/server/db";
+import { sendDirectMessage } from "@/server/inbox/dm";
 import {
   CONTRIBUTION_ACTIONS,
   summarizeHealth,
@@ -24,8 +25,8 @@ type DB = typeof _db;
 
 const WINDOW_DAYS = 14;
 const PRIOR_WINDOW_DAYS = 45;
-const NEWCOMER_MIN_AGE_DAYS = 3;
-const NEWCOMER_MAX_AGE_DAYS = 30;
+export const NEWCOMER_MIN_AGE_DAYS = 3;
+export const NEWCOMER_MAX_AGE_DAYS = 30;
 const AT_RISK_CAP = 50;
 
 // CONTRIBUTION_ACTIONS is a readonly tuple; Drizzle inArray wants string[].
@@ -215,5 +216,44 @@ export const insightsRouter = createTRPCRouter({
         ...m,
         ...(profileMap.get(m.userId) ?? { displayName: null, image: null }),
       }));
+    }),
+
+  /** Organizer sends a warm-welcome DM (in their own name) to an un-activated
+   *  newcomer. owner/admin/moderator only; target must be an active member. */
+  sendWelcome: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        memberUserId: z.string(),
+        message: z.string().min(1).max(2000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.communityRole);
+      if (input.memberUserId === ctx.session.user.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot welcome yourself",
+        });
+      }
+      const [m] = await ctx.db
+        .select({ userId: communityMemberships.userId })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, ctx.community.id),
+            eq(communityMemberships.userId, input.memberUserId),
+            eq(communityMemberships.status, "active"),
+          ),
+        )
+        .limit(1);
+      if (!m) throw new TRPCError({ code: "NOT_FOUND" });
+      await sendDirectMessage(
+        ctx.db,
+        ctx.session.user.id,
+        input.memberUserId,
+        input.message,
+      );
+      return { ok: true };
     }),
 });

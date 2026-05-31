@@ -35,6 +35,7 @@ import * as migration_20260530c_notifications_infra from "./20260530c_notificati
 import * as migration_20260531_notifications_harden_unique_indexes from "./20260531_notifications_harden_unique_indexes";
 import * as migration_20260531b_community_autonomy_level from "./20260531b_community_autonomy_level";
 import * as migration_20260531c_agent_introductions from "./20260531c_agent_introductions";
+import * as migration_20260531d_engage_rituals from "./20260531d_engage_rituals";
 
 export const migrations = [
   {
@@ -221,5 +222,10 @@ export const migrations = [
     up: migration_20260531c_agent_introductions.up,
     down: migration_20260531c_agent_introductions.down,
     name: "20260531c_agent_introductions",
+  },
+  {
+    up: migration_20260531d_engage_rituals.up,
+    down: migration_20260531d_engage_rituals.down,
+    name: "20260531d_engage_rituals",
   },
 ];

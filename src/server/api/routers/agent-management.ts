@@ -14,7 +14,6 @@ import {
   activityEvents,
   conversations,
   conversationParticipants,
-  messages,
   introductions,
   notifications,
   communityMemberships,
@@ -31,6 +30,8 @@ import {
   verifyOembed,
   type TweetOembed,
 } from "@/server/agent/verify-x-tweet";
+import { sendDirectMessage } from "@/server/inbox/dm";
+import { sendCommunityBroadcast } from "@/server/notifications/broadcast-send";
 
 export const agentManagementRouter = createTRPCRouter({
   // ── Agent Profile ─────────────────────────────────────────────────────────
@@ -650,6 +651,8 @@ export const agentManagementRouter = createTRPCRouter({
           and(
             eq(agentDrafts.ownerId, userId),
             eq(agentDrafts.status, input.status),
+            // ritual_suggestion drafts are reviewed on the Rituals page, not here.
+            ne(agentDrafts.type, "ritual_suggestion"),
           ),
         )
         .orderBy(desc(agentDrafts.createdAt));
@@ -666,13 +669,69 @@ export const agentManagementRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
+      // 1. Read the draft and authorize BEFORE the CAS status flip, branched
+      //    by draft type. Owner-scoped legacy types check ownerId; community-
+      //    scoped types check the caller's active role in the draft's community.
+      const [existing] = await ctx.db
+        .select()
+        .from(agentDrafts)
+        .where(eq(agentDrafts.id, input.draftId))
+        .limit(1);
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+      }
+
+      // Ritual suggestions are reviewed via rituals.reviewSuggestion (which
+      // CREATES a ritual on approve). Reviewing them here would CAS-flip their
+      // status without creating a ritual, permanently consuming them.
+      if (existing.type === "ritual_suggestion") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Review ritual suggestions from the community's Rituals page.",
+        });
+      }
+
+      // Community-scoped draft types: any qualifying admin of the draft's
+      // community may act (ADR-0016). Everything else is owner-scoped.
+      const COMMUNITY_SCOPED_ROLES: Record<string, string[]> = {
+        welcome_nudge: ["owner", "admin", "moderator"],
+        broadcast: ["owner", "admin"],
+      };
+      const allowedRoles = COMMUNITY_SCOPED_ROLES[existing.type];
+      if (allowedRoles) {
+        const communityId = (existing.metadata as { communityId?: string })
+          ?.communityId;
+        if (!communityId) throw new TRPCError({ code: "FORBIDDEN" });
+        const [m] = await ctx.db
+          .select({ role: communityMemberships.role })
+          .from(communityMemberships)
+          .where(
+            and(
+              eq(communityMemberships.communityId, communityId),
+              eq(communityMemberships.userId, userId),
+              eq(communityMemberships.status, "active"),
+            ),
+          )
+          .limit(1);
+        if (!m || !allowedRoles.includes(m.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+      } else {
+        // Owner-scoped (thread_reply, revival_nudge, feed_post, feed_comment,
+        // knowledge_share, challenge_channel_*, and any future owner draft).
+        if (existing.ownerId !== userId) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+      }
+
+      // 2. CAS claim: only the caller who flips pending→action proceeds.
       const [draft] = await ctx.db
         .update(agentDrafts)
         .set({ status: input.action })
         .where(
           and(
             eq(agentDrafts.id, input.draftId),
-            eq(agentDrafts.ownerId, userId),
             eq(agentDrafts.status, "pending"),
           ),
         )
@@ -680,8 +739,8 @@ export const agentManagementRouter = createTRPCRouter({
 
       if (!draft) {
         throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Draft not found",
+          code: "CONFLICT",
+          message: "Already reviewed",
         });
       }
 
@@ -721,48 +780,59 @@ export const agentManagementRouter = createTRPCRouter({
         }
       }
 
-      // Revival nudge: approving opens/sends a DM from the organizer to the member.
+      // Revival/welcome nudge: approving opens/sends a DM from the organizer to the member.
       if (
         input.action === "approved" &&
-        draft.type === "revival_nudge" &&
+        (draft.type === "revival_nudge" || draft.type === "welcome_nudge") &&
         draft.targetId
       ) {
-        const memberId = draft.targetId;
-        // dedupe an existing DM between organizer (userId) and member (mirror inbox.startConversation)
-        const [existing] = await ctx.db
-          .select({ conversationId: conversationParticipants.conversationId })
-          .from(conversationParticipants)
-          .innerJoin(
-            conversations,
-            eq(conversations.id, conversationParticipants.conversationId),
-          )
-          .where(
-            and(
-              eq(conversations.type, "dm"),
-              eq(conversationParticipants.userId, memberId),
-              sql`${conversationParticipants.conversationId} IN (
-                SELECT ${conversationParticipants.conversationId} FROM ${conversationParticipants} WHERE ${conversationParticipants.userId} = ${userId}
-              )`,
-            ),
-          )
-          .limit(1);
-        let conversationId = existing?.conversationId;
-        if (!conversationId) {
-          const [conv] = await ctx.db
-            .insert(conversations)
-            .values({ type: "dm" })
-            .returning();
-          await ctx.db.insert(conversationParticipants).values([
-            { conversationId: conv!.id, userId },
-            { conversationId: conv!.id, userId: memberId },
-          ]);
-          conversationId = conv!.id;
+        const communityId = (draft.metadata as { communityId?: string })
+          ?.communityId;
+        if (communityId) {
+          const [stillMember] = await ctx.db
+            .select({ userId: communityMemberships.userId })
+            .from(communityMemberships)
+            .where(
+              and(
+                eq(communityMemberships.communityId, communityId),
+                eq(communityMemberships.userId, draft.targetId),
+                eq(communityMemberships.status, "active"),
+              ),
+            )
+            .limit(1);
+          if (!stillMember) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "Target is no longer an active member of this community.",
+            });
+          }
         }
-        await ctx.db.insert(messages).values({
-          conversationId,
-          senderId: userId,
-          senderType: "human",
-          content: draft.content ?? "",
+        await sendDirectMessage(
+          ctx.db,
+          userId,
+          draft.targetId,
+          draft.content ?? "",
+        );
+      }
+
+      // Broadcast: approving composes & sends the broadcast in the reviewer's name.
+      if (input.action === "approved" && draft.type === "broadcast") {
+        const meta = (draft.metadata ?? {}) as {
+          communityId?: string;
+          subject?: string;
+        };
+        if (!meta.communityId || !meta.subject) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Broadcast draft metadata is malformed — cannot send.",
+          });
+        }
+        await sendCommunityBroadcast(ctx.db, {
+          communityId: meta.communityId,
+          authorId: userId,
+          subject: meta.subject,
+          body: draft.content ?? "",
         });
       }
 

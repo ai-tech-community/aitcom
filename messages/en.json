@@ -1269,7 +1269,8 @@
       "viewAll": "VIEW ALL +",
       "votes": "{count} votes",
       "replies": "{count} replies",
-      "insights": "Insights"
+      "insights": "Insights",
+      "rituals": "Rituals"
     },
     "manage": {
       "settings": "Settings",

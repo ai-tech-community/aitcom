@@ -1269,7 +1269,8 @@
       "viewAll": "ALLES BEKIJKEN +",
       "votes": "{count} stemmen",
       "replies": "{count} reacties",
-      "insights": "Insights"
+      "insights": "Insights",
+      "rituals": "Rituelen"
     },
     "manage": {
       "settings": "Instellingen",

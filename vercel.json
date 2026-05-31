@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/event-reminders",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/rituals",
+      "schedule": "0 13 * * *"
     }
   ]
 }
