@@ -48,12 +48,12 @@ export function computeActivationStage(opts: {
 
   if (responseOk && profileOk) return "activated";
   if (!responseOk) return now <= deadline ? "awaiting_response" : "stalled";
+  // Profile completion is not time-bounded (unlike the response window): a member stays awaiting_profile until they complete it.
   return "awaiting_profile";
 }
 
 export type FunnelMemberInput = {
   userId: string;
-  joinedAt: Date;
   firstContributionAt: Date | null;
   firstResponseReceivedAt: Date | null;
   profileComplete: boolean;
@@ -62,7 +62,9 @@ export type FunnelMemberInput = {
 export type ActivationFunnel = {
   cohortSize: number;
   contributed: number;
+  /** Members who received a timely response (≤ window), irrespective of whether a response is required for activation. */
   responded: number;
+  /** Convenience alias for byStage.activated. */
   activated: number;
   byStage: Record<ActivationStage, number>;
 };

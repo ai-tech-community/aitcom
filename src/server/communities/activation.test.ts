@@ -115,6 +115,54 @@ describe("computeActivationStage", () => {
       }),
     ).toBe("activated");
   });
+  it("awaiting_response at exactly the deadline with no response (window inclusive)", () => {
+    expect(
+      computeActivationStage({
+        firstContributionAt: C,
+        firstResponseReceivedAt: null,
+        profileComplete: false,
+        config: DEFAULT_CFG,
+        now: new Date("2026-06-08T00:00:00.000Z"),
+      }),
+    ).toBe("awaiting_response");
+  });
+  it("activated when response lands exactly at the deadline", () => {
+    expect(
+      computeActivationStage({
+        firstContributionAt: C,
+        firstResponseReceivedAt: new Date("2026-06-08T00:00:00.000Z"),
+        profileComplete: false,
+        config: DEFAULT_CFG,
+        now: new Date("2026-06-09T00:00:00.000Z"),
+      }),
+    ).toBe("activated");
+  });
+  it("stalled one millisecond after the deadline with no response", () => {
+    expect(
+      computeActivationStage({
+        firstContributionAt: C,
+        firstResponseReceivedAt: null,
+        profileComplete: false,
+        config: DEFAULT_CFG,
+        now: new Date("2026-06-08T00:00:00.001Z"),
+      }),
+    ).toBe("stalled");
+  });
+  it("awaiting_profile persists indefinitely (profile gate is not time-bounded)", () => {
+    expect(
+      computeActivationStage({
+        firstContributionAt: C,
+        firstResponseReceivedAt: new Date("2026-06-03T00:00:00.000Z"),
+        profileComplete: false,
+        config: {
+          requireResponse: true,
+          requireProfileComplete: true,
+          windowDays: 7,
+        },
+        now: new Date("2026-09-01T00:00:00.000Z"), // ~3 months later
+      }),
+    ).toBe("awaiting_profile");
+  });
 });
 
 describe("selectActivationFunnel", () => {
@@ -125,21 +173,18 @@ describe("selectActivationFunnel", () => {
       members: [
         {
           userId: "a",
-          joinedAt: C,
           firstContributionAt: null,
           firstResponseReceivedAt: null,
           profileComplete: false,
         },
         {
           userId: "b",
-          joinedAt: C,
           firstContributionAt: C,
           firstResponseReceivedAt: null,
           profileComplete: false,
         },
         {
           userId: "c",
-          joinedAt: C,
           firstContributionAt: C,
           firstResponseReceivedAt: within,
           profileComplete: false,
@@ -153,5 +198,33 @@ describe("selectActivationFunnel", () => {
     expect(f.byStage.unactivated).toBe(1);
     expect(f.byStage.stalled).toBe(1);
     expect(f.byStage.activated).toBe(1);
+  });
+  it("buckets a member with no response yet as awaiting_response when window still open", () => {
+    const f = selectActivationFunnel({
+      config: DEFAULT_CFG,
+      now: within, // +4d, window open
+      members: [
+        {
+          userId: "x",
+          firstContributionAt: C,
+          firstResponseReceivedAt: null,
+          profileComplete: false,
+        },
+      ],
+    });
+    expect(f.byStage.awaiting_response).toBe(1);
+    expect(f.contributed).toBe(1);
+    expect(f.responded).toBe(0);
+    expect(f.activated).toBe(0);
+  });
+  it("handles an empty cohort", () => {
+    const f = selectActivationFunnel({
+      config: DEFAULT_CFG,
+      now: after,
+      members: [],
+    });
+    expect(f.cohortSize).toBe(0);
+    expect(f.activated).toBe(0);
+    expect(f.byStage.unactivated).toBe(0);
   });
 });
