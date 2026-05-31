@@ -173,6 +173,7 @@ export const advisoryRouter = createTRPCRouter({
             eq(communityMemberships.status, "active"),
           ),
         )
+        .orderBy(communityMemberships.userId)
         .limit(500);
 
       const members: MemberProfile[] = rows.map((r) => ({
@@ -414,9 +415,34 @@ export const advisoryRouter = createTRPCRouter({
       // 3. Compute status from the authoritative responses.
       const status = nextIntroStatus(fresh.responseA, fresh.responseB);
 
-      let conversationId = fresh.conversationId;
       if (status === "connected") {
-        // dedupe an existing dm between the two (mirror inbox.startConversation)
+        // Claim the connect atomically FIRST (single winner), THEN create the DM —
+        // so a concurrent double-accept can't create two conversations.
+        const wonConnect = await ctx.db
+          .update(introductions)
+          .set({ status: "connected" })
+          .where(
+            and(
+              eq(introductions.id, intro.id),
+              eq(introductions.status, "pending_consent"),
+            ),
+          )
+          .returning({ id: introductions.id });
+
+        if (wonConnect.length === 0) {
+          // Someone else already connected this intro — return the authoritative conversationId.
+          const [row] = await ctx.db
+            .select({ conversationId: introductions.conversationId })
+            .from(introductions)
+            .where(eq(introductions.id, intro.id))
+            .limit(1);
+          return {
+            status: "connected" as const,
+            conversationId: row?.conversationId ?? null,
+          };
+        }
+
+        // We won: dedupe/create the DM, persist it on the intro, post the opener.
         const [existingDm] = await ctx.db
           .select({ conversationId: conversationParticipants.conversationId })
           .from(conversationParticipants)
@@ -434,6 +460,7 @@ export const advisoryRouter = createTRPCRouter({
             ),
           )
           .limit(1);
+        let conversationId: string;
         if (existingDm) {
           conversationId = existingDm.conversationId;
         } else {
@@ -447,25 +474,16 @@ export const advisoryRouter = createTRPCRouter({
           ]);
           conversationId = conv!.id;
         }
-        // 4. Flip to connected ONLY if still pending_consent — the single winner posts the opener.
-        const wonConnect = await ctx.db
+        await ctx.db
           .update(introductions)
-          .set({ status: "connected", conversationId })
-          .where(
-            and(
-              eq(introductions.id, intro.id),
-              eq(introductions.status, "pending_consent"),
-            ),
-          )
-          .returning({ id: introductions.id });
-        if (wonConnect.length > 0) {
-          await ctx.db.insert(messages).values({
-            conversationId: conversationId,
-            senderId: fresh.organizerId,
-            senderType: "human",
-            content: "You both opted in to connect — say hi! 👋",
-          });
-        }
+          .set({ conversationId })
+          .where(eq(introductions.id, intro.id));
+        await ctx.db.insert(messages).values({
+          conversationId,
+          senderId: fresh.organizerId,
+          senderType: "human",
+          content: "You both opted in to connect — say hi! 👋",
+        });
         return { status: "connected" as const, conversationId };
       }
       if (status === "declined") {
@@ -480,6 +498,9 @@ export const advisoryRouter = createTRPCRouter({
           );
         return { status: "declined" as const, conversationId: null };
       }
-      return { status: "pending_consent" as const, conversationId };
+      return {
+        status: "pending_consent" as const,
+        conversationId: fresh.conversationId,
+      };
     }),
 });
