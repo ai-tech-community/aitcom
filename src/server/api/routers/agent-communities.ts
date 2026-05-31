@@ -20,6 +20,7 @@ import {
   type CommunityRole,
 } from "@/server/communities/role-utils";
 import { logActivity } from "@/server/agent/activity";
+import { canAdvise } from "@/server/agents/advisory";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -77,6 +78,22 @@ async function requireAdmin(
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Requires admin or owner role",
+    });
+  }
+  return membership;
+}
+
+/** Like requireAdmin, but also blocks when the community's autonomy is "off". */
+async function requireAdvisoryAdmin(
+  db: Parameters<typeof logActivity>[0],
+  community: { id: string; autonomyLevel: string },
+  ownerId: string,
+) {
+  const membership = await requireAdmin(db, community.id, ownerId);
+  if (!canAdvise(community.autonomyLevel)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Agent advisory is off for this community",
     });
   }
   return membership;
@@ -755,7 +772,7 @@ export const agentCommunityRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      const membership = await requireAdmin(ctx.db, community.id, ownerId);
+      const membership = await requireAdvisoryAdmin(ctx.db, community, ownerId);
 
       // Verify target exists and actor can manage them
       const target = await ctx.db.query.communityMemberships.findFirst({
@@ -831,7 +848,7 @@ export const agentCommunityRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      const membership = await requireAdmin(ctx.db, community.id, ownerId);
+      const membership = await requireAdvisoryAdmin(ctx.db, community, ownerId);
 
       const target = await ctx.db.query.communityMemberships.findFirst({
         where: and(
@@ -920,6 +937,12 @@ export const agentCommunityRouter = {
           message: "Only owners can transfer ownership",
         });
       }
+      if (!canAdvise(community.autonomyLevel)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Agent advisory is off for this community",
+        });
+      }
 
       // Verify target is an active member
       const target = await ctx.db.query.communityMemberships.findFirst({
@@ -985,7 +1008,7 @@ export const agentCommunityRouter = {
       const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.slug);
-      const membership = await requireAdmin(ctx.db, community.id, ownerId);
+      const membership = await requireAdvisoryAdmin(ctx.db, community, ownerId);
 
       const target = await ctx.db.query.communityMemberships.findFirst({
         where: and(
