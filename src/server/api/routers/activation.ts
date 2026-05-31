@@ -75,6 +75,12 @@ function requireAdmin(role: "owner" | "admin" | "moderator" | "member" | null) {
   }
 }
 
+function requireActiveMember(membership: { status: string } | null) {
+  if (membership?.status !== "active") {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+}
+
 function earliestByKey<T>(
   rows: T[],
   keyOf: (r: T) => string,
@@ -199,14 +205,52 @@ export const activationRouter = createTRPCRouter({
   myStage: communityProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
+      requireActiveMember(ctx.membership);
       const userId = ctx.session.user.id;
       const now = new Date();
 
-      const [cfgRow] = await ctx.db
-        .select()
-        .from(communityActivationConfig)
-        .where(eq(communityActivationConfig.communityId, ctx.community.id))
-        .limit(1);
+      const [cfgRows, contribRows, responseRows, profileRows] =
+        await Promise.all([
+          ctx.db
+            .select()
+            .from(communityActivationConfig)
+            .where(eq(communityActivationConfig.communityId, ctx.community.id))
+            .limit(1),
+          ctx.db
+            .select({ createdAt: activityEvents.createdAt })
+            .from(activityEvents)
+            .where(
+              and(
+                eq(activityEvents.communityId, ctx.community.id),
+                eq(activityEvents.actorId, userId),
+                inArray(activityEvents.action, CONTRIBUTION_LIST),
+              ),
+            ),
+          ctx.db
+            .select({
+              actorId: activityEvents.actorId,
+              createdAt: activityEvents.createdAt,
+            })
+            .from(activityEvents)
+            .where(
+              and(
+                eq(activityEvents.communityId, ctx.community.id),
+                eq(activityEvents.recipientId, userId),
+                inArray(activityEvents.action, RESPONSE_LIST),
+              ),
+            ),
+          ctx.db
+            .select({
+              onboardingCompleted: memberProfiles.onboardingCompleted,
+              interests: memberProfiles.interests,
+              experienceLevel: memberProfiles.experienceLevel,
+            })
+            .from(memberProfiles)
+            .where(eq(memberProfiles.userId, userId))
+            .limit(1),
+        ]);
+
+      const cfgRow = cfgRows[0];
       const config: ActivationConfig = cfgRow
         ? {
             requireResponse: cfgRow.requireResponse,
@@ -215,35 +259,12 @@ export const activationRouter = createTRPCRouter({
           }
         : DEFAULT_CONFIG;
 
-      const contribEvents = await ctx.db
-        .select({ createdAt: activityEvents.createdAt })
-        .from(activityEvents)
-        .where(
-          and(
-            eq(activityEvents.communityId, ctx.community.id),
-            eq(activityEvents.actorId, userId),
-            inArray(activityEvents.action, CONTRIBUTION_LIST),
-          ),
-        );
-      const firstContributionAt = contribEvents.reduce<Date | null>(
+      const firstContributionAt = contribRows.reduce<Date | null>(
         (min, e) => (!min || e.createdAt < min ? e.createdAt : min),
         null,
       );
 
-      const responseEvents = await ctx.db
-        .select({
-          actorId: activityEvents.actorId,
-          createdAt: activityEvents.createdAt,
-        })
-        .from(activityEvents)
-        .where(
-          and(
-            eq(activityEvents.communityId, ctx.community.id),
-            eq(activityEvents.recipientId, userId),
-            inArray(activityEvents.action, RESPONSE_LIST),
-          ),
-        );
-      const firstResponseReceivedAt = responseEvents.reduce<Date | null>(
+      const firstResponseReceivedAt = responseRows.reduce<Date | null>(
         (min, e) =>
           e.actorId !== userId && (!min || e.createdAt < min)
             ? e.createdAt
@@ -251,15 +272,7 @@ export const activationRouter = createTRPCRouter({
         null,
       );
 
-      const [profile] = await ctx.db
-        .select({
-          onboardingCompleted: memberProfiles.onboardingCompleted,
-          interests: memberProfiles.interests,
-          experienceLevel: memberProfiles.experienceLevel,
-        })
-        .from(memberProfiles)
-        .where(eq(memberProfiles.userId, userId))
-        .limit(1);
+      const profile = profileRows[0];
       const profileComplete =
         !!profile?.onboardingCompleted &&
         (profile?.interests?.length ?? 0) >= 1 &&

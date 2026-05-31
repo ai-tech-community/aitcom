@@ -90,7 +90,10 @@ export function OnboardingStepsAdmin({ slug }: { slug: string }) {
         )}
       </div>
 
-      <AddStepForm slug={slug} nextPosition={steps.length} />
+      <AddStepForm
+        slug={slug}
+        nextPosition={(steps.at(-1)?.position ?? -1) + 1}
+      />
     </div>
   );
 }

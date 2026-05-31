@@ -16,8 +16,9 @@ export function WelcomeChecklist({ slug }: { slug: string }) {
     onSuccess: () => void utils.onboardingSteps.listForMe.invalidate({ slug }),
   });
 
-  // Auto-hide once the member is activated.
-  if (stage?.stage === "activated") return null;
+  // Wait for stage; suppress (don't flash) until we know the member isn't activated.
+  if (stage === undefined) return null;
+  if (stage.stage === "activated") return null;
   // Loading or no steps configured → render nothing.
   if (isLoading || !steps || steps.length === 0) return null;
 
