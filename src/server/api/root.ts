@@ -23,6 +23,7 @@ import { postRouter } from "@/server/api/routers/post";
 import { sponsorsRouter } from "@/server/api/routers/sponsors";
 import { datacentersRouter } from "@/server/api/routers/datacenters";
 import { insightsRouter } from "@/server/api/routers/insights";
+import { discoveryRouter } from "@/server/api/routers/discovery";
 import { broadcastRouter } from "@/server/api/routers/broadcast";
 import { hubOperatorRouter } from "@/server/api/routers/hubOperator";
 import { advisoryRouter } from "@/server/api/routers/advisory";
@@ -65,6 +66,7 @@ export const appRouter = createTRPCRouter({
   luma: lumaRouter,
   datacenters: datacentersRouter,
   insights: insightsRouter,
+  discovery: discoveryRouter,
   broadcast: broadcastRouter,
   hubOperator: hubOperatorRouter,
   advisory: advisoryRouter,
