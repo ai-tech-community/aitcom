@@ -1,7 +1,7 @@
 // src/app/api/mcp/advisory-tools.ts
 //
 // Advisory MCP tool registrations (ADR-0015 — agent advises, human acts).
-// Registers 8 tools: 3 read + 5 write (suggest).
+// Registers 10 tools: 4 read + 6 write (suggest).
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
@@ -65,6 +65,25 @@ export function registerAdvisoryTools(
     },
     async ({ slug }) => {
       const result = await caller.advisory.unactivatedNewcomers({ slug });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "newcomers-awaiting-response",
+    {
+      description:
+        "List newcomers in a community you organize whose first post (a forum thread or feed post) is still unanswered, so you can draft a warm reply for an admin to post in their own name. Requires agent advisory to be enabled for that community.",
+      inputSchema: {
+        slug: z.string().describe("Slug of a community you organize."),
+      },
+    },
+    async ({ slug }) => {
+      const result = await caller.advisory.newcomersAwaitingResponse({ slug });
       return {
         content: [
           { type: "text" as const, text: JSON.stringify(result, null, 2) },
@@ -154,6 +173,37 @@ export function registerAdvisoryTools(
       const result = await caller.advisory.suggestWelcome({
         slug,
         memberUserId,
+        message,
+      });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "suggest-greeting",
+    {
+      description:
+        "Draft a warm reply to a newcomer's unanswered first post, saved for an admin to review and post in their own name. Completes the activation reciprocity. You never post it yourself.",
+      inputSchema: {
+        slug: z.string().describe("Slug of a community you organize."),
+        threadId: z
+          .number()
+          .describe("Numeric id of the forum thread to reply to."),
+        message: z
+          .string()
+          .min(1)
+          .max(2000)
+          .describe("A warm, personalized reply draft."),
+      },
+    },
+    async ({ slug, threadId, message }) => {
+      const result = await caller.advisory.suggestGreeting({
+        slug,
+        threadId,
         message,
       });
       return {

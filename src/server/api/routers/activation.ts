@@ -13,7 +13,6 @@ import {
 import {
   selectActivationFunnel,
   RESPONSE_ACTIONS,
-  RESPONDABLE_ACTIONS,
   type ActivationConfig,
   type FunnelMemberInput,
 } from "@/server/communities/activation";
@@ -21,16 +20,17 @@ import {
   CONTRIBUTION_ACTIONS,
   windowStart,
 } from "@/server/communities/insights";
+import {
+  ACTIVATION_COHORT_DAYS,
+  loadAwaitingResponse,
+} from "@/server/communities/activation-queries";
 import type { db as _db } from "@/server/db";
 
 type ActivationDb = typeof _db;
 
-const ACTIVATION_COHORT_DAYS = 30;
-const GREETER_GRACE_HOURS = 48;
 // Drizzle inArray wants string[]; the source tuples are readonly.
 const CONTRIBUTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
 const RESPONSE_LIST: string[] = [...RESPONSE_ACTIONS];
-const RESPONDABLE_LIST: string[] = [...RESPONDABLE_ACTIONS];
 const DEFAULT_CONFIG: ActivationConfig = {
   requireResponse: true,
   requireProfileComplete: false,
@@ -197,84 +197,8 @@ export const activationRouter = createTRPCRouter({
     .query(async ({ ctx }) => {
       requireAdmin(ctx.communityRole);
       const now = new Date();
-      const cohortStart = windowStart(now, ACTIVATION_COHORT_DAYS);
 
-      const { config, cohortIds } = await loadCohort(
-        ctx.db,
-        ctx.community.id,
-        cohortStart,
-      );
-      if (cohortIds.length === 0) return [];
-      const windowDays = config.windowDays;
-
-      const respondable = await ctx.db
-        .select({
-          actorId: activityEvents.actorId,
-          action: activityEvents.action,
-          targetType: activityEvents.targetType,
-          targetId: activityEvents.targetId,
-          metadata: activityEvents.metadata,
-          createdAt: activityEvents.createdAt,
-        })
-        .from(activityEvents)
-        .where(
-          and(
-            eq(activityEvents.communityId, ctx.community.id),
-            gte(activityEvents.createdAt, cohortStart),
-            inArray(activityEvents.actorId, cohortIds),
-            inArray(activityEvents.action, RESPONDABLE_LIST),
-          ),
-        );
-      const earliestRespondable = new Map<
-        string,
-        (typeof respondable)[number]
-      >();
-      for (const e of respondable) {
-        const cur = earliestRespondable.get(e.actorId);
-        if (!cur || e.createdAt < cur.createdAt) {
-          earliestRespondable.set(e.actorId, e);
-        }
-      }
-
-      const responseEvents = await ctx.db
-        .select({
-          recipientId: activityEvents.recipientId,
-          actorId: activityEvents.actorId,
-        })
-        .from(activityEvents)
-        .where(
-          and(
-            eq(activityEvents.communityId, ctx.community.id),
-            gte(activityEvents.createdAt, cohortStart),
-            isNotNull(activityEvents.recipientId),
-            inArray(activityEvents.recipientId, cohortIds),
-            inArray(activityEvents.action, RESPONSE_LIST),
-          ),
-        );
-      const respondedSet = new Set<string>(
-        responseEvents.flatMap((e) =>
-          e.recipientId !== null && e.recipientId !== e.actorId
-            ? [e.recipientId]
-            : [],
-        ),
-      );
-
-      const graceMs = GREETER_GRACE_HOURS * 60 * 60 * 1000;
-      const windowMs = windowDays * 24 * 60 * 60 * 1000;
-      const queue = [...earliestRespondable.entries()]
-        .filter(([userId, e]) => {
-          if (respondedSet.has(userId)) return false;
-          const ageMs = now.getTime() - e.createdAt.getTime();
-          return ageMs >= graceMs && ageMs <= windowMs;
-        })
-        .map(([userId, e]) => ({
-          userId,
-          action: e.action,
-          targetType: e.targetType,
-          targetId: e.targetId,
-          metadata: e.metadata,
-          contributionAt: e.createdAt,
-        }));
+      const queue = await loadAwaitingResponse(ctx.db, ctx.community.id, now);
       if (queue.length === 0) return [];
 
       const ids = queue.map((q) => q.userId);
