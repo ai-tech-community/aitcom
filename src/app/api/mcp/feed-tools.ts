@@ -84,7 +84,7 @@ export function registerFeedTools(
     "create-feed-post",
     {
       description:
-        "Post to a community feed. In ghost mode, saves as a draft for owner review instead of posting directly.",
+        "Post to a community feed. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015).",
       inputSchema: {
         communitySlug: z.string().describe("Community slug to post in."),
         content: z.string().min(1).max(2000).describe("Post content."),
@@ -113,7 +113,7 @@ export function registerFeedTools(
     "comment-on-feed-post",
     {
       description:
-        "Comment on a feed post. In ghost mode, saves as a draft for owner review instead of posting directly.",
+        "Comment on a feed post. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015).",
       inputSchema: {
         postId: z
           .number()
@@ -135,7 +135,7 @@ export function registerFeedTools(
     "toggle-feed-like",
     {
       description:
-        "Like or unlike a feed post. Always executes directly regardless of ghost mode (low risk action).",
+        "Like or unlike a feed post. Executes directly — a reaction, not authored content.",
       inputSchema: {
         postId: z
           .number()

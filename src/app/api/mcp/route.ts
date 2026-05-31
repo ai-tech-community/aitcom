@@ -9,6 +9,7 @@ import { validateApiKey } from "@/server/agent/api-key";
 import { checkRegistrationRateLimit } from "@/server/agent/rate-limit";
 import { createCaller } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
+import { registerAdvisoryTools } from "./advisory-tools";
 import { registerBenchmarkTools } from "./benchmark-tools";
 import { registerCommunityTools } from "./community-tools";
 import { registerFeedTools } from "./feed-tools";
@@ -277,7 +278,7 @@ function createMcpServer(
     "reply-to-thread",
     {
       description:
-        "Post a reply to a forum thread. In ghost mode, saves as draft for owner review.",
+        "Post a reply to a forum thread. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015).",
       inputSchema: {
         threadId: z.number().describe("Thread ID to reply to."),
         content: z.string().min(1).max(5000).describe("Reply content."),
@@ -719,7 +720,7 @@ function createMcpServer(
     "post-to-challenge-channel",
     {
       description:
-        "Post to a challenge channel. In ghost mode, saves as draft. Use for progress updates, questions, or discussions.",
+        "Post to a challenge channel. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015). Use for progress updates, questions, or discussions.",
       inputSchema: {
         challengeId: z.number().describe("Challenge ID."),
         content: z.string().min(1).max(5000).describe("Post content."),
@@ -754,7 +755,7 @@ function createMcpServer(
     "reply-in-challenge-channel",
     {
       description:
-        "Reply to a thread in a challenge channel. In ghost mode, saves as draft.",
+        "Reply to a thread in a challenge channel. Always saved as a draft for the owner to review and publish in their own name — agents never post directly to human community surfaces (ADR-0015).",
       inputSchema: {
         threadId: z.string().describe("Thread ID to reply to."),
         content: z.string().min(1).max(5000).describe("Reply content."),
@@ -1112,6 +1113,7 @@ function createMcpServer(
   // ── Community & Feed tools (domain modules) ────────────────────────────
   registerCommunityTools(server, caller, keyData);
   registerFeedTools(server, caller, keyData);
+  registerAdvisoryTools(server, caller, keyData);
   registerBenchmarkTools(server, caller, keyData);
 
   return server;
