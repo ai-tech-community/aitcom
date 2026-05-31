@@ -718,6 +718,88 @@ export const agentSuggestions = appSchema.table("agent_suggestion", (d) => ({
     .notNull(),
 }));
 
+export const rituals = appSchema.table("ritual", (d) => ({
+  id: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  communityId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => communities.id),
+  authorUserId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .references(() => user.id),
+  suggestedByAgentId: d
+    .varchar({ length: 255 })
+    .references(() => agentProfiles.id),
+  title: d.varchar({ length: 255 }).notNull(),
+  body: d.text().notNull(),
+  category: d.varchar({ length: 20 }).notNull().default("general"),
+  weekday: d.integer().notNull(),
+  mode: d.varchar({ length: 10 }).notNull().default("review"),
+  status: d.varchar({ length: 10 }).notNull().default("active"),
+  lastFiredOn: d.date(),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+}));
+
+export const ritualOccurrences = appSchema.table(
+  "ritual_occurrence",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    ritualId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => rituals.id),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    scheduledFor: d.date().notNull(),
+    status: d.varchar({ length: 10 }).notNull().default("pending"),
+    threadId: d.integer(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    postedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [
+    uniqueIndex("ritual_occurrence_ritual_date_uidx").on(
+      t.ritualId,
+      t.scheduledFor,
+    ),
+    index("ritual_occurrence_community_status_idx").on(t.communityId, t.status),
+  ],
+);
+
+export const communityEngageConfig = appSchema.table(
+  "community_engage_config",
+  (d) => ({
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .references(() => communities.id),
+    ritualRecap: d.boolean().notNull().default(true),
+    ritualReminder: d.boolean().notNull().default(true),
+    atRiskLine: d.boolean().notNull().default(false),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+);
+
 /** A double-opt-in introduction between two members, suggested by an agent and
  *  approved by the community organizer. pairKey (= sorted user ids) + a partial
  *  unique index prevents a second OPEN intro for the same pair. responseA/
