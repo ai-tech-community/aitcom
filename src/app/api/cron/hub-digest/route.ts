@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { eq, gte, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import {
@@ -21,6 +21,7 @@ import { sendHubDigestEmail } from "@/server/email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function GET(req: Request) {
   if (
@@ -74,28 +75,28 @@ export async function GET(req: Request) {
     byUser.set(m.userId, entry);
   }
 
-  for (const [userId, { email, rows }] of byUser) {
-    // Idempotency: skip if already sent this period.
-    const already = await db
-      .select({ id: digestSendLog.id })
-      .from(digestSendLog)
-      .where(
-        and(
-          eq(digestSendLog.userId, userId),
-          eq(digestSendLog.periodKey, periodKey),
-        ),
-      )
-      .limit(1);
-    if (already.length > 0) continue;
+  // Batch opt-out read: one query for all users instead of one per user.
+  const allUserIds = [...byUser.keys()];
+  const allOptouts =
+    allUserIds.length === 0
+      ? []
+      : await db
+          .select({
+            userId: notificationOptouts.userId,
+            communityId: notificationOptouts.communityId,
+            category: notificationOptouts.category,
+          })
+          .from(notificationOptouts)
+          .where(inArray(notificationOptouts.userId, allUserIds));
+  const optoutByUser = new Map<string, OptoutRow[]>();
+  for (const row of allOptouts) {
+    const list = optoutByUser.get(row.userId) ?? [];
+    list.push(row);
+    optoutByUser.set(row.userId, list);
+  }
 
-    const optoutRows = await db
-      .select({
-        communityId: notificationOptouts.communityId,
-        category: notificationOptouts.category,
-      })
-      .from(notificationOptouts)
-      .where(eq(notificationOptouts.userId, userId));
-    const prefs = resolvePrefs(optoutRows as OptoutRow[]);
+  for (const [userId, { email, rows }] of byUser) {
+    const prefs = resolvePrefs(optoutByUser.get(userId) ?? []);
     if (prefs.globalDigestOptOut) continue;
 
     const sections = rows.map((r) =>
@@ -116,16 +117,23 @@ export async function GET(req: Request) {
     });
     if (!digest) continue;
 
+    // Claim-before-send: insert idempotency row first; only send if claim won.
+    // At-most-once semantics: if send fails after claiming, member skips this
+    // week (acceptable for weekly digest; prevents double-send / concurrent-run crash).
+    const claimed = await db
+      .insert(digestSendLog)
+      .values({ userId, periodKey })
+      .onConflictDoNothing()
+      .returning({ id: digestSendLog.id });
+    if (claimed.length === 0) continue; // already sent this period
+
     let ok = false;
     try {
       ok = await sendHubDigestEmail(email, renderHubDigestHtml(digest));
     } catch (err) {
       console.error(`hub-digest: send failed for ${userId}`, err);
     }
-    if (ok) {
-      await db.insert(digestSendLog).values({ userId, periodKey });
-      sent++;
-    }
+    if (ok) sent++;
   }
 
   return NextResponse.json({ success: true, sent, periodKey });

@@ -17,6 +17,7 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function GET(req: Request) {
   if (
@@ -32,9 +33,9 @@ export async function GET(req: Request) {
   );
   let reminded = 0;
 
-  // Collect rows for bulk inserts flushed after all events are processed.
+  // Collect in-app notification rows for bulk insert flushed after all events are processed.
+  // Delivery rows are claimed per-registration (claim-before-send); no bulk deliveryRows array.
   const notificationRows: (typeof notifications.$inferInsert)[] = [];
-  const deliveryRows: (typeof broadcastDeliveries.$inferInsert)[] = [];
 
   const payload = await getPayloadClient();
   // Published events starting between now and the reminder horizon.
@@ -71,30 +72,27 @@ export async function GET(req: Request) {
         ),
       );
 
-    // Batch dedupe: one query per event instead of one per registration (eliminates N+1 SELECT).
-    const regUserIds = regs.map((r) => r.userId);
-    const alreadyReminded = new Set(
-      regUserIds.length === 0
-        ? []
-        : (
-            await db
-              .select({ userId: broadcastDeliveries.userId })
-              .from(broadcastDeliveries)
-              .where(
-                and(
-                  inArray(broadcastDeliveries.userId, regUserIds),
-                  eq(broadcastDeliveries.dedupeKey, dedupeKey),
-                ),
-              )
-          ).map((r) => r.userId),
-    );
-
     const title = String(event.title ?? "your event");
     // `date` field is the event's start date in the events collection.
     const whenText = new Date(String(event.date)).toUTCString();
 
     for (const reg of regs) {
-      if (alreadyReminded.has(reg.userId)) continue;
+      // Claim-before-send: insert dedupe row first via partial unique index
+      // broadcast_delivery_dedupe_uidx WHERE dedupe_key IS NOT NULL.
+      // onConflictDoNothing() with no target covers partial indexes in Postgres.
+      // Promotional inserts (dedupeKey NULL) elsewhere are unaffected.
+      const claimed = await db
+        .insert(broadcastDeliveries)
+        .values({
+          userId: reg.userId,
+          class: "transactional",
+          emailSent: false,
+          windowKey,
+          dedupeKey,
+        })
+        .onConflictDoNothing()
+        .returning({ id: broadcastDeliveries.id });
+      if (claimed.length === 0) continue; // already reminded for this event
 
       // In-app (always) + transactional email (ceiling-EXEMPT — NO allowPromotional call).
       notificationRows.push({
@@ -116,22 +114,19 @@ export async function GET(req: Request) {
         console.error(`event-reminders: send failed for ${reg.userId}`, err);
       }
 
-      deliveryRows.push({
-        userId: reg.userId,
-        class: "transactional",
-        emailSent,
-        windowKey,
-        dedupeKey,
-      });
+      if (emailSent && claimed[0]) {
+        await db
+          .update(broadcastDeliveries)
+          .set({ emailSent: true })
+          .where(eq(broadcastDeliveries.id, claimed[0].id));
+      }
       reminded++;
     }
   }
 
-  // Flush all collected rows in two bulk inserts after processing all events.
+  // Flush batched in-app notification rows after processing all events.
   if (notificationRows.length)
     await db.insert(notifications).values(notificationRows);
-  if (deliveryRows.length)
-    await db.insert(broadcastDeliveries).values(deliveryRows);
 
   return NextResponse.json({ success: true, reminded, windowKey });
 }

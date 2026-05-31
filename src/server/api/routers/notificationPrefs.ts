@@ -44,18 +44,14 @@ export const notificationPrefsRouter = createTRPCRouter({
       );
 
       if (input.optedOut) {
-        const existing = await ctx.db
-          .select({ id: notificationOptouts.id })
-          .from(notificationOptouts)
-          .where(match)
-          .limit(1);
-        if (existing.length === 0) {
-          await ctx.db.insert(notificationOptouts).values({
+        await ctx.db
+          .insert(notificationOptouts)
+          .values({
             userId,
             communityId: input.communityId,
             category: input.category,
-          });
-        }
+          })
+          .onConflictDoNothing();
       } else {
         await ctx.db.delete(notificationOptouts).where(match);
       }
