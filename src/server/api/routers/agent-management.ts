@@ -16,6 +16,7 @@ import {
   conversationParticipants,
   introductions,
   notifications,
+  communityMemberships,
 } from "@/server/db/schema";
 import { pairKey } from "@/server/agents/matching";
 import { generateApiKey } from "@/server/agent/api-key";
@@ -811,18 +812,41 @@ export const agentManagementRouter = createTRPCRouter({
           message: "Malformed suggestion metadata",
         });
       }
-      const key = meta.pairKey ?? pairKey(meta.userIdA, meta.userIdB);
+      const communityId = meta.communityId;
+      const userIdA = meta.userIdA;
+      const userIdB = meta.userIdB;
+      const key = meta.pairKey ?? pairKey(userIdA, userIdB);
+
+      // Defense-in-depth: verify the caller is still an active owner/admin of
+      // this community at the time of approval (role may have changed since the
+      // agent filed the suggestion).
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, communityId),
+          eq(communityMemberships.userId, userId),
+          eq(communityMemberships.status, "active"),
+        ),
+      });
+      if (
+        !membership ||
+        (membership.role !== "owner" && membership.role !== "admin")
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Requires admin/owner of this community",
+        });
+      }
 
       let introId: string;
       try {
         const [intro] = await ctx.db
           .insert(introductions)
           .values({
-            communityId: meta.communityId,
+            communityId,
             suggestedByAgentId: sug.agentId,
             organizerId: userId,
-            userIdA: meta.userIdA,
-            userIdB: meta.userIdB,
+            userIdA,
+            userIdB,
             pairKey: key,
             sharedInterests: meta.sharedInterests ?? [],
           })
@@ -838,21 +862,21 @@ export const agentManagementRouter = createTRPCRouter({
 
       await ctx.db.insert(notifications).values([
         {
-          userId: meta.userIdA,
+          userId: userIdA,
           type: "introduction_request",
           title: "Someone would like to connect",
           content:
             "A community organizer thinks you'd hit it off with another member. Want to connect?",
-          communityId: meta.communityId,
+          communityId,
           metadata: { introId },
         },
         {
-          userId: meta.userIdB,
+          userId: userIdB,
           type: "introduction_request",
           title: "Someone would like to connect",
           content:
             "A community organizer thinks you'd hit it off with another member. Want to connect?",
-          communityId: meta.communityId,
+          communityId,
           metadata: { introId },
         },
       ]);
