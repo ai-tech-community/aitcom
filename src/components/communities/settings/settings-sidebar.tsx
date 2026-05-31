@@ -28,6 +28,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
     { key: "rules", href: `${basePath}/rules` },
     { key: "broadcast", href: `${basePath}/broadcast` },
     { key: "autonomy", href: `${basePath}/autonomy` },
+    { key: "acquire", href: `${basePath}/acquire` },
     { key: "integrations", href: `${basePath}/integrations`, ownerOnly: true },
     { key: "ownership", href: `${basePath}/ownership`, ownerOnly: true },
   ];
@@ -61,6 +62,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "rules"
                   | "broadcast"
                   | "autonomy"
+                  | "acquire"
                   | "integrations"
                   | "ownership",
               )}
@@ -92,6 +94,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "rules"
                   | "broadcast"
                   | "autonomy"
+                  | "acquire"
                   | "integrations"
                   | "ownership",
               )}

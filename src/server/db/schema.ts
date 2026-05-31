@@ -844,6 +844,23 @@ export const communityActivationConfig = appSchema.table(
   }),
 );
 
+export const communityAcquireConfig = appSchema.table(
+  "community_acquire_config",
+  (d) => ({
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .references(() => communities.id),
+    crossPromote: d.boolean().notNull().default(true),
+    referralsEnabled: d.boolean().notNull().default(true),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+);
+
 export const communityOnboardingStep = appSchema.table(
   "community_onboarding_step",
   (d) => ({

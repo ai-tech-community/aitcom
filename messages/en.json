@@ -1319,7 +1319,8 @@
         "ownership": "Ownership",
         "integrations": "Integrations",
         "broadcast": "Announcements",
-        "autonomy": "Agent advisory"
+        "autonomy": "Agent advisory",
+        "acquire": "Acquire"
       },
       "members": {
         "activeTab": "Active",
