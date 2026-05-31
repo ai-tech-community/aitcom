@@ -12,6 +12,7 @@ import {
 } from "@/server/db/schema";
 import {
   selectActivationFunnel,
+  computeActivationStage,
   RESPONSE_ACTIONS,
   type ActivationConfig,
   type FunnelMemberInput,
@@ -191,6 +192,88 @@ export const activationRouter = createTRPCRouter({
         profileComplete: profileComplete.get(userId) ?? false,
       }));
       return selectActivationFunnel({ members, config, now });
+    }),
+
+  // The caller's own activation stage — drives the member welcome checklist's
+  // auto-hide. No admin gate: any active member can read their own stage.
+  myStage: communityProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx }) => {
+      const userId = ctx.session.user.id;
+      const now = new Date();
+
+      const [cfgRow] = await ctx.db
+        .select()
+        .from(communityActivationConfig)
+        .where(eq(communityActivationConfig.communityId, ctx.community.id))
+        .limit(1);
+      const config: ActivationConfig = cfgRow
+        ? {
+            requireResponse: cfgRow.requireResponse,
+            requireProfileComplete: cfgRow.requireProfileComplete,
+            windowDays: cfgRow.windowDays,
+          }
+        : DEFAULT_CONFIG;
+
+      const contribEvents = await ctx.db
+        .select({ createdAt: activityEvents.createdAt })
+        .from(activityEvents)
+        .where(
+          and(
+            eq(activityEvents.communityId, ctx.community.id),
+            eq(activityEvents.actorId, userId),
+            inArray(activityEvents.action, CONTRIBUTION_LIST),
+          ),
+        );
+      const firstContributionAt = contribEvents.reduce<Date | null>(
+        (min, e) => (!min || e.createdAt < min ? e.createdAt : min),
+        null,
+      );
+
+      const responseEvents = await ctx.db
+        .select({
+          actorId: activityEvents.actorId,
+          createdAt: activityEvents.createdAt,
+        })
+        .from(activityEvents)
+        .where(
+          and(
+            eq(activityEvents.communityId, ctx.community.id),
+            eq(activityEvents.recipientId, userId),
+            inArray(activityEvents.action, RESPONSE_LIST),
+          ),
+        );
+      const firstResponseReceivedAt = responseEvents.reduce<Date | null>(
+        (min, e) =>
+          e.actorId !== userId && (!min || e.createdAt < min)
+            ? e.createdAt
+            : min,
+        null,
+      );
+
+      const [profile] = await ctx.db
+        .select({
+          onboardingCompleted: memberProfiles.onboardingCompleted,
+          interests: memberProfiles.interests,
+          experienceLevel: memberProfiles.experienceLevel,
+        })
+        .from(memberProfiles)
+        .where(eq(memberProfiles.userId, userId))
+        .limit(1);
+      const profileComplete =
+        !!profile?.onboardingCompleted &&
+        (profile?.interests?.length ?? 0) >= 1 &&
+        !!profile?.experienceLevel;
+
+      return {
+        stage: computeActivationStage({
+          firstContributionAt,
+          firstResponseReceivedAt,
+          profileComplete,
+          config,
+          now,
+        }),
+      };
     }),
 
   awaitingResponse: communityProcedure

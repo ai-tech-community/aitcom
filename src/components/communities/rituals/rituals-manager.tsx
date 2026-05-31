@@ -10,6 +10,7 @@ import { PendingOccurrences } from "./pending-occurrences";
 import { SuggestedRituals } from "./suggested-rituals";
 import { DigestRecallSettings } from "@/components/communities/engage/digest-recall-settings";
 import { ActivationSettings } from "@/components/communities/activation/activation-settings";
+import { OnboardingStepsAdmin } from "@/components/communities/onboarding/onboarding-steps-admin";
 
 export function RitualsManager({ slug }: { slug: string }) {
   const [showForm, setShowForm] = useState(false);
@@ -123,6 +124,8 @@ export function RitualsManager({ slug }: { slug: string }) {
       <DigestRecallSettings slug={slug} />
 
       <ActivationSettings slug={slug} />
+
+      <OnboardingStepsAdmin slug={slug} />
     </div>
   );
 }
