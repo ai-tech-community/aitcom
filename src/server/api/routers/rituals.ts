@@ -210,6 +210,33 @@ export const ritualsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireManager(ctx.communityRole);
+
+      // Read + authorize BEFORE any mutation.
+      const [existing] = await ctx.db
+        .select()
+        .from(agentDrafts)
+        .where(
+          and(
+            eq(agentDrafts.id, input.draftId),
+            eq(agentDrafts.type, "ritual_suggestion"),
+          ),
+        )
+        .limit(1);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const meta = (existing.metadata ?? {}) as {
+        communityId?: string;
+        title?: string;
+        body?: string;
+        category?: string;
+        weekday?: number;
+        mode?: string;
+      };
+      if (meta.communityId !== ctx.community.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      // CAS claim: only flip a still-pending draft.
       const [draft] = await ctx.db
         .update(agentDrafts)
         .set({ status: input.action })
@@ -221,19 +248,8 @@ export const ritualsRouter = createTRPCRouter({
           ),
         )
         .returning();
-      if (!draft) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!draft) throw new TRPCError({ code: "CONFLICT" });
 
-      const meta = (draft.metadata ?? {}) as {
-        communityId?: string;
-        title?: string;
-        body?: string;
-        category?: string;
-        weekday?: number;
-        mode?: string;
-      };
-      if (meta.communityId !== ctx.community.id) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
       if (input.action === "rejected") return { ok: true, ritualId: null };
 
       const [r] = await ctx.db
