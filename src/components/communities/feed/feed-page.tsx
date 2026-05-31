@@ -10,6 +10,7 @@ import { PostComposer } from "./post-composer";
 import { FeedPostCard } from "./feed-post-card";
 import { FeedComments } from "./feed-comments";
 import { CommunitySidebar } from "./community-sidebar";
+import { WelcomeChecklist } from "@/components/communities/onboarding/welcome-checklist";
 
 interface FeedPageProps {
   slug: string;
@@ -93,6 +94,8 @@ export function FeedPage({
     <div className="flex flex-col gap-8 lg:h-full lg:flex-row">
       {/* Left column: composer + feed */}
       <div className="min-w-0 flex-1 space-y-4 lg:overflow-y-auto">
+        {isAuthenticated && isMember && <WelcomeChecklist slug={slug} />}
+
         <PostComposer slug={slug} canPost={canPost} />
 
         {!isAuthenticated ? (

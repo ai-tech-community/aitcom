@@ -10,7 +10,7 @@ belong in code or ADRs, not here.
 The AIT-wide level: the whole platform. Modelled as the **root community**
 (the `community` row with slug `ait`), into which every user is enrolled as a
 member. Hub-wide content is the form of a [[shared-surface]] where
-`communityId` is null. "AI Tech Community" the product *is* the Hub; the name
+`communityId` is null. "AI Tech Community" the product _is_ the Hub; the name
 may be reconsidered later. Default to **Hub** when you mean the platform-wide
 level, never the bare word "community".
 
@@ -44,12 +44,19 @@ members, moderate its [[shared-surface]] content, and run growth.
 ### Contribution action
 
 The subset of `activity_event` actions that count as a member genuinely
-*participating* in a community: posts, comments, threads/replies, idea
+_participating_ in a community: posts, comments, threads/replies, idea
 submit/vote, event register/intent/create, launchpad publish/vote/update/
 comment, challenge participation, article submit/publish. **Excludes**
 passive signals (likes, views, logins) and admin operations (ban, role
 change, settings). The heartbeat used to derive [[active-member]] and
-[[at-risk-member]]. A lurker who only reads and likes is *not* contributing.
+[[at-risk-member]]. A lurker who only reads and likes is _not_ contributing.
+
+Reciprocity (for the [[activation-funnel]]) is detected via
+`activity_event.recipient_id`, populated forward-only on response actions
+(`thread.reply`, `feed.comment_created`, `launchpad.comment.created`).
+
+Per-community **onboarding steps** are admin-authored checklist items shown
+to newcomers; the checklist hides automatically once the member is activated.
 
 ### Active member
 
@@ -81,9 +88,9 @@ A recurring, scheduled engagement prompt that manufactures a reliable
 heartbeat — e.g. a weekly "introduce yourself" thread, a "show your work"
 showcase, a standup. A ritual is **structural scaffolding** owned by the
 [[Community]] (a clearly-labelled recurring container, like a pinned thread),
-posted by the system/[[community-admin]] — *not* an agent masquerading as a
+posted by the system/[[community-admin]] — _not_ an agent masquerading as a
 participant (see [[adr-0015-community-surfaces-are-human-authored]]). The agent
-may *draft* a ritual's copy under [[agent-autonomy-level]] = Suggest for a human
+may _draft_ a ritual's copy under [[agent-autonomy-level]] = Suggest for a human
 to approve. The supply side of the Engage loop (Ritual → content →
 [[community-digest]] → recall → participation → Ritual).
 
@@ -149,13 +156,44 @@ has a **dual trigger**: agent advisory `suggestWelcome` and the organizer-UI
 `insights.sendWelcome`, both targeting [[un-activated-newcomer]]s. See
 [[adr-0016-engage-loop-rituals-recall]].
 
+### Activation milestone
+
+The admin-tunable definition of "activated" for a [[community]]: a
+contribution baseline (≥1 [[contribution-action]]) plus two optional gates —
+`requireResponse` (newcomer's first contribution received a reply within
+`windowDays`, default 7) and `requireProfileComplete` (onboarding steps done,
+interests and experience set). Community policy, not a Hub invariant
+([[adr-0013-hub-invariant-vs-community-policy]]). See
+[[adr-0017-activation-milestone-and-reciprocity]].
+
+### Activation funnel
+
+Joined → contributed → received a response (reciprocity) → activated. The
+pipeline stages (`unactivated` / `awaiting_response` / `awaiting_profile` /
+`activated` / `stalled`) are a pure, tested computation derived on-the-fly from
+`activity_event` rows — no stored status column. Two intervention sets: the
+**un-activated** set (zero contributions → re-engage via
+[[community-agent-drafts]] warm-welcome) and the **awaiting-response** set
+(contributed but no reply yet → [[greeter]] queue). See
+[[adr-0017-activation-milestone-and-reciprocity]].
+
+### Greeter
+
+An owner/admin/moderator who guarantees a newcomer's first contribution gets a
+response. Surfaced via the awaiting-response queue: a newcomer's earliest
+respondable post (forum thread, feed post, or launchpad entry) that is
+unanswered after a ~48 h grace period and still within the `windowDays`
+window. The greeter either replies in-thread themselves or approves an
+agent-drafted `thread_reply` — `reviewDraft` publishes the reply in the
+human's own name, per [[adr-0015-community-surfaces-are-human-authored]].
+
 ### Notification ceiling
 
 A **Hub-invariant** (not admin-tunable) cap on how many promotional
-[[broadcast]]s any single member receives across *all* their communities in a
+[[broadcast]]s any single member receives across _all_ their communities in a
 window, fair-shared across communities. Protects the member's relationship
 with the platform; a [[community-admin]]'s sending cadence is policy that
-operates *inside* this envelope. The notification-load application of
+operates _inside_ this envelope. The notification-load application of
 [[adr-0013-hub-invariant-vs-community-policy]].
 
 ### Agent autonomy level
@@ -257,7 +295,7 @@ runs.
 
 A curated bundle of prompts handed to a contributor as an affordance:
 "here are five prompts; run them in your ChatGPT/Claude/Gemini and submit
-the output." An assignment is *not* server-side executable work — the
+the output." An assignment is _not_ server-side executable work — the
 contributor decides whether and when to run it. Assignments are
 self-serve, expire if untouched, and **carry no penalty for abandonment
 or partial completion**. See [[20260505_benchmark_assignments.ts]] and
@@ -302,7 +340,7 @@ A third-party MCP-capable client a contributor installs locally
 (OpenClaw, Hermes, TrustClaw, ZeroClaw, NanoClaw, Claude CLI, n8n, etc.)
 and points at AIT's MCP endpoint (`/api/mcp`) to submit benchmark runs
 on their behalf. The runtime is **not** AIT software; AIT publishes (or
-expects the runtime's community to publish) an *integration package*
+expects the runtime's community to publish) an _integration package_
 into the runtime's ecosystem so contributors install one thing instead
 of hand-writing MCP config.
 
@@ -330,7 +368,7 @@ with `isVerified`, `verifiedAt`, and the `xHandle`.
 
 What it attests to: **the agent owner controls the X account named by
 `xHandle`** — nothing more. It is not a quality, capability, or endorsement
-signal. The trusted handle is always the *authenticated author* X reports for
+signal. The trusted handle is always the _authenticated author_ X reports for
 the post, never the handle in the submitted URL (X resolves status URLs by ID
 alone, so the path handle is spoofable).
 
@@ -344,6 +382,7 @@ See [[adr-0006-byoa-community-executes-ait-collects]].
 ### Trust
 
 Per-run fabrication is undetectable. The benchmark relies on:
+
 - volume across contributors per cell (≥3 distinct contributors before
   per-cell metrics surface publicly — the **surface threshold**);
 - per-run **contributor weight** inherited from existing community

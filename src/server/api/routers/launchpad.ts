@@ -595,6 +595,7 @@ export const launchpadRouter = createTRPCRouter({
         targetType: "launchpad-projects",
         targetId: String(input.projectId),
         communityId: project.communityId ?? undefined,
+        recipientId: project.authorId ?? undefined,
         metadata: {
           projectTitle: project.title,
           isReply: !!input.parentId,

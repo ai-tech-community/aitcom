@@ -39,6 +39,10 @@
     {
       "path": "/api/cron/rituals",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/activation-newcomer-churn",
+      "schedule": "0 8 * * 1"
     }
   ]
 }

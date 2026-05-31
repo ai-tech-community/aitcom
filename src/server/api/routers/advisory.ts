@@ -45,6 +45,7 @@ import {
   type ActivityRow,
   type MembershipRow,
 } from "@/server/communities/insights";
+import { loadAwaitingResponse } from "@/server/communities/activation-queries";
 
 type DB = typeof _db;
 
@@ -454,6 +455,63 @@ export const advisoryRouter = createTRPCRouter({
           targetId: input.memberUserId,
           content: input.message,
           metadata: { communityId: community.id, communitySlug: input.slug },
+        })
+        .returning({ id: agentDrafts.id });
+      return { draftId: d!.id };
+    }),
+
+  /** Newcomers whose first respondable post is still unanswered (greeter queue). */
+  newcomersAwaitingResponse: agentProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await requireAdvisoryAccess(
+        ctx.db,
+        input.slug,
+        ownerId,
+      );
+      return loadAwaitingResponse(ctx.db, community.id, new Date());
+    }),
+
+  /** Draft a greeting reply to a newcomer's thread. Note: the threadId is not
+   *  validated to belong to {slug}'s community — like all thread_reply drafts it
+   *  is owner-scoped at review (only the agent's owner can approve), so blast
+   *  radius is the owner's own drafts. A community-scoped validation is a
+   *  tracked follow-up.
+   *
+   *  Draft a warm reply to a newcomer's unanswered first post, for an admin to
+   *  review and post in their own name (published via reviewDraft thread_reply). */
+  suggestGreeting: agentProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        threadId: z.number(),
+        message: z.string().min(1).max(2000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await requireAdvisoryAccess(
+        ctx.db,
+        input.slug,
+        ownerId,
+      );
+      const [d] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: ctx.agent.agentId,
+          ownerId,
+          type: "thread_reply",
+          targetType: "forum-threads",
+          targetId: String(input.threadId),
+          content: input.message,
+          metadata: {
+            communityId: community.id,
+            communitySlug: input.slug,
+            greeting: true,
+          },
         })
         .returning({ id: agentDrafts.id });
       return { draftId: d!.id };
