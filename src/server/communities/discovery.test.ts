@@ -115,6 +115,6 @@ describe("rankCommunitiesForMember", () => {
       candidates: [candidate({ communityId: "a", activeNow: 4 })],
       memberCommunityIds: new Set(),
     });
-    expect(r.score).toBe(12);
+    expect(r!.score).toBe(12);
   });
 });
