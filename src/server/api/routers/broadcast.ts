@@ -161,7 +161,11 @@ export const broadcastRouter = createTRPCRouter({
         let emailSent = false;
         if (emailAllowed) {
           try {
-            emailSent = await sendBroadcastEmail(member.email, input.subject, input.body);
+            emailSent = await sendBroadcastEmail(
+              member.email,
+              input.subject,
+              input.body,
+            );
           } catch (err) {
             console.error(`broadcast: send failed for ${member.userId}`, err);
           }
@@ -177,8 +181,10 @@ export const broadcastRouter = createTRPCRouter({
         });
       }
 
-      if (notificationRows.length) await ctx.db.insert(notifications).values(notificationRows);
-      if (deliveryRows.length) await ctx.db.insert(broadcastDeliveries).values(deliveryRows);
+      if (notificationRows.length)
+        await ctx.db.insert(notifications).values(notificationRows);
+      if (deliveryRows.length)
+        await ctx.db.insert(broadcastDeliveries).values(deliveryRows);
 
       return { broadcastId: broadcast!.id, emailed };
     }),

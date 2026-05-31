@@ -27,9 +27,9 @@ describe("allowPromotional", () => {
 
   it("rejects when THIS community already used its sub-cap, even with global room", () => {
     // 4 communities, ceiling 3 -> sub-cap 1. c1 already sent 1; global total only 1.
-    expect(
-      allowPromotional({ ...base, sendsByCommunity: { c1: 1 } }),
-    ).toBe(false);
+    expect(allowPromotional({ ...base, sendsByCommunity: { c1: 1 } })).toBe(
+      false,
+    );
   });
 
   it("fair-shares: a fast community cannot exceed its slice while others are silent", () => {
@@ -41,7 +41,11 @@ describe("allowPromotional", () => {
 
   it("single-community member may receive up to the full ceiling from that community", () => {
     const solo = { ceiling: 3, nCommunities: 1, communityId: "c1" };
-    expect(allowPromotional({ ...solo, sendsByCommunity: { c1: 2 } })).toBe(true);
-    expect(allowPromotional({ ...solo, sendsByCommunity: { c1: 3 } })).toBe(false);
+    expect(allowPromotional({ ...solo, sendsByCommunity: { c1: 2 } })).toBe(
+      true,
+    );
+    expect(allowPromotional({ ...solo, sendsByCommunity: { c1: 3 } })).toBe(
+      false,
+    );
   });
 });

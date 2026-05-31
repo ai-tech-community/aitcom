@@ -472,7 +472,10 @@ export const notificationOptouts = appSchema.table(
       .notNull()
       .references(() => user.id),
     communityId: d.varchar("community_id", { length: 255 }),
-    category: d.varchar({ length: 20 }).notNull().$type<"digest" | "broadcast">(),
+    category: d
+      .varchar({ length: 20 })
+      .notNull()
+      .$type<"digest" | "broadcast">(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -534,7 +537,10 @@ export const broadcastDeliveries = appSchema.table(
       .notNull()
       .references(() => user.id),
     communityId: d.varchar("community_id", { length: 255 }),
-    class: d.varchar({ length: 20 }).notNull().$type<"promotional" | "transactional">(),
+    class: d
+      .varchar({ length: 20 })
+      .notNull()
+      .$type<"promotional" | "transactional">(),
     emailSent: d.boolean("email_sent").notNull().default(false),
     windowKey: d.varchar("window_key", { length: 16 }).notNull(),
     dedupeKey: d.varchar("dedupe_key", { length: 255 }),
@@ -568,7 +574,9 @@ export const digestSendLog = appSchema.table(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   }),
-  (t) => [uniqueIndex("digest_send_log_user_period_uidx").on(t.userId, t.periodKey)],
+  (t) => [
+    uniqueIndex("digest_send_log_user_period_uidx").on(t.userId, t.periodKey),
+  ],
 );
 
 // Agent webhooks (per-agent webhook configuration for event delivery)

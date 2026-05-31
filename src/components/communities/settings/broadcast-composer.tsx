@@ -74,7 +74,9 @@ export function BroadcastComposer({ slug }: BroadcastComposerProps) {
         </div>
 
         <Button type="submit" size="sm" disabled={!canSend || send.isPending}>
-          {send.isPending && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+          {send.isPending && (
+            <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+          )}
           {send.isPending ? t("sending") : t("send")}
         </Button>
       </form>

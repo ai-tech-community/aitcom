@@ -32,7 +32,9 @@ export function NotificationPrefs() {
       <div className="flex items-center justify-between rounded-lg border p-4">
         <div>
           <p className="text-sm font-medium">{t("globalDigest")}</p>
-          <p className="text-muted-foreground text-xs">{t("globalDigestHint")}</p>
+          <p className="text-muted-foreground text-xs">
+            {t("globalDigestHint")}
+          </p>
         </div>
         <Switch
           aria-label={t("globalDigest")}

@@ -25,7 +25,9 @@ describe("summarizeCommunitySection", () => {
   });
   it("marks a section with any activity as non-empty", () => {
     expect(section("c1", { newThreads: 2 }).isEmpty).toBe(false);
-    expect(section("c1", { ritualItems: ["Intro thread"] }).isEmpty).toBe(false);
+    expect(section("c1", { ritualItems: ["Intro thread"] }).isEmpty).toBe(
+      false,
+    );
   });
 });
 

@@ -25,7 +25,9 @@ export default async function NotificationsPage() {
       <div className="mx-auto mt-10 max-w-2xl space-y-6">
         <div>
           <h2 className="text-xl font-semibold">{t("title")}</h2>
-          <p className="text-muted-foreground mt-1 text-sm">{t("description")}</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {t("description")}
+          </p>
         </div>
         <NotificationPrefs />
       </div>

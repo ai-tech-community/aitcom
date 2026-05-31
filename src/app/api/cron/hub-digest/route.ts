@@ -23,7 +23,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  if (req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (
+    req.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`
+  ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -58,14 +60,14 @@ export async function GET(req: Request) {
       email: user.email,
     })
     .from(communityMemberships)
-    .innerJoin(communities, eq(communityMemberships.communityId, communities.id))
+    .innerJoin(
+      communities,
+      eq(communityMemberships.communityId, communities.id),
+    )
     .innerJoin(user, eq(communityMemberships.userId, user.id))
     .where(eq(communityMemberships.status, "active"));
 
-  const byUser = new Map<
-    string,
-    { email: string; rows: typeof memberships }
-  >();
+  const byUser = new Map<string, { email: string; rows: typeof memberships }>();
   for (const m of memberships) {
     const entry = byUser.get(m.userId) ?? { email: m.email, rows: [] };
     entry.rows.push(m);

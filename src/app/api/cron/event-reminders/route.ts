@@ -113,10 +113,7 @@ export async function GET(req: Request) {
           slug: String(event.slug ?? ""),
         });
       } catch (err) {
-        console.error(
-          `event-reminders: send failed for ${reg.userId}`,
-          err,
-        );
+        console.error(`event-reminders: send failed for ${reg.userId}`, err);
       }
 
       deliveryRows.push({
@@ -131,8 +128,10 @@ export async function GET(req: Request) {
   }
 
   // Flush all collected rows in two bulk inserts after processing all events.
-  if (notificationRows.length) await db.insert(notifications).values(notificationRows);
-  if (deliveryRows.length) await db.insert(broadcastDeliveries).values(deliveryRows);
+  if (notificationRows.length)
+    await db.insert(notifications).values(notificationRows);
+  if (deliveryRows.length)
+    await db.insert(broadcastDeliveries).values(deliveryRows);
 
   return NextResponse.json({ success: true, reminded, windowKey });
 }
