@@ -3,6 +3,11 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 import {
+  NEWCOMER_MIN_AGE_DAYS,
+  NEWCOMER_MAX_AGE_DAYS,
+} from "@/server/api/routers/insights";
+
+import {
   agentProcedure,
   protectedProcedure,
   requireScope,
@@ -47,9 +52,8 @@ const WINDOW_DAYS = 14;
 const PRIOR_WINDOW_DAYS = 45;
 const AT_RISK_CAP = 50;
 const INTRO_CANDIDATE_CAP = 20;
-// Un-activated newcomer window — MUST match insights.ts (the organizer dashboard).
-const NEWCOMER_MIN_AGE_DAYS = 3;
-const NEWCOMER_MAX_AGE_DAYS = 30;
+// Un-activated newcomer window — shared with insights.ts (the organizer
+// dashboard) via a single exported source of truth.
 
 // CONTRIBUTION_ACTIONS is a readonly tuple; Drizzle inArray wants string[].
 const CONTRIBUTION_ACTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
@@ -412,6 +416,12 @@ export const advisoryRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute"); // MATCH suggestRevival
       const ownerId = requireOwner(ctx.agent.ownerId);
+      if (input.memberUserId === ownerId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot welcome yourself",
+        });
+      }
       const community = await requireAdvisoryAccess(
         ctx.db,
         input.slug,

@@ -691,21 +691,17 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
-      const OWNER_SCOPED = ["thread_reply", "revival_nudge"];
-      if (OWNER_SCOPED.includes(existing.type)) {
-        if (existing.ownerId !== userId) {
-          throw new TRPCError({ code: "FORBIDDEN" });
-        }
-      } else {
+      // Community-scoped draft types: any qualifying admin of the draft's
+      // community may act (ADR-0016). Everything else is owner-scoped.
+      const COMMUNITY_SCOPED_ROLES: Record<string, string[]> = {
+        welcome_nudge: ["owner", "admin", "moderator"],
+        broadcast: ["owner", "admin"],
+      };
+      const allowedRoles = COMMUNITY_SCOPED_ROLES[existing.type];
+      if (allowedRoles) {
         const communityId = (existing.metadata as { communityId?: string })
           ?.communityId;
-        if (!communityId) {
-          throw new TRPCError({ code: "FORBIDDEN" });
-        }
-        const allowedRoles =
-          existing.type === "broadcast"
-            ? ["owner", "admin"]
-            : ["owner", "admin", "moderator"]; // welcome_nudge (and future community-scoped types)
+        if (!communityId) throw new TRPCError({ code: "FORBIDDEN" });
         const [m] = await ctx.db
           .select({ role: communityMemberships.role })
           .from(communityMemberships)
@@ -718,6 +714,12 @@ export const agentManagementRouter = createTRPCRouter({
           )
           .limit(1);
         if (!m || !allowedRoles.includes(m.role)) {
+          throw new TRPCError({ code: "FORBIDDEN" });
+        }
+      } else {
+        // Owner-scoped (thread_reply, revival_nudge, feed_post, feed_comment,
+        // knowledge_share, challenge_channel_*, and any future owner draft).
+        if (existing.ownerId !== userId) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
       }

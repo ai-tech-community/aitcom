@@ -29,6 +29,11 @@ export function SuggestedRituals({ slug }: { slug: string }) {
         <p className="text-muted-foreground text-xs">
           Rituals your agent proposed, waiting for your review.
         </p>
+        {review.error ? (
+          <p className="text-destructive mt-2 text-sm">
+            {review.error.message || "Could not review. Try again."}
+          </p>
+        ) : null}
       </div>
       <div className="divide-y">
         {data.map((s) => (

@@ -25,8 +25,8 @@ type DB = typeof _db;
 
 const WINDOW_DAYS = 14;
 const PRIOR_WINDOW_DAYS = 45;
-const NEWCOMER_MIN_AGE_DAYS = 3;
-const NEWCOMER_MAX_AGE_DAYS = 30;
+export const NEWCOMER_MIN_AGE_DAYS = 3;
+export const NEWCOMER_MAX_AGE_DAYS = 30;
 const AT_RISK_CAP = 50;
 
 // CONTRIBUTION_ACTIONS is a readonly tuple; Drizzle inArray wants string[].
@@ -230,6 +230,12 @@ export const insightsRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       requireAdmin(ctx.communityRole);
+      if (input.memberUserId === ctx.session.user.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot welcome yourself",
+        });
+      }
       const [m] = await ctx.db
         .select({ userId: communityMemberships.userId })
         .from(communityMemberships)
