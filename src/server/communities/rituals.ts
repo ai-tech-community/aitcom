@@ -2,6 +2,7 @@
 
 export type RitualMode = "auto" | "review";
 export type RitualStatus = "active" | "paused";
+export type OccurrenceStatus = "pending" | "posted" | "skipped";
 
 export type RitualSchedule = {
   /** 0=Sunday .. 6=Saturday (UTC). */

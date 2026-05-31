@@ -1,5 +1,10 @@
 import { relations, sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import type {
+  OccurrenceStatus,
+  RitualMode,
+  RitualStatus,
+} from "../communities/rituals";
 import {
   boolean,
   date,
@@ -741,8 +746,16 @@ export const rituals = appSchema.table(
     body: d.text().notNull(),
     category: d.varchar({ length: 20 }).notNull().default("general"),
     weekday: d.integer().notNull(),
-    mode: d.varchar({ length: 10 }).notNull().default("review"),
-    status: d.varchar({ length: 10 }).notNull().default("active"),
+    mode: d
+      .varchar({ length: 10 })
+      .$type<RitualMode>()
+      .notNull()
+      .default("review"),
+    status: d
+      .varchar({ length: 10 })
+      .$type<RitualStatus>()
+      .notNull()
+      .default("active"),
     lastFiredOn: d.date(),
     createdAt: d
       .timestamp({ withTimezone: true })
@@ -772,7 +785,12 @@ export const ritualOccurrences = appSchema.table(
       .notNull()
       .references(() => communities.id),
     scheduledFor: d.date().notNull(),
-    status: d.varchar({ length: 10 }).notNull().default("pending"),
+    status: d
+      .varchar({ length: 10 })
+      .$type<OccurrenceStatus>()
+      .notNull()
+      .default("pending"),
+    // Unenforced reference to public.forum_threads(id) (Payload-owned table; no cross-schema FK).
     threadId: d.integer(),
     createdAt: d
       .timestamp({ withTimezone: true })

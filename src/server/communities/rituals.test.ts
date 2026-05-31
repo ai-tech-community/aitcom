@@ -23,6 +23,10 @@ describe("dateKey / weekdayOf / weekdayLabel", () => {
     expect(weekdayLabel(1)).toBe("Mon");
     expect(weekdayLabel(0)).toBe("Sun");
   });
+  it("weekdayLabel wraps correctly for out-of-range inputs", () => {
+    expect(weekdayLabel(-1)).toBe("Sat");
+    expect(weekdayLabel(7)).toBe("Sun");
+  });
 });
 
 describe("isRitualDue", () => {
@@ -67,5 +71,15 @@ describe("nextFireDate", () => {
   it("returns the next matching weekday when today does not match", () => {
     // From Tuesday, next Monday is 2026-06-08
     expect(nextFireDate(1, TUE)).toBe("2026-06-08");
+  });
+  it("handles month/year boundaries correctly", () => {
+    // 2026-12-26 is Saturday (6); next Thursday (4) is 2026-12-31
+    expect(nextFireDate(4, new Date("2026-12-26T13:00:00.000Z"))).toBe(
+      "2026-12-31",
+    );
+    // 2026-12-29 is Tuesday (2); next Monday (1) is 2027-01-04
+    expect(nextFireDate(1, new Date("2026-12-29T13:00:00.000Z"))).toBe(
+      "2027-01-04",
+    );
   });
 });
