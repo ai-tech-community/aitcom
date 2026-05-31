@@ -1542,6 +1542,7 @@
     "copied": "Copied!",
     "leaderboardTitle": "Top referrers",
     "referralCount": "{count, plural, one {# referral} other {# referrals}}",
-    "empty": "No referrals yet"
+    "empty": "No referrals yet",
+    "copyFailed": "Couldn't copy — copy the link manually."
   }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 
@@ -25,13 +26,16 @@ export function ReferralPanel({ slug }: { slug: string }) {
     myLink.mutate({ slug });
   };
 
-  const handleCopy = () => {
+  async function handleCopy() {
     if (!shareUrl) return;
-    void navigator.clipboard.writeText(shareUrl).then(() => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
-  };
+    } catch {
+      toast.error(t("copyFailed"));
+    }
+  }
 
   return (
     <div className="space-y-4 rounded-lg border p-6">

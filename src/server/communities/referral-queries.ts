@@ -1,7 +1,7 @@
 /** Assembles activation signals for referred-but-uncredited members so the
  *  reconcile cron can decide referral credit. Raw-fetch + reduce (neon-http). */
 
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
 import {
   communityMemberships,
@@ -10,7 +10,6 @@ import {
   activityEvents,
   memberProfiles,
   referralCredits,
-  user,
 } from "@/server/db/schema";
 import { RESPONSE_ACTIONS } from "@/server/communities/activation";
 import type { ActivationConfig } from "@/server/communities/activation";
@@ -199,13 +198,16 @@ export async function loadReferralLeaderboard(
   const rows = await db
     .select({
       userId: referralCredits.referrerId,
-      name: user.name,
+      name: memberProfiles.displayName,
       referralCount: sql<number>`count(*)::int`,
     })
     .from(referralCredits)
-    .innerJoin(user, eq(user.id, referralCredits.referrerId))
-    .groupBy(referralCredits.referrerId, user.name)
-    .orderBy(desc(sql`count(*)`))
+    .leftJoin(
+      memberProfiles,
+      eq(memberProfiles.userId, referralCredits.referrerId),
+    )
+    .groupBy(referralCredits.referrerId, memberProfiles.displayName)
+    .orderBy(desc(sql`count(*)`), asc(referralCredits.referrerId))
     .limit(limit);
   return rows;
 }

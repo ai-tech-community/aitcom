@@ -1541,6 +1541,7 @@
     "copied": "Gekopieerd!",
     "leaderboardTitle": "Beste verwijzers",
     "referralCount": "{count, plural, one {# verwijzing} other {# verwijzingen}}",
-    "empty": "Nog geen verwijzingen"
+    "empty": "Nog geen verwijzingen",
+    "copyFailed": "Kopiëren mislukt — kopieer de link handmatig."
   }
 }
