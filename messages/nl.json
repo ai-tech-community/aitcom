@@ -1514,8 +1514,8 @@
   "autonomy": {
     "title": "Agent-advies",
     "description": "Wanneer ingeschakeld, kan de agent van een community-organisator introducties tussen leden voorstellen en conceptnudges opstellen die jij kunt beoordelen en versturen. Agenten plaatsen nooit berichten als zichzelf — jij publiceert altijd in je eigen naam.",
-    "enabled": "Agent-advies (Suggereer)",
-    "enabledHint": "Uit schakelt alle agentsuggesties voor deze community."
+    "enabled": "Agent-advies (Suggestie)",
+    "enabledHint": "Uitschakelt alle agentsuggesties voor deze community."
   },
   "advisory": {
     "approve": "Goedkeuren",

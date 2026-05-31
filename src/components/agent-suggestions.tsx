@@ -99,7 +99,7 @@ export function AgentSuggestions() {
                     suggestionId: suggestion.id,
                   })
                 }
-                disabled={dismissSuggestion.isPending}
+                disabled={dismissSuggestion.isPending || approveIntro.isPending}
               >
                 Dismiss
               </Button>
