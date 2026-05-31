@@ -1189,6 +1189,24 @@ git add -A && git commit -m "chore(advisory): final lint/format/typecheck pass (
 
 ---
 
+## Task 15: Expose advisory endpoints as MCP tools (added during PR review)
+
+The original plan assumed the organizer's agent reaches the advisory `agentProcedure` endpoints directly — but agents talk to the platform over **MCP** (`src/app/api/mcp/*`), so the endpoints were unreachable until exposed as MCP tools.
+
+**Files:** Create `src/app/api/mcp/advisory-tools.ts` (mirrors `feed-tools.ts`/`community-tools.ts`); Modify `src/app/api/mcp/route.ts` (import + `registerAdvisoryTools(server, caller, keyData)`).
+
+- [x] 4 tools registered, bridging to `caller.advisory.*`: `get-at-risk-members`, `get-intro-candidates`, `suggest-introduction`, `suggest-revival`. Input schemas match the tRPC procedure inputs; authorization stays in the tRPC layer (`requireScope` + `requireAdvisoryAccess`) — the MCP layer is a thin bridge.
+- [x] Refreshed 6 stale "ghost mode" tool descriptions to reflect ADR-0015 always-draft behavior.
+- Agent loop over MCP: `get-owner-communities` → `get-at-risk-members`/`get-intro-candidates` → `suggest-revival`/`suggest-introduction`.
+
+## PR-review hardening (multi-agent review of #102)
+
+Applied in-PR after the 4-dimension adversarial review (security clean; correctness flagged replay/concurrency bugs):
+- Idempotency guards on `reviewDraft` + `approveIntroduction` (`status='pending'` + pre-check) so a re-approval can't resend a DM or re-introduce a connected/declined pair.
+- `respondToIntroduction` rewritten to write only the caller's own response column + re-read + CAS the connect, fixing the concurrent double-accept lost-update.
+- `introCandidates` member load bounded (`LIMIT 500`); `sharedInterests` now populated end-to-end.
+- UI: suggestions Dismiss guarded during approve; Dutch copy fixes.
+
 ## Self-review notes
 
 - **Spec coverage:** autonomy setting (T3/T12), `canAdvise` gate (T1, enforced T6/T7/T8), ADR-0015 always-draft (T5), intro matching (T2), intro suggestion→approve→consent→connection (T7/T9/T10/T13), revival draft→approve→DM (T7/T11/T13), introductions schema (T4). Every design flow maps to a task.
