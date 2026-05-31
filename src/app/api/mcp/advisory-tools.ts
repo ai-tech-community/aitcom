@@ -1,7 +1,7 @@
 // src/app/api/mcp/advisory-tools.ts
 //
 // Advisory MCP tool registrations (ADR-0015 — agent advises, human acts).
-// Registers 10 tools: 4 read + 6 write (suggest).
+// Registers 11 tools: 5 read + 6 write (suggest).
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";

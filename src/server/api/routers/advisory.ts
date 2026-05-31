@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 import {
   NEWCOMER_MIN_AGE_DAYS,
@@ -53,6 +53,7 @@ const WINDOW_DAYS = 14;
 const PRIOR_WINDOW_DAYS = 45;
 const AT_RISK_CAP = 50;
 const INTRO_CANDIDATE_CAP = 20;
+const NEW_JOINER_CAP = 100;
 // Un-activated newcomer window — shared with insights.ts (the organizer
 // dashboard) via a single exported source of truth.
 
@@ -189,7 +190,9 @@ export const advisoryRouter = createTRPCRouter({
             eq(communityMemberships.status, "active"),
             gte(communityMemberships.joinedAt, since),
           ),
-        );
+        )
+        .orderBy(desc(communityMemberships.joinedAt))
+        .limit(NEW_JOINER_CAP);
       return joiners;
     }),
 
