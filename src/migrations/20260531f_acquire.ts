@@ -25,6 +25,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
   await db.execute(sql`
+    DROP INDEX IF EXISTS "app"."referral_credit_referrer_idx";
+    DROP INDEX IF EXISTS "app"."referral_credit_referred_uidx";
     DROP TABLE IF EXISTS "app"."referral_credit";
     DROP TABLE IF EXISTS "app"."community_acquire_config";
   `);

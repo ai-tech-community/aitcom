@@ -861,6 +861,38 @@ export const communityAcquireConfig = appSchema.table(
   }),
 );
 
+export const referralCredits = appSchema.table(
+  "referral_credit",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    referrerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    referredUserId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    xpAwarded: d.integer().notNull(),
+    creditedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("referral_credit_referred_uidx").on(t.referredUserId),
+    index("referral_credit_referrer_idx").on(t.referrerId),
+  ],
+);
+
 export const communityOnboardingStep = appSchema.table(
   "community_onboarding_step",
   (d) => ({

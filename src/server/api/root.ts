@@ -32,6 +32,7 @@ import { engageConfigRouter } from "@/server/api/routers/engageConfig";
 import { activationConfigRouter } from "@/server/api/routers/activationConfig";
 import { activationRouter } from "@/server/api/routers/activation";
 import { acquireConfigRouter } from "@/server/api/routers/acquireConfig";
+import { referralRouter } from "@/server/api/routers/referral";
 import { onboardingStepsRouter } from "@/server/api/routers/onboardingSteps";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
@@ -67,6 +68,7 @@ export const appRouter = createTRPCRouter({
   datacenters: datacentersRouter,
   insights: insightsRouter,
   discovery: discoveryRouter,
+  referral: referralRouter,
   broadcast: broadcastRouter,
   hubOperator: hubOperatorRouter,
   advisory: advisoryRouter,
