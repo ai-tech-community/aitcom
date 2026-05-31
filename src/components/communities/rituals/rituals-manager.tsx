@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RitualForm } from "./ritual-form";
 import { PendingOccurrences } from "./pending-occurrences";
+import { DigestRecallSettings } from "@/components/communities/engage/digest-recall-settings";
 
 export function RitualsManager({ slug }: { slug: string }) {
   const [showForm, setShowForm] = useState(false);
@@ -114,6 +115,8 @@ export function RitualsManager({ slug }: { slug: string }) {
       </div>
 
       <PendingOccurrences slug={slug} />
+
+      <DigestRecallSettings slug={slug} />
     </div>
   );
 }

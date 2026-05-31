@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq, gte, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import {
@@ -9,15 +9,45 @@ import {
   digestSendLog,
   notificationOptouts,
   user,
+  communityEngageConfig,
+  rituals,
+  ritualOccurrences,
 } from "@/server/db/schema";
+import { getPayloadClient } from "@/server/payload";
 import {
   buildHubDigest,
   summarizeCommunitySection,
 } from "@/server/notifications/digest";
+import {
+  buildRitualItems,
+  type EngageConfig,
+  type RitualRecapItem,
+  type RitualReminderItem,
+} from "@/server/notifications/ritual-items";
+import { weekdayLabel } from "@/server/communities/rituals";
+import {
+  CONTRIBUTION_ACTIONS,
+  selectAtRisk,
+  windowStart,
+  type ActivityRow,
+  type MembershipRow,
+} from "@/server/communities/insights";
 import { resolvePrefs, type OptoutRow } from "@/server/notifications/prefs";
 import { currentPeriodKey } from "@/server/notifications/constants";
 import { renderHubDigestHtml } from "@/server/notifications/render";
 import { sendHubDigestEmail } from "@/server/email";
+
+// At-risk selection params — mirror advisory.atRiskMembers exactly.
+const WINDOW_DAYS = 14;
+const PRIOR_WINDOW_DAYS = 45;
+const AT_RISK_CAP = 50;
+const CONTRIBUTION_ACTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
+
+const ENGAGE_DEFAULTS: EngageConfig = {
+  ritualRecap: true,
+  ritualReminder: true,
+  atRiskLine: false,
+};
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,6 +89,7 @@ export async function GET(req: Request) {
       communityId: communityMemberships.communityId,
       communityName: communities.name,
       email: user.email,
+      name: user.name,
     })
     .from(communityMemberships)
     .innerJoin(
@@ -68,11 +99,137 @@ export async function GET(req: Request) {
     .innerJoin(user, eq(communityMemberships.userId, user.id))
     .where(eq(communityMemberships.status, "active"));
 
-  const byUser = new Map<string, { email: string; rows: typeof memberships }>();
+  const byUser = new Map<
+    string,
+    { email: string; name: string | null; rows: typeof memberships }
+  >();
   for (const m of memberships) {
-    const entry = byUser.get(m.userId) ?? { email: m.email, rows: [] };
+    const entry = byUser.get(m.userId) ?? {
+      email: m.email,
+      name: m.name,
+      rows: [],
+    };
     entry.rows.push(m);
     byUser.set(m.userId, entry);
+  }
+
+  // ---- Per-community engage data (computed ONCE, before the user loop) ----
+
+  // Engage config per community (default when no row exists).
+  const cfgRows = await db.select().from(communityEngageConfig);
+  const cfgByCommunity = new Map(cfgRows.map((c) => [c.communityId, c]));
+  const cfgOf = (communityId: string): EngageConfig =>
+    cfgByCommunity.get(communityId) ?? ENGAGE_DEFAULTS;
+
+  // Recap: this week's posted ritual occurrences + their thread reply counts.
+  const recapRows = await db
+    .select({
+      communityId: ritualOccurrences.communityId,
+      title: rituals.title,
+      threadId: ritualOccurrences.threadId,
+    })
+    .from(ritualOccurrences)
+    .innerJoin(rituals, eq(rituals.id, ritualOccurrences.ritualId))
+    .where(
+      and(
+        eq(ritualOccurrences.status, "posted"),
+        gte(ritualOccurrences.postedAt, weekAgo),
+      ),
+    );
+
+  const recapThreadIds = [
+    ...new Set(
+      recapRows
+        .map((r) => r.threadId)
+        .filter((id): id is number => id !== null),
+    ),
+  ];
+  const replyCountByThread = new Map<number, number>();
+  if (recapThreadIds.length > 0) {
+    // forum-threads is a Payload-owned (public schema) collection; read it via
+    // the Payload client to avoid the dual-drizzle-version type clash with `db`.
+    const payload = await getPayloadClient();
+    const threads = await payload.find({
+      collection: "forum-threads",
+      where: { id: { in: recapThreadIds } },
+      limit: recapThreadIds.length,
+      depth: 0,
+    });
+    for (const t of threads.docs) {
+      replyCountByThread.set(Number(t.id), t.replyCount ?? 0);
+    }
+  }
+
+  const recapByCommunity = new Map<string, RitualRecapItem[]>();
+  for (const r of recapRows) {
+    if (r.threadId === null) continue; // no thread → no reply count to recap
+    const list = recapByCommunity.get(r.communityId) ?? [];
+    list.push({
+      title: r.title,
+      replyCount: replyCountByThread.get(r.threadId) ?? 0,
+    });
+    recapByCommunity.set(r.communityId, list);
+  }
+
+  // Reminders: upcoming active rituals, grouped by community.
+  const activeRituals = await db
+    .select()
+    .from(rituals)
+    .where(eq(rituals.status, "active"));
+  const remindersByCommunity = new Map<string, RitualReminderItem[]>();
+  for (const r of activeRituals) {
+    const list = remindersByCommunity.get(r.communityId) ?? [];
+    list.push({ title: r.title, weekdayLabel: weekdayLabel(r.weekday) });
+    remindersByCommunity.set(r.communityId, list);
+  }
+
+  // At-risk sets: only for communities with the atRiskLine toggle ON.
+  // Mirrors advisory.atRiskMembers' query shape, scoped per community.
+  const atRiskByCommunity = new Map<string, Set<string>>();
+  const atRiskCommunityIds = cfgRows
+    .filter((c) => c.atRiskLine)
+    .map((c) => c.communityId);
+  const atRiskSince = windowStart(now, PRIOR_WINDOW_DAYS);
+  for (const communityId of atRiskCommunityIds) {
+    const [atRiskMemberships, atRiskEvents] = await Promise.all([
+      db
+        .select({
+          userId: communityMemberships.userId,
+          role: communityMemberships.role,
+          status: communityMemberships.status,
+          joinedAt: communityMemberships.joinedAt,
+        })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, communityId),
+            eq(communityMemberships.status, "active"),
+          ),
+        ),
+      db
+        .select({
+          actorId: activityEvents.actorId,
+          action: activityEvents.action,
+          createdAt: activityEvents.createdAt,
+        })
+        .from(activityEvents)
+        .where(
+          and(
+            eq(activityEvents.communityId, communityId),
+            gte(activityEvents.createdAt, atRiskSince),
+            inArray(activityEvents.action, CONTRIBUTION_ACTION_LIST),
+          ),
+        ),
+    ]);
+    const atRisk = selectAtRisk({
+      memberships: atRiskMemberships as MembershipRow[],
+      contributions: atRiskEvents as ActivityRow[],
+      now,
+      windowDays: WINDOW_DAYS,
+      priorWindowDays: PRIOR_WINDOW_DAYS,
+      cap: AT_RISK_CAP,
+    });
+    atRiskByCommunity.set(communityId, new Set(atRisk.map((m) => m.userId)));
   }
 
   // Batch opt-out read: one query for all users instead of one per user.
@@ -95,9 +252,11 @@ export async function GET(req: Request) {
     optoutByUser.set(row.userId, list);
   }
 
-  for (const [userId, { email, rows }] of byUser) {
+  for (const [userId, { email, name, rows }] of byUser) {
     const prefs = resolvePrefs(optoutByUser.get(userId) ?? []);
     if (prefs.globalDigestOptOut) continue;
+
+    const recipientName = name ?? "there";
 
     const sections = rows.map((r) =>
       summarizeCommunitySection({
@@ -106,7 +265,14 @@ export async function GET(req: Request) {
         newThreads: countOf(r.communityId, "thread.create"),
         newEvents: countOf(r.communityId, "event.create"),
         newMembers: countOf(r.communityId, "community.joined"),
-        ritualItems: [], // Slice C fills this
+        ritualItems: buildRitualItems({
+          config: cfgOf(r.communityId),
+          recap: recapByCommunity.get(r.communityId) ?? [],
+          reminders: remindersByCommunity.get(r.communityId) ?? [],
+          recipientIsAtRisk:
+            atRiskByCommunity.get(r.communityId)?.has(userId) ?? false,
+          recipientName,
+        }),
       }),
     );
 
