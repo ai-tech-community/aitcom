@@ -481,7 +481,15 @@ export const notificationOptouts = appSchema.table(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   }),
-  (t) => [index("notification_optout_user_idx").on(t.userId)],
+  (t) => [
+    index("notification_optout_user_idx").on(t.userId),
+    uniqueIndex("notification_optout_global_uidx")
+      .on(t.userId, t.category)
+      .where(sql`${t.communityId} IS NULL`),
+    uniqueIndex("notification_optout_scoped_uidx")
+      .on(t.userId, t.communityId, t.category)
+      .where(sql`${t.communityId} IS NOT NULL`),
+  ],
 );
 
 /** A community-admin broadcast. class "promotional" is ceiling-limited;
@@ -551,7 +559,9 @@ export const broadcastDeliveries = appSchema.table(
   }),
   (t) => [
     index("broadcast_delivery_user_window_idx").on(t.userId, t.windowKey),
-    index("broadcast_delivery_user_dedupe_idx").on(t.userId, t.dedupeKey),
+    uniqueIndex("broadcast_delivery_dedupe_uidx")
+      .on(t.userId, t.dedupeKey)
+      .where(sql`${t.dedupeKey} IS NOT NULL`),
   ],
 );
 

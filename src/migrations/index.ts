@@ -32,6 +32,7 @@ import * as migration_20260528_event_submission from "./20260528_event_submissio
 import * as migration_20260530_backfill_membership_community_id from "./20260530_backfill_membership_community_id";
 import * as migration_20260530b_activity_event_community_action_created_idx from "./20260530b_activity_event_community_action_created_idx";
 import * as migration_20260530c_notifications_infra from "./20260530c_notifications_infra";
+import * as migration_20260531_notifications_harden_unique_indexes from "./20260531_notifications_harden_unique_indexes";
 
 export const migrations = [
   {
@@ -203,5 +204,10 @@ export const migrations = [
     up: migration_20260530c_notifications_infra.up,
     down: migration_20260530c_notifications_infra.down,
     name: "20260530c_notifications_infra",
+  },
+  {
+    up: migration_20260531_notifications_harden_unique_indexes.up,
+    down: migration_20260531_notifications_harden_unique_indexes.down,
+    name: "20260531_notifications_harden_unique_indexes",
   },
 ];
