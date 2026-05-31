@@ -32,7 +32,7 @@ export function renderHubDigestHtml(digest: HubDigest): string {
     .join("");
 
   const discoveryHtml = digest.discovery
-    ? `<p style="margin-top:16px;font-size:14px;color:#555;">Discover another community you might like: <a href="${baseUrl}/communities/${digest.discovery.slug}">${esc(digest.discovery.name)}</a></p>`
+    ? `<p style="margin-top:16px;font-size:14px;color:#555;">Discover another community you might like: <a href="${baseUrl}/communities/${esc(digest.discovery.slug)}">${esc(digest.discovery.name)}</a></p>`
     : "";
 
   return `

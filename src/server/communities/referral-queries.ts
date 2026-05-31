@@ -202,10 +202,11 @@ export async function loadReferralLeaderboard(
       referralCount: sql<number>`count(*)::int`,
     })
     .from(referralCredits)
-    .leftJoin(
+    .innerJoin(
       memberProfiles,
       eq(memberProfiles.userId, referralCredits.referrerId),
     )
+    .where(eq(memberProfiles.isPublic, true))
     .groupBy(referralCredits.referrerId, memberProfiles.displayName)
     .orderBy(desc(sql`count(*)`), asc(referralCredits.referrerId))
     .limit(limit);

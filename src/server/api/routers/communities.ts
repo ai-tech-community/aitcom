@@ -121,11 +121,9 @@ export const communitiesRouter = createTRPCRouter({
           ),
         );
 
-      const liveness = await loadPublicLiveness(
-        ctx.db,
-        community.id,
-        new Date(),
-      );
+      const liveness = community.isListedInDirectory
+        ? await loadPublicLiveness(ctx.db, community.id, new Date())
+        : { activeContributors: 0, recentThreads: 0 };
 
       return {
         ...community,
@@ -498,7 +496,10 @@ export const communitiesRouter = createTRPCRouter({
         // Update pending/invited to active
         await ctx.db
           .update(communityMemberships)
-          .set({ status: "active" })
+          .set({
+            status: "active",
+            invitedBy: existing.invitedBy ?? invite.createdBy,
+          })
           .where(eq(communityMemberships.id, existing.id));
       } else {
         await ctx.db.insert(communityMemberships).values({

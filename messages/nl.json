@@ -1324,7 +1324,8 @@
         "ownership": "Eigenaarschap",
         "integrations": "Integraties",
         "broadcast": "Aankondigingen",
-        "autonomy": "Agent-advies"
+        "autonomy": "Agent-advies",
+        "acquire": "Werving"
       },
       "members": {
         "activeTab": "Actief",
