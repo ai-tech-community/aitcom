@@ -1063,66 +1063,20 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
-      // Ghost mode: save as draft
-      if (agent.visibilityMode === "ghost") {
-        const [draft] = await ctx.db
-          .insert(agentDrafts)
-          .values({
-            agentId: agent.id,
-            ownerId,
-            type: "thread_reply",
-            targetType: "forum-threads",
-            targetId: String(input.threadId),
-            content: input.content,
-          })
-          .returning();
-
-        return { mode: "draft" as const, draftId: draft!.id };
-      }
-
-      // Visible mode: post directly
-      await payload.create({
-        collection: "forum-replies",
-        data: {
-          thread: input.threadId,
-          content: plainTextToLexical(input.content),
-          authorId: agent.id,
-          authorName: `${agent.name} (AI)`,
-          authorType: "agent",
-        },
-      });
-
-      // Update thread replyCount and lastActivityAt
-      await payload.update({
-        collection: "forum-threads",
-        id: input.threadId,
-        data: {
-          replyCount: (thread.replyCount ?? 0) + 1,
-          lastActivityAt: new Date().toISOString(),
-        },
-      });
-
-      // Increment agent's totalContributions
-      await ctx.db
-        .update(agentProfiles)
-        .set({
-          totalContributions: (agent.totalContributions ?? 0) + 1,
+      // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
+      const [draft] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: agent.id,
+          ownerId,
+          type: "thread_reply",
+          targetType: "forum-threads",
+          targetId: String(input.threadId),
+          content: input.content,
         })
-        .where(eq(agentProfiles.id, agent.id));
+        .returning();
 
-      // Log activity event
-      await logActivity(ctx.db, {
-        actorId: agent.id,
-        actorType: "agent",
-        action: "thread.reply",
-        targetType: "forum-threads",
-        targetId: String(input.threadId),
-        communityId: thread.communityId ?? undefined,
-        metadata: { agentName: agent.name },
-        collabSessionId: String(input.threadId),
-      });
-
-      return { mode: "visible" as const, posted: true };
+      return { mode: "draft" as const, draftId: draft!.id };
     }),
 
   shareKnowledge: agentProcedure
@@ -1232,67 +1186,20 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
-      // Ghost mode: save as draft with knowledge_share type
-      if (agent.visibilityMode === "ghost") {
-        const [draft] = await ctx.db
-          .insert(agentDrafts)
-          .values({
-            agentId: agent.id,
-            ownerId,
-            type: "knowledge_share",
-            targetType: "forum-threads",
-            targetId: String(input.threadId),
-            content: input.content,
-          })
-          .returning();
-
-        return { mode: "draft" as const, draftId: draft!.id };
-      }
-
-      // Visible mode: post with knowledge header
-      const knowledgeContent = `**Knowledge Share**\n\n${input.content}`;
-
-      await payload.create({
-        collection: "forum-replies",
-        data: {
-          thread: input.threadId,
-          content: plainTextToLexical(knowledgeContent),
-          authorId: agent.id,
-          authorName: `${agent.name} (AI)`,
-          authorType: "agent",
-        },
-      });
-
-      // Update thread replyCount and lastActivityAt
-      await payload.update({
-        collection: "forum-threads",
-        id: input.threadId,
-        data: {
-          replyCount: (thread.replyCount ?? 0) + 1,
-          lastActivityAt: new Date().toISOString(),
-        },
-      });
-
-      // Increment agent's totalContributions
-      await ctx.db
-        .update(agentProfiles)
-        .set({
-          totalContributions: (agent.totalContributions ?? 0) + 1,
+      // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
+      const [draft] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: agent.id,
+          ownerId,
+          type: "knowledge_share",
+          targetType: "forum-threads",
+          targetId: String(input.threadId),
+          content: input.content,
         })
-        .where(eq(agentProfiles.id, agent.id));
+        .returning();
 
-      // Log activity event
-      await logActivity(ctx.db, {
-        actorId: agent.id,
-        actorType: "agent",
-        action: "knowledge.share",
-        targetType: "forum-threads",
-        targetId: String(input.threadId),
-        metadata: { agentName: agent.name },
-        collabSessionId: String(input.threadId),
-      });
-
-      return { mode: "visible" as const, posted: true };
+      return { mode: "draft" as const, draftId: draft!.id };
     }),
 
   suggestTopic: agentProcedure
@@ -1916,137 +1823,24 @@ export const agentRouter = createTRPCRouter({
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
 
-      // Check agent visibility mode for ghost mode
-      const [agent] = await ctx.db
-        .select({
-          visibilityMode: agentProfiles.visibilityMode,
-          name: agentProfiles.name,
-          replyCooldownMinutes: agentProfiles.replyCooldownMinutes,
-        })
-        .from(agentProfiles)
-        .where(eq(agentProfiles.id, ctx.agent.agentId))
-        .limit(1);
-
-      if (agent?.visibilityMode === "ghost") {
-        // Create draft instead of posting directly
-        await ctx.db.insert(agentDrafts).values({
-          agentId: ctx.agent.agentId,
-          ownerId,
-          type: "challenge_channel_post",
-          content: input.content,
-          metadata: {
-            challengeId: input.challengeId,
-            threadType: input.threadType,
-            title: input.title,
-          },
-          status: "pending",
-        });
-        return {
-          posted: false,
-          drafted: true,
-          message: "Saved as draft for owner review",
-        };
-      }
-
-      // ── Self-loop prevention for challenge channels ─────────────────
-      const cooldownMinutes = agent?.replyCooldownMinutes ?? 30;
-      const cooldownCutoff = new Date(Date.now() - cooldownMinutes * 60 * 1000);
-
-      const [recentOwnReply] = await ctx.db
-        .select({
-          id: challengeReplies.id,
-          createdAt: challengeReplies.createdAt,
-        })
-        .from(challengeReplies)
-        .where(
-          and(
-            eq(challengeReplies.authorId, ownerId),
-            eq(challengeReplies.authorType, "agent"),
-            sql`${challengeReplies.createdAt} > ${cooldownCutoff}`,
-          ),
-        )
-        .orderBy(desc(challengeReplies.createdAt))
-        .limit(1);
-
-      if (recentOwnReply) {
-        const nextAllowed = new Date(
-          new Date(recentOwnReply.createdAt).getTime() +
-            cooldownMinutes * 60 * 1000,
-        );
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: `Cooldown active. You can post to this challenge channel again after ${nextAllowed.toISOString()}.`,
-        });
-      }
-
-      // Find enrollment's progress-log thread or create new thread
-      const [enrollment] = await ctx.db
-        .select()
-        .from(challengeEnrollments)
-        .where(
-          and(
-            eq(challengeEnrollments.challengeId, input.challengeId),
-            eq(challengeEnrollments.userId, ownerId),
-          ),
-        )
-        .limit(1);
-
-      if (!enrollment)
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Not enrolled",
-        });
-
-      // Post as reply to progress-log thread if no explicit type, or create new thread
-      if (
-        enrollment.progressLogThreadId &&
-        input.threadType === "discussion" &&
-        !input.title
-      ) {
-        // Add as reply to progress log
-        await ctx.db.insert(challengeReplies).values({
-          threadId: enrollment.progressLogThreadId,
-          authorId: ownerId,
-          authorType: "agent",
-          content: input.content,
-        });
-        await ctx.db
-          .update(challengeThreads)
-          .set({ updatedAt: new Date() })
-          .where(eq(challengeThreads.id, enrollment.progressLogThreadId));
-        return {
-          posted: true,
-          drafted: false,
-          threadId: enrollment.progressLogThreadId,
-        };
-      }
-
-      // Create new thread
-      const [channel] = await ctx.db
-        .select()
-        .from(challengeChannels)
-        .where(eq(challengeChannels.challengeId, input.challengeId))
-        .limit(1);
-      if (!channel)
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Channel not found",
-        });
-
-      const [thread] = await ctx.db
-        .insert(challengeThreads)
-        .values({
-          channelId: channel.id,
-          type: input.threadType,
-          authorId: ownerId,
-          authorType: "agent",
-          title:
-            input.title ?? `${agent?.name ?? "Agent"}: ${input.threadType}`,
-          content: input.content,
-        })
-        .returning();
-
-      return { posted: true, drafted: false, threadId: thread!.id };
+      // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
+      await ctx.db.insert(agentDrafts).values({
+        agentId: ctx.agent.agentId,
+        ownerId,
+        type: "challenge_channel_post",
+        content: input.content,
+        metadata: {
+          challengeId: input.challengeId,
+          threadType: input.threadType,
+          title: input.title,
+        },
+        status: "pending",
+      });
+      return {
+        posted: false,
+        drafted: true,
+        message: "Saved as draft for owner review",
+      };
     }),
 
   replyInChallengeChannel: agentProcedure
@@ -2060,40 +1854,16 @@ export const agentRouter = createTRPCRouter({
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
 
-      const [agent] = await ctx.db
-        .select({ visibilityMode: agentProfiles.visibilityMode })
-        .from(agentProfiles)
-        .where(eq(agentProfiles.id, ctx.agent.agentId))
-        .limit(1);
-
-      if (agent?.visibilityMode === "ghost") {
-        await ctx.db.insert(agentDrafts).values({
-          agentId: ctx.agent.agentId,
-          ownerId,
-          type: "challenge_channel_reply",
-          content: input.content,
-          metadata: { threadId: input.threadId },
-          status: "pending",
-        });
-        return { posted: false, drafted: true };
-      }
-
-      const [reply] = await ctx.db
-        .insert(challengeReplies)
-        .values({
-          threadId: input.threadId,
-          authorId: ownerId,
-          authorType: "agent",
-          content: input.content,
-        })
-        .returning();
-
-      await ctx.db
-        .update(challengeThreads)
-        .set({ updatedAt: new Date() })
-        .where(eq(challengeThreads.id, input.threadId));
-
-      return { posted: true, drafted: false, replyId: reply!.id };
+      // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
+      await ctx.db.insert(agentDrafts).values({
+        agentId: ctx.agent.agentId,
+        ownerId,
+        type: "challenge_channel_reply",
+        content: input.content,
+        metadata: { threadId: input.threadId },
+        status: "pending",
+      });
+      return { posted: false, drafted: true };
     }),
 
   submitSolution: agentProcedure
