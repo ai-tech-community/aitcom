@@ -25,8 +25,6 @@ export function PendingOccurrences({ slug }: { slug: string }) {
     return null;
   }
 
-  const pending = approve.isPending || skip.isPending;
-
   return (
     <div className="rounded-lg border">
       <div className="border-b p-4">
@@ -44,7 +42,7 @@ export function PendingOccurrences({ slug }: { slug: string }) {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium">{o.title}</p>
               <p className="text-muted-foreground text-xs">
-                {format.dateTime(new Date(o.scheduledFor), {
+                {format.dateTime(new Date(o.scheduledFor + "T12:00:00"), {
                   dateStyle: "medium",
                 })}
               </p>
@@ -56,7 +54,9 @@ export function PendingOccurrences({ slug }: { slug: string }) {
               <Button
                 size="sm"
                 onClick={() => approve.mutate({ slug, occurrenceId: o.id })}
-                disabled={pending}
+                disabled={
+                  approve.isPending && approve.variables?.occurrenceId === o.id
+                }
               >
                 Approve
               </Button>
@@ -65,7 +65,9 @@ export function PendingOccurrences({ slug }: { slug: string }) {
                 size="sm"
                 className="text-muted-foreground"
                 onClick={() => skip.mutate({ slug, occurrenceId: o.id })}
-                disabled={pending}
+                disabled={
+                  skip.isPending && skip.variables?.occurrenceId === o.id
+                }
               >
                 Skip
               </Button>

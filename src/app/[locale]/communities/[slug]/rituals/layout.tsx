@@ -13,7 +13,7 @@ export default function CommunityRitualsLayout({
   params: Promise<{ slug: string; locale: string }>;
 }) {
   const { slug } = use(params);
-  const t = useTranslations("communities.insights");
+  const t = useTranslations("communities.manage");
 
   const { data: myCommunities, isLoading } =
     api.communities.getMyCommunities.useQuery();

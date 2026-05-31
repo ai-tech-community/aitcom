@@ -87,12 +87,17 @@ export function RitualForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label className="font-mono text-xs">Category</Label>
+          <Label htmlFor="ritual-category" className="font-mono text-xs">
+            Category
+          </Label>
           <Select
             value={category}
             onValueChange={(v) => setCategory(v as Category)}
           >
-            <SelectTrigger className="mt-1 font-mono text-sm capitalize">
+            <SelectTrigger
+              id="ritual-category"
+              className="mt-1 font-mono text-sm capitalize"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -106,12 +111,17 @@ export function RitualForm({
         </div>
 
         <div>
-          <Label className="font-mono text-xs">Weekday</Label>
+          <Label htmlFor="ritual-weekday" className="font-mono text-xs">
+            Weekday
+          </Label>
           <Select
             value={String(weekday)}
             onValueChange={(v) => setWeekday(Number(v))}
           >
-            <SelectTrigger className="mt-1 font-mono text-sm">
+            <SelectTrigger
+              id="ritual-weekday"
+              className="mt-1 font-mono text-sm"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -126,9 +136,11 @@ export function RitualForm({
       </div>
 
       <div>
-        <Label className="font-mono text-xs">Mode</Label>
+        <Label htmlFor="ritual-mode" className="font-mono text-xs">
+          Mode
+        </Label>
         <Select value={mode} onValueChange={(v) => setMode(v as Mode)}>
-          <SelectTrigger className="mt-1 font-mono text-sm">
+          <SelectTrigger id="ritual-mode" className="mt-1 font-mono text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

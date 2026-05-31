@@ -28,6 +28,10 @@ export function RitualsManager({ slug }: { slug: string }) {
     );
   }
 
+  if (error) {
+    return <p className="text-destructive py-4 text-sm">{error.message}</p>;
+  }
+
   return (
     <div className="space-y-8 py-4">
       <div className="space-y-4">
@@ -95,7 +99,10 @@ export function RitualsManager({ slug }: { slug: string }) {
                         status: r.status === "active" ? "paused" : "active",
                       })
                     }
-                    disabled={setStatus.isPending}
+                    disabled={
+                      setStatus.isPending &&
+                      setStatus.variables?.ritualId === r.id
+                    }
                   >
                     {r.status === "active" ? "Pause" : "Resume"}
                   </Button>
