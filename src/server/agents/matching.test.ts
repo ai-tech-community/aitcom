@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { pairKey, scoreIntroductions, type MemberProfile } from "./matching";
 
-const m = (userId: string, interests: string[], skills: string[] = []): MemberProfile => ({
+const m = (
+  userId: string,
+  interests: string[],
+  skills: string[] = [],
+): MemberProfile => ({
   userId,
   interests,
   skills,
@@ -62,5 +66,13 @@ describe("scoreIntroductions", () => {
     });
     // all pairs share 1 interest; first pair is the lexicographically smallest
     expect(res[0]).toMatchObject({ userIdA: "ua", userIdB: "ub" });
+  });
+
+  it("dedupes shared tags so duplicates don't inflate the score", () => {
+    const res = scoreIntroductions({
+      members: [m("u1", ["ai", "ai"]), m("u2", ["ai"])],
+    });
+    expect(res[0]!.sharedInterests).toEqual(["ai"]);
+    expect(res[0]!.score).toBe(2);
   });
 });

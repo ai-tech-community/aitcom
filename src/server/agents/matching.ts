@@ -21,7 +21,7 @@ export function pairKey(a: string, b: string): string {
 
 function overlap(a: string[], b: string[]): string[] {
   const set = new Set(b);
-  return a.filter((x) => set.has(x));
+  return [...new Set(a)].filter((x) => set.has(x));
 }
 
 /** Rank candidate introductions by shared interests (weighted ×2) + shared
@@ -56,8 +56,8 @@ export function scoreIntroductions(opts: {
   out.sort(
     (x, y) =>
       y.score - x.score ||
-      x.userIdA.localeCompare(y.userIdA) ||
-      x.userIdB.localeCompare(y.userIdB),
+      (x.userIdA < y.userIdA ? -1 : x.userIdA > y.userIdA ? 1 : 0) ||
+      (x.userIdB < y.userIdB ? -1 : x.userIdB > y.userIdB ? 1 : 0),
   );
   return cap != null ? out.slice(0, cap) : out;
 }
