@@ -5,20 +5,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-type QueueItem = {
-  userId: string;
-  action: string;
-  targetType: string | null;
-  targetId: string | null;
-  metadata: Record<string, unknown> | null;
-  contributionAt: string | Date;
-  displayName: string | null;
-  image: string | null;
-};
-
 /** Build the "reply in thread" href for a queue item, or null if we can't
  *  resolve a destination (then the link is omitted gracefully). */
-function replyHref(slug: string, item: QueueItem): string | null {
+function replyHref(
+  slug: string,
+  item: {
+    action: string;
+    metadata: Record<string, unknown> | null;
+    targetId: string | null;
+  },
+): string | null {
   if (item.action === "thread.create") {
     const meta = item.metadata ?? {};
     const threadSlug =
@@ -70,7 +66,7 @@ export function AwaitingResponseList({ slug }: { slug: string }) {
                 (Date.now() - new Date(item.contributionAt).getTime()) / DAY_MS,
               ),
             );
-            const href = replyHref(slug, item as QueueItem);
+            const href = replyHref(slug, item);
             return (
               <div
                 key={item.userId}

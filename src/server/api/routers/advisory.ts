@@ -474,7 +474,13 @@ export const advisoryRouter = createTRPCRouter({
       return loadAwaitingResponse(ctx.db, community.id, new Date());
     }),
 
-  /** Draft a warm reply to a newcomer's unanswered first post, for an admin to
+  /** Draft a greeting reply to a newcomer's thread. Note: the threadId is not
+   *  validated to belong to {slug}'s community — like all thread_reply drafts it
+   *  is owner-scoped at review (only the agent's owner can approve), so blast
+   *  radius is the owner's own drafts. A community-scoped validation is a
+   *  tracked follow-up.
+   *
+   *  Draft a warm reply to a newcomer's unanswered first post, for an admin to
    *  review and post in their own name (published via reviewDraft thread_reply). */
   suggestGreeting: agentProcedure
     .input(

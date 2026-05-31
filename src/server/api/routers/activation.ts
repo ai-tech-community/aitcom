@@ -22,6 +22,7 @@ import {
 } from "@/server/communities/insights";
 import {
   ACTIVATION_COHORT_DAYS,
+  DEFAULT_WINDOW_DAYS,
   loadAwaitingResponse,
 } from "@/server/communities/activation-queries";
 import type { db as _db } from "@/server/db";
@@ -34,7 +35,7 @@ const RESPONSE_LIST: string[] = [...RESPONSE_ACTIONS];
 const DEFAULT_CONFIG: ActivationConfig = {
   requireResponse: true,
   requireProfileComplete: false,
-  windowDays: 7,
+  windowDays: DEFAULT_WINDOW_DAYS,
 };
 
 async function loadCohort(

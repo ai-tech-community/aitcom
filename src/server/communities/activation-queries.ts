@@ -11,7 +11,6 @@ import {
 import {
   RESPONSE_ACTIONS,
   RESPONDABLE_ACTIONS,
-  type ActivationConfig,
 } from "@/server/communities/activation";
 import { windowStart } from "@/server/communities/insights";
 import type { db as _db } from "@/server/db";
@@ -25,7 +24,7 @@ export const GREETER_GRACE_HOURS = 48;
 const RESPONSE_LIST: string[] = [...RESPONSE_ACTIONS];
 const RESPONDABLE_LIST: string[] = [...RESPONDABLE_ACTIONS];
 
-const DEFAULT_WINDOW_DAYS = 7;
+export const DEFAULT_WINDOW_DAYS = 7;
 
 export type AwaitingResponseItem = {
   userId: string;
@@ -132,6 +131,3 @@ export async function loadAwaitingResponse(
       contributionAt: e.createdAt,
     }));
 }
-
-// Re-export for callers that still want this signal alongside the queue.
-export type { ActivationConfig };
