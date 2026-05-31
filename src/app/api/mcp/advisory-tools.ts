@@ -1,7 +1,7 @@
 // src/app/api/mcp/advisory-tools.ts
 //
 // Advisory MCP tool registrations (ADR-0015 — agent advises, human acts).
-// Registers 7 tools: 3 read + 4 write (suggest).
+// Registers 8 tools: 3 read + 5 write (suggest).
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v3";
@@ -155,6 +155,31 @@ export function registerAdvisoryTools(
         slug,
         memberUserId,
         message,
+      });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
+    "suggest-broadcast",
+    {
+      description:
+        "Draft a time-sensitive announcement for an admin to review and send to the community in their own name. You never send it yourself; the broadcast ceiling applies on send.",
+      inputSchema: {
+        slug: z.string().describe("Slug of a community you organize."),
+        subject: z.string().min(1).max(200).describe("Broadcast subject line."),
+        body: z.string().min(1).max(5000).describe("Broadcast body copy."),
+      },
+    },
+    async ({ slug, subject, body }) => {
+      const result = await caller.advisory.suggestBroadcast({
+        slug,
+        subject,
+        body,
       });
       return {
         content: [

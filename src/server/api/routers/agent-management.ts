@@ -31,6 +31,7 @@ import {
   type TweetOembed,
 } from "@/server/agent/verify-x-tweet";
 import { sendDirectMessage } from "@/server/inbox/dm";
+import { sendCommunityBroadcast } from "@/server/notifications/broadcast-send";
 
 export const agentManagementRouter = createTRPCRouter({
   // ── Agent Profile ─────────────────────────────────────────────────────────
@@ -805,6 +806,22 @@ export const agentManagementRouter = createTRPCRouter({
           draft.targetId,
           draft.content ?? "",
         );
+      }
+
+      // Broadcast: approving composes & sends the broadcast in the reviewer's name.
+      if (input.action === "approved" && draft.type === "broadcast") {
+        const meta = (draft.metadata ?? {}) as {
+          communityId?: string;
+          subject?: string;
+        };
+        if (meta.communityId && meta.subject) {
+          await sendCommunityBroadcast(ctx.db, {
+            communityId: meta.communityId,
+            authorId: userId,
+            subject: meta.subject,
+            body: draft.content ?? "",
+          });
+        }
       }
 
       return draft;

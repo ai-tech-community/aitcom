@@ -459,6 +459,42 @@ export const advisoryRouter = createTRPCRouter({
       return { draftId: d!.id };
     }),
 
+  /** Draft a community broadcast for an admin/owner to review and send in their name. */
+  suggestBroadcast: agentProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        subject: z.string().min(1).max(200),
+        body: z.string().min(1).max(5000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await requireAdvisoryAccess(
+        ctx.db,
+        input.slug,
+        ownerId,
+      );
+      const [d] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: ctx.agent.agentId,
+          ownerId,
+          type: "broadcast",
+          targetType: "community",
+          targetId: community.id,
+          content: input.body,
+          metadata: {
+            communityId: community.id,
+            communitySlug: input.slug,
+            subject: input.subject,
+          },
+        })
+        .returning({ id: agentDrafts.id });
+      return { draftId: d!.id };
+    }),
+
   /** Draft a ritual definition for an admin to approve (never created directly). */
   suggestRitual: agentProcedure
     .input(
