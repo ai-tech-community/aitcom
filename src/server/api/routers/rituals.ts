@@ -122,9 +122,10 @@ export const ritualsRouter = createTRPCRouter({
     .input(z.object({ slug: z.string(), occurrenceId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       requireManager(ctx.communityRole);
+      // Load + verify still-pending (do NOT flip yet).
       const [occ] = await ctx.db
-        .update(ritualOccurrences)
-        .set({ status: "posted", postedAt: new Date() })
+        .select()
+        .from(ritualOccurrences)
         .where(
           and(
             eq(ritualOccurrences.id, input.occurrenceId),
@@ -132,7 +133,7 @@ export const ritualsRouter = createTRPCRouter({
             eq(ritualOccurrences.status, "pending"),
           ),
         )
-        .returning();
+        .limit(1);
       if (!occ) throw new TRPCError({ code: "NOT_FOUND" });
 
       const [r] = await ctx.db
@@ -142,11 +143,29 @@ export const ritualsRouter = createTRPCRouter({
         .limit(1);
       if (!r) throw new TRPCError({ code: "NOT_FOUND" });
 
+      // Create the thread FIRST (so a failure leaves the occurrence pending).
       const threadId = await postRitualThread(ctx.db, r);
-      await ctx.db
+
+      // CAS flip pending->posted only on success; if someone else already
+      // acted, this matches 0 rows (the thread is orphaned but no false "posted").
+      const updated = await ctx.db
         .update(ritualOccurrences)
-        .set({ threadId })
-        .where(eq(ritualOccurrences.id, occ.id));
+        .set({ status: "posted", threadId, postedAt: new Date() })
+        .where(
+          and(
+            eq(ritualOccurrences.id, occ.id),
+            eq(ritualOccurrences.status, "pending"),
+          ),
+        )
+        .returning({ id: ritualOccurrences.id });
+      if (updated.length === 0) {
+        // Lost a race (concurrent approve/skip). Thread was created but the
+        // occurrence is no longer pending — surface a conflict.
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Occurrence already actioned",
+        });
+      }
       return { threadId };
     }),
 

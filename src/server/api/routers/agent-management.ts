@@ -786,6 +786,28 @@ export const agentManagementRouter = createTRPCRouter({
         (draft.type === "revival_nudge" || draft.type === "welcome_nudge") &&
         draft.targetId
       ) {
+        const communityId = (draft.metadata as { communityId?: string })
+          ?.communityId;
+        if (communityId) {
+          const [stillMember] = await ctx.db
+            .select({ userId: communityMemberships.userId })
+            .from(communityMemberships)
+            .where(
+              and(
+                eq(communityMemberships.communityId, communityId),
+                eq(communityMemberships.userId, draft.targetId),
+                eq(communityMemberships.status, "active"),
+              ),
+            )
+            .limit(1);
+          if (!stillMember) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "Target is no longer an active member of this community.",
+            });
+          }
+        }
         await sendDirectMessage(
           ctx.db,
           userId,

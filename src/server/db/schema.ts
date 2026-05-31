@@ -804,6 +804,7 @@ export const ritualOccurrences = appSchema.table(
       t.scheduledFor,
     ),
     index("ritual_occurrence_community_status_idx").on(t.communityId, t.status),
+    index("ritual_occurrence_status_posted_idx").on(t.status, t.postedAt),
   ],
 );
 

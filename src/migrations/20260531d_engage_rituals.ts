@@ -32,6 +32,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS "ritual_occurrence_ritual_date_uidx" ON "app"."ritual_occurrence" ("ritual_id","scheduled_for");
     CREATE INDEX IF NOT EXISTS "ritual_occurrence_community_status_idx" ON "app"."ritual_occurrence" USING btree ("community_id","status");
+    CREATE INDEX IF NOT EXISTS "ritual_occurrence_status_posted_idx" ON "app"."ritual_occurrence" USING btree ("status","posted_at");
 
     CREATE TABLE IF NOT EXISTS "app"."community_engage_config" (
       "community_id" varchar(255) PRIMARY KEY NOT NULL REFERENCES "app"."community"("id"),
