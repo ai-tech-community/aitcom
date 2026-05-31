@@ -138,6 +138,37 @@ export async function loadDiscoveryCandidates(
   });
 }
 
+export type PublicLiveness = {
+  activeContributors: number;
+  recentThreads: number;
+};
+
+/** Public-safe liveness for a single community: distinct contributors + new
+ *  threads over the discovery window. No private/insight data. */
+export async function loadPublicLiveness(
+  db: DB,
+  communityId: string,
+  now: Date,
+): Promise<PublicLiveness> {
+  const since = windowStart(now, DISCOVERY_WINDOW_DAYS);
+  const rows = await db
+    .select({
+      actorId: activityEvents.actorId,
+      action: activityEvents.action,
+    })
+    .from(activityEvents)
+    .where(
+      and(
+        eq(activityEvents.communityId, communityId),
+        gte(activityEvents.createdAt, since),
+        inArray(activityEvents.action, CONTRIBUTION_LIST),
+      ),
+    );
+  const contributors = new Set(rows.map((r) => r.actorId));
+  const recentThreads = rows.filter((r) => r.action === "thread.create").length;
+  return { activeContributors: contributors.size, recentThreads };
+}
+
 /** The set of community ids the user is an active member of. */
 export async function loadMemberCommunityIds(
   db: DB,

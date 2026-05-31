@@ -21,6 +21,7 @@ import {
   type CommunityRole,
 } from "@/server/communities/role-utils";
 import { logActivity } from "@/server/agent/activity";
+import { loadPublicLiveness } from "@/server/communities/discovery-queries";
 
 /** Escape SQL LIKE/ILIKE pattern characters */
 function escapeLike(str: string): string {
@@ -120,9 +121,16 @@ export const communitiesRouter = createTRPCRouter({
           ),
         );
 
+      const liveness = await loadPublicLiveness(
+        ctx.db,
+        community.id,
+        new Date(),
+      );
+
       return {
         ...community,
         memberCount: memberCountResult?.count ?? 0,
+        liveness,
       };
     }),
 

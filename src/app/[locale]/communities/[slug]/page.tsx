@@ -1,35 +1,38 @@
-"use client";
+import type { Metadata } from "next";
+import { api } from "@/trpc/server";
+import { CommunityOverviewPageClient } from "./_overview-client";
 
-import { use } from "react";
-import { api } from "@/trpc/react";
-import { authClient } from "@/server/better-auth/client";
-import { FeedPage } from "@/components/communities/feed/feed-page";
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; locale: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  try {
+    const c = await api.communities.getBySlug({ slug });
+    const title = `${c.name} · AI Tech Community`;
+    const description =
+      c.description ?? `Join ${c.name} on the AI Tech Community Hub.`;
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        images: c.logoUrl ? [{ url: c.logoUrl }] : undefined,
+        type: "website",
+      },
+      twitter: { card: "summary", title, description },
+    };
+  } catch {
+    return { title: "Community · AI Tech Community" };
+  }
+}
 
 export default function CommunityOverviewPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = use(params);
-  const { data: session } = authClient.useSession();
-
-  const { data: community } = api.communities.getBySlug.useQuery({ slug });
-
-  const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
-    undefined,
-    { enabled: !!session?.user },
-  );
-
-  const membership = myCommunities?.find((c) => c.slug === slug);
-  const memberRole = membership?.status === "active" ? membership.role : null;
-
-  return (
-    <FeedPage
-      slug={slug}
-      communityDescription={community?.description}
-      memberRole={memberRole}
-      currentUserId={session?.user?.id}
-      feedPostPolicy={community?.feedPostPolicy ?? "all_members"}
-    />
-  );
+  return <CommunityOverviewPageClient params={params} />;
 }
