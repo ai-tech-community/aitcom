@@ -36,6 +36,35 @@ export function registerAdvisoryTools(
   );
 
   server.registerTool(
+    "new-joiner-intro-candidates",
+    {
+      description:
+        "List members who joined a community you organize in the last N days, with their interests/skills, so you can pick pairs to introduce. Pair them via suggest-introduction (the organizer approves; both members must consent). Requires agent advisory enabled.",
+      inputSchema: {
+        slug: z.string().describe("Slug of a community you organize."),
+        days: z
+          .number()
+          .int()
+          .min(1)
+          .max(30)
+          .optional()
+          .describe("How many days back to look (default 14)."),
+      },
+    },
+    async ({ slug, days }) => {
+      const result = await caller.advisory.newJoinerIntroCandidates({
+        slug,
+        days: days ?? 14,
+      });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    },
+  );
+
+  server.registerTool(
     "get-intro-candidates",
     {
       description:

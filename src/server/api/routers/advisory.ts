@@ -152,6 +152,47 @@ export const advisoryRouter = createTRPCRouter({
       });
     }),
 
+  /** New joiners (within the last N days) the agent can suggest introductions for. */
+  newJoinerIntroCandidates: agentProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        days: z.number().int().min(1).max(30).default(14),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await requireAdvisoryAccess(
+        ctx.db,
+        input.slug,
+        ownerId,
+      );
+
+      const since = windowStart(new Date(), input.days);
+      const joiners = await ctx.db
+        .select({
+          userId: communityMemberships.userId,
+          joinedAt: communityMemberships.joinedAt,
+          displayName: memberProfiles.displayName,
+          interests: memberProfiles.interests,
+          skills: memberProfiles.skills,
+        })
+        .from(communityMemberships)
+        .innerJoin(
+          memberProfiles,
+          eq(memberProfiles.userId, communityMemberships.userId),
+        )
+        .where(
+          and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.status, "active"),
+            gte(communityMemberships.joinedAt, since),
+          ),
+        );
+      return joiners;
+    }),
+
   /** Ranked candidate member pairs to introduce, with shared interests/skills. */
   introCandidates: agentProcedure
     .input(z.object({ slug: z.string() }))
