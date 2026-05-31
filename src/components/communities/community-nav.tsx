@@ -28,7 +28,10 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
     { key: "ideas", href: `${basePath}/ideas` },
     { key: "members", href: `${basePath}/members` },
     ...(isAdminOrOwner || memberRole === "moderator"
-      ? [{ key: "insights", href: `${basePath}/insights` }]
+      ? [
+          { key: "insights", href: `${basePath}/insights` },
+          { key: "rituals", href: `${basePath}/rituals` },
+        ]
       : []),
     ...(isAdminOrOwner
       ? [{ key: "settings", href: `${basePath}/settings` }]
@@ -67,6 +70,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
                     | "ideas"
                     | "members"
                     | "insights"
+                    | "rituals"
                     | "settings",
                 )}
               </Link>
