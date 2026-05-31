@@ -14,6 +14,7 @@ import {
   activityEvents,
   conversations,
   conversationParticipants,
+  messages,
   introductions,
   notifications,
   communityMemberships,
@@ -717,6 +718,51 @@ export const agentManagementRouter = createTRPCRouter({
             },
           });
         }
+      }
+
+      // Revival nudge: approving opens/sends a DM from the organizer to the member.
+      if (
+        input.action === "approved" &&
+        draft.type === "revival_nudge" &&
+        draft.targetId
+      ) {
+        const memberId = draft.targetId;
+        // dedupe an existing DM between organizer (userId) and member (mirror inbox.startConversation)
+        const [existing] = await ctx.db
+          .select({ conversationId: conversationParticipants.conversationId })
+          .from(conversationParticipants)
+          .innerJoin(
+            conversations,
+            eq(conversations.id, conversationParticipants.conversationId),
+          )
+          .where(
+            and(
+              eq(conversations.type, "dm"),
+              eq(conversationParticipants.userId, memberId),
+              sql`${conversationParticipants.conversationId} IN (
+                SELECT ${conversationParticipants.conversationId} FROM ${conversationParticipants} WHERE ${conversationParticipants.userId} = ${userId}
+              )`,
+            ),
+          )
+          .limit(1);
+        let conversationId = existing?.conversationId;
+        if (!conversationId) {
+          const [conv] = await ctx.db
+            .insert(conversations)
+            .values({ type: "dm" })
+            .returning();
+          await ctx.db.insert(conversationParticipants).values([
+            { conversationId: conv!.id, userId },
+            { conversationId: conv!.id, userId: memberId },
+          ]);
+          conversationId = conv!.id;
+        }
+        await ctx.db.insert(messages).values({
+          conversationId,
+          senderId: userId,
+          senderType: "human",
+          content: draft.content ?? "",
+        });
       }
 
       return draft;
