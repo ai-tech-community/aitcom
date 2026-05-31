@@ -6,6 +6,12 @@ export const RESPONSE_ACTIONS = [
   "launchpad.comment.created",
 ] as const;
 
+/** Top-level contributions that can receive a response (used for the greeter queue). */
+export const RESPONDABLE_ACTIONS = [
+  "thread.create",
+  "feed.post_created",
+] as const;
+
 export type ActivationStage =
   | "unactivated"
   | "awaiting_response"

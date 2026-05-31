@@ -30,11 +30,14 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS "community_onboarding_progress_uidx" ON "app"."community_onboarding_progress" ("community_id","user_id","step_id");
     CREATE INDEX IF NOT EXISTS "community_onboarding_progress_member_idx" ON "app"."community_onboarding_progress" USING btree ("community_id","user_id");
+
+    CREATE INDEX IF NOT EXISTS "activity_events_community_recipient_idx" ON "app"."activity_event" USING btree ("community_id","recipient_id");
   `);
 }
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
   await db.execute(sql`
+    DROP INDEX IF EXISTS "app"."activity_events_community_recipient_idx";
     DROP TABLE IF EXISTS "app"."community_onboarding_progress";
     DROP TABLE IF EXISTS "app"."community_onboarding_step";
     DROP TABLE IF EXISTS "app"."community_activation_config";

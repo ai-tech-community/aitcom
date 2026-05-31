@@ -1015,6 +1015,10 @@ export const activityEvents = appSchema.table(
       t.action,
       t.createdAt,
     ),
+    index("activity_events_community_recipient_idx").on(
+      t.communityId,
+      t.recipientId,
+    ),
   ],
 );
 
