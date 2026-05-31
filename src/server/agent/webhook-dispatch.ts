@@ -7,9 +7,17 @@ import {
   agentProfiles,
   memberProfiles,
 } from "@/server/db/schema";
+import { RESPONSE_ACTIONS } from "@/server/communities/activation";
 import { validateWebhookUrl } from "./validate-webhook-url";
 
 type DB = typeof _db;
+
+/**
+ * Reciprocity actions carry a `recipientId` (the contribution author) for the
+ * activation funnel, but they are still PUBLIC events that must fan out to
+ * forum-subscribed webhooks regardless of who the named recipient is.
+ */
+const RECIPROCITY_ACTIONS: string[] = [...RESPONSE_ACTIONS];
 
 /** Map category names to activity_event action prefixes. */
 const CATEGORY_PREFIXES: Record<string, string[]> = {
@@ -88,9 +96,16 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
       let consecutiveAgentEvents = webhook.consecutiveAgentEvents;
 
       const matchingEvents = events.filter((evt) => {
-        // Skip private events not meant for this webhook's owner
-        if (evt.recipientId && evt.recipientId !== webhook.ownerId)
+        // Skip private events not meant for this webhook's owner.
+        // Reciprocity actions are public despite carrying a recipientId, so the
+        // recipient filter must not apply to them.
+        if (
+          evt.recipientId &&
+          !RECIPROCITY_ACTIONS.includes(evt.action) &&
+          evt.recipientId !== webhook.ownerId
+        ) {
           return false;
+        }
         if (evt.actorId === webhook.agentId) return false;
         if (!prefixes.some((prefix) => evt.action.startsWith(prefix)))
           return false;

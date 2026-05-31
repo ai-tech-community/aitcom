@@ -23,9 +23,12 @@ const hrefSchema = z
   .string()
   .min(1)
   .max(500)
-  .refine((h) => h.startsWith("/") || h.startsWith("https://"), {
-    message: "href must be a relative path (/...) or an https:// URL",
-  });
+  .refine(
+    (h) =>
+      (h.startsWith("/") && !h.startsWith("//") && !h.startsWith("/\\")) ||
+      h.startsWith("https://"),
+    { message: "href must be a same-site path (/...) or an https:// URL" },
+  );
 
 export const onboardingStepsRouter = createTRPCRouter({
   list: communityProcedure

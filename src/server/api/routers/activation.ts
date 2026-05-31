@@ -206,6 +206,15 @@ export const activationRouter = createTRPCRouter({
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
       requireActiveMember(ctx.membership);
+
+      // Established members (joined before the activation cohort window) are
+      // past onboarding — hide the checklist without running the 4 queries that
+      // would otherwise fire on every feed-page load.
+      const cohortStart = windowStart(new Date(), ACTIVATION_COHORT_DAYS);
+      if (ctx.membership && ctx.membership.joinedAt < cohortStart) {
+        return { stage: "activated" as const };
+      }
+
       const userId = ctx.session.user.id;
       const now = new Date();
 

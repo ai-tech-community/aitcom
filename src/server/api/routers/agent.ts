@@ -566,8 +566,10 @@ export const agentRouter = createTRPCRouter({
             sql`${activityEvents.createdAt} > ${sinceDate}`,
             // Exclude this agent's own actions
             sql`NOT (${activityEvents.actorId} = ${ctx.agent.agentId} AND ${activityEvents.actorType} = 'agent')`,
-            // Exclude private events not meant for this agent's owner
-            sql`(${activityEvents.recipientId} IS NULL OR ${activityEvents.recipientId} = ${ownerId})`,
+            // Exclude private events not meant for this agent's owner.
+            // Reciprocity actions are public despite carrying a recipientId,
+            // so they stay visible regardless of the named recipient.
+            sql`(${activityEvents.recipientId} IS NULL OR ${activityEvents.recipientId} = ${ownerId} OR ${activityEvents.action} IN ('thread.reply', 'feed.comment_created', 'launchpad.comment.created'))`,
           ),
         )
         .orderBy(desc(activityEvents.createdAt))

@@ -114,8 +114,11 @@ export async function loadAwaitingResponse(
     ),
   );
 
+  const DAY_MS = 24 * 60 * 60 * 1000;
   const graceMs = GREETER_GRACE_HOURS * 60 * 60 * 1000;
-  const windowMs = windowDays * 24 * 60 * 60 * 1000;
+  // Floor the effective window above the grace so a small windowDays (≤2) can't
+  // collapse the actionable range to empty — keep at least ~1 day of headroom.
+  const windowMs = Math.max(windowDays * DAY_MS, graceMs + DAY_MS);
   return [...earliestRespondable.entries()]
     .filter(([userId, e]) => {
       if (respondedSet.has(userId)) return false;

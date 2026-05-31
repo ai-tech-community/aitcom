@@ -31,6 +31,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS "community_onboarding_progress_uidx" ON "app"."community_onboarding_progress" ("community_id","user_id","step_id");
     CREATE INDEX IF NOT EXISTS "community_onboarding_progress_member_idx" ON "app"."community_onboarding_progress" USING btree ("community_id","user_id");
 
+    ALTER TABLE "app"."activity_event" ADD COLUMN IF NOT EXISTS "recipient_id" varchar(255);
     CREATE INDEX IF NOT EXISTS "activity_events_community_recipient_idx" ON "app"."activity_event" USING btree ("community_id","recipient_id");
   `);
 }
