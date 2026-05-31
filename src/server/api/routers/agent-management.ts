@@ -650,6 +650,8 @@ export const agentManagementRouter = createTRPCRouter({
           and(
             eq(agentDrafts.ownerId, userId),
             eq(agentDrafts.status, input.status),
+            // ritual_suggestion drafts are reviewed on the Rituals page, not here.
+            ne(agentDrafts.type, "ritual_suggestion"),
           ),
         )
         .orderBy(desc(agentDrafts.createdAt));
@@ -676,6 +678,17 @@ export const agentManagementRouter = createTRPCRouter({
         .limit(1);
       if (!existing) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
+      }
+
+      // Ritual suggestions are reviewed via rituals.reviewSuggestion (which
+      // CREATES a ritual on approve). Reviewing them here would CAS-flip their
+      // status without creating a ritual, permanently consuming them.
+      if (existing.type === "ritual_suggestion") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Review ritual suggestions from the community's Rituals page.",
+        });
       }
 
       const OWNER_SCOPED = ["thread_reply", "revival_nudge"];

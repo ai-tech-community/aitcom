@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { createTRPCRouter, communityProcedure } from "@/server/api/trpc";
 import { rituals, ritualOccurrences, agentDrafts } from "@/server/db/schema";
@@ -165,6 +165,41 @@ export const ritualsRouter = createTRPCRouter({
           ),
         );
       return { ok: true };
+    }),
+
+  pendingSuggestions: communityProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx }) => {
+      requireManager(ctx.communityRole);
+      const rows = await ctx.db
+        .select()
+        .from(agentDrafts)
+        .where(
+          and(
+            eq(agentDrafts.type, "ritual_suggestion"),
+            eq(agentDrafts.status, "pending"),
+            sql`${agentDrafts.metadata}->>'communityId' = ${ctx.community.id}`,
+          ),
+        )
+        .orderBy(desc(agentDrafts.createdAt));
+      return rows.map((d) => {
+        const m = (d.metadata ?? {}) as {
+          title?: string;
+          body?: string;
+          category?: string;
+          weekday?: number;
+          mode?: string;
+        };
+        return {
+          draftId: d.id,
+          title: m.title ?? d.content,
+          body: m.body ?? "",
+          category: m.category ?? "general",
+          weekday: m.weekday ?? 1,
+          mode: m.mode ?? "review",
+          createdAt: d.createdAt,
+        };
+      });
     }),
 
   reviewSuggestion: communityProcedure

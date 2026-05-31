@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RitualForm } from "./ritual-form";
 import { PendingOccurrences } from "./pending-occurrences";
+import { SuggestedRituals } from "./suggested-rituals";
 import { DigestRecallSettings } from "@/components/communities/engage/digest-recall-settings";
 
 export function RitualsManager({ slug }: { slug: string }) {
@@ -113,6 +114,8 @@ export function RitualsManager({ slug }: { slug: string }) {
           )}
         </div>
       </div>
+
+      <SuggestedRituals slug={slug} />
 
       <PendingOccurrences slug={slug} />
 

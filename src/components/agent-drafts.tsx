@@ -10,6 +10,7 @@ const TYPE_LABELS: Record<string, string> = {
   thread_create: "THREAD",
   profile_update: "PROFILE",
   revival_nudge: "REVIVAL",
+  welcome_nudge: "WELCOME",
 };
 
 export function AgentDrafts() {
@@ -71,7 +72,8 @@ export function AgentDrafts() {
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
-                {draft.type === "revival_nudge" ? (
+                {draft.type === "revival_nudge" ||
+                draft.type === "welcome_nudge" ? (
                   <Button
                     size="xs"
                     className="font-mono text-[11px] tracking-wider"
