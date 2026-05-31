@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 import { and, eq, lt, or, isNull } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { rituals, ritualOccurrences, user } from "@/server/db/schema";
-import { getPayloadClient } from "@/server/payload";
-import { plainTextToLexical } from "@/server/challenge-engine/lexical";
-import { logActivity } from "@/server/agent/activity";
+import { rituals, ritualOccurrences } from "@/server/db/schema";
 import { dateKey, isRitualDue } from "@/server/communities/rituals";
+import { postRitualThread } from "@/server/communities/post-ritual-thread";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -94,7 +92,7 @@ export async function GET(req: Request) {
     }
 
     try {
-      const threadId = await postRitualThread(r);
+      const threadId = await postRitualThread(db, r);
       await db
         .update(ritualOccurrences)
         .set({ status: "posted", threadId, postedAt: new Date() })
@@ -107,58 +105,4 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({ success: true, posted, pending, today });
-}
-
-/** Materialise a ritual as a forum thread authored by the ritual owner. */
-async function postRitualThread(r: {
-  id: string;
-  communityId: string;
-  authorUserId: string;
-  title: string;
-  body: string;
-  category: string;
-}): Promise<number> {
-  const payload = await getPayloadClient();
-  const baseSlug = r.title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-  const slug = `${baseSlug}-${Date.now()}`;
-
-  const [author] = await db
-    .select({ name: user.name })
-    .from(user)
-    .where(eq(user.id, r.authorUserId))
-    .limit(1);
-
-  const thread = await payload.create({
-    collection: "forum-threads",
-    data: {
-      title: r.title,
-      slug,
-      content: plainTextToLexical(r.body),
-      category: r.category as "general" | "question" | "showcase" | "job",
-      authorId: r.authorUserId,
-      authorName: author?.name ?? "organizer",
-      authorRole: "member",
-      isPinned: false,
-      isLocked: false,
-      replyCount: 0,
-      lastActivityAt: new Date().toISOString(),
-      communityId: r.communityId,
-    },
-  });
-
-  await logActivity(db, {
-    actorId: r.authorUserId,
-    actorType: "member",
-    action: "thread.create",
-    targetType: "forum-threads",
-    targetId: String(thread.id),
-    communityId: r.communityId,
-    metadata: { title: r.title, category: r.category, slug, ritualId: r.id },
-  });
-
-  return Number(thread.id);
 }

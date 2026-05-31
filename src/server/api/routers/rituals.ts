@@ -4,9 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 
 import { createTRPCRouter, communityProcedure } from "@/server/api/trpc";
 import { rituals, ritualOccurrences, agentDrafts } from "@/server/db/schema";
-import { getPayloadClient } from "@/server/payload";
-import { plainTextToLexical } from "@/server/challenge-engine/lexical";
-import { logActivity } from "@/server/agent/activity";
+import { postRitualThread } from "@/server/communities/post-ritual-thread";
 
 /** owner/admin/moderator may manage rituals. */
 function requireManager(role: string | null) {
@@ -144,43 +142,12 @@ export const ritualsRouter = createTRPCRouter({
         .limit(1);
       if (!r) throw new TRPCError({ code: "NOT_FOUND" });
 
-      const payload = await getPayloadClient();
-      const slug = `${r.title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 80)}-${Date.now()}`;
-      const thread = await payload.create({
-        collection: "forum-threads",
-        data: {
-          title: r.title,
-          slug,
-          content: plainTextToLexical(r.body),
-          category: r.category as "general" | "question" | "showcase" | "job",
-          authorId: r.authorUserId,
-          authorName: ctx.session.user.name ?? "organizer",
-          authorRole: "member",
-          isPinned: false,
-          isLocked: false,
-          replyCount: 0,
-          lastActivityAt: new Date().toISOString(),
-          communityId: r.communityId,
-        },
-      });
+      const threadId = await postRitualThread(ctx.db, r);
       await ctx.db
         .update(ritualOccurrences)
-        .set({ threadId: Number(thread.id) })
+        .set({ threadId })
         .where(eq(ritualOccurrences.id, occ.id));
-      await logActivity(ctx.db, {
-        actorId: r.authorUserId,
-        actorType: "member",
-        action: "thread.create",
-        targetType: "forum-threads",
-        targetId: String(thread.id),
-        communityId: r.communityId,
-        metadata: { title: r.title, ritualId: r.id, slug },
-      });
-      return { threadId: Number(thread.id) };
+      return { threadId };
     }),
 
   skipOccurrence: communityProcedure
