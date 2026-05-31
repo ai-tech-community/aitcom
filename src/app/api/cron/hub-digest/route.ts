@@ -36,6 +36,8 @@ import { resolvePrefs, type OptoutRow } from "@/server/notifications/prefs";
 import { currentPeriodKey } from "@/server/notifications/constants";
 import { renderHubDigestHtml } from "@/server/notifications/render";
 import { sendHubDigestEmail } from "@/server/email";
+import { rankCommunitiesForMember } from "@/server/communities/discovery";
+import { loadDiscoveryCandidates } from "@/server/communities/discovery-queries";
 
 // At-risk selection params — mirror advisory.atRiskMembers exactly.
 const WINDOW_DAYS = 14;
@@ -232,6 +234,11 @@ export async function GET(req: Request) {
     atRiskByCommunity.set(communityId, new Set(atRisk.map((m) => m.userId)));
   }
 
+  // Discovery candidates — loaded once, used per-member inside the user loop.
+  const discoveryCandidates = await loadDiscoveryCandidates(db, now, {
+    crossPromoteOnly: true,
+  });
+
   // Batch opt-out read: one query for all users instead of one per user.
   const allUserIds = [...byUser.keys()];
   const allOptouts =
@@ -255,6 +262,16 @@ export async function GET(req: Request) {
   for (const [userId, { email, name, rows }] of byUser) {
     const prefs = resolvePrefs(optoutByUser.get(userId) ?? []);
     if (prefs.globalDigestOptOut) continue;
+
+    const memberIds = new Set(rows.map((r) => r.communityId));
+    const topPick = rankCommunitiesForMember({
+      candidates: discoveryCandidates,
+      memberCommunityIds: memberIds,
+      limit: 1,
+    })[0];
+    const discovery = topPick
+      ? { name: topPick.name, slug: topPick.slug }
+      : null;
 
     const recipientName = name ?? "there";
 
@@ -280,6 +297,7 @@ export async function GET(req: Request) {
       userId,
       sections,
       optedOutCommunityIds: prefs.digestOptOutCommunityIds,
+      discovery,
     });
     if (!digest) continue;
 

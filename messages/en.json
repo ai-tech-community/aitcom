@@ -1230,6 +1230,10 @@
       "editProject": "Edit Project"
     }
   },
+  "discovery": {
+    "recommendedTitle": "Recommended for you",
+    "memberCount": "{count, plural, one {# member} other {# members}}"
+  },
   "communities": {
     "directory": {
       "title": "Communities",

@@ -63,3 +63,36 @@ describe("buildHubDigest", () => {
     ).toBeNull();
   });
 });
+
+describe("buildHubDigest discovery", () => {
+  it("returns a digest with only a discovery pick when all sections are empty", () => {
+    const d = buildHubDigest({
+      userId: "u1",
+      sections: [
+        summarizeCommunitySection({
+          communityId: "c1",
+          communityName: "C1",
+          newThreads: 0,
+          newEvents: 0,
+          newMembers: 0,
+          ritualItems: [],
+        }),
+      ],
+      optedOutCommunityIds: new Set(),
+      discovery: { name: "Robotics", slug: "robotics" },
+    });
+    expect(d).not.toBeNull();
+    expect(d!.sections).toHaveLength(0);
+    expect(d!.discovery).toEqual({ name: "Robotics", slug: "robotics" });
+  });
+
+  it("returns null when sections empty and no discovery", () => {
+    expect(
+      buildHubDigest({
+        userId: "u1",
+        sections: [],
+        optedOutCommunityIds: new Set(),
+      }),
+    ).toBeNull();
+  });
+});
