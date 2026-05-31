@@ -87,6 +87,17 @@ may *draft* a ritual's copy under [[agent-autonomy-level]] = Suggest for a human
 to approve. The supply side of the Engage loop (Ritual → content →
 [[community-digest]] → recall → participation → Ritual).
 
+As implemented: a ritual is a **recurring weekly prompt** on a chosen weekday
+that materializes as a **forum thread** authored by the ritual's owner — an
+admin recorded as `authorUserId`, the author-of-record (distinct from whoever
+may manage the ritual). Modes: **auto** (the system posts each week
+automatically) or **review** (an admin approves each occurrence before it
+posts). Occurrence lifecycle: `pending` → `posted` (with the thread) or
+`skipped` (a stale `pending` occurrence is superseded when the ritual next
+fires). An agent may **draft a ritual definition** (`suggestRitual`) for an
+admin to approve into existence — the agent never posts occurrences itself.
+Reviewed on the community's Rituals page.
+
 ### Community digest
 
 A recurring per-[[Community]] roll-up (new threads, events, top posts, new
@@ -95,6 +106,13 @@ members, revival prompts) — rendered as a **section within the consolidated
 content and preferred cadence; the Hub bundles and schedules. Empty sections
 are suppressed. The distribution side of the Engage loop. Per-member opt-out,
 per section and globally. See [[adr-0014-consolidated-digest-broadcast-ceiling]].
+
+The `ritualItems` recall slot is filled per-community from an
+admin-configurable [[community-engage-config]] with three toggles: **ritual
+recap** (this week's ritual activity), **ritual reminder** (the upcoming
+ritual), and a personalized **at-risk line** (a "we've missed you" nudge shown
+only to a recipient who is an [[at-risk-member]]). Defaults: recap + reminder
+ON, at-risk OFF (a privacy opt-in, owner/admin only).
 
 ### Hub digest
 
@@ -110,6 +128,26 @@ members (outside the [[hub-digest]] cadence). Stays per-community for
 immediacy, but is subject to the [[notification-ceiling]]. Transactional
 messages a member opted into (e.g. a reminder for an event they RSVP'd to)
 are exempt from the promotional cap.
+
+### Community engage config
+
+Per-[[Community]] admin-configurable settings that drive the engage loop's
+recall. Currently three toggles consumed by [[community-digest]] `ritualItems`:
+ritual recap, ritual reminder, and the personalized at-risk line (see
+[[community-digest]] for defaults). The dial that closes the loop Ritual →
+content → digest recall → participation. See
+[[adr-0016-engage-loop-rituals-recall]].
+
+### Community agent drafts
+
+Agent-produced suggestions scoped to a single [[Community]] and **role-gated**:
+any qualifying admin of the draft's community may review/act on it. Ritual
+suggestions (`suggestRitual`) and welcome nudges (`suggestWelcome`) are
+owner/admin/moderator; broadcasts (`suggestBroadcast`) are owner/admin. The
+agent only drafts — a human approves and acts in their own name. Warm welcome
+has a **dual trigger**: agent advisory `suggestWelcome` and the organizer-UI
+`insights.sendWelcome`, both targeting [[un-activated-newcomer]]s. See
+[[adr-0016-engage-loop-rituals-recall]].
 
 ### Notification ceiling
 
