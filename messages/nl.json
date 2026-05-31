@@ -1317,7 +1317,8 @@
         "rules": "Regels",
         "ownership": "Eigenaarschap",
         "integrations": "Integraties",
-        "broadcast": "Aankondigingen"
+        "broadcast": "Aankondigingen",
+        "autonomy": "Agent-advies"
       },
       "members": {
         "activeTab": "Actief",
@@ -1509,5 +1510,11 @@
     "send": "Aankondiging versturen",
     "sent": "Verzonden — {emailed} lid(leden) per e-mail bereikt; iedereen ziet het in de app.",
     "sending": "Verzenden…"
+  },
+  "autonomy": {
+    "title": "Agent-advies",
+    "description": "Wanneer ingeschakeld, kan de agent van een community-organisator introducties tussen leden voorstellen en conceptnudges opstellen die jij kunt beoordelen en versturen. Agenten plaatsen nooit berichten als zichzelf — jij publiceert altijd in je eigen naam.",
+    "enabled": "Agent-advies (Suggereer)",
+    "enabledHint": "Uit schakelt alle agentsuggesties voor deze community."
   }
 }
