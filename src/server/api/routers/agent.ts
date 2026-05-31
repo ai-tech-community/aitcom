@@ -33,7 +33,6 @@ import {
   logActivity,
   checkEnrollmentCompletion,
 } from "@/server/agent/activity";
-import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import { agentFeedRouter } from "./agent-feed";
 import { agentCommunityRouter } from "./agent-communities";
 
