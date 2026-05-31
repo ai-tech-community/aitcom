@@ -826,6 +826,90 @@ export const communityEngageConfig = appSchema.table(
   }),
 );
 
+export const communityActivationConfig = appSchema.table(
+  "community_activation_config",
+  (d) => ({
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .references(() => communities.id),
+    requireResponse: d.boolean().notNull().default(true),
+    requireProfileComplete: d.boolean().notNull().default(false),
+    windowDays: d.integer().notNull().default(7),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+);
+
+export const communityOnboardingStep = appSchema.table(
+  "community_onboarding_step",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    title: d.varchar({ length: 255 }).notNull(),
+    href: d.varchar({ length: 500 }).notNull(),
+    position: d.integer().notNull().default(0),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("community_onboarding_step_community_pos_idx").on(
+      t.communityId,
+      t.position,
+    ),
+  ],
+);
+
+export const communityOnboardingProgress = appSchema.table(
+  "community_onboarding_progress",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    stepId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communityOnboardingStep.id),
+    completedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("community_onboarding_progress_uidx").on(
+      t.communityId,
+      t.userId,
+      t.stepId,
+    ),
+    index("community_onboarding_progress_member_idx").on(
+      t.communityId,
+      t.userId,
+    ),
+  ],
+);
+
 /** A double-opt-in introduction between two members, suggested by an agent and
  *  approved by the community organizer. pairKey (= sorted user ids) + a partial
  *  unique index prevents a second OPEN intro for the same pair. responseA/
