@@ -718,35 +718,42 @@ export const agentSuggestions = appSchema.table("agent_suggestion", (d) => ({
     .notNull(),
 }));
 
-export const rituals = appSchema.table("ritual", (d) => ({
-  id: d
-    .varchar({ length: 255 })
-    .notNull()
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  communityId: d
-    .varchar({ length: 255 })
-    .notNull()
-    .references(() => communities.id),
-  authorUserId: d
-    .varchar({ length: 255 })
-    .notNull()
-    .references(() => user.id),
-  suggestedByAgentId: d
-    .varchar({ length: 255 })
-    .references(() => agentProfiles.id),
-  title: d.varchar({ length: 255 }).notNull(),
-  body: d.text().notNull(),
-  category: d.varchar({ length: 20 }).notNull().default("general"),
-  weekday: d.integer().notNull(),
-  mode: d.varchar({ length: 10 }).notNull().default("review"),
-  status: d.varchar({ length: 10 }).notNull().default("active"),
-  lastFiredOn: d.date(),
-  createdAt: d
-    .timestamp({ withTimezone: true })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-}));
+export const rituals = appSchema.table(
+  "ritual",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    authorUserId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    suggestedByAgentId: d
+      .varchar({ length: 255 })
+      .references(() => agentProfiles.id),
+    title: d.varchar({ length: 255 }).notNull(),
+    body: d.text().notNull(),
+    category: d.varchar({ length: 20 }).notNull().default("general"),
+    weekday: d.integer().notNull(),
+    mode: d.varchar({ length: 10 }).notNull().default("review"),
+    status: d.varchar({ length: 10 }).notNull().default("active"),
+    lastFiredOn: d.date(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("ritual_community_idx").on(t.communityId),
+    index("ritual_status_weekday_idx").on(t.status, t.weekday),
+  ],
+);
 
 export const ritualOccurrences = appSchema.table(
   "ritual_occurrence",
