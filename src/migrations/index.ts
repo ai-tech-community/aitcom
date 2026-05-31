@@ -34,6 +34,7 @@ import * as migration_20260530b_activity_event_community_action_created_idx from
 import * as migration_20260530c_notifications_infra from "./20260530c_notifications_infra";
 import * as migration_20260531_notifications_harden_unique_indexes from "./20260531_notifications_harden_unique_indexes";
 import * as migration_20260531b_community_autonomy_level from "./20260531b_community_autonomy_level";
+import * as migration_20260531c_agent_introductions from "./20260531c_agent_introductions";
 
 export const migrations = [
   {
@@ -215,5 +216,10 @@ export const migrations = [
     up: migration_20260531b_community_autonomy_level.up,
     down: migration_20260531b_community_autonomy_level.down,
     name: "20260531b_community_autonomy_level",
+  },
+  {
+    up: migration_20260531c_agent_introductions.up,
+    down: migration_20260531c_agent_introductions.down,
+    name: "20260531c_agent_introductions",
   },
 ];
