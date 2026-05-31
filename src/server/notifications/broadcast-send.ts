@@ -45,7 +45,7 @@ export async function sendCommunityBroadcast(
     })
     .returning({ id: broadcasts.id });
 
-  // Idempotency gate: mark sent immediately so a crash/retry can't double-send.
+  // Record when the broadcast was dispatched (audit; not a double-send guard).
   await db
     .update(broadcasts)
     .set({ sentAt: now })

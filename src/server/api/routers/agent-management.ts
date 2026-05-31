@@ -780,24 +780,10 @@ export const agentManagementRouter = createTRPCRouter({
         }
       }
 
-      // Revival nudge: approving opens/sends a DM from the organizer to the member.
+      // Revival/welcome nudge: approving opens/sends a DM from the organizer to the member.
       if (
         input.action === "approved" &&
-        draft.type === "revival_nudge" &&
-        draft.targetId
-      ) {
-        await sendDirectMessage(
-          ctx.db,
-          userId,
-          draft.targetId,
-          draft.content ?? "",
-        );
-      }
-
-      // Welcome nudge: approving opens/sends a warm-welcome DM to the newcomer.
-      if (
-        input.action === "approved" &&
-        draft.type === "welcome_nudge" &&
+        (draft.type === "revival_nudge" || draft.type === "welcome_nudge") &&
         draft.targetId
       ) {
         await sendDirectMessage(
@@ -814,14 +800,18 @@ export const agentManagementRouter = createTRPCRouter({
           communityId?: string;
           subject?: string;
         };
-        if (meta.communityId && meta.subject) {
-          await sendCommunityBroadcast(ctx.db, {
-            communityId: meta.communityId,
-            authorId: userId,
-            subject: meta.subject,
-            body: draft.content ?? "",
+        if (!meta.communityId || !meta.subject) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Broadcast draft metadata is malformed — cannot send.",
           });
         }
+        await sendCommunityBroadcast(ctx.db, {
+          communityId: meta.communityId,
+          authorId: userId,
+          subject: meta.subject,
+          body: draft.content ?? "",
+        });
       }
 
       return draft;
