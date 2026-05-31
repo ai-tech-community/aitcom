@@ -1274,7 +1274,8 @@
       "votes": "{count} stemmen",
       "replies": "{count} reacties",
       "insights": "Insights",
-      "rituals": "Rituelen"
+      "rituals": "Rituelen",
+      "referrals": "Verwijzingen"
     },
     "manage": {
       "settings": "Instellingen",
@@ -1533,5 +1534,13 @@
     "accept": "Verbinden",
     "decline": "Nee, bedankt",
     "connected": "Je bent verbonden — open je berichten."
+  },
+  "referral": {
+    "title": "Verwijs een vriend",
+    "shareCta": "Kopieer je uitnodigingslink",
+    "copied": "Gekopieerd!",
+    "leaderboardTitle": "Beste verwijzers",
+    "referralCount": "{count, plural, one {# verwijzing} other {# verwijzingen}}",
+    "empty": "Nog geen verwijzingen"
   }
 }

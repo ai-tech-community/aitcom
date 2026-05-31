@@ -2,7 +2,12 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 
-import { createTRPCRouter, communityProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  communityProcedure,
+  protectedProcedure,
+} from "@/server/api/trpc";
+import { loadReferralLeaderboard } from "@/server/communities/referral-queries";
 import { communityInvites } from "@/server/db/schema";
 
 export const referralRouter = createTRPCRouter({
@@ -35,5 +40,11 @@ export const referralRouter = createTRPCRouter({
         expiresAt: null,
       });
       return { code };
+    }),
+
+  leaderboard: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }))
+    .query(async ({ ctx, input }) => {
+      return loadReferralLeaderboard(ctx.db, input.limit);
     }),
 });

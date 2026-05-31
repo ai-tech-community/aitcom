@@ -1274,7 +1274,8 @@
       "votes": "{count} votes",
       "replies": "{count} replies",
       "insights": "Insights",
-      "rituals": "Rituals"
+      "rituals": "Rituals",
+      "referrals": "Referrals"
     },
     "manage": {
       "settings": "Settings",
@@ -1534,5 +1535,13 @@
     "accept": "Connect",
     "decline": "No thanks",
     "connected": "You're connected — open your messages."
+  },
+  "referral": {
+    "title": "Refer a friend",
+    "shareCta": "Copy your invite link",
+    "copied": "Copied!",
+    "leaderboardTitle": "Top referrers",
+    "referralCount": "{count, plural, one {# referral} other {# referrals}}",
+    "empty": "No referrals yet"
   }
 }
