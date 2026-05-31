@@ -14,7 +14,10 @@ import {
   activityEvents,
   conversations,
   conversationParticipants,
+  introductions,
+  notifications,
 } from "@/server/db/schema";
+import { pairKey } from "@/server/agents/matching";
 import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
 import { generateInviteCode } from "@/app/api/mcp/registration-tools";
@@ -771,6 +774,94 @@ export const agentManagementRouter = createTRPCRouter({
       }
 
       return suggestion;
+    }),
+
+  /** Approve an introduction suggestion → create the introduction (pending
+   *  consent) and notify both members to consent. */
+  approveIntroduction: protectedProcedure
+    .input(z.object({ suggestionId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [sug] = await ctx.db
+        .select()
+        .from(agentSuggestions)
+        .where(
+          and(
+            eq(agentSuggestions.id, input.suggestionId),
+            eq(agentSuggestions.ownerId, userId),
+          ),
+        )
+        .limit(1);
+      if (!sug || sug.type !== "introduction") {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Introduction suggestion not found",
+        });
+      }
+      const meta = (sug.metadata ?? {}) as {
+        communityId?: string;
+        userIdA?: string;
+        userIdB?: string;
+        pairKey?: string;
+        sharedInterests?: string[];
+      };
+      if (!meta.communityId || !meta.userIdA || !meta.userIdB) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Malformed suggestion metadata",
+        });
+      }
+      const key = meta.pairKey ?? pairKey(meta.userIdA, meta.userIdB);
+
+      let introId: string;
+      try {
+        const [intro] = await ctx.db
+          .insert(introductions)
+          .values({
+            communityId: meta.communityId,
+            suggestedByAgentId: sug.agentId,
+            organizerId: userId,
+            userIdA: meta.userIdA,
+            userIdB: meta.userIdB,
+            pairKey: key,
+            sharedInterests: meta.sharedInterests ?? [],
+          })
+          .returning({ id: introductions.id });
+        introId = intro!.id;
+      } catch (err) {
+        // Partial unique index (introduction_open_pair_uidx) → an open intro exists.
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "An open introduction for this pair already exists",
+        });
+      }
+
+      await ctx.db.insert(notifications).values([
+        {
+          userId: meta.userIdA,
+          type: "introduction_request",
+          title: "Someone would like to connect",
+          content:
+            "A community organizer thinks you'd hit it off with another member. Want to connect?",
+          communityId: meta.communityId,
+          metadata: { introId },
+        },
+        {
+          userId: meta.userIdB,
+          type: "introduction_request",
+          title: "Someone would like to connect",
+          content:
+            "A community organizer thinks you'd hit it off with another member. Want to connect?",
+          communityId: meta.communityId,
+          metadata: { introId },
+        },
+      ]);
+
+      await ctx.db
+        .update(agentSuggestions)
+        .set({ status: "approved" })
+        .where(eq(agentSuggestions.id, sug.id));
+      return { introId };
     }),
 
   // ── Invite Codes ─────────────────────────────────────────────────────────
