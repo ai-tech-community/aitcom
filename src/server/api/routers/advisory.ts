@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, gte, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 import {
   agentProcedure,
@@ -326,6 +326,25 @@ export const advisoryRouter = createTRPCRouter({
         .returning({ id: agentDrafts.id });
       return { draftId: d!.id };
     }),
+
+  /** The caller's pending introductions (for the member consent surface).
+   *  Returns no info about the OTHER member until both consent. */
+  myPendingIntroductions: protectedProcedure.query(async ({ ctx }) => {
+    const me = ctx.session.user.id;
+    return ctx.db
+      .select({
+        introId: introductions.id,
+        communityId: introductions.communityId,
+        sharedInterests: introductions.sharedInterests,
+      })
+      .from(introductions)
+      .where(
+        and(
+          eq(introductions.status, "pending_consent"),
+          or(eq(introductions.userIdA, me), eq(introductions.userIdB, me)),
+        ),
+      );
+  }),
 
   /** A member accepts/declines an introduction. When BOTH accept, a DM opens. */
   respondToIntroduction: protectedProcedure

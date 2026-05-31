@@ -1516,5 +1516,17 @@
     "description": "Wanneer ingeschakeld, kan de agent van een community-organisator introducties tussen leden voorstellen en conceptnudges opstellen die jij kunt beoordelen en versturen. Agenten plaatsen nooit berichten als zichzelf — jij publiceert altijd in je eigen naam.",
     "enabled": "Agent-advies (Suggereer)",
     "enabledHint": "Uit schakelt alle agentsuggesties voor deze community."
+  },
+  "advisory": {
+    "approve": "Goedkeuren",
+    "dismiss": "Verwijderen",
+    "approveSend": "Goedkeuren & versturen",
+    "introApproved": "Introductie verzonden — beide leden worden gevraagd toestemming te geven.",
+    "revivalSent": "Verstuurd als DM vanuit jou.",
+    "connectTitle": "Wil je verbinden?",
+    "connectBody": "Een community-organisator denkt dat jij gemeenschappelijke interesses deelt met een ander lid. Verbinden?",
+    "accept": "Verbinden",
+    "decline": "Nee, bedankt",
+    "connected": "Je bent verbonden — open je berichten."
   }
 }
