@@ -21,7 +21,7 @@ import {
   conversationParticipants,
   messages,
 } from "@/server/db/schema";
-import { db as _db } from "@/server/db";
+import type { db as _db } from "@/server/db";
 import {
   canAdvise,
   nextIntroStatus,
@@ -406,7 +406,7 @@ export const advisoryRouter = createTRPCRouter({
           conversationId = conv!.id;
         }
         await ctx.db.insert(messages).values({
-          conversationId: conversationId!,
+          conversationId: conversationId,
           senderId: intro.organizerId,
           senderType: "human",
           content: "You both opted in to connect — say hi! 👋",

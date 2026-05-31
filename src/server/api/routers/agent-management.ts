@@ -839,7 +839,7 @@ export const agentManagementRouter = createTRPCRouter({
           ),
         )
         .limit(1);
-      if (!sug || sug.type !== "introduction") {
+      if (sug?.type !== "introduction") {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Introduction suggestion not found",
@@ -898,7 +898,7 @@ export const agentManagementRouter = createTRPCRouter({
           })
           .returning({ id: introductions.id });
         introId = intro!.id;
-      } catch (err) {
+      } catch {
         // Partial unique index (introduction_open_pair_uidx) → an open intro exists.
         throw new TRPCError({
           code: "CONFLICT",
