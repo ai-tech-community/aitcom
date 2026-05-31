@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { randomBytes, createHmac } from "crypto";
-import { eq, and, desc, gt, lt, sql } from "drizzle-orm";
+import { eq, and, ne, desc, gt, lt, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
@@ -673,6 +673,7 @@ export const agentManagementRouter = createTRPCRouter({
           and(
             eq(agentDrafts.id, input.draftId),
             eq(agentDrafts.ownerId, userId),
+            eq(agentDrafts.status, "pending"),
           ),
         )
         .returning();
@@ -836,6 +837,7 @@ export const agentManagementRouter = createTRPCRouter({
           and(
             eq(agentSuggestions.id, input.suggestionId),
             eq(agentSuggestions.ownerId, userId),
+            eq(agentSuggestions.status, "pending"),
           ),
         )
         .limit(1);
@@ -883,6 +885,25 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
+      // Pre-check for an existing non-declined intro for this pair before inserting.
+      const existingIntro = await ctx.db
+        .select({ id: introductions.id })
+        .from(introductions)
+        .where(
+          and(
+            eq(introductions.communityId, communityId),
+            eq(introductions.pairKey, key),
+            ne(introductions.status, "declined"),
+          ),
+        )
+        .limit(1);
+      if (existingIntro.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "An introduction for this pair already exists",
+        });
+      }
+
       let introId: string;
       try {
         const [intro] = await ctx.db
@@ -898,8 +919,9 @@ export const agentManagementRouter = createTRPCRouter({
           })
           .returning({ id: introductions.id });
         introId = intro!.id;
-      } catch {
-        // Partial unique index (introduction_open_pair_uidx) → an open intro exists.
+      } catch (err) {
+        // Partial unique index (introduction_open_pair_uidx) → race backstop.
+        console.error("approveIntroduction: intro insert failed", err);
         throw new TRPCError({
           code: "CONFLICT",
           message: "An open introduction for this pair already exists",

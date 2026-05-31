@@ -155,6 +155,7 @@ export const advisoryRouter = createTRPCRouter({
         ownerId,
       );
 
+      // bounded to keep the O(n^2) pair scan tractable
       const rows = await ctx.db
         .select({
           userId: communityMemberships.userId,
@@ -171,7 +172,8 @@ export const advisoryRouter = createTRPCRouter({
             eq(communityMemberships.communityId, community.id),
             eq(communityMemberships.status, "active"),
           ),
-        );
+        )
+        .limit(500);
 
       const members: MemberProfile[] = rows.map((r) => ({
         userId: r.userId,
@@ -258,6 +260,23 @@ export const advisoryRouter = createTRPCRouter({
           message: "An introduction for this pair already exists",
         });
       }
+      // Compute shared interests/skills for the suggestion metadata so
+      // approveIntroduction can pass them through to the introduction row.
+      const profiles = await ctx.db
+        .select({
+          userId: memberProfiles.userId,
+          interests: memberProfiles.interests,
+          skills: memberProfiles.skills,
+        })
+        .from(memberProfiles)
+        .where(inArray(memberProfiles.userId, [input.userIdA, input.userIdB]));
+      const pa = profiles.find((p) => p.userId === input.userIdA);
+      const pb = profiles.find((p) => p.userId === input.userIdB);
+      const setB = new Set([...(pb?.interests ?? []), ...(pb?.skills ?? [])]);
+      const sharedInterests = [
+        ...new Set([...(pa?.interests ?? []), ...(pa?.skills ?? [])]),
+      ].filter((x) => setB.has(x));
+
       const [s] = await ctx.db
         .insert(agentSuggestions)
         .values({
@@ -272,6 +291,7 @@ export const advisoryRouter = createTRPCRouter({
             userIdA: input.userIdA,
             userIdB: input.userIdB,
             pairKey: key,
+            sharedInterests,
           },
         })
         .returning({ id: agentSuggestions.id });
@@ -367,13 +387,36 @@ export const advisoryRouter = createTRPCRouter({
       }
       const isA = intro.userIdA === userId;
       const myResponse: IntroResponse = input.accept ? "accepted" : "declined";
-      const responseA = isA ? myResponse : intro.responseA;
-      const responseB = isA ? intro.responseB : myResponse;
-      const status = nextIntroStatus(responseA, responseB);
 
-      let conversationId = intro.conversationId;
+      // 1. Write ONLY the caller's own response, guarded on still-pending (no clobber of the other side).
+      await ctx.db
+        .update(introductions)
+        .set(isA ? { responseA: myResponse } : { responseB: myResponse })
+        .where(
+          and(
+            eq(introductions.id, intro.id),
+            eq(introductions.status, "pending_consent"),
+          ),
+        );
+
+      // 2. Re-read authoritative responses.
+      const [fresh] = await ctx.db
+        .select()
+        .from(introductions)
+        .where(eq(introductions.id, intro.id))
+        .limit(1);
+      if (!fresh)
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Introduction not found",
+        });
+
+      // 3. Compute status from the authoritative responses.
+      const status = nextIntroStatus(fresh.responseA, fresh.responseB);
+
+      let conversationId = fresh.conversationId;
       if (status === "connected") {
-        // neon-http has no interactive transactions; dedupe like inbox.startConversation
+        // dedupe an existing dm between the two (mirror inbox.startConversation)
         const [existingDm] = await ctx.db
           .select({ conversationId: conversationParticipants.conversationId })
           .from(conversationParticipants)
@@ -384,14 +427,13 @@ export const advisoryRouter = createTRPCRouter({
           .where(
             and(
               eq(conversations.type, "dm"),
-              eq(conversationParticipants.userId, intro.userIdB),
+              eq(conversationParticipants.userId, fresh.userIdB),
               sql`${conversationParticipants.conversationId} IN (
-                SELECT ${conversationParticipants.conversationId} FROM ${conversationParticipants} WHERE ${conversationParticipants.userId} = ${intro.userIdA}
+                SELECT ${conversationParticipants.conversationId} FROM ${conversationParticipants} WHERE ${conversationParticipants.userId} = ${fresh.userIdA}
               )`,
             ),
           )
           .limit(1);
-
         if (existingDm) {
           conversationId = existingDm.conversationId;
         } else {
@@ -400,22 +442,44 @@ export const advisoryRouter = createTRPCRouter({
             .values({ type: "dm" })
             .returning();
           await ctx.db.insert(conversationParticipants).values([
-            { conversationId: conv!.id, userId: intro.userIdA },
-            { conversationId: conv!.id, userId: intro.userIdB },
+            { conversationId: conv!.id, userId: fresh.userIdA },
+            { conversationId: conv!.id, userId: fresh.userIdB },
           ]);
           conversationId = conv!.id;
         }
-        await ctx.db.insert(messages).values({
-          conversationId: conversationId,
-          senderId: intro.organizerId,
-          senderType: "human",
-          content: "You both opted in to connect — say hi! 👋",
-        });
+        // 4. Flip to connected ONLY if still pending_consent — the single winner posts the opener.
+        const wonConnect = await ctx.db
+          .update(introductions)
+          .set({ status: "connected", conversationId })
+          .where(
+            and(
+              eq(introductions.id, intro.id),
+              eq(introductions.status, "pending_consent"),
+            ),
+          )
+          .returning({ id: introductions.id });
+        if (wonConnect.length > 0) {
+          await ctx.db.insert(messages).values({
+            conversationId: conversationId,
+            senderId: fresh.organizerId,
+            senderType: "human",
+            content: "You both opted in to connect — say hi! 👋",
+          });
+        }
+        return { status: "connected" as const, conversationId };
       }
-      await ctx.db
-        .update(introductions)
-        .set({ responseA, responseB, status, conversationId })
-        .where(eq(introductions.id, intro.id));
-      return { status, conversationId };
+      if (status === "declined") {
+        await ctx.db
+          .update(introductions)
+          .set({ status: "declined" })
+          .where(
+            and(
+              eq(introductions.id, intro.id),
+              eq(introductions.status, "pending_consent"),
+            ),
+          );
+        return { status: "declined" as const, conversationId: null };
+      }
+      return { status: "pending_consent" as const, conversationId };
     }),
 });
