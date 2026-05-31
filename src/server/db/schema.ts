@@ -2076,6 +2076,11 @@ export const communities = appSchema.table(
       .notNull()
       .default("all_members")
       .$type<"all_members" | "admins_only">(),
+    autonomyLevel: d
+      .varchar("autonomy_level", { length: 10 })
+      .notNull()
+      .default("suggest")
+      .$type<"off" | "suggest">(),
     createdBy: d
       .varchar({ length: 255 })
       .notNull()

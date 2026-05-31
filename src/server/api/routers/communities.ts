@@ -592,6 +592,7 @@ export const communitiesRouter = createTRPCRouter({
         slug: communities.slug,
         description: communities.description,
         logoUrl: communities.logoUrl,
+        autonomyLevel: communities.autonomyLevel,
       })
       .from(communityMemberships)
       .innerJoin(
@@ -660,6 +661,20 @@ export const communitiesRouter = createTRPCRouter({
       });
 
       return updated!;
+    }),
+
+  /** Set the agent autonomy level for this community (admin+) */
+  setAutonomyLevel: communityProcedure
+    .input(z.object({ slug: z.string(), level: z.enum(["off", "suggest"]) }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      await ctx.db
+        .update(communities)
+        .set({ autonomyLevel: input.level })
+        .where(eq(communities.id, ctx.community.id));
+      return { ok: true };
     }),
 
   /** Approve a pending membership request */
