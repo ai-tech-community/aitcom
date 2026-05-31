@@ -9,6 +9,8 @@ import {
   createTRPCRouter,
 } from "@/server/api/trpc";
 import {
+  agentDrafts,
+  agentSuggestions,
   communities,
   communityMemberships,
   memberProfiles,
@@ -18,6 +20,7 @@ import {
 import { db as _db } from "@/server/db";
 import { canAdvise } from "@/server/agents/advisory";
 import {
+  pairKey,
   scoreIntroductions,
   type MemberProfile,
 } from "@/server/agents/matching";
@@ -184,5 +187,135 @@ export const advisoryRouter = createTRPCRouter({
         excludePairs,
         cap: INTRO_CANDIDATE_CAP,
       });
+    }),
+
+  /** File an introduction suggestion for the organizer to review. */
+  suggestIntroduction: agentProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        userIdA: z.string(),
+        userIdB: z.string(),
+        reason: z.string().min(1).max(1000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await requireAdvisoryAccess(
+        ctx.db,
+        input.slug,
+        ownerId,
+      );
+      if (input.userIdA === input.userIdB) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Cannot introduce a member to themselves",
+        });
+      }
+      const members = await ctx.db
+        .select({ userId: communityMemberships.userId })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.status, "active"),
+            inArray(communityMemberships.userId, [
+              input.userIdA,
+              input.userIdB,
+            ]),
+          ),
+        );
+      if (members.length !== 2) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Both users must be active members",
+        });
+      }
+      const key = pairKey(input.userIdA, input.userIdB);
+      const open = await ctx.db
+        .select({ id: introductions.id })
+        .from(introductions)
+        .where(
+          and(
+            eq(introductions.communityId, community.id),
+            eq(introductions.pairKey, key),
+            ne(introductions.status, "declined"),
+          ),
+        )
+        .limit(1);
+      if (open.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "An introduction for this pair already exists",
+        });
+      }
+      const [s] = await ctx.db
+        .insert(agentSuggestions)
+        .values({
+          agentId: ctx.agent.agentId,
+          ownerId,
+          type: "introduction",
+          title: "Introduce two members",
+          content: input.reason,
+          metadata: {
+            communityId: community.id,
+            communitySlug: input.slug,
+            userIdA: input.userIdA,
+            userIdB: input.userIdB,
+            pairKey: key,
+          },
+        })
+        .returning({ id: agentSuggestions.id });
+      return { suggestionId: s!.id };
+    }),
+
+  /** File a revival-nudge draft for an at-risk member, for the organizer to review/send. */
+  suggestRevival: agentProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        memberUserId: z.string(),
+        message: z.string().min(1).max(2000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await requireAdvisoryAccess(
+        ctx.db,
+        input.slug,
+        ownerId,
+      );
+      const member = await ctx.db
+        .select({ userId: communityMemberships.userId })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.userId, input.memberUserId),
+            eq(communityMemberships.status, "active"),
+          ),
+        )
+        .limit(1);
+      if (member.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Target is not an active member",
+        });
+      }
+      const [d] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: ctx.agent.agentId,
+          ownerId,
+          type: "revival_nudge",
+          targetType: "user",
+          targetId: input.memberUserId,
+          content: input.message,
+          metadata: { communityId: community.id, communitySlug: input.slug },
+        })
+        .returning({ id: agentDrafts.id });
+      return { draftId: d!.id };
     }),
 });
