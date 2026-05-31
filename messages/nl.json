@@ -1316,7 +1316,8 @@
         "invites": "Uitnodigingen",
         "rules": "Regels",
         "ownership": "Eigenaarschap",
-        "integrations": "Integraties"
+        "integrations": "Integraties",
+        "broadcast": "Aankondigingen"
       },
       "members": {
         "activeTab": "Actief",
@@ -1489,5 +1490,24 @@
       "healthSection": "Community gezondheidsstatistieken",
       "loading": "Laden"
     }
+  },
+  "notificationPrefs": {
+    "title": "Meldingen",
+    "description": "Kies wat je inbox bereikt. Je kunt je afmelden voor de wekelijkse samenvatting globaal of per community, en aankondigingen van een community stoppen.",
+    "globalDigest": "Wekelijkse samenvatting",
+    "globalDigestHint": "Één gecombineerde e-mail met een sectie per community.",
+    "perCommunity": "Per community",
+    "digestColumn": "Samenvattingssectie",
+    "broadcastColumn": "Aankondigingen",
+    "saved": "Opgeslagen"
+  },
+  "broadcast": {
+    "title": "Stuur een aankondiging",
+    "description": "Bereik de leden van je community. Promotionele aankondigingen zijn onderhevig aan een Hub-brede wekelijkse limiet per lid; evenementherinneringen aan geregistreerde deelnemers worden altijd afgeleverd.",
+    "subject": "Onderwerp",
+    "body": "Bericht",
+    "send": "Aankondiging versturen",
+    "sent": "Verzonden — {emailed} lid(leden) per e-mail bereikt; iedereen ziet het in de app.",
+    "sending": "Verzenden…"
   }
 }

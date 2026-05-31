@@ -17,11 +17,14 @@ import { membersRouter } from "@/server/api/routers/members";
 import { inboxRouter } from "@/server/api/routers/inbox";
 import { impactRouter } from "@/server/api/routers/impact";
 import { notificationsRouter } from "@/server/api/routers/notifications";
+import { notificationPrefsRouter } from "@/server/api/routers/notificationPrefs";
 import { onboardingRouter } from "@/server/api/routers/onboarding";
 import { postRouter } from "@/server/api/routers/post";
 import { sponsorsRouter } from "@/server/api/routers/sponsors";
 import { datacentersRouter } from "@/server/api/routers/datacenters";
 import { insightsRouter } from "@/server/api/routers/insights";
+import { broadcastRouter } from "@/server/api/routers/broadcast";
+import { hubOperatorRouter } from "@/server/api/routers/hubOperator";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -42,6 +45,7 @@ export const appRouter = createTRPCRouter({
   inbox: inboxRouter,
   impact: impactRouter,
   notifications: notificationsRouter,
+  notificationPrefs: notificationPrefsRouter,
   onboarding: onboardingRouter,
   challengeChannel: challengeChannelRouter,
   challengeEngine: challengeEngineRouter,
@@ -54,6 +58,8 @@ export const appRouter = createTRPCRouter({
   luma: lumaRouter,
   datacenters: datacentersRouter,
   insights: insightsRouter,
+  broadcast: broadcastRouter,
+  hubOperator: hubOperatorRouter,
 });
 
 // export type definition of API

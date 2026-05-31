@@ -195,6 +195,32 @@ export function requireScope(scopes: string[], required: string) {
   }
 }
 
+/** The root Hub community slug (the "ait" row every user belongs to). */
+export const HUB_SLUG = "ait";
+
+/** Throws unless the caller is owner/admin of the root Hub community.
+ *  Seam for the future Hub-operator role/settings epic (#85). */
+export async function requireHubOperator(ctx: {
+  db: typeof db;
+  session: { user: { id: string } } | null;
+}): Promise<void> {
+  if (!ctx.session?.user) throw new TRPCError({ code: "UNAUTHORIZED" });
+  const hub = await ctx.db.query.communities.findFirst({
+    where: and(eq(communities.slug, HUB_SLUG), isNull(communities.deletedAt)),
+  });
+  if (!hub) throw new TRPCError({ code: "FORBIDDEN" });
+  const membership = await ctx.db.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, hub.id),
+      eq(communityMemberships.userId, ctx.session.user.id),
+    ),
+  });
+  const role = membership?.status === "active" ? membership.role : null;
+  if (role !== "owner" && role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+}
+
 /**
  * Assert that the agent has been claimed and has a non-null ownerId.
  * Unclaimed agents do not have an owner and cannot perform owner-scoped actions.

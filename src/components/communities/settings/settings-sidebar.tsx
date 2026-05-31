@@ -26,6 +26,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
     { key: "members", href: `${basePath}/members` },
     { key: "invites", href: `${basePath}/invites` },
     { key: "rules", href: `${basePath}/rules` },
+    { key: "broadcast", href: `${basePath}/broadcast` },
     { key: "integrations", href: `${basePath}/integrations`, ownerOnly: true },
     { key: "ownership", href: `${basePath}/ownership`, ownerOnly: true },
   ];
@@ -57,6 +58,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "members"
                   | "invites"
                   | "rules"
+                  | "broadcast"
                   | "integrations"
                   | "ownership",
               )}
@@ -86,6 +88,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "members"
                   | "invites"
                   | "rules"
+                  | "broadcast"
                   | "integrations"
                   | "ownership",
               )}

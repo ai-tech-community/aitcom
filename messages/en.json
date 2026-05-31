@@ -1316,7 +1316,8 @@
         "invites": "Invites",
         "rules": "Rules",
         "ownership": "Ownership",
-        "integrations": "Integrations"
+        "integrations": "Integrations",
+        "broadcast": "Announcements"
       },
       "members": {
         "activeTab": "Active",
@@ -1489,5 +1490,24 @@
       "healthSection": "Community health metrics",
       "loading": "Loading"
     }
+  },
+  "notificationPrefs": {
+    "title": "Notifications",
+    "description": "Choose what reaches your inbox. You can opt out of the weekly digest globally or per community, and stop a community's announcements.",
+    "globalDigest": "Weekly digest email",
+    "globalDigestHint": "One consolidated email with a section per community.",
+    "perCommunity": "Per community",
+    "digestColumn": "Digest section",
+    "broadcastColumn": "Announcements",
+    "saved": "Saved"
+  },
+  "broadcast": {
+    "title": "Send an announcement",
+    "description": "Reach your community's members. Promotional announcements are subject to a Hub-wide weekly limit per member; event reminders to people who registered are always delivered.",
+    "subject": "Subject",
+    "body": "Message",
+    "send": "Send announcement",
+    "sent": "Sent — emailed {emailed} member(s); everyone sees it in-app.",
+    "sending": "Sending…"
   }
 }
