@@ -1,5 +1,6 @@
 "use client";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 
@@ -8,7 +9,8 @@ export function IntroductionConsent() {
   const utils = api.useUtils();
   const pending = api.advisory.myPendingIntroductions.useQuery();
   const respond = api.advisory.respondToIntroduction.useMutation({
-    onSuccess: () => {
+    onSuccess: (res) => {
+      if (res.status === "connected") toast.success(t("connected"));
       void utils.advisory.myPendingIntroductions.invalidate();
     },
   });

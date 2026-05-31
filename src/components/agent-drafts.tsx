@@ -110,7 +110,7 @@ export function AgentDrafts() {
                       action: "rejected",
                     })
                   }
-                  disabled={reviewDraft.isPending}
+                  disabled={reviewDraft.isPending || sendRevival.isPending}
                 >
                   Dismiss
                 </Button>
