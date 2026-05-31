@@ -26,6 +26,7 @@ import { insightsRouter } from "@/server/api/routers/insights";
 import { broadcastRouter } from "@/server/api/routers/broadcast";
 import { hubOperatorRouter } from "@/server/api/routers/hubOperator";
 import { advisoryRouter } from "@/server/api/routers/advisory";
+import { ritualsRouter } from "@/server/api/routers/rituals";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -62,6 +63,7 @@ export const appRouter = createTRPCRouter({
   broadcast: broadcastRouter,
   hubOperator: hubOperatorRouter,
   advisory: advisoryRouter,
+  rituals: ritualsRouter,
 });
 
 // export type definition of API

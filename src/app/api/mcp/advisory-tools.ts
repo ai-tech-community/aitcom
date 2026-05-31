@@ -115,4 +115,47 @@ export function registerAdvisoryTools(
       };
     },
   );
+
+  server.registerTool(
+    "propose-ritual",
+    {
+      description:
+        "Draft a recurring community ritual (a weekly prompt thread) for an admin to review and approve. You never create rituals directly — the admin approves your draft.",
+      inputSchema: {
+        slug: z.string().describe("Slug of a community you organize."),
+        title: z.string().describe("Thread title for the ritual prompt."),
+        body: z.string().describe("Thread body / prompt copy."),
+        category: z
+          .enum(["general", "question", "showcase", "job"])
+          .default("general")
+          .describe("Forum category for the posted thread."),
+        weekday: z
+          .number()
+          .min(0)
+          .max(6)
+          .describe("Day of week to post (0=Sunday .. 6=Saturday)."),
+        mode: z
+          .enum(["auto", "review"])
+          .default("review")
+          .describe(
+            "auto = system posts each week automatically; review = an admin approves each occurrence.",
+          ),
+      },
+    },
+    async ({ slug, title, body, category, weekday, mode }) => {
+      const result = await caller.advisory.suggestRitual({
+        slug,
+        title,
+        body,
+        category,
+        weekday,
+        mode,
+      });
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(result, null, 2) },
+        ],
+      };
+    },
+  );
 }

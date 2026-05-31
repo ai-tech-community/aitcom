@@ -348,6 +348,51 @@ export const advisoryRouter = createTRPCRouter({
       return { draftId: d!.id };
     }),
 
+  /** Draft a ritual definition for an admin to approve (never created directly). */
+  suggestRitual: agentProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        title: z.string().min(3).max(255),
+        body: z.string().min(1).max(10000),
+        category: z
+          .enum(["general", "question", "showcase", "job"])
+          .default("general"),
+        weekday: z.number().int().min(0).max(6),
+        mode: z.enum(["auto", "review"]).default("review"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "contribute");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await requireAdvisoryAccess(
+        ctx.db,
+        input.slug,
+        ownerId,
+      );
+      const [d] = await ctx.db
+        .insert(agentDrafts)
+        .values({
+          agentId: ctx.agent.agentId,
+          ownerId,
+          type: "ritual_suggestion",
+          targetType: "community",
+          targetId: community.id,
+          content: input.title,
+          metadata: {
+            communityId: community.id,
+            communitySlug: input.slug,
+            title: input.title,
+            body: input.body,
+            category: input.category,
+            weekday: input.weekday,
+            mode: input.mode,
+          },
+        })
+        .returning({ id: agentDrafts.id });
+      return { draftId: d!.id };
+    }),
+
   /** The caller's pending introductions (for the member consent surface).
    *  Returns no info about the OTHER member until both consent. */
   myPendingIntroductions: protectedProcedure.query(async ({ ctx }) => {
