@@ -13,6 +13,20 @@ function requireConfigAdmin(role: string | null) {
     throw new TRPCError({ code: "FORBIDDEN" });
 }
 
+function requireActiveMember(membership: { status: string } | null) {
+  if (membership?.status !== "active") {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+}
+
+const hrefSchema = z
+  .string()
+  .min(1)
+  .max(500)
+  .refine((h) => h.startsWith("/") || h.startsWith("https://"), {
+    message: "href must be a relative path (/...) or an https:// URL",
+  });
+
 export const onboardingStepsRouter = createTRPCRouter({
   list: communityProcedure
     .input(z.object({ slug: z.string() }))
@@ -30,7 +44,7 @@ export const onboardingStepsRouter = createTRPCRouter({
       z.object({
         slug: z.string(),
         title: z.string().min(1).max(255),
-        href: z.string().min(1).max(500),
+        href: hrefSchema,
         position: z.number().int().min(0),
       }),
     )
@@ -54,17 +68,22 @@ export const onboardingStepsRouter = createTRPCRouter({
         slug: z.string(),
         stepId: z.string(),
         title: z.string().min(1).max(255).optional(),
-        href: z.string().min(1).max(500).optional(),
+        href: hrefSchema.optional(),
         position: z.number().int().min(0).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       requireConfigAdmin(ctx.communityRole);
-      const { slug: _slug, stepId, ...fields } = input;
+      const { slug: _slug, stepId, ...rawFields } = input;
+      const fields = Object.fromEntries(
+        Object.entries(rawFields).filter(([, v]) => v !== undefined),
+      );
       if (Object.keys(fields).length === 0) return { ok: true };
       await ctx.db
         .update(communityOnboardingStep)
-        .set(fields)
+        .set(
+          fields as Partial<{ title: string; href: string; position: number }>,
+        )
         .where(
           and(
             eq(communityOnboardingStep.id, stepId),
@@ -107,6 +126,7 @@ export const onboardingStepsRouter = createTRPCRouter({
   listForMe: communityProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
+      requireActiveMember(ctx.membership);
       const userId = ctx.session.user.id;
       const [steps, done] = await Promise.all([
         ctx.db
@@ -137,6 +157,7 @@ export const onboardingStepsRouter = createTRPCRouter({
   markComplete: communityProcedure
     .input(z.object({ slug: z.string(), stepId: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      requireActiveMember(ctx.membership);
       const userId = ctx.session.user.id;
       const [step] = await ctx.db
         .select({ id: communityOnboardingStep.id })
