@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  agentApiKeys,
-  agentManifestAcceptances,
-} from "@/server/db/schema";
+import { agentApiKeys, agentManifestAcceptances } from "@/server/db/schema";
 import { validateApiKey } from "./api-key";
 
 type KeyRow = {
@@ -59,12 +56,18 @@ describe("validateApiKey manifest gate", () => {
   };
 
   it("keeps contribute when the owner has accepted", async () => {
-    const res = await validateApiKey(fakeDb({ keyRow: base, accepted: true }), RAW);
+    const res = await validateApiKey(
+      fakeDb({ keyRow: base, accepted: true }),
+      RAW,
+    );
     expect(res?.scopes).toEqual(["read", "contribute", "self-profile"]);
   });
 
   it("strips contribute when the owner has NOT accepted (read-only)", async () => {
-    const res = await validateApiKey(fakeDb({ keyRow: base, accepted: false }), RAW);
+    const res = await validateApiKey(
+      fakeDb({ keyRow: base, accepted: false }),
+      RAW,
+    );
     expect(res?.scopes).toEqual(["read", "self-profile"]);
   });
 
@@ -91,7 +94,10 @@ describe("validateApiKey manifest gate", () => {
   });
 
   it("returns null when no key matches", async () => {
-    const res = await validateApiKey(fakeDb({ keyRow: null, accepted: false }), RAW);
+    const res = await validateApiKey(
+      fakeDb({ keyRow: null, accepted: false }),
+      RAW,
+    );
     expect(res).toBeNull();
   });
 });

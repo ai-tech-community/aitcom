@@ -18,11 +18,13 @@ function splitProcedures(src: string): Record<string, string> {
   const re = /^  (\w+): (?:protected|public|agent)Procedure/gm;
   const matches = [...src.matchAll(re)];
   const out: Record<string, string> = {};
-  for (let i = 0; i < matches.length; i++) {
-    const start = matches[i]!.index!;
-    const end = i + 1 < matches.length ? matches[i + 1]!.index! : src.length;
-    out[matches[i]![1]!] = src.slice(start, end);
-  }
+  matches.forEach((m, i) => {
+    const name = m[1];
+    if (!name) return;
+    const start = m.index ?? 0;
+    const end = matches[i + 1]?.index ?? src.length;
+    out[name] = src.slice(start, end);
+  });
   return out;
 }
 
@@ -35,7 +37,7 @@ describe("every owner↔agent binding records manifest acceptance (ADR-0017)", (
     .filter(
       ([, body]) =>
         /\b(?:insert|update)\(agentProfiles\)/.test(body) &&
-        /ownerId:/.test(body),
+        body.includes("ownerId:"),
     )
     .map(([name]) => name);
 
