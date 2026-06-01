@@ -414,6 +414,12 @@ export const agentManifestAcceptances = appSchema.table(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   }),
+  (t) => [
+    uniqueIndex("agent_manifest_acceptance_owner_version_uidx").on(
+      t.ownerId,
+      t.manifestVersion,
+    ),
+  ],
 );
 
 // Agent invite codes (for secure agent self-registration)

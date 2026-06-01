@@ -1445,13 +1445,6 @@ export const agentManagementRouter = createTRPCRouter({
       }
       const userId = ctx.session.user.id;
 
-      // Idempotent: if the owner already accepted the current version, return
-      // early. (The acceptance table has no (ownerId, manifestVersion) unique
-      // index, so onConflictDoNothing has no target to dedupe on — guard here.)
-      if (await hasAcceptedCurrentManifest(ctx.db, userId)) {
-        return { accepted: true, version: MANIFEST_VERSION };
-      }
-
       // One owner has at most one agent; acceptance may be recorded before the
       // owner has an agent row, so agentId is nullable.
       const [agent] = await ctx.db
@@ -1460,11 +1453,16 @@ export const agentManagementRouter = createTRPCRouter({
         .where(eq(agentProfiles.ownerId, userId))
         .limit(1);
 
-      await ctx.db.insert(agentManifestAcceptances).values({
-        ownerId: userId,
-        agentId: agent?.id ?? null,
-        manifestVersion: MANIFEST_VERSION,
-      });
+      // Idempotent at the DB level: the (ownerId, manifestVersion) unique index
+      // dedupes concurrent first-time accepts, avoiding duplicate audit rows.
+      await ctx.db
+        .insert(agentManifestAcceptances)
+        .values({
+          ownerId: userId,
+          agentId: agent?.id ?? null,
+          manifestVersion: MANIFEST_VERSION,
+        })
+        .onConflictDoNothing();
 
       return { accepted: true, version: MANIFEST_VERSION };
     }),
