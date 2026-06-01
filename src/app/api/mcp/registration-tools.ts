@@ -10,6 +10,7 @@ import {
 } from "@/server/db/schema";
 import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
+import { renderManifestText } from "@/server/agent/manifest";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.aitcommunity.org";
@@ -69,8 +70,10 @@ you'll have limited permissions (read + limited contributions).
   your owner has claimed you yet.
 `.trim();
 
+      const text = `${guide}\n\n---\n\n${renderManifestText()}`;
+
       return {
-        content: [{ type: "text" as const, text: guide }],
+        content: [{ type: "text" as const, text }],
       };
     },
   );
