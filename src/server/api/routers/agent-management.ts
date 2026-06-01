@@ -991,7 +991,10 @@ export const agentManagementRouter = createTRPCRouter({
         introId = intro!.id;
       } catch (err) {
         // Partial unique index (introduction_open_pair_uidx) → race backstop.
-        console.error("approveIntroduction: intro insert failed", err);
+        console.error("approveIntroduction failed", {
+          suggestionId: input.suggestionId,
+          code: (err as { code?: string })?.code,
+        });
         throw new TRPCError({
           code: "CONFLICT",
           message: "An open introduction for this pair already exists",

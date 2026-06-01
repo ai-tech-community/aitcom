@@ -25,6 +25,7 @@ import {
   conversations,
   conversationParticipants,
   messages,
+  notifications,
 } from "@/server/db/schema";
 import type { db as _db } from "@/server/db";
 import {
@@ -774,10 +775,21 @@ export const advisoryRouter = createTRPCRouter({
           .where(eq(introductions.id, intro.id));
         await ctx.db.insert(messages).values({
           conversationId,
-          senderId: fresh.organizerId,
+          senderId: fresh.userIdA,
           senderType: "human",
           content: "You both opted in to connect — say hi! 👋",
         });
+        // Mark both members' introduction_request notifications read.
+        await ctx.db
+          .update(notifications)
+          .set({ readAt: new Date() })
+          .where(
+            and(
+              inArray(notifications.userId, [fresh.userIdA, fresh.userIdB]),
+              eq(notifications.type, "introduction_request"),
+              sql`${notifications.metadata}->>'introId' = ${intro.id}`,
+            ),
+          );
         return { status: "connected" as const, conversationId };
       }
       if (status === "declined") {
@@ -788,6 +800,17 @@ export const advisoryRouter = createTRPCRouter({
             and(
               eq(introductions.id, intro.id),
               eq(introductions.status, "pending_consent"),
+            ),
+          );
+        // Mark both members' introduction_request notifications read.
+        await ctx.db
+          .update(notifications)
+          .set({ readAt: new Date() })
+          .where(
+            and(
+              inArray(notifications.userId, [fresh.userIdA, fresh.userIdB]),
+              eq(notifications.type, "introduction_request"),
+              sql`${notifications.metadata}->>'introId' = ${intro.id}`,
             ),
           );
         return { status: "declined" as const, conversationId: null };
