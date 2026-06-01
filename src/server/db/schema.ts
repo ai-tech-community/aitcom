@@ -439,7 +439,7 @@ export const notifications = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "introduction_request"
+    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "introduction_request" | "referral_credited"
     title: d.varchar({ length: 255 }).notNull(),
     content: d.text().notNull(),
     metadata: d.json().$type<Record<string, unknown>>().default({}).notNull(),
@@ -842,6 +842,55 @@ export const communityActivationConfig = appSchema.table(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   }),
+);
+
+export const communityAcquireConfig = appSchema.table(
+  "community_acquire_config",
+  (d) => ({
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .references(() => communities.id),
+    crossPromote: d.boolean().notNull().default(true),
+    referralsEnabled: d.boolean().notNull().default(true),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+);
+
+export const referralCredits = appSchema.table(
+  "referral_credit",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    referrerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    referredUserId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    xpAwarded: d.integer().notNull(),
+    creditedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("referral_credit_referred_uidx").on(t.referredUserId),
+    index("referral_credit_referrer_idx").on(t.referrerId),
+  ],
 );
 
 export const communityOnboardingStep = appSchema.table(

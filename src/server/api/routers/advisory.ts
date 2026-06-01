@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 import {
   NEWCOMER_MIN_AGE_DAYS,
@@ -53,6 +53,7 @@ const WINDOW_DAYS = 14;
 const PRIOR_WINDOW_DAYS = 45;
 const AT_RISK_CAP = 50;
 const INTRO_CANDIDATE_CAP = 20;
+const NEW_JOINER_CAP = 100;
 // Un-activated newcomer window — shared with insights.ts (the organizer
 // dashboard) via a single exported source of truth.
 
@@ -150,6 +151,49 @@ export const advisoryRouter = createTRPCRouter({
         priorWindowDays: PRIOR_WINDOW_DAYS,
         cap: AT_RISK_CAP,
       });
+    }),
+
+  /** New joiners (within the last N days) the agent can suggest introductions for. */
+  newJoinerIntroCandidates: agentProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        days: z.number().int().min(1).max(30).default(14),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
+      const community = await requireAdvisoryAccess(
+        ctx.db,
+        input.slug,
+        ownerId,
+      );
+
+      const since = windowStart(new Date(), input.days);
+      const joiners = await ctx.db
+        .select({
+          userId: communityMemberships.userId,
+          joinedAt: communityMemberships.joinedAt,
+          displayName: memberProfiles.displayName,
+          interests: memberProfiles.interests,
+          skills: memberProfiles.skills,
+        })
+        .from(communityMemberships)
+        .innerJoin(
+          memberProfiles,
+          eq(memberProfiles.userId, communityMemberships.userId),
+        )
+        .where(
+          and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.status, "active"),
+            gte(communityMemberships.joinedAt, since),
+          ),
+        )
+        .orderBy(desc(communityMemberships.joinedAt))
+        .limit(NEW_JOINER_CAP);
+      return joiners;
     }),
 
   /** Ranked candidate member pairs to introduce, with shared interests/skills. */

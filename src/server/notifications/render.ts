@@ -12,6 +12,8 @@ function esc(s: string): string {
 /** Render the consolidated digest as inline-HTML (English; per-member locale is
  *  deferred — no locale field exists yet). */
 export function renderHubDigestHtml(digest: HubDigest): string {
+  const baseUrl = "https://www.aitcommunity.org";
+
   const sections = digest.sections
     .map((s) => {
       const lines: string[] = [];
@@ -29,15 +31,20 @@ export function renderHubDigestHtml(digest: HubDigest): string {
     })
     .join("");
 
+  const discoveryHtml = digest.discovery
+    ? `<p style="margin-top:16px;font-size:14px;color:#555;">Discover another community you might like: <a href="${baseUrl}/communities/${esc(digest.discovery.slug)}">${esc(digest.discovery.name)}</a></p>`
+    : "";
+
   return `
     <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
       <h2 style="font-size: 18px;">Your weekly AIT digest</h2>
       <p style="font-size: 14px; color: #555;">Here's what happened across your communities this week.</p>
       ${sections}
+      ${discoveryHtml}
       <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
       <p style="font-size: 12px; color: #999;">
         AIT Community ·
-        <a href="https://www.aitcommunity.org/en/dashboard/notifications" style="color:#999;">Manage notifications</a>
+        <a href="${baseUrl}/en/dashboard/notifications" style="color:#999;">Manage notifications</a>
       </p>
     </div>`;
 }

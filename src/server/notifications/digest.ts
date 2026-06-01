@@ -21,7 +21,13 @@ export function summarizeCommunitySection(
   return { ...input, isEmpty };
 }
 
-export type HubDigest = { userId: string; sections: CommunitySection[] };
+export type DiscoveryPick = { name: string; slug: string } | null;
+
+export type HubDigest = {
+  userId: string;
+  sections: CommunitySection[];
+  discovery: DiscoveryPick;
+};
 
 /** Assemble a member's consolidated digest: drop empty sections and sections
  *  the member opted out of. Returns null when nothing survives (suppress the
@@ -30,10 +36,12 @@ export function buildHubDigest(opts: {
   userId: string;
   sections: CommunitySection[];
   optedOutCommunityIds: Set<string>;
+  discovery?: DiscoveryPick;
 }): HubDigest | null {
   const visible = opts.sections.filter(
     (s) => !s.isEmpty && !opts.optedOutCommunityIds.has(s.communityId),
   );
-  if (visible.length === 0) return null;
-  return { userId: opts.userId, sections: visible };
+  const discovery = opts.discovery ?? null;
+  if (visible.length === 0 && !discovery) return null;
+  return { userId: opts.userId, sections: visible, discovery };
 }

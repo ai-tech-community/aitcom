@@ -6,6 +6,7 @@ import { api } from "@/trpc/react";
 import { Input } from "@/components/ui/input";
 import { CommunityCard } from "./community-card";
 import { CreateCommunityDialog } from "./create-community-dialog";
+import { RecommendedCommunities } from "./discovery/recommended-communities";
 
 const DEBOUNCE_MS = 300;
 
@@ -45,6 +46,11 @@ export function CommunitiesDirectory() {
           / {t("directory.title").toUpperCase()}
         </h1>
         <CreateCommunityDialog />
+      </div>
+
+      {/* Recommended for you */}
+      <div className="mt-8">
+        <RecommendedCommunities />
       </div>
 
       {/* Search */}

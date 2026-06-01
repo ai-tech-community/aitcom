@@ -21,6 +21,7 @@ import {
   type CommunityRole,
 } from "@/server/communities/role-utils";
 import { logActivity } from "@/server/agent/activity";
+import { loadPublicLiveness } from "@/server/communities/discovery-queries";
 
 /** Escape SQL LIKE/ILIKE pattern characters */
 function escapeLike(str: string): string {
@@ -120,9 +121,14 @@ export const communitiesRouter = createTRPCRouter({
           ),
         );
 
+      const liveness = community.isListedInDirectory
+        ? await loadPublicLiveness(ctx.db, community.id, new Date())
+        : { activeContributors: 0, recentThreads: 0 };
+
       return {
         ...community,
         memberCount: memberCountResult?.count ?? 0,
+        liveness,
       };
     }),
 
@@ -490,7 +496,10 @@ export const communitiesRouter = createTRPCRouter({
         // Update pending/invited to active
         await ctx.db
           .update(communityMemberships)
-          .set({ status: "active" })
+          .set({
+            status: "active",
+            invitedBy: existing.invitedBy ?? invite.createdBy,
+          })
           .where(eq(communityMemberships.id, existing.id));
       } else {
         await ctx.db.insert(communityMemberships).values({

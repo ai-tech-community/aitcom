@@ -1230,6 +1230,10 @@
       "editProject": "Edit Project"
     }
   },
+  "discovery": {
+    "recommendedTitle": "Recommended for you",
+    "memberCount": "{count, plural, one {# member} other {# members}}"
+  },
   "communities": {
     "directory": {
       "title": "Communities",
@@ -1270,7 +1274,8 @@
       "votes": "{count} votes",
       "replies": "{count} replies",
       "insights": "Insights",
-      "rituals": "Rituals"
+      "rituals": "Rituals",
+      "referrals": "Referrals"
     },
     "manage": {
       "settings": "Settings",
@@ -1319,7 +1324,8 @@
         "ownership": "Ownership",
         "integrations": "Integrations",
         "broadcast": "Announcements",
-        "autonomy": "Agent advisory"
+        "autonomy": "Agent advisory",
+        "acquire": "Acquire"
       },
       "members": {
         "activeTab": "Active",
@@ -1529,5 +1535,14 @@
     "accept": "Connect",
     "decline": "No thanks",
     "connected": "You're connected — open your messages."
+  },
+  "referral": {
+    "title": "Refer a friend",
+    "shareCta": "Copy your invite link",
+    "copied": "Copied!",
+    "leaderboardTitle": "Top referrers",
+    "referralCount": "{count, plural, one {# referral} other {# referrals}}",
+    "empty": "No referrals yet",
+    "copyFailed": "Couldn't copy — copy the link manually."
   }
 }

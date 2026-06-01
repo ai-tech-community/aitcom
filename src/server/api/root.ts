@@ -23,6 +23,7 @@ import { postRouter } from "@/server/api/routers/post";
 import { sponsorsRouter } from "@/server/api/routers/sponsors";
 import { datacentersRouter } from "@/server/api/routers/datacenters";
 import { insightsRouter } from "@/server/api/routers/insights";
+import { discoveryRouter } from "@/server/api/routers/discovery";
 import { broadcastRouter } from "@/server/api/routers/broadcast";
 import { hubOperatorRouter } from "@/server/api/routers/hubOperator";
 import { advisoryRouter } from "@/server/api/routers/advisory";
@@ -30,6 +31,8 @@ import { ritualsRouter } from "@/server/api/routers/rituals";
 import { engageConfigRouter } from "@/server/api/routers/engageConfig";
 import { activationConfigRouter } from "@/server/api/routers/activationConfig";
 import { activationRouter } from "@/server/api/routers/activation";
+import { acquireConfigRouter } from "@/server/api/routers/acquireConfig";
+import { referralRouter } from "@/server/api/routers/referral";
 import { onboardingStepsRouter } from "@/server/api/routers/onboardingSteps";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
@@ -64,6 +67,8 @@ export const appRouter = createTRPCRouter({
   luma: lumaRouter,
   datacenters: datacentersRouter,
   insights: insightsRouter,
+  discovery: discoveryRouter,
+  referral: referralRouter,
   broadcast: broadcastRouter,
   hubOperator: hubOperatorRouter,
   advisory: advisoryRouter,
@@ -72,6 +77,7 @@ export const appRouter = createTRPCRouter({
   activationConfig: activationConfigRouter,
   activation: activationRouter,
   onboardingSteps: onboardingStepsRouter,
+  acquireConfig: acquireConfigRouter,
 });
 
 // export type definition of API

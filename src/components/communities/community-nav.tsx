@@ -27,6 +27,9 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
     { key: "events", href: `${basePath}/events` },
     { key: "ideas", href: `${basePath}/ideas` },
     { key: "members", href: `${basePath}/members` },
+    ...(memberRole
+      ? [{ key: "referrals", href: `${basePath}/referrals` }]
+      : []),
     ...(isAdminOrOwner || memberRole === "moderator"
       ? [
           { key: "insights", href: `${basePath}/insights` },
@@ -69,6 +72,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
                     | "events"
                     | "ideas"
                     | "members"
+                    | "referrals"
                     | "insights"
                     | "rituals"
                     | "settings",

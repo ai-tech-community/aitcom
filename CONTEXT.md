@@ -208,6 +208,35 @@ a human reviews and, if they choose, publishes **in their own name**). There is
 no autonomous-posting level. Bounded by the existing AI self-loop-prevention
 rules.
 
+### Community discovery
+
+A liveness-ranked recommendation of [[Community]]s a member is **not** yet in,
+shown on the `/communities` directory ("Recommended for you") and as one line in
+the [[hub-digest]]. The ranking is a pure score over health signals — active
+contributors, contribution momentum, recent joins — restricted to
+directory-listed communities and excluding the member's own. No new data store;
+it is a view over `activity_event`.
+
+### Cross-promotion
+
+Surfacing another community to a warm Hub member. The digest discovery line is
+opt-in per community (`community_acquire_config.cross_promote`, default on) and
+rides the existing **digest** opt-out — a member who muted the digest never sees
+it.
+
+### Referral credit
+
+Recognition for a member whose personal invite brought in someone who then
+**activates** (the [[activation-milestone]]). A referral link is simply a
+`community_invite` the member created; redemption records
+`community_membership.invited_by`. Credit is **Hub-global XP** to the referrer,
+granted **once per referred member** and **only on activation** — reconciled
+idempotently by a daily cron, since activation is a *derived* state, not a stored
+transition. The referral leaderboard is a **view** over the credit ledger, never
+a second reputation currency. See
+[[adr-0018-referral-attribution-honours-global-xp]] and
+[[adr-0012-reputation-stays-hub-global]].
+
 ### Introduction suggestion
 
 An agent-surfaced recommendation that two members who share an interest/skill

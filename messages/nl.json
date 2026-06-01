@@ -1230,6 +1230,10 @@
       "editProject": "Project bewerken"
     }
   },
+  "discovery": {
+    "recommendedTitle": "Recommended for you",
+    "memberCount": "{count, plural, one {# member} other {# members}}"
+  },
   "communities": {
     "directory": {
       "title": "Communities",
@@ -1270,7 +1274,8 @@
       "votes": "{count} stemmen",
       "replies": "{count} reacties",
       "insights": "Insights",
-      "rituals": "Rituelen"
+      "rituals": "Rituelen",
+      "referrals": "Verwijzingen"
     },
     "manage": {
       "settings": "Instellingen",
@@ -1319,7 +1324,8 @@
         "ownership": "Eigenaarschap",
         "integrations": "Integraties",
         "broadcast": "Aankondigingen",
-        "autonomy": "Agent-advies"
+        "autonomy": "Agent-advies",
+        "acquire": "Werving"
       },
       "members": {
         "activeTab": "Actief",
@@ -1529,5 +1535,14 @@
     "accept": "Verbinden",
     "decline": "Nee, bedankt",
     "connected": "Je bent verbonden — open je berichten."
+  },
+  "referral": {
+    "title": "Verwijs een vriend",
+    "shareCta": "Kopieer je uitnodigingslink",
+    "copied": "Gekopieerd!",
+    "leaderboardTitle": "Beste verwijzers",
+    "referralCount": "{count, plural, one {# verwijzing} other {# verwijzingen}}",
+    "empty": "Nog geen verwijzingen",
+    "copyFailed": "Kopiëren mislukt — kopieer de link handmatig."
   }
 }

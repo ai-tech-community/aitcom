@@ -189,6 +189,7 @@ export const XP_AMOUNTS = {
   FEED_COMMENT_CREATE: 5,
   FEED_RECEIVE_LIKE: 2,
   FEED_RECEIVE_COMMENT: 3,
+  REFERRAL_ACTIVATED: 50,
 } as const;
 
 // --- Leveling ---
