@@ -31,7 +31,7 @@ export function CommunityCard({
   return (
     <Link
       href={`/communities/${slug}`}
-      className="border-border hover:bg-secondary/50 flex items-start gap-4 rounded-lg border p-4 transition-colors"
+      className="border-border hover:bg-secondary/50 flex min-w-0 items-start gap-4 rounded-lg border p-4 transition-colors"
     >
       {/* Logo / Fallback */}
       <div className="bg-muted flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg">
