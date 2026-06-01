@@ -27,6 +27,9 @@ export function OnboardingStepsAdmin({ slug }: { slug: string }) {
   const update = api.onboardingSteps.update.useMutation({
     onSuccess: () => void invalidate(),
   });
+  const reorder = api.onboardingSteps.reorder.useMutation({
+    onSuccess: () => void invalidate(),
+  });
   const remove = api.onboardingSteps.remove.useMutation({
     onSuccess: () => void invalidate(),
   });
@@ -41,9 +44,8 @@ export function OnboardingStepsAdmin({ slug }: { slug: string }) {
     position: s.position,
   }));
 
-  const swap = (a: Step, b: Step) => {
-    update.mutate({ slug, stepId: a.id, position: b.position });
-    update.mutate({ slug, stepId: b.id, position: a.position });
+  const move = (stepId: string, direction: "up" | "down") => {
+    reorder.mutate({ slug, stepId, direction });
   };
 
   return (
@@ -72,8 +74,8 @@ export function OnboardingStepsAdmin({ slug }: { slug: string }) {
                 step={step}
                 isFirst={i === 0}
                 isLast={i === steps.length - 1}
-                onMoveUp={() => swap(step, steps[i - 1]!)}
-                onMoveDown={() => swap(step, steps[i + 1]!)}
+                onMoveUp={() => move(step.id, "up")}
+                onMoveDown={() => move(step.id, "down")}
                 savePending={
                   update.isPending && update.variables?.stepId === step.id
                 }
