@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, gte, lte, inArray } from "drizzle-orm";
+import { and, eq, gte, lte, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import {
@@ -12,6 +12,7 @@ import {
   CONTRIBUTION_ACTIONS,
   windowStart,
 } from "@/server/communities/insights";
+import { currentPeriodKey } from "@/server/notifications/constants";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,29 +98,41 @@ export async function GET(req: Request) {
     ).map((c) => [c.id, c.name]),
   );
 
-  const weekKey = isoWeekKey(now);
-  const rows: (typeof notifications.$inferInsert)[] = admins.map((a) => ({
-    userId: a.userId,
-    type: "newcomer_churn_risk",
-    title: "Newcomers about to lapse",
-    content: `${byCommunity.get(a.communityId)} newcomer(s) in ${communityNames.get(a.communityId) ?? "your community"} joined ~3–4 weeks ago and haven't contributed yet. A warm welcome now can still activate them.`,
-    communityId: a.communityId,
-    metadata: { count: byCommunity.get(a.communityId), weekKey },
-  }));
+  const weekKey = currentPeriodKey(now);
+
+  // Dedup: skip (userId, communityId) pairs already notified this week so
+  // Vercel retries don't double-notify admins.
+  const adminUserIds = [...new Set(admins.map((a) => a.userId))];
+  const alreadyNotified = adminUserIds.length
+    ? await db
+        .select({
+          userId: notifications.userId,
+          communityId: notifications.communityId,
+        })
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.type, "newcomer_churn_risk"),
+            inArray(notifications.userId, adminUserIds),
+            sql`${notifications.metadata} ->> 'weekKey' = ${weekKey}`,
+          ),
+        )
+    : [];
+  const alreadyNotifiedKeys = new Set(
+    alreadyNotified.map((n) => `${n.userId}:${n.communityId}`),
+  );
+
+  const rows: (typeof notifications.$inferInsert)[] = admins
+    .filter((a) => !alreadyNotifiedKeys.has(`${a.userId}:${a.communityId}`))
+    .map((a) => ({
+      userId: a.userId,
+      type: "newcomer_churn_risk",
+      title: "Newcomers about to lapse",
+      content: `${byCommunity.get(a.communityId)} newcomer(s) in ${communityNames.get(a.communityId) ?? "your community"} joined ~3–4 weeks ago and haven't contributed yet. A warm welcome now can still activate them.`,
+      communityId: a.communityId,
+      metadata: { count: byCommunity.get(a.communityId), weekKey },
+    }));
   if (rows.length) await db.insert(notifications).values(rows);
 
   return NextResponse.json({ success: true, notified: rows.length });
-}
-
-function isoWeekKey(d: Date): string {
-  const t = new Date(
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()),
-  );
-  const day = t.getUTCDay() || 7;
-  t.setUTCDate(t.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
-  const week = Math.ceil(
-    ((t.getTime() - yearStart.getTime()) / 86400000 + 1) / 7,
-  );
-  return `${t.getUTCFullYear()}-W${week}`;
 }
