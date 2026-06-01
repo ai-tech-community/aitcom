@@ -28,11 +28,11 @@ import { NotificationBell } from "@/components/notifications/notification-bell";
 // New top-level destinations default to `primary: false` unless they are a
 // recurring action surface or a flagship product.
 const navLinks = [
-  { href: "/benchmark", key: "benchmark", shortcut: "K", primary: true },
   { href: "/communities", key: "communities", shortcut: "C", primary: true },
   { href: "/events", key: "events", shortcut: "E", primary: true },
   { href: "/challenges", key: "challenges", shortcut: "G", primary: true },
   { href: "/launchpad", key: "launchpad", shortcut: "L", primary: true },
+  { href: "/benchmark", key: "benchmark", shortcut: "K", primary: false },
   { href: "/jobs", key: "jobs", shortcut: "W", primary: false },
   { href: "/members", key: "members", shortcut: "M", primary: false },
   { href: "/blog", key: "blog", shortcut: "B", primary: false },
