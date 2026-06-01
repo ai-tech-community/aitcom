@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -14,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Copy, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface MembersSettingsProps {
@@ -88,6 +91,31 @@ export function MembersSettings({
     },
   });
 
+  const [addEmail, setAddEmail] = useState("");
+  const [addRole, setAddRole] = useState<"admin" | "moderator" | "member">(
+    "member",
+  );
+  const [roleLinkCode, setRoleLinkCode] = useState<string | null>(null);
+
+  const addMemberMutation = api.communities.addMemberByEmail.useMutation({
+    onSuccess: () => {
+      toast.success(t("memberAdded"));
+      setAddEmail("");
+      setRoleLinkCode(null);
+      void utils.communities.getMembers.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const roleInviteMutation = api.communities.createRoleInvite.useMutation({
+    onSuccess: (data) => {
+      setRoleLinkCode(data.code);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const canAddMembers = myRole === "owner" || myRole === "admin";
+
   const activeMembers = activeData?.items ?? [];
   const pendingMembers = pendingData?.items ?? [];
   const bannedMembers = bannedData?.items ?? [];
@@ -112,6 +140,81 @@ export function MembersSettings({
           {tManage("members")}
         </h2>
       </div>
+
+      {canAddMembers && (
+        <div className="space-y-3 rounded-lg border p-4">
+          <Label>{t("addMemberTitle")}</Label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              type="email"
+              placeholder={t("emailPlaceholder")}
+              value={addEmail}
+              onChange={(e) => setAddEmail(e.target.value)}
+              className="flex-1"
+            />
+            <Select
+              value={addRole}
+              onValueChange={(r) =>
+                setAddRole(r as "admin" | "moderator" | "member")
+              }
+            >
+              <SelectTrigger className="w-full sm:w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableRoles().map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {tRoles(r)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              disabled={!addEmail || addMemberMutation.isPending}
+              onClick={() =>
+                addMemberMutation.mutate({ slug, email: addEmail, role: addRole })
+              }
+            >
+              {t("addButton")}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!addEmail || roleInviteMutation.isPending}
+              onClick={() =>
+                roleInviteMutation.mutate({ slug, email: addEmail, role: addRole })
+              }
+            >
+              {t("generateLink")}
+            </Button>
+          </div>
+          {roleLinkCode && (
+            <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-2">
+              <Input
+                readOnly
+                value={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${roleLinkCode}`}
+                className="flex-1 text-sm"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  void navigator.clipboard.writeText(
+                    `${window.location.origin}/invite/${roleLinkCode}`,
+                  );
+                  toast.success(t("linkCopied"));
+                }}
+              >
+                <Copy className="mr-1.5 size-3.5" />
+                {t("copyLink")}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <Tabs defaultValue="active">
         <TabsList>
