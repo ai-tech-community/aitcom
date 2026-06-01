@@ -1332,4 +1332,114 @@ export const communitiesRouter = createTRPCRouter({
 
       return { success: true };
     }),
+
+  /** Add an existing AIT account to the community with a chosen role */
+  addMemberByEmail: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        email: z.string().email(),
+        role: z.enum(["admin", "moderator", "member"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole || !canManageRole(ctx.communityRole, input.role)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const email = input.email.trim().toLowerCase();
+      const targetUser = await ctx.db.query.user.findFirst({
+        where: sql`lower(${user.email}) = ${email}`,
+      });
+      if (!targetUser) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No AIT account with that email. Send them an invite link instead.",
+        });
+      }
+
+      const existing = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, ctx.community.id),
+          eq(communityMemberships.userId, targetUser.id),
+        ),
+      });
+      if (existing?.status === "active") {
+        throw new TRPCError({ code: "CONFLICT", message: "Already a member" });
+      }
+      if (existing?.status === "banned") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User is banned" });
+      }
+
+      if (existing) {
+        await ctx.db
+          .update(communityMemberships)
+          .set({
+            status: "active",
+            role: input.role,
+            invitedBy: ctx.session.user.id,
+          })
+          .where(eq(communityMemberships.id, existing.id));
+      } else {
+        await ctx.db.insert(communityMemberships).values({
+          communityId: ctx.community.id,
+          userId: targetUser.id,
+          role: input.role,
+          status: "active",
+          invitedBy: ctx.session.user.id,
+        });
+      }
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.joined",
+        targetType: "community",
+        targetId: ctx.community.id,
+        communityId: ctx.community.id,
+        recipientId: targetUser.id,
+        metadata: { via: "admin_add", role: input.role },
+      });
+
+      return { success: true };
+    }),
+
+  /** Generate an email-bound, single-use link that grants a role */
+  createRoleInvite: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        email: z.string().email(),
+        role: z.enum(["admin", "moderator", "member"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole || !canManageRole(ctx.communityRole, input.role)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const code = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+      const [invite] = await ctx.db
+        .insert(communityInvites)
+        .values({
+          communityId: ctx.community.id,
+          code,
+          createdBy: ctx.session.user.id,
+          role: input.role,
+          targetEmail: input.email.trim().toLowerCase(),
+          maxUses: 1,
+        })
+        .returning();
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.invite_created",
+        targetType: "community",
+        targetId: ctx.community.id,
+        metadata: { role: input.role, bound: true },
+      });
+
+      return invite!;
+    }),
 });
