@@ -432,104 +432,6 @@ export const communitiesRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  /** Accept an invite by code */
-  acceptInvite: protectedProcedure
-    .input(z.object({ code: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const invite = await ctx.db.query.communityInvites.findFirst({
-        where: eq(communityInvites.code, input.code),
-        with: { community: true },
-      });
-
-      if (!invite || invite.community.deletedAt) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite" });
-      }
-
-      if (invite.expiresAt && invite.expiresAt < new Date()) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Invite has expired",
-        });
-      }
-
-      // Atomic: increment useCount only if under maxUses (prevents race condition)
-      if (invite.maxUses !== null) {
-        const [updated] = await ctx.db
-          .update(communityInvites)
-          .set({ useCount: sql`${communityInvites.useCount} + 1` })
-          .where(
-            and(
-              eq(communityInvites.id, invite.id),
-              sql`${communityInvites.useCount} < ${invite.maxUses}`,
-            ),
-          )
-          .returning();
-
-        if (!updated) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Invite has reached max uses",
-          });
-        }
-      } else {
-        // No max — just increment
-        await ctx.db
-          .update(communityInvites)
-          .set({ useCount: sql`${communityInvites.useCount} + 1` })
-          .where(eq(communityInvites.id, invite.id));
-      }
-
-      // Check existing membership
-      const existing = await ctx.db.query.communityMemberships.findFirst({
-        where: and(
-          eq(communityMemberships.communityId, invite.communityId),
-          eq(communityMemberships.userId, ctx.session.user.id),
-        ),
-      });
-
-      if (existing?.status === "banned") {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You are banned from this community",
-        });
-      }
-
-      if (existing?.status === "active") {
-        return { success: true, communitySlug: invite.community.slug };
-      }
-
-      if (existing) {
-        // Update pending/invited to active
-        await ctx.db
-          .update(communityMemberships)
-          .set({
-            status: "active",
-            invitedBy: existing.invitedBy ?? invite.createdBy,
-          })
-          .where(eq(communityMemberships.id, existing.id));
-      } else {
-        await ctx.db.insert(communityMemberships).values({
-          communityId: invite.communityId,
-          userId: ctx.session.user.id,
-          role: "member",
-          status: "active",
-          invitedBy: invite.createdBy,
-        });
-      }
-
-      await logActivity(ctx.db, {
-        actorId: ctx.session.user.id,
-        actorType: "member",
-        action: "community.joined",
-        targetType: "community",
-        targetId: invite.communityId,
-        communityId: invite.communityId,
-        metadata: { via: "invite" },
-      });
-
-      return { success: true, communitySlug: invite.community.slug };
-    }),
-
   /** Resolve an invite token: a code (grant) first, else a community slug. */
   redeemInvite: protectedProcedure
     .input(z.object({ token: z.string().min(1) }))
@@ -557,6 +459,8 @@ export const communitiesRouter = createTRPCRouter({
           });
         }
 
+        const grantedRole = roleFromInvite(invite.role);
+
         // Check existing membership BEFORE burning a use (banned/already-active
         // redeemers must not consume one of a finite invite's uses).
         const existing = await ctx.db.query.communityMemberships.findFirst({
@@ -572,7 +476,13 @@ export const communitiesRouter = createTRPCRouter({
             message: "You are banned from this community",
           });
         }
-        if (existing?.status === "active") {
+        // Already active: only act if this invite grants a HIGHER rank (a
+        // role-bearing promotion link). Otherwise nothing to do — don't burn a use.
+        if (
+          existing?.status === "active" &&
+          ROLE_HIERARCHY[grantedRole] <=
+            ROLE_HIERARCHY[existing.role as CommunityRole]
+        ) {
           return { communitySlug: invite.community.slug, status: "active" as const };
         }
 
@@ -600,8 +510,6 @@ export const communitiesRouter = createTRPCRouter({
             .set({ useCount: sql`${communityInvites.useCount} + 1` })
             .where(eq(communityInvites.id, invite.id));
         }
-
-        const grantedRole = roleFromInvite(invite.role);
         if (existing) {
           // Upgrade-only: never lower the rank of a member who already outranks
           // the invite's granted role.
@@ -1391,13 +1299,12 @@ export const communitiesRouter = createTRPCRouter({
       }
 
       await logActivity(ctx.db, {
-        actorId: ctx.session.user.id,
+        actorId: targetUser.id,
         actorType: "member",
         action: "community.joined",
         targetType: "community",
         targetId: ctx.community.id,
         communityId: ctx.community.id,
-        recipientId: targetUser.id,
         metadata: { via: "admin_add", role: input.role },
       });
 
