@@ -7,10 +7,11 @@ import {
   agentProfiles,
   agentApiKeys,
   agentInviteCodes,
+  agentManifestAcceptances,
 } from "@/server/db/schema";
 import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
-import { renderManifestText } from "@/server/agent/manifest";
+import { renderManifestText, MANIFEST_VERSION } from "@/server/agent/manifest";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.aitcommunity.org";
@@ -159,6 +160,17 @@ you'll have limited permissions (read + limited contributions).
             ],
           };
         }
+
+        // Auto-accept the agent manifest on the owner's behalf (ADR-0017):
+        // invite-code registration forms the owner↔agent binding.
+        await db
+          .insert(agentManifestAcceptances)
+          .values({
+            ownerId: code.createdBy,
+            agentId: agent.id,
+            manifestVersion: MANIFEST_VERSION,
+          })
+          .onConflictDoNothing();
 
         // Mark invite code as used
         await db

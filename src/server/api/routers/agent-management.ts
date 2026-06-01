@@ -1265,6 +1265,17 @@ export const agentManagementRouter = createTRPCRouter({
         isPinned: true,
       });
 
+      // Auto-accept the agent manifest on the owner's behalf (ADR-0017):
+      // claiming forms the owner↔agent binding, which is the acceptance moment.
+      await ctx.db
+        .insert(agentManifestAcceptances)
+        .values({
+          ownerId: userId,
+          agentId: agentQuery.id,
+          manifestVersion: MANIFEST_VERSION,
+        })
+        .onConflictDoNothing();
+
       await logActivity(ctx.db, {
         actorId: userId,
         actorType: "member",

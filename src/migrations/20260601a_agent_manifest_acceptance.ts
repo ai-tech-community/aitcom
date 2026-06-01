@@ -12,6 +12,11 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS "agent_manifest_acceptance_owner_version_uidx"
       ON "app"."agent_manifest_acceptance" ("owner_id", "manifest_version");
+    INSERT INTO "app"."agent_manifest_acceptance" ("id", "owner_id", "agent_id", "manifest_version")
+    SELECT gen_random_uuid()::text, "owner_id", "id", 1
+    FROM "app"."agent_profile"
+    WHERE "owner_id" IS NOT NULL
+    ON CONFLICT DO NOTHING;
   `);
 }
 
