@@ -18,6 +18,7 @@ import {
 import { generateSlug } from "@/server/communities/slug-utils";
 import {
   canManageRole,
+  ROLE_HIERARCHY,
   type CommunityRole,
 } from "@/server/communities/role-utils";
 import {
@@ -556,6 +557,25 @@ export const communitiesRouter = createTRPCRouter({
           });
         }
 
+        // Check existing membership BEFORE burning a use (banned/already-active
+        // redeemers must not consume one of a finite invite's uses).
+        const existing = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, invite.communityId),
+            eq(communityMemberships.userId, userId),
+          ),
+        });
+
+        if (existing?.status === "banned") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are banned from this community",
+          });
+        }
+        if (existing?.status === "active") {
+          return { communitySlug: invite.community.slug, status: "active" as const };
+        }
+
         // Atomic max-uses guard (prevents race condition).
         if (invite.maxUses !== null) {
           const [updated] = await ctx.db
@@ -582,28 +602,19 @@ export const communitiesRouter = createTRPCRouter({
         }
 
         const grantedRole = roleFromInvite(invite.role);
-        const existing = await ctx.db.query.communityMemberships.findFirst({
-          where: and(
-            eq(communityMemberships.communityId, invite.communityId),
-            eq(communityMemberships.userId, userId),
-          ),
-        });
-
-        if (existing?.status === "banned") {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "You are banned from this community",
-          });
-        }
-        if (existing?.status === "active") {
-          return { communitySlug: invite.community.slug, status: "active" as const };
-        }
         if (existing) {
+          // Upgrade-only: never lower the rank of a member who already outranks
+          // the invite's granted role.
+          const existingRole = existing.role as CommunityRole;
+          const nextRole =
+            ROLE_HIERARCHY[grantedRole] > ROLE_HIERARCHY[existingRole]
+              ? grantedRole
+              : existingRole;
           await ctx.db
             .update(communityMemberships)
             .set({
               status: "active",
-              role: grantedRole,
+              role: nextRole,
               invitedBy: existing.invitedBy ?? invite.createdBy,
             })
             .where(eq(communityMemberships.id, existing.id));
