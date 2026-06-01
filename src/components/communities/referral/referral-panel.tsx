@@ -19,7 +19,7 @@ export function ReferralPanel({ slug }: { slug: string }) {
 
   const shareUrl =
     myLink.data?.code && origin
-      ? `${origin}/join?code=${myLink.data.code}`
+      ? `${origin}/join/${myLink.data.code}`
       : null;
 
   const handleGetLink = () => {
