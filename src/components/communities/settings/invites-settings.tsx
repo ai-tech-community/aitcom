@@ -30,6 +30,7 @@ const EXPIRY_OPTIONS = [
 
 export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
   const t = useTranslations("communities.settings.invites");
+  const tRoles = useTranslations("communities.roles");
   const utils = api.useUtils();
 
   const [showForm, setShowForm] = useState(false);
@@ -222,7 +223,7 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
                     )}
                     {invite.role && (
                       <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
-                        {invite.role}
+                        {tRoles(invite.role)}
                       </span>
                     )}
                     {invite.targetEmail && (

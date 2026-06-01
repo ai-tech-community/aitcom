@@ -92,6 +92,7 @@ export function MembersSettings({
   });
 
   const [addEmail, setAddEmail] = useState("");
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addEmail.trim());
   const [addRole, setAddRole] = useState<"admin" | "moderator" | "member">(
     "member",
   );
@@ -173,7 +174,7 @@ export function MembersSettings({
           <div className="flex gap-2">
             <Button
               size="sm"
-              disabled={!addEmail || addMemberMutation.isPending}
+              disabled={!emailValid || addMemberMutation.isPending}
               onClick={() =>
                 addMemberMutation.mutate({ slug, email: addEmail, role: addRole })
               }
@@ -183,7 +184,7 @@ export function MembersSettings({
             <Button
               size="sm"
               variant="outline"
-              disabled={!addEmail || roleInviteMutation.isPending}
+              disabled={!emailValid || roleInviteMutation.isPending}
               onClick={() =>
                 roleInviteMutation.mutate({ slug, email: addEmail, role: addRole })
               }

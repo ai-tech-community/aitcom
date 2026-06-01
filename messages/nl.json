@@ -1433,6 +1433,11 @@
         }
       }
     },
+    "invite": {
+      "pendingTitle": "Verzoek ingediend",
+      "pendingBody": "Je verzoek om lid te worden wacht op goedkeuring. Je krijgt toegang zodra een beheerder het goedkeurt.",
+      "browse": "Communities bekijken"
+    },
     "feed": {
       "title": "Feed",
       "compose": "Nieuw bericht",

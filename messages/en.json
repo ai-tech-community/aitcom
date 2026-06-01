@@ -1433,6 +1433,11 @@
         }
       }
     },
+    "invite": {
+      "pendingTitle": "Request submitted",
+      "pendingBody": "Your request to join is pending approval. You'll get access once an admin approves it.",
+      "browse": "Browse communities"
+    },
     "feed": {
       "title": "Feed",
       "compose": "New Post",
