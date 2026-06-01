@@ -754,6 +754,27 @@ export const agentManagementRouter = createTRPCRouter({
           .limit(1);
 
         if (agent && draft.targetId) {
+          // Defense-in-depth: re-validate that the draft's target thread
+          // actually belongs to the draft's community before publishing. The
+          // draft carries the community it was authored against; never trust
+          // that targetId points at a thread in that community.
+          const thread = await payload.findByID({
+            collection: "forum-threads",
+            id: Number(draft.targetId),
+          });
+          const draftCommunityId = (draft.metadata as { communityId?: string })
+            ?.communityId;
+          if (
+            draftCommunityId &&
+            thread.communityId &&
+            thread.communityId !== draftCommunityId
+          ) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "Target thread does not belong to this community",
+            });
+          }
+
           await payload.create({
             collection: "forum-replies",
             data: {
@@ -765,10 +786,6 @@ export const agentManagementRouter = createTRPCRouter({
           });
 
           // Update thread lastActivityAt and replyCount
-          const thread = await payload.findByID({
-            collection: "forum-threads",
-            id: Number(draft.targetId),
-          });
           await payload.update({
             collection: "forum-threads",
             id: Number(draft.targetId),
