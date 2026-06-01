@@ -28,12 +28,17 @@ const CONTRIBUTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
 const RESPONSE_LIST: string[] = [...RESPONSE_ACTIONS];
 
 /**
- * How far back to scan for referral candidates: activation cohort (~30 d) +
- * max activation window (30 d) + buffer (5 d) = 65 d.  Members who joined more
- * than 65 days ago can no longer activate in time to earn the referrer credit,
- * so re-scanning them every cron run is wasteful.
+ * How far back to scan for referral candidates, which also defines the product
+ * rule: **a referral earns credit only if the referred member activates within
+ * REFERRAL_SCAN_DAYS of joining.** A member who first contributes very late
+ * could in principle still reach the activation milestone afterwards, but a
+ * conversion that lands months after the invite is no longer a meaningful
+ * referral, and bounding the scan keeps the daily reconcile cron from
+ * reprocessing long-dormant candidates forever. 90 days comfortably covers the
+ * realistic case (join → first contribution → response within the activation
+ * window, even at the max 30-day window) while making the cutoff generous.
  */
-export const REFERRAL_SCAN_DAYS = 65;
+export const REFERRAL_SCAN_DAYS = 90;
 
 export type ReferralCandidate = {
   referredUserId: string;
