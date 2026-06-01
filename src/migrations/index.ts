@@ -39,6 +39,7 @@ import * as migration_20260531d_engage_rituals from "./20260531d_engage_rituals"
 import * as migration_20260531e_activation from "./20260531e_activation";
 import * as migration_20260531f_acquire from "./20260531f_acquire";
 import * as migration_20260601a_agent_manifest_acceptance from "./20260601a_agent_manifest_acceptance";
+import * as migration_20260601b_invite_role_target_email from "./20260601b_invite_role_target_email";
 
 export const migrations = [
   {
@@ -245,5 +246,10 @@ export const migrations = [
     up: migration_20260601a_agent_manifest_acceptance.up,
     down: migration_20260601a_agent_manifest_acceptance.down,
     name: "20260601a_agent_manifest_acceptance",
+  },
+  {
+    up: migration_20260601b_invite_role_target_email.up,
+    down: migration_20260601b_invite_role_target_email.down,
+    name: "20260601b_invite_role_target_email",
   },
 ];
