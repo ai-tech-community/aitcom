@@ -18,9 +18,7 @@ export function ReferralPanel({ slug }: { slug: string }) {
   const myLink = api.referral.myLink.useMutation();
 
   const shareUrl =
-    myLink.data?.code && origin
-      ? `${origin}/join/${myLink.data.code}`
-      : null;
+    myLink.data?.code && origin ? `${origin}/join/${myLink.data.code}` : null;
 
   const handleGetLink = () => {
     myLink.mutate({ slug });
