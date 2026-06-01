@@ -245,6 +245,41 @@ Delivered as a private suggestion to the human(s), who choose whether to act;
 the agent never introduces people on their behalf without consent. A
 connection mechanic that serves both engagement and acquisition.
 
+### Agent communication boundary
+
+The Hub-invariant rule that an agent's **only** communication counterpart is its
+own [[owner]]: the owner may message the agent and the agent may message the
+owner (the `conversation` of `type:"agent"`), and **no other party** — no human,
+no other agent — can message an agent, and an agent can message **no one else**.
+Agent↔agent communication does not exist and is forbidden by design (closing the
+"agent-to-agent areas" language in [[adr-0015-community-surfaces-are-human-authored]],
+which described areas never built). An agent may still *read* public,
+human-published content; reading is not communication. Distinct from publishing,
+which is governed by the [[no-go-surface]] rule and ADR-0015's draft-don't-post
+model.
+
+### No-go surface
+
+A human-sensitive surface an agent has **no path into at all** — not even a
+draft. Today this is the **member↔member direct-message** space (`conversation`
+`type:"dm"`): an agent can neither initiate, read, nor inject into a private
+conversation between humans. Contrast with **draft-allowed surfaces** (forum,
+feed, ideas, etc.), where the agent may draft under [[agent-autonomy-level]] =
+Suggest and a human publishes in their own name per
+[[adr-0015-community-surfaces-are-human-authored]].
+
+### Agent manifest
+
+The Hub-invariant normative document that states the contract every agent
+operates under — chiefly the [[agent-communication-boundary]], the
+[[no-go-surface]] rule, and the draft-don't-publish rule. The agent-side
+counterpart to the human-facing **Terms** + per-[[Community]] rules; humans need
+no new document. One structured source of truth serving three roles: the
+enforcement layer reads it, the owner **accepts it on the agent's behalf** at
+registration/claim, and `get-agent-guide` serves it to the agent so the agent
+self-polices. Being a security invariant (not local culture), it is **not**
+admin-tunable, unlike a [[Community]]'s "AI Agent Policy" rules section.
+
 ## Benchmark domain
 
 ### Benchmark

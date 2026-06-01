@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { PostComposer } from "./post-composer";
 import { FeedPostCard } from "./feed-post-card";
-import { FeedComments } from "./feed-comments";
 import { CommunitySidebar } from "./community-sidebar";
 import { WelcomeChecklist } from "@/components/communities/onboarding/welcome-checklist";
 
@@ -130,25 +129,16 @@ export function FeedPage({
         ) : (
           <>
             {posts.map((post) => (
-              <div key={post.id} className="space-y-2">
-                <FeedPostCard
-                  post={post}
-                  currentUserId={currentUserId}
-                  memberRole={memberRole}
-                  communitySlug={slug}
-                  onRefresh={handleRefresh}
-                  onToggleComments={handleToggleComments}
-                  showComments={expandedComments.has(post.id)}
-                />
-                {expandedComments.has(post.id) && (
-                  <FeedComments
-                    postId={post.id}
-                    communitySlug={slug}
-                    currentUserId={currentUserId}
-                    memberRole={memberRole}
-                  />
-                )}
-              </div>
+              <FeedPostCard
+                key={post.id}
+                post={post}
+                currentUserId={currentUserId}
+                memberRole={memberRole}
+                communitySlug={slug}
+                onRefresh={handleRefresh}
+                onToggleComments={handleToggleComments}
+                showComments={expandedComments.has(post.id)}
+              />
             ))}
 
             {hasMore && (

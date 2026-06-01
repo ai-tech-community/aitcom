@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Heart, MessageSquare, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
+import { FeedComments } from "./feed-comments";
 
 function timeAgo(dateStr: string): string {
   const now = Date.now();
@@ -58,9 +59,10 @@ export function FeedPostCard({
   post,
   currentUserId,
   memberRole,
+  communitySlug,
   onRefresh,
   onToggleComments,
-  showComments: _showComments,
+  showComments,
 }: FeedPostCardProps) {
   const t = useTranslations("communities.feed");
   const { requireAuth } = useRequireAuth();
@@ -243,6 +245,26 @@ export function FeedPostCard({
           </span>
         </button>
       </div>
+
+      {/* Comments — part of the same card/thread as the post */}
+      {showComments ? (
+        <div className="border-border -mx-4 mt-1 border-t px-4 pt-3">
+          <FeedComments
+            postId={post.id}
+            communitySlug={communitySlug}
+            currentUserId={currentUserId ?? undefined}
+            memberRole={
+              memberRole as
+                | "owner"
+                | "admin"
+                | "moderator"
+                | "member"
+                | null
+                | undefined
+            }
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

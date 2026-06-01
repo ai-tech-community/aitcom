@@ -96,7 +96,7 @@ export function FeedComments({
 
   if (isLoading) {
     return (
-      <div className="border-border space-y-2 border-l pt-1 pl-4">
+      <div className="space-y-2">
         {Array.from({ length: 2 }).map((_, i) => (
           <div key={i} className="bg-muted h-10 animate-pulse rounded" />
         ))}
@@ -105,7 +105,7 @@ export function FeedComments({
   }
 
   return (
-    <div className="border-border space-y-3 border-l pt-1 pl-4">
+    <div className="space-y-3">
       {/* Comment list */}
       {(comments as FeedComment[]).map((comment) => {
         const isAuthor = !!currentUserId && comment.authorId === currentUserId;
