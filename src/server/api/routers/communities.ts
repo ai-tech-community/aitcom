@@ -20,6 +20,11 @@ import {
   canManageRole,
   type CommunityRole,
 } from "@/server/communities/role-utils";
+import {
+  slugJoinStatus,
+  roleFromInvite,
+  canRedeemInvite,
+} from "@/server/communities/invite-policy";
 import { logActivity } from "@/server/agent/activity";
 import { loadPublicLiveness } from "@/server/communities/discovery-queries";
 
@@ -522,6 +527,171 @@ export const communitiesRouter = createTRPCRouter({
       });
 
       return { success: true, communitySlug: invite.community.slug };
+    }),
+
+  /** Resolve an invite token: a code (grant) first, else a community slug. */
+  redeemInvite: protectedProcedure
+    .input(z.object({ token: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const userEmail = ctx.session.user.email ?? null;
+
+      // --- 1. Code path: an opaque grant that bypasses join policy ---
+      const invite = await ctx.db.query.communityInvites.findFirst({
+        where: eq(communityInvites.code, input.token),
+        with: { community: true },
+      });
+
+      if (invite) {
+        if (invite.community.deletedAt) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite" });
+        }
+        if (invite.expiresAt && invite.expiresAt < new Date()) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Invite has expired" });
+        }
+        if (!canRedeemInvite(invite.targetEmail, userEmail)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "This invite is reserved for a different email address",
+          });
+        }
+
+        // Atomic max-uses guard (prevents race condition).
+        if (invite.maxUses !== null) {
+          const [updated] = await ctx.db
+            .update(communityInvites)
+            .set({ useCount: sql`${communityInvites.useCount} + 1` })
+            .where(
+              and(
+                eq(communityInvites.id, invite.id),
+                sql`${communityInvites.useCount} < ${invite.maxUses}`,
+              ),
+            )
+            .returning();
+          if (!updated) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Invite has reached max uses",
+            });
+          }
+        } else {
+          await ctx.db
+            .update(communityInvites)
+            .set({ useCount: sql`${communityInvites.useCount} + 1` })
+            .where(eq(communityInvites.id, invite.id));
+        }
+
+        const grantedRole = roleFromInvite(invite.role);
+        const existing = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, invite.communityId),
+            eq(communityMemberships.userId, userId),
+          ),
+        });
+
+        if (existing?.status === "banned") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are banned from this community",
+          });
+        }
+        if (existing?.status === "active") {
+          return { communitySlug: invite.community.slug, status: "active" as const };
+        }
+        if (existing) {
+          await ctx.db
+            .update(communityMemberships)
+            .set({
+              status: "active",
+              role: grantedRole,
+              invitedBy: existing.invitedBy ?? invite.createdBy,
+            })
+            .where(eq(communityMemberships.id, existing.id));
+        } else {
+          await ctx.db.insert(communityMemberships).values({
+            communityId: invite.communityId,
+            userId,
+            role: grantedRole,
+            status: "active",
+            invitedBy: invite.createdBy,
+          });
+        }
+
+        await logActivity(ctx.db, {
+          actorId: userId,
+          actorType: "member",
+          action: "community.joined",
+          targetType: "community",
+          targetId: invite.communityId,
+          communityId: invite.communityId,
+          metadata: { via: "invite", role: grantedRole },
+        });
+
+        return { communitySlug: invite.community.slug, status: "active" as const };
+      }
+
+      // --- 2. Slug path: a standing link that respects join policy ---
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.token),
+          isNull(communities.deletedAt),
+        ),
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite" });
+      }
+
+      const join = slugJoinStatus(community.joinPolicy);
+      if (!join.ok) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "This community is invite-only — you need an invite link",
+        });
+      }
+
+      const existing = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (existing?.status === "banned") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "You are banned from this community",
+        });
+      }
+      if (existing?.status === "active") {
+        return { communitySlug: community.slug, status: "active" as const };
+      }
+      if (existing) {
+        await ctx.db
+          .update(communityMemberships)
+          .set({ status: join.status })
+          .where(eq(communityMemberships.id, existing.id));
+      } else {
+        await ctx.db.insert(communityMemberships).values({
+          communityId: community.id,
+          userId,
+          role: "member",
+          status: join.status,
+        });
+      }
+
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action:
+          join.status === "active"
+            ? "community.joined"
+            : "community.join_requested",
+        targetType: "community",
+        targetId: community.id,
+        communityId: community.id,
+        metadata: { via: "slug_link" },
+      });
+
+      return { communitySlug: community.slug, status: join.status };
     }),
 
   /** Leave a community */
