@@ -9,30 +9,33 @@ import {
   memberProfiles,
   user,
 } from "@/server/db/schema";
-import { db as _db } from "@/server/db";
+import type { db as _db } from "@/server/db";
 import { sendDirectMessage } from "@/server/inbox/dm";
 import {
   CONTRIBUTION_ACTIONS,
+  AT_RISK_WINDOW_DAYS,
+  AT_RISK_PRIOR_WINDOW_DAYS,
+  AT_RISK_CAP,
   summarizeHealth,
   selectAtRisk,
   selectUnactivated,
   windowStart,
   type ActivityRow,
-  type MembershipRow,
 } from "@/server/communities/insights";
+import {
+  loadAtRiskInputs,
+  loadUnactivatedInputs,
+} from "@/server/communities/insights-queries";
 
 type DB = typeof _db;
 
-const WINDOW_DAYS = 14;
-const PRIOR_WINDOW_DAYS = 45;
 export const NEWCOMER_MIN_AGE_DAYS = 3;
 export const NEWCOMER_MAX_AGE_DAYS = 30;
-const AT_RISK_CAP = 50;
 
 // CONTRIBUTION_ACTIONS is a readonly tuple; Drizzle inArray wants string[].
 const CONTRIBUTION_ACTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
 
-function requireAdmin(role: string | null) {
+function requireManager(role: string | null) {
   if (role !== "owner" && role !== "admin" && role !== "moderator") {
     throw new TRPCError({ code: "FORBIDDEN" });
   }
@@ -67,9 +70,9 @@ export const insightsRouter = createTRPCRouter({
   healthPulse: communityProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
-      requireAdmin(ctx.communityRole);
+      requireManager(ctx.communityRole);
       const now = new Date();
-      const since = windowStart(now, WINDOW_DAYS * 2); // 28 days — 2× window is all summarizeHealth needs
+      const since = windowStart(now, AT_RISK_WINDOW_DAYS * 2); // 28 days — 2× window is all summarizeHealth needs
 
       const events = await ctx.db
         .select({
@@ -105,54 +108,28 @@ export const insightsRouter = createTRPCRouter({
         joins,
         departures,
         now,
-        windowDays: WINDOW_DAYS,
+        windowDays: AT_RISK_WINDOW_DAYS,
       });
     }),
 
   atRiskMembers: communityProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
-      requireAdmin(ctx.communityRole);
+      requireManager(ctx.communityRole);
       const now = new Date();
-      const since = windowStart(now, PRIOR_WINDOW_DAYS);
 
-      const [memberships, events] = await Promise.all([
-        ctx.db
-          .select({
-            userId: communityMemberships.userId,
-            role: communityMemberships.role,
-            status: communityMemberships.status,
-            joinedAt: communityMemberships.joinedAt,
-          })
-          .from(communityMemberships)
-          .where(
-            and(
-              eq(communityMemberships.communityId, ctx.community.id),
-              eq(communityMemberships.status, "active"),
-            ),
-          ),
-        ctx.db
-          .select({
-            actorId: activityEvents.actorId,
-            action: activityEvents.action,
-            createdAt: activityEvents.createdAt,
-          })
-          .from(activityEvents)
-          .where(
-            and(
-              eq(activityEvents.communityId, ctx.community.id),
-              gte(activityEvents.createdAt, since),
-              inArray(activityEvents.action, CONTRIBUTION_ACTION_LIST),
-            ),
-          ),
-      ]);
+      const { memberships, contributions } = await loadAtRiskInputs(
+        ctx.db,
+        ctx.community.id,
+        now,
+      );
 
       const atRisk = selectAtRisk({
-        memberships: memberships as MembershipRow[],
-        contributions: events as ActivityRow[],
+        memberships,
+        contributions,
         now,
-        windowDays: WINDOW_DAYS,
-        priorWindowDays: PRIOR_WINDOW_DAYS,
+        windowDays: AT_RISK_WINDOW_DAYS,
+        priorWindowDays: AT_RISK_PRIOR_WINDOW_DAYS,
         cap: AT_RISK_CAP,
       });
 
@@ -170,38 +147,17 @@ export const insightsRouter = createTRPCRouter({
   unactivatedNewcomers: communityProcedure
     .input(z.object({ slug: z.string() }))
     .query(async ({ ctx }) => {
-      requireAdmin(ctx.communityRole);
+      requireManager(ctx.communityRole);
       const now = new Date();
 
-      const [memberships, contributorRows] = await Promise.all([
-        ctx.db
-          .select({
-            userId: communityMemberships.userId,
-            role: communityMemberships.role,
-            status: communityMemberships.status,
-            joinedAt: communityMemberships.joinedAt,
-          })
-          .from(communityMemberships)
-          .where(
-            and(
-              eq(communityMemberships.communityId, ctx.community.id),
-              eq(communityMemberships.status, "active"),
-            ),
-          ),
-        ctx.db
-          .selectDistinct({ actorId: activityEvents.actorId })
-          .from(activityEvents)
-          .where(
-            and(
-              eq(activityEvents.communityId, ctx.community.id),
-              inArray(activityEvents.action, CONTRIBUTION_ACTION_LIST),
-            ),
-          ),
-      ]);
+      const { memberships, contributorUserIds } = await loadUnactivatedInputs(
+        ctx.db,
+        ctx.community.id,
+      );
 
       const newcomers = selectUnactivated({
-        memberships: memberships as MembershipRow[],
-        contributorUserIds: contributorRows.map((r) => r.actorId),
+        memberships,
+        contributorUserIds,
         now,
         minAgeDays: NEWCOMER_MIN_AGE_DAYS,
         maxAgeDays: NEWCOMER_MAX_AGE_DAYS,
@@ -229,7 +185,7 @@ export const insightsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      requireAdmin(ctx.communityRole);
+      requireManager(ctx.communityRole);
       if (input.memberUserId === ctx.session.user.id) {
         throw new TRPCError({
           code: "BAD_REQUEST",

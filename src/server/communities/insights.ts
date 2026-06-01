@@ -1,3 +1,19 @@
+// ---------------------------------------------------------------------------
+// Shared at-risk / unactivated constants
+// Exported so routers and cron jobs share a single source of truth.
+// ---------------------------------------------------------------------------
+
+/** Rolling window for "currently active" check (days). */
+export const AT_RISK_WINDOW_DAYS = 14;
+
+/** Lookback window for "was previously active" check (days). */
+export const AT_RISK_PRIOR_WINDOW_DAYS = 45;
+
+/** Maximum at-risk members returned by selectAtRisk. */
+export const AT_RISK_CAP = 50;
+
+// ---------------------------------------------------------------------------
+
 /** Activity-event `action` strings that count as a member contributing in a
  *  community. Hub-wide-only actions (article.*) are deliberately omitted from
  *  community attribution. See CONTEXT.md → Contribution action. */

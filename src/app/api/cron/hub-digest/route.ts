@@ -26,12 +26,12 @@ import {
 } from "@/server/notifications/ritual-items";
 import { weekdayLabel } from "@/server/communities/rituals";
 import {
-  CONTRIBUTION_ACTIONS,
+  AT_RISK_WINDOW_DAYS,
+  AT_RISK_PRIOR_WINDOW_DAYS,
+  AT_RISK_CAP,
   selectAtRisk,
-  windowStart,
-  type ActivityRow,
-  type MembershipRow,
 } from "@/server/communities/insights";
+import { loadAtRiskInputs } from "@/server/communities/insights-queries";
 import { resolvePrefs, type OptoutRow } from "@/server/notifications/prefs";
 import { currentPeriodKey } from "@/server/notifications/constants";
 import { renderHubDigestHtml } from "@/server/notifications/render";
@@ -39,11 +39,7 @@ import { sendHubDigestEmail } from "@/server/email";
 import { rankCommunitiesForMember } from "@/server/communities/discovery";
 import { loadDiscoveryCandidates } from "@/server/communities/discovery-queries";
 
-// At-risk selection params — mirror advisory.atRiskMembers exactly.
-const WINDOW_DAYS = 14;
-const PRIOR_WINDOW_DAYS = 45;
-const AT_RISK_CAP = 50;
-const CONTRIBUTION_ACTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
+// At-risk selection params — imported from shared source of truth in insights.ts.
 
 const ENGAGE_DEFAULTS: EngageConfig = {
   ritualRecap: true,
@@ -186,49 +182,20 @@ export async function GET(req: Request) {
   }
 
   // At-risk sets: only for communities with the atRiskLine toggle ON.
-  // Mirrors advisory.atRiskMembers' query shape, scoped per community.
+  // Uses shared loadAtRiskInputs loader; one membership + events query pair per community.
   const atRiskByCommunity = new Map<string, Set<string>>();
   const atRiskCommunityIds = cfgRows
     .filter((c) => c.atRiskLine)
     .map((c) => c.communityId);
-  const atRiskSince = windowStart(now, PRIOR_WINDOW_DAYS);
   for (const communityId of atRiskCommunityIds) {
-    const [atRiskMemberships, atRiskEvents] = await Promise.all([
-      db
-        .select({
-          userId: communityMemberships.userId,
-          role: communityMemberships.role,
-          status: communityMemberships.status,
-          joinedAt: communityMemberships.joinedAt,
-        })
-        .from(communityMemberships)
-        .where(
-          and(
-            eq(communityMemberships.communityId, communityId),
-            eq(communityMemberships.status, "active"),
-          ),
-        ),
-      db
-        .select({
-          actorId: activityEvents.actorId,
-          action: activityEvents.action,
-          createdAt: activityEvents.createdAt,
-        })
-        .from(activityEvents)
-        .where(
-          and(
-            eq(activityEvents.communityId, communityId),
-            gte(activityEvents.createdAt, atRiskSince),
-            inArray(activityEvents.action, CONTRIBUTION_ACTION_LIST),
-          ),
-        ),
-    ]);
+    const { memberships: atRiskMemberships, contributions: atRiskEvents } =
+      await loadAtRiskInputs(db, communityId, now);
     const atRisk = selectAtRisk({
-      memberships: atRiskMemberships as MembershipRow[],
-      contributions: atRiskEvents as ActivityRow[],
+      memberships: atRiskMemberships,
+      contributions: atRiskEvents,
       now,
-      windowDays: WINDOW_DAYS,
-      priorWindowDays: PRIOR_WINDOW_DAYS,
+      windowDays: AT_RISK_WINDOW_DAYS,
+      priorWindowDays: AT_RISK_PRIOR_WINDOW_DAYS,
       cap: AT_RISK_CAP,
     });
     atRiskByCommunity.set(communityId, new Set(atRisk.map((m) => m.userId)));
