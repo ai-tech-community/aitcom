@@ -14,6 +14,7 @@ import {
   selectActivationFunnel,
   computeActivationStage,
   RESPONSE_ACTIONS,
+  DEFAULT_ACTIVATION_CONFIG,
   type ActivationConfig,
   type FunnelMemberInput,
 } from "@/server/communities/activation";
@@ -23,7 +24,6 @@ import {
 } from "@/server/communities/insights";
 import {
   ACTIVATION_COHORT_DAYS,
-  DEFAULT_WINDOW_DAYS,
   loadAwaitingResponse,
 } from "@/server/communities/activation-queries";
 import type { db as _db } from "@/server/db";
@@ -33,11 +33,6 @@ type ActivationDb = typeof _db;
 // Drizzle inArray wants string[]; the source tuples are readonly.
 const CONTRIBUTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
 const RESPONSE_LIST: string[] = [...RESPONSE_ACTIONS];
-const DEFAULT_CONFIG: ActivationConfig = {
-  requireResponse: true,
-  requireProfileComplete: false,
-  windowDays: DEFAULT_WINDOW_DAYS,
-};
 
 async function loadCohort(
   db: ActivationDb,
@@ -55,7 +50,7 @@ async function loadCohort(
         requireProfileComplete: cfgRow.requireProfileComplete,
         windowDays: cfgRow.windowDays,
       }
-    : DEFAULT_CONFIG;
+    : DEFAULT_ACTIVATION_CONFIG;
   const memberships = await db
     .select({ userId: communityMemberships.userId })
     .from(communityMemberships)
@@ -266,7 +261,7 @@ export const activationRouter = createTRPCRouter({
             requireProfileComplete: cfgRow.requireProfileComplete,
             windowDays: cfgRow.windowDays,
           }
-        : DEFAULT_CONFIG;
+        : DEFAULT_ACTIVATION_CONFIG;
 
       const firstContributionAt = contribRows.reduce<Date | null>(
         (min, e) => (!min || e.createdAt < min ? e.createdAt : min),

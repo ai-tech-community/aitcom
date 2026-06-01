@@ -1,7 +1,7 @@
 /** Assembles activation signals for referred-but-uncredited members so the
  *  reconcile cron can decide referral credit. Raw-fetch + reduce (neon-http). */
 
-import { and, asc, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 
 import {
   communityMemberships,
@@ -11,9 +11,15 @@ import {
   memberProfiles,
   referralCredits,
 } from "@/server/db/schema";
-import { RESPONSE_ACTIONS } from "@/server/communities/activation";
+import {
+  RESPONSE_ACTIONS,
+  DEFAULT_ACTIVATION_CONFIG,
+} from "@/server/communities/activation";
 import type { ActivationConfig } from "@/server/communities/activation";
-import { CONTRIBUTION_ACTIONS } from "@/server/communities/insights";
+import {
+  CONTRIBUTION_ACTIONS,
+  windowStart,
+} from "@/server/communities/insights";
 import type { db as _db } from "@/server/db";
 
 type DB = typeof _db;
@@ -21,11 +27,18 @@ type DB = typeof _db;
 const CONTRIBUTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
 const RESPONSE_LIST: string[] = [...RESPONSE_ACTIONS];
 
-export const ACTIVATION_DEFAULTS: ActivationConfig = {
-  requireResponse: true,
-  requireProfileComplete: false,
-  windowDays: 7,
-};
+/**
+ * How far back to scan for referral candidates, which also defines the product
+ * rule: **a referral earns credit only if the referred member activates within
+ * REFERRAL_SCAN_DAYS of joining.** A member who first contributes very late
+ * could in principle still reach the activation milestone afterwards, but a
+ * conversion that lands months after the invite is no longer a meaningful
+ * referral, and bounding the scan keeps the daily reconcile cron from
+ * reprocessing long-dormant candidates forever. 90 days comfortably covers the
+ * realistic case (join → first contribution → response within the activation
+ * window, even at the max 30-day window) while making the cutoff generous.
+ */
+export const REFERRAL_SCAN_DAYS = 90;
 
 export type ReferralCandidate = {
   referredUserId: string;
@@ -39,8 +52,13 @@ export type ReferralCandidate = {
 
 export async function loadReferralCandidates(
   db: DB,
+  now: Date,
 ): Promise<ReferralCandidate[]> {
-  // Referred, active memberships (invitedBy set).
+  // Only consider memberships joined within the last REFERRAL_SCAN_DAYS days.
+  // Members older than this window can no longer activate in time to earn credit.
+  const scanStart = windowStart(now, REFERRAL_SCAN_DAYS);
+
+  // Referred, active memberships (invitedBy set) within the scan window.
   const memberships = await db
     .select({
       userId: communityMemberships.userId,
@@ -52,6 +70,7 @@ export async function loadReferralCandidates(
       and(
         eq(communityMemberships.status, "active"),
         isNotNull(communityMemberships.invitedBy),
+        gte(communityMemberships.joinedAt, scanStart),
       ),
     );
   if (memberships.length === 0) return [];
@@ -179,7 +198,7 @@ export async function loadReferralCandidates(
             requireProfileComplete: cfg.requireProfileComplete,
             windowDays: cfg.windowDays,
           }
-        : ACTIVATION_DEFAULTS,
+        : DEFAULT_ACTIVATION_CONFIG,
     };
   });
 }

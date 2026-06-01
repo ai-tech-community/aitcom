@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -29,6 +30,7 @@ function replyHref(
 }
 
 export function AwaitingResponseList({ slug }: { slug: string }) {
+  const t = useTranslations("communities.activation");
   const { data, isLoading, error } = api.activation.awaitingResponse.useQuery({
     slug,
   });
@@ -42,20 +44,18 @@ export function AwaitingResponseList({ slug }: { slug: string }) {
   return (
     <div className="rounded-lg border">
       <div className="border-b p-4">
-        <h3 className="text-sm font-semibold">Awaiting a first response</h3>
-        <p className="text-muted-foreground text-xs">
-          Newcomers whose first post has no reply yet — say hi.
-        </p>
+        <h3 className="text-sm font-semibold">{t("awaitingTitle")}</h3>
+        <p className="text-muted-foreground text-xs">{t("awaitingSubtitle")}</p>
       </div>
       {isLoading ? (
         <div
           role="status"
-          aria-label="Loading"
+          aria-label={t("loading")}
           className="h-24 animate-pulse"
         />
       ) : !data || data.length === 0 ? (
         <p className="text-muted-foreground p-6 text-center text-sm">
-          No newcomers awaiting a response
+          {t("awaitingEmpty")}
         </p>
       ) : (
         <div className="divide-y">
@@ -89,8 +89,7 @@ export function AwaitingResponseList({ slug }: { slug: string }) {
                       {item.displayName ?? "Member"}
                     </p>
                     <p className="text-muted-foreground text-xs">
-                      posted {days} {days === 1 ? "day" : "days"} ago, no reply
-                      yet
+                      {t("awaitingPostedDaysAgo", { count: days })}
                     </p>
                   </div>
                 </div>
@@ -99,7 +98,7 @@ export function AwaitingResponseList({ slug }: { slug: string }) {
                     href={href as never}
                     className="text-primary text-sm font-medium hover:underline sm:shrink-0"
                   >
-                    Reply in thread
+                    {t("awaitingReplyLink")}
                   </Link>
                 ) : null}
               </div>

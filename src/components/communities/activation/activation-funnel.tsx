@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 
 function FunnelBar({
@@ -31,13 +32,14 @@ function FunnelBar({
 }
 
 export function ActivationFunnel({ slug }: { slug: string }) {
+  const t = useTranslations("communities.activation");
   const { data, isLoading, error } = api.activation.funnel.useQuery({ slug });
 
   if (isLoading) {
     return (
       <div
         role="status"
-        aria-label="Loading activation funnel"
+        aria-label={t("loading")}
         className="h-24 animate-pulse rounded-lg border"
       />
     );
@@ -52,48 +54,48 @@ export function ActivationFunnel({ slug }: { slug: string }) {
   if (!data) return null;
 
   return (
-    <section aria-label="Activation funnel">
+    <section aria-label={t("funnelAriaLabel")}>
       <div className="rounded-lg border">
         <div className="border-b p-4">
-          <h3 className="text-sm font-semibold">Activation funnel</h3>
-          <p className="text-muted-foreground text-xs">
-            Last 30 days · newcomers through each activation stage
-          </p>
+          <h3 className="text-sm font-semibold">{t("funnelTitle")}</h3>
+          <p className="text-muted-foreground text-xs">{t("funnelSubtitle")}</p>
         </div>
         <div className="p-4">
           {data.cohortSize === 0 ? (
             <p className="text-muted-foreground text-center text-sm">
-              No newcomers in the last 30 days
+              {t("funnelEmpty")}
             </p>
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3">
                 <FunnelBar
-                  label="Joined"
+                  label={t("funnelJoined")}
                   count={data.cohortSize}
                   total={data.cohortSize}
                 />
                 <FunnelBar
-                  label="Contributed"
+                  label={t("funnelContributed")}
                   count={data.contributed}
                   total={data.cohortSize}
                 />
                 <FunnelBar
-                  label="Got a response"
+                  label={t("funnelGotResponse")}
                   count={data.responded}
                   total={data.cohortSize}
                 />
                 <FunnelBar
-                  label="Activated"
+                  label={t("funnelActivated")}
                   count={data.activated}
                   total={data.cohortSize}
                 />
               </div>
               <p className="text-muted-foreground text-xs">
-                Awaiting response: {data.byStage.awaiting_response} · Awaiting
-                profile: {data.byStage.awaiting_profile} · Stalled:{" "}
-                {data.byStage.stalled} · Un-activated:{" "}
-                {data.byStage.unactivated}
+                {t("funnelByStage", {
+                  awaiting_response: data.byStage.awaiting_response,
+                  awaiting_profile: data.byStage.awaiting_profile,
+                  stalled: data.byStage.stalled,
+                  unactivated: data.byStage.unactivated,
+                })}
               </p>
             </div>
           )}

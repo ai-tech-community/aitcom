@@ -20,11 +20,11 @@ import {
   communities,
   communityMemberships,
   memberProfiles,
-  activityEvents,
   introductions,
   conversations,
   conversationParticipants,
   messages,
+  notifications,
 } from "@/server/db/schema";
 import type { db as _db } from "@/server/db";
 import {
@@ -38,27 +38,23 @@ import {
   type MemberProfile,
 } from "@/server/agents/matching";
 import {
-  CONTRIBUTION_ACTIONS,
+  AT_RISK_WINDOW_DAYS,
+  AT_RISK_PRIOR_WINDOW_DAYS,
+  AT_RISK_CAP,
   selectAtRisk,
   selectUnactivated,
   windowStart,
-  type ActivityRow,
-  type MembershipRow,
 } from "@/server/communities/insights";
+import {
+  loadAtRiskInputs,
+  loadUnactivatedInputs,
+} from "@/server/communities/insights-queries";
 import { loadAwaitingResponse } from "@/server/communities/activation-queries";
 
 type DB = typeof _db;
 
-const WINDOW_DAYS = 14;
-const PRIOR_WINDOW_DAYS = 45;
-const AT_RISK_CAP = 50;
 const INTRO_CANDIDATE_CAP = 20;
 const NEW_JOINER_CAP = 100;
-// Un-activated newcomer window — shared with insights.ts (the organizer
-// dashboard) via a single exported source of truth.
-
-// CONTRIBUTION_ACTIONS is a readonly tuple; Drizzle inArray wants string[].
-const CONTRIBUTION_ACTION_LIST: string[] = [...CONTRIBUTION_ACTIONS];
 
 /** Resolve the community for an advisory call; assert the agent's owner is an
  *  active admin/owner AND the community autonomy level is "suggest". */
@@ -110,45 +106,19 @@ export const advisoryRouter = createTRPCRouter({
       );
 
       const now = new Date();
-      const since = windowStart(now, PRIOR_WINDOW_DAYS);
 
-      const [memberships, events] = await Promise.all([
-        ctx.db
-          .select({
-            userId: communityMemberships.userId,
-            role: communityMemberships.role,
-            status: communityMemberships.status,
-            joinedAt: communityMemberships.joinedAt,
-          })
-          .from(communityMemberships)
-          .where(
-            and(
-              eq(communityMemberships.communityId, community.id),
-              eq(communityMemberships.status, "active"),
-            ),
-          ),
-        ctx.db
-          .select({
-            actorId: activityEvents.actorId,
-            action: activityEvents.action,
-            createdAt: activityEvents.createdAt,
-          })
-          .from(activityEvents)
-          .where(
-            and(
-              eq(activityEvents.communityId, community.id),
-              gte(activityEvents.createdAt, since),
-              inArray(activityEvents.action, CONTRIBUTION_ACTION_LIST),
-            ),
-          ),
-      ]);
+      const { memberships, contributions } = await loadAtRiskInputs(
+        ctx.db,
+        community.id,
+        now,
+      );
 
       return selectAtRisk({
-        memberships: memberships as MembershipRow[],
-        contributions: events as ActivityRow[],
+        memberships,
+        contributions,
         now,
-        windowDays: WINDOW_DAYS,
-        priorWindowDays: PRIOR_WINDOW_DAYS,
+        windowDays: AT_RISK_WINDOW_DAYS,
+        priorWindowDays: AT_RISK_PRIOR_WINDOW_DAYS,
         cap: AT_RISK_CAP,
       });
     }),
@@ -414,35 +384,15 @@ export const advisoryRouter = createTRPCRouter({
       );
 
       const now = new Date();
-      const [memberships, contributorRows] = await Promise.all([
-        ctx.db
-          .select({
-            userId: communityMemberships.userId,
-            role: communityMemberships.role,
-            status: communityMemberships.status,
-            joinedAt: communityMemberships.joinedAt,
-          })
-          .from(communityMemberships)
-          .where(
-            and(
-              eq(communityMemberships.communityId, community.id),
-              eq(communityMemberships.status, "active"),
-            ),
-          ),
-        ctx.db
-          .selectDistinct({ actorId: activityEvents.actorId })
-          .from(activityEvents)
-          .where(
-            and(
-              eq(activityEvents.communityId, community.id),
-              inArray(activityEvents.action, CONTRIBUTION_ACTION_LIST),
-            ),
-          ),
-      ]);
+
+      const { memberships, contributorUserIds } = await loadUnactivatedInputs(
+        ctx.db,
+        community.id,
+      );
 
       return selectUnactivated({
-        memberships: memberships as MembershipRow[],
-        contributorUserIds: contributorRows.map((r) => r.actorId),
+        memberships,
+        contributorUserIds,
         now,
         minAgeDays: NEWCOMER_MIN_AGE_DAYS,
         maxAgeDays: NEWCOMER_MAX_AGE_DAYS,
@@ -774,10 +724,21 @@ export const advisoryRouter = createTRPCRouter({
           .where(eq(introductions.id, intro.id));
         await ctx.db.insert(messages).values({
           conversationId,
-          senderId: fresh.organizerId,
+          senderId: fresh.userIdA,
           senderType: "human",
           content: "You both opted in to connect — say hi! 👋",
         });
+        // Mark both members' introduction_request notifications read.
+        await ctx.db
+          .update(notifications)
+          .set({ readAt: new Date() })
+          .where(
+            and(
+              inArray(notifications.userId, [fresh.userIdA, fresh.userIdB]),
+              eq(notifications.type, "introduction_request"),
+              sql`${notifications.metadata}->>'introId' = ${intro.id}`,
+            ),
+          );
         return { status: "connected" as const, conversationId };
       }
       if (status === "declined") {
@@ -788,6 +749,17 @@ export const advisoryRouter = createTRPCRouter({
             and(
               eq(introductions.id, intro.id),
               eq(introductions.status, "pending_consent"),
+            ),
+          );
+        // Mark both members' introduction_request notifications read.
+        await ctx.db
+          .update(notifications)
+          .set({ readAt: new Date() })
+          .where(
+            and(
+              inArray(notifications.userId, [fresh.userIdA, fresh.userIdB]),
+              eq(notifications.type, "introduction_request"),
+              sql`${notifications.metadata}->>'introId' = ${intro.id}`,
             ),
           );
         return { status: "declined" as const, conversationId: null };

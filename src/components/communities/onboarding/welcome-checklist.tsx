@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Check, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function WelcomeChecklist({ slug }: { slug: string }) {
+  const t = useTranslations("communities.onboarding");
   const utils = api.useUtils();
   const { data: stage } = api.activation.myStage.useQuery({ slug });
   const { data: steps, isLoading } = api.onboardingSteps.listForMe.useQuery({
@@ -28,9 +30,9 @@ export function WelcomeChecklist({ slug }: { slug: string }) {
   return (
     <div className="bg-primary/5 border-primary/20 space-y-3 rounded-md border p-4">
       <div>
-        <h2 className="font-medium">Welcome to the community</h2>
+        <h2 className="font-medium">{t("welcomeTitle")}</h2>
         <p className="text-muted-foreground text-sm">
-          A few steps to help you get started ({done}/{total} done).
+          {t("welcomeSubtitle", { done, total })}
         </p>
       </div>
       <ul className="divide-y">
@@ -44,7 +46,7 @@ export function WelcomeChecklist({ slug }: { slug: string }) {
               className="flex items-center justify-between gap-3 py-2"
             >
               <Link
-                href={step.href}
+                href={step.href as never}
                 className={
                   step.completed
                     ? "text-muted-foreground text-sm line-through"
@@ -55,7 +57,7 @@ export function WelcomeChecklist({ slug }: { slug: string }) {
               </Link>
               {step.completed ? (
                 <span className="text-muted-foreground flex shrink-0 items-center gap-1 text-xs">
-                  <Check className="size-4" /> Done
+                  <Check className="size-4" /> {t("done")}
                 </span>
               ) : (
                 <Button
@@ -67,7 +69,7 @@ export function WelcomeChecklist({ slug }: { slug: string }) {
                   disabled={pending}
                 >
                   <Circle className="size-3" />
-                  {pending ? "Saving…" : "Mark done"}
+                  {pending ? t("saving") : t("markDone")}
                 </Button>
               )}
             </li>

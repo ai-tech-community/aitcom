@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   }
 
   const now = new Date();
-  const candidates = await loadReferralCandidates(db);
+  const candidates = await loadReferralCandidates(db, now);
   let credited = 0;
 
   for (const c of candidates) {

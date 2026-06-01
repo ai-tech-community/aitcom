@@ -1,8 +1,11 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 
-import { createTRPCRouter, communityProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  communityProcedure,
+  requireConfigAdmin,
+} from "@/server/api/trpc";
 import { communityEngageConfig } from "@/server/db/schema";
 
 const DEFAULTS = {
@@ -10,12 +13,6 @@ const DEFAULTS = {
   ritualReminder: true,
   atRiskLine: false,
 };
-
-function requireConfigAdmin(role: string | null) {
-  if (role !== "owner" && role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
-}
 
 export const engageConfigRouter = createTRPCRouter({
   get: communityProcedure

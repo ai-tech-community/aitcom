@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, lt, or, isNull } from "drizzle-orm";
+import { and, asc, eq, lt, or, isNull } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { rituals, ritualOccurrences } from "@/server/db/schema";
@@ -22,11 +22,19 @@ export async function GET(req: Request) {
   let posted = 0;
   let pending = 0;
 
+  const RITUALS_CAP = 500;
   const active = await db
     .select()
     .from(rituals)
     .where(eq(rituals.status, "active"))
-    .limit(500);
+    .orderBy(asc(rituals.id))
+    .limit(RITUALS_CAP);
+
+  if (active.length === RITUALS_CAP) {
+    console.warn(
+      `rituals: active query hit cap of ${RITUALS_CAP}; some active rituals may be silently truncated this run`,
+    );
+  }
 
   for (const r of active) {
     if (

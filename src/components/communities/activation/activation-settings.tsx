@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,7 @@ type Config = {
 };
 
 export function ActivationSettings({ slug }: { slug: string }) {
+  const t = useTranslations("communities.activation");
   const utils = api.useUtils();
   const { data, isLoading, error } = api.activationConfig.get.useQuery({
     slug,
@@ -47,42 +49,39 @@ export function ActivationSettings({ slug }: { slug: string }) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Activation milestone</h2>
-        <p className="text-muted-foreground text-sm">
-          When a newcomer is counted as activated in your community.
-        </p>
+        <h2 className="text-lg font-semibold">{t("settingsTitle")}</h2>
+        <p className="text-muted-foreground text-sm">{t("settingsSubtitle")}</p>
       </div>
 
       <div className="rounded-lg border">
         {isLoading || !current ? (
           <div
             role="status"
-            aria-label="Loading activation settings"
+            aria-label={t("loading")}
             className="h-32 animate-pulse"
           />
         ) : (
           <div className="divide-y">
             <Row
-              label="Require a response to activate"
-              description="Count a newcomer activated only once their first contribution gets a reply."
+              label={t("requireResponseLabel")}
+              description={t("requireResponseDescription")}
               checked={current.requireResponse}
               disabled={set.isPending}
               onCheckedChange={(v) => update({ requireResponse: v })}
             />
             <Row
-              label="Require a completed profile"
-              description="Also require a completed profile (onboarding done + interests & experience set)."
+              label={t("requireProfileLabel")}
+              description={t("requireProfileDescription")}
               checked={current.requireProfileComplete}
               disabled={set.isPending}
               onCheckedChange={(v) => update({ requireProfileComplete: v })}
             />
             <div className="p-4">
               <Label className="text-sm font-medium">
-                Response window (days)
+                {t("windowDaysLabel")}
               </Label>
               <p className="text-muted-foreground mt-1 text-xs">
-                How many days after a newcomer&apos;s first post to wait for a
-                reply before the window closes.
+                {t("windowDaysDescription")}
               </p>
               <Input
                 type="number"

@@ -1,21 +1,13 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { eq } from "drizzle-orm";
 
-import { createTRPCRouter, communityProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  communityProcedure,
+  requireConfigAdmin,
+} from "@/server/api/trpc";
 import { communityActivationConfig } from "@/server/db/schema";
-
-const DEFAULTS = {
-  requireResponse: true,
-  requireProfileComplete: false,
-  windowDays: 7,
-};
-
-function requireConfigAdmin(role: string | null) {
-  if (role !== "owner" && role !== "admin") {
-    throw new TRPCError({ code: "FORBIDDEN" });
-  }
-}
+import { DEFAULT_ACTIVATION_CONFIG } from "@/server/communities/activation";
 
 export const activationConfigRouter = createTRPCRouter({
   get: communityProcedure
@@ -33,7 +25,7 @@ export const activationConfigRouter = createTRPCRouter({
             requireProfileComplete: row.requireProfileComplete,
             windowDays: row.windowDays,
           }
-        : DEFAULTS;
+        : DEFAULT_ACTIVATION_CONFIG;
     }),
 
   set: communityProcedure

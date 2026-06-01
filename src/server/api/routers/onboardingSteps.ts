@@ -1,17 +1,16 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, gt, lt } from "drizzle-orm";
 
-import { createTRPCRouter, communityProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  communityProcedure,
+  requireConfigAdmin,
+} from "@/server/api/trpc";
 import {
   communityOnboardingStep,
   communityOnboardingProgress,
 } from "@/server/db/schema";
-
-function requireConfigAdmin(role: string | null) {
-  if (role !== "owner" && role !== "admin")
-    throw new TRPCError({ code: "FORBIDDEN" });
-}
 
 function requireActiveMember(membership: { status: string } | null) {
   if (membership?.status !== "active") {
@@ -90,6 +89,82 @@ export const onboardingStepsRouter = createTRPCRouter({
         .where(
           and(
             eq(communityOnboardingStep.id, stepId),
+            eq(communityOnboardingStep.communityId, ctx.community.id),
+          ),
+        );
+      return { ok: true };
+    }),
+
+  reorder: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        stepId: z.string(),
+        direction: z.enum(["up", "down"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      requireConfigAdmin(ctx.communityRole);
+      // Load the target step, scoped to this community.
+      const [step] = await ctx.db
+        .select({
+          id: communityOnboardingStep.id,
+          position: communityOnboardingStep.position,
+        })
+        .from(communityOnboardingStep)
+        .where(
+          and(
+            eq(communityOnboardingStep.id, input.stepId),
+            eq(communityOnboardingStep.communityId, ctx.community.id),
+          ),
+        )
+        .limit(1);
+      if (!step) throw new TRPCError({ code: "NOT_FOUND" });
+
+      // Find the adjacent sibling by position within the community.
+      // "up" => the nearest step above (highest position below this one).
+      // "down" => the nearest step below (lowest position above this one).
+      const [neighbor] = await ctx.db
+        .select({
+          id: communityOnboardingStep.id,
+          position: communityOnboardingStep.position,
+        })
+        .from(communityOnboardingStep)
+        .where(
+          and(
+            eq(communityOnboardingStep.communityId, ctx.community.id),
+            input.direction === "up"
+              ? lt(communityOnboardingStep.position, step.position)
+              : gt(communityOnboardingStep.position, step.position),
+          ),
+        )
+        .orderBy(
+          input.direction === "up"
+            ? desc(communityOnboardingStep.position)
+            : asc(communityOnboardingStep.position),
+        )
+        .limit(1);
+
+      // Already at the top/bottom — nothing to swap.
+      if (!neighbor) return { ok: true };
+
+      // Swap positions. (communityId, position) is a plain index (not unique),
+      // so a direct two-row swap is safe even without a transaction.
+      await ctx.db
+        .update(communityOnboardingStep)
+        .set({ position: neighbor.position })
+        .where(
+          and(
+            eq(communityOnboardingStep.id, step.id),
+            eq(communityOnboardingStep.communityId, ctx.community.id),
+          ),
+        );
+      await ctx.db
+        .update(communityOnboardingStep)
+        .set({ position: step.position })
+        .where(
+          and(
+            eq(communityOnboardingStep.id, neighbor.id),
             eq(communityOnboardingStep.communityId, ctx.community.id),
           ),
         );
