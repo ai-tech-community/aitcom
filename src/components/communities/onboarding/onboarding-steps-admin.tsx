@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ type Step = {
 };
 
 export function OnboardingStepsAdmin({ slug }: { slug: string }) {
+  const t = useTranslations("communities.onboarding");
   const utils = api.useUtils();
   const { data, isLoading, error } = api.onboardingSteps.list.useQuery({
     slug,
@@ -47,22 +49,20 @@ export function OnboardingStepsAdmin({ slug }: { slug: string }) {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold">Welcome checklist</h2>
-        <p className="text-muted-foreground text-sm">
-          Steps newcomers see when they join, until they&apos;re activated.
-        </p>
+        <h2 className="text-lg font-semibold">{t("adminTitle")}</h2>
+        <p className="text-muted-foreground text-sm">{t("adminSubtitle")}</p>
       </div>
 
       <div className="rounded-lg border">
         {isLoading ? (
           <div
             role="status"
-            aria-label="Loading onboarding steps"
+            aria-label={t("loading")}
             className="h-24 animate-pulse"
           />
         ) : steps.length === 0 ? (
           <p className="text-muted-foreground p-6 text-center text-sm">
-            No steps yet. Add the first one below.
+            {t("adminEmpty")}
           </p>
         ) : (
           <div className="divide-y">
@@ -119,6 +119,7 @@ function StepRow({
   savePending: boolean;
   deletePending: boolean;
 }) {
+  const t = useTranslations("communities.onboarding");
   const [title, setTitle] = useState(step.title);
   const [href, setHref] = useState(step.href);
 
@@ -136,7 +137,7 @@ function StepRow({
             className="size-7"
             disabled={isFirst}
             onClick={onMoveUp}
-            aria-label="Move up"
+            aria-label={t("moveUp")}
           >
             <ArrowUp className="size-4" />
           </Button>
@@ -147,7 +148,7 @@ function StepRow({
             className="size-7"
             disabled={isLast}
             onClick={onMoveDown}
-            aria-label="Move down"
+            aria-label={t("moveDown")}
           >
             <ArrowDown className="size-4" />
           </Button>
@@ -157,14 +158,14 @@ function StepRow({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             maxLength={255}
-            placeholder="Step title"
+            placeholder={t("stepTitlePlaceholder")}
             className="text-sm"
           />
           <Input
             value={href}
             onChange={(e) => setHref(e.target.value)}
             maxLength={500}
-            placeholder="/communities/your-slug/forum"
+            placeholder={t("stepHrefPlaceholder")}
             className="font-mono text-xs"
           />
         </div>
@@ -178,7 +179,7 @@ function StepRow({
           onClick={onDelete}
           disabled={deletePending}
         >
-          {deletePending ? "Deleting…" : "Delete"}
+          {deletePending ? t("deleting") : t("delete")}
         </Button>
         <Button
           type="button"
@@ -186,7 +187,7 @@ function StepRow({
           onClick={() => onSave(title.trim(), href.trim())}
           disabled={!dirty || !valid || savePending}
         >
-          {savePending ? "Saving…" : "Save"}
+          {savePending ? t("saving") : t("save")}
         </Button>
       </div>
     </div>
@@ -200,6 +201,7 @@ function AddStepForm({
   slug: string;
   nextPosition: number;
 }) {
+  const t = useTranslations("communities.onboarding");
   const utils = api.useUtils();
   const [title, setTitle] = useState("");
   const [href, setHref] = useState("");
@@ -230,27 +232,27 @@ function AddStepForm({
     >
       <div>
         <Label htmlFor="onboarding-title" className="text-xs">
-          Title
+          {t("addTitle")}
         </Label>
         <Input
           id="onboarding-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={255}
-          placeholder="Introduce yourself"
+          placeholder={t("addTitlePlaceholder")}
           className="mt-1 text-sm"
         />
       </div>
       <div>
         <Label htmlFor="onboarding-href" className="text-xs">
-          Link
+          {t("addLink")}
         </Label>
         <Input
           id="onboarding-href"
           value={href}
           onChange={(e) => setHref(e.target.value)}
           maxLength={500}
-          placeholder="/communities/your-slug/forum"
+          placeholder={t("stepHrefPlaceholder")}
           className="mt-1 font-mono text-xs"
         />
       </div>
@@ -259,7 +261,7 @@ function AddStepForm({
       )}
       <div className="flex justify-end">
         <Button type="submit" size="sm" disabled={!valid || create.isPending}>
-          {create.isPending ? "Adding…" : "Add step"}
+          {create.isPending ? t("adding") : t("addStep")}
         </Button>
       </div>
     </form>
