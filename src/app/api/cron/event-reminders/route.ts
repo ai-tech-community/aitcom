@@ -33,10 +33,6 @@ export async function GET(req: Request) {
   );
   let reminded = 0;
 
-  // Collect in-app notification rows for bulk insert flushed after all events are processed.
-  // Delivery rows are claimed per-registration (claim-before-send); no bulk deliveryRows array.
-  const notificationRows: (typeof notifications.$inferInsert)[] = [];
-
   const payload = await getPayloadClient();
   // Published events starting between now and the reminder horizon.
   // The events collection uses `date` (not startDate) as the start-date field.
@@ -94,8 +90,11 @@ export async function GET(req: Request) {
         .returning({ id: broadcastDeliveries.id });
       if (claimed.length === 0) continue; // already reminded for this event
 
-      // In-app (always) + transactional email (ceiling-EXEMPT — NO allowPromotional call).
-      notificationRows.push({
+      // In-app notification: written immediately after the claim wins so a
+      // mid-run crash (Vercel timeout) cannot leave the member with an email
+      // but no in-app notification.  The claim row already deduplicates per
+      // (member × event × window), so this insert runs at most once per member.
+      await db.insert(notifications).values({
         userId: reg.userId,
         type: "event_reminder",
         title: `Reminder: ${title}`,
@@ -103,6 +102,7 @@ export async function GET(req: Request) {
         metadata: { eventId: event.id },
       });
 
+      // Transactional email (ceiling-EXEMPT — NO allowPromotional call).
       let emailSent = false;
       try {
         emailSent = await sendEventReminderEmail(reg.email, {
@@ -123,10 +123,6 @@ export async function GET(req: Request) {
       reminded++;
     }
   }
-
-  // Flush batched in-app notification rows after processing all events.
-  if (notificationRows.length)
-    await db.insert(notifications).values(notificationRows);
 
   return NextResponse.json({ success: true, reminded, windowKey });
 }
