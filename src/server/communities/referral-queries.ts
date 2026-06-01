@@ -29,11 +29,11 @@ const RESPONSE_LIST: string[] = [...RESPONSE_ACTIONS];
 
 /**
  * How far back to scan for referral candidates: activation cohort (~30 d) +
- * activation window (7 d) + buffer (8 d) = 45 d.  Members who joined more than
- * 45 days ago can no longer activate in time to earn the referrer credit, so
- * re-scanning them every cron run is wasteful.
+ * max activation window (30 d) + buffer (5 d) = 65 d.  Members who joined more
+ * than 65 days ago can no longer activate in time to earn the referrer credit,
+ * so re-scanning them every cron run is wasteful.
  */
-export const REFERRAL_SCAN_DAYS = 45;
+export const REFERRAL_SCAN_DAYS = 65;
 
 export type ReferralCandidate = {
   referredUserId: string;
