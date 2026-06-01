@@ -2,16 +2,15 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, asc, eq } from "drizzle-orm";
 
-import { createTRPCRouter, communityProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  communityProcedure,
+  requireConfigAdmin,
+} from "@/server/api/trpc";
 import {
   communityOnboardingStep,
   communityOnboardingProgress,
 } from "@/server/db/schema";
-
-function requireConfigAdmin(role: string | null) {
-  if (role !== "owner" && role !== "admin")
-    throw new TRPCError({ code: "FORBIDDEN" });
-}
 
 function requireActiveMember(membership: { status: string } | null) {
   if (membership?.status !== "active") {

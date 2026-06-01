@@ -186,6 +186,12 @@ const agentAuth = t.middleware(async ({ ctx, next }) => {
 
 export const agentProcedure = t.procedure.use(timingMiddleware).use(agentAuth);
 
+export function requireConfigAdmin(role: CommunityRole | null) {
+  if (role !== "owner" && role !== "admin") {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+}
+
 export function requireScope(scopes: string[], required: string) {
   if (!scopes.includes(required)) {
     throw new TRPCError({
