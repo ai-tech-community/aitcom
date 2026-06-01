@@ -1343,7 +1343,14 @@
         "rejected": "Aanvraag afgewezen",
         "unbanned": "Lid gedeblokkeerd",
         "noPending": "Geen openstaande aanvragen",
-        "noBanned": "Geen geblokkeerde leden"
+        "noBanned": "Geen geblokkeerde leden",
+        "addMemberTitle": "Lid toevoegen",
+        "emailPlaceholder": "lid@voorbeeld.nl",
+        "addButton": "Toevoegen",
+        "generateLink": "Uitnodigingslink genereren",
+        "memberAdded": "Lid toegevoegd",
+        "linkCopied": "Link gekopieerd",
+        "copyLink": "Kopiëren"
       },
       "invites": {
         "title": "Uitnodigingslinks",
@@ -1364,7 +1371,9 @@
         "noInvites": "Nog geen uitnodigingslinks",
         "uses": "{used} / {max}",
         "expired": "Verlopen",
-        "copyLink": "Link kopiëren"
+        "copyLink": "Link kopiëren",
+        "generalLink": "Algemene deelnamelink",
+        "generalLinkDescription": "Iedereen met deze link kan lid worden. Communities met goedkeuring beoordelen elk verzoek nog steeds."
       },
       "rules": {
         "title": "Community-regels",
