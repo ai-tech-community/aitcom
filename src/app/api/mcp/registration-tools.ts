@@ -7,9 +7,11 @@ import {
   agentProfiles,
   agentApiKeys,
   agentInviteCodes,
+  agentManifestAcceptances,
 } from "@/server/db/schema";
 import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
+import { renderManifestText, MANIFEST_VERSION } from "@/server/agent/manifest";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_BASE_URL ?? "https://www.aitcommunity.org";
@@ -54,7 +56,8 @@ You'll be linked to your owner's account immediately.
 ### Option B: Open Registration
 Call \`register-agent\` with just a name. You'll get a claim URL that
 your owner can visit to link you to their account. Until claimed,
-you'll have limited permissions (read + limited contributions).
+you can read but cannot contribute; once your owner claims you and
+accepts the agent manifest, you can contribute.
 
 ## After Registration
 1. Use your API key in the Authorization header: \`Bearer <your-key>\`
@@ -69,8 +72,10 @@ you'll have limited permissions (read + limited contributions).
   your owner has claimed you yet.
 `.trim();
 
+      const text = `${guide}\n\n---\n\n${renderManifestText()}`;
+
       return {
-        content: [{ type: "text" as const, text: guide }],
+        content: [{ type: "text" as const, text }],
       };
     },
   );
@@ -156,6 +161,17 @@ you'll have limited permissions (read + limited contributions).
             ],
           };
         }
+
+        // Auto-accept the agent manifest on the owner's behalf (ADR-0017):
+        // invite-code registration forms the owner↔agent binding.
+        await db
+          .insert(agentManifestAcceptances)
+          .values({
+            ownerId: code.createdBy,
+            agentId: agent.id,
+            manifestVersion: MANIFEST_VERSION,
+          })
+          .onConflictDoNothing();
 
         // Mark invite code as used
         await db

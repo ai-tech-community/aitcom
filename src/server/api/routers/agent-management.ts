@@ -11,6 +11,7 @@ import {
   agentDrafts,
   agentSuggestions,
   agentInviteCodes,
+  agentManifestAcceptances,
   activityEvents,
   conversations,
   conversationParticipants,
@@ -32,6 +33,12 @@ import {
 } from "@/server/agent/verify-x-tweet";
 import { sendDirectMessage } from "@/server/inbox/dm";
 import { sendCommunityBroadcast } from "@/server/notifications/broadcast-send";
+import {
+  AGENT_MANIFEST_INVARIANTS,
+  MANIFEST_VERSION,
+  renderManifestText,
+} from "@/server/agent/manifest";
+import { hasAcceptedCurrentManifest } from "@/server/agent/manifest-acceptance";
 
 export const agentManagementRouter = createTRPCRouter({
   // ── Agent Profile ─────────────────────────────────────────────────────────
@@ -109,6 +116,17 @@ export const agentManagementRouter = createTRPCRouter({
         metadata: { agentName: input.name },
       });
 
+      // Auto-accept the agent manifest on the owner's behalf (ADR-0017):
+      // creating the agent forms the owner↔agent binding.
+      await ctx.db
+        .insert(agentManifestAcceptances)
+        .values({
+          ownerId: userId,
+          agentId: agent!.id,
+          manifestVersion: MANIFEST_VERSION,
+        })
+        .onConflictDoNothing();
+
       return agent!;
     }),
 
@@ -166,6 +184,17 @@ export const agentManagementRouter = createTRPCRouter({
           metadata: { agentName: agent.name, setupTool: input.tool },
         });
       }
+
+      // Auto-accept the agent manifest on the owner's behalf (ADR-0017):
+      // quick-setup binds an owned agent + issues a contribute-capable key.
+      await ctx.db
+        .insert(agentManifestAcceptances)
+        .values({
+          ownerId: userId,
+          agentId: agent.id,
+          manifestVersion: MANIFEST_VERSION,
+        })
+        .onConflictDoNothing();
 
       // Revoke any existing active keys
       await ctx.db
@@ -1258,6 +1287,17 @@ export const agentManagementRouter = createTRPCRouter({
         isPinned: true,
       });
 
+      // Auto-accept the agent manifest on the owner's behalf (ADR-0017):
+      // claiming forms the owner↔agent binding, which is the acceptance moment.
+      await ctx.db
+        .insert(agentManifestAcceptances)
+        .values({
+          ownerId: userId,
+          agentId: agentQuery.id,
+          manifestVersion: MANIFEST_VERSION,
+        })
+        .onConflictDoNothing();
+
       await logActivity(ctx.db, {
         actorId: userId,
         actorType: "member",
@@ -1410,6 +1450,55 @@ export const agentManagementRouter = createTRPCRouter({
       });
 
       return { success: true, xHandle };
+    }),
+
+  // ── Manifest ─────────────────────────────────────────────────────────────
+
+  /** Get the current agent manifest + whether the caller has accepted it. */
+  getManifest: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const accepted = await hasAcceptedCurrentManifest(ctx.db, userId);
+    return {
+      version: MANIFEST_VERSION,
+      text: renderManifestText(),
+      invariants: AGENT_MANIFEST_INVARIANTS,
+      accepted,
+    };
+  }),
+
+  /** Accept the current manifest version — unlocks the agent's contribute scope. */
+  acceptManifest: protectedProcedure
+    .input(z.object({ version: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.version !== MANIFEST_VERSION) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "This manifest version is out of date. Refresh and accept the current version.",
+        });
+      }
+      const userId = ctx.session.user.id;
+
+      // One owner has at most one agent; acceptance may be recorded before the
+      // owner has an agent row, so agentId is nullable.
+      const [agent] = await ctx.db
+        .select({ id: agentProfiles.id })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.ownerId, userId))
+        .limit(1);
+
+      // Idempotent at the DB level: the (ownerId, manifestVersion) unique index
+      // dedupes concurrent first-time accepts, avoiding duplicate audit rows.
+      await ctx.db
+        .insert(agentManifestAcceptances)
+        .values({
+          ownerId: userId,
+          agentId: agent?.id ?? null,
+          manifestVersion: MANIFEST_VERSION,
+        })
+        .onConflictDoNothing();
+
+      return { accepted: true, version: MANIFEST_VERSION };
     }),
 
   // ── Dashboard ────────────────────────────────────────────────────────────

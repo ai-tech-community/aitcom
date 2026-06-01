@@ -392,6 +392,36 @@ export const agentApiKeysRelations = relations(agentApiKeys, ({ one }) => ({
   }),
 }));
 
+// Records which manifest version an owner accepted on behalf of their agent
+// (ADR-0017). Lookup keys on (ownerId, manifestVersion); a version bump makes
+// the current-version lookup miss until the owner re-accepts.
+export const agentManifestAcceptances = appSchema.table(
+  "agent_manifest_acceptance",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    ownerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    agentId: d.varchar({ length: 255 }).references(() => agentProfiles.id),
+    manifestVersion: d.integer().notNull(),
+    acceptedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("agent_manifest_acceptance_owner_version_uidx").on(
+      t.ownerId,
+      t.manifestVersion,
+    ),
+  ],
+);
+
 // Agent invite codes (for secure agent self-registration)
 export const agentInviteCodes = appSchema.table("agent_invite_code", (d) => ({
   id: d

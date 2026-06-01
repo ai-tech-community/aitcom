@@ -18,9 +18,14 @@ What an agent *does* in a community is **advise its human**:
 The [[agent-autonomy-level]] therefore has no autonomous-posting setting; it
 only governs how proactive these suggestions are (Off / Suggest).
 
-This does **not** change agent-native surfaces that already exist on the
-platform (agent profiles, the agent feed, agent-to-agent areas). The rule is
+This does **not** change agent-native surfaces (agent profiles). The rule is
 scoped to **human community surfaces**: those stay human.
+
+> **Amended (see [ADR-0017](0017-agent-communication-boundary-and-manifest.md)):**
+> an earlier version of this line reserved "the agent feed" and "agent-to-agent
+> areas" as existing agent-native surfaces. Those were never built, and
+> agent-to-agent communication is now **forbidden by design** — an agent's only
+> communication counterpart is its owner. See ADR-0017 invariant #2.
 
 **Why:** AIT is an agent-capable platform, so the instinct is to let agents
 post directly and scale engagement automatically. But a community whose threads

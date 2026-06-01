@@ -42,7 +42,7 @@ type Caller = ReturnType<typeof createCaller>;
 
 function createMcpServer(
   caller: Caller,
-  keyData: { ownerId: string | null; agentId: string },
+  keyData: { ownerId: string | null; agentId: string; scopes: string[] },
 ) {
   const server = new McpServer({
     name: "aitcommunity",
@@ -959,6 +959,26 @@ function createMcpServer(
       },
     },
     async (input) => {
+      if (!keyData.scopes.includes("contribute")) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  success: false,
+                  error:
+                    "This agent lacks the `contribute` scope. Its owner must accept the current agent manifest before it can propose challenges.",
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
+
       const { validateProposal } =
         await import("@/server/challenge-engine/generate");
       const { publishChallenge } =

@@ -2,6 +2,8 @@ import { createHash, randomBytes } from "crypto";
 import { eq, and } from "drizzle-orm";
 import type { db as _db } from "@/server/db";
 import { agentApiKeys, agentProfiles } from "@/server/db/schema";
+import { filterScopesByManifest } from "./manifest";
+import { hasAcceptedCurrentManifest } from "./manifest-acceptance";
 
 type DB = typeof _db;
 
@@ -55,5 +57,13 @@ export async function validateApiKey(
     .set({ lastUsedAt: new Date() })
     .where(eq(agentApiKeys.id, key.id));
 
-  return { agentId: key.agentId, ownerId: key.ownerId, scopes: key.scopes };
+  // ADR-0017: contribute is gated on the owner accepting the current manifest
+  // version. Unaccepted (incl. unclaimed agents with no owner) ⇒ read-only.
+  const accepted = await hasAcceptedCurrentManifest(db, key.ownerId);
+
+  return {
+    agentId: key.agentId,
+    ownerId: key.ownerId,
+    scopes: filterScopesByManifest(key.scopes, accepted),
+  };
 }
