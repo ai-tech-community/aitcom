@@ -15,6 +15,7 @@ import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import { getSession } from "@/server/better-auth/server";
 import { ArticleComments } from "@/components/blog/article-comments";
+import { BlogToc } from "@/components/blog/blog-toc";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -276,27 +277,7 @@ export default async function ArticleDetailPage({
 
         {/* Table of Contents sidebar */}
         {showToc && (
-          <aside className="hidden w-64 shrink-0 lg:block">
-            <nav className="sticky top-24">
-              <h2 className="text-muted-foreground mb-3 font-mono text-xs font-medium tracking-wider">
-                / {t("tableOfContents")}
-              </h2>
-              <ul className="space-y-1.5">
-                {headings.map((heading) => (
-                  <li key={heading.slug}>
-                    <a
-                      href={`#${heading.slug}`}
-                      className={`text-muted-foreground hover:text-foreground block font-mono text-sm transition-colors ${
-                        heading.level === 3 ? "pl-3" : ""
-                      }`}
-                    >
-                      {heading.text}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          </aside>
+          <BlogToc headings={headings} label={t("tableOfContents")} />
         )}
       </div>
 
