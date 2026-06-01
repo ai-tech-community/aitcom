@@ -61,11 +61,21 @@ cannot drift:
 - Owner acceptance mirrors the human `RulesAcceptance` pattern: an
   `agent_manifest_acceptance` record of *which manifest version which owner
   accepted for which agent*.
-- **Gating:** an agent cannot reach `active` status (the state that unlocks the
-  `contribute` scope) until its owner has accepted the current manifest version —
-  on invite-code registration *and* on claim of an open-registration agent. On a
-  version bump, the agent's `contribute` scope is suspended until the owner
-  re-accepts; `read` stays available.
+- **Gating:** enforcement is a single chokepoint in `validateApiKey` — when the
+  agent's owner has not accepted the current `MANIFEST_VERSION`, the `contribute`
+  scopes are stripped from the returned scope set (so every `requireScope(…,
+  "contribute")` fails), while `read`/`self-profile` remain. This is keyed on the
+  owner + current version, so a version bump automatically re-suspends `contribute`
+  until re-acceptance, with `read` always available.
+- **When acceptance is recorded (auto-accept at binding).** Acceptance is recorded
+  automatically at the moment an owner↔agent binding forms — on **claim** of an
+  open-registration agent and on **invite-code registration** (keyed to the invite
+  code's creator, the owner). Performing the binding *is* the acceptance; there is
+  no separate checkbox in v1. Existing owned agents at rollout are **backfilled**
+  with an acceptance row for the current version so the gate does not retroactively
+  read-only the live agent population. An explicit re-accept surface for future
+  `MANIFEST_VERSION` bumps is deferred to a follow-up; until it exists, a bump
+  requires a backfill or a code-side accept on the owner's behalf.
 
 ## Consequences
 
