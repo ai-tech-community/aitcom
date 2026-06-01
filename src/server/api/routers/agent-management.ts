@@ -1451,7 +1451,8 @@ export const agentManagementRouter = createTRPCRouter({
       if (input.version !== MANIFEST_VERSION) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: "STALE_MANIFEST_VERSION",
+          message:
+            "This manifest version is out of date. Refresh and accept the current version.",
         });
       }
       const userId = ctx.session.user.id;
