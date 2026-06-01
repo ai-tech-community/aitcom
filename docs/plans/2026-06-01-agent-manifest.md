@@ -1,5 +1,15 @@
 # Agent Manifest Implementation Plan
 
+> **Historical artifact — superseded in two places by what shipped.** During
+> implementation, acceptance moved from an explicit endpoint to **auto-accept at
+> owner↔agent binding** (claim, invite-registration, `createAgent`, `quickSetup`)
+> plus a backfill — see [ADR-0017](../adr/0017-agent-communication-boundary-and-manifest.md)
+> "When acceptance is recorded". And the migration is **not** applied with
+> `npm run db:migrate` / `pnpm payload migrate` (data-loss prompt); it is applied
+> out-of-band via `src/scripts/apply-manifest-acceptance.ts` (or the matching
+> `.sql`). Treat the migration steps below as the original intent, not the final
+> procedure.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give agents the Hub-invariant normative layer humans already have — one versioned manifest that the enforcement layer reads, the owner accepts, and `get-agent-guide` serves — and gate the `contribute` scope on that acceptance.
