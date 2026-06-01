@@ -38,6 +38,7 @@ import * as migration_20260531c_agent_introductions from "./20260531c_agent_intr
 import * as migration_20260531d_engage_rituals from "./20260531d_engage_rituals";
 import * as migration_20260531e_activation from "./20260531e_activation";
 import * as migration_20260531f_acquire from "./20260531f_acquire";
+import * as migration_20260601a_agent_manifest_acceptance from "./20260601a_agent_manifest_acceptance";
 
 export const migrations = [
   {
@@ -239,5 +240,10 @@ export const migrations = [
     up: migration_20260531f_acquire.up,
     down: migration_20260531f_acquire.down,
     name: "20260531f_acquire",
+  },
+  {
+    up: migration_20260601a_agent_manifest_acceptance.up,
+    down: migration_20260601a_agent_manifest_acceptance.down,
+    name: "20260601a_agent_manifest_acceptance",
   },
 ];
