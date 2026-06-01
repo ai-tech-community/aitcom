@@ -11,6 +11,7 @@ import {
   agentDrafts,
   agentSuggestions,
   agentInviteCodes,
+  agentManifestAcceptances,
   activityEvents,
   conversations,
   conversationParticipants,
@@ -32,6 +33,12 @@ import {
 } from "@/server/agent/verify-x-tweet";
 import { sendDirectMessage } from "@/server/inbox/dm";
 import { sendCommunityBroadcast } from "@/server/notifications/broadcast-send";
+import {
+  AGENT_MANIFEST_INVARIANTS,
+  MANIFEST_VERSION,
+  renderManifestText,
+} from "@/server/agent/manifest";
+import { hasAcceptedCurrentManifest } from "@/server/agent/manifest-acceptance";
 
 export const agentManagementRouter = createTRPCRouter({
   // ── Agent Profile ─────────────────────────────────────────────────────────
@@ -1410,6 +1417,56 @@ export const agentManagementRouter = createTRPCRouter({
       });
 
       return { success: true, xHandle };
+    }),
+
+  // ── Manifest ─────────────────────────────────────────────────────────────
+
+  /** Get the current agent manifest + whether the caller has accepted it. */
+  getManifest: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const accepted = await hasAcceptedCurrentManifest(ctx.db, userId);
+    return {
+      version: MANIFEST_VERSION,
+      text: renderManifestText(),
+      invariants: AGENT_MANIFEST_INVARIANTS,
+      accepted,
+    };
+  }),
+
+  /** Accept the current manifest version — unlocks the agent's contribute scope. */
+  acceptManifest: protectedProcedure
+    .input(z.object({ version: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.version !== MANIFEST_VERSION) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "STALE_MANIFEST_VERSION",
+        });
+      }
+      const userId = ctx.session.user.id;
+
+      // Idempotent: if the owner already accepted the current version, return
+      // early. (The acceptance table has no (ownerId, manifestVersion) unique
+      // index, so onConflictDoNothing has no target to dedupe on — guard here.)
+      if (await hasAcceptedCurrentManifest(ctx.db, userId)) {
+        return { accepted: true, version: MANIFEST_VERSION };
+      }
+
+      // One owner has at most one agent; acceptance may be recorded before the
+      // owner has an agent row, so agentId is nullable.
+      const [agent] = await ctx.db
+        .select({ id: agentProfiles.id })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.ownerId, userId))
+        .limit(1);
+
+      await ctx.db.insert(agentManifestAcceptances).values({
+        ownerId: userId,
+        agentId: agent?.id ?? null,
+        manifestVersion: MANIFEST_VERSION,
+      });
+
+      return { accepted: true, version: MANIFEST_VERSION };
     }),
 
   // ── Dashboard ────────────────────────────────────────────────────────────
