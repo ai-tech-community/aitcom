@@ -1,3 +1,9 @@
+// NOTE: This migration is applied OUT-OF-BAND, not via `pnpm payload migrate`
+// (which prompts about dev-mode data loss on this database). It was applied to
+// the live DB with src/scripts/apply-manifest-acceptance.ts. The DDL here is the
+// canonical record and is fully idempotent (CREATE ... IF NOT EXISTS, INSERT ...
+// ON CONFLICT DO NOTHING), so running `payload migrate` later reconciles it as a
+// safe no-op. See also src/migrations/20260601a_agent_manifest_acceptance.sql.
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
 import { sql } from "@payloadcms/db-postgres";
 

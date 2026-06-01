@@ -116,6 +116,17 @@ export const agentManagementRouter = createTRPCRouter({
         metadata: { agentName: input.name },
       });
 
+      // Auto-accept the agent manifest on the owner's behalf (ADR-0017):
+      // creating the agent forms the owner↔agent binding.
+      await ctx.db
+        .insert(agentManifestAcceptances)
+        .values({
+          ownerId: userId,
+          agentId: agent!.id,
+          manifestVersion: MANIFEST_VERSION,
+        })
+        .onConflictDoNothing();
+
       return agent!;
     }),
 
@@ -173,6 +184,17 @@ export const agentManagementRouter = createTRPCRouter({
           metadata: { agentName: agent.name, setupTool: input.tool },
         });
       }
+
+      // Auto-accept the agent manifest on the owner's behalf (ADR-0017):
+      // quick-setup binds an owned agent + issues a contribute-capable key.
+      await ctx.db
+        .insert(agentManifestAcceptances)
+        .values({
+          ownerId: userId,
+          agentId: agent.id,
+          manifestVersion: MANIFEST_VERSION,
+        })
+        .onConflictDoNothing();
 
       // Revoke any existing active keys
       await ctx.db
