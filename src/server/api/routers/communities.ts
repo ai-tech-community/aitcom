@@ -450,7 +450,10 @@ export const communitiesRouter = createTRPCRouter({
           throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite" });
         }
         if (invite.expiresAt && invite.expiresAt < new Date()) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Invite has expired" });
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invite has expired",
+          });
         }
         if (!canRedeemInvite(invite.targetEmail, userEmail)) {
           throw new TRPCError({
@@ -483,7 +486,10 @@ export const communitiesRouter = createTRPCRouter({
           ROLE_HIERARCHY[grantedRole] <=
             ROLE_HIERARCHY[existing.role as CommunityRole]
         ) {
-          return { communitySlug: invite.community.slug, status: "active" as const };
+          return {
+            communitySlug: invite.community.slug,
+            status: "active" as const,
+          };
         }
 
         // Atomic max-uses guard (prevents race condition).
@@ -546,7 +552,10 @@ export const communitiesRouter = createTRPCRouter({
           metadata: { via: "invite", role: grantedRole },
         });
 
-        return { communitySlug: invite.community.slug, status: "active" as const };
+        return {
+          communitySlug: invite.community.slug,
+          status: "active" as const,
+        };
       }
 
       // --- 2. Slug path: a standing link that respects join policy ---
@@ -1262,7 +1271,8 @@ export const communitiesRouter = createTRPCRouter({
       if (!targetUser) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "No AIT account with that email. Send them an invite link instead.",
+          message:
+            "No AIT account with that email. Send them an invite link instead.",
         });
       }
 

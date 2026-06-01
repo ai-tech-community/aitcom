@@ -39,7 +39,9 @@ describe("canRedeemInvite", () => {
     expect(canRedeemInvite(null, "anyone@example.com")).toBe(true);
   });
   it("matches the bound email case- and whitespace-insensitively", () => {
-    expect(canRedeemInvite("Person@Example.com", " person@example.com ")).toBe(true);
+    expect(canRedeemInvite("Person@Example.com", " person@example.com ")).toBe(
+      true,
+    );
   });
   it("rejects a mismatched email", () => {
     expect(canRedeemInvite("a@example.com", "b@example.com")).toBe(false);

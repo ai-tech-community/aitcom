@@ -176,7 +176,11 @@ export function MembersSettings({
               size="sm"
               disabled={!emailValid || addMemberMutation.isPending}
               onClick={() =>
-                addMemberMutation.mutate({ slug, email: addEmail, role: addRole })
+                addMemberMutation.mutate({
+                  slug,
+                  email: addEmail,
+                  role: addRole,
+                })
               }
             >
               {t("addButton")}
@@ -186,7 +190,11 @@ export function MembersSettings({
               variant="outline"
               disabled={!emailValid || roleInviteMutation.isPending}
               onClick={() =>
-                roleInviteMutation.mutate({ slug, email: addEmail, role: addRole })
+                roleInviteMutation.mutate({
+                  slug,
+                  email: addEmail,
+                  role: addRole,
+                })
               }
             >
               {t("generateLink")}
