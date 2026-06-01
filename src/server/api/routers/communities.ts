@@ -18,8 +18,14 @@ import {
 import { generateSlug } from "@/server/communities/slug-utils";
 import {
   canManageRole,
+  ROLE_HIERARCHY,
   type CommunityRole,
 } from "@/server/communities/role-utils";
+import {
+  slugJoinStatus,
+  roleFromInvite,
+  canRedeemInvite,
+} from "@/server/communities/invite-policy";
 import { logActivity } from "@/server/agent/activity";
 import { loadPublicLiveness } from "@/server/communities/discovery-queries";
 
@@ -426,102 +432,194 @@ export const communitiesRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  /** Accept an invite by code */
-  acceptInvite: protectedProcedure
-    .input(z.object({ code: z.string() }))
+  /** Resolve an invite token: a code (grant) first, else a community slug. */
+  redeemInvite: protectedProcedure
+    .input(z.object({ token: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const userEmail = ctx.session.user.email ?? null;
+
+      // --- 1. Code path: an opaque grant that bypasses join policy ---
       const invite = await ctx.db.query.communityInvites.findFirst({
-        where: eq(communityInvites.code, input.code),
+        where: eq(communityInvites.code, input.token),
         with: { community: true },
       });
 
-      if (!invite || invite.community.deletedAt) {
+      if (invite) {
+        if (invite.community.deletedAt) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite" });
+        }
+        if (invite.expiresAt && invite.expiresAt < new Date()) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invite has expired",
+          });
+        }
+        if (!canRedeemInvite(invite.targetEmail, userEmail)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "This invite is reserved for a different email address",
+          });
+        }
+
+        const grantedRole = roleFromInvite(invite.role);
+
+        // Check existing membership BEFORE burning a use (banned/already-active
+        // redeemers must not consume one of a finite invite's uses).
+        const existing = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, invite.communityId),
+            eq(communityMemberships.userId, userId),
+          ),
+        });
+
+        if (existing?.status === "banned") {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are banned from this community",
+          });
+        }
+        // Already active: only act if this invite grants a HIGHER rank (a
+        // role-bearing promotion link). Otherwise nothing to do — don't burn a use.
+        if (
+          existing?.status === "active" &&
+          ROLE_HIERARCHY[grantedRole] <=
+            ROLE_HIERARCHY[existing.role as CommunityRole]
+        ) {
+          return {
+            communitySlug: invite.community.slug,
+            status: "active" as const,
+          };
+        }
+
+        // Atomic max-uses guard (prevents race condition).
+        if (invite.maxUses !== null) {
+          const [updated] = await ctx.db
+            .update(communityInvites)
+            .set({ useCount: sql`${communityInvites.useCount} + 1` })
+            .where(
+              and(
+                eq(communityInvites.id, invite.id),
+                sql`${communityInvites.useCount} < ${invite.maxUses}`,
+              ),
+            )
+            .returning();
+          if (!updated) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Invite has reached max uses",
+            });
+          }
+        } else {
+          await ctx.db
+            .update(communityInvites)
+            .set({ useCount: sql`${communityInvites.useCount} + 1` })
+            .where(eq(communityInvites.id, invite.id));
+        }
+        if (existing) {
+          // Upgrade-only: never lower the rank of a member who already outranks
+          // the invite's granted role.
+          const existingRole = existing.role as CommunityRole;
+          const nextRole =
+            ROLE_HIERARCHY[grantedRole] > ROLE_HIERARCHY[existingRole]
+              ? grantedRole
+              : existingRole;
+          await ctx.db
+            .update(communityMemberships)
+            .set({
+              status: "active",
+              role: nextRole,
+              invitedBy: existing.invitedBy ?? invite.createdBy,
+            })
+            .where(eq(communityMemberships.id, existing.id));
+        } else {
+          await ctx.db.insert(communityMemberships).values({
+            communityId: invite.communityId,
+            userId,
+            role: grantedRole,
+            status: "active",
+            invitedBy: invite.createdBy,
+          });
+        }
+
+        await logActivity(ctx.db, {
+          actorId: userId,
+          actorType: "member",
+          action: "community.joined",
+          targetType: "community",
+          targetId: invite.communityId,
+          communityId: invite.communityId,
+          metadata: { via: "invite", role: grantedRole },
+        });
+
+        return {
+          communitySlug: invite.community.slug,
+          status: "active" as const,
+        };
+      }
+
+      // --- 2. Slug path: a standing link that respects join policy ---
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.token),
+          isNull(communities.deletedAt),
+        ),
+      });
+      if (!community) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite" });
       }
 
-      if (invite.expiresAt && invite.expiresAt < new Date()) {
+      const join = slugJoinStatus(community.joinPolicy);
+      if (!join.ok) {
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Invite has expired",
+          code: "FORBIDDEN",
+          message: "This community is invite-only — you need an invite link",
         });
       }
 
-      // Atomic: increment useCount only if under maxUses (prevents race condition)
-      if (invite.maxUses !== null) {
-        const [updated] = await ctx.db
-          .update(communityInvites)
-          .set({ useCount: sql`${communityInvites.useCount} + 1` })
-          .where(
-            and(
-              eq(communityInvites.id, invite.id),
-              sql`${communityInvites.useCount} < ${invite.maxUses}`,
-            ),
-          )
-          .returning();
-
-        if (!updated) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Invite has reached max uses",
-          });
-        }
-      } else {
-        // No max — just increment
-        await ctx.db
-          .update(communityInvites)
-          .set({ useCount: sql`${communityInvites.useCount} + 1` })
-          .where(eq(communityInvites.id, invite.id));
-      }
-
-      // Check existing membership
       const existing = await ctx.db.query.communityMemberships.findFirst({
         where: and(
-          eq(communityMemberships.communityId, invite.communityId),
-          eq(communityMemberships.userId, ctx.session.user.id),
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
         ),
       });
-
       if (existing?.status === "banned") {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: "You are banned from this community",
         });
       }
-
       if (existing?.status === "active") {
-        return { success: true, communitySlug: invite.community.slug };
+        return { communitySlug: community.slug, status: "active" as const };
       }
-
       if (existing) {
-        // Update pending/invited to active
         await ctx.db
           .update(communityMemberships)
-          .set({
-            status: "active",
-            invitedBy: existing.invitedBy ?? invite.createdBy,
-          })
+          .set({ status: join.status })
           .where(eq(communityMemberships.id, existing.id));
       } else {
         await ctx.db.insert(communityMemberships).values({
-          communityId: invite.communityId,
-          userId: ctx.session.user.id,
+          communityId: community.id,
+          userId,
           role: "member",
-          status: "active",
-          invitedBy: invite.createdBy,
+          status: join.status,
         });
       }
 
       await logActivity(ctx.db, {
-        actorId: ctx.session.user.id,
+        actorId: userId,
         actorType: "member",
-        action: "community.joined",
+        action:
+          join.status === "active"
+            ? "community.joined"
+            : "community.join_requested",
         targetType: "community",
-        targetId: invite.communityId,
-        communityId: invite.communityId,
-        metadata: { via: "invite" },
+        targetId: community.id,
+        communityId: community.id,
+        metadata: { via: "slug_link" },
       });
 
-      return { success: true, communitySlug: invite.community.slug };
+      return { communitySlug: community.slug, status: join.status };
     }),
 
   /** Leave a community */
@@ -1150,5 +1248,115 @@ export const communitiesRouter = createTRPCRouter({
       }
 
       return { success: true };
+    }),
+
+  /** Add an existing AIT account to the community with a chosen role */
+  addMemberByEmail: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        email: z.string().email(),
+        role: z.enum(["admin", "moderator", "member"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole || !canManageRole(ctx.communityRole, input.role)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const email = input.email.trim().toLowerCase();
+      const targetUser = await ctx.db.query.user.findFirst({
+        where: sql`lower(${user.email}) = ${email}`,
+      });
+      if (!targetUser) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message:
+            "No AIT account with that email. Send them an invite link instead.",
+        });
+      }
+
+      const existing = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, ctx.community.id),
+          eq(communityMemberships.userId, targetUser.id),
+        ),
+      });
+      if (existing?.status === "active") {
+        throw new TRPCError({ code: "CONFLICT", message: "Already a member" });
+      }
+      if (existing?.status === "banned") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User is banned" });
+      }
+
+      if (existing) {
+        await ctx.db
+          .update(communityMemberships)
+          .set({
+            status: "active",
+            role: input.role,
+            invitedBy: ctx.session.user.id,
+          })
+          .where(eq(communityMemberships.id, existing.id));
+      } else {
+        await ctx.db.insert(communityMemberships).values({
+          communityId: ctx.community.id,
+          userId: targetUser.id,
+          role: input.role,
+          status: "active",
+          invitedBy: ctx.session.user.id,
+        });
+      }
+
+      await logActivity(ctx.db, {
+        actorId: targetUser.id,
+        actorType: "member",
+        action: "community.joined",
+        targetType: "community",
+        targetId: ctx.community.id,
+        communityId: ctx.community.id,
+        metadata: { via: "admin_add", role: input.role },
+      });
+
+      return { success: true };
+    }),
+
+  /** Generate an email-bound, single-use link that grants a role */
+  createRoleInvite: communityProcedure
+    .input(
+      z.object({
+        slug: z.string(),
+        email: z.string().email(),
+        role: z.enum(["admin", "moderator", "member"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.communityRole || !canManageRole(ctx.communityRole, input.role)) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const code = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+      const [invite] = await ctx.db
+        .insert(communityInvites)
+        .values({
+          communityId: ctx.community.id,
+          code,
+          createdBy: ctx.session.user.id,
+          role: input.role,
+          targetEmail: input.email.trim().toLowerCase(),
+          maxUses: 1,
+        })
+        .returning();
+
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "community.invite_created",
+        targetType: "community",
+        targetId: ctx.community.id,
+        metadata: { role: input.role, bound: true },
+      });
+
+      return invite!;
     }),
 });

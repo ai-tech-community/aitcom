@@ -2532,6 +2532,8 @@ export const communityInvites = appSchema.table(
     maxUses: d.integer(),
     useCount: d.integer().notNull().default(0),
     expiresAt: d.timestamp({ withTimezone: true }),
+    role: d.varchar({ length: 32 }),
+    targetEmail: d.varchar({ length: 255 }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

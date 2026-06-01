@@ -1343,7 +1343,14 @@
         "rejected": "Request rejected",
         "unbanned": "Member unbanned",
         "noPending": "No pending requests",
-        "noBanned": "No banned members"
+        "noBanned": "No banned members",
+        "addMemberTitle": "Add a member",
+        "emailPlaceholder": "member@example.com",
+        "addButton": "Add",
+        "generateLink": "Generate invite link",
+        "memberAdded": "Member added",
+        "linkCopied": "Link copied",
+        "copyLink": "Copy"
       },
       "invites": {
         "title": "Invite Links",
@@ -1364,7 +1371,9 @@
         "noInvites": "No invite links yet",
         "uses": "{used} / {max}",
         "expired": "Expired",
-        "copyLink": "Copy link"
+        "copyLink": "Copy link",
+        "generalLink": "General join link",
+        "generalLinkDescription": "Anyone with this link can join. Approval-required communities still review each request."
       },
       "rules": {
         "title": "Community Rules",
@@ -1423,6 +1432,11 @@
           "never": "never"
         }
       }
+    },
+    "invite": {
+      "pendingTitle": "Request submitted",
+      "pendingBody": "Your request to join is pending approval. You'll get access once an admin approves it.",
+      "browse": "Browse communities"
     },
     "feed": {
       "title": "Feed",

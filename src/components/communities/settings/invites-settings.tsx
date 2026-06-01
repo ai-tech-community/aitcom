@@ -18,6 +18,7 @@ import { toast } from "sonner";
 
 interface InvitesSettingsProps {
   slug: string;
+  joinPolicy: "open" | "invite_only" | "approval_required";
 }
 
 const EXPIRY_OPTIONS = [
@@ -27,8 +28,9 @@ const EXPIRY_OPTIONS = [
   { value: "30days", days: 30 },
 ] as const;
 
-export function InvitesSettings({ slug }: InvitesSettingsProps) {
+export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
   const t = useTranslations("communities.settings.invites");
+  const tRoles = useTranslations("communities.roles");
   const utils = api.useUtils();
 
   const [showForm, setShowForm] = useState(false);
@@ -92,6 +94,35 @@ export function InvitesSettings({ slug }: InvitesSettingsProps) {
           </Button>
         )}
       </div>
+
+      {joinPolicy !== "invite_only" && (
+        <div className="space-y-2 rounded-lg border p-4">
+          <Label>{t("generalLink")}</Label>
+          <p className="text-muted-foreground text-xs">
+            {t("generalLinkDescription")}
+          </p>
+          <div className="flex items-center gap-2">
+            <Input
+              readOnly
+              value={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${slug}`}
+              className="flex-1 text-sm"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                void navigator.clipboard.writeText(
+                  `${window.location.origin}/invite/${slug}`,
+                );
+                toast.success(t("linkCopied"));
+              }}
+            >
+              <Copy className="mr-1.5 size-3.5" />
+              {t("copyLink")}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Last created link */}
       {lastCreatedCode && (
@@ -188,6 +219,16 @@ export function InvitesSettings({ slug }: InvitesSettingsProps) {
                     {expired && (
                       <span className="text-destructive text-xs font-medium">
                         {t("expired")}
+                      </span>
+                    )}
+                    {invite.role && (
+                      <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
+                        {tRoles(invite.role)}
+                      </span>
+                    )}
+                    {invite.targetEmail && (
+                      <span className="text-muted-foreground text-xs">
+                        → {invite.targetEmail}
                       </span>
                     )}
                   </div>

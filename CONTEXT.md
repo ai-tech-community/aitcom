@@ -8,11 +8,35 @@ belong in code or ADRs, not here.
 ### Hub
 
 The AIT-wide level: the whole platform. Modelled as the **root community**
-(the `community` row with slug `ait`), into which every user is enrolled as a
-member. Hub-wide content is the form of a [[shared-surface]] where
+(the `community` row with slug `ait`), into which **every user is enrolled on
+signup** — the enrolment is the membership row that makes someone a member of
+the platform at all. Hub-wide content is the form of a [[shared-surface]] where
 `communityId` is null. "AI Tech Community" the product _is_ the Hub; the name
 may be reconsidered later. Default to **Hub** when you mean the platform-wide
 level, never the bare word "community".
+
+The root `ait` row is an **anchor, not a tenant**: it exists so the platform
+can address, digest, and rate-limit a member ([[notification-ceiling]],
+[[hub-digest]]), but it is **exempt from the [[community-admin]] growth
+machinery** — it has no community organizer, it is **not directory-listed and
+not a [[community-discovery]] candidate** (you cannot "join" the platform you
+are already in), and the [[activation-funnel]], [[at-risk-member]],
+[[un-activated-newcomer]], [[greeter]], and [[ritual]] loops all **skip the
+root** and operate only on tenant [[Community]]s. This is
+[[adr-0013-hub-invariant-vs-community-policy]] applied to the root row itself.
+See [[adr-0019-hub-root-is-an-anchor-not-a-tenant]].
+
+### Hub-only member
+
+A member whose **only** [[Community]] membership is the root [[Hub]] `ait` row
+— enrolled in the platform but in **no tenant [[Community]]**. The successor to
+the ill-defined "member in no community": under universal Hub enrolment that
+zero-membership state no longer exists, so this is the precise population the
+acquisition/encouragement features target. A Hub-only member has full access to
+Hub-wide [[shared-surface]]s (read and write the blog, browse events, post in
+the Hub-wide forum) but receives none of a tenant community's belonging,
+rituals, or local digest. The goal for this member is **first-tenant-join**:
+move them from Hub-only to a member of at least one tenant Community.
 
 ### Community
 
@@ -235,7 +259,36 @@ idempotently by a daily cron, since activation is a *derived* state, not a store
 transition. The referral leaderboard is a **view** over the credit ledger, never
 a second reputation currency. See
 [[adr-0018-referral-attribution-honours-global-xp]] and
-[[adr-0012-reputation-stays-hub-global]].
+[[adr-0012-reputation-stays-hub-global]]. A referral link is the **invite code**
+form of a [[community-invite]].
+
+### Community invite
+
+What lets someone join a [[Community]] through the shared `/invite/<token>`
+entry point. Two forms with deliberately different powers:
+
+- **Invite code** — an opaque `community_invite` token. It is a *grant*: it
+  bypasses the community's join policy, so it is the **only** form that works for
+  an `invite_only` community (the code *is* the entry secret). May carry a
+  `maxUses`/expiry, records `invited_by` for [[referral-credit]], and may confer
+  a role above `member` (see [[role-bearing-invite]]).
+- **Slug join link** — `/invite/<community-slug>`. A human-readable *standing*
+  link that resolves the community by its public slug and joins **per the join
+  policy** (`open` → active, `approval_required` → pending). Always grants plain
+  `member`, carries **no** referral attribution, and is **refused for
+  `invite_only`** communities because a public slug is not a secret. The friendly
+  share link, not a grant.
+
+### Role-bearing invite
+
+An **invite code** ([[community-invite]]) that grants a role above `member` and
+is **bound to a single target email** — only a signed-in user whose email matches
+may redeem it, and only once. The email binding is what makes granting elevated
+roles by link safe: a forwarded link cannot escalate a stranger. Created only
+within the creator's authority (`canManageRole` in `role-utils.ts`) — an admin
+cannot mint a link granting `admin` or `owner`. Distinct from the direct
+**add-by-email** path, which grants a role to an existing AIT account
+immediately, with no link.
 
 ### Introduction suggestion
 

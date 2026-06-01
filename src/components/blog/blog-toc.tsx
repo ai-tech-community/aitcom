@@ -16,9 +16,7 @@ export function BlogToc({
   headings: Heading[];
   label: string;
 }) {
-  const [activeSlug, setActiveSlug] = useState<string>(
-    headings[0]?.slug ?? "",
-  );
+  const [activeSlug, setActiveSlug] = useState<string>(headings[0]?.slug ?? "");
 
   useEffect(() => {
     const elements = headings
