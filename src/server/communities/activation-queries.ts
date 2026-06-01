@@ -11,6 +11,7 @@ import {
 import {
   RESPONSE_ACTIONS,
   RESPONDABLE_ACTIONS,
+  DEFAULT_ACTIVATION_CONFIG,
 } from "@/server/communities/activation";
 import { windowStart } from "@/server/communities/insights";
 import type { db as _db } from "@/server/db";
@@ -24,7 +25,7 @@ export const GREETER_GRACE_HOURS = 48;
 const RESPONSE_LIST: string[] = [...RESPONSE_ACTIONS];
 const RESPONDABLE_LIST: string[] = [...RESPONDABLE_ACTIONS];
 
-export const DEFAULT_WINDOW_DAYS = 7;
+export const DEFAULT_WINDOW_DAYS = DEFAULT_ACTIVATION_CONFIG.windowDays;
 
 export type AwaitingResponseItem = {
   userId: string;

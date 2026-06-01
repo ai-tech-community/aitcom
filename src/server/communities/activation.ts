@@ -25,6 +25,13 @@ export type ActivationConfig = {
   windowDays: number;
 };
 
+/** Canonical default activation config — single source of truth. */
+export const DEFAULT_ACTIVATION_CONFIG: ActivationConfig = {
+  requireResponse: true,
+  requireProfileComplete: false,
+  windowDays: 7,
+};
+
 function addDays(d: Date, days: number): Date {
   return new Date(d.getTime() + days * 24 * 60 * 60 * 1000);
 }

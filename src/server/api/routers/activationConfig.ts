@@ -4,12 +4,7 @@ import { eq } from "drizzle-orm";
 
 import { createTRPCRouter, communityProcedure } from "@/server/api/trpc";
 import { communityActivationConfig } from "@/server/db/schema";
-
-const DEFAULTS = {
-  requireResponse: true,
-  requireProfileComplete: false,
-  windowDays: 7,
-};
+import { DEFAULT_ACTIVATION_CONFIG } from "@/server/communities/activation";
 
 function requireConfigAdmin(role: string | null) {
   if (role !== "owner" && role !== "admin") {
@@ -33,7 +28,7 @@ export const activationConfigRouter = createTRPCRouter({
             requireProfileComplete: row.requireProfileComplete,
             windowDays: row.windowDays,
           }
-        : DEFAULTS;
+        : DEFAULT_ACTIVATION_CONFIG;
     }),
 
   set: communityProcedure
