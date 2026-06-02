@@ -66,7 +66,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className={`${geist.variable} ${geistMono.variable}`}>
       <body
-        className="bg-background text-foreground antialiased flex min-h-screen flex-col"
+        className="bg-background text-foreground flex min-h-screen flex-col antialiased"
         suppressHydrationWarning
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
