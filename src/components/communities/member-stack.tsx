@@ -8,6 +8,12 @@ import {
   AvatarGroupCount,
 } from "@/components/ui/avatar";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import {
   shouldRenderStack,
   presentStack,
   type StackFace,
@@ -33,25 +39,39 @@ export function MemberStackView({ faces, total, className }: MemberStackViewProp
   const { shownFaces, overflow } = presentStack(faces, total);
 
   return (
-    <AvatarGroup
-      className={className}
-      aria-label={`${total} members`}
-      data-slot="member-stack"
-    >
-      {shownFaces.map((face) => (
-        <Avatar key={face.userId} size="sm">
-          {face.image ? (
-            <AvatarImage src={face.image} alt={face.displayName ?? ""} />
-          ) : null}
-          <AvatarFallback className="text-[10px]">
-            {initial(face.displayName)}
-          </AvatarFallback>
-        </Avatar>
-      ))}
-      {overflow > 0 ? (
-        <AvatarGroupCount className="text-[10px]">+{overflow}</AvatarGroupCount>
-      ) : null}
-    </AvatarGroup>
+    <TooltipProvider delayDuration={150}>
+      <AvatarGroup
+        className={className}
+        aria-label={`${total} members`}
+        data-slot="member-stack"
+      >
+        {shownFaces.map((face) => (
+          <Tooltip key={face.userId}>
+            <TooltipTrigger asChild>
+              <Avatar size="sm" className="cursor-default">
+                {face.image ? (
+                  <AvatarImage src={face.image} alt={face.displayName ?? ""} />
+                ) : null}
+                <AvatarFallback className="text-[10px]">
+                  {initial(face.displayName)}
+                </AvatarFallback>
+              </Avatar>
+            </TooltipTrigger>
+            <TooltipContent>{face.displayName ?? "Member"}</TooltipContent>
+          </Tooltip>
+        ))}
+        {overflow > 0 ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <AvatarGroupCount className="cursor-default text-[10px]">
+                +{overflow}
+              </AvatarGroupCount>
+            </TooltipTrigger>
+            <TooltipContent>{overflow} more</TooltipContent>
+          </Tooltip>
+        ) : null}
+      </AvatarGroup>
+    </TooltipProvider>
   );
 }
 
