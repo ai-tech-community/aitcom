@@ -12,6 +12,7 @@ import {
   overflowCount,
   type StackFace,
 } from "@/server/communities/member-stack";
+import { api } from "@/trpc/react";
 
 function initial(displayName: string | null): string {
   return (displayName ?? "?").trim()[0]?.toUpperCase() ?? "?";
@@ -51,5 +52,20 @@ export function MemberStackView({ faces, total, className }: MemberStackViewProp
         <AvatarGroupCount className="text-[10px]">+{overflow}</AvatarGroupCount>
       ) : null}
     </AvatarGroup>
+  );
+}
+
+export interface MemberStackProps {
+  slug: string;
+  className?: string;
+}
+
+/** Self-fetching member stack for the community header. Renders nothing while
+ *  loading or when policy/access hides it. */
+export function MemberStack({ slug, className }: MemberStackProps) {
+  const { data } = api.communities.getMemberStack.useQuery({ slug });
+  if (!data) return null;
+  return (
+    <MemberStackView faces={data.faces} total={data.total} className={className} />
   );
 }

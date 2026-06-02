@@ -1,5 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+
+// MemberStack (the connected sibling in this module) pulls in @/trpc/react,
+// whose AppRouter graph would load the server-only db client under jsdom. The
+// MemberStackView tests below never touch tRPC, so stub the client to keep the
+// import graph off the server (repo convention — see agent-suggestions.test.tsx).
+vi.mock("@/trpc/react", () => ({
+  api: {
+    communities: {
+      getMemberStack: { useQuery: vi.fn(() => ({ data: undefined })) },
+    },
+  },
+}));
+
 import { MemberStackView } from "./member-stack";
 
 const faces = [
