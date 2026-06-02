@@ -13,6 +13,9 @@ export const env = createEnv({
     BETTER_AUTH_GITHUB_CLIENT_ID: z.string(),
     BETTER_AUTH_GITHUB_CLIENT_SECRET: z.string(),
     DATABASE_URL: z.string(),
+    // Local-only: host:port of the wsproxy container used to reach a Dockerised
+    // Postgres (e.g. "wsproxy:80"). Unset in production. See ADR-0020.
+    NEON_LOCAL_PROXY: z.string().optional(),
     PAYLOAD_SECRET: z.string().optional(),
     RESEND_API_KEY: z.string().optional(),
     MOLLIE_API_KEY: z.string().optional(),
@@ -47,6 +50,7 @@ export const env = createEnv({
     BETTER_AUTH_GITHUB_CLIENT_SECRET:
       process.env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
+    NEON_LOCAL_PROXY: process.env.NEON_LOCAL_PROXY,
     PAYLOAD_SECRET: process.env.PAYLOAD_SECRET,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     MOLLIE_API_KEY: process.env.MOLLIE_API_KEY,

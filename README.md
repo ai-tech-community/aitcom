@@ -42,13 +42,102 @@ When engineers and AI agents collaborate, they unlock capabilities neither has a
 
 ## Getting Started
 
-### Prerequisites
+The fastest path to a complete local environment — app, database, and seed
+data — is Docker. Prefer the manual setup if you'd rather run Node on your host
+or point at a cloud database.
+
+### Option A — Docker (recommended)
+
+**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+(or Docker Engine + Compose v2). Nothing else — Node, pnpm, and Postgres all run
+in containers.
+
+```bash
+git clone https://github.com/ai-tech-community/aitcom.git
+cd aitcom
+docker compose up
+```
+
+This builds the app and starts three services — Postgres, a Neon `wsproxy`, and
+the Next.js dev server — then provisions the schema and seeds the database on
+first boot. Once the dev server is up:
+
+- App: [http://localhost:3000](http://localhost:3000)
+- Payload admin: [http://localhost:3000/admin](http://localhost:3000/admin)
+
+Sign in with the seeded development account:
+
+| Email | Password |
+| --- | --- |
+| `dev@aitcommunity.local` | `devpassword123` |
+
+Common commands:
+
+| Command | What it does |
+| --- | --- |
+| `docker compose up` | Build + run everything (seeds on first boot) |
+| `docker compose up -d` | Same, detached |
+| `docker compose down` | Stop containers (keeps the database) |
+| `docker compose down -v` | Stop and **wipe** the database volume |
+| `SEED_ON_START=false docker compose up` | Start without seeding |
+
+Local defaults live in [.env.docker](.env.docker) (safe, non-secret). To enable
+optional services (Resend, S3, real GitHub OAuth), add their keys there.
+
+> **Why the `wsproxy`?** The app connects with Neon's serverless driver. The
+> proxy lets that _same_ driver talk to a local Postgres, so local development
+> matches production exactly. See
+> [ADR-0020](docs/adr/0020-runtime-db-driver-is-neon-serverless.md).
+
+> **⚠️ macOS performance.** Running the **app** in Docker on a Mac is slow — the
+> Next.js dev server compiles across the Docker VM's file-sharing boundary, so
+> first page loads can take minutes. For day-to-day development on macOS, use
+> Option B below (Docker for the database, the app native on your host). The
+> full-stack command above is best for a quick look, CI, or Linux.
+
+### Option B — Docker database + native app (recommended on macOS)
+
+Keep Postgres + the `wsproxy` in Docker (fast, native arm64) but run the Next.js
+app on your host for fast compiles and HMR.
+
+**1. Seed the local database once.** The simplest safe way is to run the full
+stack (Option A) a single time — the container seeds the shared `pgdata` volume
+using `.env.docker`, so it never touches your personal `.env`:
+
+```bash
+docker compose up        # wait for "seeding complete" + "Ready", then Ctrl-C
+```
+
+**2. Point your host at the Dockerised database** via **`.env.local`** — Next.js
+loads it with priority over `.env` (per key) and it's gitignored, so your real
+`.env` and cloud database stay untouched:
+
+```bash
+# .env.local
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/aitcom
+NEON_LOCAL_PROXY=localhost:5433
+```
+
+**3. Run the database tier + the app:**
+
+```bash
+pnpm install
+pnpm dev:db    # start just Postgres + wsproxy (docker compose up -d postgres wsproxy)
+pnpm dev       # native Next.js — uses .env.local → the Dockerised DB
+```
+
+Stop the database tier with `pnpm dev:db:stop`. Re-seed anytime with
+`pnpm db:seed` (it layers `.env.local` over `.env`, so it targets the local DB).
+
+### Option C — Fully manual (local Node + your own Postgres)
+
+#### Prerequisites
 
 - [Node.js](https://nodejs.org/) 20+
 - [pnpm](https://pnpm.io/) 9.12+
 - A PostgreSQL database ([Neon](https://neon.tech/) recommended, or any PostgreSQL instance)
 
-### Installation
+#### Installation
 
 ```bash
 git clone https://github.com/ai-tech-community/aitcom.git
@@ -56,7 +145,7 @@ cd aitcom
 pnpm install
 ```
 
-### Environment Setup
+#### Environment Setup
 
 Copy the example environment file and fill in your values:
 
@@ -87,14 +176,19 @@ Optional services:
 
 See [.env.example](.env.example) for the full list.
 
-### Database Setup
+#### Database Setup
 
 ```bash
-pnpm db:generate   # Generate Drizzle migrations
 pnpm db:push       # Push schema to database
+pnpm db:seed       # (optional) bootstrap a dev user, the root Hub, and demo content
 ```
 
-### Run Development Server
+`pnpm db:seed` creates a verified `dev@aitcommunity.local` / `devpassword123`
+login. To point the Neon serverless driver at a local Postgres instead of Neon's
+cloud, run a `wsproxy` and set `NEON_LOCAL_PROXY` (see
+[.env.example](.env.example)); the Docker stack does this for you.
+
+#### Run Development Server
 
 ```bash
 pnpm dev
@@ -129,6 +223,8 @@ src/
 ├── i18n/                   # Internationalization config
 └── middleware.ts           # Auth and locale middleware
 messages/                   # Translation files (en.json, nl.json)
+docker/                     # Container entrypoint for local development
+docs/adr/                   # Architecture Decision Records
 ```
 
 ## Available Scripts
@@ -147,6 +243,7 @@ messages/                   # Translation files (en.json, nl.json)
 | `pnpm db:generate` | Generate Drizzle migrations |
 | `pnpm db:migrate` | Run database migrations |
 | `pnpm db:push` | Push schema to database |
+| `pnpm db:seed` | Seed a local database (dev user, root Hub, demo content) |
 | `pnpm db:studio` | Open Drizzle Studio |
 
 ## Deployment

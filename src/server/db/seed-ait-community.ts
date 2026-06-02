@@ -7,23 +7,11 @@
  *
  * Requires DATABASE_URL in the environment (e.g. via .env.local).
  */
-import "dotenv/config";
-
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
 import { asc, eq } from "drizzle-orm";
 
+import { db } from "./index";
 import * as schema from "./schema";
 import { communities, communityMemberships } from "./schema";
-
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-  console.error("ERROR: DATABASE_URL environment variable is not set.");
-  process.exit(1);
-}
-
-const conn = neon(DATABASE_URL);
-const db = drizzle(conn, { schema: { ...schema }, casing: "snake_case" });
 
 async function seed() {
   console.log("Checking for existing AIT community...");

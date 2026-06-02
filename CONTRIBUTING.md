@@ -10,16 +10,32 @@ Thanks for your interest in contributing! Whether it's a bug fix, new feature, o
    git clone https://github.com/your-username/aitcom.git
    cd aitcom
    ```
-3. **Install dependencies**:
+
+Then pick one of two setups (full details in the [README](README.md#getting-started)):
+
+### Fastest: Docker
+
+Requires only Docker. Brings up the app, Postgres, and seed data in one command:
+
+```bash
+docker compose up
+```
+
+Sign in with the seeded `dev@aitcommunity.local` / `devpassword123` account.
+
+### Manual
+
+1. **Install dependencies**:
    ```bash
    pnpm install
    ```
-4. **Set up environment**: Copy `.env.example` to `.env` and fill in the required values
-5. **Set up the database**:
+2. **Set up environment**: Copy `.env.example` to `.env` and fill in the required values
+3. **Set up the database**:
    ```bash
    pnpm db:push
+   pnpm db:seed   # optional: dev user, root Hub, demo content
    ```
-6. **Start the dev server**:
+4. **Start the dev server**:
    ```bash
    pnpm dev
    ```

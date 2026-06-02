@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.worktrees
+.claude/worktrees
+coverage
+*.tsbuildinfo
+npm-debug.log*
+.pnpm-debug.log*
+.DS_Store
+
+# Never bake real secrets into the image; .env.docker holds the safe defaults.
+.env
+.env*.local

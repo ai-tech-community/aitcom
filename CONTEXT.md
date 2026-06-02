@@ -49,6 +49,31 @@ Roles within a community: `owner | admin | moderator | member`
 (see `role-utils.ts`). Membership status: `active | pending_approval |
 invited | banned`. Join policy: `open | invite_only | approval_required`.
 
+### Profile visibility
+
+A member's `member_profile.isPublic` flag governs whether their **identity**
+(display name and avatar) may be shown in any **aggregate or directory
+display** — the global `/members` directory *and* per-[[Community]] member
+displays such as the [[member-stack]]. Opting out (`isPublic = false`) hides
+the member's **face**, never their **count**: a private member still
+contributes to a community's member total and to the [[member-stack]] overflow
+(the "+N"), they are simply never one of the shown faces. This is broader than
+the flag's original directory-only reading; the widening was a deliberate
+privacy call (honour the explicit opt-out for faces, keep counts honest). The
+per-Community *member list page* and other surfaces gated by community access
+are a separate concern — `isPublic` is about being shown to people who can
+already reach the surface, not about who can reach it. See
+[[adr-0021-profile-visibility-governs-member-stack-faces]].
+
+### Member stack
+
+A row of overlapping small circular member avatars with a trailing overflow
+count ("+394"), used as social proof for a population — initially a
+[[Community]]'s members on its directory card and header. A shared UI primitive
+(not forked per surface) that may later back event attendees, forum
+participants, etc. Shows only faces permitted by [[profile-visibility]]; the
+count reflects the same active-member total the community already reports.
+
 ### Shared surface
 
 A feature that exists in **both** a Hub-wide form and a per-Community form,

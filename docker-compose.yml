@@ -1,0 +1,68 @@
+# Full local development stack: Postgres + Neon wsproxy + the Next.js app.
+#
+#   docker compose up           # build + run everything, seed on first boot
+#   docker compose up -d         # detached
+#   docker compose down          # stop (keeps data)
+#   docker compose down -v       # stop + wipe the database volume
+#
+# The app talks to Postgres through the official Neon `wsproxy`, so the runtime
+# uses the SAME @neondatabase/serverless driver as production (see ADR-0020).
+# Payload and drizzle-kit connect to Postgres directly on 5432.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: aitcom
+    ports:
+      # Exposed so host tools (drizzle studio, psql) can connect too.
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d aitcom"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Tunnels Postgres-over-WebSocket so the @neondatabase/serverless WebSocket
+  # Pool (which production also uses) works against a plain local Postgres.
+  wsproxy:
+    image: ghcr.io/neondatabase/wsproxy:latest
+    environment:
+      APPEND_PORT: "postgres:5432"
+      ALLOW_ADDR_REGEX: ".*"
+      LOG_TRAFFIC: "true"
+    ports:
+      # Exposed so a host-run `pnpm dev` can use NEON_LOCAL_PROXY=localhost:5433.
+      - "5433:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env.docker
+    environment:
+      # Reach the containers by their compose service names.
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/aitcom
+      NEON_LOCAL_PROXY: wsproxy:80
+    ports:
+      - "3000:3000"
+    volumes:
+      # Bind-mount source for HMR, but keep the image's Linux node_modules/.next.
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+      wsproxy:
+        condition: service_started
+
+volumes:
+  pgdata:

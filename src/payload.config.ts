@@ -138,7 +138,10 @@ export default buildConfig({
   editor: lexicalEditor(),
   db: postgresAdapter({
     pool: { connectionString: payloadDatabaseUrl },
-    push: false,
+    // Production relies on migrations (push off). Local dev has no
+    // base-table migration, so the schema is materialised from this config
+    // via push, gated on PAYLOAD_PUSH (set by the Docker stack). See ADR-0020.
+    push: process.env.PAYLOAD_PUSH === "true",
   }),
   localization: {
     locales: [
