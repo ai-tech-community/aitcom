@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/avatar";
 import {
   shouldRenderStack,
-  overflowCount,
+  presentStack,
   type StackFace,
 } from "@/server/communities/member-stack";
 import { api } from "@/trpc/react";
@@ -30,7 +30,7 @@ export interface MemberStackViewProps {
 export function MemberStackView({ faces, total, className }: MemberStackViewProps) {
   if (!shouldRenderStack(total) || faces.length === 0) return null;
 
-  const overflow = overflowCount(total, faces.length);
+  const { shownFaces, overflow } = presentStack(faces, total);
 
   return (
     <AvatarGroup
@@ -38,7 +38,7 @@ export function MemberStackView({ faces, total, className }: MemberStackViewProp
       aria-label={`${total} members`}
       data-slot="member-stack"
     >
-      {faces.map((face) => (
+      {shownFaces.map((face) => (
         <Avatar key={face.userId} size="sm">
           {face.image ? (
             <AvatarImage src={face.image} alt={face.displayName ?? ""} />

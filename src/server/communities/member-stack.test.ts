@@ -2,11 +2,17 @@ import { describe, it, expect } from "vitest";
 import {
   selectStackFaces,
   shouldRenderStack,
-  overflowCount,
+  presentStack,
   MEMBER_STACK_MAX_FACES,
+  MEMBER_STACK_FACES_WITH_OVERFLOW,
   MEMBER_STACK_MIN_TOTAL,
   type StackCandidate,
+  type StackFace,
 } from "./member-stack";
+
+function face(userId: string): StackFace {
+  return { userId, displayName: userId, image: null };
+}
 
 function candidate(over: Partial<StackCandidate>): StackCandidate {
   return {
@@ -34,6 +40,7 @@ describe("selectStackFaces", () => {
       "admin-early",
       "admin-late",
       "mod",
+      "m",
     ]);
   });
 
@@ -69,11 +76,32 @@ describe("shouldRenderStack", () => {
   });
 });
 
-describe("overflowCount", () => {
-  it("returns total minus shown faces", () => {
-    expect(overflowCount(398, 4)).toBe(394);
+describe("presentStack", () => {
+  it("shows all faces and no overflow at or below the max-faces total", () => {
+    const faces = [face("a"), face("b"), face("c")];
+    const { shownFaces, overflow } = presentStack(faces, 3);
+    expect(shownFaces.map((f) => f.userId)).toEqual(["a", "b", "c"]);
+    expect(overflow).toBe(0);
   });
-  it("never goes negative", () => {
-    expect(overflowCount(3, 4)).toBe(0);
+
+  it("shows up to MEMBER_STACK_MAX_FACES with no overflow at exactly the max", () => {
+    const faces = Array.from({ length: 5 }, (_, i) => face(`u${i}`));
+    const { shownFaces, overflow } = presentStack(faces, MEMBER_STACK_MAX_FACES);
+    expect(shownFaces).toHaveLength(MEMBER_STACK_MAX_FACES);
+    expect(overflow).toBe(0);
+  });
+
+  it("turns the last circle into '+N' once the total exceeds the max", () => {
+    const faces = Array.from({ length: 5 }, (_, i) => face(`u${i}`));
+    const { shownFaces, overflow } = presentStack(faces, 10);
+    expect(shownFaces).toHaveLength(MEMBER_STACK_FACES_WITH_OVERFLOW);
+    expect(overflow).toBe(10 - MEMBER_STACK_FACES_WITH_OVERFLOW); // 6
+  });
+
+  it("counts private members in the overflow (fewer public faces than slots)", () => {
+    // Only 2 public faces, but 10 active members total.
+    const { shownFaces, overflow } = presentStack([face("a"), face("b")], 10);
+    expect(shownFaces.map((f) => f.userId)).toEqual(["a", "b"]);
+    expect(overflow).toBe(8); // 10 total - 2 shown
   });
 });

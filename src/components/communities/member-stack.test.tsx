@@ -22,7 +22,7 @@ const faces = [
 
 describe("MemberStackView", () => {
   it("renders nothing below the threshold total", () => {
-    const { container } = render(<MemberStackView faces={faces} total={3} />);
+    const { container } = render(<MemberStackView faces={faces} total={1} />);
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -31,7 +31,14 @@ describe("MemberStackView", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders an avatar per face and the overflow count", () => {
+  it("renders faces with no overflow bubble at or below the max-faces total", () => {
+    render(<MemberStackView faces={faces} total={2} />);
+    expect(screen.getByText("A")).toBeInTheDocument();
+    expect(screen.getByText("B")).toBeInTheDocument();
+    expect(screen.queryByText(/^\+/)).not.toBeInTheDocument();
+  });
+
+  it("renders the '+N' overflow once the total exceeds the max", () => {
     render(<MemberStackView faces={faces} total={396} />);
     // Initials fallbacks render for image-less faces.
     expect(screen.getByText("A")).toBeInTheDocument();

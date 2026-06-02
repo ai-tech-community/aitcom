@@ -67,12 +67,16 @@ already reach the surface, not about who can reach it. See
 
 ### Member stack
 
-A row of overlapping small circular member avatars with a trailing overflow
-count ("+394"), used as social proof for a population — initially a
-[[Community]]'s members on its directory card and header. A shared UI primitive
-(not forked per surface) that may later back event attendees, forum
-participants, etc. Shows only faces permitted by [[profile-visibility]]; the
-count reflects the same active-member total the community already reports.
+A row of overlapping small circular member avatars used as social proof for a
+population — initially a [[Community]]'s members on its directory card and
+header. A shared UI primitive (not forked per surface) that may later back
+event attendees, forum participants, etc. Shows only faces permitted by
+[[profile-visibility]]. The stack itself carries the count — there is no
+separate "N members" number beside it on the card: up to five plain avatars,
+and **only once a community exceeds five members** does the final circle become
+a "+N" overflow ("+394"), where N is the active total beyond the shown faces
+(private members included — counted, never shown). Suppressed entirely below a
+small floor (a single lone avatar is not a stack).
 
 ### Shared surface
 

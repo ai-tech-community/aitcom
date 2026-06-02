@@ -69,10 +69,7 @@ export function CommunityCard({
           </p>
         )}
 
-        <div className="mt-1 flex items-center gap-2">
-          <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
-            {memberCount} {t("profile.members").toLowerCase()}
-          </span>
+        <div className="mt-1">
           <MemberStackView faces={faces} total={memberCount} />
         </div>
       </div>
