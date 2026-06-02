@@ -5,6 +5,19 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api } from "@/trpc/react";
 import { Spinner } from "@/components/ui/spinner";
+import { Link } from "@/i18n/navigation";
+
+type NotificationMetadata = {
+  reviewPath?: unknown;
+};
+
+function reviewPathFromMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object") return null;
+  const reviewPath = (metadata as NotificationMetadata).reviewPath;
+  return typeof reviewPath === "string" && reviewPath.startsWith("/")
+    ? reviewPath
+    : null;
+}
 
 export function NotificationsPageContent() {
   const utils = api.useUtils();
@@ -108,66 +121,79 @@ export function NotificationsPageContent() {
             No notifications
           </p>
         )}
-        {allItems.map((n) => (
-          <div
-            key={n.id}
-            className={`group border-border flex items-start gap-3 rounded-lg border p-4 ${!n.readAt ? "bg-muted/30" : "bg-background"}`}
-          >
-            {/* Unread dot */}
-            <div className="mt-1.5 h-2 w-2 shrink-0">
-              {!n.readAt && (
-                <span className="bg-primary block h-2 w-2 rounded-full" />
-              )}
-            </div>
+        {allItems.map((n) => {
+          const reviewPath = reviewPathFromMetadata(n.metadata);
 
-            {/* Full content — no truncation */}
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-sm font-medium">{n.title}</p>
-              <div className="text-muted-foreground [&_strong]:text-foreground [&_a]:text-primary space-y-1 text-sm [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:leading-relaxed [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-4">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {n.content}
-                </ReactMarkdown>
+          return (
+            <div
+              key={n.id}
+              className={`group border-border flex items-start gap-3 rounded-lg border p-4 ${!n.readAt ? "bg-muted/30" : "bg-background"}`}
+            >
+              {/* Unread dot */}
+              <div className="mt-1.5 h-2 w-2 shrink-0">
+                {!n.readAt && (
+                  <span className="bg-primary block h-2 w-2 rounded-full" />
+                )}
               </div>
-              <p className="text-muted-foreground text-[10px]">
-                {new Date(n.createdAt).toLocaleString()}
-              </p>
-            </div>
 
-            {/* Actions */}
-            <div className="flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100">
-              {n.readAt ? (
+              {/* Full content — no truncation */}
+              <div className="min-w-0 flex-1 space-y-1">
+                <p className="text-sm font-medium">{n.title}</p>
+                <div className="text-muted-foreground [&_strong]:text-foreground [&_a]:text-primary space-y-1 text-sm [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-4 [&_p]:leading-relaxed [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-4">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {n.content}
+                  </ReactMarkdown>
+                </div>
+                <p className="text-muted-foreground text-[10px]">
+                  {new Date(n.createdAt).toLocaleString()}
+                </p>
+                {reviewPath && (
+                  <Link
+                    href={reviewPath}
+                    onClick={() => !n.readAt && markRead.mutate({ id: n.id })}
+                    className="text-primary inline-block text-sm font-medium underline-offset-4 hover:underline"
+                  >
+                    Review suggestion
+                  </Link>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100">
+                {n.readAt ? (
+                  <button
+                    type="button"
+                    title="Mark unread"
+                    onClick={() => markUnread.mutate({ id: n.id })}
+                    disabled={markUnread.isPending}
+                    className="text-muted-foreground hover:bg-muted rounded p-1 disabled:opacity-50"
+                  >
+                    <BellOffIcon className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    title="Mark read"
+                    onClick={() => markRead.mutate({ id: n.id })}
+                    disabled={markRead.isPending}
+                    className="text-muted-foreground hover:bg-muted rounded p-1 disabled:opacity-50"
+                  >
+                    <CheckCheckIcon className="h-4 w-4" />
+                  </button>
+                )}
                 <button
                   type="button"
-                  title="Mark unread"
-                  onClick={() => markUnread.mutate({ id: n.id })}
-                  disabled={markUnread.isPending}
+                  title="Delete"
+                  onClick={() => del.mutate({ id: n.id })}
+                  disabled={del.isPending}
                   className="text-muted-foreground hover:bg-muted rounded p-1 disabled:opacity-50"
                 >
-                  <BellOffIcon className="h-4 w-4" />
+                  <Trash2Icon className="h-4 w-4" />
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  title="Mark read"
-                  onClick={() => markRead.mutate({ id: n.id })}
-                  disabled={markRead.isPending}
-                  className="text-muted-foreground hover:bg-muted rounded p-1 disabled:opacity-50"
-                >
-                  <CheckCheckIcon className="h-4 w-4" />
-                </button>
-              )}
-              <button
-                type="button"
-                title="Delete"
-                onClick={() => del.mutate({ id: n.id })}
-                disabled={del.isPending}
-                className="text-muted-foreground hover:bg-muted rounded p-1 disabled:opacity-50"
-              >
-                <Trash2Icon className="h-4 w-4" />
-              </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {hasNextPage && (
           <button

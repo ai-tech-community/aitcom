@@ -9,20 +9,49 @@ import { TRPCError } from "@trpc/server";
 
 import { agentProcedure, requireScope, requireOwner } from "@/server/api/trpc";
 import {
+  agentDrafts,
   communities,
   communityMemberships,
-  agentDrafts,
+  notifications,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Resolve a community by slug (non-deleted). Throws NOT_FOUND. */
-async function resolveCommunity(
-  db: Parameters<typeof logActivity>[0],
-  slug: string,
+type AgentFeedDb = Parameters<typeof logActivity>[0];
+
+const DRAFT_REVIEW_PATH = "/dashboard/agent?tab=activity";
+
+async function notifyDraftNeedsReview(
+  db: AgentFeedDb,
+  opts: {
+    ownerId: string;
+    draftId: string;
+    kind: "feed_post" | "feed_comment";
+    destinationLabel: string;
+    destinationPath: string;
+    communityId?: string;
+  },
 ) {
+  await db.insert(notifications).values({
+    userId: opts.ownerId,
+    type: "agent_draft_review",
+    title: "Agent draft needs review",
+    content: `Your agent drafted a ${opts.kind === "feed_post" ? "feed post" : "feed comment"} for **${opts.destinationLabel}**. [Review it here](${DRAFT_REVIEW_PATH}).`,
+    communityId: opts.communityId,
+    metadata: {
+      draftId: opts.draftId,
+      draftType: opts.kind,
+      reviewPath: DRAFT_REVIEW_PATH,
+      destinationLabel: opts.destinationLabel,
+      destinationPath: opts.destinationPath,
+    },
+  });
+}
+
+/** Resolve a community by slug (non-deleted). Throws NOT_FOUND. */
+async function resolveCommunity(db: AgentFeedDb, slug: string) {
   const community = await db.query.communities.findFirst({
     where: and(eq(communities.slug, slug), isNull(communities.deletedAt)),
   });
@@ -34,7 +63,7 @@ async function resolveCommunity(
 
 /** Require the owner to be an active member. Returns the membership row. */
 async function requireActiveMembership(
-  db: Parameters<typeof logActivity>[0],
+  db: AgentFeedDb,
   communityId: string,
   ownerId: string,
 ) {
@@ -202,6 +231,8 @@ export const agentFeedRouter = {
       }
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
+      const destinationPath = `/communities/${community.slug}`;
+      const destinationLabel = `${community.name} feed`;
       const [draft] = await ctx.db
         .insert(agentDrafts)
         .values({
@@ -212,11 +243,23 @@ export const agentFeedRouter = {
           targetId: community.id,
           content: input.content,
           metadata: {
-            communitySlug: input.communitySlug,
+            communityName: community.name,
+            communitySlug: community.slug,
+            destinationLabel,
+            destinationPath,
             imageUrl: input.imageUrl,
           },
         })
         .returning();
+
+      await notifyDraftNeedsReview(ctx.db, {
+        ownerId,
+        draftId: draft!.id,
+        kind: "feed_post",
+        destinationLabel,
+        destinationPath,
+        communityId: community.id,
+      });
 
       return { mode: "draft" as const, draftId: draft!.id };
     }),
@@ -252,7 +295,20 @@ export const agentFeedRouter = {
       }
 
       // Verify owner is an active member of the post's community
-      await requireActiveMembership(ctx.db, post.communityId ?? "", ownerId);
+      const postCommunityId = post.communityId ?? "";
+      await requireActiveMembership(ctx.db, postCommunityId, ownerId);
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.id, postCommunityId),
+          isNull(communities.deletedAt),
+        ),
+      });
+      const destinationPath = community
+        ? `/communities/${community.slug}`
+        : "/communities";
+      const destinationLabel = community
+        ? `${community.name} feed, post #${input.postId}`
+        : `feed post #${input.postId}`;
 
       // ADR-0015: human community surfaces are never agent-authored. Always draft — never auto-post here.
       const [draft] = await ctx.db
@@ -264,9 +320,28 @@ export const agentFeedRouter = {
           targetType: "feed-posts",
           targetId: String(input.postId),
           content: input.content,
-          metadata: { postId: input.postId },
+          metadata: {
+            postId: input.postId,
+            postPreview:
+              typeof post.content === "string"
+                ? post.content.slice(0, 160)
+                : null,
+            communityName: community?.name,
+            communitySlug: community?.slug,
+            destinationLabel,
+            destinationPath,
+          },
         })
         .returning();
+
+      await notifyDraftNeedsReview(ctx.db, {
+        ownerId,
+        draftId: draft!.id,
+        kind: "feed_comment",
+        destinationLabel,
+        destinationPath,
+        communityId: community?.id ?? postCommunityId,
+      });
 
       return { mode: "draft" as const, draftId: draft!.id };
     }),
