@@ -17,6 +17,23 @@ const TYPE_LABELS: Record<string, string> = {
   challenge_channel_reply: "CHALLENGE REPLY",
 };
 
+type DraftMetadata = {
+  threadTitle?: unknown;
+  title?: unknown;
+  destinationLabel?: unknown;
+  destinationPath?: unknown;
+  postPreview?: unknown;
+  communityName?: unknown;
+};
+
+function stringMetadataValue(
+  metadata: DraftMetadata | null | undefined,
+  key: keyof DraftMetadata,
+) {
+  const value = metadata?.[key];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
 export function AgentDrafts() {
   const t = useTranslations("advisory");
   const drafts = api.agentManagement.getDrafts.useQuery({ status: "pending" });
@@ -46,13 +63,19 @@ export function AgentDrafts() {
   return (
     <div className="space-y-3">
       {drafts.data.map((draft) => {
-        const metadata = draft.metadata;
+        const metadata = draft.metadata as DraftMetadata | null;
         const threadTitle =
-          typeof metadata?.threadTitle === "string"
-            ? metadata.threadTitle
-            : typeof metadata?.title === "string"
-              ? metadata.title
-              : null;
+          stringMetadataValue(metadata, "threadTitle") ??
+          stringMetadataValue(metadata, "title");
+        const destinationLabel = stringMetadataValue(
+          metadata,
+          "destinationLabel",
+        );
+        const destinationPath = stringMetadataValue(
+          metadata,
+          "destinationPath",
+        );
+        const postPreview = stringMetadataValue(metadata, "postPreview");
 
         return (
           <div
@@ -74,6 +97,24 @@ export function AgentDrafts() {
                 <p className="text-muted-foreground mt-2 line-clamp-3 text-sm">
                   {draft.content}
                 </p>
+                {destinationLabel && (
+                  <div className="border-border bg-muted/30 mt-3 rounded-md border px-3 py-2 text-xs">
+                    <div className="text-muted-foreground font-mono tracking-wider">
+                      WILL PUBLISH TO
+                    </div>
+                    <div className="mt-1 font-medium">{destinationLabel}</div>
+                    {destinationPath && (
+                      <div className="text-muted-foreground mt-0.5 font-mono">
+                        {destinationPath}
+                      </div>
+                    )}
+                    {postPreview && (
+                      <p className="text-muted-foreground mt-2 line-clamp-2">
+                        In reply to: {postPreview}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex shrink-0 gap-2">
                 {draft.type === "revival_nudge" ||

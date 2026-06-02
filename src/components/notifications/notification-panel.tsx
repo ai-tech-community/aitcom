@@ -8,6 +8,18 @@ import { Link } from "@/i18n/navigation";
 
 type Props = { onClose: () => void };
 
+type NotificationMetadata = {
+  reviewPath?: unknown;
+};
+
+function reviewPathFromMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object") return null;
+  const reviewPath = (metadata as NotificationMetadata).reviewPath;
+  return typeof reviewPath === "string" && reviewPath.startsWith("/")
+    ? reviewPath
+    : null;
+}
+
 export function NotificationPanel({ onClose }: Props) {
   const utils = api.useUtils();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -147,77 +159,93 @@ export function NotificationPanel({ onClose }: Props) {
             No notifications
           </p>
         )}
-        {allItems.map((n) => (
-          <div
-            key={n.id}
-            className="group border-border hover:bg-muted/50 flex items-start gap-2 border-b px-3 py-3 last:border-0"
-          >
-            {/* Unread dot */}
-            <div className="mt-1.5 h-2 w-2 shrink-0">
-              {!n.readAt && (
-                <span className="bg-primary block h-2 w-2 rounded-full" />
-              )}
-            </div>
+        {allItems.map((n) => {
+          const reviewPath = reviewPathFromMetadata(n.metadata);
 
-            {/* Content */}
-            <div className="min-w-0 flex-1">
-              <button
-                type="button"
-                className="w-full text-left"
-                onClick={() => !n.readAt && markRead.mutate({ id: n.id })}
-              >
-                <p className="truncate text-sm font-medium">{n.title}</p>
-                <p className="text-muted-foreground line-clamp-2 text-xs">
-                  {n.content
-                    .replace(/\*\*(.*?)\*\*/g, "$1")
-                    .replace(/\*(.*?)\*/g, "$1")
-                    .replace(/^[-*]\s/gm, "")
-                    .replace(/#{1,6}\s/g, "")}
-                </p>
-                <p className="text-muted-foreground mt-1 text-[10px]">
-                  {new Date(n.createdAt).toLocaleDateString()}
-                </p>
-              </button>
-            </div>
+          return (
+            <div
+              key={n.id}
+              className="group border-border hover:bg-muted/50 flex items-start gap-2 border-b px-3 py-3 last:border-0"
+            >
+              {/* Unread dot */}
+              <div className="mt-1.5 h-2 w-2 shrink-0">
+                {!n.readAt && (
+                  <span className="bg-primary block h-2 w-2 rounded-full" />
+                )}
+              </div>
 
-            {/* Per-row actions */}
-            <div className="flex shrink-0 flex-col gap-1 opacity-0 group-hover:opacity-100">
-              {n.readAt ? (
-                /* Fix 2: disabled={markUnread.isPending} */
+              {/* Content */}
+              <div className="min-w-0 flex-1">
                 <button
                   type="button"
-                  title="Mark unread"
-                  onClick={() => markUnread.mutate({ id: n.id })}
-                  disabled={markUnread.isPending}
-                  className="text-muted-foreground hover:bg-muted rounded p-0.5 disabled:opacity-50"
+                  className="w-full text-left"
+                  onClick={() => !n.readAt && markRead.mutate({ id: n.id })}
                 >
-                  <BellOffIcon className="h-3 w-3" />
+                  <p className="truncate text-sm font-medium">{n.title}</p>
+                  <p className="text-muted-foreground line-clamp-2 text-xs">
+                    {n.content
+                      .replace(/\*\*(.*?)\*\*/g, "$1")
+                      .replace(/\*(.*?)\*/g, "$1")
+                      .replace(/^[-*]\s/gm, "")
+                      .replace(/#{1,6}\s/g, "")}
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-[10px]">
+                    {new Date(n.createdAt).toLocaleDateString()}
+                  </p>
                 </button>
-              ) : (
-                /* Fix 2: disabled={markRead.isPending} */
+                {reviewPath && (
+                  <Link
+                    href={reviewPath}
+                    onClick={() => {
+                      if (!n.readAt) markRead.mutate({ id: n.id });
+                      onClose();
+                    }}
+                    className="text-primary mt-2 inline-block text-xs font-medium underline-offset-4 hover:underline"
+                  >
+                    Review suggestion
+                  </Link>
+                )}
+              </div>
+
+              {/* Per-row actions */}
+              <div className="flex shrink-0 flex-col gap-1 opacity-0 group-hover:opacity-100">
+                {n.readAt ? (
+                  /* Fix 2: disabled={markUnread.isPending} */
+                  <button
+                    type="button"
+                    title="Mark unread"
+                    onClick={() => markUnread.mutate({ id: n.id })}
+                    disabled={markUnread.isPending}
+                    className="text-muted-foreground hover:bg-muted rounded p-0.5 disabled:opacity-50"
+                  >
+                    <BellOffIcon className="h-3 w-3" />
+                  </button>
+                ) : (
+                  /* Fix 2: disabled={markRead.isPending} */
+                  <button
+                    type="button"
+                    title="Mark read"
+                    onClick={() => markRead.mutate({ id: n.id })}
+                    disabled={markRead.isPending}
+                    className="text-muted-foreground hover:bg-muted rounded p-0.5 disabled:opacity-50"
+                  >
+                    <CheckCheckIcon className="h-3 w-3" />
+                  </button>
+                )}
+                {/* Fix 2: disabled={del.isPending} */}
                 <button
                   type="button"
-                  title="Mark read"
-                  onClick={() => markRead.mutate({ id: n.id })}
-                  disabled={markRead.isPending}
+                  title="Delete"
+                  onClick={() => del.mutate({ id: n.id })}
+                  disabled={del.isPending}
                   className="text-muted-foreground hover:bg-muted rounded p-0.5 disabled:opacity-50"
                 >
-                  <CheckCheckIcon className="h-3 w-3" />
+                  <Trash2Icon className="h-3 w-3" />
                 </button>
-              )}
-              {/* Fix 2: disabled={del.isPending} */}
-              <button
-                type="button"
-                title="Delete"
-                onClick={() => del.mutate({ id: n.id })}
-                disabled={del.isPending}
-                className="text-muted-foreground hover:bg-muted rounded p-0.5 disabled:opacity-50"
-              >
-                <Trash2Icon className="h-3 w-3" />
-              </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Fix 1: isFetchingNextPage state on Load more button */}
         {hasNextPage && (
