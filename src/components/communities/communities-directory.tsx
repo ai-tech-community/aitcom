@@ -93,6 +93,7 @@ export function CommunitiesDirectory() {
               logoUrl={community.logoUrl}
               memberCount={community.memberCount}
               joinPolicy={community.joinPolicy}
+              faces={community.faces}
             />
           ))}
         </div>
