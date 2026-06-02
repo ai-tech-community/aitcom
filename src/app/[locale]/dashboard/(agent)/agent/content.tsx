@@ -66,9 +66,7 @@ function AgentDashboardContentInner({
       <div className="mt-8">
         {currentTab === "profile" && <ProfileTab agent={initialAgent} />}
         {currentTab === "connect" && <ConnectTabWrapper agent={initialAgent} />}
-        {currentTab === "activity" && (
-          <ActivityTab visibilityMode={initialAgent.visibilityMode} />
-        )}
+        {currentTab === "activity" && <ActivityTab />}
       </div>
     </>
   );

@@ -7,25 +7,19 @@ import { AgentSuggestions } from "@/components/agent-suggestions";
 import { QADashboard } from "@/components/impact/qa-dashboard";
 import { relativeTime } from "@/components/agent/shared";
 
-interface ActivityTabProps {
-  visibilityMode: string;
-}
-
-export function ActivityTab({ visibilityMode }: ActivityTabProps) {
+export function ActivityTab() {
   return (
     <div className="space-y-8">
-      {visibilityMode === "ghost" && (
-        <div className="border-border bg-card rounded-xl border p-6">
-          <div className="border-border border-b pb-4">
-            <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / PENDING DRAFTS
-            </span>
-          </div>
-          <div className="mt-4">
-            <AgentDrafts />
-          </div>
+      <div className="border-border bg-card rounded-xl border p-6">
+        <div className="border-border border-b pb-4">
+          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            / PENDING DRAFTS
+          </span>
         </div>
-      )}
+        <div className="mt-4">
+          <AgentDrafts />
+        </div>
+      </div>
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
