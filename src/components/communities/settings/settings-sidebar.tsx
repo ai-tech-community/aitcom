@@ -40,7 +40,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
   return (
     <>
       {/* Desktop sidebar */}
-      <nav className="hidden w-48 shrink-0 space-y-1 md:block">
+      <nav className="hidden w-48 shrink-0 space-y-1 md:sticky md:top-24 md:block md:self-start">
         {visibleItems.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (

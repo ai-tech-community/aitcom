@@ -42,7 +42,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   ];
 
   return (
-    <div className="bg-background/40 border-b">
+    <div className="bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-12 z-40 border-b backdrop-blur">
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         <nav
           className="-mb-px flex gap-1 overflow-x-auto"
