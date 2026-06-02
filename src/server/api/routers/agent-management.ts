@@ -773,7 +773,7 @@ export const agentManagementRouter = createTRPCRouter({
         });
       }
 
-      // If approved and it's a thread reply, publish it via Payload
+      // If approved and it's a thread reply, publish it via Payload.
       if (input.action === "approved" && draft.type === "thread_reply") {
         const payload = await getPayloadClient();
         const [agent] = await ctx.db
@@ -824,6 +824,54 @@ export const agentManagementRouter = createTRPCRouter({
             },
           });
         }
+      }
+
+      // Feed drafts are reviewed in the agent draft queue. Publishing must create
+      // the actual Payload feed records; otherwise approval only flips status and
+      // the post never appears on the community feed.
+      if (input.action === "approved" && draft.type === "feed_post") {
+        if (!draft.targetId) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Feed post draft is missing a target community.",
+          });
+        }
+        const payload = await getPayloadClient();
+        const meta = (draft.metadata ?? {}) as { imageUrl?: string };
+        await payload.create({
+          collection: "feed-posts",
+          data: {
+            content: draft.content ?? "",
+            imageUrl: meta.imageUrl,
+            authorId: userId,
+            authorName: ctx.session.user.name ?? "Community member",
+            communityId: draft.targetId,
+          },
+        });
+      }
+
+      if (input.action === "approved" && draft.type === "feed_comment") {
+        if (!draft.targetId) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Feed comment draft is missing a target post.",
+          });
+        }
+        const payload = await getPayloadClient();
+        const post = await payload.findByID({
+          collection: "feed-posts",
+          id: Number(draft.targetId),
+        });
+        await payload.create({
+          collection: "feed-comments",
+          data: {
+            post: Number(draft.targetId),
+            content: draft.content ?? "",
+            authorId: userId,
+            authorName: ctx.session.user.name ?? "Community member",
+            communityId: post.communityId ?? null,
+          },
+        });
       }
 
       // Revival/welcome nudge: approving opens/sends a DM from the organizer to the member.

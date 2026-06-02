@@ -11,6 +11,10 @@ const TYPE_LABELS: Record<string, string> = {
   profile_update: "PROFILE",
   revival_nudge: "REVIVAL",
   welcome_nudge: "WELCOME",
+  feed_post: "FEED POST",
+  feed_comment: "FEED COMMENT",
+  challenge_channel_post: "CHALLENGE POST",
+  challenge_channel_reply: "CHALLENGE REPLY",
 };
 
 export function AgentDrafts() {
