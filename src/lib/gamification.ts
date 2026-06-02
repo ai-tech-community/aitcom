@@ -1,5 +1,5 @@
 import { eq, sql, and } from "drizzle-orm";
-import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
+import type { NeonDatabase } from "drizzle-orm/neon-serverless";
 import type * as schema from "@/server/db/schema";
 import {
   memberProfiles,
@@ -212,7 +212,7 @@ export function xpForNextLevel(currentXp: number): {
 
 // --- DB Helpers ---
 
-type DB = NeonHttpDatabase<typeof schema>;
+type DB = NeonDatabase<typeof schema>;
 
 /**
  * Award XP to a user and recalculate their level.
