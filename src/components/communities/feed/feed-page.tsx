@@ -90,9 +90,9 @@ export function FeedPage({
   };
 
   return (
-    <div className="flex flex-col gap-8 lg:h-full lg:flex-row">
+    <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
       {/* Left column: composer + feed */}
-      <div className="min-w-0 flex-1 space-y-4 lg:overflow-y-auto">
+      <div className="min-w-0 flex-1 space-y-4">
         {isAuthenticated && isMember && <WelcomeChecklist slug={slug} />}
 
         <PostComposer slug={slug} canPost={canPost} />
@@ -160,8 +160,8 @@ export function FeedPage({
         )}
       </div>
 
-      {/* Right column: sidebar (desktop) */}
-      <div className="hidden w-80 shrink-0 lg:block lg:overflow-y-auto">
+      {/* Right column: sidebar (desktop) — sticks below the community nav */}
+      <div className="hidden w-80 shrink-0 lg:sticky lg:top-24 lg:block lg:self-start">
         <CommunitySidebar slug={slug} description={communityDescription} />
       </div>
 
