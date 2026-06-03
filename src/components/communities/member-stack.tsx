@@ -13,6 +13,7 @@ import {
   TooltipContent,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { useTranslations } from "next-intl";
 import {
   shouldRenderStack,
   presentStack,
@@ -34,6 +35,8 @@ export interface MemberStackViewProps {
 /** Presentational stacked-avatar row. Renders nothing unless the community
  *  clears the threshold AND has at least one showable face. */
 export function MemberStackView({ faces, total, className }: MemberStackViewProps) {
+  const t = useTranslations("communities.stack");
+
   if (!shouldRenderStack(total) || faces.length === 0) return null;
 
   const { shownFaces, overflow } = presentStack(faces, total);
@@ -42,7 +45,7 @@ export function MemberStackView({ faces, total, className }: MemberStackViewProp
     <TooltipProvider delayDuration={150}>
       <AvatarGroup
         className={className}
-        aria-label={`${total} members`}
+        aria-label={t("label", { count: total })}
         data-slot="member-stack"
       >
         {shownFaces.map((face) => (
@@ -57,7 +60,9 @@ export function MemberStackView({ faces, total, className }: MemberStackViewProp
                 </AvatarFallback>
               </Avatar>
             </TooltipTrigger>
-            <TooltipContent>{face.displayName ?? "Member"}</TooltipContent>
+            <TooltipContent>
+              {face.displayName ?? t("memberFallback")}
+            </TooltipContent>
           </Tooltip>
         ))}
         {overflow > 0 ? (
@@ -67,7 +72,7 @@ export function MemberStackView({ faces, total, className }: MemberStackViewProp
                 +{overflow}
               </AvatarGroupCount>
             </TooltipTrigger>
-            <TooltipContent>{overflow} more</TooltipContent>
+            <TooltipContent>{t("overflow", { count: overflow })}</TooltipContent>
           </Tooltip>
         ) : null}
       </AvatarGroup>

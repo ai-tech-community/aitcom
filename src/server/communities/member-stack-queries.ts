@@ -28,7 +28,13 @@ const roleRankSql = sql<number>`(case ${communityMemberships.role}
   else 1 end)`;
 
 /** Top public+active face candidates per community, grouped by communityId.
- *  One query for the whole page (no N+1). Returns leadership-first faces. */
+ *  One query for the whole page (no N+1). Returns leadership-first faces.
+ *
+ *  Access control is the CALLER's responsibility: this applies no
+ *  directory-listing or membership check. Only pass community ids the viewer
+ *  is allowed to see (e.g. the `list` query passes listed-only communities;
+ *  `getMemberStack` gates unlisted communities before calling). Passing an
+ *  unlisted community id here would expose its faces. */
 export async function loadStackFacesForCommunities(
   db: DB,
   communityIds: string[],

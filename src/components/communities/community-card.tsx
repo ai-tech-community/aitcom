@@ -3,7 +3,10 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { MemberStackView } from "./member-stack";
-import type { StackFace } from "@/server/communities/member-stack";
+import {
+  shouldRenderStack,
+  type StackFace,
+} from "@/server/communities/member-stack";
 
 interface CommunityCardProps {
   slug: string;
@@ -70,7 +73,13 @@ export function CommunityCard({
         )}
 
         <div className="mt-1">
-          <MemberStackView faces={faces} total={memberCount} />
+          {shouldRenderStack(memberCount) && faces.length > 0 ? (
+            <MemberStackView faces={faces} total={memberCount} />
+          ) : (
+            <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              {t("stack.label", { count: memberCount })}
+            </span>
+          )}
         </div>
       </div>
     </Link>

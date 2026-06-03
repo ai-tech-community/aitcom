@@ -43,7 +43,7 @@ export function compareStackCandidates(
 
 /** Public faces only, leadership-first, capped at `maxFaces`. Honours the
  *  profile-visibility opt-out: private members are never shown as faces
- *  (but remain in the count — see overflowCount). */
+ *  (but remain in the count — see presentStack). */
 export function selectStackFaces(
   candidates: StackCandidate[],
   maxFaces = MEMBER_STACK_MAX_FACES,
