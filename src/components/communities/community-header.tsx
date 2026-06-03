@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Users } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { JoinButton } from "./join-button";
+import { MemberStack } from "./member-stack";
 import type { RouterOutputs } from "@/trpc/react";
 
 type Community = RouterOutputs["communities"]["getBySlug"];
@@ -54,6 +55,8 @@ export function CommunityHeader({
                   {community.memberCount} {t("members")}
                 </span>
               </div>
+
+              <MemberStack slug={community.slug} className="mt-1" />
             </div>
           </div>
 

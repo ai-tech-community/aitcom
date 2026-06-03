@@ -1240,6 +1240,11 @@
       "search": "Zoek communities...",
       "empty": "Geen communities gevonden"
     },
+    "stack": {
+      "memberFallback": "Lid",
+      "overflow": "nog {count}",
+      "label": "{count, plural, one {# lid} other {# leden}}"
+    },
     "create": {
       "title": "Community aanmaken",
       "name": "Community naam",

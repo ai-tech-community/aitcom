@@ -2,6 +2,11 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
+import { MemberStackView } from "./member-stack";
+import {
+  shouldRenderStack,
+  type StackFace,
+} from "@/server/communities/member-stack";
 
 interface CommunityCardProps {
   slug: string;
@@ -10,6 +15,7 @@ interface CommunityCardProps {
   logoUrl: string | null;
   memberCount: number;
   joinPolicy: string;
+  faces: StackFace[];
 }
 
 const JOIN_POLICY_KEY: Record<string, string> = {
@@ -25,6 +31,7 @@ export function CommunityCard({
   logoUrl,
   memberCount,
   joinPolicy,
+  faces,
 }: CommunityCardProps) {
   const t = useTranslations("communities");
 
@@ -65,9 +72,15 @@ export function CommunityCard({
           </p>
         )}
 
-        <span className="text-muted-foreground mt-1 font-mono text-[11px] tracking-wider">
-          {memberCount} {t("profile.members").toLowerCase()}
-        </span>
+        <div className="mt-1">
+          {shouldRenderStack(memberCount) && faces.length > 0 ? (
+            <MemberStackView faces={faces} total={memberCount} />
+          ) : (
+            <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              {t("stack.label", { count: memberCount })}
+            </span>
+          )}
+        </div>
       </div>
     </Link>
   );

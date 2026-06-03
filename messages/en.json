@@ -1240,6 +1240,11 @@
       "search": "Search communities...",
       "empty": "No communities found"
     },
+    "stack": {
+      "memberFallback": "Member",
+      "overflow": "{count} more",
+      "label": "{count, plural, one {# member} other {# members}}"
+    },
     "create": {
       "title": "Create a Community",
       "name": "Community Name",

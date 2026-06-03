@@ -28,6 +28,11 @@ import {
 } from "@/server/communities/invite-policy";
 import { logActivity } from "@/server/agent/activity";
 import { loadPublicLiveness } from "@/server/communities/discovery-queries";
+import {
+  loadStackFaces,
+  loadStackFacesForCommunities,
+} from "@/server/communities/member-stack-queries";
+import { HUB_SLUG } from "@/server/api/trpc";
 
 /** Escape SQL LIKE/ILIKE pattern characters */
 function escapeLike(str: string): string {
@@ -99,7 +104,17 @@ export const communitiesRouter = createTRPCRouter({
         nextCursor = { createdAt: next.createdAt.toISOString(), id: next.id };
       }
 
-      return { items, nextCursor };
+      // One extra query for the whole page (no N+1): leadership-first faces.
+      const facesByCommunity = await loadStackFacesForCommunities(
+        ctx.db,
+        items.map((c) => c.id),
+      );
+      const itemsWithFaces = items.map((c) => ({
+        ...c,
+        faces: facesByCommunity.get(c.id) ?? [],
+      }));
+
+      return { items: itemsWithFaces, nextCursor };
     }),
 
   /** Get community by slug (public profile) */
@@ -226,6 +241,58 @@ export const communitiesRouter = createTRPCRouter({
       }
 
       return { items, nextCursor };
+    }),
+
+  /** Stack faces + active total for a single community (header use). Never
+   *  more permissive than getMembers; the root Hub never has a stack. */
+  getMemberStack: publicProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      // The Hub root is an anchor, not a tenant — no stack (ADR-0019).
+      if (input.slug === HUB_SLUG) {
+        return { faces: [], total: 0 };
+      }
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.slug),
+          isNull(communities.deletedAt),
+        ),
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND" });
+      }
+
+      // Same access rule as getMembers: unlisted communities are members-only.
+      if (!community.isListedInDirectory) {
+        const userId = ctx.session?.user?.id;
+        if (!userId) {
+          return { faces: [], total: 0 };
+        }
+        const membership = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.userId, userId),
+            eq(communityMemberships.status, "active"),
+          ),
+        });
+        if (!membership) {
+          return { faces: [], total: 0 };
+        }
+      }
+
+      const [memberCountResult] = await ctx.db
+        .select({ count: count() })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        );
+
+      const faces = await loadStackFaces(ctx.db, community.id);
+      return { faces, total: memberCountResult?.count ?? 0 };
     }),
 
   /** Create a new community */
