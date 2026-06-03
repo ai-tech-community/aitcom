@@ -29,11 +29,31 @@ function candidate(over: Partial<StackCandidate>): StackCandidate {
 describe("selectStackFaces", () => {
   it("orders leadership-first, then earliest joined", () => {
     const faces = selectStackFaces([
-      candidate({ userId: "m", role: "member", joinedAt: new Date("2026-01-01") }),
-      candidate({ userId: "owner", role: "owner", joinedAt: new Date("2026-03-01") }),
-      candidate({ userId: "mod", role: "moderator", joinedAt: new Date("2026-02-01") }),
-      candidate({ userId: "admin-late", role: "admin", joinedAt: new Date("2026-04-01") }),
-      candidate({ userId: "admin-early", role: "admin", joinedAt: new Date("2026-01-15") }),
+      candidate({
+        userId: "m",
+        role: "member",
+        joinedAt: new Date("2026-01-01"),
+      }),
+      candidate({
+        userId: "owner",
+        role: "owner",
+        joinedAt: new Date("2026-03-01"),
+      }),
+      candidate({
+        userId: "mod",
+        role: "moderator",
+        joinedAt: new Date("2026-02-01"),
+      }),
+      candidate({
+        userId: "admin-late",
+        role: "admin",
+        joinedAt: new Date("2026-04-01"),
+      }),
+      candidate({
+        userId: "admin-early",
+        role: "admin",
+        joinedAt: new Date("2026-01-15"),
+      }),
     ]);
     expect(faces.map((f) => f.userId)).toEqual([
       "owner",
@@ -86,7 +106,10 @@ describe("presentStack", () => {
 
   it("shows up to MEMBER_STACK_MAX_FACES with no overflow at exactly the max", () => {
     const faces = Array.from({ length: 5 }, (_, i) => face(`u${i}`));
-    const { shownFaces, overflow } = presentStack(faces, MEMBER_STACK_MAX_FACES);
+    const { shownFaces, overflow } = presentStack(
+      faces,
+      MEMBER_STACK_MAX_FACES,
+    );
     expect(shownFaces).toHaveLength(MEMBER_STACK_MAX_FACES);
     expect(overflow).toBe(0);
   });

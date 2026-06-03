@@ -4,11 +4,7 @@
 
 import { and, eq, inArray, sql } from "drizzle-orm";
 
-import {
-  communityMemberships,
-  memberProfiles,
-  user,
-} from "@/server/db/schema";
+import { communityMemberships, memberProfiles, user } from "@/server/db/schema";
 import {
   selectStackFaces,
   MEMBER_STACK_MAX_FACES,

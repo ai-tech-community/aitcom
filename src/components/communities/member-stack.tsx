@@ -34,7 +34,11 @@ export interface MemberStackViewProps {
 
 /** Presentational stacked-avatar row. Renders nothing unless the community
  *  clears the threshold AND has at least one showable face. */
-export function MemberStackView({ faces, total, className }: MemberStackViewProps) {
+export function MemberStackView({
+  faces,
+  total,
+  className,
+}: MemberStackViewProps) {
   const t = useTranslations("communities.stack");
 
   if (!shouldRenderStack(total) || faces.length === 0) return null;
@@ -72,7 +76,9 @@ export function MemberStackView({ faces, total, className }: MemberStackViewProp
                 +{overflow}
               </AvatarGroupCount>
             </TooltipTrigger>
-            <TooltipContent>{t("overflow", { count: overflow })}</TooltipContent>
+            <TooltipContent>
+              {t("overflow", { count: overflow })}
+            </TooltipContent>
           </Tooltip>
         ) : null}
       </AvatarGroup>
@@ -91,6 +97,10 @@ export function MemberStack({ slug, className }: MemberStackProps) {
   const { data } = api.communities.getMemberStack.useQuery({ slug });
   if (!data) return null;
   return (
-    <MemberStackView faces={data.faces} total={data.total} className={className} />
+    <MemberStackView
+      faces={data.faces}
+      total={data.total}
+      className={className}
+    />
   );
 }
