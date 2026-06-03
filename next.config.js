@@ -11,6 +11,13 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 /** @type {import("next").NextConfig} */
 const config = {
   poweredByHeader: false,
+  // `ws` (used by the Neon serverless driver) lazily `require()`s the native
+  // `bufferutil`/`utf-8-validate` addons. Webpack-bundling them yields a broken
+  // module whose `.mask` is not a function — ws's internal try/catch can't see
+  // it because the bundled require doesn't throw — crashing WebSocket frames
+  // ≥48 bytes ("TypeError: b.mask is not a function"). Keep these external so
+  // Node loads them at runtime (native if present, JS fallback otherwise).
+  serverExternalPackages: ["ws", "bufferutil", "utf-8-validate"],
   async headers() {
     return [
       {
