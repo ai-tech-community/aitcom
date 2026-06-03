@@ -47,14 +47,14 @@ export default function CommunityLayout({
   const memberRole = membership?.status === "active" ? membership.role : null;
 
   return (
-    <div className="flex h-[calc(100dvh-3rem)] flex-col overflow-hidden">
+    <div className="flex flex-col">
       <CommunityHeader
         community={community}
         membershipStatus={membershipStatus}
         memberRole={memberRole}
       />
       <CommunityNav slug={slug} memberRole={memberRole} />
-      <div className="mx-auto min-h-0 w-full max-w-5xl flex-1 overflow-y-auto px-4 py-8 sm:px-6">
+      <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
         {children}
       </div>
     </div>

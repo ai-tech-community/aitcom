@@ -18,6 +18,9 @@ vi.mock("@/trpc/react", () => ({
       dismissSuggestion: {
         useMutation: mockUseMutation,
       },
+      approveIntroduction: {
+        useMutation: mockUseMutation,
+      },
     },
     useUtils: mockUseUtils,
   },
@@ -29,6 +32,17 @@ vi.mock("@/i18n/navigation", () => ({
       {children}
     </a>
   ),
+}));
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => {
+    const messages: Record<string, string> = {
+      "suggestions.empty": "No suggestions",
+      "suggestions.createThread": "Create thread",
+      "suggestions.dismiss": "Dismiss",
+    };
+    return messages[key] ?? key;
+  },
 }));
 
 describe("AgentSuggestions", () => {
