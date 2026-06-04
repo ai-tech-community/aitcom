@@ -37,6 +37,16 @@ describe("computeCommissionedCellXp", () => {
     expect(computeCommissionedCellXp("self-report", "pending")).toBe(0);
   });
 
+  it("pays the peer-review weight for a verified peer-review cell (50 * 1.3)", () => {
+    expect(computeCommissionedCellXp("peer-review", "verified")).toBe(65);
+  });
+
+  it("pays the platform-action weight for a verified platform-action cell (50 * 1.0)", () => {
+    // Numerically equal to the unknown-mode fallback (weight 1), but a KNOWN
+    // mode in its own right — pin it so the two are never conflated.
+    expect(computeCommissionedCellXp("platform-action", "verified")).toBe(50);
+  });
+
   it("falls back to weight 1 for an unknown verification mode (50 * 1)", () => {
     expect(computeCommissionedCellXp("mystery-mode", "verified")).toBe(50);
   });

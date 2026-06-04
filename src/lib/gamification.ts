@@ -212,7 +212,11 @@ export function xpForNextLevel(currentXp: number): {
 
 // --- DB Helpers ---
 
-type DB = NeonDatabase<typeof schema>;
+// Accept either the root db or a transaction handle so XP/badge writes can be
+// threaded into a caller's transaction (e.g. verifyCellResult's atomic
+// result-flip + XP award, CR-3).
+type Tx = Parameters<Parameters<NeonDatabase<typeof schema>["transaction"]>[0]>[0];
+type DB = NeonDatabase<typeof schema> | Tx;
 
 /**
  * Award XP to a user and recalculate their level.

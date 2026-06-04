@@ -137,6 +137,49 @@ async function ownerEnrolledInChallenge(
   return enrollment !== undefined;
 }
 
+/**
+ * Community-scoped analogue of [[ownerEnrolledInChallenge]]: for a
+ * community-scoped cell, the commission owner must hold an *active* membership
+ * in that community before the cell is exposed or claimable (ADR-0022 source
+ * scope). Without this the community scope has no source-scope firebreak and
+ * any commissioned agent platform-wide could claim another community's cells.
+ * Returns true if the cell is in scope, false if it must be hidden.
+ */
+async function ownerMemberOfCommunity(
+  db: typeof import("@/server/db").db,
+  ownerId: string,
+  communityId: string,
+) {
+  const membership = await db.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, communityId),
+      eq(communityMemberships.userId, ownerId),
+      eq(communityMemberships.status, "active"),
+    ),
+  });
+  return membership !== undefined;
+}
+
+/**
+ * Requeue every claimed [[work-cell]] whose deadline has passed — a sleepy grid
+ * self-heals (deadline → requeue, ADR-0023). The stale deadline is cleared
+ * (`deadline=null`) so a requeued cell carries no past deadline; the next claim
+ * re-arms a fresh window from `cell.deadlineMinutes` (CR-1, anti-livelock).
+ * Shared by both the `requeueExpired` tRPC procedure and the cron driver.
+ */
+export async function requeueExpiredCells(db: typeof import("@/server/db").db) {
+  return db
+    .update(workCells)
+    .set({
+      status: "requeued",
+      claimedBy: null,
+      claimedAt: null,
+      deadline: null,
+    })
+    .where(and(eq(workCells.status, "claimed"), lt(workCells.deadline, new Date())))
+    .returning();
+}
+
 export const workGridRouter = createTRPCRouter({
   /**
    * List cells this agent may claim. Only pending/requeued cells whose taskType
@@ -169,13 +212,22 @@ export const workGridRouter = createTRPCRouter({
       }
 
       const rows = await ctx.db
-        .select({ cell: workCells, gridChallengeId: workGrids.challengeId })
+        .select({
+          cell: workCells,
+          gridChallengeId: workGrids.challengeId,
+          gridCommunityId: workGrids.communityId,
+        })
         .from(workCells)
         .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
         .where(and(...conditions));
 
-      // Source-scope (ADR-0022): challenge-scoped cells are exposed only while
-      // the commission owner holds an active enrollment in that challenge.
+      // Source-scope (ADR-0022): a grid is scoped to exactly one of challenge /
+      // community (M1), so every cell must pass exactly one source-scope gate.
+      // A challenge-scoped cell is exposed only while the owner holds an active
+      // enrollment in that challenge; a community-scoped cell only while the
+      // owner holds an active membership in that community (SEC-1: the community
+      // scope previously had no firebreak, so any commissioned agent
+      // platform-wide could claim another community's cells).
       const challengeIds = [
         ...new Set(
           rows
@@ -183,22 +235,39 @@ export const workGridRouter = createTRPCRouter({
             .filter((id): id is number => id !== null),
         ),
       ];
+      const communityIds = [
+        ...new Set(
+          rows
+            .map((r) => r.gridCommunityId)
+            .filter((id): id is string => id !== null),
+        ),
+      ];
       const enrolledChallengeIds = new Set<number>();
-      await Promise.all(
-        challengeIds.map(async (challengeId) => {
+      const memberCommunityIds = new Set<string>();
+      await Promise.all([
+        ...challengeIds.map(async (challengeId) => {
           if (
             await ownerEnrolledInChallenge(ctx.db, commission.ownerId, challengeId)
           ) {
             enrolledChallengeIds.add(challengeId);
           }
         }),
-      );
+        ...communityIds.map(async (communityId) => {
+          if (
+            await ownerMemberOfCommunity(ctx.db, commission.ownerId, communityId)
+          ) {
+            memberCommunityIds.add(communityId);
+          }
+        }),
+      ]);
 
       return rows
         .filter(
           (r) =>
-            r.gridChallengeId === null ||
-            enrolledChallengeIds.has(r.gridChallengeId),
+            (r.gridChallengeId !== null &&
+              enrolledChallengeIds.has(r.gridChallengeId)) ||
+            (r.gridCommunityId !== null &&
+              memberCommunityIds.has(r.gridCommunityId)),
         )
         .map((r) => r.cell);
     }),
@@ -220,7 +289,11 @@ export const workGridRouter = createTRPCRouter({
       );
 
       const [row] = await ctx.db
-        .select({ cell: workCells, gridChallengeId: workGrids.challengeId })
+        .select({
+          cell: workCells,
+          gridChallengeId: workGrids.challengeId,
+          gridCommunityId: workGrids.communityId,
+        })
         .from(workCells)
         .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
         .where(eq(workCells.id, input.cellId))
@@ -239,8 +312,13 @@ export const workGridRouter = createTRPCRouter({
         });
       }
 
-      // Source-scope (ADR-0022): a challenge-scoped cell is only claimable while
-      // the commission owner holds an active enrollment in that challenge.
+      // Source-scope (ADR-0022): a grid is scoped to exactly one of challenge /
+      // community (M1), so exactly one of these gates applies. A challenge-scoped
+      // cell is only claimable while the owner holds an active enrollment in that
+      // challenge; a community-scoped cell only while the owner holds an active
+      // membership in that community (SEC-1: the community scope previously had
+      // no firebreak, so any commissioned agent platform-wide could claim another
+      // community's cells).
       if (
         row.gridChallengeId !== null &&
         !(await ownerEnrolledInChallenge(
@@ -254,14 +332,34 @@ export const workGridRouter = createTRPCRouter({
           message: "Commission source scope does not cover this challenge",
         });
       }
+      if (
+        row.gridCommunityId !== null &&
+        !(await ownerMemberOfCommunity(
+          ctx.db,
+          commission.ownerId,
+          row.gridCommunityId,
+        ))
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Commission source scope does not cover this community",
+        });
+      }
 
-      // Atomic claim: only succeeds if the cell is still pending/requeued.
+      // Atomic claim: only succeeds if the cell is still pending/requeued. Each
+      // claim re-arms a fresh deadline from the cell's `deadlineMinutes` (CR-1:
+      // the deadline is no longer frozen at grid creation, so a requeued/
+      // re-claimed cell can no longer livelock against a stale past deadline).
       const [claimed] = await ctx.db
         .update(workCells)
         .set({
           status: "claimed",
           claimedBy: ctx.agent.agentId,
           claimedAt: new Date(),
+          deadline:
+            cell.deadlineMinutes !== null
+              ? new Date(Date.now() + cell.deadlineMinutes * 60_000)
+              : null,
         })
         .where(
           and(
@@ -291,6 +389,10 @@ export const workGridRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "commission:submit-result");
       requireOwner(ctx.agent.ownerId);
+
+      // The commission is the live consent gate (ADR-0022): a revoked agent must
+      // not be able to submit a result (SEC-2 — mirrors claimCell).
+      await requireActiveCommission(ctx.db, ctx.agent.agentId);
 
       // Self-guarding flip + result insert in one transaction: the UPDATE only
       // matches a cell still claimed by THIS agent (no TOCTOU window between a
@@ -382,64 +484,71 @@ export const workGridRouter = createTRPCRouter({
         userId,
       );
 
-      // Transition the pending result for this cell to the verified/failed
-      // outcome (idempotent: only flips a still-pending row).
-      const [result] = await ctx.db
-        .update(workCellResults)
-        .set({
-          verificationOutcome: input.outcome,
-          verificationDetails: input.verificationDetails,
-          verifiedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(workCellResults.cellId, input.cellId),
-            eq(workCellResults.verificationOutcome, "pending"),
-          ),
-        )
-        .returning();
+      // CR-3: the result-flip + cell-status update + XP award are one atomic
+      // unit — a crash between them previously left a verified result with a
+      // never-completed cell or unawarded XP. The single transaction (mirroring
+      // submitCellResult) threads `tx` into awardCommissionedCellXp so the XP +
+      // activity-event writes commit or roll back with the verification.
+      return ctx.db.transaction(async (tx) => {
+        // Transition the pending result for this cell to the verified/failed
+        // outcome (idempotent: only flips a still-pending row).
+        const [result] = await tx
+          .update(workCellResults)
+          .set({
+            verificationOutcome: input.outcome,
+            verificationDetails: input.verificationDetails,
+            verifiedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(workCellResults.cellId, input.cellId),
+              eq(workCellResults.verificationOutcome, "pending"),
+            ),
+          )
+          .returning();
 
-      if (!result) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "No pending result to verify for this cell",
-        });
-      }
+        if (!result) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "No pending result to verify for this cell",
+          });
+        }
 
-      await ctx.db
-        .update(workCells)
-        .set({
-          status: input.outcome === "verified" ? "completed" : "failed",
-        })
-        .where(eq(workCells.id, input.cellId));
+        await tx
+          .update(workCells)
+          .set({
+            status: input.outcome === "verified" ? "completed" : "failed",
+          })
+          .where(eq(workCells.id, input.cellId));
 
-      // Resolve the OWNER (the human who commissioned the agent) from the
-      // result's agent's active commission. XP accrues to the owner, not the
-      // agent (ADR-0022 attribution: "X's agent, commissioned").
-      const [commission] = await ctx.db
-        .select({ ownerId: agentCommissions.ownerId })
-        .from(agentCommissions)
-        .where(
-          and(
-            eq(agentCommissions.agentId, result.agentId),
-            isNull(agentCommissions.revokedAt),
-          ),
-        )
-        .limit(1);
+        // Resolve the OWNER (the human who commissioned the agent) from the
+        // result's agent's active commission. XP accrues to the owner, not the
+        // agent (ADR-0022 attribution: "X's agent, commissioned").
+        const [commission] = await tx
+          .select({ ownerId: agentCommissions.ownerId })
+          .from(agentCommissions)
+          .where(
+            and(
+              eq(agentCommissions.agentId, result.agentId),
+              isNull(agentCommissions.revokedAt),
+            ),
+          )
+          .limit(1);
 
-      let xpAwarded = 0;
-      if (commission) {
-        xpAwarded = await awardCommissionedCellXp(ctx.db, {
-          ownerId: commission.ownerId,
-          cellId: cell.id,
-          gridId: grid.id,
-          verificationMode: cell.verificationMode,
-          verificationOutcome: input.outcome,
-          communityId: grid.communityId,
-        });
-      }
+        let xpAwarded = 0;
+        if (commission) {
+          xpAwarded = await awardCommissionedCellXp(tx, {
+            ownerId: commission.ownerId,
+            cellId: cell.id,
+            gridId: grid.id,
+            verificationMode: cell.verificationMode,
+            verificationOutcome: input.outcome,
+            communityId: grid.communityId,
+          });
+        }
 
-      return { result, outcome: input.outcome, xpAwarded };
+        return { result, outcome: input.outcome, xpAwarded };
+      });
     }),
 
   /**
@@ -451,16 +560,7 @@ export const workGridRouter = createTRPCRouter({
   requeueExpired: protectedProcedure.mutation(async ({ ctx }) => {
     await requireHubOperator(ctx);
 
-    return ctx.db
-      .update(workCells)
-      .set({ status: "requeued", claimedBy: null, claimedAt: null })
-      .where(
-        and(
-          eq(workCells.status, "claimed"),
-          lt(workCells.deadline, new Date()),
-        ),
-      )
-      .returning();
+    return requeueExpiredCells(ctx.db);
   }),
 
   /**
@@ -507,7 +607,11 @@ export const workGridRouter = createTRPCRouter({
         });
       }
 
-      const now = Date.now();
+      // CR-1: store the per-cell `deadlineMinutes` but do NOT arm `deadline` at
+      // creation — an unclaimed cell has no deadline. The deadline is armed
+      // (now + deadlineMinutes) only when the cell is claimed, so each claim
+      // gets a fresh window and a requeued cell can never livelock against a
+      // stale past deadline.
       const created = await ctx.db
         .insert(workCells)
         .values(
@@ -516,10 +620,7 @@ export const workGridRouter = createTRPCRouter({
             taskType: cell.taskType,
             verificationMode: cell.verificationMode,
             status: "pending" as const,
-            deadline:
-              cell.deadlineMinutes !== undefined
-                ? new Date(now + cell.deadlineMinutes * 60_000)
-                : null,
+            deadlineMinutes: cell.deadlineMinutes ?? null,
           })),
         )
         .returning({ id: workCells.id });
@@ -542,6 +643,16 @@ export const workGridRouter = createTRPCRouter({
       if (!grid) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Grid not found" });
       }
+
+      // T1: cells and result outputs are tenant-scoped data — gate reads to the
+      // grid's admin (challenge sponsor / community config-admin), reusing the
+      // same scope helper as create/verify. A bare protectedProcedure would let
+      // any logged-in user read any grid's results cross-tenant.
+      await requireGridAdmin(
+        ctx.db,
+        { challengeId: grid.challengeId, communityId: grid.communityId },
+        ctx.session.user.id,
+      );
 
       const cells = await ctx.db
         .select()

@@ -54,6 +54,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       "claimed_by" varchar(255) REFERENCES "app"."agent_profile"("id"),
       "claimed_at" timestamptz,
       "deadline" timestamptz,
+      "deadline_minutes" integer,
       "created_at" timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
       "updated_at" timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL
     );
@@ -63,6 +64,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       ON "app"."work_cell" ("status");
     CREATE INDEX IF NOT EXISTS "work_cell_claimed_by_idx"
       ON "app"."work_cell" ("claimed_by");
+    ALTER TABLE "app"."work_cell"
+      ADD COLUMN IF NOT EXISTS "deadline_minutes" integer;
   `);
 
   await db.execute(sql`

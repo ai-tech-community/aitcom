@@ -81,6 +81,7 @@ describe.skipIf(!RUN_DB)("work-grid collaborative flow [DB integration]", () => 
     db: typeof import("@/server/db").db;
     schema: typeof import("@/server/db/schema");
     createCaller: typeof import("@/server/api/root").createCaller;
+    requeueExpiredCells: typeof import("@/server/api/routers/work-grid").requeueExpiredCells;
     generateApiKey: typeof import("@/server/agent/api-key").generateApiKey;
     MANIFEST_VERSION: number;
     COMMISSIONED_VERIFICATION_WEIGHT: Record<string, number>;
@@ -95,6 +96,7 @@ describe.skipIf(!RUN_DB)("work-grid collaborative flow [DB integration]", () => 
       { db },
       schema,
       { createCaller },
+      { requeueExpiredCells },
       { generateApiKey },
       { MANIFEST_VERSION },
       { COMMISSIONED_VERIFICATION_WEIGHT },
@@ -104,6 +106,7 @@ describe.skipIf(!RUN_DB)("work-grid collaborative flow [DB integration]", () => 
       import("@/server/db"),
       import("@/server/db/schema"),
       import("@/server/api/root"),
+      import("@/server/api/routers/work-grid"),
       import("@/server/agent/api-key"),
       import("@/server/agent/manifest"),
       import("@/server/agent/commissioned-cell-xp"),
@@ -114,6 +117,7 @@ describe.skipIf(!RUN_DB)("work-grid collaborative flow [DB integration]", () => 
       db,
       schema,
       createCaller,
+      requeueExpiredCells,
       generateApiKey,
       MANIFEST_VERSION,
       COMMISSIONED_VERIFICATION_WEIGHT,
@@ -810,5 +814,208 @@ describe.skipIf(!RUN_DB)("work-grid collaborative flow [DB integration]", () => 
     await expect(
       agent.workGrid.claimCell({ cellId }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  // ── SEC-1: community source-scope — owner must be a community member ───────
+
+  it("SEC-1: a community-scoped cell is excluded from listClaimable and rejected by claimCell while the owner is NOT a member, and becomes claimable once membership is added", async () => {
+    const { db, schema, eq, and } = m;
+    const owner = ownerCaller(fx.ownerId);
+    const agent = agentCaller(fx.apiKeyRaw);
+
+    await owner.commissions.grant({
+      taskTypeAllowlist: [fx.taskType],
+      sourceScope: "enrolled-challenges",
+    });
+    const { gridId, cellIds } = await owner.workGrid.createCollaborativeGrid({
+      communityId: fx.communityId,
+      cells: [{ taskType: fx.taskType, verificationMode: "consensus" }],
+    });
+    const cellId = cellIds[0]!;
+
+    // Remove the owner's membership (the fixture seeds an active owner row) so
+    // the owner is NOT a member of the grid's community. The source-scope
+    // firebreak must then hide the cell, even though the grid was created while
+    // the owner was still an admin.
+    await db
+      .delete(schema.communityMemberships)
+      .where(
+        and(
+          eq(schema.communityMemberships.communityId, fx.communityId),
+          eq(schema.communityMemberships.userId, fx.ownerId),
+        ),
+      );
+
+    // Out of community source scope ⇒ filtered from the claim queue …
+    const claimable = await agent.workGrid.listClaimable({ gridId });
+    expect(claimable.map((c) => c.id)).not.toContain(cellId);
+
+    // … and a direct claim is FORBIDDEN.
+    await expect(
+      agent.workGrid.claimCell({ cellId }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    // Restoring an active membership brings the same cell into scope (proves the
+    // gate is membership, not a blanket community block).
+    await db.insert(schema.communityMemberships).values({
+      communityId: fx.communityId,
+      userId: fx.ownerId,
+      role: "owner",
+      status: "active",
+    });
+    const claimableNow = await agent.workGrid.listClaimable({ gridId });
+    expect(claimableNow.map((c) => c.id)).toContain(cellId);
+
+    const claimed = await agent.workGrid.claimCell({ cellId });
+    expect(claimed.status).toBe("claimed");
+    expect(claimed.claimedBy).toBe(fx.agentId);
+  });
+
+  // ── SEC-2: a revoked commission closes the SUBMIT path too ────────────────
+
+  it("SEC-2: after a claim, revoking the commission makes submitCellResult throw (no active commission → FORBIDDEN)", async () => {
+    const owner = ownerCaller(fx.ownerId);
+    const agent = agentCaller(fx.apiKeyRaw);
+
+    const commission = await owner.commissions.grant({
+      taskTypeAllowlist: [fx.taskType],
+      sourceScope: "enrolled-challenges",
+    });
+    const { cellIds } = await owner.workGrid.createCollaborativeGrid({
+      communityId: fx.communityId,
+      cells: [{ taskType: fx.taskType, verificationMode: "consensus" }],
+    });
+    const cellId = cellIds[0]!;
+
+    // The agent legitimately claims the cell while the commission is live.
+    const claimed = await agent.workGrid.claimCell({ cellId });
+    expect(claimed.status).toBe("claimed");
+
+    // The owner revokes the commission (ADR-0022: revoke instantly closes the
+    // channel) AFTER the claim but BEFORE the result is returned.
+    await owner.commissions.revoke({ commissionId: commission.id });
+
+    // submitCellResult must reject — the live consent gate is gone, so a
+    // revoked agent can no longer return a result for its already-claimed cell.
+    await expect(
+      agent.workGrid.submitCellResult({ cellId, output: "too late" }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  // ── T1: getGrid is admin-only — a stranger cannot read another grid ───────
+
+  it("T1: a non-admin stranger calling getGrid is rejected FORBIDDEN while the grid admin can read it", async () => {
+    const { db, schema } = m;
+    const owner = ownerCaller(fx.ownerId);
+
+    const { gridId, cellIds } = await owner.workGrid.createCollaborativeGrid({
+      communityId: fx.communityId,
+      cells: [{ taskType: fx.taskType, verificationMode: "consensus" }],
+    });
+
+    // The grid admin (community config-admin) can read the grid + its cells.
+    const adminView = await owner.workGrid.getGrid({ gridId });
+    expect(adminView.grid.id).toBe(gridId);
+    expect(adminView.cells.map((c) => c.id)).toEqual(
+      expect.arrayContaining(cellIds),
+    );
+
+    // A second, unrelated logged-in user who is NOT an admin of this community.
+    const strangerId = `it-stranger-${fx.suffix}`;
+    await db.insert(schema.user).values({
+      id: strangerId,
+      email: `it-stranger-${fx.suffix}@example.test`,
+      name: "Integration Stranger",
+    });
+
+    try {
+      const stranger = ownerCaller(strangerId);
+      await expect(
+        stranger.workGrid.getGrid({ gridId }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    } finally {
+      await db
+        .delete(schema.user)
+        .where(m.eq(schema.user.id, strangerId));
+    }
+  });
+
+  // ── CR-1: deadline → requeue self-heal (anti-livelock) ────────────────────
+
+  it("CR-1/requeue: an expired claimed cell is requeued (status requeued, claimedBy/deadline cleared) while a future-window cell is left alone; a non-Hub-operator caller to requeueExpired is rejected", async () => {
+    const { db, schema, eq } = m;
+    const owner = ownerCaller(fx.ownerId);
+    const agent = agentCaller(fx.apiKeyRaw);
+
+    await owner.commissions.grant({
+      taskTypeAllowlist: [fx.taskType],
+      sourceScope: "enrolled-challenges",
+    });
+
+    // Two cells: one with a tiny deadline (expires almost immediately on claim)
+    // and one with a long deadline (its window stays open).
+    const { cellIds } = await owner.workGrid.createCollaborativeGrid({
+      communityId: fx.communityId,
+      cells: [
+        { taskType: fx.taskType, verificationMode: "consensus", deadlineMinutes: 1 },
+        { taskType: fx.taskType, verificationMode: "consensus", deadlineMinutes: 60 },
+      ],
+    });
+    const expiringCellId = cellIds[0]!;
+    const freshCellId = cellIds[1]!;
+
+    // Claim both — each arms a fresh deadline (now + deadlineMinutes).
+    await agent.workGrid.claimCell({ cellId: expiringCellId });
+    await agent.workGrid.claimCell({ cellId: freshCellId });
+
+    // Force the first cell's deadline into the past (simulates the 1-minute
+    // window elapsing) without waiting on wall-clock time. The second cell keeps
+    // its future deadline.
+    await db
+      .update(schema.workCells)
+      .set({ deadline: new Date(Date.now() - 60_000) })
+      .where(eq(schema.workCells.id, expiringCellId));
+
+    // The shared requeue driver self-heals the expired cell only.
+    const requeued = await m.requeueExpiredCells(db);
+    expect(requeued.map((c) => c.id)).toContain(expiringCellId);
+    expect(requeued.map((c) => c.id)).not.toContain(freshCellId);
+
+    // Expired cell: status requeued, claimer + deadline cleared (anti-livelock).
+    const [expired] = await db
+      .select({
+        status: schema.workCells.status,
+        claimedBy: schema.workCells.claimedBy,
+        deadline: schema.workCells.deadline,
+      })
+      .from(schema.workCells)
+      .where(eq(schema.workCells.id, expiringCellId));
+    expect(expired!.status).toBe("requeued");
+    expect(expired!.claimedBy).toBeNull();
+    expect(expired!.deadline).toBeNull();
+
+    // Future-window cell: untouched, still claimed by this agent.
+    const [fresh] = await db
+      .select({
+        status: schema.workCells.status,
+        claimedBy: schema.workCells.claimedBy,
+      })
+      .from(schema.workCells)
+      .where(eq(schema.workCells.id, freshCellId));
+    expect(fresh!.status).toBe("claimed");
+    expect(fresh!.claimedBy).toBe(fx.agentId);
+
+    // The requeued cell drops back into the agent's claim queue (re-claimable).
+    const claimableAfter = await agent.workGrid.listClaimable({
+      gridId: requeued[0]!.gridId,
+    });
+    expect(claimableAfter.map((c) => c.id)).toContain(expiringCellId);
+
+    // requeueExpired (the tRPC procedure) is Hub-operator only: the fixture owner
+    // is an owner of their OWN community, never of the root Hub, so calling it is
+    // FORBIDDEN. This keeps any logged-in agent owner from requeuing the platform.
+    await expect(owner.workGrid.requeueExpired()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
   });
 });

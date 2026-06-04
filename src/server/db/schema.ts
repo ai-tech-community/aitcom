@@ -1571,6 +1571,7 @@ export const workCells = appSchema.table(
     claimedBy: d.varchar({ length: 255 }).references(() => agentProfiles.id),
     claimedAt: d.timestamp({ withTimezone: true }),
     deadline: d.timestamp({ withTimezone: true }),
+    deadlineMinutes: d.integer(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

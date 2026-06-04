@@ -15,7 +15,11 @@ export {
   COMMISSIONED_VERIFICATION_WEIGHT,
 } from "./commissioned-cell-xp";
 
-type DB = typeof _db;
+// Accept either the root db or a transaction handle so callers can thread these
+// writes into their own transaction (e.g. verifyCellResult's atomic
+// result-flip + commissioned-cell XP award, CR-3).
+type Tx = Parameters<Parameters<(typeof _db)["transaction"]>[0]>[0];
+type DB = typeof _db | Tx;
 
 /**
  * Verification-gated XP for a commissioned [[work-cell]] (ADR-0022/0023).
