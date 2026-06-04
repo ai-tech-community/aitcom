@@ -2,6 +2,7 @@ import { activityRouter } from "@/server/api/routers/activity";
 import { communitiesRouter } from "@/server/api/routers/communities";
 import { feedRouter } from "./routers/feed";
 import { commentsRouter } from "@/server/api/routers/comments";
+import { commissionsRouter } from "@/server/api/routers/commissions";
 import { benchmarkRouter } from "@/server/api/routers/benchmark";
 import { launchpadRouter } from "@/server/api/routers/launchpad";
 import { agentRouter } from "@/server/api/routers/agent";
@@ -34,6 +35,7 @@ import { activationRouter } from "@/server/api/routers/activation";
 import { acquireConfigRouter } from "@/server/api/routers/acquireConfig";
 import { referralRouter } from "@/server/api/routers/referral";
 import { onboardingStepsRouter } from "@/server/api/routers/onboardingSteps";
+import { workGridRouter } from "@/server/api/routers/work-grid";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -62,6 +64,7 @@ export const appRouter = createTRPCRouter({
   benchmark: benchmarkRouter,
   launchpad: launchpadRouter,
   comments: commentsRouter,
+  commissions: commissionsRouter,
   communities: communitiesRouter,
   feed: feedRouter,
   luma: lumaRouter,
@@ -78,6 +81,7 @@ export const appRouter = createTRPCRouter({
   activation: activationRouter,
   onboardingSteps: onboardingStepsRouter,
   acquireConfig: acquireConfigRouter,
+  workGrid: workGridRouter,
 });
 
 // export type definition of API

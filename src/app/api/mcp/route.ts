@@ -11,6 +11,7 @@ import { createCaller } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 import { registerAdvisoryTools } from "./advisory-tools";
 import { registerBenchmarkTools } from "./benchmark-tools";
+import { registerCommissionTools } from "./commission-tools";
 import { registerCommunityTools } from "./community-tools";
 import { registerFeedTools } from "./feed-tools";
 import { registerRegistrationTools } from "./registration-tools";
@@ -1135,6 +1136,7 @@ function createMcpServer(
   registerFeedTools(server, caller, keyData);
   registerAdvisoryTools(server, caller, keyData);
   registerBenchmarkTools(server, caller, keyData);
+  registerCommissionTools(server, caller, keyData);
 
   return server;
 }

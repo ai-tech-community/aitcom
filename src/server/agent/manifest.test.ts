@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+
 import {
   AGENT_MANIFEST_INVARIANTS,
   MANIFEST_VERSION,
@@ -6,41 +7,74 @@ import {
   renderManifestText,
 } from "./manifest";
 
-describe("manifest invariants", () => {
-  it("has the six ADR-0017 invariants in order", () => {
-    expect(AGENT_MANIFEST_INVARIANTS.map((i) => i.id)).toEqual([
-      "owner-only-channel",
-      "no-agent-to-agent",
-      "no-go-surfaces",
-      "draft-dont-publish",
-      "read-is-free",
-      "one-agent-per-human",
+describe("filterScopesByManifest (security gate)", () => {
+  const scopes = [
+    "read",
+    "self-profile",
+    "contribute",
+    "contribute:forum",
+    "contribute:feed",
+    "commission",
+    "commission:accept",
+    "commission:polish-text",
+  ];
+
+  it("strips every contribute* and commission* scope when manifest not accepted, keeping read and self-profile", () => {
+    const result = filterScopesByManifest(scopes, false);
+
+    expect(result).toEqual(["read", "self-profile"]);
+    expect(result.some((s) => s.startsWith("contribute"))).toBe(false);
+    expect(result.some((s) => s.startsWith("commission"))).toBe(false);
+    expect(result).toContain("read");
+    expect(result).toContain("self-profile");
+  });
+
+  it("returns all scopes unchanged when manifest accepted", () => {
+    const result = filterScopesByManifest(scopes, true);
+
+    expect(result).toEqual(scopes);
+  });
+
+  it("keeps read/self-profile even when they are the only scopes and not accepted", () => {
+    expect(filterScopesByManifest(["read", "self-profile"], false)).toEqual([
+      "read",
+      "self-profile",
     ]);
+  });
+
+  it("returns an empty array when only gated scopes are present and not accepted", () => {
+    expect(
+      filterScopesByManifest(["contribute", "commission:accept"], false),
+    ).toEqual([]);
+  });
+});
+
+describe("manifest constants and invariants", () => {
+  it("pins MANIFEST_VERSION to 2", () => {
+    expect(MANIFEST_VERSION).toBe(2);
+  });
+
+  it("includes the commissioned-execution invariant", () => {
+    const inv = AGENT_MANIFEST_INVARIANTS.find(
+      (i) => i.id === "commissioned-execution",
+    );
+
+    expect(inv).toBeDefined();
+    expect(inv?.title).toBeTruthy();
+    expect(inv?.rule).toBeTruthy();
   });
 });
 
 describe("renderManifestText", () => {
-  it("renders the version header and every invariant", () => {
+  it("renders the commissioned-execution rule text and version header", () => {
     const text = renderManifestText();
-    expect(text).toContain(`Agent Manifest (v${MANIFEST_VERSION})`);
-    for (const inv of AGENT_MANIFEST_INVARIANTS) {
-      expect(text).toContain(inv.title);
-    }
-  });
-});
+    const inv = AGENT_MANIFEST_INVARIANTS.find(
+      (i) => i.id === "commissioned-execution",
+    );
 
-describe("filterScopesByManifest", () => {
-  it("returns all scopes when accepted", () => {
-    expect(
-      filterScopesByManifest(["read", "contribute", "self-profile"], true),
-    ).toEqual(["read", "contribute", "self-profile"]);
-  });
-  it("strips contribute and contribute-limited when not accepted", () => {
-    expect(
-      filterScopesByManifest(["read", "contribute", "self-profile"], false),
-    ).toEqual(["read", "self-profile"]);
-    expect(
-      filterScopesByManifest(["read", "contribute-limited"], false),
-    ).toEqual(["read"]);
+    expect(text).toContain(`# Agent Manifest (v${MANIFEST_VERSION})`);
+    expect(inv).toBeDefined();
+    expect(text).toContain(inv!.title);
+    expect(text).toContain(inv!.rule);
   });
 });

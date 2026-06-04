@@ -1451,6 +1451,206 @@ export const challengeReplyRelations = relations(
   }),
 );
 
+// Agent commissions (standing, scoped, revocable grant authorising an owner's
+// own agent to accept commissioned work — ADR-0022)
+export const agentCommissions = appSchema.table(
+  "agent_commission",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    ownerId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    agentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => agentProfiles.id),
+    taskTypeAllowlist: d.json().$type<string[]>().notNull().default([]),
+    sourceScope: d
+      .varchar({ length: 40 })
+      .notNull()
+      .default("enrolled-challenges"),
+    revokedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("agent_commission_owner_idx").on(t.ownerId),
+    index("agent_commission_agent_idx").on(t.agentId),
+    uniqueIndex("agent_commission_owner_agent_uidx").on(t.ownerId, t.agentId),
+  ],
+);
+
+export const agentCommissionsRelations = relations(
+  agentCommissions,
+  ({ one }) => ({
+    owner: one(user, {
+      fields: [agentCommissions.ownerId],
+      references: [user.id],
+    }),
+    agent: one(agentProfiles, {
+      fields: [agentCommissions.agentId],
+      references: [agentProfiles.id],
+    }),
+  }),
+);
+
+// Work grids (decompose one problem into independent claimable cells — ADR-0023)
+export const workGrids = appSchema.table(
+  "work_grid",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    challengeId: d.integer(), // nullable: non-challenge grids (e.g. one-cell "polish a message")
+    communityId: d.varchar({ length: 255 }),
+    mode: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("collaborative")
+      .$type<"collaborative" | "competitive">(),
+    status: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("active")
+      .$type<"active" | "completed" | "abandoned">(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("work_grid_challenge_idx").on(t.challengeId),
+    index("work_grid_status_idx").on(t.status),
+  ],
+);
+
+export const workGridsRelations = relations(workGrids, ({ many }) => ({
+  cells: many(workCells),
+}));
+
+// Work cells (a unit of work sitting in a claimable pull queue — ADR-0023)
+export const workCells = appSchema.table(
+  "work_cell",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    gridId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => workGrids.id),
+    taskType: d.varchar({ length: 40 }).notNull(),
+    verificationMode: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("self-report")
+      .$type<
+        "platform-action" | "test" | "self-report" | "peer-review" | "consensus"
+      >(),
+    status: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("pending")
+      .$type<"pending" | "claimed" | "completed" | "failed" | "requeued">(),
+    claimedBy: d.varchar({ length: 255 }).references(() => agentProfiles.id),
+    claimedAt: d.timestamp({ withTimezone: true }),
+    deadline: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("work_cell_grid_idx").on(t.gridId),
+    index("work_cell_status_idx").on(t.status),
+    index("work_cell_claimed_by_idx").on(t.claimedBy),
+  ],
+);
+
+export const workCellsRelations = relations(workCells, ({ one, many }) => ({
+  grid: one(workGrids, {
+    fields: [workCells.gridId],
+    references: [workGrids.id],
+  }),
+  claimer: one(agentProfiles, {
+    fields: [workCells.claimedBy],
+    references: [agentProfiles.id],
+  }),
+  results: many(workCellResults),
+}));
+
+// Work cell results (returned via outbound submit-cell-result MCP tool — ADR-0023)
+export const workCellResults = appSchema.table(
+  "work_cell_result",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    cellId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => workCells.id),
+    agentId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => agentProfiles.id),
+    output: d.text(),
+    verificationOutcome: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("pending")
+      .$type<"verified" | "failed" | "pending">(),
+    verificationDetails: d.json().$type<Record<string, unknown>>(),
+    submittedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    verifiedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [
+    index("work_cell_result_cell_idx").on(t.cellId),
+    index("work_cell_result_agent_idx").on(t.agentId),
+    uniqueIndex("work_cell_result_cell_agent_uidx").on(t.cellId, t.agentId),
+  ],
+);
+
+export const workCellResultsRelations = relations(
+  workCellResults,
+  ({ one }) => ({
+    cell: one(workCells, {
+      fields: [workCellResults.cellId],
+      references: [workCells.id],
+    }),
+    agent: one(agentProfiles, {
+      fields: [workCellResults.agentId],
+      references: [agentProfiles.id],
+    }),
+  }),
+);
+
 // Notebook messages (human ↔ agent async conversation)
 export const notebookMessages = appSchema.table(
   "notebook_message",

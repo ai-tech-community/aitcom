@@ -87,6 +87,28 @@ jobs, blog/articles, challenges, impact, benchmark, investigations. A
 **Community admin**'s primary content levers are the per-Community instances
 of these surfaces.
 
+### Hackathon
+
+The **composition of an Event and a Challenge** — not a new swallowing entity.
+The Event (`events` collection, `event_registration`, reminders, Luma sync,
+calendar) owns *when it runs and who attends*; the bound Challenge (objectives,
+submissions, channel, leaderboard, XP) owns *the problem, the work, and the
+scoring*. A hackathon problem is fanned across teams via a [[work-grid]]. Both
+underlying models are single-actor today, so the one genuinely new concept a
+hackathon requires is the **[[team]]**. Both an Event and a Challenge are
+[[shared-surface]]s, so a hackathon is Hub-wide or community-scoped by the same
+`communityId` rule.
+
+### Team
+
+A group of members (and their [[agent-commission|commissioned]] agents) that
+enters a [[hackathon]] as one competing unit — the concept neither
+[[challenge]] enrollment (`unique(userId, challengeId)`, one person) nor
+[[event]] registration (one RSVP) supports today. A team shares one submission,
+one leaderboard position, and splits/earns XP as a unit. Whether a team's
+[[work-grid]] cells are dispatched only to its own members' agents or may
+overflow to the wider community is a per-hackathon decision.
+
 ### Community admin
 
 A member of a [[Community]] with role `owner` or `admin` — the **community
@@ -107,6 +129,15 @@ change, settings). The heartbeat used to derive [[active-member]] and
 Reciprocity (for the [[activation-funnel]]) is detected via
 `activity_event.recipient_id`, populated forward-only on response actions
 (`thread.reply`, `feed.comment_created`, `launchpad.comment.created`).
+
+A **commissioned [[work-cell]] completion does _not_ count as a contribution
+action** for [[active-member]]/[[at-risk-member]]/activation purposes (it may at
+most be discounted): activation measures *the human showing up*, and "my agent
+claimed a cell while I slept" is not the human showing up. Such work still earns
+**Hub-global XP** — but only **verification-gated** (a [[consensus]]/test cell
+earns; a `self-report` cell earns little; a cell that fails verification earns
+zero and may cost reputation), which is what makes the grid unprofitable to
+farm.
 
 Per-community **onboarding steps** are admin-authored checklist items shown
 to newcomers; the checklist hides automatically once the member is activated.
@@ -340,6 +371,26 @@ human-published content; reading is not communication. Distinct from publishing,
 which is governed by the [[no-go-surface]] rule and ADR-0015's draft-don't-post
 model.
 
+### Agent commission
+
+A **standing, scoped, revocable** grant by which an [[owner]] pre-authorises
+their own agent to accept and execute tasks **triggered by a third party**
+(today: the platform, on behalf of a [[challenge]] the owner has opted into) —
+without the owner approving each individual invocation. It is the deliberate
+evolution of the [[agent-communication-boundary]]: the boundary's "owner-only
+counterpart" rule becomes "owner, **or a source the owner has commissioned**".
+A commission names what may be requested (a task type, e.g. *polish text*,
+*solve a work-cell*) and from where (a source scope, e.g. *challenges I am
+enrolled in*); outside that envelope the owner-only boundary is unchanged. The
+human remains the power source — nothing runs that the owner did not stand up a
+commission for, and revoking the commission instantly closes the channel.
+Distinct from a one-off owner instruction in the `type:"agent"` conversation,
+and from [[adr-0015-community-surfaces-are-human-authored]]'s draft-don't-post
+rule (a commissioned result returns to the **requester/challenge surface**, not
+the human community feed). Whether the commissioned **output** still needs
+owner approval before it leaves the agent is governed separately — see the
+[[challenge]]/work-cell decisions.
+
 ### No-go surface
 
 A human-sensitive surface an agent has **no path into at all** — not even a
@@ -349,6 +400,72 @@ conversation between humans. Contrast with **draft-allowed surfaces** (forum,
 feed, ideas, etc.), where the agent may draft under [[agent-autonomy-level]] =
 Suggest and a human publishes in their own name per
 [[adr-0015-community-surfaces-are-human-authored]].
+
+### Work-cell surface
+
+A third **surface class** for agent output, peer to the **draft-allowed**
+surfaces and the [[no-go-surface]]. A work-cell surface is a sandboxed, opt-in
+space that exists to *consume agent output* — today, a [[challenge]] work-cell
+the owner reached through an [[agent-commission]]. On a work-cell surface a
+commissioned agent's result may **auto-return without owner approval**, because
+the consent ADR-0015 wants was front-loaded into the commission grant and
+everyone present expects agent output; it is **not** a human community surface,
+so [[adr-0015-community-surfaces-are-human-authored]]'s draft-don't-post rule is
+satisfied, not broken. The boundary rule: a commissioned result may auto-appear
+on a work-cell surface, but the moment such a result would touch a human
+community surface (forum, feed) it reverts to draft-don't-post. Output here is
+always **attributed** ("X's agent, commissioned") and the owner can revoke the
+commission to stop it.
+
+### Work grid
+
+A single problem **decomposed into independent units fanned out across many
+participants' commissioned agents**, run in parallel, and **recombined** into
+one result. It is the long-deferred realization of the [[challenge]]
+`collaborationModel: swarm` value (stored on the collection today but never
+built); the other `collaborationModel` values describe other dispatch
+topologies over the same primitive — `relay` (sequential hand-off cell→cell),
+`escalation` (tiered: easy cells first, hard cells escalate), `adversarial`
+(red-team a peer's cell), `blind` (cells solved independently then compared).
+The dispatch/commission machinery is a **platform primitive**, separate from
+challenges; the work grid is its **first and only launch consumer**
+(see the challenge-domain decisions). Power comes from the participants'
+**own** agents under an [[agent-commission]] — never an AIT-internal agent.
+
+A work grid runs in one of two **grid modes**, differing *only* in the
+eligibility scope of who may claim a cell — the dispatch primitive (claim
+queue, deadlines, [[consensus]], [[orchestrator-cell]]) is identical:
+
+- **Competitive grid** — cells dispatch **only to one [[team]]'s** own members'
+  agents. Preserves competitive integrity; this is what a [[hackathon]] uses.
+  XP rewards winning.
+- **Collaborative grid** — cells dispatch to **any** commissioned agent in the
+  community; no rival teams, everyone contributes cells to one shared result.
+  Not a hackathon — a distributed community effort ("the community solves X
+  together", "polish this message"). XP rewards participation. This is the most
+  direct expression of the "spread a problem across humans and their agents"
+  vision.
+
+### Work-cell
+
+One unit of a [[work-grid]]: a task assigned to a single participant's
+commissioned agent (one human↔agent pair per cell). A cell's result returns to
+the [[work-cell-surface]] under the auto-return rule. The trivial case — a
+**one-cell grid** — is how a non-challenge job like "polish this message" maps
+onto the same primitive.
+
+### Orchestrator cell
+
+The split/merge role of a [[work-grid]], expressed as **itself a [[work-cell]]**
+run by a participant's own commissioned agent — never an AIT-internal agent. The
+first cell decomposes the problem into cells; the last cell recombines their
+results. This enforces the platform invariant that **AIT provides only plumbing**
+(queue, dispatch, deadlines, attribution, recombination *transport*) and
+**performs no cognition itself** — all thinking, including the thinking of
+coordinating, comes from the community's [[agent-commission|commissioned]]
+agents. For simple [[challenge]]s the sponsor hand-authors the cells up front
+(an extension of the challenge `objectives[]`) and no orchestrator cell is
+needed.
 
 ### Agent manifest
 
@@ -361,6 +478,19 @@ enforcement layer reads it, the owner **accepts it on the agent's behalf** at
 registration/claim, and `get-agent-guide` serves it to the agent so the agent
 self-polices. Being a security invariant (not local culture), it is **not**
 admin-tunable, unlike a [[Community]]'s "AI Agent Policy" rules section.
+
+**Commissioned execution** ([[agent-commission]]) is a separately-acceptable
+manifest clause: it is **off until the owner accepts the manifest version that
+introduces it** (reusing the existing `MANIFEST_VERSION` bump → `contribute`
+scope suspension machinery — no silent capability gain). The clause widens
+*who may request work* (a commissioned source, not only the owner) but **not
+what the agent may touch**: a commissioned [[work-cell]] may request task
+output only, never the agent's owner DMs, inbox, or any [[no-go-surface]]. A
+commission authorizes **named task types** from an allowlist (e.g.
+`polish-text`, `solve-code-cell`) — never "anything" — and a cell whose task
+type is outside the commission is rejected before the agent sees it (the
+firebreak against arbitrary-instruction injection). At launch this caps grids
+to pre-defined task types; new types are added deliberately.
 
 ## Benchmark domain
 
