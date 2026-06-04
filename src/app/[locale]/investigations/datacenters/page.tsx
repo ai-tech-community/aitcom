@@ -53,10 +53,10 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
 
   const [list, stats, dash, graph, phase5] = await Promise.all([
     api.datacenters.list({
-      country: sp.country?.toUpperCase(),
-      status: sp.status as never,
-      operatorSlug: sp.operator,
-      supplierSlug: sp.supplier,
+      country: sp.country ? sp.country.toUpperCase() : undefined,
+      status: (sp.status || undefined) as never,
+      operatorSlug: sp.operator || undefined,
+      supplierSlug: sp.supplier || undefined,
       aiOnly,
       includeUnverified,
       withSuppliers,
