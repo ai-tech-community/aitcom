@@ -45,6 +45,9 @@ interface PageProps {
   }>;
 }
 
+/** Treat empty/whitespace-only search params as absent (URLs like `?status=`). */
+const blank = (v?: string): string | undefined => (v?.trim() ? v : undefined);
+
 export default async function DatacentersPage({ searchParams }: PageProps) {
   const sp = await searchParams;
   const aiOnly = sp.ai === "1";
@@ -53,10 +56,10 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
 
   const [list, stats, dash, graph, phase5] = await Promise.all([
     api.datacenters.list({
-      country: sp.country ? sp.country.toUpperCase() : undefined,
-      status: (sp.status || undefined) as never,
-      operatorSlug: sp.operator || undefined,
-      supplierSlug: sp.supplier || undefined,
+      country: blank(sp.country)?.toUpperCase(),
+      status: blank(sp.status) as never,
+      operatorSlug: blank(sp.operator),
+      supplierSlug: blank(sp.supplier),
       aiOnly,
       includeUnverified,
       withSuppliers,
