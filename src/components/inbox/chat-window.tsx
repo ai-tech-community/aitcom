@@ -31,6 +31,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Link } from "@/i18n/navigation";
 import { useInbox } from "./inbox-provider";
+import { LIVE_MESSAGES_REFETCH_MS } from "./live-refetch";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,13 +74,42 @@ export function ChatWindow({
 
   // ── Data fetching ───────────────────────────────────────────────────────
 
+  const currentUserId = session?.user?.id;
+
   const messagesQuery = api.inbox.getMessages.useQuery(
     { conversationId, limit: 50 },
-    { refetchInterval: 10_000 },
+    { refetchInterval: LIVE_MESSAGES_REFETCH_MS },
   );
 
   const sendMessage = api.inbox.sendMessage.useMutation({
-    onSuccess: () => {
+    // Optimistic send: the human's own message renders instantly (ADR-0025 Tier 0).
+    onMutate: async ({ content }) => {
+      if (!currentUserId) return;
+      const key = { conversationId, limit: 50 };
+      await utils.inbox.getMessages.cancel(key);
+      const previous = utils.inbox.getMessages.getData(key);
+      utils.inbox.getMessages.setData(key, (old) => {
+        if (!old) return old;
+        const optimistic = {
+          id: `optimistic-${Date.now()}`,
+          senderId: currentUserId,
+          senderType: "human" as const,
+          content,
+          createdAt: new Date(),
+        } as (typeof old.messages)[number];
+        return { ...old, messages: [...old.messages, optimistic] };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) {
+        utils.inbox.getMessages.setData(
+          { conversationId, limit: 50 },
+          ctx.previous,
+        );
+      }
+    },
+    onSettled: () => {
       void utils.inbox.getMessages.invalidate();
       void utils.inbox.listConversations.invalidate();
       void utils.inbox.totalUnreadCount.invalidate();
@@ -99,7 +129,6 @@ export function ChatWindow({
 
   // ── Derived data ────────────────────────────────────────────────────────
 
-  const currentUserId = session?.user?.id;
   const messages = messagesQuery.data?.messages ?? [];
 
   // ── Render ──────────────────────────────────────────────────────────────
