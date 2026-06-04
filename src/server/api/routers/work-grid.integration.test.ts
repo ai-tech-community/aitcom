@@ -506,4 +506,309 @@ describe.skipIf(!RUN_DB)("work-grid collaborative flow [DB integration]", () => 
       agent.workGrid.claimCell({ cellId: cellIds[0]! }),
     ).rejects.toThrow(/allowlist/i);
   });
+
+  // ── S2: only the grid owner/admin may verify ──────────────────────────────
+
+  it("S2: a non-admin/non-sponsor caller to verifyCellResult is rejected FORBIDDEN and owner XP stays 0", async () => {
+    const { db, schema, eq } = m;
+    const owner = ownerCaller(fx.ownerId);
+    const agent = agentCaller(fx.apiKeyRaw);
+
+    await owner.commissions.grant({
+      taskTypeAllowlist: [fx.taskType],
+      sourceScope: "enrolled-challenges",
+    });
+    const { cellIds } = await owner.workGrid.createCollaborativeGrid({
+      communityId: fx.communityId,
+      cells: [{ taskType: fx.taskType, verificationMode: "consensus" }],
+    });
+    const cellId = cellIds[0]!;
+
+    await agent.workGrid.claimCell({ cellId });
+    await agent.workGrid.submitCellResult({ cellId, output: "ok" });
+
+    // A second, unrelated user who is NOT an owner/admin of this community.
+    const strangerId = `it-stranger-${fx.suffix}`;
+    await db.insert(schema.user).values({
+      id: strangerId,
+      email: `it-stranger-${fx.suffix}@example.test`,
+      name: "Integration Stranger",
+    });
+    await db.insert(schema.memberProfiles).values({
+      userId: strangerId,
+      displayName: "Integration Stranger",
+      xp: 0,
+      level: 1,
+    });
+
+    try {
+      const stranger = ownerCaller(strangerId);
+      // The stranger cannot administer this community's grid → FORBIDDEN.
+      await expect(
+        stranger.workGrid.verifyCellResult({ cellId, outcome: "verified" }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+      // No verification happened, so the OWNER earned nothing.
+      const [profile] = await db
+        .select({ xp: schema.memberProfiles.xp })
+        .from(schema.memberProfiles)
+        .where(eq(schema.memberProfiles.userId, fx.ownerId));
+      expect(profile!.xp).toBe(0);
+
+      // The result is still pending — the stranger could not flip it.
+      const [result] = await db
+        .select({ outcome: schema.workCellResults.verificationOutcome })
+        .from(schema.workCellResults)
+        .where(eq(schema.workCellResults.cellId, cellId));
+      expect(result!.outcome).toBe("pending");
+    } finally {
+      await db
+        .delete(schema.memberProfiles)
+        .where(eq(schema.memberProfiles.userId, strangerId));
+      await db.delete(schema.user).where(eq(schema.user.id, strangerId));
+    }
+  });
+
+  // ── S3: idempotency under double-claim / wrong-agent / double-verify ──────
+
+  it("S3: double-claim → CONFLICT; wrong-agent submit → FORBIDDEN; double-verify → CONFLICT and XP is not double-minted", async () => {
+    const { db, schema, eq, COMMISSIONED_VERIFICATION_WEIGHT } = m;
+    const owner = ownerCaller(fx.ownerId);
+    const agent = agentCaller(fx.apiKeyRaw);
+
+    await owner.commissions.grant({
+      taskTypeAllowlist: [fx.taskType],
+      sourceScope: "enrolled-challenges",
+    });
+    const { cellIds } = await owner.workGrid.createCollaborativeGrid({
+      communityId: fx.communityId,
+      cells: [{ taskType: fx.taskType, verificationMode: "consensus" }],
+    });
+    const cellId = cellIds[0]!;
+
+    // First claim wins.
+    await agent.workGrid.claimCell({ cellId });
+    // Second claim on the now-claimed cell → CONFLICT (atomic guard).
+    await expect(
+      agent.workGrid.claimCell({ cellId }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+
+    // A SECOND agent (different owner) cannot submit a result for a cell it
+    // never claimed → FORBIDDEN/CONFLICT (the self-guarding UPDATE matches no
+    // row claimed by this other agent).
+    const otherOwnerId = `it-owner2-${fx.suffix}`;
+    const otherAgentId = `it-agent2-${fx.suffix}`;
+    await db.insert(schema.user).values({
+      id: otherOwnerId,
+      email: `it-owner2-${fx.suffix}@example.test`,
+      name: "Integration Owner 2",
+    });
+    await db.insert(schema.memberProfiles).values({
+      userId: otherOwnerId,
+      displayName: "Integration Owner 2",
+      xp: 0,
+      level: 1,
+    });
+    await db.insert(schema.agentProfiles).values({
+      id: otherAgentId,
+      ownerId: otherOwnerId,
+      name: "Integration Agent 2",
+      status: "active",
+    });
+    // A real, hashed key for the other agent so the middleware accepts it.
+    const otherKey = m.generateApiKey();
+    await db.insert(schema.agentApiKeys).values({
+      agentId: otherAgentId,
+      ownerId: otherOwnerId,
+      keyHash: otherKey.hash,
+      keyPrefix: otherKey.prefix,
+      scopes: [
+        "read",
+        "self-profile",
+        "commission:claim-cell",
+        "commission:submit-result",
+      ],
+      isActive: true,
+    });
+    await db.insert(schema.agentManifestAcceptances).values({
+      ownerId: otherOwnerId,
+      agentId: otherAgentId,
+      manifestVersion: m.MANIFEST_VERSION,
+    });
+
+    try {
+      const otherAgent = agentCaller(otherKey.raw);
+      await expect(
+        otherAgent.workGrid.submitCellResult({ cellId, output: "stolen" }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+
+      // The rightful claimer submits its result (cell → completed).
+      await agent.workGrid.submitCellResult({ cellId, output: "ok" });
+
+      // First verify earns the owner XP.
+      const verify1 = await owner.workGrid.verifyCellResult({
+        cellId,
+        outcome: "verified",
+      });
+      const expectedXp = Math.round(
+        50 * COMMISSIONED_VERIFICATION_WEIGHT.consensus!,
+      );
+      expect(verify1.xpAwarded).toBe(expectedXp);
+
+      // Second verify of the SAME cell → CONFLICT (no pending result left).
+      await expect(
+        owner.workGrid.verifyCellResult({ cellId, outcome: "verified" }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+
+      // XP was minted exactly once, not doubled.
+      const [profile] = await db
+        .select({ xp: schema.memberProfiles.xp })
+        .from(schema.memberProfiles)
+        .where(eq(schema.memberProfiles.userId, fx.ownerId));
+      expect(profile!.xp).toBe(expectedXp);
+    } finally {
+      await db
+        .delete(schema.agentManifestAcceptances)
+        .where(eq(schema.agentManifestAcceptances.ownerId, otherOwnerId));
+      await db
+        .delete(schema.agentApiKeys)
+        .where(eq(schema.agentApiKeys.agentId, otherAgentId));
+      await db
+        .delete(schema.agentProfiles)
+        .where(eq(schema.agentProfiles.id, otherAgentId));
+      await db
+        .delete(schema.memberProfiles)
+        .where(eq(schema.memberProfiles.userId, otherOwnerId));
+      await db.delete(schema.user).where(eq(schema.user.id, otherOwnerId));
+    }
+  });
+
+  // ── S1: source-scope — a not-enrolled challenge cell is invisible ─────────
+
+  it("S1: a cell from a challenge the owner is NOT enrolled in is filtered from listClaimable and rejected by claimCell", async () => {
+    const { db, schema, eq } = m;
+    const owner = ownerCaller(fx.ownerId);
+    const agent = agentCaller(fx.apiKeyRaw);
+
+    await owner.commissions.grant({
+      taskTypeAllowlist: [fx.taskType],
+      sourceScope: "enrolled-challenges",
+    });
+
+    // A challenge-scoped grid inserted directly (sidesteps Payload authz; the
+    // claim/list paths read enrollment, not Payload). The owner holds NO
+    // enrollment in this challenge, so the cell is out of source scope.
+    const challengeId = 999_000_000 + (Date.now() % 1_000_000);
+    const [grid] = await db
+      .insert(schema.workGrids)
+      .values({ mode: "collaborative", status: "active", challengeId })
+      .returning({ id: schema.workGrids.id });
+    const [cell] = await db
+      .insert(schema.workCells)
+      .values({
+        gridId: grid!.id,
+        taskType: fx.taskType,
+        verificationMode: "consensus",
+        status: "pending",
+      })
+      .returning({ id: schema.workCells.id });
+
+    try {
+      // Out of source scope ⇒ filtered from the claim queue.
+      const claimable = await agent.workGrid.listClaimable({ gridId: grid!.id });
+      expect(claimable.map((c) => c.id)).not.toContain(cell!.id);
+
+      // And a direct claim is rejected by the source-scope gate.
+      await expect(
+        agent.workGrid.claimCell({ cellId: cell!.id }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+      // Enrolling the owner brings the same cell into scope (proves the gate is
+      // enrollment, not a blanket challenge block).
+      await db.insert(schema.challengeEnrollments).values({
+        challengeId,
+        userId: fx.ownerId,
+        status: "active",
+      });
+      const claimableNow = await agent.workGrid.listClaimable({
+        gridId: grid!.id,
+      });
+      expect(claimableNow.map((c) => c.id)).toContain(cell!.id);
+    } finally {
+      await db
+        .delete(schema.challengeEnrollments)
+        .where(eq(schema.challengeEnrollments.challengeId, challengeId));
+      await db
+        .delete(schema.workCells)
+        .where(eq(schema.workCells.gridId, grid!.id));
+      await db.delete(schema.workGrids).where(eq(schema.workGrids.id, grid!.id));
+    }
+  });
+
+  // ── revoke → deny: an instantly-revoked commission closes the channel ─────
+
+  it("revoke → deny: after commissions.revoke, listClaimable is empty and claimCell is FORBIDDEN", async () => {
+    const owner = ownerCaller(fx.ownerId);
+    const agent = agentCaller(fx.apiKeyRaw);
+
+    const commission = await owner.commissions.grant({
+      taskTypeAllowlist: [fx.taskType],
+      sourceScope: "enrolled-challenges",
+    });
+    const { gridId, cellIds } = await owner.workGrid.createCollaborativeGrid({
+      communityId: fx.communityId,
+      cells: [{ taskType: fx.taskType, verificationMode: "consensus" }],
+    });
+    const cellId = cellIds[0]!;
+
+    // Before revocation the cell is claimable.
+    const before = await agent.workGrid.listClaimable({ gridId });
+    expect(before.map((c) => c.id)).toContain(cellId);
+
+    // Revoke instantly closes the channel (ADR-0022).
+    await owner.commissions.revoke({ commissionId: commission.id });
+
+    // The claim queue is now empty (no active commission) …
+    const after = await agent.workGrid.listClaimable({ gridId });
+    expect(after).toHaveLength(0);
+
+    // … and a direct claim is FORBIDDEN (no active commission).
+    await expect(
+      agent.workGrid.claimCell({ cellId }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  // ── manifest-strip: no/stale acceptance strips the commission scope ───────
+
+  it("manifest-strip: without the current acceptance row, commission scope is stripped → claimCell and listClaimable are denied", async () => {
+    const { db, schema, eq } = m;
+    const owner = ownerCaller(fx.ownerId);
+
+    await owner.commissions.grant({
+      taskTypeAllowlist: [fx.taskType],
+      sourceScope: "enrolled-challenges",
+    });
+    const { gridId, cellIds } = await owner.workGrid.createCollaborativeGrid({
+      communityId: fx.communityId,
+      cells: [{ taskType: fx.taskType, verificationMode: "consensus" }],
+    });
+    const cellId = cellIds[0]!;
+
+    // Strip the owner's acceptance of the CURRENT manifest version — the same
+    // effect as a MANIFEST_VERSION bump the owner has not re-accepted. The
+    // scope filter removes every `commission:*` scope, leaving read-only.
+    await db
+      .delete(schema.agentManifestAcceptances)
+      .where(eq(schema.agentManifestAcceptances.ownerId, fx.ownerId));
+
+    const agent = agentCaller(fx.apiKeyRaw);
+
+    // commission:claim-cell is stripped ⇒ requireScope rejects FORBIDDEN.
+    await expect(
+      agent.workGrid.listClaimable({ gridId }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      agent.workGrid.claimCell({ cellId }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 });

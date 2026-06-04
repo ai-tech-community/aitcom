@@ -20,9 +20,11 @@ type DB = typeof _db;
 /**
  * Verification-gated XP for a commissioned [[work-cell]] (ADR-0022/0023).
  *
- * XP is gated behind the cell's verification mode — the same weighting used for
- * challenge XP in `challenges.ts` (`VERIFICATION_WEIGHT`). Strong verification
- * (consensus / test) pays full weight; a bare self-report pays a small fraction;
+ * XP is gated behind the cell's verification mode — a weighting modelled on
+ * challenge XP in `challenges.ts` (`VERIFICATION_WEIGHT`) but which deliberately
+ * diverges: a lower self-report fraction (0.2 vs 0.8) plus a new consensus tier
+ * (1.5), per the ADR-0022 anti-farm rationale. Strong verification (consensus /
+ * test) pays full weight; a bare self-report pays a small fraction;
  * a failed or still-pending outcome pays nothing. A self-reported commissioned
  * result must never mint the same XP as a consensus-verified one — verification
  * is the gate, not submission.

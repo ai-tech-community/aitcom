@@ -9,6 +9,7 @@ import {
   requireScope,
   requireOwner,
   requireConfigAdmin,
+  requireHubOperator,
 } from "@/server/api/trpc";
 import {
   workGrids,
@@ -16,11 +17,13 @@ import {
   workCellResults,
   agentCommissions,
   communityMemberships,
+  challengeEnrollments,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import type { CommunityRole } from "@/server/communities/role-utils";
 import { awardCommissionedCellXp } from "@/server/agent/activity";
 import { isTaskTypeAllowed } from "./task-allowlist";
+import { createCollaborativeGridSchema } from "./work-grid-schema";
 
 /**
  * Work-grid router — the runtime of a [[work-grid]] from ADR-0023.
@@ -66,6 +69,74 @@ async function requireActiveCommission(
   return commission;
 }
 
+/**
+ * Authorise a grid-admin action (create / verify) against the grid's scope.
+ * A challenge-scoped grid requires the caller to own/sponsor the challenge
+ * (its `creatorId`); a community-scoped grid requires owner/admin role in that
+ * community. A grid with neither scope is unauthorisable — the trailing `else`
+ * throws FORBIDDEN so an unscoped grid can never be created or verified
+ * (closes the self-minted-XP authz bypass, ADR-0022).
+ */
+async function requireGridAdmin(
+  db: typeof import("@/server/db").db,
+  scope: { challengeId: number | null; communityId: string | null },
+  userId: string,
+) {
+  if (scope.challengeId !== null) {
+    const payload = await getPayloadClient();
+    let challenge;
+    try {
+      challenge = await payload.findByID({
+        collection: "challenges",
+        id: scope.challengeId,
+        depth: 0,
+      });
+    } catch {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Challenge not found" });
+    }
+    if (challenge.creatorId !== userId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only the challenge sponsor can administer this grid",
+      });
+    }
+  } else if (scope.communityId !== null) {
+    const membership = await db.query.communityMemberships.findFirst({
+      where: and(
+        eq(communityMemberships.communityId, scope.communityId),
+        eq(communityMemberships.userId, userId),
+      ),
+    });
+    const role = (
+      membership?.status === "active" ? membership.role : null
+    ) as CommunityRole | null;
+    requireConfigAdmin(role);
+  } else {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+}
+
+/**
+ * Enforce `commission.sourceScope === "enrolled-challenges"`: for a
+ * challenge-scoped cell, the commission owner must hold an active enrollment in
+ * that challenge before the cell is exposed or claimable (ADR-0022 source
+ * scope). Returns true if the cell is in scope, false if it must be hidden.
+ */
+async function ownerEnrolledInChallenge(
+  db: typeof import("@/server/db").db,
+  ownerId: string,
+  challengeId: number,
+) {
+  const enrollment = await db.query.challengeEnrollments.findFirst({
+    where: and(
+      eq(challengeEnrollments.challengeId, challengeId),
+      eq(challengeEnrollments.userId, ownerId),
+      eq(challengeEnrollments.status, "active"),
+    ),
+  });
+  return enrollment !== undefined;
+}
+
 export const workGridRouter = createTRPCRouter({
   /**
    * List cells this agent may claim. Only pending/requeued cells whose taskType
@@ -98,12 +169,38 @@ export const workGridRouter = createTRPCRouter({
       }
 
       const rows = await ctx.db
-        .select({ cell: workCells })
+        .select({ cell: workCells, gridChallengeId: workGrids.challengeId })
         .from(workCells)
         .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
         .where(and(...conditions));
 
-      return rows.map((r) => r.cell);
+      // Source-scope (ADR-0022): challenge-scoped cells are exposed only while
+      // the commission owner holds an active enrollment in that challenge.
+      const challengeIds = [
+        ...new Set(
+          rows
+            .map((r) => r.gridChallengeId)
+            .filter((id): id is number => id !== null),
+        ),
+      ];
+      const enrolledChallengeIds = new Set<number>();
+      await Promise.all(
+        challengeIds.map(async (challengeId) => {
+          if (
+            await ownerEnrolledInChallenge(ctx.db, commission.ownerId, challengeId)
+          ) {
+            enrolledChallengeIds.add(challengeId);
+          }
+        }),
+      );
+
+      return rows
+        .filter(
+          (r) =>
+            r.gridChallengeId === null ||
+            enrolledChallengeIds.has(r.gridChallengeId),
+        )
+        .map((r) => r.cell);
     }),
 
   /**
@@ -115,28 +212,46 @@ export const workGridRouter = createTRPCRouter({
     .input(z.object({ cellId: z.string() }))
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "commission:claim-cell");
-      const ownerId = requireOwner(ctx.agent.ownerId);
+      requireOwner(ctx.agent.ownerId);
 
       const commission = await requireActiveCommission(
         ctx.db,
         ctx.agent.agentId,
       );
 
-      const [cell] = await ctx.db
-        .select()
+      const [row] = await ctx.db
+        .select({ cell: workCells, gridChallengeId: workGrids.challengeId })
         .from(workCells)
+        .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
         .where(eq(workCells.id, input.cellId))
         .limit(1);
 
-      if (!cell) {
+      if (!row) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Cell not found" });
       }
+      const cell = row.cell;
 
       // Task-type allowlist enforced before the agent claims the cell.
       if (!isTaskTypeAllowed(commission.taskTypeAllowlist, cell.taskType)) {
         throw new TRPCError({
           code: "FORBIDDEN",
           message: `Task type "${cell.taskType}" is outside the commission allowlist`,
+        });
+      }
+
+      // Source-scope (ADR-0022): a challenge-scoped cell is only claimable while
+      // the commission owner holds an active enrollment in that challenge.
+      if (
+        row.gridChallengeId !== null &&
+        !(await ownerEnrolledInChallenge(
+          ctx.db,
+          commission.ownerId,
+          row.gridChallengeId,
+        ))
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Commission source scope does not cover this challenge",
         });
       }
 
@@ -163,9 +278,6 @@ export const workGridRouter = createTRPCRouter({
         });
       }
 
-      // ownerId is referenced to keep the claim owner-scoped per ADR-0022.
-      void ownerId;
-
       return claimed;
     }),
 
@@ -180,42 +292,44 @@ export const workGridRouter = createTRPCRouter({
       requireScope(ctx.agent.scopes, "commission:submit-result");
       requireOwner(ctx.agent.ownerId);
 
-      const [cell] = await ctx.db
-        .select()
-        .from(workCells)
-        .where(eq(workCells.id, input.cellId))
-        .limit(1);
+      // Self-guarding flip + result insert in one transaction: the UPDATE only
+      // matches a cell still claimed by THIS agent (no TOCTOU window between a
+      // read-check and an unconditional write). If nothing matches, the cell is
+      // not ours to complete and no result row is written.
+      return ctx.db.transaction(async (tx) => {
+        const [completed] = await tx
+          .update(workCells)
+          .set({ status: "completed" })
+          .where(
+            and(
+              eq(workCells.id, input.cellId),
+              eq(workCells.status, "claimed"),
+              eq(workCells.claimedBy, ctx.agent.agentId),
+            ),
+          )
+          .returning();
 
-      if (!cell) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Cell not found" });
-      }
+        if (!completed) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Cell is not claimed by this agent",
+          });
+        }
 
-      if (cell.status !== "claimed" || cell.claimedBy !== ctx.agent.agentId) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Cell is not claimed by this agent",
-        });
-      }
+        await tx
+          .insert(workCellResults)
+          .values({
+            cellId: input.cellId,
+            agentId: ctx.agent.agentId,
+            output: input.output,
+            verificationOutcome: "pending",
+          })
+          .onConflictDoNothing({
+            target: [workCellResults.cellId, workCellResults.agentId],
+          });
 
-      await ctx.db
-        .insert(workCellResults)
-        .values({
-          cellId: input.cellId,
-          agentId: ctx.agent.agentId,
-          output: input.output,
-          verificationOutcome: "pending",
-        })
-        .onConflictDoNothing({
-          target: [workCellResults.cellId, workCellResults.agentId],
-        });
-
-      const [completed] = await ctx.db
-        .update(workCells)
-        .set({ status: "completed" })
-        .where(eq(workCells.id, input.cellId))
-        .returning();
-
-      return completed ?? cell;
+        return completed;
+      });
     }),
 
   /**
@@ -260,41 +374,13 @@ export const workGridRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Grid not found" });
       }
 
-      // Authorisation mirrors createCollaborativeGrid: the challenge sponsor for
-      // a challenge-scoped grid, or a community config-admin otherwise.
-      if (grid.challengeId !== null) {
-        const payload = await getPayloadClient();
-        let challenge;
-        try {
-          challenge = await payload.findByID({
-            collection: "challenges",
-            id: grid.challengeId,
-            depth: 0,
-          });
-        } catch {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Challenge not found",
-          });
-        }
-        if (challenge.creatorId !== userId) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Only the challenge sponsor can verify this cell",
-          });
-        }
-      } else if (grid.communityId !== null) {
-        const membership = await ctx.db.query.communityMemberships.findFirst({
-          where: and(
-            eq(communityMemberships.communityId, grid.communityId),
-            eq(communityMemberships.userId, userId),
-          ),
-        });
-        const role = (
-          membership?.status === "active" ? membership.role : null
-        ) as CommunityRole | null;
-        requireConfigAdmin(role);
-      }
+      // Owner-scoped: the challenge sponsor for a challenge-scoped grid, or a
+      // community config-admin otherwise. An unscoped grid throws FORBIDDEN.
+      await requireGridAdmin(
+        ctx.db,
+        { challengeId: grid.challengeId, communityId: grid.communityId },
+        userId,
+      );
 
       // Transition the pending result for this cell to the verified/failed
       // outcome (idempotent: only flips a still-pending row).
@@ -358,10 +444,13 @@ export const workGridRouter = createTRPCRouter({
 
   /**
    * Requeue cells whose deadline has passed — a sleepy grid self-heals
-   * (deadline → requeue, ADR-0023). Exposed for a cron caller. Returns the
-   * requeued cells.
+   * (deadline → requeue, ADR-0023). Trusted-caller only: gated to a Hub
+   * operator so any logged-in agent owner cannot requeue the whole platform.
+   * The cron driver invokes this with a Hub-operator session.
    */
   requeueExpired: protectedProcedure.mutation(async ({ ctx }) => {
+    await requireHubOperator(ctx);
+
     return ctx.db
       .update(workCells)
       .set({ status: "requeued", claimedBy: null, claimedAt: null })
@@ -386,67 +475,20 @@ export const workGridRouter = createTRPCRouter({
    * community-scoped grid requires owner/admin role in that community.
    */
   createCollaborativeGrid: protectedProcedure
-    .input(
-      z.object({
-        challengeId: z.number().optional(),
-        communityId: z.string().optional(),
-        cells: z
-          .array(
-            z.object({
-              taskType: z.string(),
-              verificationMode: z
-                .enum([
-                  "platform-action",
-                  "test",
-                  "self-report",
-                  "peer-review",
-                  "consensus",
-                ])
-                .default("self-report"),
-              deadlineMinutes: z.number().int().positive().optional(),
-            }),
-          )
-          .min(1),
-      }),
-    )
+    .input(createCollaborativeGridSchema)
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Challenge-scoped grids: verify the caller owns/sponsors the challenge.
-      if (input.challengeId !== undefined) {
-        const payload = await getPayloadClient();
-        let challenge;
-        try {
-          challenge = await payload.findByID({
-            collection: "challenges",
-            id: input.challengeId,
-            depth: 0,
-          });
-        } catch {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Challenge not found",
-          });
-        }
-        if (challenge.creatorId !== userId) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Only the challenge sponsor can create a grid for it",
-          });
-        }
-      } else if (input.communityId !== undefined) {
-        // Community-scoped grids: require owner/admin role in that community.
-        const membership = await ctx.db.query.communityMemberships.findFirst({
-          where: and(
-            eq(communityMemberships.communityId, input.communityId),
-            eq(communityMemberships.userId, userId),
-          ),
-        });
-        const role = (
-          membership?.status === "active" ? membership.role : null
-        ) as CommunityRole | null;
-        requireConfigAdmin(role);
-      }
+      // Owner-scoped: the challenge sponsor for a challenge-scoped grid, or a
+      // community config-admin otherwise. An unscoped grid throws FORBIDDEN.
+      await requireGridAdmin(
+        ctx.db,
+        {
+          challengeId: input.challengeId ?? null,
+          communityId: input.communityId ?? null,
+        },
+        userId,
+      );
 
       const [grid] = await ctx.db
         .insert(workGrids)

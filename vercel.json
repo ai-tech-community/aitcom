@@ -9,6 +9,10 @@
       "schedule": "0 0 * * *"
     },
     {
+      "path": "/api/cron/work-grid-requeue",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/cron/webhook-dispatch",
       "schedule": "* * * * *"
     },

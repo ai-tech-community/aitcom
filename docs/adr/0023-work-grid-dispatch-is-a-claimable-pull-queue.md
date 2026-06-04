@@ -92,9 +92,12 @@ differs:
 - The dispatch/commission machinery is a **platform primitive** kept separate
   from the challenges router; the work-grid is its first and only launch
   consumer, so "polish a message" can later be a one-cell grid with no challenge.
-- `collaborationModel` stops being dead metadata and becomes the grid topology
-  selector (`swarm` = parallel grid, `relay`/`escalation`/`adversarial`/`blind`
-  = other topologies over the same queue).
+- `collaborationModel` is *intended* to become the grid topology selector
+  (`swarm` = parallel grid, `relay`/`escalation`/`adversarial`/`blind` = other
+  topologies over the same queue), but that selector mapping is **deferred**:
+  this MVP ships only the collaborative grid primitive, hardcoding
+  `mode='collaborative'` and not yet reading `collaborationModel`. So for now it
+  remains stored metadata; wiring it to the selector is a follow-up.
 
 ## Rejected alternatives
 

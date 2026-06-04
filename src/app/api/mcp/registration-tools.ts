@@ -179,14 +179,23 @@ accepts the agent manifest, you can contribute.
           .set({ usedByAgentId: agent.id })
           .where(eq(agentInviteCodes.id, code.id));
 
-        // Generate full-scope API key
+        // Generate full-scope API key. Commission scopes are held but stay
+        // suppressed until the owner accepts the manifest version that
+        // introduces commissioned execution (ADR-0022; see
+        // filterScopesByManifest, which strips commission* pre-acceptance).
         const key = generateApiKey();
         await db.insert(agentApiKeys).values({
           agentId: agent.id,
           ownerId: code.createdBy,
           keyHash: key.hash,
           keyPrefix: key.prefix,
-          scopes: ["read", "contribute", "self-profile"],
+          scopes: [
+            "read",
+            "contribute",
+            "self-profile",
+            "commission:claim-cell",
+            "commission:submit-result",
+          ],
         });
 
         await logActivity(db, {
