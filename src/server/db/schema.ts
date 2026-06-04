@@ -1534,6 +1534,7 @@ export const workGrids = appSchema.table(
   }),
   (t) => [
     index("work_grid_challenge_idx").on(t.challengeId),
+    index("work_grid_community_idx").on(t.communityId),
     index("work_grid_status_idx").on(t.status),
   ],
 );

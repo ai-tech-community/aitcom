@@ -40,6 +40,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS "work_grid_challenge_idx"
       ON "app"."work_grid" ("challenge_id");
+    CREATE INDEX IF NOT EXISTS "work_grid_community_idx"
+      ON "app"."work_grid" ("community_id");
     CREATE INDEX IF NOT EXISTS "work_grid_status_idx"
       ON "app"."work_grid" ("status");
   `);
@@ -64,8 +66,6 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       ON "app"."work_cell" ("status");
     CREATE INDEX IF NOT EXISTS "work_cell_claimed_by_idx"
       ON "app"."work_cell" ("claimed_by");
-    ALTER TABLE "app"."work_cell"
-      ADD COLUMN IF NOT EXISTS "deadline_minutes" integer;
   `);
 
   await db.execute(sql`

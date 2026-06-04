@@ -66,4 +66,15 @@ describe("createCollaborativeGridSchema scoping refinement", () => {
       expect(result.data.cells[0]!.verificationMode).toBe("self-report");
     }
   });
+
+  it("defaults a cell's deadlineMinutes to 60 so every API-created cell self-heals", () => {
+    const result = createCollaborativeGridSchema.safeParse({
+      communityId: "comm-1",
+      cells: [{ taskType: "polish-text" }],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.cells[0]!.deadlineMinutes).toBe(60);
+    }
+  });
 });

@@ -43,6 +43,10 @@ export const commissionsRouter = createTRPCRouter({
         });
       }
 
+      // UPSERT on (ownerId, agentId): a re-grant must both re-scope the
+      // envelope (new taskTypeAllowlist / sourceScope) AND un-revoke the channel
+      // (revokedAt → null), so re-commissioning after a revoke actually reopens
+      // it. onConflictDoNothing was a silent no-op that returned the stale row.
       const [commission] = await ctx.db
         .insert(agentCommissions)
         .values({
@@ -51,29 +55,17 @@ export const commissionsRouter = createTRPCRouter({
           taskTypeAllowlist: input.taskTypeAllowlist,
           sourceScope: input.sourceScope,
         })
-        .onConflictDoNothing({
+        .onConflictDoUpdate({
           target: [agentCommissions.ownerId, agentCommissions.agentId],
+          set: {
+            taskTypeAllowlist: input.taskTypeAllowlist,
+            sourceScope: input.sourceScope,
+            revokedAt: null,
+          },
         })
         .returning();
 
-      // onConflictDoNothing returns no row on conflict — return the existing
-      // commission so grant is idempotent for a given owner/agent pair.
-      if (commission) {
-        return commission;
-      }
-
-      const [existing] = await ctx.db
-        .select()
-        .from(agentCommissions)
-        .where(
-          and(
-            eq(agentCommissions.ownerId, userId),
-            eq(agentCommissions.agentId, agent.id),
-          ),
-        )
-        .limit(1);
-
-      return existing!;
+      return commission!;
     }),
 
   /**

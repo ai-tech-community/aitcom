@@ -27,7 +27,7 @@ export const createCollaborativeGridSchema = z
               "consensus",
             ])
             .default("self-report"),
-          deadlineMinutes: z.number().int().positive().optional(),
+          deadlineMinutes: z.number().int().positive().default(60),
         }),
       )
       .min(1),

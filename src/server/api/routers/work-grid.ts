@@ -204,6 +204,7 @@ export const workGridRouter = createTRPCRouter({
 
       const conditions = [
         eq(workGrids.mode, "collaborative"),
+        eq(workGrids.status, "active"),
         inArray(workCells.status, ["pending", "requeued"]),
         inArray(workCells.taskType, commission.taskTypeAllowlist),
       ];
@@ -291,6 +292,8 @@ export const workGridRouter = createTRPCRouter({
       const [row] = await ctx.db
         .select({
           cell: workCells,
+          gridMode: workGrids.mode,
+          gridStatus: workGrids.status,
           gridChallengeId: workGrids.challengeId,
           gridCommunityId: workGrids.communityId,
         })
@@ -303,6 +306,19 @@ export const workGridRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Cell not found" });
       }
       const cell = row.cell;
+
+      // Grid eligibility: claim-by-cellId must agree with listClaimable, which
+      // only exposes cells from an ACTIVE COLLABORATIVE grid. Without this a cell
+      // in a completed/abandoned (or non-collaborative) grid would be directly
+      // claimable by id (ADR-0023: only collaborative grids are claimable, and a
+      // self-healing pull queue stops dispatching once its grid is no longer
+      // active).
+      if (row.gridMode !== "collaborative" || row.gridStatus !== "active") {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Grid is not an active collaborative grid",
+        });
+      }
 
       // Task-type allowlist enforced before the agent claims the cell.
       if (!isTaskTypeAllowed(commission.taskTypeAllowlist, cell.taskType)) {
@@ -319,30 +335,38 @@ export const workGridRouter = createTRPCRouter({
       // membership in that community (SEC-1: the community scope previously had
       // no firebreak, so any commissioned agent platform-wide could claim another
       // community's cells).
-      if (
-        row.gridChallengeId !== null &&
-        !(await ownerEnrolledInChallenge(
-          ctx.db,
-          commission.ownerId,
-          row.gridChallengeId,
-        ))
-      ) {
+      if (row.gridChallengeId !== null) {
+        if (
+          !(await ownerEnrolledInChallenge(
+            ctx.db,
+            commission.ownerId,
+            row.gridChallengeId,
+          ))
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Commission source scope does not cover this challenge",
+          });
+        }
+      } else if (row.gridCommunityId !== null) {
+        if (
+          !(await ownerMemberOfCommunity(
+            ctx.db,
+            commission.ownerId,
+            row.gridCommunityId,
+          ))
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Commission source scope does not cover this community",
+          });
+        }
+      } else {
+        // Defense-in-depth (don't rely solely on the create-time XOR refine): a
+        // both-null grid has no source scope, so it can never be claimed.
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Commission source scope does not cover this challenge",
-        });
-      }
-      if (
-        row.gridCommunityId !== null &&
-        !(await ownerMemberOfCommunity(
-          ctx.db,
-          commission.ownerId,
-          row.gridCommunityId,
-        ))
-      ) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Commission source scope does not cover this community",
+          message: "Grid has no valid source scope",
         });
       }
 
@@ -519,7 +543,15 @@ export const workGridRouter = createTRPCRouter({
           .set({
             status: input.outcome === "verified" ? "completed" : "failed",
           })
-          .where(eq(workCells.id, input.cellId));
+          // Assert the cell's own expected status: verify only transitions a
+          // still-completed cell, so a cell that was requeued out from under a
+          // pending result cannot be resurrected by a late verify.
+          .where(
+            and(
+              eq(workCells.id, input.cellId),
+              eq(workCells.status, "completed"),
+            ),
+          );
 
         // Resolve the OWNER (the human who commissioned the agent) from the
         // result's agent's active commission. XP accrues to the owner, not the

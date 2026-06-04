@@ -1018,4 +1018,87 @@ describe.skipIf(!RUN_DB)("work-grid collaborative flow [DB integration]", () => 
       code: "FORBIDDEN",
     });
   });
+
+  // ── grid-status: a cell in a non-active (completed/abandoned) grid is not
+  // claimable, even by cellId (claimCell must agree with listClaimable) ────────
+
+  it("a cell in a non-active (completed) grid is not claimable: it is filtered from listClaimable and claimCell throws CONFLICT", async () => {
+    const { db, schema, eq } = m;
+    const owner = ownerCaller(fx.ownerId);
+    const agent = agentCaller(fx.apiKeyRaw);
+
+    await owner.commissions.grant({
+      taskTypeAllowlist: [fx.taskType],
+      sourceScope: "enrolled-challenges",
+    });
+    const { gridId, cellIds } = await owner.workGrid.createCollaborativeGrid({
+      communityId: fx.communityId,
+      cells: [{ taskType: fx.taskType, verificationMode: "consensus" }],
+    });
+    const cellId = cellIds[0]!;
+
+    // While active the cell is claimable.
+    const before = await agent.workGrid.listClaimable({ gridId });
+    expect(before.map((c) => c.id)).toContain(cellId);
+
+    // Complete the grid: the pull queue must stop dispatching its cells.
+    await db
+      .update(schema.workGrids)
+      .set({ status: "completed" })
+      .where(eq(schema.workGrids.id, gridId));
+
+    // Filtered from the claim queue …
+    const after = await agent.workGrid.listClaimable({ gridId });
+    expect(after.map((c) => c.id)).not.toContain(cellId);
+
+    // … and a direct claim by cellId is rejected (grid no longer active).
+    await expect(
+      agent.workGrid.claimCell({ cellId }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
+  // ── re-grant UPSERT: a second grant re-scopes the envelope AND un-revokes ───
+
+  it("commissions.grant re-grant updates the stored allowlist and clears revokedAt (UPSERT, not a silent no-op)", async () => {
+    const { db, schema, eq } = m;
+    const owner = ownerCaller(fx.ownerId);
+
+    // Initial grant, then revoke to set revokedAt.
+    const first = await owner.commissions.grant({
+      taskTypeAllowlist: [fx.taskType],
+      sourceScope: "enrolled-challenges",
+    });
+    expect(first.taskTypeAllowlist).toEqual([fx.taskType]);
+    await owner.commissions.revoke({ commissionId: first.id });
+
+    const [revoked] = await db
+      .select({ revokedAt: schema.agentCommissions.revokedAt })
+      .from(schema.agentCommissions)
+      .where(eq(schema.agentCommissions.id, first.id));
+    expect(revoked!.revokedAt).not.toBeNull();
+
+    // Re-grant with a NEW allowlist: must update the envelope and un-revoke,
+    // re-using the same (ownerId, agentId) row rather than no-op'ing.
+    const second = await owner.commissions.grant({
+      taskTypeAllowlist: ["polish-text", "summarise-text"],
+      sourceScope: "enrolled-challenges",
+    });
+    expect(second.id).toBe(first.id);
+    expect(second.taskTypeAllowlist).toEqual(["polish-text", "summarise-text"]);
+    expect(second.revokedAt).toBeNull();
+
+    // And the stored row reflects the re-grant (allowlist updated, un-revoked).
+    const [stored] = await db
+      .select({
+        taskTypeAllowlist: schema.agentCommissions.taskTypeAllowlist,
+        revokedAt: schema.agentCommissions.revokedAt,
+      })
+      .from(schema.agentCommissions)
+      .where(eq(schema.agentCommissions.id, first.id));
+    expect(stored!.taskTypeAllowlist).toEqual([
+      "polish-text",
+      "summarise-text",
+    ]);
+    expect(stored!.revokedAt).toBeNull();
+  });
 });
