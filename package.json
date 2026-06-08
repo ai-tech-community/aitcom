@@ -18,7 +18,7 @@
     "db:seed": "bash scripts/seed-all.sh",
     "db:studio": "drizzle-kit studio",
     "dev": "next dev --turbo",
-    "dev:bootstrap": "tsx scripts/seed-dev-user.ts",
+    "dev:bootstrap": "tsx --env-file=.env scripts/seed-dev-user.ts",
     "dev:db": "docker compose up -d postgres wsproxy",
     "dev:db:stop": "docker compose stop postgres wsproxy",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
