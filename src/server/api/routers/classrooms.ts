@@ -19,6 +19,7 @@ import {
 } from "@/server/db/schema";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import { canCreateCourse, type CommunityRole } from "@/lib/classroom";
+import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 
 /** Resolve community id + the caller's active role (null if not an active member). */
 async function resolveCommunityAndRole(
@@ -377,6 +378,211 @@ export const classroomsRouter = createTRPCRouter({
         id: input.lessonId,
       });
 
+      return { ok: true };
+    }),
+
+  /** Enroll the caller in a published course; awards the author enrollment XP. */
+  enroll: protectedProcedure
+    .input(z.object({ courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const existing = await ctx.db
+        .select()
+        .from(courseEnrollments)
+        .where(
+          and(
+            eq(courseEnrollments.courseId, input.courseId),
+            eq(courseEnrollments.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (existing.length > 0) return { enrolled: true, already: true };
+
+      const payload = await getPayloadClient();
+      const course = await payload.findByID({
+        collection: "courses",
+        id: input.courseId,
+        depth: 0,
+      });
+      if (course.status !== "published")
+        throw new TRPCError({ code: "FORBIDDEN", message: "NOT_PUBLISHED" });
+
+      await ctx.db
+        .insert(courseEnrollments)
+        .values({ courseId: input.courseId, userId });
+      await payload.update({
+        collection: "courses",
+        id: input.courseId,
+        data: { enrollmentCount: (course.enrollmentCount ?? 0) + 1 },
+      });
+      if (course.authorId !== userId) {
+        await awardXp(
+          ctx.db,
+          course.authorId as string,
+          XP_AMOUNTS.COURSE_RECEIVE_ENROLLMENT,
+        );
+      }
+      await logActivity(ctx.db, {
+        actorId: userId,
+        actorType: "member",
+        action: "course.enroll",
+        targetType: "courses",
+        targetId: String(input.courseId),
+        communityId: (course.communityId as string) ?? undefined,
+        recipientId: (course.authorId as string) ?? undefined,
+        metadata: { title: course.title },
+      });
+      return { enrolled: true, already: false };
+    }),
+
+  /** Unenroll the caller; does NOT claw back author XP (mirrors launchpad vote). */
+  unenroll: protectedProcedure
+    .input(z.object({ courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const existing = await ctx.db
+        .select()
+        .from(courseEnrollments)
+        .where(
+          and(
+            eq(courseEnrollments.courseId, input.courseId),
+            eq(courseEnrollments.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (existing.length === 0) return { enrolled: false };
+      await ctx.db
+        .delete(courseEnrollments)
+        .where(
+          and(
+            eq(courseEnrollments.courseId, input.courseId),
+            eq(courseEnrollments.userId, userId),
+          ),
+        );
+      const payload = await getPayloadClient();
+      const course = await payload.findByID({
+        collection: "courses",
+        id: input.courseId,
+        depth: 0,
+      });
+      await payload.update({
+        collection: "courses",
+        id: input.courseId,
+        data: { enrollmentCount: Math.max(0, (course.enrollmentCount ?? 0) - 1) },
+      });
+      return { enrolled: false };
+    }),
+
+  /** Toggle a lesson's completion for the caller (enrolled-only; no XP). */
+  markLessonComplete: protectedProcedure
+    .input(z.object({ lessonId: z.number(), completed: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const payload = await getPayloadClient();
+      const lesson = await payload.findByID({
+        collection: "lessons",
+        id: input.lessonId,
+        depth: 0,
+      });
+      const courseId = lesson.course as number;
+      const enr = await ctx.db
+        .select()
+        .from(courseEnrollments)
+        .where(
+          and(
+            eq(courseEnrollments.courseId, courseId),
+            eq(courseEnrollments.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (enr.length === 0)
+        throw new TRPCError({ code: "FORBIDDEN", message: "NOT_ENROLLED" });
+
+      const existing = await ctx.db
+        .select()
+        .from(lessonCompletions)
+        .where(
+          and(
+            eq(lessonCompletions.lessonId, input.lessonId),
+            eq(lessonCompletions.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (input.completed && existing.length === 0) {
+        await ctx.db
+          .insert(lessonCompletions)
+          .values({ lessonId: input.lessonId, courseId, userId });
+      } else if (!input.completed && existing.length > 0) {
+        await ctx.db
+          .delete(lessonCompletions)
+          .where(
+            and(
+              eq(lessonCompletions.lessonId, input.lessonId),
+              eq(lessonCompletions.userId, userId),
+            ),
+          );
+      }
+      return { completed: input.completed };
+    }),
+
+  /** Set a course's public visibility (community owner/admin/moderator). */
+  setPublic: protectedProcedure
+    .input(z.object({ courseId: z.number(), isPublic: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const course = await payload.findByID({
+        collection: "courses",
+        id: input.courseId,
+        depth: 0,
+      });
+      const m = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, course.communityId as string),
+          eq(communityMemberships.userId, ctx.session.user.id),
+          eq(communityMemberships.status, "active"),
+        ),
+      });
+      if (!m || (m.role !== "owner" && m.role !== "admin" && m.role !== "moderator")) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      await payload.update({
+        collection: "courses",
+        id: input.courseId,
+        data: { isPublic: input.isPublic },
+      });
+      return { ok: true };
+    }),
+
+  /** Archive a course (author OR community owner/admin/moderator). */
+  moderateArchive: protectedProcedure
+    .input(z.object({ courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const course = await payload.findByID({
+        collection: "courses",
+        id: input.courseId,
+        depth: 0,
+      });
+      const isAuthor = course.authorId === ctx.session.user.id;
+      let allowed = isAuthor;
+      if (!allowed) {
+        const m = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, course.communityId as string),
+            eq(communityMemberships.userId, ctx.session.user.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        });
+        allowed =
+          !!m &&
+          (m.role === "owner" || m.role === "admin" || m.role === "moderator");
+      }
+      if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
+      await payload.update({
+        collection: "courses",
+        id: input.courseId,
+        data: { status: "archived" },
+      });
       return { ok: true };
     }),
 });
