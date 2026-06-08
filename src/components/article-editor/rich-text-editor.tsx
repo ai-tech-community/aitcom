@@ -1,12 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import {
   $createParagraphNode,
   $createTextNode,
   $getSelection,
   $isRangeSelection,
+  FORMAT_TEXT_COMMAND,
   type EditorState,
   type LexicalEditor,
   type SerializedEditorState,
@@ -35,7 +44,22 @@ import {
 import {
   LinkNode,
   AutoLinkNode,
+  TOGGLE_LINK_COMMAND,
 } from "@payloadcms/richtext-lexical/lexical/link";
+import {
+  Bold,
+  Italic,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
+  ListChecks,
+  Quote,
+  Code,
+  Link2,
+  Image as ImageIcon,
+  Minus,
+} from "lucide-react";
 import { $setBlocksType } from "@payloadcms/richtext-lexical/lexical/selection";
 import {
   HorizontalRuleNode,
@@ -71,6 +95,70 @@ function EditorBridge({
   }, [editor, onReady]);
 
   return null;
+}
+
+/** Always-visible formatting toolbar — dispatches the same Lexical commands as
+ *  the slash menu / floating toolbar, so the editor is usable without knowing
+ *  the keyboard tricks. Block-level actions route through `onBlock` (the
+ *  parent's slash-command executor); inline formatting + links dispatch
+ *  directly on the editor instance (like the floating toolbar). */
+function EditorToolbar({
+  editor,
+  onBlock,
+}: {
+  editor: LexicalEditor | null;
+  onBlock: (id: string) => void;
+}) {
+  const insertLink = () => {
+    if (!editor) return;
+    const url = window.prompt("Link URL");
+    if (url) editor.dispatchCommand(TOGGLE_LINK_COMMAND, url);
+  };
+
+  const items: { key: string; title: string; icon: ReactNode; run: () => void }[] =
+    [
+      {
+        key: "bold",
+        title: "Bold",
+        icon: <Bold className="size-4" />,
+        run: () => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, "bold"),
+      },
+      {
+        key: "italic",
+        title: "Italic",
+        icon: <Italic className="size-4" />,
+        run: () => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, "italic"),
+      },
+      { key: "h2", title: "Heading", icon: <Heading2 className="size-4" />, run: () => onBlock("h2") },
+      { key: "h3", title: "Subheading", icon: <Heading3 className="size-4" />, run: () => onBlock("h3") },
+      { key: "quote", title: "Quote", icon: <Quote className="size-4" />, run: () => onBlock("quote") },
+      { key: "ul", title: "Bullet list", icon: <List className="size-4" />, run: () => onBlock("ul") },
+      { key: "ol", title: "Numbered list", icon: <ListOrdered className="size-4" />, run: () => onBlock("ol") },
+      { key: "check", title: "Checklist", icon: <ListChecks className="size-4" />, run: () => onBlock("check") },
+      { key: "code", title: "Code block", icon: <Code className="size-4" />, run: () => onBlock("code") },
+      { key: "link", title: "Link", icon: <Link2 className="size-4" />, run: insertLink },
+      { key: "image", title: "Image", icon: <ImageIcon className="size-4" />, run: () => onBlock("image") },
+      { key: "divider", title: "Divider", icon: <Minus className="size-4" />, run: () => onBlock("divider") },
+    ];
+
+  return (
+    <div className="border-border flex flex-wrap items-center gap-0.5 border-b px-2 py-1.5">
+      {items.map((it) => (
+        <button
+          key={it.key}
+          type="button"
+          title={it.title}
+          aria-label={it.title}
+          disabled={!editor}
+          className="text-muted-foreground hover:bg-secondary hover:text-foreground inline-flex size-8 items-center justify-center rounded transition-colors disabled:opacity-40"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={it.run}
+        >
+          {it.icon}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export interface RichTextEditorProps {
@@ -386,41 +474,44 @@ export function RichTextEditor({
   }, [filteredSlashCommands]);
 
   return (
-    <div className="editor-anchor relative" ref={setEditorAnchor}>
-      <LexicalComposer initialConfig={initialConfig}>
-        <EditorBridge onReady={setEditorRef} />
-        {placeholder && isEmpty ? (
-          <div className="text-muted-foreground/40 pointer-events-none absolute top-0 left-4 text-sm sm:left-14">
-            {placeholder}
-          </div>
-        ) : null}
-        <RichTextPlugin
-          contentEditable={
-            <ContentEditable
-              className="min-h-48 pl-4 text-sm leading-relaxed focus:outline-none sm:pl-14"
-              onKeyDown={handleEditorKeyDown}
-            />
-          }
-          ErrorBoundary={LexicalErrorBoundary}
+    <div className="border-border overflow-hidden rounded-lg border">
+      <EditorToolbar editor={editorRef} onBlock={executeSlashCommand} />
+      <div className="editor-anchor relative" ref={setEditorAnchor}>
+        <LexicalComposer initialConfig={initialConfig}>
+          <EditorBridge onReady={setEditorRef} />
+          {placeholder && isEmpty ? (
+            <div className="text-muted-foreground/40 pointer-events-none absolute top-3 left-4 text-sm sm:left-14">
+              {placeholder}
+            </div>
+          ) : null}
+          <RichTextPlugin
+            contentEditable={
+              <ContentEditable
+                className="min-h-48 px-4 py-3 text-sm leading-relaxed focus:outline-none sm:px-14"
+                onKeyDown={handleEditorKeyDown}
+              />
+            }
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <HistoryPlugin />
+          <ListPlugin />
+          <HorizontalRulePlugin />
+          <CheckListPlugin />
+          <LinkPlugin />
+          <OnChangePlugin onChange={handleEditorChange} />
+          <BlockHandles editor={editorRef} anchorElem={editorAnchor} />
+        </LexicalComposer>
+
+        <FloatingToolbar editor={editorRef} />
+
+        <SlashCommandMenu
+          slash={slash}
+          slashDispatch={slashDispatch}
+          filteredCommands={filteredSlashCommands}
+          groupedCommands={groupedCommands}
+          onExecute={executeSlashCommand}
         />
-        <HistoryPlugin />
-        <ListPlugin />
-        <HorizontalRulePlugin />
-        <CheckListPlugin />
-        <LinkPlugin />
-        <OnChangePlugin onChange={handleEditorChange} />
-        <BlockHandles editor={editorRef} anchorElem={editorAnchor} />
-      </LexicalComposer>
-
-      <FloatingToolbar editor={editorRef} />
-
-      <SlashCommandMenu
-        slash={slash}
-        slashDispatch={slashDispatch}
-        filteredCommands={filteredSlashCommands}
-        groupedCommands={groupedCommands}
-        onExecute={executeSlashCommand}
-      />
+      </div>
     </div>
   );
 }
