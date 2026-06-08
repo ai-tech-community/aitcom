@@ -117,6 +117,13 @@ export const topicsRouter = createTRPCRouter({
 
       const slug = topicSlugify(input.label) || `topic-${totalDocs + 1}`;
 
+      if (slug === "general") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "TOPIC_SLUG_RESERVED",
+        });
+      }
+
       const { docs: clashing } = await payload.find({
         collection: "community-topics",
         where: {
