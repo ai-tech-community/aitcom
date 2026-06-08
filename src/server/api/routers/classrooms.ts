@@ -16,11 +16,16 @@ import {
   communityMemberships,
   courseEnrollments,
   lessonCompletions,
+  lessonExamAttempts,
+  courseCertificates,
 } from "@/server/db/schema";
 import {
   canCreateCourse,
   courseProgressPercent,
+  coursePassed,
+  stripAnswerKey,
   type CommunityRole,
+  type ExamQuestion,
 } from "@/lib/classroom";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 
@@ -197,7 +202,70 @@ export const classroomsRouter = createTRPCRouter({
         completedLessonIds = completions.map((c) => c.lessonId);
       }
 
-      return { course, lessons, enrolled, completedLessonIds };
+      // Public per-lesson exam summary — NEVER includes correctIndex.
+      const lessonExams = lessons.map((l) => {
+        const questions = (l.examQuestions ?? []) as ExamQuestion[];
+        const hasExam = questions.length > 0;
+        return {
+          lessonId: l.id,
+          hasExam,
+          mandatory: hasExam && l.examMandatory === true,
+          passThreshold: l.examPassThreshold ?? 70,
+          maxAttempts: l.examMaxAttempts ?? 0,
+          questionCount: questions.length,
+          questions: hasExam ? stripAnswerKey(questions) : [],
+        };
+      });
+
+      let attempts: {
+        lessonId: number;
+        score: number;
+        passed: boolean;
+        attemptedAt: Date;
+      }[] = [];
+      let certificateIssuedAt: Date | null = null;
+      if (userId) {
+        const rows = await ctx.db
+          .select({
+            lessonId: lessonExamAttempts.lessonId,
+            score: lessonExamAttempts.score,
+            passed: lessonExamAttempts.passed,
+            attemptedAt: lessonExamAttempts.attemptedAt,
+          })
+          .from(lessonExamAttempts)
+          .where(
+            and(
+              eq(lessonExamAttempts.courseId, course.id),
+              eq(lessonExamAttempts.userId, userId),
+            ),
+          );
+        attempts = rows;
+
+        const cert = await ctx.db
+          .select({ issuedAt: courseCertificates.issuedAt })
+          .from(courseCertificates)
+          .where(
+            and(
+              eq(courseCertificates.courseId, course.id),
+              eq(courseCertificates.userId, userId),
+            ),
+          )
+          .limit(1);
+        certificateIssuedAt = cert[0]?.issuedAt ?? null;
+      }
+
+      const passedCourse = coursePassed(completedLessonIds.length, lessons.length);
+
+      return {
+        course,
+        lessons,
+        enrolled,
+        completedLessonIds,
+        lessonExams,
+        attempts,
+        certificateIssuedAt,
+        passedCourse,
+      };
     }),
 
   /** Create a course (active member; honors classroomCreatePolicy). */
