@@ -27,6 +27,8 @@ import { Comments } from "./collections/Comments";
 import { FeedPosts } from "./collections/FeedPosts";
 import { FeedComments } from "./collections/FeedComments";
 import { FeedLikes } from "./collections/FeedLikes";
+import { CommunityTopics } from "./collections/CommunityTopics";
+import { CommunityLinks } from "./collections/CommunityLinks";
 import { BenchmarkCategories } from "./collections/BenchmarkCategories";
 import { BenchmarkIntents } from "./collections/BenchmarkIntents";
 import { BenchmarkPrompts } from "./collections/BenchmarkPrompts";
@@ -80,6 +82,8 @@ export default buildConfig({
     FeedPosts,
     FeedComments,
     FeedLikes,
+    CommunityTopics,
+    CommunityLinks,
     Challenges,
     Pages,
     Media,
