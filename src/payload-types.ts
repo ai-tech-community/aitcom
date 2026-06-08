@@ -79,6 +79,8 @@ export interface Config {
     'feed-posts': FeedPost;
     'feed-comments': FeedComment;
     'feed-likes': FeedLike;
+    'community-topics': CommunityTopic;
+    'community-links': CommunityLink;
     challenges: Challenge;
     pages: Page;
     media: Media;
@@ -112,6 +114,8 @@ export interface Config {
     'feed-posts': FeedPostsSelect<false> | FeedPostsSelect<true>;
     'feed-comments': FeedCommentsSelect<false> | FeedCommentsSelect<true>;
     'feed-likes': FeedLikesSelect<false> | FeedLikesSelect<true>;
+    'community-topics': CommunityTopicsSelect<false> | CommunityTopicsSelect<true>;
+    'community-links': CommunityLinksSelect<false> | CommunityLinksSelect<true>;
     challenges: ChallengesSelect<false> | ChallengesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -579,6 +583,14 @@ export interface FeedPost {
   authorId: string;
   authorName?: string | null;
   communityId?: string | null;
+  /**
+   * Slug of the community-topics row this post belongs to. 'general' by default.
+   */
+  topicSlug?: string | null;
+  /**
+   * Pinned posts appear first on the All view.
+   */
+  isPinned?: boolean | null;
   likeCount?: number | null;
   commentCount?: number | null;
   isDeleted?: boolean | null;
@@ -619,6 +631,45 @@ export interface FeedLike {
    * Better Auth user ID (UUID).
    */
   userId: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Admin-defined feed topics (chip filters) for one community.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-topics".
+ */
+export interface CommunityTopic {
+  id: number;
+  label: string;
+  slug: string;
+  emoji?: string | null;
+  /**
+   * Community this topic belongs to.
+   */
+  communityId: string;
+  sortOrder?: number | null;
+  /**
+   * The seeded 'General' topic; cannot be deleted.
+   */
+  isDefault?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Admin-curated sidebar links for one community.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-links".
+ */
+export interface CommunityLink {
+  id: number;
+  label: string;
+  url: string;
+  emoji?: string | null;
+  communityId: string;
+  sortOrder?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1157,6 +1208,14 @@ export interface PayloadLockedDocument {
         value: number | FeedLike;
       } | null)
     | ({
+        relationTo: 'community-topics';
+        value: number | CommunityTopic;
+      } | null)
+    | ({
+        relationTo: 'community-links';
+        value: number | CommunityLink;
+      } | null)
+    | ({
         relationTo: 'challenges';
         value: number | Challenge;
       } | null)
@@ -1471,6 +1530,8 @@ export interface FeedPostsSelect<T extends boolean = true> {
   authorId?: T;
   authorName?: T;
   communityId?: T;
+  topicSlug?: T;
+  isPinned?: T;
   likeCount?: T;
   commentCount?: T;
   isDeleted?: T;
@@ -1502,6 +1563,33 @@ export interface FeedCommentsSelect<T extends boolean = true> {
 export interface FeedLikesSelect<T extends boolean = true> {
   post?: T;
   userId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-topics_select".
+ */
+export interface CommunityTopicsSelect<T extends boolean = true> {
+  label?: T;
+  slug?: T;
+  emoji?: T;
+  communityId?: T;
+  sortOrder?: T;
+  isDefault?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-links_select".
+ */
+export interface CommunityLinksSelect<T extends boolean = true> {
+  label?: T;
+  url?: T;
+  emoji?: T;
+  communityId?: T;
+  sortOrder?: T;
   updatedAt?: T;
   createdAt?: T;
 }
