@@ -26,6 +26,8 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
     { key: "members", href: `${basePath}/members` },
     { key: "invites", href: `${basePath}/invites` },
     { key: "rules", href: `${basePath}/rules` },
+    { key: "topics", href: `${basePath}/topics` },
+    { key: "links", href: `${basePath}/links` },
     { key: "broadcast", href: `${basePath}/broadcast` },
     { key: "autonomy", href: `${basePath}/autonomy` },
     { key: "acquire", href: `${basePath}/acquire` },
@@ -60,6 +62,8 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "members"
                   | "invites"
                   | "rules"
+                  | "topics"
+                  | "links"
                   | "broadcast"
                   | "autonomy"
                   | "acquire"
@@ -92,6 +96,8 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
                   | "members"
                   | "invites"
                   | "rules"
+                  | "topics"
+                  | "links"
                   | "broadcast"
                   | "autonomy"
                   | "acquire"
