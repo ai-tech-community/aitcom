@@ -1161,7 +1161,8 @@
     }
   },
   "classroom": {
-    "title": "Classroom",
+    "title": "Classrooms",
+    "backToClassrooms": "Back to classrooms",
     "subtitle": "Member-made courses — learn, build, track your progress.",
     "createCourse": "Create course",
     "noCourses": "No courses yet. Be the first to teach something.",
@@ -1323,7 +1324,7 @@
       "events": "Events",
       "forum": "Forum",
       "ideas": "Ideas",
-      "classroom": "Classroom",
+      "classroom": "Classrooms",
       "launchpad": "Launchpad",
       "jobs": "Jobs",
       "join": "Join Community",

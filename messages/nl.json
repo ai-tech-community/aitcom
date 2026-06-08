@@ -1161,7 +1161,8 @@
     }
   },
   "classroom": {
-    "title": "Klaslokaal",
+    "title": "Klaslokalen",
+    "backToClassrooms": "Terug naar klaslokalen",
     "subtitle": "Cursussen gemaakt door leden — leer, bouw en volg je voortgang.",
     "createCourse": "Cursus maken",
     "noCourses": "Nog geen cursussen. Wees de eerste om iets te leren.",
@@ -1323,7 +1324,7 @@
       "events": "Evenementen",
       "forum": "Forum",
       "ideas": "Ideeën",
-      "classroom": "Klaslokaal",
+      "classroom": "Klaslokalen",
       "launchpad": "Launchpad",
       "jobs": "Vacatures",
       "join": "Word lid",

@@ -15,7 +15,15 @@ import {
   youtubeEmbedUrl,
   type CommunityRole,
 } from "@/lib/classroom";
-import { Users, Check, Pencil, ExternalLink, Lock, Eye } from "lucide-react";
+import {
+  Users,
+  Check,
+  Pencil,
+  ExternalLink,
+  Lock,
+  Eye,
+  ArrowLeft,
+} from "lucide-react";
 
 interface ResourceRow {
   label: string;
@@ -126,6 +134,13 @@ export function CourseView({
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 py-6">
+      <Link
+        href={`/communities/${slug}/classroom` as never}
+        className="text-muted-foreground hover:text-foreground mb-4 inline-flex items-center gap-1 text-sm"
+      >
+        <ArrowLeft className="size-4" /> {t("backToClassrooms")}
+      </Link>
+
       {/* Header */}
       <div className="space-y-4">
         {coverImageUrl ? (

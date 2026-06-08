@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { useRouter, Link } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { ImagePlus, X, Loader2 } from "lucide-react";
+import { ImagePlus, X, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -140,6 +140,13 @@ export function CourseEditor({
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 py-6">
+      <Link
+        href={`/communities/${slug}/classroom` as never}
+        className="text-muted-foreground hover:text-foreground -mb-4 inline-flex items-center gap-1 text-sm"
+      >
+        <ArrowLeft className="size-4" /> {t("backToClassrooms")}
+      </Link>
+
       <div className="space-y-4">
         <h1 className="text-lg font-semibold">
           {isEdit ? t("editCourse") : t("createCourse")}
