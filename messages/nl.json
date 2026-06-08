@@ -1204,7 +1204,10 @@
     "resourceLabel": "Label",
     "resourceUrl": "https://…",
     "addResource": "Bron toevoegen",
-    "removeResource": "Bron verwijderen"
+    "removeResource": "Bron verwijderen",
+    "notFound": "Cursus niet gevonden.",
+    "watchVideo": "Video bekijken",
+    "removeCourseConfirm": "Deze cursus archiveren? Hij is dan niet meer zichtbaar voor leden."
   },
   "launchpad": {
     "title": "Launchpad",

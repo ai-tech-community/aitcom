@@ -1204,7 +1204,10 @@
     "resourceLabel": "Label",
     "resourceUrl": "https://…",
     "addResource": "Add resource",
-    "removeResource": "Remove resource"
+    "removeResource": "Remove resource",
+    "notFound": "Course not found.",
+    "watchVideo": "Watch video",
+    "removeCourseConfirm": "Archive this course? It will no longer be visible to members."
   },
   "launchpad": {
     "title": "Launchpad",
