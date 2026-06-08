@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { LexicalRenderer } from "@/lib/lexical";
+import { ExamRunner } from "./exam-runner";
 import {
   courseProgressPercent,
   youtubeEmbedUrl,
@@ -67,6 +68,9 @@ export function CourseView({
   );
   const completedLessonIds = data?.completedLessonIds ?? [];
   const enrolled = data?.enrolled ?? false;
+  const lessonExams = data?.lessonExams ?? [];
+  const attempts = data?.attempts ?? [];
+  const certificateIssuedAt = data?.certificateIssuedAt ?? null;
 
   const selectedLesson =
     lessons.find((l) => l.id === selectedId) ?? lessons[0] ?? null;
@@ -387,6 +391,12 @@ export function CourseView({
                       const isCompleted = completedLessonIds.includes(
                         selectedLesson.id,
                       );
+                      const exam = lessonExams.find(
+                        (e) => e.lessonId === selectedLesson.id,
+                      );
+                      if (exam?.mandatory) {
+                        return null; // gated: completion only via the runner below
+                      }
                       return (
                         <Button
                           type="button"
@@ -437,6 +447,27 @@ export function CourseView({
                   </ul>
                 </div>
               ) : null}
+
+              {/* Exam */}
+              {enrolled && !previewing
+                ? (() => {
+                    const exam = lessonExams.find(
+                      (e) =>
+                        e.lessonId === selectedLesson.id &&
+                        e.questions.length > 0,
+                    );
+                    if (!exam) return null;
+                    return (
+                      <ExamRunner
+                        exam={exam}
+                        attempts={attempts}
+                        completed={completedLessonIds.includes(
+                          selectedLesson.id,
+                        )}
+                      />
+                    );
+                  })()
+                : null}
             </div>
           )}
         </main>
