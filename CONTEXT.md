@@ -153,7 +153,14 @@ at launch; a grouping level may be added later without a breaking migration),
 `classroomCreatePolicy`) and published immediately. **Members-only by default**;
 a course becomes **public only when an admin/mod promotes it** — a creator
 cannot self-publish to the open web. A member [[course-enrollment|enrolls]]
-explicitly; their per-lesson completions yield a course **progress %**. The
+explicitly; their per-lesson completions yield a course **progress %**. A member
+has **passed the course** when **every** lesson is complete — i.e. every
+mandatory [[lesson-exam]] was cleared at its own threshold and the rest are
+self-reported done (progress 100% ⇒ passed). Course-pass is
+**completion-derived**, never an aggregate of exam scores: a learner can never
+be "course-passed" while a lesson with a mandatory exam is still unpassed. A
+true course-wide score gate, if ever needed, would be a separate **optional
+course-level final exam** (its own threshold), not an average of lesson scores. The
 popularity signal is the **distinct-enrollment count** (no separate up-vote —
 that is [[launchpad]]'s job). The creator earns small **Hub-global XP per
 distinct member enrollment** (others valuing the work, like
@@ -176,7 +183,37 @@ links. An enrolled member marks a lesson complete; completion is
 **self-reported** and drives the [[course]] progress bar but **earns no XP** —
 self-reported completion is trivially farmable, consistent with the
 verification-gated XP rule on [[work-cell]]s. Authored by the course's creator
-(any active member), not restricted to admins.
+(any active member), not restricted to admins. A lesson may carry a
+[[lesson-exam]], which — when **mandatory** — converts that lesson's completion
+from self-reported to **verified** (passing the exam is the only path to the
+checkmark).
+
+### Lesson exam
+
+An author-created assessment attached to a [[lesson]] that a learner must pass
+to complete the lesson. Has a **mandatory** flag: **mandatory** = passing is the
+*only* way to mark the lesson complete (completion becomes **verified**, not
+self-reported); **not mandatory** = a self-check the learner may take for
+feedback, with self-reported completion still available. A mandatory un-passed
+exam blocks **its own lesson's completion only** — it does **not** hard-lock
+later lessons (the [[course]] stays flat and browsable), but the gated lessons
+must be genuinely passed before they count toward progress. A verified
+(exam-gated) completion still earns the learner **no Hub-global XP** at launch —
+the exam verifies the *response* but not the *bar* (the author writes it with no
+pre-review), so it gates local outcomes only, never reputation. See
+[[adr-0028-lesson-exam-gates-completion-not-reputation]].
+
+### Course certificate
+
+A **course-local credential** issued to a learner when they have
+[[course|passed the course]] (every lesson complete, every mandatory
+[[lesson-exam]] cleared). A shareable "Completed <Course>" record stamped with
+the date, course, and authoring [[Community]] — the motivational payoff that
+makes a mandatory exam worth sitting (the counterpart to the deliberate **no
+learner XP**). Deliberately **not** a `member_badge` or any Hub-global
+reputation item: like exam-pass XP, it is gated only on a member-authored,
+un-reviewed exam, so it stays a local credential and never feeds reputation
+([[adr-0028-lesson-exam-gates-completion-not-reputation]]).
 
 ### Hackathon
 
