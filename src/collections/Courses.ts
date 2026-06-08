@@ -11,6 +11,7 @@ export const Courses: CollectionConfig = {
     { name: "title", type: "text", required: true, maxLength: 200 },
     { name: "slug", type: "text", required: true, unique: true, index: true },
     { name: "summary", type: "text", maxLength: 500 },
+    { name: "coverImageUrl", type: "text", admin: { description: "S3 cover image URL (uploaded via /api/upload)." } },
     { name: "authorId", type: "text", required: true, index: true, admin: { description: "Better Auth user ID." } },
     { name: "authorName", type: "text", admin: { readOnly: true } },
     {

@@ -43,6 +43,7 @@ import * as migration_20260601b_invite_role_target_email from "./20260601b_invit
 import * as migration_20260604a_work_grid_commission from "./20260604a_work_grid_commission";
 import * as migration_20260608a_feed_topics_pins_links from "./20260608a_feed_topics_pins_links";
 import * as migration_20260608b_classrooms from "./20260608b_classrooms";
+import * as migration_20260608c_course_cover from "./20260608c_course_cover";
 
 export const migrations = [
   {
@@ -269,5 +270,10 @@ export const migrations = [
     up: migration_20260608b_classrooms.up,
     down: migration_20260608b_classrooms.down,
     name: "20260608b_classrooms",
+  },
+  {
+    up: migration_20260608c_course_cover.up,
+    down: migration_20260608c_course_cover.down,
+    name: "20260608c_course_cover",
   },
 ];

@@ -11,6 +11,7 @@
     "investigations:seed": "pnpm dlx tsx --env-file=.env src/scripts/seed-investigations.ts",
     "build": "next build",
     "check": "next lint && tsc --noEmit",
+    "db:apply": "tsx --env-file=.env scripts/db-apply-pending.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",

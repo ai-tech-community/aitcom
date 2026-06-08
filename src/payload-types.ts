@@ -1151,6 +1151,10 @@ export interface Course {
   slug: string;
   summary?: string | null;
   /**
+   * S3 cover image URL (uploaded via /api/upload).
+   */
+  coverImageUrl?: string | null;
+  /**
    * Better Auth user ID.
    */
   authorId: string;
@@ -1965,6 +1969,7 @@ export interface CoursesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
   summary?: T;
+  coverImageUrl?: T;
   authorId?: T;
   authorName?: T;
   status?: T;
