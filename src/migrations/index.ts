@@ -44,6 +44,7 @@ import * as migration_20260604a_work_grid_commission from "./20260604a_work_grid
 import * as migration_20260608a_feed_topics_pins_links from "./20260608a_feed_topics_pins_links";
 import * as migration_20260608b_classrooms from "./20260608b_classrooms";
 import * as migration_20260608c_course_cover from "./20260608c_course_cover";
+import * as migration_20260608d_locked_docs_rels from "./20260608d_locked_docs_rels";
 
 export const migrations = [
   {
@@ -275,5 +276,10 @@ export const migrations = [
     up: migration_20260608c_course_cover.up,
     down: migration_20260608c_course_cover.down,
     name: "20260608c_course_cover",
+  },
+  {
+    up: migration_20260608d_locked_docs_rels.up,
+    down: migration_20260608d_locked_docs_rels.down,
+    name: "20260608d_locked_docs_rels",
   },
 ];
