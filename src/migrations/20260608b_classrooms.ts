@@ -37,9 +37,23 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   `));
   await db.execute(sql.raw(`CREATE INDEX IF NOT EXISTS "lessons_course_idx" ON "lessons"("course")`));
   await db.execute(sql.raw(`CREATE INDEX IF NOT EXISTS "lessons_order_idx" ON "lessons"("order")`));
-  // lessons.resources is an array field → Payload manages its own child table under push; in prod,
-  // run `npx payload migrate:create` instead if array-table DDL is needed. For this MVP the dev DB
-  // is push-materialized, so this migration covers the scalar columns + the Drizzle tables below.
+
+  // lessons.resources is an array field → Payload represents it as a child table
+  // "lessons_resources" (one row per resource), shape mirroring other array tables
+  // like launchpad_projects_links: _order, _parent_id (FK→lessons, cascade), a
+  // varchar id PK, and the array fields. Payload's read query lateral-joins this
+  // table, so it MUST exist or `lessons` queries fail.
+  await db.execute(sql.raw(`
+    CREATE TABLE IF NOT EXISTS "lessons_resources" (
+      "_order" integer NOT NULL,
+      "_parent_id" integer NOT NULL REFERENCES "lessons"("id") ON DELETE CASCADE,
+      "id" varchar PRIMARY KEY,
+      "label" varchar NOT NULL,
+      "url" varchar NOT NULL
+    )
+  `));
+  await db.execute(sql.raw(`CREATE INDEX IF NOT EXISTS "lessons_resources_order_idx" ON "lessons_resources"("_order")`));
+  await db.execute(sql.raw(`CREATE INDEX IF NOT EXISTS "lessons_resources_parent_id_idx" ON "lessons_resources"("_parent_id")`));
 
   // Drizzle tracking tables (app schema).
   await db.execute(sql.raw(`
@@ -75,6 +89,7 @@ export async function down({ db }: MigrateDownArgs): Promise<void> {
   await db.execute(sql.raw(`ALTER TABLE "app"."community" DROP COLUMN IF EXISTS "classroom_create_policy"`));
   await db.execute(sql.raw(`DROP TABLE IF EXISTS "app"."lesson_completion"`));
   await db.execute(sql.raw(`DROP TABLE IF EXISTS "app"."course_enrollment"`));
+  await db.execute(sql.raw(`DROP TABLE IF EXISTS "lessons_resources"`));
   await db.execute(sql.raw(`DROP TABLE IF EXISTS "lessons"`));
   await db.execute(sql.raw(`DROP TABLE IF EXISTS "courses"`));
 }
