@@ -258,6 +258,19 @@ export function CourseView({
               </div>
             ) : null}
 
+            {certificateIssuedAt ? (
+              <div className="rounded-md border border-green-600/30 bg-green-600/10 p-3 text-center">
+                <p className="text-sm font-semibold text-green-700">
+                  {t("certificateEarned")}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {t("certificateIssued", {
+                    date: new Date(certificateIssuedAt).toLocaleDateString(),
+                  })}
+                </p>
+              </div>
+            ) : null}
+
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
