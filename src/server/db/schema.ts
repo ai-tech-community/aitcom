@@ -2702,6 +2702,59 @@ export const lessonCompletions = appSchema.table(
   ],
 );
 
+export const lessonExamAttempts = appSchema.table(
+  "lesson_exam_attempt",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    lessonId: d.integer().notNull(), // References Payload lessons table
+    courseId: d.integer().notNull(), // References Payload courses table
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    score: d.integer().notNull(), // 0..100
+    thresholdAtAttempt: d.integer().notNull(), // threshold in force when taken
+    passed: d.boolean().notNull(),
+    answers: d.jsonb().notNull(), // ExamAnswer[] snapshot
+    attemptedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("lesson_exam_attempt_lesson_user_idx").on(t.lessonId, t.userId),
+    index("lesson_exam_attempt_course_idx").on(t.courseId),
+  ],
+);
+
+export const courseCertificates = appSchema.table(
+  "course_certificate",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    courseId: d.integer().notNull(), // References Payload courses table
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    issuedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("course_certificate_user_idx").on(t.userId),
+    uniqueIndex("course_certificate_unique").on(t.courseId, t.userId),
+  ],
+);
+
 export const communityLumaIntegrations = appSchema.table(
   "community_luma_integration",
   (d) => ({
