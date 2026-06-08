@@ -3,9 +3,11 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { LazyMotion, domAnimation, m } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { api } from "@/trpc/react";
 import type { PublicExamQuestion } from "@/lib/classroom";
+import { fireConfetti } from "./celebrate";
 
 type LessonExam = {
   lessonId: number;
@@ -68,8 +70,12 @@ export function ExamRunner({
   const submit = api.classrooms.submitExamAttempt.useMutation({
     onSuccess: (r) => {
       setResult(r);
-      if (r.passed) toast.success(t("examPassedToast", { score: r.score }));
-      else toast.error(t("examFailedToast", { score: r.score }));
+      if (r.passed) {
+        fireConfetti();
+        toast.success(t("examPassedToast", { score: r.score }));
+      } else {
+        toast.error(t("examFailedToast", { score: r.score }));
+      }
       void utils.classrooms.get.invalidate();
     },
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
@@ -88,11 +94,18 @@ export function ExamRunner({
       </div>
 
       {passed && !preview ? (
-        <p className="text-sm font-medium text-green-600">
-          {t("examAlreadyPassed", {
-            score: Math.max(0, ...mine.filter((a) => a.passed).map((a) => a.score)),
-          })}
-        </p>
+        <LazyMotion features={domAnimation}>
+          <m.p
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 360, damping: 18 }}
+            className="text-sm font-medium text-green-600"
+          >
+            {t("examAlreadyPassed", {
+              score: Math.max(0, ...mine.filter((a) => a.passed).map((a) => a.score)),
+            })}
+          </m.p>
+        </LazyMotion>
       ) : (
         <>
           {display.map((q, qi) => (
