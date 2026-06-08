@@ -24,6 +24,8 @@ import {
   courseProgressPercent,
   coursePassed,
   stripAnswerKey,
+  gradeExam,
+  examPassed,
   type CommunityRole,
   type ExamQuestion,
 } from "@/lib/classroom";
@@ -61,6 +63,36 @@ async function resolveCommunityAndRole(
     role,
     classroomCreatePolicy: community.classroomCreatePolicy ?? "all_members",
   };
+}
+
+/** Issue a course certificate if (and only if) every lesson is now complete. Idempotent. */
+async function issueCertificateIfComplete(
+  database: typeof db,
+  payload: Awaited<ReturnType<typeof getPayloadClient>>,
+  courseId: number,
+  userId: string,
+): Promise<void> {
+  const { totalDocs: totalLessons } = await payload.count({
+    collection: "lessons",
+    where: { course: { equals: courseId } },
+  });
+  if (totalLessons === 0) return;
+
+  const completedRows = await database
+    .select({ lessonId: lessonCompletions.lessonId })
+    .from(lessonCompletions)
+    .where(
+      and(
+        eq(lessonCompletions.courseId, courseId),
+        eq(lessonCompletions.userId, userId),
+      ),
+    );
+  if (completedRows.length < totalLessons) return;
+
+  await database
+    .insert(courseCertificates)
+    .values({ courseId, userId })
+    .onConflictDoNothing();
 }
 
 export const classroomsRouter = createTRPCRouter({
@@ -603,6 +635,85 @@ export const classroomsRouter = createTRPCRouter({
     }),
 
   /** Toggle a lesson's completion for the caller (enrolled-only; no XP). */
+  /** Grade an exam attempt server-side; on pass, complete the lesson + maybe certify. */
+  submitExamAttempt: protectedProcedure
+    .input(
+      z.object({
+        lessonId: z.number(),
+        answers: z.array(
+          z.object({ questionId: z.string(), selectedIndex: z.number().int() }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const payload = await getPayloadClient();
+      const lesson = await payload.findByID({
+        collection: "lessons",
+        id: input.lessonId,
+        depth: 0,
+      });
+      const courseId = lesson.course;
+
+      const questions = (lesson.examQuestions ?? []) as ExamQuestion[];
+      if (questions.length === 0)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "NO_EXAM" });
+
+      // Enrolled-only, mirroring markLessonComplete.
+      const enr = await ctx.db
+        .select({ id: courseEnrollments.id })
+        .from(courseEnrollments)
+        .where(
+          and(
+            eq(courseEnrollments.courseId, courseId),
+            eq(courseEnrollments.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (enr.length === 0)
+        throw new TRPCError({ code: "FORBIDDEN", message: "NOT_ENROLLED" });
+
+      // Existing attempts: enforce the cap, and detect a sticky prior pass.
+      const prior = await ctx.db
+        .select({ passed: lessonExamAttempts.passed })
+        .from(lessonExamAttempts)
+        .where(
+          and(
+            eq(lessonExamAttempts.lessonId, input.lessonId),
+            eq(lessonExamAttempts.userId, userId),
+          ),
+        );
+      const alreadyPassed = prior.some((p) => p.passed);
+      const maxAttempts = lesson.examMaxAttempts ?? 0;
+      if (!alreadyPassed && maxAttempts > 0 && prior.length >= maxAttempts)
+        throw new TRPCError({ code: "FORBIDDEN", message: "NO_ATTEMPTS_LEFT" });
+
+      const threshold = lesson.examPassThreshold ?? 70;
+      const { score, wrongQuestionIds } = gradeExam(questions, input.answers);
+      const passed = examPassed(score, threshold);
+
+      await ctx.db.insert(lessonExamAttempts).values({
+        lessonId: input.lessonId,
+        courseId,
+        userId,
+        score,
+        thresholdAtAttempt: threshold,
+        passed,
+        answers: input.answers,
+      });
+
+      // A pass completes the lesson (idempotent); never un-complete on a later fail.
+      if (passed) {
+        await ctx.db
+          .insert(lessonCompletions)
+          .values({ lessonId: input.lessonId, courseId, userId })
+          .onConflictDoNothing();
+        await issueCertificateIfComplete(ctx.db, payload, courseId, userId);
+      }
+
+      return { score, passed, wrongQuestionIds };
+    }),
+
   markLessonComplete: protectedProcedure
     .input(z.object({ lessonId: z.number(), completed: z.boolean() }))
     .mutation(async ({ ctx, input }) => {
