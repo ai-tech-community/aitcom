@@ -68,6 +68,8 @@ export function FeedPage({
     editedAt?: string | null;
     createdAt: string;
     hasLiked: boolean;
+    isPinned?: boolean | null;
+    topicSlug?: string | null;
   }>;
 
   const hasMore = !!data?.nextCursor;

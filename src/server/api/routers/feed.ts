@@ -6,6 +6,7 @@ import { logActivity } from "@/server/agent/activity";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import { communities, communityMemberships, user } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { MAX_PINS } from "@/lib/feed-sort";
 
 export const feedRouter = createTRPCRouter({
   // ── getFeed ─────────────────────────────────────────────────────────────────
@@ -368,7 +369,7 @@ export const feedRouter = createTRPCRouter({
           limit: 0,
           depth: 0,
         });
-        if (totalDocs >= 3) {
+        if (totalDocs >= MAX_PINS) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "PIN_CAP_REACHED" });
         }
       }
