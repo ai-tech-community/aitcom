@@ -132,31 +132,51 @@ only (the persistent header already carries cross-tab identity).
 
 ### Classroom
 
-A structured-learning [[shared-surface]]: ordered [[course]]s of video
-[[lesson]]s, per-[[Community]] (and optionally Hub-wide via null `communityId`).
-**Distinct from [[articles]]/blog**: a lesson is curriculum (ordered,
-progress-tracked, member-gated), not a published post (no public RSS or
-submission-review lifecycle), even though an article of type `tutorial` /
-`talk_recording` resembles one. The split is deliberate — see
-[[adr-0027-classroom-is-a-distinct-surface-from-articles]].
+A structured-learning [[shared-surface]] of **member-created** [[course]]s of
+video [[lesson]]s, per-[[Community]]. Unlike Skool's owner-only courses, **any
+active member may build a classroom** (the [[Community]]'s
+`classroomCreatePolicy` may restrict creation to admins). The authoring model
+mirrors [[launchpad]], **not** [[articles]]: a course is **published
+immediately by its creator with no pre-review** (post-hoc moderation), the
+creator owns and edits it, and mods/admins may unpublish or remove it.
+**Distinct from [[articles]]/blog** (curated, single published pieces, public
+RSS/review lifecycle) and from [[launchpad]] (single projects) by its one
+irreducible feature: **ordered, multi-lesson structure with per-member
+progress** — a series you work through, which neither articles nor launchpad
+can express. See [[adr-0027-classroom-is-member-authored-ordered-curriculum]].
 
 ### Course
 
-An ordered collection of [[lesson]]s in the [[classroom]], **flat** (no
-modules at launch; a grouping level may be added later without a breaking
-migration). Carries `visibility`: **members** (default — active [[Community]]
-membership required to view) or **public** (exposed to non-members as a
-join hook). A member's per-lesson completions across the course yield a
-course **progress %** (the Skool-style `0%` bar).
+An ordered, **flat** collection of [[lesson]]s in the [[classroom]] (no modules
+at launch; a grouping level may be added later without a breaking migration),
+**created and owned by any active [[Community]] member** (subject to
+`classroomCreatePolicy`) and published immediately. **Members-only by default**;
+a course becomes **public only when an admin/mod promotes it** — a creator
+cannot self-publish to the open web. A member [[course-enrollment|enrolls]]
+explicitly; their per-lesson completions yield a course **progress %**. The
+popularity signal is the **distinct-enrollment count** (no separate up-vote —
+that is [[launchpad]]'s job). The creator earns small **Hub-global XP per
+distinct member enrollment** (others valuing the work, like
+`LAUNCHPAD_RECEIVE_VOTE`); **creating a course earns no XP** (would reward
+spam under the no-pre-review model).
+
+### Course enrollment
+
+An explicit join row recording that a member has enrolled in a [[course]] —
+the successor concept to "just start watching". It powers the member's "My
+Classrooms" list, the per-member [[course]] progress bar, and the
+distinct-enrollment popularity/XP signal. Modelled on [[event]] registration
+(an explicit join), not inferred from first lesson completion.
 
 ### Lesson
 
 One unit of a [[course]]: a title, an **embedded or referenced YouTube**
 video (no native video hosting), a rich-text body, and a list of resource
-links. A member marks a lesson complete; completion is **self-reported** and
-drives the [[course]] progress bar but **earns no XP** — self-reported
-completion is trivially farmable, consistent with the verification-gated XP
-rule on [[work-cell]]s. Admin/owner authored at launch.
+links. An enrolled member marks a lesson complete; completion is
+**self-reported** and drives the [[course]] progress bar but **earns no XP** —
+self-reported completion is trivially farmable, consistent with the
+verification-gated XP rule on [[work-cell]]s. Authored by the course's creator
+(any active member), not restricted to admins.
 
 ### Hackathon
 
