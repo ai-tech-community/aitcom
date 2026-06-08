@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { LexicalRenderer } from "@/lib/lexical";
 import { ExamRunner } from "./exam-runner";
+import { LazyMotion, domAnimation, m } from "framer-motion";
+import { fireConfetti } from "./celebrate";
 import {
   courseProgressPercent,
   youtubeEmbedUrl,
@@ -73,6 +75,25 @@ export function CourseView({
   const lessonExams = data?.lessonExams ?? [];
   const attempts = data?.attempts ?? [];
   const certificateIssuedAt = data?.certificateIssuedAt ?? null;
+
+  // Fire confetti only when the certificate appears for the FIRST time during
+  // this session (the moment of earning) — never on a reload of an already
+  // completed course. `certInitialized` skips the first loaded value;
+  // `hadCertOnLoad` records whether it was already earned when the page loaded.
+  const certInitialized = useRef(false);
+  const hadCertOnLoad = useRef(false);
+  useEffect(() => {
+    if (!data) return; // wait for the query's first result
+    if (!certInitialized.current) {
+      certInitialized.current = true;
+      hadCertOnLoad.current = !!certificateIssuedAt;
+      return; // first loaded value: never celebrate
+    }
+    if (certificateIssuedAt && !hadCertOnLoad.current) {
+      hadCertOnLoad.current = true; // prevent repeat within the session
+      fireConfetti();
+    }
+  }, [data, certificateIssuedAt]);
 
   const selectedLesson =
     lessons.find((l) => l.id === selectedId) ?? lessons[0] ?? null;
@@ -261,16 +282,23 @@ export function CourseView({
             ) : null}
 
             {certificateIssuedAt ? (
-              <div className="rounded-md border border-green-600/30 bg-green-600/10 p-3 text-center">
-                <p className="text-sm font-semibold text-green-700">
-                  {t("certificateEarned")}
-                </p>
-                <p className="text-muted-foreground text-xs">
-                  {t("certificateIssued", {
-                    date: new Date(certificateIssuedAt).toLocaleDateString(),
-                  })}
-                </p>
-              </div>
+              <LazyMotion features={domAnimation}>
+                <m.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 280, damping: 20 }}
+                  className="rounded-md border border-green-600/30 bg-green-600/10 p-3 text-center"
+                >
+                  <p className="text-sm font-semibold text-green-700">
+                    {t("certificateEarned")}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {t("certificateIssued", {
+                      date: new Date(certificateIssuedAt).toLocaleDateString(),
+                    })}
+                  </p>
+                </m.div>
+              </LazyMotion>
             ) : null}
 
             <div className="space-y-2">
