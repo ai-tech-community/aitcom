@@ -77,10 +77,13 @@ export const feedRouter = createTRPCRouter({
       const { docs } = await payload.find({
         collection: "feed-posts",
         where: whereClause as Parameters<typeof payload.find>[0]["where"],
+        // Pinned-first only on the unfiltered first page: the keyset cursor
+        // compares (createdAt,id) only, so mixing -isPinned into paginated
+        // sorts would duplicate old-but-pinned posts across "load more".
         sort:
-          input.topicSlug && input.topicSlug !== "all"
-            ? "-createdAt"
-            : "-isPinned,-createdAt",
+          (!input.topicSlug || input.topicSlug === "all") && !input.cursor
+            ? "-isPinned,-createdAt"
+            : "-createdAt",
         limit: input.limit + 1,
         depth: 0,
       });
@@ -334,7 +337,7 @@ export const feedRouter = createTRPCRouter({
       if (post.communityId) {
         const membership = await ctx.db.query.communityMemberships.findFirst({
           where: and(
-            eq(communityMemberships.communityId, post.communityId as string),
+            eq(communityMemberships.communityId, post.communityId),
             eq(communityMemberships.userId, ctx.session.user.id),
             eq(communityMemberships.status, "active"),
           ),
