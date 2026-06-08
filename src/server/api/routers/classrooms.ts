@@ -725,6 +725,13 @@ export const classroomsRouter = createTRPCRouter({
         depth: 0,
       });
       const courseId = lesson.course;
+
+      const examQuestions = (lesson.examQuestions ?? []) as ExamQuestion[];
+      const mandatoryExam =
+        examQuestions.length > 0 && lesson.examMandatory === true;
+      if (input.completed && mandatoryExam)
+        throw new TRPCError({ code: "FORBIDDEN", message: "EXAM_REQUIRED" });
+
       const enr = await ctx.db
         .select()
         .from(courseEnrollments)
@@ -752,6 +759,7 @@ export const classroomsRouter = createTRPCRouter({
         await ctx.db
           .insert(lessonCompletions)
           .values({ lessonId: input.lessonId, courseId, userId });
+        await issueCertificateIfComplete(ctx.db, payload, courseId, userId);
       } else if (!input.completed && existing.length > 0) {
         await ctx.db
           .delete(lessonCompletions)
