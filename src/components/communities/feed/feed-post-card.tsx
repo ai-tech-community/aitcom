@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Heart, MessageSquare, MoreHorizontal } from "lucide-react";
+import { Heart, MessageSquare, MoreHorizontal, Pin } from "lucide-react";
 import { toast } from "sonner";
 import { FeedComments } from "./feed-comments";
 
@@ -42,6 +42,8 @@ interface FeedPost {
   isEdited?: boolean | null;
   editedAt?: string | null;
   createdAt: string;
+  isPinned?: boolean | null;
+  topicSlug?: string | null;
   hasLiked: boolean;
 }
 
@@ -97,6 +99,14 @@ export function FeedPostCard({
     onError: () => toast.error("Failed to delete post"),
   });
 
+  const pinPost = api.feed.pinPost.useMutation({
+    onSuccess: () => onRefresh(),
+    onError: (e) =>
+      toast.error(
+        e.message === "PIN_CAP_REACHED" ? t("pinCapReached") : "Failed to pin",
+      ),
+  });
+
   if (post.isDeleted) {
     return (
       <div className="border-border rounded-lg border px-4 py-3">
@@ -124,9 +134,16 @@ export function FeedPostCard({
             <p className="text-sm leading-tight font-medium">
               {post.authorName ?? "Member"}
             </p>
-            <p className="text-muted-foreground text-[11px]">
-              {timeAgo(post.createdAt)}
-              {post.isEdited ? ` · (${t("edited")})` : ""}
+            <p className="text-muted-foreground flex items-center gap-1 text-[11px]">
+              {post.isPinned ? (
+                <span className="text-foreground inline-flex items-center gap-0.5">
+                  <Pin className="size-3 fill-current" /> {t("pinned")}
+                </span>
+              ) : null}
+              <span>
+                {timeAgo(post.createdAt)}
+                {post.isEdited ? ` · (${t("edited")})` : ""}
+              </span>
             </p>
           </div>
         </div>
@@ -159,6 +176,15 @@ export function FeedPostCard({
               >
                 {t("delete")}
               </DropdownMenuItem>
+              {isPrivileged && (
+                <DropdownMenuItem
+                  onClick={() =>
+                    pinPost.mutate({ postId: post.id, isPinned: !post.isPinned })
+                  }
+                >
+                  {post.isPinned ? t("unpinPost") : t("pinPost")}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
