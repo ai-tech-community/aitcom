@@ -2623,6 +2623,11 @@ export const communities = appSchema.table(
       .notNull()
       .default("all_members")
       .$type<"all_members" | "admins_only">(),
+    classroomCreatePolicy: d
+      .varchar({ length: 30 })
+      .notNull()
+      .default("all_members")
+      .$type<"all_members" | "admins_only">(),
     autonomyLevel: d
       .varchar("autonomy_level", { length: 10 })
       .notNull()
@@ -2642,6 +2647,58 @@ export const communities = appSchema.table(
   (t) => [
     index("community_slug_idx").on(t.slug),
     index("community_listed_idx").on(t.isListedInDirectory),
+  ],
+);
+
+// ── Classroom enrollment / completion tracking (mirrors eventRegistrations) ──
+export const courseEnrollments = appSchema.table(
+  "course_enrollment",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    courseId: d.integer().notNull(), // References Payload courses table
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    enrolledAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("course_enrollment_course_idx").on(t.courseId),
+    index("course_enrollment_user_idx").on(t.userId),
+    uniqueIndex("course_enrollment_unique").on(t.courseId, t.userId),
+  ],
+);
+
+export const lessonCompletions = appSchema.table(
+  "lesson_completion",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    lessonId: d.integer().notNull(), // References Payload lessons table
+    courseId: d.integer().notNull(), // References Payload courses table
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    completedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("lesson_completion_course_idx").on(t.courseId),
+    index("lesson_completion_user_idx").on(t.userId),
+    uniqueIndex("lesson_completion_unique").on(t.lessonId, t.userId),
   ],
 );
 
