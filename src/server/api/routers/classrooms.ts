@@ -288,9 +288,17 @@ export const classroomsRouter = createTRPCRouter({
 
       const passedCourse = coursePassed(completedLessonIds.length, lessons.length);
 
+      // The raw lesson docs carry examQuestions WITH the answer key. Only the
+      // author (who edits the exam) may receive it; everyone else gets the
+      // key-stripped lessonExams and must never see correctIndex over the wire.
+      const isAuthor = !!userId && course.authorId === userId;
+      const safeLessons = isAuthor
+        ? lessons
+        : lessons.map((l) => ({ ...l, examQuestions: undefined }));
+
       return {
         course,
-        lessons,
+        lessons: safeLessons,
         enrolled,
         completedLessonIds,
         lessonExams,
