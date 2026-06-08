@@ -1176,6 +1176,7 @@
     "lessonTitle": "Lestitel",
     "youtubeUrl": "YouTube-URL",
     "lessonBody": "Lesnotities",
+    "lessonBodyPlaceholder": "Schrijf de les… Typ / voor blokken.",
     "resources": "Bronnen",
     "save": "Opslaan",
     "publish": "Publiceren",

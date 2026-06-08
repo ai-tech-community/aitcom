@@ -1176,6 +1176,7 @@
     "lessonTitle": "Lesson title",
     "youtubeUrl": "YouTube URL",
     "lessonBody": "Lesson notes",
+    "lessonBodyPlaceholder": "Write the lesson… Type / for blocks.",
     "resources": "Resources",
     "save": "Save",
     "publish": "Publish",

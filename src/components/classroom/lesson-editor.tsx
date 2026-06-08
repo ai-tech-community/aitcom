@@ -4,11 +4,10 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { RichTextEditor } from "@/components/article-editor/rich-text-editor";
 import { Pencil, Trash2, Plus, X } from "lucide-react";
 
 interface ResourceRow {
@@ -103,8 +102,8 @@ function LessonFields({
   setTitle: (v: string) => void;
   youtubeUrl: string;
   setYoutubeUrl: (v: string) => void;
-  body: string;
-  setBody: (v: string) => void;
+  body: unknown;
+  setBody: (v: unknown) => void;
   resources: ResourceRow[];
   setResources: (v: ResourceRow[]) => void;
   disabled?: boolean;
@@ -133,13 +132,13 @@ function LessonFields({
       </div>
       <div className="flex flex-col gap-1.5">
         <Label>{t("lessonBody")}</Label>
-        <Textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          rows={5}
-          maxLength={20000}
-          disabled={disabled}
-        />
+        <div className="border-border rounded-md border px-2 py-2">
+          <RichTextEditor
+            initialValue={body ?? null}
+            onChange={setBody}
+            placeholder={t("lessonBodyPlaceholder")}
+          />
+        </div>
       </div>
       <ResourcesEditor
         resources={resources}
@@ -157,7 +156,7 @@ function LessonRow({ lesson }: { lesson: LessonLike }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(lesson.title);
   const [youtubeUrl, setYoutubeUrl] = useState(lesson.youtubeUrl ?? "");
-  const [body, setBody] = useState(lexicalToPlainText(lesson.body));
+  const [body, setBody] = useState<unknown>(lesson.body ?? null);
   const [resources, setResources] = useState<ResourceRow[]>(
     (lesson.resources ?? []).map((r) => ({ label: r.label, url: r.url })),
   );
@@ -269,7 +268,7 @@ export function LessonEditor({
   const utils = api.useUtils();
   const [title, setTitle] = useState("");
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState<unknown>(null);
   const [resources, setResources] = useState<ResourceRow[]>([]);
 
   const add = api.classrooms.addLesson.useMutation({
@@ -277,7 +276,7 @@ export function LessonEditor({
       toast.success(t("lessonSaved"));
       setTitle("");
       setYoutubeUrl("");
-      setBody("");
+      setBody(null);
       setResources([]);
       void utils.classrooms.get.invalidate();
     },
@@ -319,7 +318,7 @@ export function LessonEditor({
               courseId,
               title: title.trim(),
               youtubeUrl: youtubeUrl.trim() ? youtubeUrl.trim() : undefined,
-              body: body.trim() ? body : undefined,
+              body: body ?? undefined,
               resources: resources.filter((r) => r.label.trim() && r.url.trim()),
             })
           }

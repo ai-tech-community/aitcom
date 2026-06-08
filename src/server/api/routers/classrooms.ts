@@ -17,7 +17,6 @@ import {
   courseEnrollments,
   lessonCompletions,
 } from "@/server/db/schema";
-import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import {
   canCreateCourse,
   courseProgressPercent,
@@ -292,7 +291,7 @@ export const classroomsRouter = createTRPCRouter({
       if (input.summary !== undefined) data.summary = input.summary;
       if (input.status !== undefined) data.status = input.status;
       if (input.coverImageUrl !== undefined)
-        data.coverImageUrl = input.coverImageUrl ?? undefined;
+        data.coverImageUrl = input.coverImageUrl;
 
       await payload.update({
         collection: "courses",
@@ -303,14 +302,14 @@ export const classroomsRouter = createTRPCRouter({
       return { ok: true };
     }),
 
-  /** Add a lesson to own course. body is plain text → lexical. */
+  /** Add a lesson to own course. body is lexical editorState JSON. */
   addLesson: protectedProcedure
     .input(
       z.object({
         courseId: z.number(),
         title: z.string().min(1).max(200),
         youtubeUrl: z.string().url().max(500).optional(),
-        body: z.string().max(20000).optional(),
+        body: z.any().optional(),
         resources: z
           .array(
             z.object({
@@ -349,7 +348,7 @@ export const classroomsRouter = createTRPCRouter({
           title: input.title,
           order: totalDocs,
           youtubeUrl: input.youtubeUrl ?? undefined,
-          body: input.body ? plainTextToLexical(input.body) : undefined,
+          body: input.body ?? undefined,
           resources: input.resources,
         },
       });
@@ -364,7 +363,7 @@ export const classroomsRouter = createTRPCRouter({
         lessonId: z.number(),
         title: z.string().min(1).max(200).optional(),
         youtubeUrl: z.string().url().max(500).nullable().optional(),
-        body: z.string().max(20000).optional(),
+        body: z.any().optional(),
         order: z.number().optional(),
         resources: z
           .array(
@@ -400,7 +399,7 @@ export const classroomsRouter = createTRPCRouter({
       if (input.title !== undefined) data.title = input.title;
       if (input.youtubeUrl !== undefined)
         data.youtubeUrl = input.youtubeUrl ?? undefined;
-      if (input.body !== undefined) data.body = plainTextToLexical(input.body);
+      if (input.body !== undefined) data.body = input.body;
       if (input.order !== undefined) data.order = input.order;
       if (input.resources !== undefined) data.resources = input.resources;
 

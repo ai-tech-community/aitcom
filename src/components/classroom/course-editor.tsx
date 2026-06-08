@@ -117,7 +117,7 @@ export function CourseEditor({
         title: trimmed,
         summary: summary.trim(),
         status,
-        coverImageUrl: coverImageUrl ?? undefined,
+        coverImageUrl: coverImageUrl,
       });
     } else {
       create.mutate({
