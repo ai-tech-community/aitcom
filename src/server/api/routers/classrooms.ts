@@ -418,7 +418,7 @@ export const classroomsRouter = createTRPCRouter({
       if (course.authorId !== userId) {
         await awardXp(
           ctx.db,
-          course.authorId as string,
+          course.authorId,
           XP_AMOUNTS.COURSE_RECEIVE_ENROLLMENT,
         );
       }
@@ -428,8 +428,8 @@ export const classroomsRouter = createTRPCRouter({
         action: "course.enroll",
         targetType: "courses",
         targetId: String(input.courseId),
-        communityId: (course.communityId as string) ?? undefined,
-        recipientId: (course.authorId as string) ?? undefined,
+        communityId: (course.communityId) ?? undefined,
+        recipientId: (course.authorId) ?? undefined,
         metadata: { title: course.title },
       });
       return { enrolled: true, already: false };
@@ -484,7 +484,7 @@ export const classroomsRouter = createTRPCRouter({
         id: input.lessonId,
         depth: 0,
       });
-      const courseId = lesson.course as number;
+      const courseId = lesson.course;
       const enr = await ctx.db
         .select()
         .from(courseEnrollments)
@@ -537,7 +537,7 @@ export const classroomsRouter = createTRPCRouter({
       });
       const m = await ctx.db.query.communityMemberships.findFirst({
         where: and(
-          eq(communityMemberships.communityId, course.communityId as string),
+          eq(communityMemberships.communityId, course.communityId),
           eq(communityMemberships.userId, ctx.session.user.id),
           eq(communityMemberships.status, "active"),
         ),
@@ -568,7 +568,7 @@ export const classroomsRouter = createTRPCRouter({
       if (!allowed) {
         const m = await ctx.db.query.communityMemberships.findFirst({
           where: and(
-            eq(communityMemberships.communityId, course.communityId as string),
+            eq(communityMemberships.communityId, course.communityId),
             eq(communityMemberships.userId, ctx.session.user.id),
             eq(communityMemberships.status, "active"),
           ),
