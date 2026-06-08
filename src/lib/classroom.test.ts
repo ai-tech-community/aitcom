@@ -1,5 +1,85 @@
 import { describe, expect, it } from "vitest";
 import { courseProgressPercent, canCreateCourse, youtubeEmbedUrl } from "./classroom";
+import {
+  gradeExam,
+  examPassed,
+  stripAnswerKey,
+  coursePassed,
+  type ExamQuestion,
+} from "./classroom";
+
+const Q: ExamQuestion[] = [
+  { id: "a", prompt: "1+1?", type: "single", options: ["1", "2", "3"], correctIndex: 1 },
+  { id: "b", prompt: "Sky is blue?", type: "boolean", options: ["True", "False"], correctIndex: 0 },
+];
+
+describe("gradeExam", () => {
+  it("scores all-correct as 100", () => {
+    const r = gradeExam(Q, [
+      { questionId: "a", selectedIndex: 1 },
+      { questionId: "b", selectedIndex: 0 },
+    ]);
+    expect(r.score).toBe(100);
+    expect(r.correctCount).toBe(2);
+    expect(r.wrongQuestionIds).toEqual([]);
+  });
+  it("scores half-correct as 50 and reports the wrong question", () => {
+    const r = gradeExam(Q, [
+      { questionId: "a", selectedIndex: 0 },
+      { questionId: "b", selectedIndex: 0 },
+    ]);
+    expect(r.score).toBe(50);
+    expect(r.wrongQuestionIds).toEqual(["a"]);
+  });
+  it("treats a missing or out-of-range answer as wrong", () => {
+    const r = gradeExam(Q, [{ questionId: "a", selectedIndex: 99 }]);
+    expect(r.score).toBe(0);
+    expect(r.wrongQuestionIds).toEqual(["a", "b"]);
+  });
+  it("ignores answers to unknown questions", () => {
+    const r = gradeExam(Q, [
+      { questionId: "a", selectedIndex: 1 },
+      { questionId: "ghost", selectedIndex: 0 },
+      { questionId: "b", selectedIndex: 0 },
+    ]);
+    expect(r.score).toBe(100);
+  });
+  it("scores an empty exam as 0", () => {
+    expect(gradeExam([], []).score).toBe(0);
+  });
+});
+
+describe("examPassed", () => {
+  it("passes at or above threshold", () => {
+    expect(examPassed(80, 80)).toBe(true);
+    expect(examPassed(81, 80)).toBe(true);
+  });
+  it("fails below threshold", () => {
+    expect(examPassed(79, 80)).toBe(false);
+  });
+});
+
+describe("stripAnswerKey", () => {
+  it("removes correctIndex from every question", () => {
+    const pub = stripAnswerKey(Q);
+    expect(pub).toEqual([
+      { id: "a", prompt: "1+1?", type: "single", options: ["1", "2", "3"] },
+      { id: "b", prompt: "Sky is blue?", type: "boolean", options: ["True", "False"] },
+    ]);
+    // @ts-expect-error correctIndex must not exist on the public shape
+    expect(pub[0].correctIndex).toBeUndefined();
+  });
+});
+
+describe("coursePassed", () => {
+  it("is true only when every lesson is complete", () => {
+    expect(coursePassed(3, 3)).toBe(true);
+    expect(coursePassed(2, 3)).toBe(false);
+  });
+  it("is false for a course with no lessons", () => {
+    expect(coursePassed(0, 0)).toBe(false);
+  });
+});
 
 describe("courseProgressPercent", () => {
   it("is 0 when there are no lessons", () => {
