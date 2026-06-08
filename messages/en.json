@@ -1236,6 +1236,7 @@
     "examAttemptsLabel": "Attempt {used}/{max}",
     "examWrong": "Incorrect",
     "examNoAttemptsLeft": "You have used all your attempts.",
+    "examPreviewNote": "Preview — learners take this exam here.",
     "examAlreadyPassed": "Passed — best score {score}%",
     "examPassedToast": "Passed with {score}%",
     "examFailedToast": "Scored {score}% — not passed yet",

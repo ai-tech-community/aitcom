@@ -30,10 +30,13 @@ export function ExamRunner({
   exam,
   attempts,
   completed,
+  preview = false,
 }: {
   exam: LessonExam;
   attempts: Attempt[];
   completed: boolean;
+  /** Author previewing-as-learner: show the questions read-only, no submission. */
+  preview?: boolean;
 }) {
   const t = useTranslations("classroom");
   const utils = api.useUtils();
@@ -81,7 +84,7 @@ export function ExamRunner({
         </span>
       </div>
 
-      {passed ? (
+      {passed && !preview ? (
         <p className="text-sm font-medium text-green-600">
           {t("examAlreadyPassed", {
             score: Math.max(0, ...mine.filter((a) => a.passed).map((a) => a.score)),
@@ -106,7 +109,7 @@ export function ExamRunner({
                     onChange={() =>
                       setPicks((p) => ({ ...p, [q.id]: opt.originalIndex }))
                     }
-                    disabled={submit.isPending || outOfAttempts}
+                    disabled={preview || submit.isPending || outOfAttempts}
                   />
                   {opt.label}
                 </label>
@@ -114,7 +117,11 @@ export function ExamRunner({
             </fieldset>
           ))}
 
-          {outOfAttempts ? (
+          {preview ? (
+            <p className="text-muted-foreground text-xs italic">
+              {t("examPreviewNote")}
+            </p>
+          ) : outOfAttempts ? (
             <p className="text-sm text-red-600">{t("examNoAttemptsLeft")}</p>
           ) : (
             <Button
@@ -137,7 +144,7 @@ export function ExamRunner({
         </>
       )}
 
-      {mine.length > 0 ? (
+      {!preview && mine.length > 0 ? (
         <div className="text-muted-foreground space-y-0.5 text-xs">
           <p className="font-medium">{t("examHistory")}</p>
           {mine.map((a, i) => (

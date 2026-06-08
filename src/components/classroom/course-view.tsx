@@ -461,8 +461,8 @@ export function CourseView({
                 </div>
               ) : null}
 
-              {/* Exam */}
-              {enrolled && !previewing
+              {/* Exam — visible to enrolled learners and to authors previewing */}
+              {canViewContent
                 ? (() => {
                     const exam = lessonExams.find(
                       (e) =>
@@ -477,6 +477,7 @@ export function CourseView({
                         completed={completedLessonIds.includes(
                           selectedLesson.id,
                         )}
+                        preview={previewing}
                       />
                     );
                   })()
