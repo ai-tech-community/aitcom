@@ -1213,6 +1213,9 @@
     "removeResource": "Remove resource",
     "notFound": "Course not found.",
     "watchVideo": "Watch video",
+    "preview": "Preview",
+    "exitPreview": "Exit preview",
+    "previewMode": "Preview mode — viewing as a learner. Your progress is not tracked.",
     "removeCourseConfirm": "Archive this course? It will no longer be visible to members."
   },
   "launchpad": {

@@ -15,7 +15,7 @@ import {
   youtubeEmbedUrl,
   type CommunityRole,
 } from "@/lib/classroom";
-import { Users, Check, Pencil, ExternalLink, Lock } from "lucide-react";
+import { Users, Check, Pencil, ExternalLink, Lock, Eye } from "lucide-react";
 
 interface ResourceRow {
   label: string;
@@ -51,6 +51,7 @@ export function CourseView({
   });
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [previewing, setPreviewing] = useState(false);
 
   const lessons = useMemo(
     () => (data?.lessons ?? []) as LessonLike[],
@@ -70,6 +71,10 @@ export function CourseView({
   const isStaff = role === "owner" || role === "admin" || role === "moderator";
   const isAuthor =
     !!session?.user && data?.course.authorId === session.user.id;
+  const canPreview = isAuthor || isStaff;
+
+  // Real enrollment OR an author/staff member previewing unlocks lesson content.
+  const canViewContent = enrolled || previewing;
 
   const enroll = api.classrooms.enroll.useMutation({
     onSuccess: () => void utils.classrooms.get.invalidate({ slug: courseSlug }),
@@ -88,8 +93,7 @@ export function CourseView({
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
   });
   const archive = api.classrooms.moderateArchive.useMutation({
-    onSuccess: () =>
-      router.push(`/communities/${slug}/classroom` as never),
+    onSuccess: () => router.push(`/communities/${slug}/classroom` as never),
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
   });
 
@@ -117,11 +121,24 @@ export function CourseView({
   const embed = selectedLesson?.youtubeUrl
     ? youtubeEmbedUrl(selectedLesson.youtubeUrl)
     : null;
+  const coverImageUrl = (course as { coverImageUrl?: string | null })
+    .coverImageUrl;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 py-6">
+    <div className="mx-auto max-w-6xl space-y-6 py-6">
       {/* Header */}
-      <div className="space-y-3">
+      <div className="space-y-4">
+        {coverImageUrl ? (
+          <div className="border-border overflow-hidden rounded-xl border">
+            {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary external URLs */}
+            <img
+              src={coverImageUrl}
+              alt={course.title}
+              className="aspect-[16/5] w-full object-cover"
+            />
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold">{course.title}</h1>
@@ -129,10 +146,24 @@ export function CourseView({
               {t("byAuthor", { name: course.authorName ?? "member" })}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant={course.isPublic ? "secondary" : "outline"}>
               {course.isPublic ? t("public") : t("membersOnly")}
             </Badge>
+            <span className="text-muted-foreground inline-flex items-center gap-1 text-xs">
+              <Users className="size-3" /> {course.enrollmentCount ?? 0}
+            </span>
+            {canPreview ? (
+              <Button
+                type="button"
+                variant={previewing ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setPreviewing((p) => !p)}
+              >
+                <Eye className="mr-1.5 size-4" />
+                {previewing ? t("exitPreview") : t("preview")}
+              </Button>
+            ) : null}
             {isAuthor ? (
               <Button asChild variant="outline" size="sm">
                 <Link
@@ -150,12 +181,6 @@ export function CourseView({
         {course.summary ? (
           <p className="text-muted-foreground text-sm">{course.summary}</p>
         ) : null}
-
-        <div className="text-muted-foreground flex items-center gap-3 text-xs">
-          <span className="inline-flex items-center gap-1">
-            <Users className="size-3" /> {course.enrollmentCount ?? 0}
-          </span>
-        </div>
 
         {/* Staff controls */}
         {isStaff ? (
@@ -189,106 +214,161 @@ export function CourseView({
             </Button>
           </div>
         ) : null}
+
+        {previewing ? (
+          <div className="border-border bg-secondary/40 text-muted-foreground flex items-center gap-2 rounded-lg border px-3 py-2 text-xs">
+            <Eye className="size-3.5 shrink-0" />
+            {t("previewMode")}
+          </div>
+        ) : null}
       </div>
 
-      {/* Progress (enrolled) */}
-      {enrolled ? (
-        <div className="space-y-2">
-          <Progress value={percent} />
-          <p className="text-muted-foreground text-xs">
-            {t("progress", { percent })}
-          </p>
-        </div>
-      ) : null}
+      {/* Two-pane layout */}
+      <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
+        {/* Left sidebar */}
+        <aside className="lg:sticky lg:top-6 lg:self-start">
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold">{course.title}</h2>
 
-      {/* Enroll gate */}
-      {!enrolled ? (
-        <div className="space-y-4">
-          <Button
-            type="button"
-            disabled={enroll.isPending}
-            onClick={() => enroll.mutate({ courseId: course.id })}
-          >
-            {t("enroll")}
-          </Button>
-          <div>
-            <h2 className="mb-2 text-sm font-medium">{t("lessons")}</h2>
-            {lessons.length === 0 ? (
-              <p className="text-muted-foreground text-sm">{t("noLessons")}</p>
-            ) : (
-              <ul className="border-border divide-border divide-y rounded-lg border">
-                {lessons.map((lesson) => (
-                  <li
-                    key={lesson.id}
-                    className="text-muted-foreground flex items-center gap-2 px-4 py-2.5 text-sm"
+            {canViewContent ? (
+              <div className="space-y-1.5">
+                <Progress value={percent} />
+                <p className="text-muted-foreground text-xs">
+                  {t("progress", { percent })}
+                </p>
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                  {t("lessons")}
+                </h3>
+                {enrolled && !previewing ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto px-1.5 py-0.5 text-xs"
+                    disabled={unenroll.isPending}
+                    onClick={() => unenroll.mutate({ courseId: course.id })}
                   >
-                    <Lock className="size-3.5 shrink-0" />
-                    {lesson.title}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-medium">{t("lessons")}</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={unenroll.isPending}
-              onClick={() => unenroll.mutate({ courseId: course.id })}
-            >
-              {t("unenroll")}
-            </Button>
-          </div>
+                    {t("unenroll")}
+                  </Button>
+                ) : null}
+              </div>
 
-          {lessons.length === 0 ? (
-            <p className="text-muted-foreground text-sm">{t("noLessons")}</p>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-[16rem_1fr]">
-              {/* Lesson list */}
-              <ul className="border-border divide-border h-fit divide-y rounded-lg border">
-                {lessons.map((lesson) => {
-                  const done = completedLessonIds.includes(lesson.id);
-                  const active = selectedLesson?.id === lesson.id;
-                  return (
-                    <li key={lesson.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedId(lesson.id)}
-                        className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition-colors ${
-                          active
-                            ? "bg-secondary/60 font-medium"
-                            : "hover:bg-secondary/40"
-                        }`}
-                      >
-                        <span
-                          className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
-                            done
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border"
+              {lessons.length === 0 ? (
+                <p className="text-muted-foreground text-sm">
+                  {t("noLessons")}
+                </p>
+              ) : (
+                <ul className="border-border divide-border divide-y overflow-hidden rounded-lg border">
+                  {lessons.map((lesson) => {
+                    const done = completedLessonIds.includes(lesson.id);
+                    const active = selectedLesson?.id === lesson.id;
+                    if (!canViewContent) {
+                      return (
+                        <li
+                          key={lesson.id}
+                          className="text-muted-foreground flex items-center gap-2 px-3 py-2.5 text-sm"
+                        >
+                          <Lock className="size-3.5 shrink-0" />
+                          <span className="truncate">{lesson.title}</span>
+                        </li>
+                      );
+                    }
+                    return (
+                      <li key={lesson.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(lesson.id)}
+                          className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors ${
+                            active
+                              ? "bg-secondary/60 font-medium"
+                              : "hover:bg-secondary/40"
                           }`}
                         >
-                          {done ? <Check className="size-3" /> : null}
-                        </span>
-                        {lesson.title}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+                          <span
+                            className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
+                              done
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border"
+                            }`}
+                          >
+                            {done ? <Check className="size-3" /> : null}
+                          </span>
+                          <span className="truncate">{lesson.title}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
 
-              {/* Selected lesson */}
-              {selectedLesson ? (
-                <div className="space-y-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-lg font-semibold">
-                      {selectedLesson.title}
-                    </h3>
-                    {(() => {
+            {!enrolled && !previewing ? (
+              <Button
+                type="button"
+                className="w-full"
+                disabled={enroll.isPending}
+                onClick={() => enroll.mutate({ courseId: course.id })}
+              >
+                {t("enroll")}
+              </Button>
+            ) : null}
+          </div>
+        </aside>
+
+        {/* Right pane */}
+        <main className="min-w-0">
+          {!canViewContent ? (
+            <div className="border-border bg-secondary/20 flex flex-col items-center justify-center gap-4 rounded-xl border px-6 py-16 text-center">
+              <Lock className="text-muted-foreground size-8 opacity-50" />
+              <p className="text-muted-foreground text-sm">{t("subtitle")}</p>
+              <Button
+                type="button"
+                disabled={enroll.isPending}
+                onClick={() => enroll.mutate({ courseId: course.id })}
+              >
+                {t("enroll")}
+              </Button>
+            </div>
+          ) : !selectedLesson ? (
+            <p className="text-muted-foreground py-12 text-center text-sm">
+              {t("noLessons")}
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {/* Video */}
+              {embed ? (
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg">
+                  <iframe
+                    src={embed}
+                    title={selectedLesson.title}
+                    allowFullScreen
+                    className="absolute inset-0 size-full"
+                  />
+                </div>
+              ) : selectedLesson.youtubeUrl ? (
+                <a
+                  href={selectedLesson.youtubeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary inline-flex items-center gap-1.5 text-sm underline underline-offset-4 hover:opacity-80"
+                >
+                  <ExternalLink className="size-4" />
+                  {t("watchVideo")}
+                </a>
+              ) : null}
+
+              {/* Title + mark complete */}
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="text-xl font-semibold">
+                  {selectedLesson.title}
+                </h3>
+                {enrolled && !previewing
+                  ? (() => {
                       const isCompleted = completedLessonIds.includes(
                         selectedLesson.id,
                       );
@@ -297,6 +377,7 @@ export function CourseView({
                           type="button"
                           variant={isCompleted ? "outline" : "default"}
                           size="sm"
+                          className="shrink-0"
                           disabled={markComplete.isPending}
                           onClick={() =>
                             markComplete.mutate({
@@ -310,64 +391,41 @@ export function CourseView({
                             : t("markComplete")}
                         </Button>
                       );
-                    })()}
-                  </div>
+                    })()
+                  : null}
+              </div>
 
-                  {/* Video */}
-                  {embed ? (
-                    <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-                      <iframe
-                        src={embed}
-                        title={selectedLesson.title}
-                        allowFullScreen
-                        className="absolute inset-0 size-full"
-                      />
-                    </div>
-                  ) : selectedLesson.youtubeUrl ? (
-                    <a
-                      href={selectedLesson.youtubeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary inline-flex items-center gap-1.5 text-sm underline underline-offset-4 hover:opacity-80"
-                    >
-                      <ExternalLink className="size-4" />
-                      {t("watchVideo")}
-                    </a>
-                  ) : null}
+              {/* Body */}
+              {selectedLesson.body ? (
+                <LexicalRenderer content={selectedLesson.body} />
+              ) : null}
 
-                  {/* Body */}
-                  {selectedLesson.body ? (
-                    <LexicalRenderer content={selectedLesson.body} />
-                  ) : null}
-
-                  {/* Resources */}
-                  {selectedLesson.resources &&
-                  selectedLesson.resources.length > 0 ? (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium">{t("resources")}</h4>
-                      <ul className="space-y-1">
-                        {selectedLesson.resources.map((r, i) => (
-                          <li key={i}>
-                            <a
-                              href={r.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary inline-flex items-center gap-1.5 text-sm underline underline-offset-4 hover:opacity-80"
-                            >
-                              <ExternalLink className="size-3.5" />
-                              {r.label}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
+              {/* Resources */}
+              {selectedLesson.resources &&
+              selectedLesson.resources.length > 0 ? (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium">{t("resources")}</h4>
+                  <ul className="space-y-1">
+                    {selectedLesson.resources.map((r, i) => (
+                      <li key={i}>
+                        <a
+                          href={r.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary inline-flex items-center gap-1.5 text-sm underline underline-offset-4 hover:opacity-80"
+                        >
+                          <ExternalLink className="size-3.5" />
+                          {r.label}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : null}
             </div>
           )}
-        </div>
-      )}
+        </main>
+      </div>
     </div>
   );
 }

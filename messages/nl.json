@@ -1213,6 +1213,9 @@
     "removeResource": "Bron verwijderen",
     "notFound": "Cursus niet gevonden.",
     "watchVideo": "Video bekijken",
+    "preview": "Voorbeeld",
+    "exitPreview": "Voorbeeld sluiten",
+    "previewMode": "Voorbeeldmodus — je bekijkt dit als cursist. Je voortgang wordt niet bijgehouden.",
     "removeCourseConfirm": "Deze cursus archiveren? Hij is dan niet meer zichtbaar voor leden."
   },
   "launchpad": {
