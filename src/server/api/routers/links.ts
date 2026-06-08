@@ -40,7 +40,14 @@ export const linksRouter = createTRPCRouter({
           .array(
             z.object({
               label: z.string().min(1).max(60),
-              url: z.string().min(1).max(500),
+              url: z
+                .string()
+                .min(1)
+                .max(500)
+                .refine(
+                  (u) => /^https?:\/\//i.test(u) || u.startsWith("/"),
+                  { message: "URL must start with http(s):// or /" },
+                ),
               emoji: z.string().max(8).optional(),
             }),
           )
@@ -77,6 +84,10 @@ export const linksRouter = createTRPCRouter({
         limit: 100,
         depth: 0,
       });
+      // Non-atomic replace (delete-all then recreate). Acceptable for an
+      // admin-only, ≤20-item list edited infrequently; Payload has no
+      // multi-doc transaction here. A mid-loop failure can leave a partial
+      // set — the admin simply re-saves.
       for (const doc of existing) {
         await payload.delete({ collection: "community-links", id: doc.id });
       }
