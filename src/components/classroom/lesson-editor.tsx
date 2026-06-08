@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
+import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,20 +23,6 @@ interface LessonLike {
   youtubeUrl?: string | null;
   body?: unknown;
   resources?: ResourceRow[] | null;
-}
-
-/** Best-effort conversion of a stored lexical body back to plain text for editing. */
-function lexicalToPlainText(lexical: unknown): string {
-  if (!lexical || typeof lexical !== "object") return "";
-  const root = (
-    lexical as {
-      root?: { children?: Array<{ children?: Array<{ text?: string }> }> };
-    }
-  ).root;
-  if (!root?.children) return "";
-  return root.children
-    .map((para) => (para.children ?? []).map((node) => node.text ?? "").join(""))
-    .join("\n");
 }
 
 /** A row-based editor for a lesson's resource links ({label,url}). */
