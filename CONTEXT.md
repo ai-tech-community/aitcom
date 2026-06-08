@@ -87,6 +87,77 @@ jobs, blog/articles, challenges, impact, benchmark, investigations. A
 **Community admin**'s primary content levers are the per-Community instances
 of these surfaces.
 
+### Community feed
+
+The community **home** discussion surface (`/communities/<slug>`): a
+Skool-style stream of short posts with **likes** and comments. Distinct from
+the [[forum]], a separate threaded surface. The two overlap heavily; the
+deliberate direction is that the **feed is the canonical discussion home** and
+the forum is **frozen** (no new investment) pending an eventual fold-in — the
+feed is where [[topic]]s, pins, and future engagement levers live. See
+[[adr-0026-feed-is-the-canonical-discussion-surface]].
+
+### Forum
+
+A threaded discussion surface (`/communities/<slug>/forum`) with replies,
+admin **pins**, ideas+voting, a rules-acceptance gate, and a fixed
+`category` enum (`general | question | showcase | job`) — a *structural thread
+type*, **not** an admin-branded label (contrast [[topic]]). Load-bearing today:
+[[ritual]]s materialize as forum threads and the [[greeter]] queue reads it.
+**Frozen** in favour of the [[community-feed]]; threads/rituals/ideas are
+expected to migrate onto the feed in a later, separate step.
+
+### Topic
+
+A per-[[Community]] admin-defined label that organizes the [[community-feed]]
+— the branded chip a member filters by on the community home (e.g. "Wins",
+"Resources", "Support Needed"). Each feed post belongs to **exactly one**
+Topic; a seeded **"General"** Topic is the always-valid default so every post
+has a home. Topics are **pure labels**: they name and filter, carrying **no**
+posting permission or access gating (posting rights stay the feed-level
+`feedPostPolicy`; a per-Topic post policy is a deliberate future extension, not
+launched). Capped (~10) per community to keep the chip row legible. Not the
+[[forum]]'s `category` enum — that is a frozen structural thread type, never an
+admin-branded label, and the two must not be conflated.
+
+### Community links
+
+An admin-curated list of labelled links shown in the [[community-feed]] home
+**sidebar card**, alongside community stats (members, admins, active-this-week
+— deliberately **no "online"/presence** count, which there is no infra for).
+Each link points anywhere — an external URL, a pinned feed post, a [[topic]]
+filter, or a [[course]]. This is the realization of "links to important
+topics". Edited in community settings; the card renders on the community home
+only (the persistent header already carries cross-tab identity).
+
+### Classroom
+
+A structured-learning [[shared-surface]]: ordered [[course]]s of video
+[[lesson]]s, per-[[Community]] (and optionally Hub-wide via null `communityId`).
+**Distinct from [[articles]]/blog**: a lesson is curriculum (ordered,
+progress-tracked, member-gated), not a published post (no public RSS or
+submission-review lifecycle), even though an article of type `tutorial` /
+`talk_recording` resembles one. The split is deliberate — see
+[[adr-0027-classroom-is-a-distinct-surface-from-articles]].
+
+### Course
+
+An ordered collection of [[lesson]]s in the [[classroom]], **flat** (no
+modules at launch; a grouping level may be added later without a breaking
+migration). Carries `visibility`: **members** (default — active [[Community]]
+membership required to view) or **public** (exposed to non-members as a
+join hook). A member's per-lesson completions across the course yield a
+course **progress %** (the Skool-style `0%` bar).
+
+### Lesson
+
+One unit of a [[course]]: a title, an **embedded or referenced YouTube**
+video (no native video hosting), a rich-text body, and a list of resource
+links. A member marks a lesson complete; completion is **self-reported** and
+drives the [[course]] progress bar but **earns no XP** — self-reported
+completion is trivially farmable, consistent with the verification-gated XP
+rule on [[work-cell]]s. Admin/owner authored at launch.
+
 ### Hackathon
 
 The **composition of an Event and a Challenge** — not a new swallowing entity.
