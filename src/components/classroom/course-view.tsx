@@ -37,6 +37,8 @@ interface LessonLike {
   youtubeUrl?: string | null;
   body?: unknown;
   resources?: ResourceRow[] | null;
+  /** Present (with correctIndex) only when the viewer is the course author. */
+  examQuestions?: unknown;
 }
 
 export function CourseView({
@@ -470,6 +472,18 @@ export function CourseView({
                         e.questions.length > 0,
                     );
                     if (!exam) return null;
+                    // Author preview only: the unstripped lesson (author-only from
+                    // `get`) carries correctIndex → mark the right option.
+                    const answerKey = previewing
+                      ? Object.fromEntries(
+                          (
+                            (selectedLesson.examQuestions ?? []) as {
+                              id: string;
+                              correctIndex: number;
+                            }[]
+                          ).map((q) => [q.id, q.correctIndex]),
+                        )
+                      : undefined;
                     return (
                       <ExamRunner
                         exam={exam}
@@ -478,6 +492,7 @@ export function CourseView({
                           selectedLesson.id,
                         )}
                         preview={previewing}
+                        answerKey={answerKey}
                       />
                     );
                   })()

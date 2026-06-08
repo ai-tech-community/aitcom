@@ -31,12 +31,15 @@ export function ExamRunner({
   attempts,
   completed,
   preview = false,
+  answerKey,
 }: {
   exam: LessonExam;
   attempts: Attempt[];
   completed: boolean;
   /** Author previewing-as-learner: show the questions read-only, no submission. */
   preview?: boolean;
+  /** Author-only { questionId → correctIndex }; marks the right option in preview. */
+  answerKey?: Record<string, number>;
 }) {
   const t = useTranslations("classroom");
   const utils = api.useUtils();
@@ -100,20 +103,32 @@ export function ExamRunner({
                   <span className="ml-2 text-xs text-red-600">{t("examWrong")}</span>
                 ) : null}
               </legend>
-              {q.shown.map((opt) => (
-                <label key={opt.originalIndex} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="radio"
-                    name={q.id}
-                    checked={picks[q.id] === opt.originalIndex}
-                    onChange={() =>
-                      setPicks((p) => ({ ...p, [q.id]: opt.originalIndex }))
-                    }
-                    disabled={preview || submit.isPending || outOfAttempts}
-                  />
-                  {opt.label}
-                </label>
-              ))}
+              {q.shown.map((opt) => {
+                const isCorrect =
+                  preview && answerKey?.[q.id] === opt.originalIndex;
+                return (
+                  <label
+                    key={opt.originalIndex}
+                    className="flex items-center gap-2 text-sm"
+                  >
+                    <input
+                      type="radio"
+                      name={q.id}
+                      checked={picks[q.id] === opt.originalIndex}
+                      onChange={() =>
+                        setPicks((p) => ({ ...p, [q.id]: opt.originalIndex }))
+                      }
+                      disabled={preview || submit.isPending || outOfAttempts}
+                    />
+                    {opt.label}
+                    {isCorrect ? (
+                      <span className="text-xs font-medium text-green-600">
+                        ✓ {t("examCorrectAnswer")}
+                      </span>
+                    ) : null}
+                  </label>
+                );
+              })}
             </fieldset>
           ))}
 

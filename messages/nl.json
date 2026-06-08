@@ -1237,6 +1237,7 @@
     "examWrong": "Onjuist",
     "examNoAttemptsLeft": "Je hebt al je pogingen gebruikt.",
     "examPreviewNote": "Voorbeeld — cursisten maken dit examen hier.",
+    "examCorrectAnswer": "Juiste antwoord",
     "examAlreadyPassed": "Geslaagd — beste score {score}%",
     "examPassedToast": "Geslaagd met {score}%",
     "examFailedToast": "Score {score}% — nog niet geslaagd",
