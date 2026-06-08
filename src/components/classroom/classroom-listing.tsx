@@ -53,7 +53,14 @@ export function ClassroomListing({ slug }: { slug: string }) {
               href={`/communities/${slug}/classroom/${c.slug}` as never}
               className="border-border hover:bg-secondary/40 block rounded-xl border p-4 transition-colors"
             >
-              <h3 className="font-medium">{c.title}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium">{c.title}</h3>
+                {c.status !== "published" ? (
+                  <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 text-[10px] tracking-wider uppercase">
+                    {c.status === "draft" ? t("draft") : t("archivedBadge")}
+                  </span>
+                ) : null}
+              </div>
               {c.summary ? (
                 <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">{c.summary}</p>
               ) : null}

@@ -65,17 +65,27 @@ export const classroomsRouter = createTRPCRouter({
         input.communitySlug,
       );
       const payload = await getPayloadClient();
+      const userId = ctx.session?.user?.id;
 
-      const conditions: Where[] = [
-        { communityId: { equals: communityId } },
-        { status: { equals: "published" } },
+      // A course is listable if it is published-and-visible to the caller, OR
+      // the caller is its author (so creators see their own drafts/archived).
+      const visibility: Where[] = [
+        role === null
+          ? {
+              and: [
+                { status: { equals: "published" } },
+                { isPublic: { equals: true } },
+              ],
+            }
+          : { status: { equals: "published" } },
       ];
-      // Non-members only see public courses.
-      if (role === null) conditions.push({ isPublic: { equals: true } });
+      if (userId) visibility.push({ authorId: { equals: userId } });
 
       const { docs } = await payload.find({
         collection: "courses",
-        where: { and: conditions },
+        where: {
+          and: [{ communityId: { equals: communityId } }, { or: visibility }],
+        },
         sort: "-enrollmentCount",
         limit: 50,
         depth: 0,

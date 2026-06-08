@@ -1180,6 +1180,7 @@
     "save": "Save",
     "publish": "Publish",
     "draft": "Draft",
+    "archivedBadge": "Archived",
     "courseTitle": "Course title",
     "courseSummary": "Short summary",
     "makePublic": "Make public",
