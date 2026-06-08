@@ -36,6 +36,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     )
   `));
   await db.execute(sql.raw(`CREATE INDEX IF NOT EXISTS "lessons_course_idx" ON "lessons"("course")`));
+  await db.execute(sql.raw(`CREATE INDEX IF NOT EXISTS "lessons_order_idx" ON "lessons"("order")`));
   // lessons.resources is an array field → Payload manages its own child table under push; in prod,
   // run `npx payload migrate:create` instead if array-table DDL is needed. For this MVP the dev DB
   // is push-materialized, so this migration covers the scalar columns + the Drizzle tables below.
