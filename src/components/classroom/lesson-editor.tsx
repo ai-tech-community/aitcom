@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/article-editor/rich-text-editor";
+import { ExamEditor, type ExamDraft } from "./exam-editor";
+import type { ExamQuestion } from "@/lib/classroom";
 import { Pencil, Trash2, Plus, X } from "lucide-react";
 
 interface ResourceRow {
@@ -22,6 +24,10 @@ interface LessonLike {
   youtubeUrl?: string | null;
   body?: unknown;
   resources?: ResourceRow[] | null;
+  examMandatory?: boolean | null;
+  examPassThreshold?: number | null;
+  examMaxAttempts?: number | null;
+  examQuestions?: unknown;
 }
 
 /** A row-based editor for a lesson's resource links ({label,url}). */
@@ -96,6 +102,8 @@ function LessonFields({
   setBody,
   resources,
   setResources,
+  exam,
+  setExam,
   disabled,
 }: {
   title: string;
@@ -106,6 +114,8 @@ function LessonFields({
   setBody: (v: unknown) => void;
   resources: ResourceRow[];
   setResources: (v: ResourceRow[]) => void;
+  exam: ExamDraft;
+  setExam: (v: ExamDraft) => void;
   disabled?: boolean;
 }) {
   const t = useTranslations("classroom");
@@ -145,6 +155,7 @@ function LessonFields({
         onChange={setResources}
         disabled={disabled}
       />
+      <ExamEditor value={exam} onChange={setExam} disabled={disabled} />
     </div>
   );
 }
@@ -160,6 +171,12 @@ function LessonRow({ lesson }: { lesson: LessonLike }) {
   const [resources, setResources] = useState<ResourceRow[]>(
     (lesson.resources ?? []).map((r) => ({ label: r.label, url: r.url })),
   );
+  const [exam, setExam] = useState<ExamDraft>({
+    mandatory: lesson.examMandatory ?? false,
+    passThreshold: lesson.examPassThreshold ?? 70,
+    maxAttempts: lesson.examMaxAttempts ?? 0,
+    questions: (lesson.examQuestions ?? []) as ExamQuestion[],
+  });
 
   const update = api.classrooms.updateLesson.useMutation({
     onSuccess: () => {
@@ -223,6 +240,8 @@ function LessonRow({ lesson }: { lesson: LessonLike }) {
         setBody={setBody}
         resources={resources}
         setResources={setResources}
+        exam={exam}
+        setExam={setExam}
         disabled={update.isPending}
       />
       <div className="flex gap-2">
@@ -236,6 +255,10 @@ function LessonRow({ lesson }: { lesson: LessonLike }) {
               youtubeUrl: youtubeUrl.trim() ? youtubeUrl.trim() : null,
               body,
               resources: resources.filter((r) => r.label.trim() && r.url.trim()),
+              examMandatory: exam.mandatory,
+              examPassThreshold: exam.passThreshold,
+              examMaxAttempts: exam.maxAttempts,
+              examQuestions: exam.questions,
             })
           }
           disabled={update.isPending || !title.trim()}
@@ -270,6 +293,12 @@ export function LessonEditor({
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [body, setBody] = useState<unknown>(null);
   const [resources, setResources] = useState<ResourceRow[]>([]);
+  const [exam, setExam] = useState<ExamDraft>({
+    mandatory: false,
+    passThreshold: 70,
+    maxAttempts: 0,
+    questions: [],
+  });
 
   const add = api.classrooms.addLesson.useMutation({
     onSuccess: () => {
@@ -278,6 +307,7 @@ export function LessonEditor({
       setYoutubeUrl("");
       setBody(null);
       setResources([]);
+      setExam({ mandatory: false, passThreshold: 70, maxAttempts: 0, questions: [] });
       void utils.classrooms.get.invalidate();
     },
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
@@ -308,6 +338,8 @@ export function LessonEditor({
           setBody={setBody}
           resources={resources}
           setResources={setResources}
+          exam={exam}
+          setExam={setExam}
           disabled={add.isPending}
         />
         <Button
@@ -320,6 +352,10 @@ export function LessonEditor({
               youtubeUrl: youtubeUrl.trim() ? youtubeUrl.trim() : undefined,
               body: body ?? undefined,
               resources: resources.filter((r) => r.label.trim() && r.url.trim()),
+              examMandatory: exam.mandatory,
+              examPassThreshold: exam.passThreshold,
+              examMaxAttempts: exam.maxAttempts,
+              examQuestions: exam.questions,
             })
           }
           disabled={add.isPending || !title.trim()}

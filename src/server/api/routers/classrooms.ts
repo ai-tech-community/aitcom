@@ -419,6 +419,20 @@ export const classroomsRouter = createTRPCRouter({
           )
           .max(20)
           .default([]),
+        examMandatory: z.boolean().optional(),
+        examPassThreshold: z.number().min(0).max(100).optional(),
+        examMaxAttempts: z.number().min(0).optional(),
+        examQuestions: z
+          .array(
+            z.object({
+              id: z.string(),
+              prompt: z.string(),
+              type: z.enum(["single", "boolean"]),
+              options: z.array(z.string()),
+              correctIndex: z.number().int(),
+            }),
+          )
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -450,6 +464,18 @@ export const classroomsRouter = createTRPCRouter({
           youtubeUrl: input.youtubeUrl ?? undefined,
           body: input.body ?? undefined,
           resources: input.resources,
+          ...(input.examMandatory !== undefined
+            ? { examMandatory: input.examMandatory }
+            : {}),
+          ...(input.examPassThreshold !== undefined
+            ? { examPassThreshold: input.examPassThreshold }
+            : {}),
+          ...(input.examMaxAttempts !== undefined
+            ? { examMaxAttempts: input.examMaxAttempts }
+            : {}),
+          ...(input.examQuestions !== undefined
+            ? { examQuestions: input.examQuestions }
+            : {}),
         },
       });
 
@@ -473,6 +499,20 @@ export const classroomsRouter = createTRPCRouter({
             }),
           )
           .max(20)
+          .optional(),
+        examMandatory: z.boolean().optional(),
+        examPassThreshold: z.number().min(0).max(100).optional(),
+        examMaxAttempts: z.number().min(0).optional(),
+        examQuestions: z
+          .array(
+            z.object({
+              id: z.string(),
+              prompt: z.string(),
+              type: z.enum(["single", "boolean"]),
+              options: z.array(z.string()),
+              correctIndex: z.number().int(),
+            }),
+          )
           .optional(),
       }),
     )
@@ -502,6 +542,14 @@ export const classroomsRouter = createTRPCRouter({
       if (input.body !== undefined) data.body = input.body;
       if (input.order !== undefined) data.order = input.order;
       if (input.resources !== undefined) data.resources = input.resources;
+      if (input.examMandatory !== undefined)
+        data.examMandatory = input.examMandatory;
+      if (input.examPassThreshold !== undefined)
+        data.examPassThreshold = input.examPassThreshold;
+      if (input.examMaxAttempts !== undefined)
+        data.examMaxAttempts = input.examMaxAttempts;
+      if (input.examQuestions !== undefined)
+        data.examQuestions = input.examQuestions;
 
       await payload.update({
         collection: "lessons",
