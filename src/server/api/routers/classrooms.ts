@@ -9,7 +9,7 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, inArray } from "drizzle-orm";
 import type { db } from "@/server/db";
 import {
   communities,
@@ -18,7 +18,11 @@ import {
   lessonCompletions,
 } from "@/server/db/schema";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
-import { canCreateCourse, type CommunityRole } from "@/lib/classroom";
+import {
+  canCreateCourse,
+  courseProgressPercent,
+  type CommunityRole,
+} from "@/lib/classroom";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 
 /** Resolve community id + the caller's active role (null if not an active member). */
@@ -91,7 +95,50 @@ export const classroomsRouter = createTRPCRouter({
         depth: 0,
       });
 
-      return docs;
+      const courseIds = docs.map((d) => d.id);
+      if (courseIds.length === 0) {
+        return docs.map((c) => ({ ...c, progressPercent: 0 }));
+      }
+
+      if (!userId) {
+        return docs.map((c) => ({ ...c, progressPercent: 0 }));
+      }
+
+      // Per-course progress for the logged-in user, in 2 queries total
+      // (lesson totals + the caller's completions), not N per course.
+      const { docs: allLessons } = await payload.find({
+        collection: "lessons",
+        where: { course: { in: courseIds } },
+        limit: 1000,
+        depth: 0,
+      });
+      const totals = new Map<number, number>();
+      for (const l of allLessons) {
+        const cid = l.course;
+        totals.set(cid, (totals.get(cid) ?? 0) + 1);
+      }
+
+      const completionRows = await ctx.db
+        .select({ courseId: lessonCompletions.courseId })
+        .from(lessonCompletions)
+        .where(
+          and(
+            inArray(lessonCompletions.courseId, courseIds),
+            eq(lessonCompletions.userId, userId),
+          ),
+        );
+      const completed = new Map<number, number>();
+      for (const r of completionRows) {
+        completed.set(r.courseId, (completed.get(r.courseId) ?? 0) + 1);
+      }
+
+      return docs.map((c) => ({
+        ...c,
+        progressPercent: courseProgressPercent(
+          completed.get(c.id) ?? 0,
+          totals.get(c.id) ?? 0,
+        ),
+      }));
     }),
 
   /** A single course with its lessons (ordered) and the caller's enrollment/progress. */
@@ -162,6 +209,7 @@ export const classroomsRouter = createTRPCRouter({
         title: z.string().min(3).max(200),
         summary: z.string().max(500).optional(),
         status: z.enum(["draft", "published"]).default("published"),
+        coverImageUrl: z.string().url().max(1000).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -190,6 +238,7 @@ export const classroomsRouter = createTRPCRouter({
           title: input.title,
           slug,
           summary: input.summary ?? undefined,
+          coverImageUrl: input.coverImageUrl ?? undefined,
           authorId: ctx.session.user.id,
           authorName: ctx.session.user.name ?? "member",
           status: input.status,
@@ -222,6 +271,7 @@ export const classroomsRouter = createTRPCRouter({
         title: z.string().min(3).max(200).optional(),
         summary: z.string().max(500).optional(),
         status: z.enum(["draft", "published", "archived"]).optional(),
+        coverImageUrl: z.string().url().max(1000).nullable().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -241,6 +291,8 @@ export const classroomsRouter = createTRPCRouter({
       if (input.title !== undefined) data.title = input.title;
       if (input.summary !== undefined) data.summary = input.summary;
       if (input.status !== undefined) data.status = input.status;
+      if (input.coverImageUrl !== undefined)
+        data.coverImageUrl = input.coverImageUrl ?? undefined;
 
       await payload.update({
         collection: "courses",

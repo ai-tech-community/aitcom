@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
+import { ImagePlus, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,7 +41,10 @@ export function CourseEditor({
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [status, setStatus] = useState<CourseStatus>("published");
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading } = api.classrooms.get.useQuery(
     { slug: courseSlug ?? "" },
@@ -52,6 +56,7 @@ export function CourseEditor({
       setTitle(data.course.title ?? "");
       setSummary(data.course.summary ?? "");
       setStatus(data.course.status === "draft" ? "draft" : "published");
+      setCoverImageUrl(data.course.coverImageUrl ?? null);
       setInitialized(true);
     }
   }, [isEdit, data, initialized]);
@@ -76,6 +81,34 @@ export function CourseEditor({
 
   const isSubmitting = create.isPending || update.isPending;
 
+  const handleCoverUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("alt", "course cover image");
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+
+      const json = (await res.json()) as { url: string };
+      setCoverImageUrl(json.url);
+    } catch {
+      toast.error(t("uploadFailed"));
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleSave = () => {
     const trimmed = title.trim();
     if (isEdit && data) {
@@ -84,6 +117,7 @@ export function CourseEditor({
         title: trimmed,
         summary: summary.trim(),
         status,
+        coverImageUrl: coverImageUrl ?? undefined,
       });
     } else {
       create.mutate({
@@ -91,6 +125,7 @@ export function CourseEditor({
         title: trimmed,
         summary: summary.trim() ? summary.trim() : undefined,
         status,
+        coverImageUrl: coverImageUrl ?? undefined,
       });
     }
   };
@@ -130,6 +165,54 @@ export function CourseEditor({
             rows={3}
             maxLength={500}
             disabled={isSubmitting}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label>{t("cover")}</Label>
+          {coverImageUrl ? (
+            <div className="relative inline-block w-full max-w-sm">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={coverImageUrl}
+                alt={t("cover")}
+                className="aspect-video w-full rounded-lg object-cover"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="absolute top-1 right-1 size-6"
+                onClick={() => setCoverImageUrl(null)}
+                aria-label={t("removeCover")}
+                disabled={isSubmitting}
+              >
+                <X className="size-3" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-fit"
+              disabled={isUploading || isSubmitting}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {isUploading ? (
+                <Loader2 className="mr-1.5 size-4 animate-spin" />
+              ) : (
+                <ImagePlus className="mr-1.5 size-4" />
+              )}
+              {isUploading ? t("uploading") : t("addCover")}
+            </Button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleCoverUpload}
           />
         </div>
 
