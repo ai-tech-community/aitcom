@@ -1381,11 +1381,20 @@
         "rules": "Rules",
         "topics": "Topics",
         "links": "Links",
+        "classroom": "Classroom",
         "ownership": "Ownership",
         "integrations": "Integrations",
         "broadcast": "Announcements",
         "autonomy": "Agent advisory",
         "acquire": "Acquire"
+      },
+      "classroom": {
+        "policyTitle": "Who can create classrooms",
+        "policySubtitle": "Choose who may create courses in this community.",
+        "policyAllMembers": "All members",
+        "policyAdminsOnly": "Admins only",
+        "saved": "Setting saved",
+        "saveFailed": "Could not save setting"
       },
       "topics": {
         "title": "Feed Topics",

@@ -1381,11 +1381,20 @@
         "rules": "Regels",
         "topics": "Onderwerpen",
         "links": "Links",
+        "classroom": "Klaslokaal",
         "ownership": "Eigenaarschap",
         "integrations": "Integraties",
         "broadcast": "Aankondigingen",
         "autonomy": "Agent-advies",
         "acquire": "Werving"
+      },
+      "classroom": {
+        "policyTitle": "Wie kan klaslokalen aanmaken",
+        "policySubtitle": "Kies wie cursussen mag aanmaken in deze community.",
+        "policyAllMembers": "Alle leden",
+        "policyAdminsOnly": "Alleen beheerders",
+        "saved": "Instelling opgeslagen",
+        "saveFailed": "Kon instelling niet opslaan"
       },
       "topics": {
         "title": "Feed-onderwerpen",
