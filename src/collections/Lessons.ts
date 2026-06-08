@@ -52,6 +52,30 @@ export const Lessons: CollectionConfig = {
         ],
       }),
     },
+    { name: "examMandatory", type: "checkbox", defaultValue: false },
+    {
+      name: "examPassThreshold",
+      type: "number",
+      defaultValue: 70,
+      min: 0,
+      max: 100,
+      admin: { description: "Percent (0–100) required to pass." },
+    },
+    {
+      name: "examMaxAttempts",
+      type: "number",
+      defaultValue: 0,
+      min: 0,
+      admin: { description: "0 = unlimited attempts." },
+    },
+    {
+      name: "examQuestions",
+      type: "json",
+      admin: {
+        description:
+          "Array of { id, prompt, type, options[], correctIndex }. Authored via the custom lesson editor.",
+      },
+    },
     {
       name: "resources",
       type: "array",

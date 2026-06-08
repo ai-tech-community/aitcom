@@ -1199,6 +1199,27 @@ export interface Lesson {
     };
     [k: string]: unknown;
   } | null;
+  examMandatory?: boolean | null;
+  /**
+   * Percent (0–100) required to pass.
+   */
+  examPassThreshold?: number | null;
+  /**
+   * 0 = unlimited attempts.
+   */
+  examMaxAttempts?: number | null;
+  /**
+   * Array of { id, prompt, type, options[], correctIndex }. Authored via the custom lesson editor.
+   */
+  examQuestions?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   resources?:
     | {
         label: string;
@@ -1989,6 +2010,10 @@ export interface LessonsSelect<T extends boolean = true> {
   order?: T;
   youtubeUrl?: T;
   body?: T;
+  examMandatory?: T;
+  examPassThreshold?: T;
+  examMaxAttempts?: T;
+  examQuestions?: T;
   resources?:
     | T
     | {
