@@ -33,6 +33,8 @@ import {
   QuoteNode,
   $createHeadingNode,
   $createQuoteNode,
+  $isHeadingNode,
+  $isQuoteNode,
 } from "@payloadcms/richtext-lexical/lexical/rich-text";
 import {
   ListNode,
@@ -40,6 +42,7 @@ import {
   INSERT_UNORDERED_LIST_COMMAND,
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_CHECK_LIST_COMMAND,
+  $isListNode,
 } from "@payloadcms/richtext-lexical/lexical/list";
 import {
   LinkNode,
@@ -109,6 +112,45 @@ function EditorToolbar({
   editor: LexicalEditor | null;
   onBlock: (id: string) => void;
 }) {
+  // Track which inline formats / block type are active under the caret so the
+  // matching toolbar buttons can highlight.
+  const [formats, setFormats] = useState<Set<string>>(new Set());
+  const [block, setBlock] = useState<string>("");
+
+  useEffect(() => {
+    if (!editor) return;
+    const read = () =>
+      editor.getEditorState().read(() => {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) return;
+        const f = new Set<string>();
+        if (selection.hasFormat("bold")) f.add("bold");
+        if (selection.hasFormat("italic")) f.add("italic");
+        setFormats(f);
+
+        const anchorNode = selection.anchor.getNode();
+        const element =
+          anchorNode.getKey() === "root"
+            ? null
+            : anchorNode.getTopLevelElement();
+        let b = "";
+        if (element) {
+          if ($isHeadingNode(element)) b = element.getTag(); // "h2" | "h3"
+          else if ($isQuoteNode(element)) b = "quote";
+          else if ($isListNode(element)) {
+            const lt = element.getListType();
+            b = lt === "number" ? "ol" : lt === "check" ? "check" : "ul";
+          }
+        }
+        setBlock(b);
+      });
+    read();
+    return editor.registerUpdateListener(() => read());
+  }, [editor]);
+
+  const isActive = (key: string) =>
+    ((key === "bold" || key === "italic") && formats.has(key)) || key === block;
+
   const insertLink = () => {
     if (!editor) return;
     const url = window.prompt("Link URL");
@@ -150,7 +192,12 @@ function EditorToolbar({
           title={it.title}
           aria-label={it.title}
           disabled={!editor}
-          className="text-muted-foreground hover:bg-secondary hover:text-foreground inline-flex size-8 items-center justify-center rounded transition-colors disabled:opacity-40"
+          aria-pressed={isActive(it.key)}
+          className={`inline-flex size-8 items-center justify-center rounded transition-colors disabled:opacity-40 ${
+            isActive(it.key)
+              ? "bg-secondary text-foreground"
+              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+          }`}
           onMouseDown={(e) => e.preventDefault()}
           onClick={it.run}
         >
