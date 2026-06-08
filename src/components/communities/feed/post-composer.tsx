@@ -20,7 +20,10 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [topicSlug, setTopicSlug] = useState("general");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: topics } = api.topics.list.useQuery({ communitySlug: slug });
 
   const createPost = api.feed.createPost.useMutation({
     onSuccess: () => {
@@ -67,6 +70,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
       communitySlug: slug,
       content: content.trim(),
       imageUrl: imageUrl ?? undefined,
+      topicSlug,
     });
   };
 
@@ -108,21 +112,39 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
         </div>
       ) : null}
 
-      <div className="flex items-center justify-between">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={isUploading}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {isUploading ? (
-            <Loader2 className="mr-1.5 size-4 animate-spin" />
-          ) : (
-            <ImagePlus className="mr-1.5 size-4" />
-          )}
-          {t("addImage")}
-        </Button>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={isUploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {isUploading ? (
+              <Loader2 className="mr-1.5 size-4 animate-spin" />
+            ) : (
+              <ImagePlus className="mr-1.5 size-4" />
+            )}
+            {t("addImage")}
+          </Button>
+
+          {topics && topics.length > 0 ? (
+            <select
+              value={topicSlug}
+              onChange={(e) => setTopicSlug(e.target.value)}
+              className="border-border bg-background rounded-md border px-2 py-1 text-sm"
+              aria-label={t("selectTopic")}
+            >
+              {topics.map((tp) => (
+                <option key={tp.id} value={tp.slug}>
+                  {tp.emoji ? `${tp.emoji} ` : ""}
+                  {tp.label}
+                </option>
+              ))}
+            </select>
+          ) : null}
+        </div>
 
         <Button
           type="submit"

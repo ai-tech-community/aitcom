@@ -1471,7 +1471,13 @@
       "cancel": "Annuleren",
       "deletePostConfirm": "Dit bericht verwijderen? De inhoud wordt verwijderd.",
       "deleteCommentConfirm": "Deze reactie verwijderen?",
-      "edited": "bewerkt"
+      "edited": "bewerkt",
+      "allTopics": "Alle",
+      "selectTopic": "Onderwerp",
+      "pinPost": "Vastmaken",
+      "unpinPost": "Losmaken",
+      "pinned": "Vastgemaakt",
+      "pinCapReached": "Je kunt maximaal 3 berichten vastmaken"
     },
     "dashboard": {
       "title": "Mijn Communities",

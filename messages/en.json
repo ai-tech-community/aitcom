@@ -1471,7 +1471,13 @@
       "cancel": "Cancel",
       "deletePostConfirm": "Delete this post? The content will be removed.",
       "deleteCommentConfirm": "Delete this comment?",
-      "edited": "edited"
+      "edited": "edited",
+      "allTopics": "All",
+      "selectTopic": "Topic",
+      "pinPost": "Pin",
+      "unpinPost": "Unpin",
+      "pinned": "Pinned",
+      "pinCapReached": "You can pin at most 3 posts"
     },
     "dashboard": {
       "title": "My Communities",
