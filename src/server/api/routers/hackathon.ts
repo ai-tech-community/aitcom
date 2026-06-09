@@ -214,6 +214,57 @@ export const hackathonRouter = createTRPCRouter({
     }),
 
   /**
+   * Edit a community hackathon's authored content — the cellTemplate task list
+   * plus team/prize fields. Role-scoped (ADR-0031). cellTemplate is validated
+   * against the canonical schema before it is written.
+   */
+  updateHackathon: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        cellTemplate: cellTemplateSchema.optional(),
+        teamMin: z.number().int().min(1).optional(),
+        teamMax: z.number().int().min(1).optional(),
+        xpReward: z.number().int().min(0).optional(),
+        sponsorReward: z.string().max(2000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const challenge = await requireCommunityHackathonAdmin(
+        ctx.db,
+        input.challengeId,
+        userId,
+      );
+
+      const data: Record<string, unknown> = {};
+      if (input.cellTemplate !== undefined) data.cellTemplate = input.cellTemplate;
+      if (input.teamMin !== undefined || input.teamMax !== undefined) {
+        data.teamConfig = {
+          minTeamSize: input.teamMin ?? challenge.teamConfig?.minTeamSize ?? 1,
+          maxTeamSize: input.teamMax ?? challenge.teamConfig?.maxTeamSize ?? 5,
+        };
+      }
+      if (input.xpReward !== undefined || input.sponsorReward !== undefined) {
+        data.rewards = {
+          ...(challenge.rewards ?? {}),
+          ...(input.xpReward !== undefined ? { xpReward: input.xpReward } : {}),
+          ...(input.sponsorReward !== undefined
+            ? { sponsorReward: input.sponsorReward }
+            : {}),
+        };
+      }
+
+      const payload = await getPayloadClient();
+      const updated = await payload.update({
+        collection: "challenges",
+        id: input.challengeId,
+        data,
+      });
+      return { challengeId: Number(updated.id) };
+    }),
+
+  /**
    * Bind a hackathon event to a challenge — the act that makes the challenge
    * team-based (ADR-0029). Sponsor-scoped; enforces the communityId invariant.
    * The event must be published, not already running a different challenge, and
