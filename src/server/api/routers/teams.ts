@@ -4,11 +4,13 @@
 // challengeId)` gives "one team per member per hackathon" for free. eventId and
 // maxSize are denormalised onto the team at creation so join/leave touch no
 // Payload. The enrollment+registration writes run inside a transaction for
-// atomicity (inlined rather than a shared helper, to match the codebase's
-// "helpers take db, transactions are inline" convention).
+// atomicity via the shared `joinTeamBundle` helper, whose enrollment upsert is
+// guarded (setWhere teamId IS NULL) so a concurrent join can never silently move
+// a member already on another team — the conflicting row isn't updated and we
+// surface a CONFLICT.
 
 import { z } from "zod";
-import { and, eq, count } from "drizzle-orm";
+import { and, eq, count, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
@@ -63,6 +65,64 @@ async function assertNotAlreadyOnTeam(
   }
 }
 
+type Tx = Parameters<
+  Parameters<(typeof import("@/server/db").db)["transaction"]>[0]
+>[0];
+
+/**
+ * Inside a transaction: enrol the user carrying `teamId` and register them for
+ * the event, both idempotently. The enrollment upsert is guarded by
+ * `setWhere isNull(teamId)`, so if a concurrent join already put this user on a
+ * (different) team between the pre-check and here, the conflicting row is NOT
+ * updated — we surface a CONFLICT rather than silently moving them. Event
+ * registration is pre-checked because `event_registration` has no unique
+ * (user,event) constraint (mirrors the guard in events.ts).
+ */
+async function joinTeamBundle(
+  tx: Tx,
+  args: { userId: string; challengeId: number; eventId: number; teamId: string },
+) {
+  const [enrolled] = await tx
+    .insert(challengeEnrollments)
+    .values({
+      userId: args.userId,
+      challengeId: args.challengeId,
+      teamId: args.teamId,
+      status: "active",
+    })
+    .onConflictDoUpdate({
+      target: [challengeEnrollments.userId, challengeEnrollments.challengeId],
+      set: { teamId: args.teamId, status: "active" },
+      setWhere: isNull(challengeEnrollments.teamId),
+    })
+    .returning({ id: challengeEnrollments.id });
+
+  if (!enrolled) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "You are already on a team for this hackathon.",
+    });
+  }
+
+  const [existingReg] = await tx
+    .select({ id: eventRegistrations.id })
+    .from(eventRegistrations)
+    .where(
+      and(
+        eq(eventRegistrations.userId, args.userId),
+        eq(eventRegistrations.eventId, args.eventId),
+      ),
+    )
+    .limit(1);
+  if (!existingReg) {
+    await tx.insert(eventRegistrations).values({
+      userId: args.userId,
+      eventId: args.eventId,
+      status: "registered",
+    });
+  }
+}
+
 export const teamsRouter = createTRPCRouter({
   /** Create a team for a hackathon challenge; the caller becomes captain. */
   createTeam: protectedProcedure
@@ -109,42 +169,12 @@ export const teamsRouter = createTRPCRouter({
           });
         }
 
-        await tx
-          .insert(challengeEnrollments)
-          .values({
-            userId,
-            challengeId: input.challengeId,
-            teamId: team.id,
-            status: "active",
-          })
-          .onConflictDoUpdate({
-            target: [
-              challengeEnrollments.userId,
-              challengeEnrollments.challengeId,
-            ],
-            set: { teamId: team.id, status: "active" },
-          });
-
-        // event_registration has no unique (user,event) constraint, so an
-        // onConflict no-op would still insert duplicates; pre-check instead
-        // (mirrors the registration guard in events.ts).
-        const [existingReg] = await tx
-          .select({ id: eventRegistrations.id })
-          .from(eventRegistrations)
-          .where(
-            and(
-              eq(eventRegistrations.userId, userId),
-              eq(eventRegistrations.eventId, Number(event.id)),
-            ),
-          )
-          .limit(1);
-        if (!existingReg) {
-          await tx.insert(eventRegistrations).values({
-            userId,
-            eventId: Number(event.id),
-            status: "registered",
-          });
-        }
+        await joinTeamBundle(tx, {
+          userId,
+          challengeId: input.challengeId,
+          eventId: Number(event.id),
+          teamId: team.id,
+        });
 
         return team;
       });
@@ -187,38 +217,12 @@ export const teamsRouter = createTRPCRouter({
       }
 
       await ctx.db.transaction(async (tx) => {
-        await tx
-          .insert(challengeEnrollments)
-          .values({
-            userId,
-            challengeId: team.challengeId,
-            teamId: team.id,
-            status: "active",
-          })
-          .onConflictDoUpdate({
-            target: [
-              challengeEnrollments.userId,
-              challengeEnrollments.challengeId,
-            ],
-            set: { teamId: team.id, status: "active" },
-          });
-        const [existingReg] = await tx
-          .select({ id: eventRegistrations.id })
-          .from(eventRegistrations)
-          .where(
-            and(
-              eq(eventRegistrations.userId, userId),
-              eq(eventRegistrations.eventId, team.eventId),
-            ),
-          )
-          .limit(1);
-        if (!existingReg) {
-          await tx.insert(eventRegistrations).values({
-            userId,
-            eventId: team.eventId,
-            status: "registered",
-          });
-        }
+        await joinTeamBundle(tx, {
+          userId,
+          challengeId: team.challengeId,
+          eventId: team.eventId,
+          teamId: team.id,
+        });
       });
 
       return team;

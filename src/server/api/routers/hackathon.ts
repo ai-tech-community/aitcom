@@ -44,6 +44,9 @@ export const hackathonRouter = createTRPCRouter({
   /**
    * Bind a hackathon event to a challenge — the act that makes the challenge
    * team-based (ADR-0029). Sponsor-scoped; enforces the communityId invariant.
+   * The event must be published, not already running a different challenge, and
+   * owned by the caller — the challenge-sponsor gate alone must not let a sponsor
+   * hijack or clobber an event they do not control.
    */
   bindChallenge: protectedProcedure
     .input(z.object({ eventId: z.number(), challengeId: z.number() }))
@@ -61,6 +64,31 @@ export const hackathonRouter = createTRPCRouter({
         });
       } catch {
         throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
+
+      if (["draft", "rejected", "cancelled"].includes(event.status)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Event is not published.",
+        });
+      }
+      const boundChallengeId = event.challengeId
+        ? Number(event.challengeId)
+        : null;
+      if (boundChallengeId !== null && boundChallengeId !== input.challengeId) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Event is already bound to a different challenge.",
+        });
+      }
+      // submittedBy is empty for operator/CMS-authored Hub events — in that case
+      // the challenge-sponsor gate is the authority; only block when a different
+      // member is the recorded organiser.
+      if (event.submittedBy && event.submittedBy !== userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the event's organiser can bind it to a challenge.",
+        });
       }
 
       try {

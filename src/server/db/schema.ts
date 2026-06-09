@@ -1222,6 +1222,11 @@ export const challengeEnrollmentRelations = relations(
       fields: [challengeEnrollments.userId],
       references: [user.id],
     }),
+    // Inverse of teams.members (ADR-0029): the team this enrollment belongs to.
+    team: one(teams, {
+      fields: [challengeEnrollments.teamId],
+      references: [teams.id],
+    }),
     progress: many(challengeProgress),
     testResults: many(challengeTestResults),
   }),
