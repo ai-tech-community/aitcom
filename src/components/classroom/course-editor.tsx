@@ -64,9 +64,7 @@ export function CourseEditor({
   const create = api.classrooms.create.useMutation({
     onSuccess: ({ slug: newSlug }) => {
       toast.success(t("courseCreated"));
-      router.push(
-        `/communities/${slug}/classroom/${newSlug}/edit` as never,
-      );
+      router.push(`/communities/${slug}/classroom/${newSlug}/edit` as never);
     },
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
   });
@@ -81,9 +79,7 @@ export function CourseEditor({
 
   const isSubmitting = create.isPending || update.isPending;
 
-  const handleCoverUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 

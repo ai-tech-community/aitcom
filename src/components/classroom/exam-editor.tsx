@@ -46,7 +46,10 @@ export function ExamEditor({
       ],
     });
   const removeQuestion = (i: number) =>
-    onChange({ ...value, questions: value.questions.filter((_, j) => j !== i) });
+    onChange({
+      ...value,
+      questions: value.questions.filter((_, j) => j !== i),
+    });
 
   return (
     <div className="border-border space-y-4 rounded-md border p-3">
@@ -67,9 +70,13 @@ export function ExamEditor({
             type="number"
             min={0}
             max={100}
+            step={1}
             value={value.passThreshold}
             onChange={(e) =>
-              onChange({ ...value, passThreshold: Number(e.target.value) })
+              onChange({
+                ...value,
+                passThreshold: Math.round(Number(e.target.value)),
+              })
             }
             disabled={disabled}
           />
@@ -79,9 +86,13 @@ export function ExamEditor({
           <Input
             type="number"
             min={0}
+            step={1}
             value={value.maxAttempts}
             onChange={(e) =>
-              onChange({ ...value, maxAttempts: Number(e.target.value) })
+              onChange({
+                ...value,
+                maxAttempts: Math.round(Number(e.target.value)),
+              })
             }
             disabled={disabled}
           />
@@ -90,7 +101,10 @@ export function ExamEditor({
 
       <div className="space-y-3">
         {value.questions.map((q, i) => (
-          <div key={q.id} className="border-border space-y-2 rounded-md border p-2">
+          <div
+            key={q.id}
+            className="border-border space-y-2 rounded-md border p-2"
+          >
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground font-mono text-xs">
                 {i + 1}
@@ -98,7 +112,9 @@ export function ExamEditor({
               <Input
                 value={q.prompt}
                 placeholder={t("examQuestionPrompt")}
-                onChange={(e) => setQuestion(i, { ...q, prompt: e.target.value })}
+                onChange={(e) =>
+                  setQuestion(i, { ...q, prompt: e.target.value })
+                }
                 disabled={disabled}
               />
               <Button
@@ -142,13 +158,18 @@ export function ExamEditor({
                     setQuestion(i, {
                       ...q,
                       options: q.options.filter((_, j) => j !== oi),
+                      // Removing the marked-correct option must not silently
+                      // re-key a neighbour: reset to the first option so the
+                      // author re-selects (the radio visibly moves).
                       correctIndex:
-                        q.correctIndex >= oi && q.correctIndex > 0
-                          ? q.correctIndex - 1
-                          : q.correctIndex,
+                        oi === q.correctIndex
+                          ? 0
+                          : oi < q.correctIndex
+                            ? q.correctIndex - 1
+                            : q.correctIndex,
                     })
                   }
-                  disabled={disabled || q.options.length <= 2}
+                  disabled={Boolean(disabled) || q.options.length <= 2}
                   aria-label={t("examRemoveOption")}
                 >
                   <Trash2 className="size-3.5" />
@@ -160,8 +181,10 @@ export function ExamEditor({
               variant="outline"
               size="sm"
               className="ml-6"
-              onClick={() => setQuestion(i, { ...q, options: [...q.options, ""] })}
-              disabled={disabled || q.options.length >= 6}
+              onClick={() =>
+                setQuestion(i, { ...q, options: [...q.options, ""] })
+              }
+              disabled={Boolean(disabled) || q.options.length >= 6}
             >
               <Plus className="mr-1.5 size-3.5" /> {t("examAddOption")}
             </Button>

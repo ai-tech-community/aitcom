@@ -104,8 +104,7 @@ export function CourseView({
       ? (membership.role as CommunityRole)
       : null) ?? null;
   const isStaff = role === "owner" || role === "admin" || role === "moderator";
-  const isAuthor =
-    !!session?.user && data?.course.authorId === session.user.id;
+  const isAuthor = !!session?.user && data?.course.authorId === session.user.id;
   const canPreview = isAuthor || isStaff;
 
   // Real enrollment OR an author/staff member previewing unlocks lesson content.

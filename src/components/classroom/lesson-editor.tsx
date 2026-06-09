@@ -254,7 +254,9 @@ function LessonRow({ lesson }: { lesson: LessonLike }) {
               title: title.trim(),
               youtubeUrl: youtubeUrl.trim() ? youtubeUrl.trim() : null,
               body,
-              resources: resources.filter((r) => r.label.trim() && r.url.trim()),
+              resources: resources.filter(
+                (r) => r.label.trim() && r.url.trim(),
+              ),
               examMandatory: exam.mandatory,
               examPassThreshold: exam.passThreshold,
               examMaxAttempts: exam.maxAttempts,
@@ -307,7 +309,12 @@ export function LessonEditor({
       setYoutubeUrl("");
       setBody(null);
       setResources([]);
-      setExam({ mandatory: false, passThreshold: 70, maxAttempts: 0, questions: [] });
+      setExam({
+        mandatory: false,
+        passThreshold: 70,
+        maxAttempts: 0,
+        questions: [],
+      });
       void utils.classrooms.get.invalidate();
     },
     onError: (err) => toast.error(err.message ?? t("saveFailed")),
@@ -351,7 +358,9 @@ export function LessonEditor({
               title: title.trim(),
               youtubeUrl: youtubeUrl.trim() ? youtubeUrl.trim() : undefined,
               body: body ?? undefined,
-              resources: resources.filter((r) => r.label.trim() && r.url.trim()),
+              resources: resources.filter(
+                (r) => r.label.trim() && r.url.trim(),
+              ),
               examMandatory: exam.mandatory,
               examPassThreshold: exam.passThreshold,
               examMaxAttempts: exam.maxAttempts,

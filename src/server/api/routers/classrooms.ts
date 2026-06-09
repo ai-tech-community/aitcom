@@ -286,7 +286,10 @@ export const classroomsRouter = createTRPCRouter({
         certificateIssuedAt = cert[0]?.issuedAt ?? null;
       }
 
-      const passedCourse = coursePassed(completedLessonIds.length, lessons.length);
+      const passedCourse = coursePassed(
+        completedLessonIds.length,
+        lessons.length,
+      );
 
       // The raw lesson docs carry examQuestions WITH the answer key. Only the
       // author (who edits the exam) may receive it; everyone else gets the
@@ -645,8 +648,8 @@ export const classroomsRouter = createTRPCRouter({
         action: "course.enroll",
         targetType: "courses",
         targetId: String(input.courseId),
-        communityId: (course.communityId) ?? undefined,
-        recipientId: (course.authorId) ?? undefined,
+        communityId: course.communityId ?? undefined,
+        recipientId: course.authorId ?? undefined,
         metadata: { title: course.title },
       });
       return { enrolled: true, already: false };
@@ -685,7 +688,9 @@ export const classroomsRouter = createTRPCRouter({
       await payload.update({
         collection: "courses",
         id: input.courseId,
-        data: { enrollmentCount: Math.max(0, (course.enrollmentCount ?? 0) - 1) },
+        data: {
+          enrollmentCount: Math.max(0, (course.enrollmentCount ?? 0) - 1),
+        },
       });
       return { enrolled: false };
     }),
@@ -846,7 +851,10 @@ export const classroomsRouter = createTRPCRouter({
           eq(communityMemberships.status, "active"),
         ),
       });
-      if (!m || (m.role !== "owner" && m.role !== "admin" && m.role !== "moderator")) {
+      if (
+        !m ||
+        (m.role !== "owner" && m.role !== "admin" && m.role !== "moderator")
+      ) {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
       await payload.update({

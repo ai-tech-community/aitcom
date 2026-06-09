@@ -2,7 +2,10 @@ export type ClassroomCreatePolicy = "all_members" | "admins_only";
 export type CommunityRole = "owner" | "admin" | "moderator" | "member";
 
 /** Completed lessons / total, rounded, clamped 0..100. */
-export function courseProgressPercent(completed: number, total: number): number {
+export function courseProgressPercent(
+  completed: number,
+  total: number,
+): number {
   if (total <= 0) return 0;
   return Math.min(100, Math.round((completed / total) * 100));
 }
@@ -56,7 +59,9 @@ export function examPassed(score: number, threshold: number): boolean {
 }
 
 /** Drop the answer key so questions are safe to send to the browser. */
-export function stripAnswerKey(questions: ExamQuestion[]): PublicExamQuestion[] {
+export function stripAnswerKey(
+  questions: ExamQuestion[],
+): PublicExamQuestion[] {
   return questions.map(({ correctIndex: _correctIndex, ...rest }) => rest);
 }
 

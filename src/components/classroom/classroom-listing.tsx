@@ -11,7 +11,9 @@ import { canCreateCourse, type CommunityRole } from "@/lib/classroom";
 export function ClassroomListing({ slug }: { slug: string }) {
   const t = useTranslations("classroom");
   const { data: session } = authClient.useSession();
-  const { data: courses } = api.classrooms.list.useQuery({ communitySlug: slug });
+  const { data: courses } = api.classrooms.list.useQuery({
+    communitySlug: slug,
+  });
   const { data: community } = api.communities.getBySlug.useQuery({ slug });
   const { data: mine } = api.communities.getMyCommunities.useQuery(undefined, {
     enabled: !!session?.user,
@@ -19,10 +21,15 @@ export function ClassroomListing({ slug }: { slug: string }) {
 
   const membership = mine?.find((c) => c.slug === slug);
   const role =
-    (membership?.status === "active" ? (membership.role as CommunityRole) : null) ?? null;
+    (membership?.status === "active"
+      ? (membership.role as CommunityRole)
+      : null) ?? null;
   const policy =
-    (community as { classroomCreatePolicy?: "all_members" | "admins_only" } | undefined)
-      ?.classroomCreatePolicy ?? "all_members";
+    (
+      community as
+        | { classroomCreatePolicy?: "all_members" | "admins_only" }
+        | undefined
+    )?.classroomCreatePolicy ?? "all_members";
   const mayCreate = canCreateCourse(policy, role);
 
   return (

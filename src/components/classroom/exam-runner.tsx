@@ -46,9 +46,11 @@ export function ExamRunner({
   const t = useTranslations("classroom");
   const utils = api.useUtils();
   const [picks, setPicks] = useState<Record<string, number>>({});
-  const [result, setResult] = useState<
-    { score: number; passed: boolean; wrongQuestionIds: string[] } | null
-  >(null);
+  const [result, setResult] = useState<{
+    score: number;
+    passed: boolean;
+    wrongQuestionIds: string[];
+  } | null>(null);
 
   // Display order: shuffle questions, and shuffle each question's options while
   // remembering the original index so grading stays correct.
@@ -56,7 +58,9 @@ export function ExamRunner({
     () =>
       shuffled(exam.questions).map((q) => ({
         ...q,
-        shown: shuffled(q.options.map((label, originalIndex) => ({ label, originalIndex }))),
+        shown: shuffled(
+          q.options.map((label, originalIndex) => ({ label, originalIndex })),
+        ),
       })),
     [exam.questions],
   );
@@ -102,7 +106,10 @@ export function ExamRunner({
             className="text-sm font-medium text-green-600"
           >
             {t("examAlreadyPassed", {
-              score: Math.max(0, ...mine.filter((a) => a.passed).map((a) => a.score)),
+              score: Math.max(
+                0,
+                ...mine.filter((a) => a.passed).map((a) => a.score),
+              ),
             })}
           </m.p>
         </LazyMotion>
@@ -113,7 +120,9 @@ export function ExamRunner({
               <legend className="text-sm font-medium">
                 {qi + 1}. {q.prompt}
                 {result?.wrongQuestionIds.includes(q.id) ? (
-                  <span className="ml-2 text-xs text-red-600">{t("examWrong")}</span>
+                  <span className="ml-2 text-xs text-red-600">
+                    {t("examWrong")}
+                  </span>
                 ) : null}
               </legend>
               {q.shown.map((opt) => {
@@ -159,10 +168,12 @@ export function ExamRunner({
               onClick={() =>
                 submit.mutate({
                   lessonId: exam.lessonId,
-                  answers: Object.entries(picks).map(([questionId, selectedIndex]) => ({
-                    questionId,
-                    selectedIndex,
-                  })),
+                  answers: Object.entries(picks).map(
+                    ([questionId, selectedIndex]) => ({
+                      questionId,
+                      selectedIndex,
+                    }),
+                  ),
                 })
               }
             >
