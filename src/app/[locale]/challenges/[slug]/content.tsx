@@ -288,7 +288,7 @@ export function ChallengeDetailContent({
           ) : null}
 
           {/* Objectives */}
-          {challenge.objectives.length > 0 && (
+          {(challenge.objectives ?? []).length > 0 && (
             <div className="border-border mt-8 border-t pt-8">
               <div className="border-border border-b pb-4">
                 <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
@@ -296,7 +296,7 @@ export function ChallengeDetailContent({
                 </h2>
               </div>
               <ol className="mt-4 space-y-3">
-                {challenge.objectives.map((obj, i) => (
+                {(challenge.objectives ?? []).map((obj, i) => (
                   <li
                     key={obj.description}
                     className="border-border flex items-start gap-3 rounded border border-dashed px-4 py-3"
@@ -399,7 +399,7 @@ export function ChallengeDetailContent({
             {isEnrolled ? (
               <ChallengeProgress
                 challengeId={challenge.id}
-                objectives={challenge.objectives.map((o) => ({
+                objectives={(challenge.objectives ?? []).map((o) => ({
                   ...o,
                   verification: o.verification ?? undefined,
                 }))}
