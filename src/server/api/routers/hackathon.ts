@@ -176,6 +176,18 @@ export const hackathonRouter = createTRPCRouter({
         }) as RequiredDataFromCollectionSlug<"challenges">,
       });
 
+      // Validate the binding invariant up front (it holds by construction — both
+      // records inherit community.id), then create the event ALREADY bound.
+      // Setting challengeId in the create avoids a second write to a
+      // drafts-enabled collection. skipGeocode: a brand-new draft event has no
+      // published version for the Events geocode afterChange hook to update;
+      // letting it run throws NotFound and poisons the surrounding transaction,
+      // silently rolling back the write. Hackathon events geocode on publish, if
+      // at all, not at draft-create.
+      assertBindable(
+        { type: "hackathon", communityId: community.id },
+        { communityId: challenge.communityId ?? null },
+      );
       const event = await payload.create({
         collection: "events",
         data: {
@@ -192,17 +204,9 @@ export const hackathonRouter = createTRPCRouter({
             location: input.location,
             format: input.format,
           }),
+          challengeId: String(challenge.id),
         },
-      });
-
-      assertBindable(
-        { type: event.type, communityId: event.communityId ?? null },
-        { communityId: challenge.communityId ?? null },
-      );
-      await payload.update({
-        collection: "events",
-        id: Number(event.id),
-        data: { challengeId: String(challenge.id) },
+        context: { skipGeocode: true },
       });
 
       return {
@@ -319,10 +323,14 @@ export const hackathonRouter = createTRPCRouter({
         id: input.challengeId,
         data: { status: "active" },
       });
+      // skipGeocode: these events carry no published Payload version, so the
+      // geocode afterChange hook's nested update throws NotFound and poisons the
+      // transaction, rolling back the status flip. (See createHackathon.)
       await payload.update({
         collection: "events",
         id: input.eventId,
         data: { status: "published" },
+        context: { skipGeocode: true },
       });
       return { published: true };
     }),
