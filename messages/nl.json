@@ -1747,5 +1747,31 @@
     "referralCount": "{count, plural, one {# verwijzing} other {# verwijzingen}}",
     "empty": "Nog geen verwijzingen",
     "copyFailed": "Kopiëren mislukt — kopieer de link handmatig."
+  },
+  "hackathon": {
+    "title": "Hackathon",
+    "leaderboard": "Klassement",
+    "yourTeam": "Jouw team",
+    "createTeam": "Maak een team",
+    "joinTeam": "Sluit je aan bij een team",
+    "teamName": "Teamnaam",
+    "joinCode": "Toetredingscode",
+    "create": "Aanmaken",
+    "join": "Deelnemen",
+    "leave": "Team verlaten",
+    "submit": "Team inzenden",
+    "submitted": "Ingezonden",
+    "captain": "Aanvoerder",
+    "members": "Leden",
+    "artifactUrl": "Projectlink (optioneel)",
+    "artifactSummary": "Samenvatting (optioneel)",
+    "finalize": "Hackathon afronden",
+    "rank": "Positie",
+    "score": "Score",
+    "progress": "Voortgang",
+    "cellsDone": "{done}/{total} cellen",
+    "rosterLocked": "Teams zijn vergrendeld",
+    "winner": "Winnaar",
+    "anonymous": "Anoniem"
   }
 }

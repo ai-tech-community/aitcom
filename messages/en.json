@@ -1747,5 +1747,31 @@
     "referralCount": "{count, plural, one {# referral} other {# referrals}}",
     "empty": "No referrals yet",
     "copyFailed": "Couldn't copy — copy the link manually."
+  },
+  "hackathon": {
+    "title": "Hackathon",
+    "leaderboard": "Leaderboard",
+    "yourTeam": "Your team",
+    "createTeam": "Create a team",
+    "joinTeam": "Join a team",
+    "teamName": "Team name",
+    "joinCode": "Join code",
+    "create": "Create",
+    "join": "Join",
+    "leave": "Leave team",
+    "submit": "Submit team",
+    "submitted": "Submitted",
+    "captain": "Captain",
+    "members": "Members",
+    "artifactUrl": "Project link (optional)",
+    "artifactSummary": "Summary (optional)",
+    "finalize": "Finalize hackathon",
+    "rank": "Rank",
+    "score": "Score",
+    "progress": "Progress",
+    "cellsDone": "{done}/{total} cells",
+    "rosterLocked": "Rosters are locked",
+    "winner": "Winner",
+    "anonymous": "Anonymous"
   }
 }
