@@ -389,15 +389,11 @@ describe.skipIf(!RUN_DB)("work-grid collaborative flow [DB integration]", () => 
     expect(event.actorType).toBe("member");
     expect(event.actorId).toBe(fx.ownerId);
     expect(event.targetId).toBe(targetCellId);
-    expect((event.metadata as Record<string, unknown>).isCommissioned).toBe(
-      true,
-    );
-    expect((event.metadata as Record<string, unknown>).xp).toBe(expectedXp);
+    expect(event.metadata!.isCommissioned).toBe(true);
+    expect(event.metadata!.xp).toBe(expectedXp);
 
     // The commissioned completion is NOT an activation/contribution signal.
-    expect(CONTRIBUTION_ACTIONS as readonly string[]).not.toContain(
-      "workcell.completed",
-    );
+    expect(CONTRIBUTION_ACTIONS).not.toContain("workcell.completed");
   });
 
   it("self-report verification pays only the small self-report fraction (verification is the gate, not the mode)", async () => {
@@ -483,7 +479,7 @@ describe.skipIf(!RUN_DB)("work-grid collaborative flow [DB integration]", () => 
       );
     expect(events).toHaveLength(1);
     expect(
-      (events[0]!.metadata as Record<string, unknown>).isCommissioned,
+      events[0]!.metadata!.isCommissioned,
     ).toBe(true);
   });
 

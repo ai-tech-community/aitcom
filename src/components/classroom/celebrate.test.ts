@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const confettiMock = vi.fn();
 vi.mock("canvas-confetti", () => ({
-  default: (...args: unknown[]) => confettiMock(...args),
+  default: (...args: unknown[]) => {
+    confettiMock(...args);
+  },
 }));
 
 import { fireConfetti } from "./celebrate";
