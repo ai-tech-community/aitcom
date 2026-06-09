@@ -18,7 +18,6 @@ import {
   teams,
   challengeEnrollments,
   eventRegistrations,
-  memberProfiles,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { generateTeamJoinCode } from "@/server/hackathon/team-join-code";
@@ -268,10 +267,18 @@ export const teamsRouter = createTRPCRouter({
       return { left: true };
     }),
 
-  /** Read a team and its members (participant view). */
-  getTeam: protectedProcedure
+  /**
+   * Captain disbands a forming team: releases the whole roster (every member's
+   * enrollment goes back to teamId=null, so they can re-form or join elsewhere)
+   * and marks the team `disbanded` so the leaderboard drops it. Forming-only —
+   * once rosters lock the team is committed to the contest. This is the captain's
+   * counterpart to `leaveTeam` (which the captain is forbidden from using).
+   */
+  disbandTeam: protectedProcedure
     .input(z.object({ teamId: z.string() }))
-    .query(async ({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
       const [team] = await ctx.db
         .select()
         .from(teams)
@@ -280,20 +287,31 @@ export const teamsRouter = createTRPCRouter({
       if (!team) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
       }
+      if (team.captainId !== userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the team captain can disband the team.",
+        });
+      }
+      if (team.status !== "forming") {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "The roster is locked; the team can no longer be disbanded.",
+        });
+      }
 
-      const members = await ctx.db
-        .select({
-          userId: challengeEnrollments.userId,
-          displayName: memberProfiles.displayName,
-        })
-        .from(challengeEnrollments)
-        .innerJoin(
-          memberProfiles,
-          eq(memberProfiles.userId, challengeEnrollments.userId),
-        )
-        .where(eq(challengeEnrollments.teamId, team.id));
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(challengeEnrollments)
+          .set({ teamId: null })
+          .where(eq(challengeEnrollments.teamId, input.teamId));
+        await tx
+          .update(teams)
+          .set({ status: "disbanded" })
+          .where(eq(teams.id, input.teamId));
+      });
 
-      return { team, members };
+      return { disbanded: true };
     }),
 
   /** Captain freezes the team's submission (locked rosters only, once). */

@@ -1759,6 +1759,7 @@
     "create": "Create",
     "join": "Join",
     "leave": "Leave team",
+    "disband": "Disband team",
     "submit": "Submit team",
     "submitted": "Submitted",
     "captain": "Captain",

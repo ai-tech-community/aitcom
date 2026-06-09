@@ -60,6 +60,13 @@ export function HackathonPanel({
     },
     onError: (e) => toast.error(e.message),
   });
+  const disbandTeam = api.teams.disbandTeam.useMutation({
+    onSuccess: () => {
+      toast.success(t("disband"));
+      invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
   const submitTeam = api.teams.submitTeam.useMutation({
     onSuccess: () => {
       toast.success(t("submitted"));
@@ -134,9 +141,19 @@ export function HackathonPanel({
             {myTeam.members.map((m) => m.displayName).join(", ")}
           </p>
           {myTeam.isCaptain && myTeam.team.status === "forming" ? (
-            <p className="text-muted-foreground mt-1 font-mono text-xs">
-              {t("joinCode")}: {myTeam.team.joinCode}
-            </p>
+            <div className="mt-1 flex items-center justify-between gap-2">
+              <p className="text-muted-foreground font-mono text-xs">
+                {t("joinCode")}: {myTeam.team.joinCode}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={disbandTeam.isPending}
+                onClick={() => disbandTeam.mutate({ teamId: myTeam.team.id })}
+              >
+                {t("disband")}
+              </Button>
+            </div>
           ) : null}
 
           <TeamGridProgress teamId={myTeam.team.id} />
