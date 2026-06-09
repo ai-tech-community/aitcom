@@ -295,4 +295,63 @@ export const teamsRouter = createTRPCRouter({
 
       return { team, members };
     }),
+
+  /** Captain freezes the team's submission (locked rosters only, once). */
+  submitTeam: protectedProcedure
+    .input(
+      z.object({
+        teamId: z.string(),
+        artifactUrl: z.string().url().max(2048).optional(),
+        artifactSummary: z.string().max(5000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [team] = await ctx.db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, input.teamId))
+        .limit(1);
+      if (!team) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
+      }
+      if (team.captainId !== userId) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only the team captain can submit.",
+        });
+      }
+      if (team.status !== "locked") {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "The team can only be submitted once its roster is locked (the hacking window has opened).",
+        });
+      }
+      if (team.submittedAt) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This team has already been submitted.",
+        });
+      }
+
+      const [updated] = await ctx.db
+        .update(teams)
+        .set({
+          submittedAt: new Date(),
+          artifactUrl: input.artifactUrl ?? null,
+          artifactSummary: input.artifactSummary ?? null,
+        })
+        .where(and(eq(teams.id, input.teamId), isNull(teams.submittedAt)))
+        .returning();
+      if (!updated) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This team has already been submitted.",
+        });
+      }
+
+      return updated;
+    }),
 });
