@@ -3,7 +3,7 @@
 // what makes the challenge team-based. AIT is plumbing only — no cognition.
 
 import { z } from "zod";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, isNotNull, ne } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -241,6 +241,7 @@ export const hackathonRouter = createTRPCRouter({
         gridIds.length > 0
           ? await ctx.db
               .select({
+                cellId: workCells.id,
                 gridId: workCells.gridId,
                 verificationMode: workCells.verificationMode,
               })
@@ -253,8 +254,14 @@ export const hackathonRouter = createTRPCRouter({
                 ),
               )
           : [];
+      // Defensive: count each verified cell once even if a future path ever
+      // produced a second result row for it (today the competitive one-claimer
+      // model + completed-on-submit make >1 result per cell unreachable).
       const modesByGrid = new Map<string, string[]>();
+      const seenCells = new Set<string>();
       for (const r of verifiedRows) {
+        if (seenCells.has(r.cellId)) continue;
+        seenCells.add(r.cellId);
         const list = modesByGrid.get(r.gridId) ?? [];
         list.push(r.verificationMode);
         modesByGrid.set(r.gridId, list);
@@ -290,20 +297,40 @@ export const hackathonRouter = createTRPCRouter({
         }
 
         if (winnerTeamId) {
-          const [winner] = await tx
-            .update(teams)
-            .set({ prizeAwardedAt: new Date() })
-            .where(and(eq(teams.id, winnerTeamId), isNull(teams.prizeAwardedAt)))
-            .returning();
-          if (winner) {
-            const members = await tx
-              .select({ userId: challengeEnrollments.userId })
-              .from(challengeEnrollments)
-              .where(eq(challengeEnrollments.teamId, winnerTeamId));
-            const share = prizeSplit(xpReward, members.length);
-            for (const member of members) {
-              if (share > 0) await awardXp(tx, member.userId, share);
-              if (badgeReward) await awardBadge(tx, member.userId, badgeReward);
+          // Challenge-level once-only: if ANY team in this challenge already
+          // received the prize in a prior finalize, never pay a second team —
+          // even if a re-run's recomputed winner differs because more cells were
+          // verified in between. Re-runs still recompute score/finalRank above;
+          // only the disbursement is locked.
+          const [priorAward] = await tx
+            .select({ id: teams.id })
+            .from(teams)
+            .where(
+              and(
+                eq(teams.challengeId, input.challengeId),
+                isNotNull(teams.prizeAwardedAt),
+              ),
+            )
+            .limit(1);
+
+          if (!priorAward) {
+            const [winner] = await tx
+              .update(teams)
+              .set({ prizeAwardedAt: new Date() })
+              .where(
+                and(eq(teams.id, winnerTeamId), isNull(teams.prizeAwardedAt)),
+              )
+              .returning();
+            if (winner) {
+              const members = await tx
+                .select({ userId: challengeEnrollments.userId })
+                .from(challengeEnrollments)
+                .where(eq(challengeEnrollments.teamId, winnerTeamId));
+              const share = prizeSplit(xpReward, members.length);
+              for (const member of members) {
+                if (share > 0) await awardXp(tx, member.userId, share);
+                if (badgeReward) await awardBadge(tx, member.userId, badgeReward);
+              }
             }
           }
         }
@@ -326,7 +353,12 @@ export const hackathonRouter = createTRPCRouter({
       const rows = await ctx.db
         .select()
         .from(teams)
-        .where(eq(teams.challengeId, input.challengeId));
+        .where(
+          and(
+            eq(teams.challengeId, input.challengeId),
+            ne(teams.status, "disbanded"),
+          ),
+        );
       if (rows.length === 0) return [];
 
       const enrollments = await ctx.db
