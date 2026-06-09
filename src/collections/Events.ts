@@ -343,6 +343,16 @@ export const Events: CollectionConfig = {
       admin: { position: "sidebar" },
     },
     {
+      name: "challengeId",
+      type: "text",
+      index: true,
+      admin: {
+        position: "sidebar",
+        description:
+          "ID of the Challenge this event runs as a hackathon. Set this to bind an event-challenge (the binding is the team-based discriminator, ADR-0029). Must share the challenge's communityId.",
+      },
+    },
+    {
       name: "submittedBy",
       type: "text",
       index: true,
