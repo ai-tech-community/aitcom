@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { and, eq, inArray, isNull, isNotNull, ne } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import type { RequiredDataFromCollectionSlug } from "payload";
 
 import {
   createTRPCRouter,
@@ -19,10 +20,17 @@ import {
   challengeEnrollments,
   memberProfiles,
   communityMemberships,
+  communities,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
 import { assertBindable, BindingError } from "@/server/hackathon/binding-invariant";
+import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import {
+  deriveSlug,
+  buildHackathonChallengeData,
+} from "@/server/hackathon/create-defaults";
+import { buildEventPayloadData } from "@/server/api/routers/event-upsert-data";
 import {
   cellTemplateSchema,
   cellTemplateToInserts,
@@ -99,6 +107,108 @@ async function requireCommunityHackathonAdmin(
 }
 
 export const hackathonRouter = createTRPCRouter({
+  /**
+   * One-shot community hackathon scaffold (ADR-0024/0032): a community owner|admin
+   * creates a DRAFT Event + DRAFT Challenge and binds them. Both inherit the
+   * community's communityId so the binding invariant holds. Draft-tolerant — a
+   * mid-sequence failure leaves invisible drafts (no compensation needed).
+   */
+  createHackathon: protectedProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        name: z.string().min(3).max(255),
+        description: z.string().max(5000).optional(),
+        date: z.string(),
+        startTime: z.string().optional(),
+        endTime: z.string().optional(),
+        location: z.string().min(1).max(255),
+        format: z.enum(["online", "in-person", "hybrid"]).optional(),
+        teamMin: z.number().int().min(1).default(1),
+        teamMax: z.number().int().min(1).default(5),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+      });
+      if (!community) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+      }
+      const membership = await ctx.db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, community.id),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (!isCommunityHackathonAdmin(membership ?? null)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only community admins can create hackathons",
+        });
+      }
+
+      const payload = await getPayloadClient();
+      const suffix = String(Date.now());
+
+      const challenge = await payload.create({
+        collection: "challenges",
+        // buildHackathonChallengeData is intentionally db/Payload-free (loose
+        // unknown[] objectives/cellTemplate so it stays unit-testable); cast to
+        // Payload's strict create type at this boundary.
+        data: buildHackathonChallengeData({
+          name: input.name,
+          descriptionLexical: plainTextToLexical(input.description ?? ""),
+          communityId: community.id,
+          userId,
+          slug: deriveSlug(input.name, `c-${suffix}`),
+          teamMin: input.teamMin,
+          teamMax: input.teamMax,
+        }) as RequiredDataFromCollectionSlug<"challenges">,
+      });
+
+      const event = await payload.create({
+        collection: "events",
+        data: {
+          slug: deriveSlug(input.name, `e-${suffix}`),
+          status: "draft",
+          communityId: community.id,
+          ...buildEventPayloadData({
+            title: input.name,
+            description: input.description,
+            type: "hackathon",
+            date: input.date,
+            startTime: input.startTime,
+            endTime: input.endTime,
+            location: input.location,
+            format: input.format,
+          }),
+        },
+      });
+
+      assertBindable(
+        { type: event.type, communityId: event.communityId ?? null },
+        { communityId: challenge.communityId ?? null },
+      );
+      await payload.update({
+        collection: "events",
+        id: Number(event.id),
+        data: { challengeId: String(challenge.id) },
+      });
+
+      return {
+        eventId: Number(event.id),
+        eventSlug: event.slug,
+        challengeId: Number(challenge.id),
+        communitySlug: input.communitySlug,
+      };
+    }),
+
   /**
    * Bind a hackathon event to a challenge — the act that makes the challenge
    * team-based (ADR-0029). Sponsor-scoped; enforces the communityId invariant.
