@@ -31,6 +31,7 @@ import {
   buildHackathonChallengeData,
 } from "@/server/hackathon/create-defaults";
 import { buildEventPayloadData } from "@/server/api/routers/event-upsert-data";
+import { EVENT_FORMAT_OPTIONS } from "@/lib/event-metadata";
 import {
   cellTemplateSchema,
   cellTemplateToInserts,
@@ -123,9 +124,12 @@ export const hackathonRouter = createTRPCRouter({
         startTime: z.string().optional(),
         endTime: z.string().optional(),
         location: z.string().min(1).max(255),
-        format: z.enum(["online", "in-person", "hybrid"]).optional(),
+        format: z.enum(EVENT_FORMAT_OPTIONS).optional(),
         teamMin: z.number().int().min(1).default(1),
         teamMax: z.number().int().min(1).default(5),
+      }).refine((v) => v.teamMin <= v.teamMax, {
+        message: "teamMin must not exceed teamMax",
+        path: ["teamMin"],
       }),
     )
     .mutation(async ({ ctx, input }) => {
