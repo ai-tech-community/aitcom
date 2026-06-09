@@ -590,6 +590,7 @@ export const challengesRouter = createTRPCRouter({
         .select({
           userId: memberProfiles.userId,
           displayName: memberProfiles.displayName,
+          isPublic: memberProfiles.isPublic,
         })
         .from(memberProfiles)
         .where(
@@ -619,11 +620,17 @@ export const challengesRouter = createTRPCRouter({
       return ranked.map((entry, index) => {
         const profile = profileMap.get(entry.userId);
         const u = userMap.get(entry.userId);
+        // ADR-0021/0030: a member who opted out of public visibility keeps their
+        // rank but their identity (name + avatar) is masked in this aggregate —
+        // the same rule the member-stack uses (counted, not named).
+        const isPublic = profile?.isPublic ?? false;
         return {
           rank: index + 1,
           userId: entry.userId,
-          displayName: profile?.displayName ?? u?.name ?? "Anonymous",
-          image: u?.image ?? null,
+          displayName: isPublic
+            ? (profile?.displayName ?? u?.name ?? "Anonymous")
+            : "Anonymous",
+          image: isPublic ? (u?.image ?? null) : null,
           completedObjectives: entry.completedObjectives,
           testScore: entry.testScore,
           channelContributions: entry.channelContributions,
