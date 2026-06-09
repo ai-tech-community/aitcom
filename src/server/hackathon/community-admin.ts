@@ -9,6 +9,6 @@ export interface MembershipRow {
 export function isCommunityHackathonAdmin(
   membership: MembershipRow | null | undefined,
 ): boolean {
-  if (!membership || membership.status !== "active") return false;
+  if (membership?.status !== "active") return false;
   return membership.role === "owner" || membership.role === "admin";
 }
