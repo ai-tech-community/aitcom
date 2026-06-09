@@ -6,13 +6,18 @@ import { z } from "zod";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "@/server/api/trpc";
 import {
   teams,
   workGrids,
   workCells,
   workCellResults,
   challengeEnrollments,
+  memberProfiles,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { assertBindable, BindingError } from "@/server/hackathon/binding-invariant";
@@ -312,5 +317,65 @@ export const hackathonRouter = createTRPCRouter({
           score: scoreByTeam.get(r.teamId) ?? 0,
         })),
       };
+    }),
+
+  /** Public team leaderboard for a hackathon challenge (isPublic-respecting). */
+  teamLeaderboard: publicProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select()
+        .from(teams)
+        .where(eq(teams.challengeId, input.challengeId));
+      if (rows.length === 0) return [];
+
+      const enrollments = await ctx.db
+        .select({
+          teamId: challengeEnrollments.teamId,
+          displayName: memberProfiles.displayName,
+          isPublic: memberProfiles.isPublic,
+        })
+        .from(challengeEnrollments)
+        .innerJoin(
+          memberProfiles,
+          eq(memberProfiles.userId, challengeEnrollments.userId),
+        )
+        .where(
+          inArray(
+            challengeEnrollments.teamId,
+            rows.map((t) => t.id),
+          ),
+        );
+
+      const facesByTeam = new Map<string, string[]>();
+      const countByTeam = new Map<string, number>();
+      for (const e of enrollments) {
+        if (!e.teamId) continue;
+        countByTeam.set(e.teamId, (countByTeam.get(e.teamId) ?? 0) + 1);
+        if (e.isPublic) {
+          const list = facesByTeam.get(e.teamId) ?? [];
+          list.push(e.displayName);
+          facesByTeam.set(e.teamId, list);
+        }
+      }
+
+      return rows
+        .map((t) => ({
+          teamId: t.id,
+          name: t.name,
+          score: t.score ?? 0,
+          finalRank: t.finalRank,
+          submitted: t.submittedAt !== null,
+          memberCount: countByTeam.get(t.id) ?? 0,
+          memberFaces: facesByTeam.get(t.id) ?? [],
+        }))
+        .sort((a, b) => {
+          if (a.finalRank !== null && b.finalRank !== null) {
+            return a.finalRank - b.finalRank;
+          }
+          if (a.finalRank !== null) return -1;
+          if (b.finalRank !== null) return 1;
+          return b.score - a.score;
+        });
     }),
 });
