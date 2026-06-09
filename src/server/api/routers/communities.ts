@@ -809,6 +809,9 @@ export const communitiesRouter = createTRPCRouter({
           .optional(),
         isListedInDirectory: z.boolean().optional(),
         feedPostPolicy: z.enum(["all_members", "admins_only"]).optional(),
+        classroomCreatePolicy: z
+          .enum(["all_members", "admins_only"])
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -827,6 +830,8 @@ export const communitiesRouter = createTRPCRouter({
         updates.isListedInDirectory = input.isListedInDirectory;
       if (input.feedPostPolicy !== undefined)
         updates.feedPostPolicy = input.feedPostPolicy;
+      if (input.classroomCreatePolicy !== undefined)
+        updates.classroomCreatePolicy = input.classroomCreatePolicy;
 
       // Note: slug is NOT auto-updated on name change to avoid breaking
       // existing URLs and bookmarks. Slug is set once at community creation.

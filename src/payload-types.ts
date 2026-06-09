@@ -94,6 +94,8 @@ export interface Config {
     'benchmark-prompts': BenchmarkPrompt;
     brands: Brand;
     'brand-alias-queue': BrandAliasQueue;
+    courses: Course;
+    lessons: Lesson;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -129,6 +131,8 @@ export interface Config {
     'benchmark-prompts': BenchmarkPromptsSelect<false> | BenchmarkPromptsSelect<true>;
     brands: BrandsSelect<false> | BrandsSelect<true>;
     'brand-alias-queue': BrandAliasQueueSelect<false> | BrandAliasQueueSelect<true>;
+    courses: CoursesSelect<false> | CoursesSelect<true>;
+    lessons: LessonsSelect<false> | LessonsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -1136,6 +1140,97 @@ export interface BrandAliasQueue {
   createdAt: string;
 }
 /**
+ * Member-created classroom courses.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "courses".
+ */
+export interface Course {
+  id: number;
+  title: string;
+  slug: string;
+  summary?: string | null;
+  /**
+   * S3 cover image URL (uploaded via /api/upload).
+   */
+  coverImageUrl?: string | null;
+  /**
+   * Better Auth user ID.
+   */
+  authorId: string;
+  authorName?: string | null;
+  status: 'draft' | 'published' | 'archived';
+  communityId: string;
+  /**
+   * Admin-promoted: visible to non-members.
+   */
+  isPublic?: boolean | null;
+  enrollmentCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Lessons within a course.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "lessons".
+ */
+export interface Lesson {
+  id: number;
+  /**
+   * courses.id
+   */
+  course: number;
+  title: string;
+  order?: number | null;
+  youtubeUrl?: string | null;
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  examMandatory?: boolean | null;
+  /**
+   * Percent (0–100) required to pass.
+   */
+  examPassThreshold?: number | null;
+  /**
+   * 0 = unlimited attempts.
+   */
+  examMaxAttempts?: number | null;
+  /**
+   * Array of { id, prompt, type, options[], correctIndex }. Authored via the custom lesson editor.
+   */
+  examQuestions?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  resources?:
+    | {
+        label: string;
+        url: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -1266,6 +1361,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'brand-alias-queue';
         value: number | BrandAliasQueue;
+      } | null)
+    | ({
+        relationTo: 'courses';
+        value: number | Course;
+      } | null)
+    | ({
+        relationTo: 'lessons';
+        value: number | Lesson;
       } | null)
     | ({
         relationTo: 'users';
@@ -1876,6 +1979,48 @@ export interface BrandAliasQueueSelect<T extends boolean = true> {
   status?: T;
   reviewedByUser?: T;
   reviewedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "courses_select".
+ */
+export interface CoursesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  summary?: T;
+  coverImageUrl?: T;
+  authorId?: T;
+  authorName?: T;
+  status?: T;
+  communityId?: T;
+  isPublic?: T;
+  enrollmentCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "lessons_select".
+ */
+export interface LessonsSelect<T extends boolean = true> {
+  course?: T;
+  title?: T;
+  order?: T;
+  youtubeUrl?: T;
+  body?: T;
+  examMandatory?: T;
+  examPassThreshold?: T;
+  examMaxAttempts?: T;
+  examQuestions?: T;
+  resources?:
+    | T
+    | {
+        label?: T;
+        url?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
