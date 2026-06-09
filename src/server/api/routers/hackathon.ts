@@ -18,8 +18,10 @@ import {
   workCellResults,
   challengeEnrollments,
   memberProfiles,
+  communityMemberships,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
+import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
 import { assertBindable, BindingError } from "@/server/hackathon/binding-invariant";
 import {
   cellTemplateSchema,
@@ -48,6 +50,49 @@ async function requireChallengeSponsor(challengeId: number, userId: string) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Only the challenge sponsor can administer this hackathon",
+    });
+  }
+  return challenge;
+}
+
+/**
+ * Role-scoped gate (ADR-0031): the caller must be an active owner|admin of the
+ * challenge's community. For community-scoped hackathons this replaces the
+ * creator-scoped requireChallengeSponsor — a time-boxed contest must not hinge on
+ * one person. Returns the Payload challenge doc on success.
+ */
+async function requireCommunityHackathonAdmin(
+  db: typeof import("@/server/db").db,
+  challengeId: number,
+  userId: string,
+) {
+  const payload = await getPayloadClient();
+  let challenge;
+  try {
+    challenge = await payload.findByID({
+      collection: "challenges",
+      id: challengeId,
+      depth: 0,
+    });
+  } catch {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Challenge not found" });
+  }
+  if (!challenge.communityId) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "This is not a community hackathon.",
+    });
+  }
+  const membership = await db.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, challenge.communityId),
+      eq(communityMemberships.userId, userId),
+    ),
+  });
+  if (!isCommunityHackathonAdmin(membership ?? null)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only an owner or admin of this community can manage the hackathon",
     });
   }
   return challenge;
@@ -135,7 +180,7 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const challenge = await requireChallengeSponsor(input.challengeId, userId);
+      const challenge = await requireCommunityHackathonAdmin(ctx.db, input.challengeId, userId);
 
       const template = cellTemplateSchema.parse(challenge.cellTemplate ?? []);
 
@@ -203,7 +248,7 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const challenge = await requireChallengeSponsor(input.challengeId, userId);
+      const challenge = await requireCommunityHackathonAdmin(ctx.db, input.challengeId, userId);
 
       const rankingMode =
         challenge.rankingMode === "thoroughness" ||
