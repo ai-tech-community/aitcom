@@ -17,6 +17,7 @@ import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { EventFormDialog } from "@/components/communities/event-form-dialog";
+import { CreateHackathonDialog } from "@/components/hackathon/create-hackathon-dialog";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -349,18 +350,21 @@ export default function CommunityEventsPage({
           )}
         </div>
 
-        {isActiveMember && (
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditingEvent(null);
-              setDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-1.5 size-4" />
-            {canModerate ? t("createEvent") : "Submit Event"}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {isAdminOrOwner && <CreateHackathonDialog communitySlug={slug} />}
+          {isActiveMember && (
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingEvent(null);
+                setDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-1.5 size-4" />
+              {canModerate ? t("createEvent") : "Submit Event"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* PUBLISHED tab */}
