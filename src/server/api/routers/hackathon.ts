@@ -240,10 +240,15 @@ export const hackathonRouter = createTRPCRouter({
       const data: Record<string, unknown> = {};
       if (input.cellTemplate !== undefined) data.cellTemplate = input.cellTemplate;
       if (input.teamMin !== undefined || input.teamMax !== undefined) {
-        data.teamConfig = {
-          minTeamSize: input.teamMin ?? challenge.teamConfig?.minTeamSize ?? 1,
-          maxTeamSize: input.teamMax ?? challenge.teamConfig?.maxTeamSize ?? 5,
-        };
+        const minTeamSize = input.teamMin ?? challenge.teamConfig?.minTeamSize ?? 1;
+        const maxTeamSize = input.teamMax ?? challenge.teamConfig?.maxTeamSize ?? 5;
+        if (minTeamSize > maxTeamSize) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Minimum team size cannot exceed the maximum.",
+          });
+        }
+        data.teamConfig = { minTeamSize, maxTeamSize };
       }
       if (input.xpReward !== undefined || input.sponsorReward !== undefined) {
         data.rewards = {
@@ -253,6 +258,10 @@ export const hackathonRouter = createTRPCRouter({
             ? { sponsorReward: input.sponsorReward }
             : {}),
         };
+      }
+
+      if (Object.keys(data).length === 0) {
+        return { challengeId: input.challengeId };
       }
 
       const payload = await getPayloadClient();
