@@ -410,4 +410,73 @@ export const hackathonRouter = createTRPCRouter({
           return b.score - a.score;
         });
     }),
+
+  /** The caller's team for a hackathon challenge (null if none) + roster. */
+  myTeam: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [enrollment] = await ctx.db
+        .select({ teamId: challengeEnrollments.teamId })
+        .from(challengeEnrollments)
+        .where(
+          and(
+            eq(challengeEnrollments.userId, userId),
+            eq(challengeEnrollments.challengeId, input.challengeId),
+          ),
+        )
+        .limit(1);
+      if (!enrollment?.teamId) return null;
+
+      const [team] = await ctx.db
+        .select()
+        .from(teams)
+        .where(eq(teams.id, enrollment.teamId))
+        .limit(1);
+      if (!team) return null;
+
+      const members = await ctx.db
+        .select({
+          userId: challengeEnrollments.userId,
+          displayName: memberProfiles.displayName,
+        })
+        .from(challengeEnrollments)
+        .innerJoin(
+          memberProfiles,
+          eq(memberProfiles.userId, challengeEnrollments.userId),
+        )
+        .where(eq(challengeEnrollments.teamId, team.id));
+
+      return { team, members, isCaptain: team.captainId === userId };
+    }),
+
+  /**
+   * Public, aggregate progress for a team's competitive grid — the spectator
+   * "watch the race" projection (ADR-0030): cell status COUNTS only, never a
+   * cell's output or content.
+   */
+  teamGridStatus: publicProcedure
+    .input(z.object({ teamId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [grid] = await ctx.db
+        .select({ id: workGrids.id })
+        .from(workGrids)
+        .where(
+          and(
+            eq(workGrids.teamId, input.teamId),
+            eq(workGrids.mode, "competitive"),
+          ),
+        )
+        .limit(1);
+      if (!grid) return { total: 0, byStatus: {} as Record<string, number> };
+
+      const cells = await ctx.db
+        .select({ status: workCells.status })
+        .from(workCells)
+        .where(eq(workCells.gridId, grid.id));
+
+      const byStatus: Record<string, number> = {};
+      for (const c of cells) byStatus[c.status] = (byStatus[c.status] ?? 0) + 1;
+      return { total: cells.length, byStatus };
+    }),
 });
