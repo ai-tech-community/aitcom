@@ -367,11 +367,12 @@ export const workGridRouter = createTRPCRouter({
       const cell = row.cell;
 
       // Grid eligibility: claim-by-cellId must agree with listClaimable, which
-      // only exposes cells from an ACTIVE COLLABORATIVE grid. Without this a cell
-      // in a completed/abandoned (or non-collaborative) grid would be directly
-      // claimable by id (ADR-0023: only collaborative grids are claimable, and a
-      // self-healing pull queue stops dispatching once its grid is no longer
-      // active).
+      // only exposes cells from an ACTIVE collaborative OR competitive grid.
+      // Without this a cell in a completed/abandoned grid would be directly
+      // claimable by id (ADR-0023: a self-healing pull queue stops dispatching
+      // once its grid is no longer active; ADR-0029: competitive grids are
+      // claimable but only by the grid's own team, enforced in the scope block
+      // below).
       if (row.gridStatus !== "active") {
         throw new TRPCError({
           code: "CONFLICT",

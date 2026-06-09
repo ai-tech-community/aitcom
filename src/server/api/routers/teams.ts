@@ -125,14 +125,26 @@ export const teamsRouter = createTRPCRouter({
             set: { teamId: team.id, status: "active" },
           });
 
-        await tx
-          .insert(eventRegistrations)
-          .values({
+        // event_registration has no unique (user,event) constraint, so an
+        // onConflict no-op would still insert duplicates; pre-check instead
+        // (mirrors the registration guard in events.ts).
+        const [existingReg] = await tx
+          .select({ id: eventRegistrations.id })
+          .from(eventRegistrations)
+          .where(
+            and(
+              eq(eventRegistrations.userId, userId),
+              eq(eventRegistrations.eventId, Number(event.id)),
+            ),
+          )
+          .limit(1);
+        if (!existingReg) {
+          await tx.insert(eventRegistrations).values({
             userId,
             eventId: Number(event.id),
             status: "registered",
-          })
-          .onConflictDoNothing();
+          });
+        }
 
         return team;
       });
@@ -190,10 +202,23 @@ export const teamsRouter = createTRPCRouter({
             ],
             set: { teamId: team.id, status: "active" },
           });
-        await tx
-          .insert(eventRegistrations)
-          .values({ userId, eventId: team.eventId, status: "registered" })
-          .onConflictDoNothing();
+        const [existingReg] = await tx
+          .select({ id: eventRegistrations.id })
+          .from(eventRegistrations)
+          .where(
+            and(
+              eq(eventRegistrations.userId, userId),
+              eq(eventRegistrations.eventId, team.eventId),
+            ),
+          )
+          .limit(1);
+        if (!existingReg) {
+          await tx.insert(eventRegistrations).values({
+            userId,
+            eventId: team.eventId,
+            status: "registered",
+          });
+        }
       });
 
       return team;
