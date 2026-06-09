@@ -3,17 +3,25 @@
 // what makes the challenge team-based. AIT is plumbing only — no cognition.
 
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { teams, workGrids, workCells } from "@/server/db/schema";
+import {
+  teams,
+  workGrids,
+  workCells,
+  workCellResults,
+  challengeEnrollments,
+} from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { assertBindable, BindingError } from "@/server/hackathon/binding-invariant";
 import {
   cellTemplateSchema,
   cellTemplateToInserts,
 } from "@/server/hackathon/cell-template";
+import { teamScore, rankTeams, prizeSplit } from "@/server/hackathon/scoring";
+import { awardXp, awardBadge } from "@/lib/gamification";
 
 /**
  * Resolve the challenge sponsor gate (mirrors `requireGridAdmin`'s challenge
@@ -178,5 +186,131 @@ export const hackathonRouter = createTRPCRouter({
       }
 
       return { lockedTeams: created.length, grids: created };
+    }),
+
+  /**
+   * Finalize a hackathon (sponsor-scoped). Scores each team from its competitive
+   * grid's verified cells, ranks the submitted teams, and awards the challenge's
+   * prize XP (split equally) + badge to the winning team. Idempotent: re-running
+   * recomputes ranks/scores but never re-pays (prizeAwardedAt guard).
+   */
+  finalizeHackathon: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const challenge = await requireChallengeSponsor(input.challengeId, userId);
+
+      const rankingMode =
+        challenge.rankingMode === "thoroughness" ||
+        challenge.rankingMode === "collaboration"
+          ? challenge.rankingMode
+          : "speed";
+      const xpReward = challenge.rewards?.xpReward ?? 0;
+      const badgeReward = challenge.rewards?.badgeReward ?? null;
+
+      const challengeTeams = await ctx.db
+        .select()
+        .from(teams)
+        .where(eq(teams.challengeId, input.challengeId));
+      if (challengeTeams.length === 0) {
+        return { ranked: [], winnerTeamId: null };
+      }
+
+      const grids = await ctx.db
+        .select({ id: workGrids.id, teamId: workGrids.teamId })
+        .from(workGrids)
+        .where(
+          and(
+            eq(workGrids.challengeId, input.challengeId),
+            eq(workGrids.mode, "competitive"),
+          ),
+        );
+      const gridByTeam = new Map(
+        grids
+          .filter((g): g is { id: string; teamId: string } => g.teamId !== null)
+          .map((g) => [g.teamId, g.id]),
+      );
+
+      const gridIds = grids.map((g) => g.id);
+      const verifiedRows =
+        gridIds.length > 0
+          ? await ctx.db
+              .select({
+                gridId: workCells.gridId,
+                verificationMode: workCells.verificationMode,
+              })
+              .from(workCellResults)
+              .innerJoin(workCells, eq(workCellResults.cellId, workCells.id))
+              .where(
+                and(
+                  inArray(workCells.gridId, gridIds),
+                  eq(workCellResults.verificationOutcome, "verified"),
+                ),
+              )
+          : [];
+      const modesByGrid = new Map<string, string[]>();
+      for (const r of verifiedRows) {
+        const list = modesByGrid.get(r.gridId) ?? [];
+        list.push(r.verificationMode);
+        modesByGrid.set(r.gridId, list);
+      }
+
+      const scoreByTeam = new Map<string, number>();
+      for (const team of challengeTeams) {
+        const gridId = gridByTeam.get(team.id);
+        const modes = gridId ? (modesByGrid.get(gridId) ?? []) : [];
+        scoreByTeam.set(team.id, teamScore(modes));
+      }
+      const submitted = challengeTeams.filter((t) => t.submittedAt !== null);
+      const ranked = rankTeams(
+        submitted.map((t) => ({
+          teamId: t.id,
+          score: scoreByTeam.get(t.id) ?? 0,
+          submittedAt: t.submittedAt,
+        })),
+        rankingMode,
+      );
+      const rankByTeam = new Map(ranked.map((r) => [r.teamId, r.rank]));
+      const winnerTeamId = ranked.find((r) => r.rank === 1)?.teamId ?? null;
+
+      await ctx.db.transaction(async (tx) => {
+        for (const team of challengeTeams) {
+          await tx
+            .update(teams)
+            .set({
+              score: scoreByTeam.get(team.id) ?? 0,
+              finalRank: rankByTeam.get(team.id) ?? null,
+            })
+            .where(eq(teams.id, team.id));
+        }
+
+        if (winnerTeamId) {
+          const [winner] = await tx
+            .update(teams)
+            .set({ prizeAwardedAt: new Date() })
+            .where(and(eq(teams.id, winnerTeamId), isNull(teams.prizeAwardedAt)))
+            .returning();
+          if (winner) {
+            const members = await tx
+              .select({ userId: challengeEnrollments.userId })
+              .from(challengeEnrollments)
+              .where(eq(challengeEnrollments.teamId, winnerTeamId));
+            const share = prizeSplit(xpReward, members.length);
+            for (const member of members) {
+              if (share > 0) await awardXp(tx, member.userId, share);
+              if (badgeReward) await awardBadge(tx, member.userId, badgeReward);
+            }
+          }
+        }
+      });
+
+      return {
+        winnerTeamId,
+        ranked: ranked.map((r) => ({
+          teamId: r.teamId,
+          rank: r.rank,
+          score: scoreByTeam.get(r.teamId) ?? 0,
+        })),
+      };
     }),
 });
