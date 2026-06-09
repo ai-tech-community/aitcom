@@ -31,7 +31,7 @@ export function buildHackathonChallengeData(args: ChallengeDataArgs) {
     status: "draft" as const,
     difficulty: "intermediate" as const,
     creatorId: args.userId,
-    publishedBy: args.userId,
+    publishedBy: "member" as const,
     communityId: args.communityId,
     objectives: [] as unknown[],
     cellTemplate: [] as unknown[],

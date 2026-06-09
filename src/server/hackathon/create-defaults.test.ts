@@ -31,8 +31,10 @@ describe("buildHackathonChallengeData", () => {
     expect(data.status).toBe("draft");
     expect(data.type).toBe("open-ended");
     expect(data.difficulty).toBe("intermediate");
+    expect(data.title).toBe("Build-a-bot");
+    expect(data.slug).toBe("build-a-bot-x");
     expect(data.creatorId).toBe("user-1");
-    expect(data.publishedBy).toBe("user-1");
+    expect(data.publishedBy).toBe("member");
     expect(data.communityId).toBe("comm-1");
     expect(data.objectives).toEqual([]);
     expect(data.cellTemplate).toEqual([]);
