@@ -49,6 +49,7 @@ import * as migration_20260608e_lesson_exams from "./20260608e_lesson_exams";
 import * as migration_20260608f_topic_slug_not_null from "./20260608f_topic_slug_not_null";
 import * as migration_20260609a_hackathon_teams from "./20260609a_hackathon_teams";
 import * as migration_20260609b_team_judging from "./20260609b_team_judging";
+import * as migration_20260609d_challenge_team_config_and_cell_template from "./20260609d_challenge_team_config_and_cell_template";
 
 export const migrations = [
   {
@@ -305,5 +306,10 @@ export const migrations = [
     up: migration_20260609b_team_judging.up,
     down: migration_20260609b_team_judging.down,
     name: "20260609b_team_judging",
+  },
+  {
+    up: migration_20260609d_challenge_team_config_and_cell_template.up,
+    down: migration_20260609d_challenge_team_config_and_cell_template.down,
+    name: "20260609d_challenge_team_config_and_cell_template",
   },
 ];
