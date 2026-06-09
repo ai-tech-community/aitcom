@@ -274,6 +274,44 @@ export const hackathonRouter = createTRPCRouter({
     }),
 
   /**
+   * Publish a community hackathon: requires >=1 cellTemplate row (no empty
+   * hackathon), then flips the Event to `published` and the Challenge to `active`
+   * (the challenges status enum is draft|active|completed|archived — there is no
+   * `published`). Publishing the event opens team formation. Role-scoped.
+   */
+  publishHackathon: protectedProcedure
+    .input(z.object({ challengeId: z.number(), eventId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const challenge = await requireCommunityHackathonAdmin(
+        ctx.db,
+        input.challengeId,
+        userId,
+      );
+
+      const cells = cellTemplateSchema.parse(challenge.cellTemplate ?? []);
+      if (cells.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Add at least one task before publishing the hackathon.",
+        });
+      }
+
+      const payload = await getPayloadClient();
+      await payload.update({
+        collection: "challenges",
+        id: input.challengeId,
+        data: { status: "active" },
+      });
+      await payload.update({
+        collection: "events",
+        id: input.eventId,
+        data: { status: "published" },
+      });
+      return { published: true };
+    }),
+
+  /**
    * Bind a hackathon event to a challenge — the act that makes the challenge
    * team-based (ADR-0029). Sponsor-scoped; enforces the communityId invariant.
    * The event must be published, not already running a different challenge, and
