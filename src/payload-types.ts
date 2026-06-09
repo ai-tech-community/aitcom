@@ -747,35 +747,37 @@ export interface Challenge {
      */
     colabUrl?: string | null;
   };
-  objectives: {
-    description: string;
-    verification: 'platform-action' | 'test' | 'self-report' | 'peer-review';
-    /**
-     * Only for platform-action verification.
-     */
-    action?: ('thread.reply' | 'thread.create' | 'knowledge.share' | 'idea.submitted' | 'idea.voted') | null;
-    /**
-     * Regex matching test names/files for test verification.
-     */
-    testPattern?: string | null;
-    /**
-     * How many times this must be completed. For tests, usually 1.
-     */
-    targetCount: number;
-    /**
-     * Optional scope filter for platform-action, e.g. { "category": "question" }.
-     */
-    filter?:
-      | {
-          [k: string]: unknown;
-        }
-      | unknown[]
-      | string
-      | number
-      | boolean
-      | null;
-    id?: string | null;
-  }[];
+  objectives?:
+    | {
+        description: string;
+        verification: 'platform-action' | 'test' | 'self-report' | 'peer-review';
+        /**
+         * Only for platform-action verification.
+         */
+        action?: ('thread.reply' | 'thread.create' | 'knowledge.share' | 'idea.submitted' | 'idea.voted') | null;
+        /**
+         * Regex matching test names/files for test verification.
+         */
+        testPattern?: string | null;
+        /**
+         * How many times this must be completed. For tests, usually 1.
+         */
+        targetCount: number;
+        /**
+         * Optional scope filter for platform-action, e.g. { "category": "question" }.
+         */
+        filter?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        id?: string | null;
+      }[]
+    | null;
   rewards: {
     /**
      * XP awarded on completion.

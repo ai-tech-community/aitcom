@@ -37,11 +37,13 @@ interface ChallengeCardProps {
       badgeReward?: string | null;
       sponsorReward?: string | null;
     };
-    objectives: {
-      description: string;
-      action?: string | null;
-      targetCount: number;
-    }[];
+    objectives?:
+      | {
+          description: string;
+          action?: string | null;
+          targetCount: number;
+        }[]
+      | null;
     tags?: unknown;
     collaborationModel?: string | null;
     generatedBy?: string | null;
@@ -161,7 +163,7 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
         <div className="mt-4">
           <ChallengeProgress
             challengeId={challenge.id}
-            objectives={challenge.objectives}
+            objectives={challenge.objectives ?? []}
           />
         </div>
       )}
