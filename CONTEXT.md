@@ -87,6 +87,134 @@ jobs, blog/articles, challenges, impact, benchmark, investigations. A
 **Community admin**'s primary content levers are the per-Community instances
 of these surfaces.
 
+### Community feed
+
+The community **home** discussion surface (`/communities/<slug>`): a
+Skool-style stream of short posts with **likes** and comments. Distinct from
+the [[forum]], a separate threaded surface. The two overlap heavily; the
+deliberate direction is that the **feed is the canonical discussion home** and
+the forum is **frozen** (no new investment) pending an eventual fold-in — the
+feed is where [[topic]]s, pins, and future engagement levers live. See
+[[adr-0026-feed-is-the-canonical-discussion-surface]].
+
+### Forum
+
+A threaded discussion surface (`/communities/<slug>/forum`) with replies,
+admin **pins**, ideas+voting, a rules-acceptance gate, and a fixed
+`category` enum (`general | question | showcase | job`) — a *structural thread
+type*, **not** an admin-branded label (contrast [[topic]]). Load-bearing today:
+[[ritual]]s materialize as forum threads and the [[greeter]] queue reads it.
+**Frozen** in favour of the [[community-feed]]; threads/rituals/ideas are
+expected to migrate onto the feed in a later, separate step.
+
+### Topic
+
+A per-[[Community]] admin-defined label that organizes the [[community-feed]]
+— the branded chip a member filters by on the community home (e.g. "Wins",
+"Resources", "Support Needed"). Each feed post belongs to **exactly one**
+Topic; a seeded **"General"** Topic is the always-valid default so every post
+has a home. Topics are **pure labels**: they name and filter, carrying **no**
+posting permission or access gating (posting rights stay the feed-level
+`feedPostPolicy`; a per-Topic post policy is a deliberate future extension, not
+launched). Capped (~10) per community to keep the chip row legible. Not the
+[[forum]]'s `category` enum — that is a frozen structural thread type, never an
+admin-branded label, and the two must not be conflated.
+
+### Community links
+
+An admin-curated list of labelled links shown in the [[community-feed]] home
+**sidebar card**, alongside community stats (members, admins, active-this-week
+— deliberately **no "online"/presence** count, which there is no infra for).
+Each link points anywhere — an external URL, a pinned feed post, a [[topic]]
+filter, or a [[course]]. This is the realization of "links to important
+topics". Edited in community settings; the card renders on the community home
+only (the persistent header already carries cross-tab identity).
+
+### Classroom
+
+A structured-learning [[shared-surface]] of **member-created** [[course]]s of
+video [[lesson]]s, per-[[Community]]. Unlike Skool's owner-only courses, **any
+active member may build a classroom** (the [[Community]]'s
+`classroomCreatePolicy` may restrict creation to admins). The authoring model
+mirrors [[launchpad]], **not** [[articles]]: a course is **published
+immediately by its creator with no pre-review** (post-hoc moderation), the
+creator owns and edits it, and mods/admins may unpublish or remove it.
+**Distinct from [[articles]]/blog** (curated, single published pieces, public
+RSS/review lifecycle) and from [[launchpad]] (single projects) by its one
+irreducible feature: **ordered, multi-lesson structure with per-member
+progress** — a series you work through, which neither articles nor launchpad
+can express. See [[adr-0027-classroom-is-member-authored-ordered-curriculum]].
+
+### Course
+
+An ordered, **flat** collection of [[lesson]]s in the [[classroom]] (no modules
+at launch; a grouping level may be added later without a breaking migration),
+**created and owned by any active [[Community]] member** (subject to
+`classroomCreatePolicy`) and published immediately. **Members-only by default**;
+a course becomes **public only when an admin/mod promotes it** — a creator
+cannot self-publish to the open web. A member [[course-enrollment|enrolls]]
+explicitly; their per-lesson completions yield a course **progress %**. A member
+has **passed the course** when **every** lesson is complete — i.e. every
+mandatory [[lesson-exam]] was cleared at its own threshold and the rest are
+self-reported done (progress 100% ⇒ passed). Course-pass is
+**completion-derived**, never an aggregate of exam scores: a learner can never
+be "course-passed" while a lesson with a mandatory exam is still unpassed. A
+true course-wide score gate, if ever needed, would be a separate **optional
+course-level final exam** (its own threshold), not an average of lesson scores. The
+popularity signal is the **distinct-enrollment count** (no separate up-vote —
+that is [[launchpad]]'s job). The creator earns small **Hub-global XP per
+distinct member enrollment** (others valuing the work, like
+`LAUNCHPAD_RECEIVE_VOTE`); **creating a course earns no XP** (would reward
+spam under the no-pre-review model).
+
+### Course enrollment
+
+An explicit join row recording that a member has enrolled in a [[course]] —
+the successor concept to "just start watching". It powers the member's "My
+Classrooms" list, the per-member [[course]] progress bar, and the
+distinct-enrollment popularity/XP signal. Modelled on [[event]] registration
+(an explicit join), not inferred from first lesson completion.
+
+### Lesson
+
+One unit of a [[course]]: a title, an **embedded or referenced YouTube**
+video (no native video hosting), a rich-text body, and a list of resource
+links. An enrolled member marks a lesson complete; completion is
+**self-reported** and drives the [[course]] progress bar but **earns no XP** —
+self-reported completion is trivially farmable, consistent with the
+verification-gated XP rule on [[work-cell]]s. Authored by the course's creator
+(any active member), not restricted to admins. A lesson may carry a
+[[lesson-exam]], which — when **mandatory** — converts that lesson's completion
+from self-reported to **verified** (passing the exam is the only path to the
+checkmark).
+
+### Lesson exam
+
+An author-created assessment attached to a [[lesson]] that a learner must pass
+to complete the lesson. Has a **mandatory** flag: **mandatory** = passing is the
+*only* way to mark the lesson complete (completion becomes **verified**, not
+self-reported); **not mandatory** = a self-check the learner may take for
+feedback, with self-reported completion still available. A mandatory un-passed
+exam blocks **its own lesson's completion only** — it does **not** hard-lock
+later lessons (the [[course]] stays flat and browsable), but the gated lessons
+must be genuinely passed before they count toward progress. A verified
+(exam-gated) completion still earns the learner **no Hub-global XP** at launch —
+the exam verifies the *response* but not the *bar* (the author writes it with no
+pre-review), so it gates local outcomes only, never reputation. See
+[[adr-0028-lesson-exam-gates-completion-not-reputation]].
+
+### Course certificate
+
+A **course-local credential** issued to a learner when they have
+[[course|passed the course]] (every lesson complete, every mandatory
+[[lesson-exam]] cleared). A shareable "Completed <Course>" record stamped with
+the date, course, and authoring [[Community]] — the motivational payoff that
+makes a mandatory exam worth sitting (the counterpart to the deliberate **no
+learner XP**). Deliberately **not** a `member_badge` or any Hub-global
+reputation item: like exam-pass XP, it is gated only on a member-authored,
+un-reviewed exam, so it stays a local credential and never feeds reputation
+([[adr-0028-lesson-exam-gates-completion-not-reputation]]).
+
 ### Hackathon
 
 The **composition of an Event and a Challenge** — not a new swallowing entity.

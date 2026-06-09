@@ -6,6 +6,7 @@ import { logActivity } from "@/server/agent/activity";
 import { and, eq, isNull, inArray } from "drizzle-orm";
 import { communities, communityMemberships, user } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { MAX_PINS } from "@/lib/feed-sort";
 
 export const feedRouter = createTRPCRouter({
   // ── getFeed ─────────────────────────────────────────────────────────────────
@@ -15,6 +16,7 @@ export const feedRouter = createTRPCRouter({
         communitySlug: z.string(),
         limit: z.number().min(1).max(50).default(20),
         cursor: z.object({ createdAt: z.string(), id: z.number() }).optional(),
+        topicSlug: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -67,10 +69,22 @@ export const feedRouter = createTRPCRouter({
         });
       }
 
+      if (input.topicSlug && input.topicSlug !== "all") {
+        (whereClause.and as unknown[]).push({
+          topicSlug: { equals: input.topicSlug },
+        });
+      }
+
       const { docs } = await payload.find({
         collection: "feed-posts",
         where: whereClause as Parameters<typeof payload.find>[0]["where"],
-        sort: "-createdAt",
+        // Pinned-first only on the unfiltered first page: the keyset cursor
+        // compares (createdAt,id) only, so mixing -isPinned into paginated
+        // sorts would duplicate old-but-pinned posts across "load more".
+        sort:
+          (!input.topicSlug || input.topicSlug === "all") && !input.cursor
+            ? "-isPinned,-createdAt"
+            : "-createdAt",
         limit: input.limit + 1,
         depth: 0,
       });
@@ -147,6 +161,7 @@ export const feedRouter = createTRPCRouter({
         communitySlug: z.string(),
         content: z.string().min(1).max(2000),
         imageUrl: z.string().url().optional(),
+        topicSlug: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -199,6 +214,7 @@ export const feedRouter = createTRPCRouter({
           communityId: community.id,
           likeCount: 0,
           commentCount: 0,
+          topicSlug: input.topicSlug ?? "general",
         },
       });
 
@@ -303,6 +319,67 @@ export const feedRouter = createTRPCRouter({
           imageUrl: null,
         },
       });
+    }),
+
+  // ── pinPost ─────────────────────────────────────────────────────────────────
+  pinPost: protectedProcedure
+    .input(z.object({ postId: z.number(), isPinned: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const post = await payload.findByID({
+        collection: "feed-posts",
+        id: input.postId,
+        depth: 0,
+      });
+      if (!post || post.isDeleted) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
+      }
+
+      if (post.communityId) {
+        const membership = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, post.communityId),
+            eq(communityMemberships.userId, ctx.session.user.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        });
+        if (
+          !membership ||
+          (membership.role !== "owner" &&
+            membership.role !== "admin" &&
+            membership.role !== "moderator")
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Only moderators can pin posts",
+          });
+        }
+      }
+
+      if (input.isPinned) {
+        const { totalDocs } = await payload.find({
+          collection: "feed-posts",
+          where: {
+            and: [
+              { communityId: { equals: post.communityId } },
+              { isPinned: { equals: true } },
+              { isDeleted: { not_equals: true } },
+            ],
+          },
+          limit: 0,
+          depth: 0,
+        });
+        if (totalDocs >= MAX_PINS) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "PIN_CAP_REACHED" });
+        }
+      }
+
+      await payload.update({
+        collection: "feed-posts",
+        id: input.postId,
+        data: { isPinned: input.isPinned },
+      });
+      return { ok: true };
     }),
 
   // ── toggleLike ──────────────────────────────────────────────────────────────

@@ -41,6 +41,11 @@ import * as migration_20260531f_acquire from "./20260531f_acquire";
 import * as migration_20260601a_agent_manifest_acceptance from "./20260601a_agent_manifest_acceptance";
 import * as migration_20260601b_invite_role_target_email from "./20260601b_invite_role_target_email";
 import * as migration_20260604a_work_grid_commission from "./20260604a_work_grid_commission";
+import * as migration_20260608a_feed_topics_pins_links from "./20260608a_feed_topics_pins_links";
+import * as migration_20260608b_classrooms from "./20260608b_classrooms";
+import * as migration_20260608c_course_cover from "./20260608c_course_cover";
+import * as migration_20260608d_locked_docs_rels from "./20260608d_locked_docs_rels";
+import * as migration_20260608e_lesson_exams from "./20260608e_lesson_exams";
 
 export const migrations = [
   {
@@ -257,5 +262,30 @@ export const migrations = [
     up: migration_20260604a_work_grid_commission.up,
     down: migration_20260604a_work_grid_commission.down,
     name: "20260604a_work_grid_commission",
+  },
+  {
+    up: migration_20260608a_feed_topics_pins_links.up,
+    down: migration_20260608a_feed_topics_pins_links.down,
+    name: "20260608a_feed_topics_pins_links",
+  },
+  {
+    up: migration_20260608b_classrooms.up,
+    down: migration_20260608b_classrooms.down,
+    name: "20260608b_classrooms",
+  },
+  {
+    up: migration_20260608c_course_cover.up,
+    down: migration_20260608c_course_cover.down,
+    name: "20260608c_course_cover",
+  },
+  {
+    up: migration_20260608d_locked_docs_rels.up,
+    down: migration_20260608d_locked_docs_rels.down,
+    name: "20260608d_locked_docs_rels",
+  },
+  {
+    up: migration_20260608e_lesson_exams.up,
+    down: migration_20260608e_lesson_exams.down,
+    name: "20260608e_lesson_exams",
   },
 ];

@@ -79,6 +79,8 @@ export interface Config {
     'feed-posts': FeedPost;
     'feed-comments': FeedComment;
     'feed-likes': FeedLike;
+    'community-topics': CommunityTopic;
+    'community-links': CommunityLink;
     challenges: Challenge;
     pages: Page;
     media: Media;
@@ -92,6 +94,8 @@ export interface Config {
     'benchmark-prompts': BenchmarkPrompt;
     brands: Brand;
     'brand-alias-queue': BrandAliasQueue;
+    courses: Course;
+    lessons: Lesson;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -112,6 +116,8 @@ export interface Config {
     'feed-posts': FeedPostsSelect<false> | FeedPostsSelect<true>;
     'feed-comments': FeedCommentsSelect<false> | FeedCommentsSelect<true>;
     'feed-likes': FeedLikesSelect<false> | FeedLikesSelect<true>;
+    'community-topics': CommunityTopicsSelect<false> | CommunityTopicsSelect<true>;
+    'community-links': CommunityLinksSelect<false> | CommunityLinksSelect<true>;
     challenges: ChallengesSelect<false> | ChallengesSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
@@ -125,6 +131,8 @@ export interface Config {
     'benchmark-prompts': BenchmarkPromptsSelect<false> | BenchmarkPromptsSelect<true>;
     brands: BrandsSelect<false> | BrandsSelect<true>;
     'brand-alias-queue': BrandAliasQueueSelect<false> | BrandAliasQueueSelect<true>;
+    courses: CoursesSelect<false> | CoursesSelect<true>;
+    lessons: LessonsSelect<false> | LessonsSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -579,6 +587,14 @@ export interface FeedPost {
   authorId: string;
   authorName?: string | null;
   communityId?: string | null;
+  /**
+   * Slug of the community-topics row this post belongs to. 'general' by default.
+   */
+  topicSlug?: string | null;
+  /**
+   * Pinned posts appear first on the All view.
+   */
+  isPinned?: boolean | null;
   likeCount?: number | null;
   commentCount?: number | null;
   isDeleted?: boolean | null;
@@ -619,6 +635,45 @@ export interface FeedLike {
    * Better Auth user ID (UUID).
    */
   userId: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Admin-defined feed topics (chip filters) for one community.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-topics".
+ */
+export interface CommunityTopic {
+  id: number;
+  label: string;
+  slug: string;
+  emoji?: string | null;
+  /**
+   * Community this topic belongs to.
+   */
+  communityId: string;
+  sortOrder?: number | null;
+  /**
+   * The seeded 'General' topic; cannot be deleted.
+   */
+  isDefault?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Admin-curated sidebar links for one community.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-links".
+ */
+export interface CommunityLink {
+  id: number;
+  label: string;
+  url: string;
+  emoji?: string | null;
+  communityId: string;
+  sortOrder?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1085,6 +1140,97 @@ export interface BrandAliasQueue {
   createdAt: string;
 }
 /**
+ * Member-created classroom courses.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "courses".
+ */
+export interface Course {
+  id: number;
+  title: string;
+  slug: string;
+  summary?: string | null;
+  /**
+   * S3 cover image URL (uploaded via /api/upload).
+   */
+  coverImageUrl?: string | null;
+  /**
+   * Better Auth user ID.
+   */
+  authorId: string;
+  authorName?: string | null;
+  status: 'draft' | 'published' | 'archived';
+  communityId: string;
+  /**
+   * Admin-promoted: visible to non-members.
+   */
+  isPublic?: boolean | null;
+  enrollmentCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Lessons within a course.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "lessons".
+ */
+export interface Lesson {
+  id: number;
+  /**
+   * courses.id
+   */
+  course: number;
+  title: string;
+  order?: number | null;
+  youtubeUrl?: string | null;
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  examMandatory?: boolean | null;
+  /**
+   * Percent (0–100) required to pass.
+   */
+  examPassThreshold?: number | null;
+  /**
+   * 0 = unlimited attempts.
+   */
+  examMaxAttempts?: number | null;
+  /**
+   * Array of { id, prompt, type, options[], correctIndex }. Authored via the custom lesson editor.
+   */
+  examQuestions?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  resources?:
+    | {
+        label: string;
+        url: string;
+        id?: string | null;
+      }[]
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -1157,6 +1303,14 @@ export interface PayloadLockedDocument {
         value: number | FeedLike;
       } | null)
     | ({
+        relationTo: 'community-topics';
+        value: number | CommunityTopic;
+      } | null)
+    | ({
+        relationTo: 'community-links';
+        value: number | CommunityLink;
+      } | null)
+    | ({
         relationTo: 'challenges';
         value: number | Challenge;
       } | null)
@@ -1207,6 +1361,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'brand-alias-queue';
         value: number | BrandAliasQueue;
+      } | null)
+    | ({
+        relationTo: 'courses';
+        value: number | Course;
+      } | null)
+    | ({
+        relationTo: 'lessons';
+        value: number | Lesson;
       } | null)
     | ({
         relationTo: 'users';
@@ -1471,6 +1633,8 @@ export interface FeedPostsSelect<T extends boolean = true> {
   authorId?: T;
   authorName?: T;
   communityId?: T;
+  topicSlug?: T;
+  isPinned?: T;
   likeCount?: T;
   commentCount?: T;
   isDeleted?: T;
@@ -1502,6 +1666,33 @@ export interface FeedCommentsSelect<T extends boolean = true> {
 export interface FeedLikesSelect<T extends boolean = true> {
   post?: T;
   userId?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-topics_select".
+ */
+export interface CommunityTopicsSelect<T extends boolean = true> {
+  label?: T;
+  slug?: T;
+  emoji?: T;
+  communityId?: T;
+  sortOrder?: T;
+  isDefault?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "community-links_select".
+ */
+export interface CommunityLinksSelect<T extends boolean = true> {
+  label?: T;
+  url?: T;
+  emoji?: T;
+  communityId?: T;
+  sortOrder?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1788,6 +1979,48 @@ export interface BrandAliasQueueSelect<T extends boolean = true> {
   status?: T;
   reviewedByUser?: T;
   reviewedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "courses_select".
+ */
+export interface CoursesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  summary?: T;
+  coverImageUrl?: T;
+  authorId?: T;
+  authorName?: T;
+  status?: T;
+  communityId?: T;
+  isPublic?: T;
+  enrollmentCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "lessons_select".
+ */
+export interface LessonsSelect<T extends boolean = true> {
+  course?: T;
+  title?: T;
+  order?: T;
+  youtubeUrl?: T;
+  body?: T;
+  examMandatory?: T;
+  examPassThreshold?: T;
+  examMaxAttempts?: T;
+  examQuestions?: T;
+  resources?:
+    | T
+    | {
+        label?: T;
+        url?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }

@@ -36,6 +36,9 @@ import { acquireConfigRouter } from "@/server/api/routers/acquireConfig";
 import { referralRouter } from "@/server/api/routers/referral";
 import { onboardingStepsRouter } from "@/server/api/routers/onboardingSteps";
 import { workGridRouter } from "@/server/api/routers/work-grid";
+import { topicsRouter } from "@/server/api/routers/topics";
+import { linksRouter } from "@/server/api/routers/links";
+import { classroomsRouter } from "@/server/api/routers/classrooms";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -82,6 +85,9 @@ export const appRouter = createTRPCRouter({
   onboardingSteps: onboardingStepsRouter,
   acquireConfig: acquireConfigRouter,
   workGrid: workGridRouter,
+  topics: topicsRouter,
+  links: linksRouter,
+  classrooms: classroomsRouter,
 });
 
 // export type definition of API

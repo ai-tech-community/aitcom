@@ -27,11 +27,15 @@ import { Comments } from "./collections/Comments";
 import { FeedPosts } from "./collections/FeedPosts";
 import { FeedComments } from "./collections/FeedComments";
 import { FeedLikes } from "./collections/FeedLikes";
+import { CommunityTopics } from "./collections/CommunityTopics";
+import { CommunityLinks } from "./collections/CommunityLinks";
 import { BenchmarkCategories } from "./collections/BenchmarkCategories";
 import { BenchmarkIntents } from "./collections/BenchmarkIntents";
 import { BenchmarkPrompts } from "./collections/BenchmarkPrompts";
 import { Brands } from "./collections/Brands";
 import { BrandAliasQueue } from "./collections/BrandAliasQueue";
+import { Courses } from "./collections/Courses";
+import { Lessons } from "./collections/Lessons";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
   if (!connectionString) {
@@ -80,6 +84,8 @@ export default buildConfig({
     FeedPosts,
     FeedComments,
     FeedLikes,
+    CommunityTopics,
+    CommunityLinks,
     Challenges,
     Pages,
     Media,
@@ -93,6 +99,8 @@ export default buildConfig({
     BenchmarkPrompts,
     Brands,
     BrandAliasQueue,
+    Courses,
+    Lessons,
     {
       slug: "users",
       auth: {
