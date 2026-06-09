@@ -1194,6 +1194,7 @@ export const challengeEnrollments = appSchema.table(
       .notNull()
       .references(() => user.id),
     progressLogThreadId: d.varchar({ length: 255 }), // FK → challengeThreads.id (set after creation)
+    teamId: d.varchar({ length: 255 }).references(() => teams.id), // nullable: set when the enrollment joins a team (ADR-0029)
     enrolledAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -1210,6 +1211,7 @@ export const challengeEnrollments = appSchema.table(
     index("enrollment_challenge_idx").on(t.challengeId),
     index("enrollment_user_idx").on(t.userId),
     uniqueIndex("enrollment_user_challenge_uidx").on(t.userId, t.challengeId),
+    index("enrollment_team_idx").on(t.teamId),
   ],
 );
 
@@ -1219,6 +1221,11 @@ export const challengeEnrollmentRelations = relations(
     user: one(user, {
       fields: [challengeEnrollments.userId],
       references: [user.id],
+    }),
+    // Inverse of teams.members (ADR-0029): the team this enrollment belongs to.
+    team: one(teams, {
+      fields: [challengeEnrollments.teamId],
+      references: [teams.id],
     }),
     progress: many(challengeProgress),
     testResults: many(challengeTestResults),
@@ -1501,6 +1508,61 @@ export const agentCommissionsRelations = relations(
   }),
 );
 
+// Teams (a grouping over enrollments that enters a hackathon as one unit — ADR-0029)
+export const teams = appSchema.table(
+  "team",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    challengeId: d.integer().notNull(), // References Payload challenges table
+    eventId: d.integer().notNull(), // The bound hackathon event (denormalised for db-only join/leave)
+    name: d.varchar({ length: 100 }).notNull(),
+    captainId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    joinCode: d.varchar({ length: 20 }).notNull(),
+    maxSize: d.integer().notNull().default(5),
+    status: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("forming")
+      .$type<"forming" | "locked" | "disbanded">(),
+    // Plan 2 (judging): the captain's submission freeze + the sponsor's finalize.
+    submittedAt: d.timestamp({ withTimezone: true }),
+    artifactUrl: d.varchar({ length: 2048 }),
+    artifactSummary: d.text(),
+    score: d.integer(),
+    finalRank: d.integer(),
+    prizeAwardedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("team_challenge_idx").on(t.challengeId),
+    index("team_captain_idx").on(t.captainId),
+    uniqueIndex("team_join_code_uidx").on(t.joinCode),
+  ],
+);
+
+export const teamsRelations = relations(teams, ({ one, many }) => ({
+  captain: one(user, {
+    fields: [teams.captainId],
+    references: [user.id],
+  }),
+  members: many(challengeEnrollments),
+}));
+
 // Work grids (decompose one problem into independent claimable cells — ADR-0023)
 export const workGrids = appSchema.table(
   "work_grid",
@@ -1512,6 +1574,7 @@ export const workGrids = appSchema.table(
       .$defaultFn(() => crypto.randomUUID()),
     challengeId: d.integer(), // nullable: non-challenge grids (e.g. one-cell "polish a message")
     communityId: d.varchar({ length: 255 }),
+    teamId: d.varchar({ length: 255 }).references(() => teams.id), // nullable: set for a competitive (per-team) grid (ADR-0029)
     mode: d
       .varchar({ length: 20 })
       .notNull()
@@ -1535,6 +1598,7 @@ export const workGrids = appSchema.table(
   (t) => [
     index("work_grid_challenge_idx").on(t.challengeId),
     index("work_grid_community_idx").on(t.communityId),
+    index("work_grid_team_idx").on(t.teamId),
     index("work_grid_status_idx").on(t.status),
   ],
 );

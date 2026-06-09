@@ -18,6 +18,7 @@ import {
   agentCommissions,
   communityMemberships,
   challengeEnrollments,
+  teams,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import type { CommunityRole } from "@/server/communities/role-utils";
@@ -140,6 +141,26 @@ async function ownerEnrolledInChallenge(
   return enrollment !== undefined;
 }
 
+// Competitive source scope (ADR-0029): an owner is "on" a team iff they hold an
+// active enrollment carrying that teamId. Team membership ⊂ challenge enrollment,
+// so this is strictly tighter than the challenge source-scope check — a
+// competitive cell is claimable only by the grid's own team, never by any other
+// member enrolled in the same hackathon challenge.
+async function ownerOnTeam(
+  db: typeof import("@/server/db").db,
+  ownerId: string,
+  teamId: string,
+) {
+  const enrollment = await db.query.challengeEnrollments.findFirst({
+    where: and(
+      eq(challengeEnrollments.userId, ownerId),
+      eq(challengeEnrollments.teamId, teamId),
+      eq(challengeEnrollments.status, "active"),
+    ),
+  });
+  return enrollment !== undefined;
+}
+
 /**
  * Community-scoped analogue of [[ownerEnrolledInChallenge]]: for a
  * community-scoped cell, the commission owner must hold an *active* membership
@@ -208,7 +229,7 @@ export const workGridRouter = createTRPCRouter({
       }
 
       const conditions = [
-        eq(workGrids.mode, "collaborative"),
+        inArray(workGrids.mode, ["collaborative", "competitive"]),
         eq(workGrids.status, "active"),
         inArray(workCells.status, ["pending", "requeued"]),
         inArray(workCells.taskType, commission.taskTypeAllowlist),
@@ -220,6 +241,8 @@ export const workGridRouter = createTRPCRouter({
       const rows = await ctx.db
         .select({
           cell: workCells,
+          gridMode: workGrids.mode,
+          gridTeamId: workGrids.teamId,
           gridChallengeId: workGrids.challengeId,
           gridCommunityId: workGrids.communityId,
         })
@@ -275,14 +298,36 @@ export const workGridRouter = createTRPCRouter({
         }),
       ]);
 
+      // Competitive cells (ADR-0029) are claimable only by the grid's own team.
+      const teamIds = [
+        ...new Set(
+          rows
+            .filter((r) => r.gridMode === "competitive")
+            .map((r) => r.gridTeamId)
+            .filter((id): id is string => id !== null),
+        ),
+      ];
+      const memberTeamIds = new Set<string>();
+      await Promise.all(
+        teamIds.map(async (teamId) => {
+          if (await ownerOnTeam(ctx.db, commission.ownerId, teamId)) {
+            memberTeamIds.add(teamId);
+          }
+        }),
+      );
+
       return rows
-        .filter(
-          (r) =>
+        .filter((r) => {
+          if (r.gridMode === "competitive") {
+            return r.gridTeamId !== null && memberTeamIds.has(r.gridTeamId);
+          }
+          return (
             (r.gridChallengeId !== null &&
               enrolledChallengeIds.has(r.gridChallengeId)) ||
             (r.gridCommunityId !== null &&
-              memberCommunityIds.has(r.gridCommunityId)),
-        )
+              memberCommunityIds.has(r.gridCommunityId))
+          );
+        })
         .map((r) => r.cell);
     }),
 
@@ -307,6 +352,7 @@ export const workGridRouter = createTRPCRouter({
           cell: workCells,
           gridMode: workGrids.mode,
           gridStatus: workGrids.status,
+          gridTeamId: workGrids.teamId,
           gridChallengeId: workGrids.challengeId,
           gridCommunityId: workGrids.communityId,
         })
@@ -321,15 +367,22 @@ export const workGridRouter = createTRPCRouter({
       const cell = row.cell;
 
       // Grid eligibility: claim-by-cellId must agree with listClaimable, which
-      // only exposes cells from an ACTIVE COLLABORATIVE grid. Without this a cell
-      // in a completed/abandoned (or non-collaborative) grid would be directly
-      // claimable by id (ADR-0023: only collaborative grids are claimable, and a
-      // self-healing pull queue stops dispatching once its grid is no longer
-      // active).
-      if (row.gridMode !== "collaborative" || row.gridStatus !== "active") {
+      // only exposes cells from an ACTIVE collaborative OR competitive grid.
+      // Without this a cell in a completed/abandoned grid would be directly
+      // claimable by id (ADR-0023: a self-healing pull queue stops dispatching
+      // once its grid is no longer active; ADR-0029: competitive grids are
+      // claimable but only by the grid's own team, enforced in the scope block
+      // below).
+      if (row.gridStatus !== "active") {
         throw new TRPCError({
           code: "CONFLICT",
-          message: "Grid is not an active collaborative grid",
+          message: "Grid is not active",
+        });
+      }
+      if (row.gridMode !== "collaborative" && row.gridMode !== "competitive") {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "Grid mode is not claimable",
         });
       }
 
@@ -348,7 +401,22 @@ export const workGridRouter = createTRPCRouter({
       // membership in that community (SEC-1: the community scope previously had
       // no firebreak, so any commissioned agent platform-wide could claim another
       // community's cells).
-      if (row.gridChallengeId !== null) {
+      if (row.gridMode === "competitive") {
+        // Competitive grids (ADR-0029): claimable ONLY by the grid's own team —
+        // challenge enrollment alone is not enough, or a rival could raid the grid.
+        if (row.gridTeamId === null) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Competitive grid has no team scope",
+          });
+        }
+        if (!(await ownerOnTeam(ctx.db, commission.ownerId, row.gridTeamId))) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not a member of this grid's team",
+          });
+        }
+      } else if (row.gridChallengeId !== null) {
         if (
           !(await ownerEnrolledInChallenge(
             ctx.db,

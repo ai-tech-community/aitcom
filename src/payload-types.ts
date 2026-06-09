@@ -259,6 +259,10 @@ export interface Event {
   status: 'draft' | 'published' | 'cancelled' | 'completed' | 'rejected';
   communityId?: string | null;
   /**
+   * ID of the Challenge this event runs as a hackathon. Set this to bind an event-challenge (the binding is the team-based discriminator, ADR-0029). Must share the challenge's communityId.
+   */
+  challengeId?: string | null;
+  /**
    * User ID of the community member who submitted this event for review.
    */
   submittedBy?: string | null;
@@ -590,7 +594,7 @@ export interface FeedPost {
   /**
    * Slug of the community-topics row this post belongs to. 'general' by default.
    */
-  topicSlug?: string | null;
+  topicSlug: string;
   /**
    * Pinned posts appear first on the All view.
    */
@@ -785,6 +789,25 @@ export interface Challenge {
      * Sponsor-provided reward description (prizes, interviews, licenses).
      */
     sponsorReward?: string | null;
+  };
+  /**
+   * Hackathon work-cell decomposition. Each entry becomes one pending cell in every team's competitive grid when rosters lock (ADR-0029/0023). Leave empty for non-hackathon challenges.
+   */
+  cellTemplate?:
+    | {
+        description: string;
+        taskType: string;
+        verificationMode: 'platform-action' | 'test' | 'self-report' | 'peer-review' | 'consensus';
+        deadlineMinutes: number;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Hackathon team-size bounds (ADR-0029). Only meaningful for a challenge bound to a hackathon event; ignored otherwise.
+   */
+  teamConfig?: {
+    minTeamSize?: number | null;
+    maxTeamSize?: number | null;
   };
   /**
    * 0 = unlimited.
@@ -1462,6 +1485,7 @@ export interface EventsSelect<T extends boolean = true> {
   speakers?: T;
   status?: T;
   communityId?: T;
+  challengeId?: T;
   submittedBy?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1737,6 +1761,21 @@ export interface ChallengesSelect<T extends boolean = true> {
         xpReward?: T;
         badgeReward?: T;
         sponsorReward?: T;
+      };
+  cellTemplate?:
+    | T
+    | {
+        description?: T;
+        taskType?: T;
+        verificationMode?: T;
+        deadlineMinutes?: T;
+        id?: T;
+      };
+  teamConfig?:
+    | T
+    | {
+        minTeamSize?: T;
+        maxTeamSize?: T;
       };
   maxParticipants?: T;
   tags?: T;

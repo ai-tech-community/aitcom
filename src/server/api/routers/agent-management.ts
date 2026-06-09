@@ -846,6 +846,7 @@ export const agentManagementRouter = createTRPCRouter({
             authorId: userId,
             authorName: ctx.session.user.name ?? "Community member",
             communityId: draft.targetId,
+            topicSlug: "general",
           },
         });
       }

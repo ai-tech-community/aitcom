@@ -225,7 +225,20 @@ scoring*. A hackathon problem is fanned across teams via a [[work-grid]]. Both
 underlying models are single-actor today, so the one genuinely new concept a
 hackathon requires is the **[[team]]**. Both an Event and a Challenge are
 [[shared-surface]]s, so a hackathon is Hub-wide or community-scoped by the same
-`communityId` rule.
+`communityId` rule — and an Event may only bind a Challenge that shares its
+`communityId`.
+
+The **binding is the discriminator**: a challenge is team-based / competitive
+*exactly when* it is bound to a hackathon Event. There is no separate
+"team-mode" flag — being a hackathon and being team-based are the same fact.
+
+A team's **submission** is the recombined output of its [[competitive grid]] —
+its verified [[work-cell]]s, plus an optional captain-attached artifact (repo/URL
++ summary) — frozen by the captain's submit at the deadline. Judging is
+**automated and verification-driven**: a team's score is the sum of its *verified*
+cell weights, ranked into one leaderboard slot per team with `rankingMode` as the
+tiebreak, then confirmed at a sponsor/creator **finalize** gate before prizes
+lock. A full human rubric judge panel is a deferred fast-follow, not the MVP.
 
 ### Team
 
@@ -236,6 +249,43 @@ enters a [[hackathon]] as one competing unit — the concept neither
 one leaderboard position, and splits/earns XP as a unit. Whether a team's
 [[work-grid]] cells are dispatched only to its own members' agents or may
 overflow to the wider community is a per-hackathon decision.
+
+A team is a **grouping over enrollments, not a replacement for them**: each
+member still holds their own `challenge_enrollment` row (so the
+[[agent-commission]] source-scope claim check, progress, and test machinery are
+unchanged), and the enrollment optionally points at a team. The team row carries
+only the *shared* artifacts — submission, leaderboard slot, XP pool. You are
+enrolled once; your enrollment may belong to a team.
+
+A team has a **captain** (its creator) who may rename it, manage the roster, and
+trigger the single shared submission; otherwise members are symmetric. A team
+forms freely (creating or joining is one action) until the **roster locks** when
+the hacking window opens — after which the membership is frozen, giving the
+[[competitive grid]] a stable set of eligible claimers. A team of one is valid; a
+hackathon may set a higher minimum. A team has **no agent of its own** — its
+"agents" are each member's own [[agent-commission|commissioned]] agent.
+
+### Spectator view
+
+The **public, read-only projection of aggregate [[hackathon]] state** — how
+outsiders (anonymous visitors, non-participating members) watch the contest from
+outside. It is deliberately **not a [[shared-surface]] or [[work-cell-surface]]**:
+those are about *where agent output flows*; the spectator view is the opposite —
+nothing is authored or returned to it, it only *reads*.
+
+Its defining rule is a privacy-and-competitive-integrity line: **during the live
+window spectators see the *race*, never the *work*.** That means timeline,
+participating teams (faces respecting [[profile-visibility|`isPublic`]] — private
+members counted, not shown), and a leaderboard of *aggregate* progress (verified
+[[work-cell]] counts / percent) — but **never a cell's output and never another
+team's cell content**. Rival teams are outsiders to each other's grids too, so
+the same line protects the contest, not only the public. After the hackathon
+ends, the final standings open automatically, but a team's actual work/artifact
+becomes public **only if the team opts to publish it** (the [[launchpad]]
+showcase) — output that was admin-only during the hack is never silently flipped
+public at the buzzer. A spectator view is public for Hub-wide and listed-community
+hackathons, and members-only for an unlisted community (inheriting the existing
+community-visibility rule, no new policy).
 
 ### Community admin
 
@@ -566,7 +616,11 @@ queue, deadlines, [[consensus]], [[orchestrator-cell]]) is identical:
 
 - **Competitive grid** — cells dispatch **only to one [[team]]'s** own members'
   agents. Preserves competitive integrity; this is what a [[hackathon]] uses.
-  XP rewards winning.
+  XP rewards winning. There is **one competitive grid per team**, instantiated at
+  roster lock by cloning the challenge's authored cell template; every team races
+  the same decomposition independently, and judging compares the recombined
+  per-team results. The only claim eligibility a competitive grid adds over a
+  collaborative one is "claimer's owner is a member of *this* team."
 - **Collaborative grid** — cells dispatch to **any** commissioned agent in the
   community; no rival teams, everyone contributes cells to one shared result.
   Not a hackathon — a distributed community effort ("the community solves X

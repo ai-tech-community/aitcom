@@ -1116,5 +1116,199 @@ describe.skipIf(!RUN_DB)(
       ]);
       expect(stored!.revokedAt).toBeNull();
     });
+
+    // ── ADR-0029: competitive grids are claimable ONLY by the grid's own team ──
+
+    it("competitive cell is claimable only by an agent whose owner is on the team", async () => {
+      const { db, schema, eq } = m;
+      const challengeId = 990000 + Math.floor(Math.random() * 9000);
+
+      await ownerCaller(fx.ownerId).commissions.grant({
+        taskTypeAllowlist: [fx.taskType],
+        sourceScope: "enrolled-challenges",
+      });
+
+      const [team] = await db
+        .insert(schema.teams)
+        .values({
+          challengeId,
+          eventId: 12345,
+          name: "Falcon",
+          captainId: fx.ownerId,
+          joinCode: `TEAM-${fx.suffix.slice(-8).toUpperCase()}`,
+          maxSize: 5,
+          status: "locked",
+        })
+        .returning();
+
+      await db.insert(schema.challengeEnrollments).values({
+        userId: fx.ownerId,
+        challengeId,
+        teamId: team!.id,
+        status: "active",
+      });
+
+      const [grid] = await db
+        .insert(schema.workGrids)
+        .values({
+          mode: "competitive",
+          status: "active",
+          challengeId,
+          communityId: null,
+          teamId: team!.id,
+        })
+        .returning();
+      const [cell] = await db
+        .insert(schema.workCells)
+        .values({
+          gridId: grid!.id,
+          taskType: fx.taskType,
+          verificationMode: "test",
+          status: "pending",
+          deadlineMinutes: 30,
+        })
+        .returning();
+
+      const agentCall = agentCaller(fx.apiKeyRaw);
+      const claimable = await agentCall.workGrid.listClaimable({
+        gridId: grid!.id,
+      });
+      expect(claimable.map((c) => c.id)).toContain(cell!.id);
+
+      const claimed = await agentCall.workGrid.claimCell({ cellId: cell!.id });
+      expect(claimed.status).toBe("claimed");
+
+      await db
+        .delete(schema.workCells)
+        .where(eq(schema.workCells.gridId, grid!.id));
+      await db.delete(schema.workGrids).where(eq(schema.workGrids.id, grid!.id));
+      await db
+        .delete(schema.challengeEnrollments)
+        .where(eq(schema.challengeEnrollments.challengeId, challengeId));
+      await db.delete(schema.teams).where(eq(schema.teams.id, team!.id));
+    });
+
+    it("competitive cell is NOT claimable by an agent whose owner is enrolled but not on the team", async () => {
+      const { db, schema, eq, generateApiKey } = m;
+      const challengeId = 980000 + Math.floor(Math.random() * 9000);
+
+      const outsiderId = `it-outsider-${fx.suffix}`;
+      const outsiderAgentId = `it-outsider-agent-${fx.suffix}`;
+      await db.insert(schema.user).values({
+        id: outsiderId,
+        email: `it-outsider-${fx.suffix}@example.test`,
+        name: "Outsider",
+      });
+      await db.insert(schema.memberProfiles).values({
+        userId: outsiderId,
+        displayName: "Outsider",
+        xp: 0,
+        level: 1,
+      });
+      await db.insert(schema.agentProfiles).values({
+        id: outsiderAgentId,
+        ownerId: outsiderId,
+        name: "Outsider Agent",
+        status: "active",
+      });
+      const { raw, hash, prefix } = generateApiKey();
+      await db.insert(schema.agentApiKeys).values({
+        agentId: outsiderAgentId,
+        ownerId: outsiderId,
+        keyHash: hash,
+        keyPrefix: prefix,
+        scopes: [
+          "read",
+          "self-profile",
+          "commission:claim-cell",
+          "commission:submit-result",
+        ],
+        isActive: true,
+      });
+      await db.insert(schema.agentManifestAcceptances).values({
+        ownerId: outsiderId,
+        agentId: outsiderAgentId,
+        manifestVersion: m.MANIFEST_VERSION,
+      });
+      await ownerCaller(outsiderId).commissions.grant({
+        taskTypeAllowlist: [fx.taskType],
+        sourceScope: "enrolled-challenges",
+      });
+
+      const [team] = await db
+        .insert(schema.teams)
+        .values({
+          challengeId,
+          eventId: 12345,
+          name: "Hawk",
+          captainId: fx.ownerId,
+          joinCode: `TEAM-O${fx.suffix.slice(-7).toUpperCase()}`,
+          maxSize: 5,
+          status: "locked",
+        })
+        .returning();
+      await db.insert(schema.challengeEnrollments).values({
+        userId: outsiderId,
+        challengeId,
+        teamId: null,
+        status: "active",
+      });
+
+      const [grid] = await db
+        .insert(schema.workGrids)
+        .values({
+          mode: "competitive",
+          status: "active",
+          challengeId,
+          communityId: null,
+          teamId: team!.id,
+        })
+        .returning();
+      const [cell] = await db
+        .insert(schema.workCells)
+        .values({
+          gridId: grid!.id,
+          taskType: fx.taskType,
+          verificationMode: "test",
+          status: "pending",
+          deadlineMinutes: 30,
+        })
+        .returning();
+
+      const outsiderCall = agentCaller(raw);
+      const claimable = await outsiderCall.workGrid.listClaimable({
+        gridId: grid!.id,
+      });
+      expect(claimable.map((c) => c.id)).not.toContain(cell!.id);
+
+      await expect(
+        outsiderCall.workGrid.claimCell({ cellId: cell!.id }),
+      ).rejects.toThrow(/not a member of this grid's team/i);
+
+      await db
+        .delete(schema.workCells)
+        .where(eq(schema.workCells.gridId, grid!.id));
+      await db.delete(schema.workGrids).where(eq(schema.workGrids.id, grid!.id));
+      await db
+        .delete(schema.challengeEnrollments)
+        .where(eq(schema.challengeEnrollments.challengeId, challengeId));
+      await db.delete(schema.teams).where(eq(schema.teams.id, team!.id));
+      await db
+        .delete(schema.agentApiKeys)
+        .where(eq(schema.agentApiKeys.agentId, outsiderAgentId));
+      await db
+        .delete(schema.agentManifestAcceptances)
+        .where(eq(schema.agentManifestAcceptances.agentId, outsiderAgentId));
+      await db
+        .delete(schema.agentCommissions)
+        .where(eq(schema.agentCommissions.ownerId, outsiderId));
+      await db
+        .delete(schema.agentProfiles)
+        .where(eq(schema.agentProfiles.id, outsiderAgentId));
+      await db
+        .delete(schema.memberProfiles)
+        .where(eq(schema.memberProfiles.userId, outsiderId));
+      await db.delete(schema.user).where(eq(schema.user.id, outsiderId));
+    });
   },
 );

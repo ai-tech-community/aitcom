@@ -20,6 +20,7 @@ import {
   EVENT_TYPE_LABELS,
 } from "@/lib/event-metadata";
 import type { EventAudience, EventFocus } from "@/lib/event-metadata";
+import { HackathonPanel } from "@/components/hackathon/hackathon-panel";
 
 type MediaValue =
   | { url?: string | null; alt?: string | null }
@@ -207,6 +208,20 @@ export default async function EventDetailPage({
       : price === 0
         ? "Free"
         : null;
+
+  let hackathonChallenge: { id: number; creatorId: string } | null = null;
+  if (event.challengeId) {
+    try {
+      const ch = await payload.findByID({
+        collection: "challenges",
+        id: Number(event.challengeId),
+        depth: 0,
+      });
+      hackathonChallenge = { id: Number(ch.id), creatorId: String(ch.creatorId ?? "") };
+    } catch {
+      hackathonChallenge = null;
+    }
+  }
 
   const now = new Date().toISOString();
   const relatedOrConditions: Where[] = [{ type: { equals: event.type } }];
@@ -523,6 +538,13 @@ export default async function EventDetailPage({
               />
             </div>
           </div>
+
+          {hackathonChallenge ? (
+            <HackathonPanel
+              challengeId={hackathonChallenge.id}
+              challengeCreatorId={hackathonChallenge.creatorId}
+            />
+          ) : null}
 
           {relatedEvents.length > 0 && (
             <div className="border-border border-t pt-8">

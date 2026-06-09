@@ -247,6 +247,62 @@ export const Challenges: CollectionConfig = {
       ],
     },
     {
+      name: "cellTemplate",
+      type: "array",
+      admin: {
+        description:
+          "Hackathon work-cell decomposition. Each entry becomes one pending cell in every team's competitive grid when rosters lock (ADR-0029/0023). Leave empty for non-hackathon challenges.",
+      },
+      fields: [
+        { name: "description", type: "text", required: true },
+        { name: "taskType", type: "text", required: true },
+        {
+          name: "verificationMode",
+          type: "select",
+          required: true,
+          defaultValue: "self-report",
+          options: [
+            { label: "Platform Action", value: "platform-action" },
+            { label: "Test", value: "test" },
+            { label: "Self-Report", value: "self-report" },
+            { label: "Peer Review", value: "peer-review" },
+            { label: "Consensus", value: "consensus" },
+          ],
+        },
+        {
+          name: "deadlineMinutes",
+          type: "number",
+          required: true,
+          min: 1,
+          defaultValue: 60,
+        },
+      ],
+    },
+    {
+      name: "teamConfig",
+      type: "group",
+      admin: {
+        description:
+          "Hackathon team-size bounds (ADR-0029). Only meaningful for a challenge bound to a hackathon event; ignored otherwise.",
+      },
+      fields: [
+        {
+          // Optional so non-hackathon challenges need not carry team config;
+          // the work-grid/team code falls back to sensible defaults (min 1, max 5).
+          name: "minTeamSize",
+          type: "number",
+          min: 1,
+          defaultValue: 1,
+        },
+        {
+          name: "maxTeamSize",
+          type: "number",
+          min: 1,
+          defaultValue: 5,
+        },
+      ],
+    },
+    {
       name: "maxParticipants",
       type: "number",
       defaultValue: 0,
