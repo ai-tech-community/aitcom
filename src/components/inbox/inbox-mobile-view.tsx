@@ -24,6 +24,7 @@ import {
   PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input";
 import { useInbox } from "./inbox-provider";
+import { LIVE_MESSAGES_REFETCH_MS } from "./live-refetch";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -62,11 +63,39 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
 
   const messagesQuery = api.inbox.getMessages.useQuery(
     { conversationId: chatInfo.conversationId, limit: 50 },
-    { refetchInterval: 10_000 },
+    { refetchInterval: LIVE_MESSAGES_REFETCH_MS },
   );
 
   const sendMessage = api.inbox.sendMessage.useMutation({
-    onSuccess: () => {
+    // Optimistic send: the human's own message renders instantly (ADR-0025 Tier 0).
+    onMutate: async ({ content }) => {
+      const uid = session?.user?.id;
+      if (!uid) return;
+      const key = { conversationId: chatInfo.conversationId, limit: 50 };
+      await utils.inbox.getMessages.cancel(key);
+      const previous = utils.inbox.getMessages.getData(key);
+      utils.inbox.getMessages.setData(key, (old) => {
+        if (!old) return old;
+        const optimistic = {
+          id: `optimistic-${Date.now()}`,
+          senderId: uid,
+          senderType: "human" as const,
+          content,
+          createdAt: new Date(),
+        } as (typeof old.messages)[number];
+        return { ...old, messages: [...old.messages, optimistic] };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) {
+        utils.inbox.getMessages.setData(
+          { conversationId: chatInfo.conversationId, limit: 50 },
+          ctx.previous,
+        );
+      }
+    },
+    onSettled: () => {
       void utils.inbox.getMessages.invalidate();
       void utils.inbox.listConversations.invalidate();
       void utils.inbox.totalUnreadCount.invalidate();

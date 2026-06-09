@@ -8,8 +8,86 @@ import { eq, and, sql } from "drizzle-orm";
 import { getPayloadClient } from "@/server/payload";
 import { awardXp, awardBadge } from "@/lib/gamification";
 import { classifyPersonality, deriveContextType } from "@/lib/impact-metrics";
+import { computeCommissionedCellXp } from "./commissioned-cell-xp";
 
-type DB = typeof _db;
+export {
+  computeCommissionedCellXp,
+  COMMISSIONED_VERIFICATION_WEIGHT,
+} from "./commissioned-cell-xp";
+
+// Accept either the root db or a transaction handle so callers can thread these
+// writes into their own transaction (e.g. verifyCellResult's atomic
+// result-flip + commissioned-cell XP award, CR-3).
+type Tx = Parameters<Parameters<(typeof _db)["transaction"]>[0]>[0];
+type DB = typeof _db | Tx;
+
+/**
+ * Verification-gated XP for a commissioned [[work-cell]] (ADR-0022/0023).
+ *
+ * XP is gated behind the cell's verification mode — a weighting modelled on
+ * challenge XP in `challenges.ts` (`VERIFICATION_WEIGHT`) but which deliberately
+ * diverges: a lower self-report fraction (0.2 vs 0.8) plus a new consensus tier
+ * (1.5), per the ADR-0022 anti-farm rationale. Strong verification (consensus /
+ * test) pays full weight; a bare self-report pays a small fraction;
+ * a failed or still-pending outcome pays nothing. A self-reported commissioned
+ * result must never mint the same XP as a consensus-verified one — verification
+ * is the gate, not submission.
+ *
+ * The pure math lives in `./commissioned-cell-xp` (db-free, re-exported above);
+ * this wrapper adds the XP-award + activity-event writes.
+ */
+
+/**
+ * Award the cell owner XP for a *verified* commissioned cell and log a
+ * `workcell.completed` activity event carrying `metadata.isCommissioned=true`.
+ *
+ * The owner is the human who commissioned their agent (the commission's owner),
+ * NOT the agent. XP is scaled by `verificationMode` and zeroed unless the
+ * outcome is "verified". The activity event is deliberately kept OUT of
+ * `CONTRIBUTION_ACTIONS` and is additionally tagged `isCommissioned` so the
+ * at-risk / unactivated / greeter signals exclude it (commissioned execution is
+ * not an activation signal — ADR-0022).
+ */
+export async function awardCommissionedCellXp(
+  db: DB,
+  args: {
+    ownerId: string;
+    cellId: string;
+    gridId: string;
+    verificationMode: string;
+    verificationOutcome: "verified" | "failed" | "pending";
+    communityId?: string | null;
+  },
+) {
+  // Verification is the gate: only a verified outcome pays. A self-reported
+  // verified cell still pays only the small self-report fraction.
+  const xp = computeCommissionedCellXp(
+    args.verificationMode,
+    args.verificationOutcome,
+  );
+
+  if (xp > 0) {
+    await awardXp(db, args.ownerId, xp);
+  }
+
+  await db.insert(activityEvents).values({
+    actorId: args.ownerId,
+    actorType: "member",
+    action: "workcell.completed",
+    targetType: "work_cell",
+    targetId: args.cellId,
+    communityId: args.communityId ?? null,
+    metadata: {
+      isCommissioned: true,
+      gridId: args.gridId,
+      verificationMode: args.verificationMode,
+      verificationOutcome: args.verificationOutcome,
+      xp,
+    },
+  });
+
+  return xp;
+}
 
 export async function logActivity(
   db: DB,

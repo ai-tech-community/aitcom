@@ -87,6 +87,156 @@ jobs, blog/articles, challenges, impact, benchmark, investigations. A
 **Community admin**'s primary content levers are the per-Community instances
 of these surfaces.
 
+### Community feed
+
+The community **home** discussion surface (`/communities/<slug>`): a
+Skool-style stream of short posts with **likes** and comments. Distinct from
+the [[forum]], a separate threaded surface. The two overlap heavily; the
+deliberate direction is that the **feed is the canonical discussion home** and
+the forum is **frozen** (no new investment) pending an eventual fold-in — the
+feed is where [[topic]]s, pins, and future engagement levers live. See
+[[adr-0026-feed-is-the-canonical-discussion-surface]].
+
+### Forum
+
+A threaded discussion surface (`/communities/<slug>/forum`) with replies,
+admin **pins**, ideas+voting, a rules-acceptance gate, and a fixed
+`category` enum (`general | question | showcase | job`) — a *structural thread
+type*, **not** an admin-branded label (contrast [[topic]]). Load-bearing today:
+[[ritual]]s materialize as forum threads and the [[greeter]] queue reads it.
+**Frozen** in favour of the [[community-feed]]; threads/rituals/ideas are
+expected to migrate onto the feed in a later, separate step.
+
+### Topic
+
+A per-[[Community]] admin-defined label that organizes the [[community-feed]]
+— the branded chip a member filters by on the community home (e.g. "Wins",
+"Resources", "Support Needed"). Each feed post belongs to **exactly one**
+Topic; a seeded **"General"** Topic is the always-valid default so every post
+has a home. Topics are **pure labels**: they name and filter, carrying **no**
+posting permission or access gating (posting rights stay the feed-level
+`feedPostPolicy`; a per-Topic post policy is a deliberate future extension, not
+launched). Capped (~10) per community to keep the chip row legible. Not the
+[[forum]]'s `category` enum — that is a frozen structural thread type, never an
+admin-branded label, and the two must not be conflated.
+
+### Community links
+
+An admin-curated list of labelled links shown in the [[community-feed]] home
+**sidebar card**, alongside community stats (members, admins, active-this-week
+— deliberately **no "online"/presence** count, which there is no infra for).
+Each link points anywhere — an external URL, a pinned feed post, a [[topic]]
+filter, or a [[course]]. This is the realization of "links to important
+topics". Edited in community settings; the card renders on the community home
+only (the persistent header already carries cross-tab identity).
+
+### Classroom
+
+A structured-learning [[shared-surface]] of **member-created** [[course]]s of
+video [[lesson]]s, per-[[Community]]. Unlike Skool's owner-only courses, **any
+active member may build a classroom** (the [[Community]]'s
+`classroomCreatePolicy` may restrict creation to admins). The authoring model
+mirrors [[launchpad]], **not** [[articles]]: a course is **published
+immediately by its creator with no pre-review** (post-hoc moderation), the
+creator owns and edits it, and mods/admins may unpublish or remove it.
+**Distinct from [[articles]]/blog** (curated, single published pieces, public
+RSS/review lifecycle) and from [[launchpad]] (single projects) by its one
+irreducible feature: **ordered, multi-lesson structure with per-member
+progress** — a series you work through, which neither articles nor launchpad
+can express. See [[adr-0027-classroom-is-member-authored-ordered-curriculum]].
+
+### Course
+
+An ordered, **flat** collection of [[lesson]]s in the [[classroom]] (no modules
+at launch; a grouping level may be added later without a breaking migration),
+**created and owned by any active [[Community]] member** (subject to
+`classroomCreatePolicy`) and published immediately. **Members-only by default**;
+a course becomes **public only when an admin/mod promotes it** — a creator
+cannot self-publish to the open web. A member [[course-enrollment|enrolls]]
+explicitly; their per-lesson completions yield a course **progress %**. A member
+has **passed the course** when **every** lesson is complete — i.e. every
+mandatory [[lesson-exam]] was cleared at its own threshold and the rest are
+self-reported done (progress 100% ⇒ passed). Course-pass is
+**completion-derived**, never an aggregate of exam scores: a learner can never
+be "course-passed" while a lesson with a mandatory exam is still unpassed. A
+true course-wide score gate, if ever needed, would be a separate **optional
+course-level final exam** (its own threshold), not an average of lesson scores. The
+popularity signal is the **distinct-enrollment count** (no separate up-vote —
+that is [[launchpad]]'s job). The creator earns small **Hub-global XP per
+distinct member enrollment** (others valuing the work, like
+`LAUNCHPAD_RECEIVE_VOTE`); **creating a course earns no XP** (would reward
+spam under the no-pre-review model).
+
+### Course enrollment
+
+An explicit join row recording that a member has enrolled in a [[course]] —
+the successor concept to "just start watching". It powers the member's "My
+Classrooms" list, the per-member [[course]] progress bar, and the
+distinct-enrollment popularity/XP signal. Modelled on [[event]] registration
+(an explicit join), not inferred from first lesson completion.
+
+### Lesson
+
+One unit of a [[course]]: a title, an **embedded or referenced YouTube**
+video (no native video hosting), a rich-text body, and a list of resource
+links. An enrolled member marks a lesson complete; completion is
+**self-reported** and drives the [[course]] progress bar but **earns no XP** —
+self-reported completion is trivially farmable, consistent with the
+verification-gated XP rule on [[work-cell]]s. Authored by the course's creator
+(any active member), not restricted to admins. A lesson may carry a
+[[lesson-exam]], which — when **mandatory** — converts that lesson's completion
+from self-reported to **verified** (passing the exam is the only path to the
+checkmark).
+
+### Lesson exam
+
+An author-created assessment attached to a [[lesson]] that a learner must pass
+to complete the lesson. Has a **mandatory** flag: **mandatory** = passing is the
+*only* way to mark the lesson complete (completion becomes **verified**, not
+self-reported); **not mandatory** = a self-check the learner may take for
+feedback, with self-reported completion still available. A mandatory un-passed
+exam blocks **its own lesson's completion only** — it does **not** hard-lock
+later lessons (the [[course]] stays flat and browsable), but the gated lessons
+must be genuinely passed before they count toward progress. A verified
+(exam-gated) completion still earns the learner **no Hub-global XP** at launch —
+the exam verifies the *response* but not the *bar* (the author writes it with no
+pre-review), so it gates local outcomes only, never reputation. See
+[[adr-0028-lesson-exam-gates-completion-not-reputation]].
+
+### Course certificate
+
+A **course-local credential** issued to a learner when they have
+[[course|passed the course]] (every lesson complete, every mandatory
+[[lesson-exam]] cleared). A shareable "Completed <Course>" record stamped with
+the date, course, and authoring [[Community]] — the motivational payoff that
+makes a mandatory exam worth sitting (the counterpart to the deliberate **no
+learner XP**). Deliberately **not** a `member_badge` or any Hub-global
+reputation item: like exam-pass XP, it is gated only on a member-authored,
+un-reviewed exam, so it stays a local credential and never feeds reputation
+([[adr-0028-lesson-exam-gates-completion-not-reputation]]).
+
+### Hackathon
+
+The **composition of an Event and a Challenge** — not a new swallowing entity.
+The Event (`events` collection, `event_registration`, reminders, Luma sync,
+calendar) owns *when it runs and who attends*; the bound Challenge (objectives,
+submissions, channel, leaderboard, XP) owns *the problem, the work, and the
+scoring*. A hackathon problem is fanned across teams via a [[work-grid]]. Both
+underlying models are single-actor today, so the one genuinely new concept a
+hackathon requires is the **[[team]]**. Both an Event and a Challenge are
+[[shared-surface]]s, so a hackathon is Hub-wide or community-scoped by the same
+`communityId` rule.
+
+### Team
+
+A group of members (and their [[agent-commission|commissioned]] agents) that
+enters a [[hackathon]] as one competing unit — the concept neither
+[[challenge]] enrollment (`unique(userId, challengeId)`, one person) nor
+[[event]] registration (one RSVP) supports today. A team shares one submission,
+one leaderboard position, and splits/earns XP as a unit. Whether a team's
+[[work-grid]] cells are dispatched only to its own members' agents or may
+overflow to the wider community is a per-hackathon decision.
+
 ### Community admin
 
 A member of a [[Community]] with role `owner` or `admin` — the **community
@@ -107,6 +257,15 @@ change, settings). The heartbeat used to derive [[active-member]] and
 Reciprocity (for the [[activation-funnel]]) is detected via
 `activity_event.recipient_id`, populated forward-only on response actions
 (`thread.reply`, `feed.comment_created`, `launchpad.comment.created`).
+
+A **commissioned [[work-cell]] completion does _not_ count as a contribution
+action** for [[active-member]]/[[at-risk-member]]/activation purposes (it may at
+most be discounted): activation measures *the human showing up*, and "my agent
+claimed a cell while I slept" is not the human showing up. Such work still earns
+**Hub-global XP** — but only **verification-gated** (a [[consensus]]/test cell
+earns; a `self-report` cell earns little; a cell that fails verification earns
+zero and may cost reputation), which is what makes the grid unprofitable to
+farm.
 
 Per-community **onboarding steps** are admin-authored checklist items shown
 to newcomers; the checklist hides automatically once the member is activated.
@@ -340,6 +499,26 @@ human-published content; reading is not communication. Distinct from publishing,
 which is governed by the [[no-go-surface]] rule and ADR-0015's draft-don't-post
 model.
 
+### Agent commission
+
+A **standing, scoped, revocable** grant by which an [[owner]] pre-authorises
+their own agent to accept and execute tasks **triggered by a third party**
+(today: the platform, on behalf of a [[challenge]] the owner has opted into) —
+without the owner approving each individual invocation. It is the deliberate
+evolution of the [[agent-communication-boundary]]: the boundary's "owner-only
+counterpart" rule becomes "owner, **or a source the owner has commissioned**".
+A commission names what may be requested (a task type, e.g. *polish text*,
+*solve a work-cell*) and from where (a source scope, e.g. *challenges I am
+enrolled in*); outside that envelope the owner-only boundary is unchanged. The
+human remains the power source — nothing runs that the owner did not stand up a
+commission for, and revoking the commission instantly closes the channel.
+Distinct from a one-off owner instruction in the `type:"agent"` conversation,
+and from [[adr-0015-community-surfaces-are-human-authored]]'s draft-don't-post
+rule (a commissioned result returns to the **requester/challenge surface**, not
+the human community feed). Whether the commissioned **output** still needs
+owner approval before it leaves the agent is governed separately — see the
+[[challenge]]/work-cell decisions.
+
 ### No-go surface
 
 A human-sensitive surface an agent has **no path into at all** — not even a
@@ -349,6 +528,72 @@ conversation between humans. Contrast with **draft-allowed surfaces** (forum,
 feed, ideas, etc.), where the agent may draft under [[agent-autonomy-level]] =
 Suggest and a human publishes in their own name per
 [[adr-0015-community-surfaces-are-human-authored]].
+
+### Work-cell surface
+
+A third **surface class** for agent output, peer to the **draft-allowed**
+surfaces and the [[no-go-surface]]. A work-cell surface is a sandboxed, opt-in
+space that exists to *consume agent output* — today, a [[challenge]] work-cell
+the owner reached through an [[agent-commission]]. On a work-cell surface a
+commissioned agent's result may **auto-return without owner approval**, because
+the consent ADR-0015 wants was front-loaded into the commission grant and
+everyone present expects agent output; it is **not** a human community surface,
+so [[adr-0015-community-surfaces-are-human-authored]]'s draft-don't-post rule is
+satisfied, not broken. The boundary rule: a commissioned result may auto-appear
+on a work-cell surface, but the moment such a result would touch a human
+community surface (forum, feed) it reverts to draft-don't-post. Output here is
+always **attributed** ("X's agent, commissioned") and the owner can revoke the
+commission to stop it.
+
+### Work grid
+
+A single problem **decomposed into independent units fanned out across many
+participants' commissioned agents**, run in parallel, and **recombined** into
+one result. It is the long-deferred realization of the [[challenge]]
+`collaborationModel: swarm` value (stored on the collection today but never
+built); the other `collaborationModel` values describe other dispatch
+topologies over the same primitive — `relay` (sequential hand-off cell→cell),
+`escalation` (tiered: easy cells first, hard cells escalate), `adversarial`
+(red-team a peer's cell), `blind` (cells solved independently then compared).
+The dispatch/commission machinery is a **platform primitive**, separate from
+challenges; the work grid is its **first and only launch consumer**
+(see the challenge-domain decisions). Power comes from the participants'
+**own** agents under an [[agent-commission]] — never an AIT-internal agent.
+
+A work grid runs in one of two **grid modes**, differing *only* in the
+eligibility scope of who may claim a cell — the dispatch primitive (claim
+queue, deadlines, [[consensus]], [[orchestrator-cell]]) is identical:
+
+- **Competitive grid** — cells dispatch **only to one [[team]]'s** own members'
+  agents. Preserves competitive integrity; this is what a [[hackathon]] uses.
+  XP rewards winning.
+- **Collaborative grid** — cells dispatch to **any** commissioned agent in the
+  community; no rival teams, everyone contributes cells to one shared result.
+  Not a hackathon — a distributed community effort ("the community solves X
+  together", "polish this message"). XP rewards participation. This is the most
+  direct expression of the "spread a problem across humans and their agents"
+  vision.
+
+### Work-cell
+
+One unit of a [[work-grid]]: a task assigned to a single participant's
+commissioned agent (one human↔agent pair per cell). A cell's result returns to
+the [[work-cell-surface]] under the auto-return rule. The trivial case — a
+**one-cell grid** — is how a non-challenge job like "polish this message" maps
+onto the same primitive.
+
+### Orchestrator cell
+
+The split/merge role of a [[work-grid]], expressed as **itself a [[work-cell]]**
+run by a participant's own commissioned agent — never an AIT-internal agent. The
+first cell decomposes the problem into cells; the last cell recombines their
+results. This enforces the platform invariant that **AIT provides only plumbing**
+(queue, dispatch, deadlines, attribution, recombination *transport*) and
+**performs no cognition itself** — all thinking, including the thinking of
+coordinating, comes from the community's [[agent-commission|commissioned]]
+agents. For simple [[challenge]]s the sponsor hand-authors the cells up front
+(an extension of the challenge `objectives[]`) and no orchestrator cell is
+needed.
 
 ### Agent manifest
 
@@ -361,6 +606,19 @@ enforcement layer reads it, the owner **accepts it on the agent's behalf** at
 registration/claim, and `get-agent-guide` serves it to the agent so the agent
 self-polices. Being a security invariant (not local culture), it is **not**
 admin-tunable, unlike a [[Community]]'s "AI Agent Policy" rules section.
+
+**Commissioned execution** ([[agent-commission]]) is a separately-acceptable
+manifest clause: it is **off until the owner accepts the manifest version that
+introduces it** (reusing the existing `MANIFEST_VERSION` bump → `contribute`
+scope suspension machinery — no silent capability gain). The clause widens
+*who may request work* (a commissioned source, not only the owner) but **not
+what the agent may touch**: a commissioned [[work-cell]] may request task
+output only, never the agent's owner DMs, inbox, or any [[no-go-surface]]. A
+commission authorizes **named task types** from an allowlist (e.g.
+`polish-text`, `solve-code-cell`) — never "anything" — and a cell whose task
+type is outside the commission is rejected before the agent sees it (the
+firebreak against arbitrary-instruction injection). At launch this caps grids
+to pre-defined task types; new types are added deliberately.
 
 ## Benchmark domain
 

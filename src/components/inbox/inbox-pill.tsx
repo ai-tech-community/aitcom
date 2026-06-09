@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { useInbox } from "./inbox-provider";
+import { LIVE_BADGE_REFETCH_MS } from "./live-refetch";
 
 export function InboxPill() {
   const { data: session } = authClient.useSession();
@@ -13,7 +14,7 @@ export function InboxPill() {
 
   const { data: unreadData } = api.inbox.totalUnreadCount.useQuery(undefined, {
     enabled: !!session?.user,
-    refetchInterval: 30_000,
+    refetchInterval: LIVE_BADGE_REFETCH_MS,
   });
 
   // Don't render if no session or if list is already open

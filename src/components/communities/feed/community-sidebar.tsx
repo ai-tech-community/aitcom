@@ -50,12 +50,62 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
   const { data: ideasData, isLoading: ideasLoading } =
     api.forum.getIdeas.useQuery({ communitySlug: slug, sort: "votes" });
 
+  const { data: links } = api.links.list.useQuery({ communitySlug: slug });
+  const { data: community } = api.communities.getBySlug.useQuery({ slug });
+
   const threads = (threadsData?.threads ?? []).slice(0, 3);
   const events = (eventsData ?? []).slice(0, 3);
   const ideas = (ideasData ?? []).slice(0, 3);
 
   return (
     <div className="flex flex-col gap-8">
+      {/* Stats */}
+      {community ? (
+        <section>
+          <SectionHeader title="/ STATS" />
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+            <Stat value={community.memberCount} label={t("members")} />
+            {"adminCount" in community ? (
+              <Stat
+                value={(community as { adminCount: number }).adminCount}
+                label={t("admins")}
+              />
+            ) : null}
+            <Stat
+              value={community.liveness?.activeContributors ?? 0}
+              label={t("activeThisWeek")}
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {/* Links */}
+      {links && links.length > 0 ? (
+        <section>
+          <SectionHeader title={`/ ${t("links").toUpperCase()}`} />
+          <div className="mt-3 space-y-1">
+            {links.map((link) => (
+              <a
+                key={link.id}
+                href={link.url}
+                target={link.url.startsWith("http") ? "_blank" : undefined}
+                rel={
+                  link.url.startsWith("http")
+                    ? "noopener noreferrer"
+                    : undefined
+                }
+                className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors"
+              >
+                {link.emoji ? (
+                  <span className="shrink-0">{link.emoji}</span>
+                ) : null}
+                <span className="truncate font-medium">{link.label}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {/* About */}
       {description ? (
         <section>
@@ -221,6 +271,17 @@ function SectionHeader({
           {linkLabel}
         </Link>
       ) : null}
+    </div>
+  );
+}
+
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <div className="border-border rounded-lg border px-2 py-3">
+      <div className="text-lg font-bold">{value}</div>
+      <div className="text-muted-foreground text-[10px] tracking-wider uppercase">
+        {label}
+      </div>
     </div>
   );
 }

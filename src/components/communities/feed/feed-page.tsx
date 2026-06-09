@@ -9,6 +9,7 @@ import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { PostComposer } from "./post-composer";
 import { FeedPostCard } from "./feed-post-card";
 import { CommunitySidebar } from "./community-sidebar";
+import { TopicChips } from "./topic-chips";
 import { WelcomeChecklist } from "@/components/communities/onboarding/welcome-checklist";
 
 interface FeedPageProps {
@@ -31,6 +32,7 @@ export function FeedPage({
     new Set(),
   );
   const [limit, setLimit] = useState(20);
+  const [activeTopic, setActiveTopic] = useState("all");
 
   const canPost =
     feedPostPolicy === "all_members"
@@ -46,6 +48,7 @@ export function FeedPage({
     {
       communitySlug: slug,
       limit,
+      topicSlug: activeTopic,
     },
     { enabled: isAuthenticated && isMember },
   );
@@ -65,6 +68,8 @@ export function FeedPage({
     editedAt?: string | null;
     createdAt: string;
     hasLiked: boolean;
+    isPinned?: boolean | null;
+    topicSlug?: string | null;
   }>;
 
   const hasMore = !!data?.nextCursor;
@@ -96,6 +101,14 @@ export function FeedPage({
         {isAuthenticated && isMember && <WelcomeChecklist slug={slug} />}
 
         <PostComposer slug={slug} canPost={canPost} />
+
+        {isAuthenticated && isMember ? (
+          <TopicChips
+            slug={slug}
+            active={activeTopic}
+            onSelect={setActiveTopic}
+          />
+        ) : null}
 
         {!isAuthenticated ? (
           <div className="bg-primary/5 border-primary/20 flex flex-col items-start gap-3 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between">

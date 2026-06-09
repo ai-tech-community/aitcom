@@ -1,6 +1,6 @@
 // src/server/api/routers/communities.ts
 import { z } from "zod";
-import { and, eq, isNull, ilike, sql, desc, count } from "drizzle-orm";
+import { and, eq, isNull, ilike, sql, desc, count, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
@@ -142,6 +142,17 @@ export const communitiesRouter = createTRPCRouter({
           ),
         );
 
+      const [adminCountResult] = await ctx.db
+        .select({ count: count() })
+        .from(communityMemberships)
+        .where(
+          and(
+            eq(communityMemberships.communityId, community.id),
+            eq(communityMemberships.status, "active"),
+            inArray(communityMemberships.role, ["owner", "admin"]),
+          ),
+        );
+
       const liveness = community.isListedInDirectory
         ? await loadPublicLiveness(ctx.db, community.id, new Date())
         : { activeContributors: 0, recentThreads: 0 };
@@ -149,6 +160,7 @@ export const communitiesRouter = createTRPCRouter({
       return {
         ...community,
         memberCount: memberCountResult?.count ?? 0,
+        adminCount: adminCountResult?.count ?? 0,
         liveness,
       };
     }),
@@ -797,6 +809,9 @@ export const communitiesRouter = createTRPCRouter({
           .optional(),
         isListedInDirectory: z.boolean().optional(),
         feedPostPolicy: z.enum(["all_members", "admins_only"]).optional(),
+        classroomCreatePolicy: z
+          .enum(["all_members", "admins_only"])
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -815,6 +830,8 @@ export const communitiesRouter = createTRPCRouter({
         updates.isListedInDirectory = input.isListedInDirectory;
       if (input.feedPostPolicy !== undefined)
         updates.feedPostPolicy = input.feedPostPolicy;
+      if (input.classroomCreatePolicy !== undefined)
+        updates.classroomCreatePolicy = input.classroomCreatePolicy;
 
       // Note: slug is NOT auto-updated on name change to avoid breaking
       // existing URLs and bookmarks. Slug is set once at community creation.

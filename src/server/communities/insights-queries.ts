@@ -6,7 +6,7 @@
  *  not duplicate the query logic.
  */
 
-import { and, eq, gte, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 
 import { activityEvents, communityMemberships } from "@/server/db/schema";
 import type { db as _db } from "@/server/db";
@@ -73,6 +73,8 @@ export async function loadAtRiskInputs(
           eq(activityEvents.communityId, communityId),
           gte(activityEvents.createdAt, since),
           inArray(activityEvents.action, CONTRIBUTION_ACTION_LIST),
+          // Commissioned work-cell completions are not an activation signal.
+          sql`NOT COALESCE((${activityEvents.metadata}->>'isCommissioned')::boolean, false)`,
         ),
       ),
   ]);
@@ -125,6 +127,8 @@ export async function loadUnactivatedInputs(
         and(
           eq(activityEvents.communityId, communityId),
           inArray(activityEvents.action, CONTRIBUTION_ACTION_LIST),
+          // Commissioned work-cell completions are not an activation signal.
+          sql`NOT COALESCE((${activityEvents.metadata}->>'isCommissioned')::boolean, false)`,
         ),
       ),
   ]);

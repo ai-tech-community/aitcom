@@ -1,7 +1,7 @@
 /** Shared awaiting-response (greeter) queue computation. No profile hydration,
  *  no sort — callers hydrate/sort as needed. `now` injected for testability. */
 
-import { and, eq, gte, inArray, isNotNull } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, sql } from "drizzle-orm";
 
 import {
   activityEvents,
@@ -82,6 +82,8 @@ export async function loadAwaitingResponse(
         gte(activityEvents.createdAt, cohortStart),
         inArray(activityEvents.actorId, cohortIds),
         inArray(activityEvents.action, RESPONDABLE_LIST),
+        // Commissioned work-cell completions never enter the greeter queue.
+        sql`NOT COALESCE((${activityEvents.metadata}->>'isCommissioned')::boolean, false)`,
       ),
     );
   const earliestRespondable = new Map<string, (typeof respondable)[number]>();

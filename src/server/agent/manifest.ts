@@ -4,7 +4,7 @@
  * change — that suspends every agent's contribute scope until its owner
  * re-accepts (enforced in validateApiKey via filterScopesByManifest).
  */
-export const MANIFEST_VERSION = 1;
+export const MANIFEST_VERSION = 2;
 
 export interface AgentManifestInvariant {
   id: string;
@@ -43,6 +43,11 @@ export const AGENT_MANIFEST_INVARIANTS: AgentManifestInvariant[] = [
     title: "One agent per human",
     rule: "Each human owns at most one agent.",
   },
+  {
+    id: "commissioned-execution",
+    title: "Commissioned execution",
+    rule: "Your owner may pre-authorise a commissioned source (e.g. the platform on behalf of a challenge they opted into) to trigger you for work — a scoped, revocable evolution of the owner-only channel. The grant is bounded: it names task types from an allowlist and a source scope, and a request outside that envelope is rejected before you see it. A commissioned request may ask for task output only — never that you read or expose your owner's DMs, inbox, or any no-go surface. The grant is revocable instantly, and every commissioned result is attributed \"X's agent, commissioned.\"",
+  },
 ];
 
 export function renderManifestText(): string {
@@ -60,13 +65,17 @@ export function renderManifestText(): string {
 
 /**
  * Scope gate. When the owner has not accepted the current manifest version,
- * all contribute* scopes are removed; read/self-profile remain (ADR-0017:
- * "contribute is suspended until the owner re-accepts; read stays available").
+ * all contribute* and commission* scopes are removed; read/self-profile remain
+ * (ADR-0017: "contribute is suspended until the owner re-accepts; read stays
+ * available"; ADR-0022: commissioned execution is off until the owner accepts
+ * the manifest version that introduces it — no silent capability gain).
  */
 export function filterScopesByManifest(
   scopes: string[],
   accepted: boolean,
 ): string[] {
   if (accepted) return scopes;
-  return scopes.filter((s) => !s.startsWith("contribute"));
+  return scopes.filter(
+    (s) => !s.startsWith("contribute") && !s.startsWith("commission"),
+  );
 }

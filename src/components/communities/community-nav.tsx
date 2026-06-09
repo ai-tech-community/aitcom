@@ -25,6 +25,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
     { key: "overview", href: basePath },
     { key: "forum", href: `${basePath}/forum` },
     { key: "events", href: `${basePath}/events` },
+    { key: "classroom", href: `${basePath}/classroom` },
     { key: "ideas", href: `${basePath}/ideas` },
     { key: "members", href: `${basePath}/members` },
     ...(memberRole
@@ -70,6 +71,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
                     | "overview"
                     | "forum"
                     | "events"
+                    | "classroom"
                     | "ideas"
                     | "members"
                     | "referrals"

@@ -26,6 +26,26 @@ export const FeedPosts: CollectionConfig = {
     { name: "authorName", type: "text", admin: { readOnly: true } },
     { name: "communityId", type: "text", index: true },
     {
+      name: "topicSlug",
+      type: "text",
+      index: true,
+      required: true,
+      defaultValue: "general",
+      admin: {
+        description:
+          "Slug of the community-topics row this post belongs to. 'general' by default.",
+      },
+    },
+    {
+      name: "isPinned",
+      type: "checkbox",
+      defaultValue: false,
+      admin: {
+        position: "sidebar",
+        description: "Pinned posts appear first on the All view.",
+      },
+    },
+    {
       name: "likeCount",
       type: "number",
       defaultValue: 0,
