@@ -298,6 +298,22 @@ export const hackathonRouter = createTRPCRouter({
       }
 
       const payload = await getPayloadClient();
+      let event;
+      try {
+        event = await payload.findByID({
+          collection: "events",
+          id: input.eventId,
+          depth: 0,
+        });
+      } catch {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+      }
+      if (String(event.challengeId ?? "") !== String(input.challengeId)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Event is not bound to this hackathon challenge.",
+        });
+      }
       await payload.update({
         collection: "challenges",
         id: input.challengeId,
