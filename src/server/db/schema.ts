@@ -1531,6 +1531,13 @@ export const teams = appSchema.table(
       .notNull()
       .default("forming")
       .$type<"forming" | "locked" | "disbanded">(),
+    // Plan 2 (judging): the captain's submission freeze + the sponsor's finalize.
+    submittedAt: d.timestamp({ withTimezone: true }),
+    artifactUrl: d.varchar({ length: 2048 }),
+    artifactSummary: d.text(),
+    score: d.integer(),
+    finalRank: d.integer(),
+    prizeAwardedAt: d.timestamp({ withTimezone: true }),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
