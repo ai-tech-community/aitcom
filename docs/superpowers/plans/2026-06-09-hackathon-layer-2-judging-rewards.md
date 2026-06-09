@@ -260,14 +260,18 @@ export function rankTeams(
 ): RankedTeam[] {
   return [...teams]
     .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
+      // Un-submitted teams always rank last, regardless of score.
       const aHas = a.submittedAt !== null;
       const bHas = b.submittedAt !== null;
       if (aHas !== bHas) return aHas ? -1 : 1;
+      // Both submitted (or both not): higher score wins.
+      if (b.score !== a.score) return b.score - a.score;
+      // Same score: earliest submission wins.
       if (a.submittedAt && b.submittedAt) {
         const d = a.submittedAt.getTime() - b.submittedAt.getTime();
         if (d !== 0) return d;
       }
+      // Full tie: deterministic via teamId.
       return a.teamId < b.teamId ? -1 : a.teamId > b.teamId ? 1 : 0;
     })
     .map((t, i) => ({ teamId: t.teamId, rank: i + 1 }));
