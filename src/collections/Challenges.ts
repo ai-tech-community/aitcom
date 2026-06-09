@@ -150,8 +150,10 @@ export const Challenges: CollectionConfig = {
     {
       name: "objectives",
       type: "array",
-      required: true,
-      minRows: 1,
+      // Optional at the collection level: a hackathon challenge carries an empty
+      // objectives list and decomposes its work via cellTemplate instead (ADR-0032).
+      // The "single-actor challenge needs >=1 objective" rule lives in the
+      // challenges.create input schema, the path where that context is known.
       maxRows: 10,
       fields: [
         {
