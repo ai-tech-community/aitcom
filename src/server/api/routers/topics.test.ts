@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { topicSlugify, MAX_TOPICS_PER_COMMUNITY, isAtTopicCap } from "./topic-helpers";
+import {
+  topicSlugify,
+  MAX_TOPICS_PER_COMMUNITY,
+  isAtTopicCap,
+} from "./topic-helpers";
 
 describe("topicSlugify", () => {
   it("lowercases and hyphenates", () => {

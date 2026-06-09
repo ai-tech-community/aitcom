@@ -3,7 +3,9 @@ import { sql } from "@payloadcms/db-postgres";
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(
-    sql.raw(`ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "cover_image_url" varchar`),
+    sql.raw(
+      `ALTER TABLE "courses" ADD COLUMN IF NOT EXISTS "cover_image_url" varchar`,
+    ),
   );
 }
 

@@ -370,7 +370,10 @@ export const feedRouter = createTRPCRouter({
           depth: 0,
         });
         if (totalDocs >= MAX_PINS) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "PIN_CAP_REACHED" });
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "PIN_CAP_REACHED",
+          });
         }
       }
 

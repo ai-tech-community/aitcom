@@ -92,7 +92,10 @@ async function requireGridAdmin(
         depth: 0,
       });
     } catch {
-      throw new TRPCError({ code: "NOT_FOUND", message: "Challenge not found" });
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Challenge not found",
+      });
     }
     if (challenge.creatorId !== userId) {
       throw new TRPCError({
@@ -176,7 +179,9 @@ export async function requeueExpiredCells(db: typeof import("@/server/db").db) {
       claimedAt: null,
       deadline: null,
     })
-    .where(and(eq(workCells.status, "claimed"), lt(workCells.deadline, new Date())))
+    .where(
+      and(eq(workCells.status, "claimed"), lt(workCells.deadline, new Date())),
+    )
     .returning();
 }
 
@@ -248,14 +253,22 @@ export const workGridRouter = createTRPCRouter({
       await Promise.all([
         ...challengeIds.map(async (challengeId) => {
           if (
-            await ownerEnrolledInChallenge(ctx.db, commission.ownerId, challengeId)
+            await ownerEnrolledInChallenge(
+              ctx.db,
+              commission.ownerId,
+              challengeId,
+            )
           ) {
             enrolledChallengeIds.add(challengeId);
           }
         }),
         ...communityIds.map(async (communityId) => {
           if (
-            await ownerMemberOfCommunity(ctx.db, commission.ownerId, communityId)
+            await ownerMemberOfCommunity(
+              ctx.db,
+              commission.ownerId,
+              communityId,
+            )
           ) {
             memberCommunityIds.add(communityId);
           }

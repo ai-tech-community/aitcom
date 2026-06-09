@@ -179,7 +179,10 @@ export function FeedPostCard({
               {isPrivileged && (
                 <DropdownMenuItem
                   onClick={() =>
-                    pinPost.mutate({ postId: post.id, isPinned: !post.isPinned })
+                    pinPost.mutate({
+                      postId: post.id,
+                      isPinned: !post.isPinned,
+                    })
                   }
                 >
                   {post.isPinned ? t("unpinPost") : t("pinPost")}

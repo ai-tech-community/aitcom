@@ -43,7 +43,9 @@ export function LinksSettings({ slug }: { slug: string }) {
   });
 
   const update = (i: number, patch: Partial<LinkRow>) =>
-    setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
+    setRows((r) =>
+      r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)),
+    );
 
   return (
     <div className="space-y-6">

@@ -62,7 +62,9 @@ try {
           ),
         );
       }
-      console.log(`Applied + recorded ${pending.length} migration(s) as batch ${batch}.`);
+      console.log(
+        `Applied + recorded ${pending.length} migration(s) as batch ${batch}.`,
+      );
     }
   }
 } finally {

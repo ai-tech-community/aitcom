@@ -103,7 +103,11 @@ export function FeedPage({
         <PostComposer slug={slug} canPost={canPost} />
 
         {isAuthenticated && isMember ? (
-          <TopicChips slug={slug} active={activeTopic} onSelect={setActiveTopic} />
+          <TopicChips
+            slug={slug}
+            active={activeTopic}
+            onSelect={setActiveTopic}
+          />
         ) : null}
 
         {!isAuthenticated ? (

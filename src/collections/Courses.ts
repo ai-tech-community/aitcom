@@ -4,15 +4,31 @@ export const Courses: CollectionConfig = {
   slug: "courses",
   admin: {
     useAsTitle: "title",
-    defaultColumns: ["title", "authorName", "communityId", "status", "enrollmentCount"],
+    defaultColumns: [
+      "title",
+      "authorName",
+      "communityId",
+      "status",
+      "enrollmentCount",
+    ],
     description: "Member-created classroom courses.",
   },
   fields: [
     { name: "title", type: "text", required: true, maxLength: 200 },
     { name: "slug", type: "text", required: true, unique: true, index: true },
     { name: "summary", type: "text", maxLength: 500 },
-    { name: "coverImageUrl", type: "text", admin: { description: "S3 cover image URL (uploaded via /api/upload)." } },
-    { name: "authorId", type: "text", required: true, index: true, admin: { description: "Better Auth user ID." } },
+    {
+      name: "coverImageUrl",
+      type: "text",
+      admin: { description: "S3 cover image URL (uploaded via /api/upload)." },
+    },
+    {
+      name: "authorId",
+      type: "text",
+      required: true,
+      index: true,
+      admin: { description: "Better Auth user ID." },
+    },
     { name: "authorName", type: "text", admin: { readOnly: true } },
     {
       name: "status",
@@ -31,9 +47,17 @@ export const Courses: CollectionConfig = {
       name: "isPublic",
       type: "checkbox",
       defaultValue: false,
-      admin: { position: "sidebar", description: "Admin-promoted: visible to non-members." },
+      admin: {
+        position: "sidebar",
+        description: "Admin-promoted: visible to non-members.",
+      },
     },
-    { name: "enrollmentCount", type: "number", defaultValue: 0, admin: { readOnly: true } },
+    {
+      name: "enrollmentCount",
+      type: "number",
+      defaultValue: 0,
+      admin: { readOnly: true },
+    },
   ],
   timestamps: true,
 };

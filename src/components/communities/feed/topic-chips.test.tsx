@@ -28,7 +28,9 @@ describe("TopicChipsView", () => {
   it("renders an All chip plus one chip per topic", () => {
     render(<TopicChipsView topics={topics} active="all" onSelect={vi.fn()} />);
     expect(screen.getByRole("button", { name: /all/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /general/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /general/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /wins/i })).toBeInTheDocument();
   });
 

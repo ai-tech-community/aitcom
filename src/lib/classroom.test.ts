@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { courseProgressPercent, canCreateCourse, youtubeEmbedUrl } from "./classroom";
+import {
+  courseProgressPercent,
+  canCreateCourse,
+  youtubeEmbedUrl,
+} from "./classroom";
 import {
   gradeExam,
   examPassed,
@@ -9,8 +13,20 @@ import {
 } from "./classroom";
 
 const Q: ExamQuestion[] = [
-  { id: "a", prompt: "1+1?", type: "single", options: ["1", "2", "3"], correctIndex: 1 },
-  { id: "b", prompt: "Sky is blue?", type: "boolean", options: ["True", "False"], correctIndex: 0 },
+  {
+    id: "a",
+    prompt: "1+1?",
+    type: "single",
+    options: ["1", "2", "3"],
+    correctIndex: 1,
+  },
+  {
+    id: "b",
+    prompt: "Sky is blue?",
+    type: "boolean",
+    options: ["True", "False"],
+    correctIndex: 0,
+  },
 ];
 
 describe("gradeExam", () => {
@@ -64,7 +80,12 @@ describe("stripAnswerKey", () => {
     const pub = stripAnswerKey(Q);
     expect(pub).toEqual([
       { id: "a", prompt: "1+1?", type: "single", options: ["1", "2", "3"] },
-      { id: "b", prompt: "Sky is blue?", type: "boolean", options: ["True", "False"] },
+      {
+        id: "b",
+        prompt: "Sky is blue?",
+        type: "boolean",
+        options: ["True", "False"],
+      },
     ]);
     // @ts-expect-error correctIndex must not exist on the public shape
     expect(pub[0].correctIndex).toBeUndefined();
@@ -117,10 +138,14 @@ describe("canCreateCourse", () => {
 
 describe("youtubeEmbedUrl", () => {
   it("converts watch URLs", () => {
-    expect(youtubeEmbedUrl("https://www.youtube.com/watch?v=abc123")).toBe("https://www.youtube.com/embed/abc123");
+    expect(youtubeEmbedUrl("https://www.youtube.com/watch?v=abc123")).toBe(
+      "https://www.youtube.com/embed/abc123",
+    );
   });
   it("converts youtu.be URLs", () => {
-    expect(youtubeEmbedUrl("https://youtu.be/abc123")).toBe("https://www.youtube.com/embed/abc123");
+    expect(youtubeEmbedUrl("https://youtu.be/abc123")).toBe(
+      "https://www.youtube.com/embed/abc123",
+    );
   });
   it("returns null for non-youtube", () => {
     expect(youtubeEmbedUrl("https://vimeo.com/123")).toBeNull();

@@ -36,7 +36,13 @@ export const Lessons: CollectionConfig = {
     description: "Lessons within a course.",
   },
   fields: [
-    { name: "course", type: "number", required: true, index: true, admin: { description: "courses.id" } },
+    {
+      name: "course",
+      type: "number",
+      required: true,
+      index: true,
+      admin: { description: "courses.id" },
+    },
     { name: "title", type: "text", required: true, maxLength: 200 },
     { name: "order", type: "number", defaultValue: 0, index: true },
     { name: "youtubeUrl", type: "text", maxLength: 500 },

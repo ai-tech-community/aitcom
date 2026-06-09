@@ -135,7 +135,8 @@ function EditorToolbar({
             : anchorNode.getTopLevelElement();
         let b = "";
         if (element) {
-          if ($isHeadingNode(element)) b = element.getTag(); // "h2" | "h3"
+          if ($isHeadingNode(element))
+            b = element.getTag(); // "h2" | "h3"
           else if ($isQuoteNode(element)) b = "quote";
           else if ($isListNode(element)) {
             const lt = element.getListType();
@@ -157,31 +158,85 @@ function EditorToolbar({
     if (url) editor.dispatchCommand(TOGGLE_LINK_COMMAND, url);
   };
 
-  const items: { key: string; title: string; icon: ReactNode; run: () => void }[] =
-    [
-      {
-        key: "bold",
-        title: "Bold",
-        icon: <Bold className="size-4" />,
-        run: () => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, "bold"),
-      },
-      {
-        key: "italic",
-        title: "Italic",
-        icon: <Italic className="size-4" />,
-        run: () => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, "italic"),
-      },
-      { key: "h2", title: "Heading", icon: <Heading2 className="size-4" />, run: () => onBlock("h2") },
-      { key: "h3", title: "Subheading", icon: <Heading3 className="size-4" />, run: () => onBlock("h3") },
-      { key: "quote", title: "Quote", icon: <Quote className="size-4" />, run: () => onBlock("quote") },
-      { key: "ul", title: "Bullet list", icon: <List className="size-4" />, run: () => onBlock("ul") },
-      { key: "ol", title: "Numbered list", icon: <ListOrdered className="size-4" />, run: () => onBlock("ol") },
-      { key: "check", title: "Checklist", icon: <ListChecks className="size-4" />, run: () => onBlock("check") },
-      { key: "code", title: "Code block", icon: <Code className="size-4" />, run: () => onBlock("code") },
-      { key: "link", title: "Link", icon: <Link2 className="size-4" />, run: insertLink },
-      { key: "image", title: "Image", icon: <ImageIcon className="size-4" />, run: () => onBlock("image") },
-      { key: "divider", title: "Divider", icon: <Minus className="size-4" />, run: () => onBlock("divider") },
-    ];
+  const items: {
+    key: string;
+    title: string;
+    icon: ReactNode;
+    run: () => void;
+  }[] = [
+    {
+      key: "bold",
+      title: "Bold",
+      icon: <Bold className="size-4" />,
+      run: () => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, "bold"),
+    },
+    {
+      key: "italic",
+      title: "Italic",
+      icon: <Italic className="size-4" />,
+      run: () => editor?.dispatchCommand(FORMAT_TEXT_COMMAND, "italic"),
+    },
+    {
+      key: "h2",
+      title: "Heading",
+      icon: <Heading2 className="size-4" />,
+      run: () => onBlock("h2"),
+    },
+    {
+      key: "h3",
+      title: "Subheading",
+      icon: <Heading3 className="size-4" />,
+      run: () => onBlock("h3"),
+    },
+    {
+      key: "quote",
+      title: "Quote",
+      icon: <Quote className="size-4" />,
+      run: () => onBlock("quote"),
+    },
+    {
+      key: "ul",
+      title: "Bullet list",
+      icon: <List className="size-4" />,
+      run: () => onBlock("ul"),
+    },
+    {
+      key: "ol",
+      title: "Numbered list",
+      icon: <ListOrdered className="size-4" />,
+      run: () => onBlock("ol"),
+    },
+    {
+      key: "check",
+      title: "Checklist",
+      icon: <ListChecks className="size-4" />,
+      run: () => onBlock("check"),
+    },
+    {
+      key: "code",
+      title: "Code block",
+      icon: <Code className="size-4" />,
+      run: () => onBlock("code"),
+    },
+    {
+      key: "link",
+      title: "Link",
+      icon: <Link2 className="size-4" />,
+      run: insertLink,
+    },
+    {
+      key: "image",
+      title: "Image",
+      icon: <ImageIcon className="size-4" />,
+      run: () => onBlock("image"),
+    },
+    {
+      key: "divider",
+      title: "Divider",
+      icon: <Minus className="size-4" />,
+      run: () => onBlock("divider"),
+    },
+  ];
 
   return (
     <div className="border-border flex flex-wrap items-center gap-0.5 border-b px-2 py-1.5">
@@ -291,8 +346,9 @@ export function RichTextEditor({
   );
 
   const [isEmpty, setIsEmpty] = useState(() => {
-    const children = (initialValue as { root?: { children?: unknown[] } } | null)
-      ?.root?.children;
+    const children = (
+      initialValue as { root?: { children?: unknown[] } } | null
+    )?.root?.children;
     return !Array.isArray(children) || children.length === 0;
   });
 

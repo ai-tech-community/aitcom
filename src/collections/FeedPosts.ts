@@ -29,13 +29,19 @@ export const FeedPosts: CollectionConfig = {
       name: "topicSlug",
       type: "text",
       index: true,
-      admin: { description: "Slug of the community-topics row this post belongs to. 'general' by default." },
+      admin: {
+        description:
+          "Slug of the community-topics row this post belongs to. 'general' by default.",
+      },
     },
     {
       name: "isPinned",
       type: "checkbox",
       defaultValue: false,
-      admin: { position: "sidebar", description: "Pinned posts appear first on the All view." },
+      admin: {
+        position: "sidebar",
+        description: "Pinned posts appear first on the All view.",
+      },
     },
     {
       name: "likeCount",

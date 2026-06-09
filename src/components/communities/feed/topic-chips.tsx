@@ -39,7 +39,11 @@ export function TopicChipsView({
     <div className="flex flex-wrap gap-2">
       {chip("all", t("allTopics"), "all")}
       {topics.map((tp) =>
-        chip(tp.slug, `${tp.emoji ? `${tp.emoji} ` : ""}${tp.label}`, String(tp.id)),
+        chip(
+          tp.slug,
+          `${tp.emoji ? `${tp.emoji} ` : ""}${tp.label}`,
+          String(tp.id),
+        ),
       )}
     </div>
   );

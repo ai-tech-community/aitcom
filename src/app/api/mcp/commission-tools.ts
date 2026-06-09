@@ -141,7 +141,9 @@ export function registerCommissionTools(
         sourceScope: z
           .enum(["enrolled-challenges"])
           .default("enrolled-challenges")
-          .describe("Which source may trigger the agent under this commission."),
+          .describe(
+            "Which source may trigger the agent under this commission.",
+          ),
       },
     },
     async ({ taskTypeAllowlist, sourceScope }) => {

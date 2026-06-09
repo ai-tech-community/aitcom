@@ -44,10 +44,9 @@ export const linksRouter = createTRPCRouter({
                 .string()
                 .min(1)
                 .max(500)
-                .refine(
-                  (u) => /^https?:\/\//i.test(u) || u.startsWith("/"),
-                  { message: "URL must start with http(s):// or /" },
-                ),
+                .refine((u) => /^https?:\/\//i.test(u) || u.startsWith("/"), {
+                  message: "URL must start with http(s):// or /",
+                }),
               emoji: z.string().max(8).optional(),
             }),
           )
