@@ -46,6 +46,7 @@ import * as migration_20260608b_classrooms from "./20260608b_classrooms";
 import * as migration_20260608c_course_cover from "./20260608c_course_cover";
 import * as migration_20260608d_locked_docs_rels from "./20260608d_locked_docs_rels";
 import * as migration_20260608e_lesson_exams from "./20260608e_lesson_exams";
+import * as migration_20260608f_topic_slug_not_null from "./20260608f_topic_slug_not_null";
 
 export const migrations = [
   {
@@ -287,5 +288,10 @@ export const migrations = [
     up: migration_20260608e_lesson_exams.up,
     down: migration_20260608e_lesson_exams.down,
     name: "20260608e_lesson_exams",
+  },
+  {
+    up: migration_20260608f_topic_slug_not_null.up,
+    down: migration_20260608f_topic_slug_not_null.down,
+    name: "20260608f_topic_slug_not_null",
   },
 ];

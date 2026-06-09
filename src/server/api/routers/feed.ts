@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  requireHubOperator,
+} from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import { and, eq, isNull, inArray } from "drizzle-orm";
@@ -354,6 +358,10 @@ export const feedRouter = createTRPCRouter({
             message: "Only moderators can pin posts",
           });
         }
+      } else {
+        // Hub-wide post (communityId null): pinning is a platform-level action,
+        // restricted to a root-Hub operator — never any signed-in member.
+        await requireHubOperator({ db: ctx.db, session: ctx.session });
       }
 
       if (input.isPinned) {

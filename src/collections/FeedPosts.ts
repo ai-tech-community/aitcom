@@ -29,6 +29,8 @@ export const FeedPosts: CollectionConfig = {
       name: "topicSlug",
       type: "text",
       index: true,
+      required: true,
+      defaultValue: "general",
       admin: {
         description:
           "Slug of the community-topics row this post belongs to. 'general' by default.",
