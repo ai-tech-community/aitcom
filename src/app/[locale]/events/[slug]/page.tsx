@@ -209,7 +209,7 @@ export default async function EventDetailPage({
         ? "Free"
         : null;
 
-  let hackathonChallenge: { id: number; creatorId: string } | null = null;
+  let hackathonChallenge: { id: number } | null = null;
   if (event.challengeId) {
     try {
       const ch = await payload.findByID({
@@ -217,7 +217,7 @@ export default async function EventDetailPage({
         id: Number(event.challengeId),
         depth: 0,
       });
-      hackathonChallenge = { id: Number(ch.id), creatorId: String(ch.creatorId ?? "") };
+      hackathonChallenge = { id: Number(ch.id) };
     } catch {
       hackathonChallenge = null;
     }
@@ -542,7 +542,6 @@ export default async function EventDetailPage({
           {hackathonChallenge ? (
             <HackathonPanel
               challengeId={hackathonChallenge.id}
-              challengeCreatorId={hackathonChallenge.creatorId}
             />
           ) : null}
 

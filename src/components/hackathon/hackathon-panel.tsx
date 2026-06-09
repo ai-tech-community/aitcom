@@ -15,16 +15,13 @@ import { TeamGridProgress } from "./team-grid-progress";
 
 export function HackathonPanel({
   challengeId,
-  challengeCreatorId,
 }: {
   challengeId: number;
-  challengeCreatorId: string;
 }) {
   const t = useTranslations("hackathon");
   const utils = api.useUtils();
   const { data: session } = authClient.useSession();
   const userId = session?.user?.id ?? null;
-  const isSponsor = userId !== null && userId === challengeCreatorId;
 
   const { data: myTeam } = api.hackathon.myTeam.useQuery(
     { challengeId },
@@ -74,14 +71,6 @@ export function HackathonPanel({
     },
     onError: (e) => toast.error(e.message),
   });
-  const finalize = api.hackathon.finalizeHackathon.useMutation({
-    onSuccess: () => {
-      toast.success(t("finalize"));
-      void utils.hackathon.teamLeaderboard.invalidate({ challengeId });
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
   return (
     <section className="mt-8">
       <h2 className="text-lg font-semibold">{t("title")}</h2>
@@ -200,17 +189,6 @@ export function HackathonPanel({
             </div>
           ) : null}
         </Card>
-      ) : null}
-
-      {isSponsor ? (
-        <Button
-          className="mt-4"
-          variant="destructive"
-          disabled={finalize.isPending}
-          onClick={() => finalize.mutate({ challengeId })}
-        >
-          {t("finalize")}
-        </Button>
       ) : null}
 
       <TeamLeaderboard challengeId={challengeId} />
