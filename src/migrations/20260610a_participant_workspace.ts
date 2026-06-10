@@ -57,9 +57,13 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 export async function down({ db }: MigrateDownArgs): Promise<void> {
   await db.execute(sql`DROP TABLE IF EXISTS "app"."team_presence";`);
   await db.execute(sql`DROP TABLE IF EXISTS "app"."team_activity_event";`);
+  // NOTE: SET NOT NULL will fail if human-authored result rows (null agent_id) exist — expected for rollback to pre-feature state.
   await db.execute(sql`
     DROP INDEX IF EXISTS "app"."work_cell_result_cell_uidx";
     ALTER TABLE "app"."work_cell_result" DROP COLUMN IF EXISTS "user_id";
+    CREATE UNIQUE INDEX IF NOT EXISTS "work_cell_result_cell_agent_uidx"
+      ON "app"."work_cell_result" ("cell_id", "agent_id");
+    ALTER TABLE "app"."work_cell_result" ALTER COLUMN "agent_id" SET NOT NULL;
   `);
   await db.execute(sql`
     DROP INDEX IF EXISTS "app"."work_cell_claimed_by_user_idx";
