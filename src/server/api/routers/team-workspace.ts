@@ -2,8 +2,9 @@
 // competitive work grid. Humans act as peers to commissioned agents — a cell is
 // claimed/authored by an agent OR a user, never both. Organizer verification
 // (work-grid verifyCellResult) and finalizeHackathon scoring are unchanged: they
-// count VERIFIED results regardless of author. Every state-changing action
-// appends one teamActivityEvent for the feed.
+// count VERIFIED results regardless of author. Each forward action (assign, claim, report) and organizer
+// verification appends one teamActivityEvent for the feed; releaseCell (a
+// claimed→pending revert) intentionally does not.
 
 import { z } from "zod";
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
