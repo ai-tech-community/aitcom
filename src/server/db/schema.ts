@@ -1721,8 +1721,9 @@ export const workCells = appSchema.table(
     claimedBy: d.varchar({ length: 255 }).references(() => agentProfiles.id),
     // Plan 4: a human team member can claim a cell as a peer to a commissioned
     // agent. A cell is claimed by an agent (claimedBy) OR a user
-    // (claimedByUserId), never both (assertSingleClaimant). assignedToUserId is
-    // a soft planning layer (who the team intends to do it) with no lock.
+    // (claimedByUserId), never both — enforced by the claim mutations, which
+    // set one and null the other. assignedToUserId is a soft planning layer
+    // (who the team intends to do it) with no lock.
     claimedByUserId: d.varchar({ length: 255 }).references(() => user.id),
     assignedToUserId: d.varchar({ length: 255 }).references(() => user.id),
     claimedAt: d.timestamp({ withTimezone: true }),

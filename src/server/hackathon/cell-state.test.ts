@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cellHeatState, assertSingleClaimant, CellClaimError } from "./cell-state";
+import { cellHeatState } from "./cell-state";
 
 describe("cellHeatState", () => {
   it("maps a pending cell to 'pending'", () => {
@@ -25,27 +25,5 @@ describe("cellHeatState", () => {
   });
   it("maps completed with a failed outcome to 'completed'", () => {
     expect(cellHeatState("completed", "failed")).toBe("completed");
-  });
-});
-
-describe("assertSingleClaimant", () => {
-  it("allows an agent-only claimant", () => {
-    expect(() => assertSingleClaimant("agent-1", null)).not.toThrow();
-  });
-  it("allows a user-only claimant", () => {
-    expect(() => assertSingleClaimant(null, "user-1")).not.toThrow();
-  });
-  it("allows an unclaimed cell", () => {
-    expect(() => assertSingleClaimant(null, null)).not.toThrow();
-  });
-  it("rejects a cell claimed by both an agent and a user", () => {
-    expect(() => assertSingleClaimant("agent-1", "user-1")).toThrow(
-      /both an agent and a user/,
-    );
-  });
-  it("throws a CellClaimError instance", () => {
-    expect(() => assertSingleClaimant("agent-1", "user-1")).toThrow(
-      CellClaimError,
-    );
   });
 });

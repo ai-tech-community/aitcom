@@ -513,9 +513,7 @@ export const workGridRouter = createTRPCRouter({
             output: input.output,
             verificationOutcome: "pending",
           })
-          .onConflictDoNothing({
-            target: [workCellResults.cellId, workCellResults.agentId],
-          });
+          .onConflictDoNothing({ target: workCellResults.cellId });
 
         return completed;
       });
