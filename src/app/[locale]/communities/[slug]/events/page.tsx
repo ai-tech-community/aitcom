@@ -272,10 +272,16 @@ export default function CommunityEventsPage({
     }
 
     if (event.slug) {
+      // A draft hackathon has no public event page yet (it 404s) — send admins to
+      // its manage surface instead. Published hackathons keep the public link.
+      const href =
+        event.type === "hackathon" && event.status === "draft"
+          ? `/communities/${slug}/events/${event.slug}/manage`
+          : `/events/${event.slug}`;
       return (
         <Link
           key={event.id}
-          href={`/events/${event.slug}` as never}
+          href={href as never}
           className={sharedRowClassName}
         >
           {innerContent}
