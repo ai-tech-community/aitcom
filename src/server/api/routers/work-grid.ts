@@ -25,6 +25,7 @@ import type { CommunityRole } from "@/server/communities/role-utils";
 import { awardCommissionedCellXp } from "@/server/agent/activity";
 import { isTaskTypeAllowed } from "./task-allowlist";
 import { createCollaborativeGridSchema } from "./work-grid-schema";
+import { ownerOnTeam } from "@/server/hackathon/team-membership";
 
 /**
  * Work-grid router — the runtime of a [[work-grid]] from ADR-0023.
@@ -135,26 +136,6 @@ async function ownerEnrolledInChallenge(
     where: and(
       eq(challengeEnrollments.challengeId, challengeId),
       eq(challengeEnrollments.userId, ownerId),
-      eq(challengeEnrollments.status, "active"),
-    ),
-  });
-  return enrollment !== undefined;
-}
-
-// Competitive source scope (ADR-0029): an owner is "on" a team iff they hold an
-// active enrollment carrying that teamId. Team membership ⊂ challenge enrollment,
-// so this is strictly tighter than the challenge source-scope check — a
-// competitive cell is claimable only by the grid's own team, never by any other
-// member enrolled in the same hackathon challenge.
-async function ownerOnTeam(
-  db: typeof import("@/server/db").db,
-  ownerId: string,
-  teamId: string,
-) {
-  const enrollment = await db.query.challengeEnrollments.findFirst({
-    where: and(
-      eq(challengeEnrollments.userId, ownerId),
-      eq(challengeEnrollments.teamId, teamId),
       eq(challengeEnrollments.status, "active"),
     ),
   });

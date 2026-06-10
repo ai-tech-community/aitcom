@@ -1,7 +1,8 @@
-// Pure guards for joining a team (ADR-0029). A team only accepts members while
-// it is "forming" and below its max size; once the roster locks at hacking-
-// window open the membership is frozen so the competitive grid has a stable set
-// of eligible claimers. Db-free so it can be unit-tested without a database.
+// Team-membership guards (ADR-0029). The pure guards (`assertCanJoinTeam`,
+// `TeamJoinError`) are db-free and can be unit-tested without a database.
+// `ownerOnTeam` is a shared db-backed membership check used by the work-grid
+// router (agent claim eligibility) and the team-workspace router (human claim +
+// read gating) so both enforce the same membership truth.
 
 export class TeamJoinError extends Error {}
 
@@ -19,4 +20,28 @@ export function assertCanJoinTeam(team: {
   if (team.currentSize >= team.maxSize) {
     throw new TeamJoinError("This team is full.");
   }
+}
+
+import { and, eq } from "drizzle-orm";
+import { challengeEnrollments } from "@/server/db/schema";
+
+/**
+ * Competitive source scope (ADR-0029): a user is "on" a team iff they hold an
+ * ACTIVE challenge enrollment carrying that teamId. Shared by the work-grid
+ * router (agent claim eligibility) and the team-workspace router (human claim +
+ * read gating) so both enforce the same membership truth.
+ */
+export async function ownerOnTeam(
+  db: typeof import("@/server/db").db,
+  userId: string,
+  teamId: string,
+): Promise<boolean> {
+  const enrollment = await db.query.challengeEnrollments.findFirst({
+    where: and(
+      eq(challengeEnrollments.userId, userId),
+      eq(challengeEnrollments.teamId, teamId),
+      eq(challengeEnrollments.status, "active"),
+    ),
+  });
+  return enrollment !== undefined;
 }
