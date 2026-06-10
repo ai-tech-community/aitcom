@@ -37,6 +37,7 @@ import {
   cellTemplateToInserts,
 } from "@/server/hackathon/cell-template";
 import { teamScore, rankTeams, prizeSplit } from "@/server/hackathon/scoring";
+import { cellHeatState } from "@/server/hackathon/cell-state";
 import { awardXp, awardBadge } from "@/lib/gamification";
 
 /**
@@ -823,5 +824,55 @@ export const hackathonRouter = createTRPCRouter({
       const byStatus: Record<string, number> = {};
       for (const c of cells) byStatus[c.status] = (byStatus[c.status] ?? 0) + 1;
       return { total: cells.length, byStatus };
+    }),
+
+  /**
+   * Public, content-free per-cell status array for the spectator dashboard
+   * heatmap (ADR-0030, amended): the colour of each cell's progress, never its
+   * content/output. Ordered stably by cell id so the matrix is stable across
+   * polls. Returns an empty array if the team has no competitive grid yet.
+   */
+  teamHeatmap: publicProcedure
+    .input(z.object({ teamId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [grid] = await ctx.db
+        .select({ id: workGrids.id })
+        .from(workGrids)
+        .where(
+          and(
+            eq(workGrids.teamId, input.teamId),
+            eq(workGrids.mode, "competitive"),
+          ),
+        )
+        .limit(1);
+      if (!grid) return [];
+
+      const cells = await ctx.db
+        .select({ id: workCells.id, status: workCells.status })
+        .from(workCells)
+        .where(eq(workCells.gridId, grid.id))
+        .orderBy(workCells.id);
+
+      const cellIds = cells.map((c) => c.id);
+      const verified =
+        cellIds.length > 0
+          ? await ctx.db
+              .select({ cellId: workCellResults.cellId })
+              .from(workCellResults)
+              .where(
+                and(
+                  inArray(workCellResults.cellId, cellIds),
+                  eq(workCellResults.verificationOutcome, "verified"),
+                ),
+              )
+          : [];
+      const verifiedCells = new Set(verified.map((v) => v.cellId));
+
+      return cells.map((c) => ({
+        heatState: cellHeatState(
+          c.status,
+          verifiedCells.has(c.id) ? "verified" : null,
+        ),
+      }));
     }),
 });
