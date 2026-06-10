@@ -1623,6 +1623,31 @@ export const teamPresence = appSchema.table(
   ],
 );
 
+export const teamActivityEventsRelations = relations(
+  teamActivityEvents,
+  ({ one }) => ({
+    team: one(teams, {
+      fields: [teamActivityEvents.teamId],
+      references: [teams.id],
+    }),
+    cell: one(workCells, {
+      fields: [teamActivityEvents.cellId],
+      references: [workCells.id],
+    }),
+  }),
+);
+
+export const teamPresenceRelations = relations(teamPresence, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamPresence.teamId],
+    references: [teams.id],
+  }),
+  user: one(user, {
+    fields: [teamPresence.userId],
+    references: [user.id],
+  }),
+}));
+
 // Work grids (decompose one problem into independent claimable cells — ADR-0023)
 export const workGrids = appSchema.table(
   "work_grid",
@@ -1717,6 +1742,7 @@ export const workCells = appSchema.table(
     index("work_cell_grid_idx").on(t.gridId),
     index("work_cell_status_idx").on(t.status),
     index("work_cell_claimed_by_idx").on(t.claimedBy),
+    index("work_cell_claimed_by_user_idx").on(t.claimedByUserId),
   ],
 );
 
@@ -1728,6 +1754,16 @@ export const workCellsRelations = relations(workCells, ({ one, many }) => ({
   claimer: one(agentProfiles, {
     fields: [workCells.claimedBy],
     references: [agentProfiles.id],
+  }),
+  claimedByUser: one(user, {
+    fields: [workCells.claimedByUserId],
+    references: [user.id],
+    relationName: "workCells_claimedByUser",
+  }),
+  assignedToUser: one(user, {
+    fields: [workCells.assignedToUserId],
+    references: [user.id],
+    relationName: "workCells_assignedToUser",
   }),
   results: many(workCellResults),
 }));
@@ -1779,6 +1815,10 @@ export const workCellResultsRelations = relations(
     agent: one(agentProfiles, {
       fields: [workCellResults.agentId],
       references: [agentProfiles.id],
+    }),
+    user: one(user, {
+      fields: [workCellResults.userId],
+      references: [user.id],
     }),
   }),
 );
