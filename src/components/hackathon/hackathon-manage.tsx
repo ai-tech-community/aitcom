@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -42,6 +42,8 @@ export function HackathonManage({
   initialStartTime,
   initialEndTime,
   initialLocation,
+  initialCoverImageId,
+  initialCoverImageUrl,
   initialCells,
   teamMin: initialTeamMin,
   teamMax: initialTeamMax,
@@ -61,6 +63,8 @@ export function HackathonManage({
   initialStartTime: string;
   initialEndTime: string;
   initialLocation: string;
+  initialCoverImageId: number | null;
+  initialCoverImageUrl: string;
   initialCells: CellRow[];
   teamMin: number;
   teamMax: number;
@@ -77,6 +81,13 @@ export function HackathonManage({
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
   const [location, setLocation] = useState(initialLocation);
+  // Cover image
+  const [coverImageId, setCoverImageId] = useState<number | null>(
+    initialCoverImageId,
+  );
+  const [coverImageUrl, setCoverImageUrl] = useState(initialCoverImageUrl);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   // Teams + prize
   const [teamMin, setTeamMin] = useState(initialTeamMin);
   const [teamMax, setTeamMax] = useState(initialTeamMax);
@@ -128,6 +139,27 @@ export function HackathonManage({
           ? t("statusFinalized")
           : t("statusLive");
 
+  const onCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("alt", name || "Hackathon cover");
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = (await res.json()) as { url: string; id: number };
+      setCoverImageId(data.id);
+      setCoverImageUrl(data.url);
+    } catch {
+      toast.error(t("uploading"));
+    } finally {
+      setCoverUploading(false);
+      if (coverInputRef.current) coverInputRef.current.value = "";
+    }
+  };
+
   const onSave = () =>
     save.mutate({
       challengeId,
@@ -138,6 +170,7 @@ export function HackathonManage({
       startTime: startTime || undefined,
       endTime: endTime || undefined,
       location: location.trim(),
+      coverImage: coverImageId,
       cellTemplate: cells,
       teamMin,
       teamMax,
@@ -222,6 +255,50 @@ export function HackathonManage({
             onChange={(e) => setLocation(e.target.value)}
           />
         </LabeledInput>
+        <div className="space-y-2">
+          <span className="text-muted-foreground text-xs font-medium">
+            {t("coverImage")}
+          </span>
+          {coverImageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={coverImageUrl}
+              alt={name}
+              className="border-border h-32 w-full rounded-md border object-cover"
+            />
+          ) : null}
+          <div className="flex items-center gap-2">
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onCoverUpload}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={coverUploading}
+              onClick={() => coverInputRef.current?.click()}
+            >
+              {coverUploading ? t("uploading") : t("uploadImage")}
+            </Button>
+            {coverImageId !== null ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setCoverImageId(null);
+                  setCoverImageUrl("");
+                }}
+              >
+                {t("removeImage")}
+              </Button>
+            ) : null}
+          </div>
+        </div>
       </Card>
 
       {/* Teams + prize */}

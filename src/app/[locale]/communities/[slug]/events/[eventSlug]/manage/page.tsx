@@ -39,10 +39,19 @@ export default async function ManageHackathonPage({
     collection: "events",
     where: { slug: { equals: eventSlug } },
     limit: 1,
-    depth: 0,
+    depth: 1, // populate the coverImage media relation (id + url)
   });
   const event = docs[0];
   if (!event?.challengeId) notFound();
+  const cover = event.coverImage;
+  const coverImageId =
+    cover && typeof cover === "object"
+      ? Number(cover.id)
+      : typeof cover === "number"
+        ? cover
+        : null;
+  const coverImageUrl =
+    cover && typeof cover === "object" ? String(cover.url ?? "") : "";
   const challenge = await payload.findByID({
     collection: "challenges",
     id: Number(event.challengeId),
@@ -69,6 +78,8 @@ export default async function ManageHackathonPage({
       initialStartTime={String(event.startTime ?? "")}
       initialEndTime={String(event.endTime ?? "")}
       initialLocation={String(event.location ?? "")}
+      initialCoverImageId={coverImageId}
+      initialCoverImageUrl={coverImageUrl}
       initialCells={(challenge.cellTemplate ?? []) as unknown as CellRow[]}
       teamMin={challenge.teamConfig?.minTeamSize ?? 1}
       teamMax={challenge.teamConfig?.maxTeamSize ?? 5}

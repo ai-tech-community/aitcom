@@ -235,6 +235,8 @@ export const hackathonRouter = createTRPCRouter({
         startTime: z.string().optional(),
         endTime: z.string().optional(),
         location: z.string().min(1).max(255).optional(),
+        // number = set/replace cover, null = clear it, undefined = leave unchanged
+        coverImage: z.number().int().positive().nullable().optional(),
         // Challenge config.
         cellTemplate: cellTemplateSchema.optional(),
         teamMin: z.number().int().min(1).optional(),
@@ -306,6 +308,7 @@ export const hackathonRouter = createTRPCRouter({
         if (input.startTime !== undefined) eventData.startTime = input.startTime;
         if (input.endTime !== undefined) eventData.endTime = input.endTime;
         if (input.location !== undefined) eventData.location = input.location;
+        if (input.coverImage !== undefined) eventData.coverImage = input.coverImage;
         if (Object.keys(eventData).length > 0) {
           let ev;
           try {
@@ -421,7 +424,7 @@ export const hackathonRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
       }
 
-      if (["draft", "rejected", "cancelled"].includes(event.status)) {
+      if (["draft", "rejected"].includes(event.status)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Event is not published.",
