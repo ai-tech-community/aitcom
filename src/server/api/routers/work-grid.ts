@@ -637,16 +637,20 @@ export const workGridRouter = createTRPCRouter({
         // Resolve the OWNER (the human who commissioned the agent) from the
         // result's agent's active commission. XP accrues to the owner, not the
         // agent (ADR-0022 attribution: "X's agent, commissioned").
-        const [commission] = await tx
-          .select({ ownerId: agentCommissions.ownerId })
-          .from(agentCommissions)
-          .where(
-            and(
-              eq(agentCommissions.agentId, result.agentId),
-              isNull(agentCommissions.revokedAt),
-            ),
-          )
-          .limit(1);
+        // Plan 4: agentId is nullable; human-authored results skip the
+        // commission lookup (no agent commission exists for a human claimant).
+        const [commission] = result.agentId
+          ? await tx
+              .select({ ownerId: agentCommissions.ownerId })
+              .from(agentCommissions)
+              .where(
+                and(
+                  eq(agentCommissions.agentId, result.agentId),
+                  isNull(agentCommissions.revokedAt),
+                ),
+              )
+              .limit(1)
+          : [];
 
         let xpAwarded = 0;
         if (commission) {
