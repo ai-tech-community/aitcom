@@ -6,7 +6,7 @@
 // appends one teamActivityEvent for the feed.
 
 import { z } from "zod";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
@@ -15,6 +15,8 @@ import {
   workCells,
   workCellResults,
   teamActivityEvents,
+  teamPresence,
+  memberProfiles,
 } from "@/server/db/schema";
 import { ownerOnTeam } from "@/server/hackathon/team-membership";
 import { cellHeatState } from "@/server/hackathon/cell-state";
@@ -303,5 +305,52 @@ export const teamWorkspaceRouter = createTRPCRouter({
         });
         return completed;
       });
+    }),
+
+  /** Recent activity for the team feed (newest first). Member-gated. */
+  activity: protectedProcedure
+    .input(z.object({ teamId: z.string(), limit: z.number().min(1).max(100).default(50) }))
+    .query(async ({ ctx, input }) => {
+      await requireTeamMember(ctx.db, ctx.session.user.id, input.teamId);
+      return ctx.db
+        .select()
+        .from(teamActivityEvents)
+        .where(eq(teamActivityEvents.teamId, input.teamId))
+        .orderBy(desc(teamActivityEvents.createdAt))
+        .limit(input.limit);
+    }),
+
+  /** Members seen within the freshness window are "online". Member-gated. */
+  presence: protectedProcedure
+    .input(z.object({ teamId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      await requireTeamMember(ctx.db, ctx.session.user.id, input.teamId);
+      const since = new Date(Date.now() - 45_000); // 45s freshness window
+      const rows = await ctx.db
+        .select({
+          userId: teamPresence.userId,
+          lastSeenAt: teamPresence.lastSeenAt,
+          displayName: memberProfiles.displayName,
+        })
+        .from(teamPresence)
+        .innerJoin(memberProfiles, eq(memberProfiles.userId, teamPresence.userId))
+        .where(and(eq(teamPresence.teamId, input.teamId), gte(teamPresence.lastSeenAt, since)));
+      return rows;
+    }),
+
+  /** Heartbeat — upsert the caller's presence for the team. Member-gated. */
+  heartbeat: protectedProcedure
+    .input(z.object({ teamId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      await requireTeamMember(ctx.db, userId, input.teamId);
+      await ctx.db
+        .insert(teamPresence)
+        .values({ teamId: input.teamId, userId, lastSeenAt: new Date() })
+        .onConflictDoUpdate({
+          target: [teamPresence.teamId, teamPresence.userId],
+          set: { lastSeenAt: new Date() },
+        });
+      return { ok: true };
     }),
 });
