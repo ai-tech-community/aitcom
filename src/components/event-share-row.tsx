@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Calendar, Copy, Check, Linkedin } from "lucide-react";
 import { toast } from "sonner";
 
@@ -25,7 +25,13 @@ export function EventShareRow({ slug, title }: EventShareRowProps) {
     }
   }, [slug]);
 
-  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+  // Defer the URL to after mount: reading window.location during render makes the
+  // server (empty) and client (real URL) HTML disagree → hydration mismatch. The
+  // first client render matches the server (empty), then this fills it in.
+  const [shareUrl, setShareUrl] = useState("");
+  useEffect(() => {
+    setShareUrl(window.location.href);
+  }, []);
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(title);
 
