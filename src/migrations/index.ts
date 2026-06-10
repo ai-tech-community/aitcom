@@ -50,6 +50,7 @@ import * as migration_20260608f_topic_slug_not_null from "./20260608f_topic_slug
 import * as migration_20260609a_hackathon_teams from "./20260609a_hackathon_teams";
 import * as migration_20260609b_team_judging from "./20260609b_team_judging";
 import * as migration_20260609d_challenge_team_config_and_cell_template from "./20260609d_challenge_team_config_and_cell_template";
+import * as migration_20260610a_participant_workspace from "./20260610a_participant_workspace";
 
 export const migrations = [
   {
@@ -311,5 +312,10 @@ export const migrations = [
     up: migration_20260609d_challenge_team_config_and_cell_template.up,
     down: migration_20260609d_challenge_team_config_and_cell_template.down,
     name: "20260609d_challenge_team_config_and_cell_template",
+  },
+  {
+    up: migration_20260610a_participant_workspace.up,
+    down: migration_20260610a_participant_workspace.down,
+    name: "20260610a_participant_workspace",
   },
 ];
