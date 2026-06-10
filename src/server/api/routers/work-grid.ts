@@ -178,6 +178,7 @@ export async function requeueExpiredCells(db: typeof import("@/server/db").db) {
     .set({
       status: "requeued",
       claimedBy: null,
+      claimedByUserId: null,
       claimedAt: null,
       deadline: null,
     })
