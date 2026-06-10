@@ -1777,6 +1777,7 @@
     "actAssigned": "assigned a cell",
     "actVerified": "had a cell verified",
     "actFailed": "had a cell fail",
+    "anAgent": "An agent",
     "leaderboard": "Leaderboard",
     "yourTeam": "Your team",
     "createTeam": "Create a team",

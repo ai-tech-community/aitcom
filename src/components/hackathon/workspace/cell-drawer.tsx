@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
+import { authClient } from "@/server/better-auth/client";
+
 import { api } from "@/trpc/react";
 import type { RouterOutputs } from "@/trpc/react";
 import {
@@ -48,6 +50,8 @@ export function CellDrawer({
   onClose: () => void;
 }) {
   const t = useTranslations("hackathon");
+  const { data: session } = authClient.useSession();
+  const currentUserId = session?.user?.id ?? null;
   const utils = api.useUtils();
   const [output, setOutput] = useState("");
 
@@ -167,7 +171,8 @@ export function CellDrawer({
               ) : null}
 
               {/* Release + Report */}
-              {cell.heatState === "claimed" ? (
+              {cell.heatState === "claimed" &&
+              cell.claimedByUserId === currentUserId ? (
                 <>
                   <Button
                     variant="outline"

@@ -33,7 +33,7 @@ export function TeamWorkspace({
           <ConnectAgentPanel challengeId={challengeId} />
         </div>
         <div>
-          <ActivityFeed teamId={teamId} />
+          <ActivityFeed teamId={teamId} members={members} />
         </div>
       </div>
 

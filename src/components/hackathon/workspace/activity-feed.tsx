@@ -29,12 +29,20 @@ function relativeTime(date: Date): string {
   return new Date(date).toLocaleString();
 }
 
-export function ActivityFeed({ teamId }: { teamId: string }) {
+export function ActivityFeed({
+  teamId,
+  members,
+}: {
+  teamId: string;
+  members: { userId: string; displayName: string }[];
+}) {
   const t = useTranslations("hackathon");
   const { data } = api.teamWorkspace.activity.useQuery(
     { teamId },
     { refetchInterval: 5_000 },
   );
+
+  const memberMap = new Map(members.map((m) => [m.userId, m.displayName]));
 
   const verb = (type: ActivityEvent["type"]): string => {
     switch (type) {
@@ -71,8 +79,11 @@ export function ActivityFeed({ teamId }: { teamId: string }) {
           <ScrollArea className="h-64">
             <ul className="space-y-2 pr-3">
               {events.map((event) => {
-                const actor =
-                  event.actorUserId ?? event.actorAgentId ?? "—";
+                const actor = event.actorUserId
+                  ? (memberMap.get(event.actorUserId) ?? event.actorUserId)
+                  : event.actorAgentId
+                    ? t("anAgent")
+                    : "—";
                 return (
                   <li
                     key={event.id}
