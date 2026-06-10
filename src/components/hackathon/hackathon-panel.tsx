@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Link } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -15,8 +16,10 @@ import { TeamGridProgress } from "./team-grid-progress";
 
 export function HackathonPanel({
   challengeId,
+  eventSlug,
 }: {
   challengeId: number;
+  eventSlug: string;
 }) {
   const t = useTranslations("hackathon");
   const utils = api.useUtils();
@@ -146,6 +149,12 @@ export function HackathonPanel({
           ) : null}
 
           <TeamGridProgress teamId={myTeam.team.id} />
+
+          <Button asChild className="mt-3" size="sm" variant="secondary">
+            <Link href={`/events/${eventSlug}/team`}>
+              {t("enterWorkspace")} →
+            </Link>
+          </Button>
 
           {!myTeam.isCaptain && myTeam.team.status === "forming" ? (
             <Button

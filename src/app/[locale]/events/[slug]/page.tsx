@@ -542,6 +542,7 @@ export default async function EventDetailPage({
           {hackathonChallenge ? (
             <HackathonPanel
               challengeId={hackathonChallenge.id}
+              eventSlug={slug}
             />
           ) : null}
 
