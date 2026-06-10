@@ -8,111 +8,327 @@ import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   CellTemplateEditor,
   type CellRow,
 } from "@/components/hackathon/cell-template-editor";
 
+function LabeledInput({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block space-y-1">
+      <span className="text-muted-foreground text-xs font-medium">{label}</span>
+      {children}
+    </label>
+  );
+}
+
 export function HackathonManage({
   communitySlug,
   eventId,
+  eventSlug,
   eventStatus,
   challengeId,
-  challengeStatus,
+  initialName,
+  initialDescription,
+  initialDate,
+  initialStartTime,
+  initialEndTime,
+  initialLocation,
   initialCells,
-  teamMin,
-  teamMax,
+  teamMin: initialTeamMin,
+  teamMax: initialTeamMax,
+  initialXpReward,
+  initialSponsorReward,
+  initialBadgeReward,
 }: {
   communitySlug: string;
   eventId: number;
+  eventSlug: string;
   eventStatus: string;
   challengeId: number;
   challengeStatus: string;
+  initialName: string;
+  initialDescription: string;
+  initialDate: string;
+  initialStartTime: string;
+  initialEndTime: string;
+  initialLocation: string;
   initialCells: CellRow[];
   teamMin: number;
   teamMax: number;
+  initialXpReward: number;
+  initialSponsorReward: string;
+  initialBadgeReward: string;
 }) {
   const t = useTranslations("hackathon");
-  const [cells, setCells] = useState<CellRow[]>(initialCells);
-  const [status, setStatus] = useState({
-    event: eventStatus,
-    challenge: challengeStatus,
-  });
 
+  // Details
+  const [name, setName] = useState(initialName);
+  const [description, setDescription] = useState(initialDescription);
+  const [date, setDate] = useState(initialDate);
+  const [startTime, setStartTime] = useState(initialStartTime);
+  const [endTime, setEndTime] = useState(initialEndTime);
+  const [location, setLocation] = useState(initialLocation);
+  // Teams + prize
+  const [teamMin, setTeamMin] = useState(initialTeamMin);
+  const [teamMax, setTeamMax] = useState(initialTeamMax);
+  const [xpReward, setXpReward] = useState(initialXpReward);
+  const [sponsorReward, setSponsorReward] = useState(initialSponsorReward);
+  const [badgeReward, setBadgeReward] = useState(initialBadgeReward);
+  // Tasks
+  const [cells, setCells] = useState<CellRow[]>(initialCells);
+
+  const [phase, setPhase] = useState<"draft" | "live" | "locked" | "finalized">(
+    eventStatus === "draft" ? "draft" : "live",
+  );
+  const isDraft = phase === "draft";
+
+  const utils = api.useUtils();
   const save = api.hackathon.updateHackathon.useMutation({
-    onSuccess: () => toast.success(t("saveTasks")),
+    onSuccess: () => toast.success(t("saveChanges")),
     onError: (e) => toast.error(e.message),
   });
   const publish = api.hackathon.publishHackathon.useMutation({
     onSuccess: () => {
-      setStatus((s) => ({ ...s, event: "published", challenge: "active" }));
-      toast.success(t("statusPublished"));
+      setPhase("live");
+      toast.success(t("statusLive"));
     },
     onError: (e) => toast.error(e.message),
   });
   const lock = api.hackathon.lockRosters.useMutation({
-    onSuccess: () => toast.success(t("statusLocked")),
+    onSuccess: () => {
+      setPhase("locked");
+      toast.success(t("statusLocked"));
+    },
     onError: (e) => toast.error(e.message),
   });
   const finalize = api.hackathon.finalizeHackathon.useMutation({
-    onSuccess: () => toast.success(t("finalize")),
+    onSuccess: () => {
+      setPhase("finalized");
+      void utils.hackathon.teamLeaderboard.invalidate({ challengeId });
+      toast.success(t("statusFinalized"));
+    },
     onError: (e) => toast.error(e.message),
   });
 
-  const isDraft = status.event === "draft";
+  const statusLabel =
+    phase === "draft"
+      ? t("statusDraft")
+      : phase === "locked"
+        ? t("statusLocked")
+        : phase === "finalized"
+          ? t("statusFinalized")
+          : t("statusLive");
+
+  const onSave = () =>
+    save.mutate({
+      challengeId,
+      eventId,
+      name: name.trim(),
+      description,
+      date,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined,
+      location: location.trim(),
+      cellTemplate: cells,
+      teamMin,
+      teamMax,
+      xpReward,
+      sponsorReward,
+      badgeReward,
+    });
+
+  const saveDisabled =
+    save.isPending ||
+    name.trim().length < 3 ||
+    !date ||
+    !location.trim() ||
+    teamMin > teamMax;
 
   return (
     <section className="mx-auto max-w-3xl space-y-6 p-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <Link
             href={`/communities/${communitySlug}/events`}
             className="text-muted-foreground text-sm hover:underline"
           >
-            ← {t("manage")}
+            ← {communitySlug}
           </Link>
-          <p className="text-muted-foreground text-xs">
-            {t("teamMin")}: {teamMin} · {t("teamMax")}: {teamMax}
-          </p>
+          <h1 className="truncate text-xl font-semibold">
+            {name || t("createTitle")}
+          </h1>
         </div>
-        <Badge variant={isDraft ? "outline" : "secondary"}>
-          {isDraft ? t("statusDraft") : t("statusPublished")}
-        </Badge>
+        <div className="flex shrink-0 items-center gap-2">
+          {!isDraft ? (
+            <Link
+              href={`/events/${eventSlug}`}
+              className="text-sm hover:underline"
+              target="_blank"
+            >
+              {t("viewPublicPage")}
+            </Link>
+          ) : null}
+          <Badge variant={isDraft ? "outline" : "secondary"}>{statusLabel}</Badge>
+        </div>
       </div>
 
+      {/* Details */}
       <Card className="space-y-3 p-4">
-        <h2 className="text-sm font-medium">{t("tasks")}</h2>
-        <CellTemplateEditor cells={cells} onChange={setCells} />
-        <Button
-          size="sm"
-          disabled={save.isPending}
-          onClick={() => save.mutate({ challengeId, cellTemplate: cells })}
-        >
-          {t("saveTasks")}
-        </Button>
+        <h2 className="text-sm font-medium">{t("details")}</h2>
+        <LabeledInput label={t("name")}>
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
+        </LabeledInput>
+        <LabeledInput label={t("description")}>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </LabeledInput>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <LabeledInput label={t("date")}>
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </LabeledInput>
+          <LabeledInput label={t("startTime")}>
+            <Input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+            />
+          </LabeledInput>
+          <LabeledInput label={t("endTime")}>
+            <Input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+            />
+          </LabeledInput>
+        </div>
+        <LabeledInput label={t("location")}>
+          <Input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+          />
+        </LabeledInput>
       </Card>
 
-      <Card className="flex flex-wrap gap-2 p-4">
-        <Button
-          disabled={publish.isPending || !isDraft || cells.length === 0}
-          onClick={() => publish.mutate({ challengeId, eventId })}
-        >
-          {t("publish")}
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={lock.isPending || isDraft}
-          onClick={() => lock.mutate({ challengeId })}
-        >
-          {t("lockRosters")}
-        </Button>
-        <Button
-          variant="destructive"
-          disabled={finalize.isPending || isDraft}
-          onClick={() => finalize.mutate({ challengeId })}
-        >
-          {t("finalize")}
-        </Button>
+      {/* Teams + prize */}
+      <Card className="space-y-3 p-4">
+        <h2 className="text-sm font-medium">
+          {t("teams")} · {t("prize")}
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <LabeledInput label={t("teamMin")}>
+            <Input
+              type="number"
+              min={1}
+              value={teamMin}
+              onChange={(e) => setTeamMin(Number(e.target.value) || 1)}
+            />
+          </LabeledInput>
+          <LabeledInput label={t("teamMax")}>
+            <Input
+              type="number"
+              min={1}
+              value={teamMax}
+              onChange={(e) => setTeamMax(Number(e.target.value) || 1)}
+            />
+          </LabeledInput>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <LabeledInput label={t("xpReward")}>
+            <Input
+              type="number"
+              min={0}
+              value={xpReward}
+              onChange={(e) => setXpReward(Number(e.target.value) || 0)}
+            />
+          </LabeledInput>
+          <LabeledInput label={t("sponsorReward")}>
+            <Input
+              value={sponsorReward}
+              onChange={(e) => setSponsorReward(e.target.value)}
+            />
+          </LabeledInput>
+          <LabeledInput label={t("badgeReward")}>
+            <Input
+              value={badgeReward}
+              onChange={(e) => setBadgeReward(e.target.value)}
+            />
+          </LabeledInput>
+        </div>
+        <p className="text-muted-foreground text-xs">{t("prizeHint")}</p>
+      </Card>
+
+      {/* Tasks */}
+      <Card className="space-y-3 p-4">
+        <h2 className="text-sm font-medium">{t("tasks")}</h2>
+        <p className="text-muted-foreground text-xs">{t("tasksHint")}</p>
+        <CellTemplateEditor cells={cells} onChange={setCells} />
+      </Card>
+
+      <Button className="w-full" disabled={saveDisabled} onClick={onSave}>
+        {t("saveChanges")}
+      </Button>
+
+      {/* Lifecycle */}
+      <Card className="space-y-4 p-4">
+        <h2 className="text-sm font-medium">{t("lifecycle")}</h2>
+
+        <div className="space-y-1">
+          <Button
+            className="w-full"
+            disabled={publish.isPending || !isDraft || cells.length === 0}
+            onClick={() => publish.mutate({ challengeId, eventId })}
+          >
+            {t("publish")}
+          </Button>
+          <p className="text-muted-foreground text-xs">{t("publishDesc")}</p>
+        </div>
+
+        <div className="space-y-1">
+          <Button
+            className="w-full"
+            variant="secondary"
+            disabled={lock.isPending || isDraft || phase === "finalized"}
+            onClick={() => lock.mutate({ challengeId })}
+          >
+            {t("lockRosters")}
+          </Button>
+          <p className="text-muted-foreground text-xs">
+            {isDraft ? t("publishFirst") : t("lockRostersDesc")}
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <Button
+            className="w-full"
+            variant="destructive"
+            disabled={finalize.isPending || isDraft || phase === "finalized"}
+            onClick={() => {
+              if (window.confirm(t("finalizeConfirm"))) {
+                finalize.mutate({ challengeId });
+              }
+            }}
+          >
+            {t("finalize")}
+          </Button>
+          <p className="text-muted-foreground text-xs">
+            {isDraft ? t("publishFirst") : t("finalizeDesc")}
+          </p>
+        </div>
       </Card>
     </section>
   );

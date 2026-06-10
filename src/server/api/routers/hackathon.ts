@@ -226,11 +226,22 @@ export const hackathonRouter = createTRPCRouter({
     .input(
       z.object({
         challengeId: z.number(),
+        eventId: z.number().optional(),
+        // Shared identity (written to both the event and the challenge).
+        name: z.string().min(3).max(255).optional(),
+        description: z.string().max(5000).optional(),
+        // Event schedule / place.
+        date: z.string().optional(),
+        startTime: z.string().optional(),
+        endTime: z.string().optional(),
+        location: z.string().min(1).max(255).optional(),
+        // Challenge config.
         cellTemplate: cellTemplateSchema.optional(),
         teamMin: z.number().int().min(1).optional(),
         teamMax: z.number().int().min(1).optional(),
         xpReward: z.number().int().min(0).optional(),
         sponsorReward: z.string().max(2000).optional(),
+        badgeReward: z.string().max(200).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -240,8 +251,16 @@ export const hackathonRouter = createTRPCRouter({
         input.challengeId,
         userId,
       );
+      const payload = await getPayloadClient();
+      const lexicalDesc =
+        input.description !== undefined
+          ? plainTextToLexical(input.description)
+          : undefined;
 
+      // --- Challenge side: identity + cells + team + prize ---
       const data: Record<string, unknown> = {};
+      if (input.name !== undefined) data.title = input.name;
+      if (lexicalDesc !== undefined) data.description = lexicalDesc;
       if (input.cellTemplate !== undefined) data.cellTemplate = input.cellTemplate;
       if (input.teamMin !== undefined || input.teamMax !== undefined) {
         const minTeamSize = input.teamMin ?? challenge.teamConfig?.minTeamSize ?? 1;
@@ -254,27 +273,69 @@ export const hackathonRouter = createTRPCRouter({
         }
         data.teamConfig = { minTeamSize, maxTeamSize };
       }
-      if (input.xpReward !== undefined || input.sponsorReward !== undefined) {
+      if (
+        input.xpReward !== undefined ||
+        input.sponsorReward !== undefined ||
+        input.badgeReward !== undefined
+      ) {
         data.rewards = {
           ...(challenge.rewards ?? {}),
           ...(input.xpReward !== undefined ? { xpReward: input.xpReward } : {}),
           ...(input.sponsorReward !== undefined
             ? { sponsorReward: input.sponsorReward }
             : {}),
+          ...(input.badgeReward !== undefined
+            ? { badgeReward: input.badgeReward }
+            : {}),
         };
       }
-
-      if (Object.keys(data).length === 0) {
-        return { challengeId: input.challengeId };
+      if (Object.keys(data).length > 0) {
+        await payload.update({
+          collection: "challenges",
+          id: input.challengeId,
+          data,
+        });
       }
 
-      const payload = await getPayloadClient();
-      const updated = await payload.update({
-        collection: "challenges",
-        id: input.challengeId,
-        data,
-      });
-      return { challengeId: Number(updated.id) };
+      // --- Event side: identity + schedule + place ---
+      if (input.eventId !== undefined) {
+        const eventData: Record<string, unknown> = {};
+        if (input.name !== undefined) eventData.title = input.name;
+        if (lexicalDesc !== undefined) eventData.description = lexicalDesc;
+        if (input.date !== undefined) eventData.date = input.date;
+        if (input.startTime !== undefined) eventData.startTime = input.startTime;
+        if (input.endTime !== undefined) eventData.endTime = input.endTime;
+        if (input.location !== undefined) eventData.location = input.location;
+        if (Object.keys(eventData).length > 0) {
+          let ev;
+          try {
+            ev = await payload.findByID({
+              collection: "events",
+              id: input.eventId,
+              depth: 0,
+            });
+          } catch {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+          }
+          if (String(ev.challengeId ?? "") !== String(input.challengeId)) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Event is not bound to this hackathon challenge.",
+            });
+          }
+          // skipGeocode: draft events have no published version for the geocode
+          // hook to update; letting it run poisons the transaction (see
+          // createHackathon). Geocoding happens on publish.
+          await payload.update({
+            collection: "events",
+            id: input.eventId,
+            data: eventData,
+            context: { skipGeocode: true },
+          });
+        }
+      }
+
+      return { challengeId: input.challengeId };
     }),
 
   /**
