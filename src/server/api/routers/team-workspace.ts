@@ -151,4 +151,96 @@ export const teamWorkspaceRouter = createTRPCRouter({
         return updated;
       });
     }),
+
+  /**
+   * Human claim — the participant analogue of work-grid claimCell. Atomic flip
+   * pending/requeued → claimed, locking the cell to this user. Re-arms a fresh
+   * deadline from the cell's deadlineMinutes (mirrors the agent path). Member-
+   * gated; the cell must belong to this team's grid.
+   */
+  claimCellAsMember: protectedProcedure
+    .input(z.object({ cellId: z.string(), teamId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      await requireTeamMember(ctx.db, userId, input.teamId);
+      const gridId = await requireTeamGridId(ctx.db, input.teamId);
+
+      const [cell] = await ctx.db
+        .select()
+        .from(workCells)
+        .where(and(eq(workCells.id, input.cellId), eq(workCells.gridId, gridId)))
+        .limit(1);
+      if (!cell) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Cell not found" });
+      }
+
+      return ctx.db.transaction(async (tx) => {
+        const [claimed] = await tx
+          .update(workCells)
+          .set({
+            status: "claimed",
+            claimedByUserId: userId,
+            claimedBy: null,
+            claimedAt: new Date(),
+            deadline:
+              cell.deadlineMinutes !== null
+                ? new Date(Date.now() + cell.deadlineMinutes * 60_000)
+                : null,
+          })
+          .where(
+            and(
+              eq(workCells.id, input.cellId),
+              inArray(workCells.status, ["pending", "requeued"]),
+            ),
+          )
+          .returning();
+        if (!claimed) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Cell already claimed",
+          });
+        }
+        await appendActivity(tx, {
+          teamId: input.teamId,
+          cellId: input.cellId,
+          actorUserId: userId,
+          type: "claimed",
+        });
+        return claimed;
+      });
+    }),
+
+  /** Release a cell this member claimed (back to pending). Own-claim only. */
+  releaseCell: protectedProcedure
+    .input(z.object({ cellId: z.string(), teamId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      await requireTeamMember(ctx.db, userId, input.teamId);
+      const gridId = await requireTeamGridId(ctx.db, input.teamId);
+
+      const [released] = await ctx.db
+        .update(workCells)
+        .set({
+          status: "pending",
+          claimedByUserId: null,
+          claimedAt: null,
+          deadline: null,
+        })
+        .where(
+          and(
+            eq(workCells.id, input.cellId),
+            eq(workCells.gridId, gridId),
+            eq(workCells.status, "claimed"),
+            eq(workCells.claimedByUserId, userId),
+          ),
+        )
+        .returning();
+      if (!released) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "You have not claimed this cell.",
+        });
+      }
+      return released;
+    }),
 });
