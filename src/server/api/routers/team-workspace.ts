@@ -14,6 +14,7 @@ import {
   workGrids,
   workCells,
   workCellResults,
+  teamActivityEvents,
 } from "@/server/db/schema";
 import { ownerOnTeam } from "@/server/hackathon/team-membership";
 import { cellHeatState } from "@/server/hackathon/cell-state";
@@ -49,6 +50,30 @@ async function requireTeamGridId(
     });
   }
   return grid.id;
+}
+
+type Tx = Parameters<
+  Parameters<(typeof import("@/server/db").db)["transaction"]>[0]
+>[0];
+
+/** Append one activity event (call inside the same tx as the action). */
+async function appendActivity(
+  tx: Tx,
+  args: {
+    teamId: string;
+    cellId: string | null;
+    actorUserId?: string | null;
+    actorAgentId?: string | null;
+    type: "assigned" | "claimed" | "reported" | "verified" | "failed";
+  },
+) {
+  await tx.insert(teamActivityEvents).values({
+    teamId: args.teamId,
+    cellId: args.cellId,
+    actorUserId: args.actorUserId ?? null,
+    actorAgentId: args.actorAgentId ?? null,
+    type: args.type,
+  });
 }
 
 export const teamWorkspaceRouter = createTRPCRouter({
@@ -87,6 +112,43 @@ export const teamWorkspaceRouter = createTRPCRouter({
           ),
           result,
         };
+      });
+    }),
+
+  /** Soft-assign a cell to a teammate (or clear it). No lock — planning only. */
+  assignCell: protectedProcedure
+    .input(
+      z.object({
+        cellId: z.string(),
+        teamId: z.string(),
+        userId: z.string().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await requireTeamMember(ctx.db, ctx.session.user.id, input.teamId);
+      const gridId = await requireTeamGridId(ctx.db, input.teamId);
+
+      // The assignee, when set, must themselves be a team member.
+      if (input.userId !== null) {
+        await requireTeamMember(ctx.db, input.userId, input.teamId);
+      }
+
+      return ctx.db.transaction(async (tx) => {
+        const [updated] = await tx
+          .update(workCells)
+          .set({ assignedToUserId: input.userId })
+          .where(and(eq(workCells.id, input.cellId), eq(workCells.gridId, gridId)))
+          .returning();
+        if (!updated) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Cell not found" });
+        }
+        await appendActivity(tx, {
+          teamId: input.teamId,
+          cellId: input.cellId,
+          actorUserId: ctx.session.user.id,
+          type: "assigned",
+        });
+        return updated;
       });
     }),
 });
