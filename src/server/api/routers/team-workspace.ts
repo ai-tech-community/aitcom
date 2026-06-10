@@ -243,4 +243,65 @@ export const teamWorkspaceRouter = createTRPCRouter({
       }
       return released;
     }),
+
+  /**
+   * Human report — the participant analogue of work-grid submitCellResult. Flips
+   * a cell THIS member has claimed claimed → completed and inserts a user-
+   * authored result (verificationOutcome="pending", awaiting organizer verify).
+   * The self-guarding UPDATE matches only a cell still claimed by this user, so
+   * there is no TOCTOU window.
+   */
+  reportResult: protectedProcedure
+    .input(
+      z.object({
+        cellId: z.string(),
+        teamId: z.string(),
+        output: z.string().min(1).max(10_000),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      await requireTeamMember(ctx.db, userId, input.teamId);
+      const gridId = await requireTeamGridId(ctx.db, input.teamId);
+
+      return ctx.db.transaction(async (tx) => {
+        const [completed] = await tx
+          .update(workCells)
+          .set({ status: "completed" })
+          .where(
+            and(
+              eq(workCells.id, input.cellId),
+              eq(workCells.gridId, gridId),
+              eq(workCells.status, "claimed"),
+              eq(workCells.claimedByUserId, userId),
+            ),
+          )
+          .returning();
+        if (!completed) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "This cell is not claimed by you.",
+          });
+        }
+
+        await tx
+          .insert(workCellResults)
+          .values({
+            cellId: input.cellId,
+            userId,
+            agentId: null,
+            output: input.output,
+            verificationOutcome: "pending",
+          })
+          .onConflictDoNothing({ target: workCellResults.cellId });
+
+        await appendActivity(tx, {
+          teamId: input.teamId,
+          cellId: input.cellId,
+          actorUserId: userId,
+          type: "reported",
+        });
+        return completed;
+      });
+    }),
 });
