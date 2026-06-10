@@ -73,3 +73,22 @@ public at the buzzer**; the team chooses.
   rejected.
 - **Inherit the challenge leaderboard's current behaviour** — it ignores
   `isPublic`; rejected, the leak must be fixed, not propagated.
+
+## Amendment — 2026-06-10: a content-free per-cell status heatmap
+
+The original "aggregate progress only" rule treated a team's grid as opaque to
+spectators beyond verified-cell counts. This amendment relaxes *granularity*
+without touching the privacy line: the spectator view **may now show a
+content-free per-cell status heatmap** — the colour/shape of each cell's
+progress (its [[work-cell]] [[heat]] state) — alongside the existing aggregate
+counts. The heatmap conveys *how far along* each cell is, never *what is in it*.
+
+The "race, never the work" invariant is unchanged. A cell's `output` and any
+team's cell *content* stay private to the team and the grid admin exactly as
+before. The heatmap exposes status only, so a rival still cannot scrape a
+solution from it.
+
+This is realised by **`hackathon.teamHeatmap` returning only `{ heatState }`
+per cell** — no `output`, no content, no identifying payload — so the projection
+is structurally incapable of leaking work. It is the same kind of read-only,
+visibility-respecting projection described above, at finer granularity.
