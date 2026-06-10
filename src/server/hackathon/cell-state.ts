@@ -42,16 +42,19 @@ export function cellHeatState(
   }
 }
 
+export class CellClaimError extends Error {}
+
 /**
  * Enforce the design invariant: a cell is claimed by an agent OR a user, never
- * both. Throws a plain Error (callers map to TRPCError) when both are set.
+ * both. Throws a {@link CellClaimError} (callers map to TRPCError) when both
+ * are set.
  */
 export function assertSingleClaimant(
   claimedByAgentId: string | null,
   claimedByUserId: string | null,
 ): void {
   if (claimedByAgentId !== null && claimedByUserId !== null) {
-    throw new Error(
+    throw new CellClaimError(
       "A cell cannot be claimed by both an agent and a user.",
     );
   }
