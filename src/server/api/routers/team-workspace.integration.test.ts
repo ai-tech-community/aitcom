@@ -230,7 +230,7 @@ describe.skipIf(!RUN_DB)(
           proposedBy: sponsorId,
         },
       });
-      const challengeId = challenge.id as number;
+      const challengeId = challenge.id;
 
       // A locked team for that challenge, captained by the first member.
       const [team] = await db
