@@ -1,3 +1,6 @@
+import { and, eq } from "drizzle-orm";
+import { challengeEnrollments } from "@/server/db/schema";
+
 // Team-membership guards (ADR-0029). The pure guards (`assertCanJoinTeam`,
 // `TeamJoinError`) are db-free and can be unit-tested without a database.
 // `ownerOnTeam` is a shared db-backed membership check used by the work-grid
@@ -21,9 +24,6 @@ export function assertCanJoinTeam(team: {
     throw new TeamJoinError("This team is full.");
   }
 }
-
-import { and, eq } from "drizzle-orm";
-import { challengeEnrollments } from "@/server/db/schema";
 
 /**
  * Competitive source scope (ADR-0029): a user is "on" a team iff they hold an
