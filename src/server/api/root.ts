@@ -38,6 +38,7 @@ import { onboardingStepsRouter } from "@/server/api/routers/onboardingSteps";
 import { workGridRouter } from "@/server/api/routers/work-grid";
 import { hackathonRouter } from "@/server/api/routers/hackathon";
 import { teamsRouter } from "@/server/api/routers/teams";
+import { teamWorkspaceRouter } from "@/server/api/routers/team-workspace";
 import { topicsRouter } from "@/server/api/routers/topics";
 import { linksRouter } from "@/server/api/routers/links";
 import { classroomsRouter } from "@/server/api/routers/classrooms";
@@ -89,6 +90,7 @@ export const appRouter = createTRPCRouter({
   workGrid: workGridRouter,
   hackathon: hackathonRouter,
   teams: teamsRouter,
+  teamWorkspace: teamWorkspaceRouter,
   topics: topicsRouter,
   links: linksRouter,
   classrooms: classroomsRouter,
