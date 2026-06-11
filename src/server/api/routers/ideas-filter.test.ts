@@ -22,4 +22,15 @@ describe("buildIdeasWhere", () => {
       ],
     });
   });
+
+  it("ands community and category when both are given", () => {
+    expect(
+      buildIdeasWhere({ communityId: "c1", category: "platform" }),
+    ).toEqual({
+      and: [
+        { communityId: { equals: "c1" } },
+        { category: { equals: "platform" } },
+      ],
+    });
+  });
 });
