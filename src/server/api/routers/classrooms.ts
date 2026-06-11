@@ -690,21 +690,14 @@ export const classroomsRouter = createTRPCRouter({
       });
 
       // First module on a flat course: wrap all existing lessons into it,
-      // preserving their order. This keeps the course fully-moduled, not mixed.
+      // preserving their order. A single bulk update (one SQL statement, so
+      // atomic) — never a partial loop that could leave the course mixed.
       if (moduleCount === 0) {
-        const { docs: lessons } = await payload.find({
+        await payload.update({
           collection: "lessons",
           where: { course: { equals: input.courseId } },
-          limit: 1000,
-          depth: 0,
+          data: { module: moduleDoc.id },
         });
-        for (const l of lessons) {
-          await payload.update({
-            collection: "lessons",
-            id: l.id,
-            data: { module: moduleDoc.id },
-          });
-        }
       }
 
       return { id: moduleDoc.id };
@@ -892,21 +885,13 @@ export const classroomsRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      const { docs: lessons } = await payload.find({
+      // Null every lesson's module in one bulk update (atomic), then delete the
+      // modules — so the course never lingers in a partially-dissolved state.
+      await payload.update({
         collection: "lessons",
         where: { course: { equals: input.courseId } },
-        limit: 1000,
-        depth: 0,
+        data: { module: null },
       });
-      for (const l of lessons) {
-        if (l.module !== null && l.module !== undefined) {
-          await payload.update({
-            collection: "lessons",
-            id: l.id,
-            data: { module: null },
-          });
-        }
-      }
 
       const { docs: modules } = await payload.find({
         collection: "modules",
