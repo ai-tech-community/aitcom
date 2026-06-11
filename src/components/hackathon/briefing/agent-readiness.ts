@@ -3,6 +3,8 @@
 // claim predicates in work-grid.ts (active agent, non-revoked commission,
 // taskType in allowlist) WITHOUT hitting the database.
 
+// status is intentionally `string`, not "active" | "inactive": inputs are raw
+// drizzle rows (agent_profile.status is varchar) — do not narrow to a union.
 export type ReadinessAgent = { status: string } | null;
 
 export type ReadinessCommission = {

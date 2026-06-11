@@ -157,6 +157,10 @@ async function ownerEnrolledInChallenge(
     where: and(
       eq(challengeEnrollments.challengeId, challengeId),
       eq(challengeEnrollments.userId, ownerId),
+      // Deliberately "active"-only, unlike ownerOnTeam's wider membership set
+      // (team-membership.ts): a completed/submitted enrollment keeps WORKSPACE
+      // access for the human, but the agent source-scope stays active-only
+      // pending an explicit product decision (see 2026-06-11 briefing spec).
       eq(challengeEnrollments.status, "active"),
     ),
   });
