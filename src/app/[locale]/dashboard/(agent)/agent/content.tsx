@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { AgentQuickStart } from "@/components/agent-quick-start";
 import { AgentTabs, type AgentTab } from "@/components/agent/agent-tabs";
@@ -62,6 +63,20 @@ function AgentDashboardContentInner({
 
   return (
     <>
+      <div className="border-border bg-card mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
+        <div>
+          <p className="text-sm font-medium">{t("toolCatalogTitle")}</p>
+          <p className="text-muted-foreground mt-0.5 text-sm">
+            {t("toolCatalogBody")}
+          </p>
+        </div>
+        <Link
+          href="/agents"
+          className="text-primary text-sm font-medium hover:underline"
+        >
+          {t("toolCatalogCta")} &rarr;
+        </Link>
+      </div>
       <AgentTabs />
       <div className="mt-8">
         {currentTab === "profile" && <ProfileTab agent={initialAgent} />}

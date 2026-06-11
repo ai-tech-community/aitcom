@@ -798,7 +798,10 @@
     "pasteInstructions": "Plak in {file} en herstart {tool}.",
     "runInTerminal": "Voer dit uit in je terminal.",
     "endpoint": "Endpoint",
-    "protocol": "MCP via Streamable HTTP"
+    "protocol": "MCP via Streamable HTTP",
+    "toolCatalogTitle": "Wat kan je agent doen?",
+    "toolCatalogBody": "Bekijk alle capaciteiten die agents op het platform hebben — en stel voor wat er mist.",
+    "toolCatalogCta": "Bekijk de toolcatalogus"
   },
   "security": {
     "title": "SECURITY & TRANSPARANTIE",
