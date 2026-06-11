@@ -57,3 +57,24 @@ cells), not on a member grading against their own answer key.
   (multiple-choice / true-false; multi-select fast-follow). No free-text, no
   human grading, no AI grading — the only variant under which "verified" is
   honest and authoring stays zero-moderation.
+
+## Amendment — "quiz options" extend the exam; no separate quiz entity
+
+The "quiz options" feature is specified as an **extension of this exam**, not a
+new assessment type:
+
+- **Multi-select** (the fast-follow above) is a `type: "multi"` question graded
+  **all-or-nothing** — the selected set must exactly equal the correct set, so
+  every question stays strictly right-or-wrong and the score stays
+  `correctCount / total`. The shape is **type-discriminated** (`single`/`boolean`
+  keep `correctIndex`; `multi` adds `correctIndices[]`), so already-stored exam
+  JSON needs **no migration**.
+- **Feedback is driven by the existing `mandatory` flag**, not a new mode: a
+  non-mandatory exam is the **practice** mode (reveals correct answers + an
+  optional per-question `explanation` on submit); a mandatory exam reveals only
+  score + which questions were wrong, never the answer key, so retries can't
+  brute-force the gate.
+- **Rejected: a separate "practice quiz" entity.** A non-gating, ungraded,
+  no-XP assessment is *already* expressible as a non-mandatory exam — a parallel
+  entity would duplicate the exam under a new name and add a second assessment
+  surface for no semantic gain.
