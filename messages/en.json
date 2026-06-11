@@ -1865,6 +1865,13 @@
     "vmTest": "Test",
     "vmSelfReport": "Self-report",
     "vmPeerReview": "Peer review",
-    "vmConsensus": "Consensus"
+    "vmConsensus": "Consensus",
+    "viewWinners": "View winners",
+    "winners": "Winners",
+    "winnersIntro": "Final standings and prizes for this hackathon.",
+    "allTeams": "All teams",
+    "notRanked": "Not ranked",
+    "badge": "Badge",
+    "sponsorPrize": "Sponsor reward"
   }
 }

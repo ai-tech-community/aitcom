@@ -790,6 +790,7 @@ export const hackathonRouter = createTRPCRouter({
       const enrollments = await ctx.db
         .select({
           teamId: challengeEnrollments.teamId,
+          userId: challengeEnrollments.userId,
           displayName: memberProfiles.displayName,
           isPublic: memberProfiles.isPublic,
         })
@@ -805,14 +806,19 @@ export const hackathonRouter = createTRPCRouter({
           ),
         );
 
-      const facesByTeam = new Map<string, string[]>();
+      // Faces carry the userId so consumers can link to the public member
+      // profile (/members/[id]); private profiles stay anonymous counts only.
+      const facesByTeam = new Map<
+        string,
+        { userId: string; displayName: string }[]
+      >();
       const countByTeam = new Map<string, number>();
       for (const e of enrollments) {
         if (!e.teamId) continue;
         countByTeam.set(e.teamId, (countByTeam.get(e.teamId) ?? 0) + 1);
         if (e.isPublic) {
           const list = facesByTeam.get(e.teamId) ?? [];
-          list.push(e.displayName);
+          list.push({ userId: e.userId, displayName: e.displayName });
           facesByTeam.set(e.teamId, list);
         }
       }

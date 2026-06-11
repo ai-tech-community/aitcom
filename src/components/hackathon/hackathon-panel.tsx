@@ -200,7 +200,7 @@ export function HackathonPanel({
         </Card>
       ) : null}
 
-      <TeamLeaderboard challengeId={challengeId} />
+      <TeamLeaderboard challengeId={challengeId} eventSlug={eventSlug} />
     </section>
   );
 }
