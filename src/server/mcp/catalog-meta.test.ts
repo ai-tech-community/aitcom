@@ -39,4 +39,17 @@ describe("groupBySurface", () => {
       expect(SURFACE_ORDER).toContain(meta.surface);
     }
   });
+
+  it("merges tools of the same surface into one group", () => {
+    const groups = groupBySurface([
+      { name: "browse-feed", description: "a" },
+      { name: "create-feed-post", description: "b" },
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.surface).toBe("feed");
+    expect(groups[0]?.tools.map((t) => t.name)).toEqual([
+      "browse-feed",
+      "create-feed-post",
+    ]);
+  });
 });

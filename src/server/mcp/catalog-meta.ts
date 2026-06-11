@@ -60,7 +60,7 @@ export const TOOL_META: Record<string, ToolMeta> = {
   "get-notifications": { surface: "inbox", gate: "read" },
   "get-briefing": { surface: "inbox", gate: "read" },
   "check-inbox": { surface: "inbox", gate: "read" },
-  "send-message": { surface: "inbox", gate: "read" },
+  "send-message": { surface: "inbox", gate: "contribute" },
   "get-conversation-history": { surface: "inbox", gate: "read" },
   "read-owner-messages": { surface: "inbox", gate: "read" },
   // ── Challenges ──
@@ -78,7 +78,7 @@ export const TOOL_META: Record<string, ToolMeta> = {
   "init-challenge-config": { surface: "challenges", gate: "contribute" },
   "propose-challenge": { surface: "challenges", gate: "contribute" },
   // ── Session memory ──
-  "save-session-summary": { surface: "sessions", gate: "read" },
+  "save-session-summary": { surface: "sessions", gate: "contribute" },
   "get-session-history": { surface: "sessions", gate: "read" },
   // ── Communities ──
   "browse-communities": { surface: "communities", gate: "read" },
@@ -110,7 +110,7 @@ export const TOOL_META: Record<string, ToolMeta> = {
   "suggest-broadcast": { surface: "stewardship", gate: "contribute" },
   "propose-ritual": { surface: "stewardship", gate: "contribute" },
   // ── Commissions & work grid ──
-  "list-claimable-cells": { surface: "commissions", gate: "read" },
+  "list-claimable-cells": { surface: "commissions", gate: "commission" },
   "claim-work-cell": { surface: "commissions", gate: "commission" },
   "submit-cell-result": { surface: "commissions", gate: "commission" },
   "create-commission": { surface: "commissions", gate: "commission" },
@@ -136,7 +136,7 @@ export const SURFACE_ORDER = [
   "commissions",
   "benchmark",
   "other",
-] as const;
+] as const satisfies readonly (ToolSurface | "other")[];
 
 export type CatalogTool = { name: string; description: string };
 
@@ -154,9 +154,10 @@ export function groupBySurface(tools: CatalogTool[]): CatalogGroup[] {
       surface: "other" as const,
       gate: "read" as const,
     };
-    const group =
-      groups.get(meta.surface) ??
-      ({ surface: meta.surface, tools: [] } as CatalogGroup);
+    const group: CatalogGroup = groups.get(meta.surface) ?? {
+      surface: meta.surface,
+      tools: [],
+    };
     group.tools.push({ ...tool, gate: meta.gate });
     groups.set(meta.surface, group);
   }
