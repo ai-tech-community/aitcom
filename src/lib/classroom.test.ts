@@ -3,13 +3,14 @@ import {
   courseProgressPercent,
   canCreateCourse,
   youtubeEmbedUrl,
-} from "./classroom";
-import {
   gradeExam,
   examPassed,
   stripAnswerKey,
   coursePassed,
   type ExamQuestion,
+  orderLessonsForReading,
+  groupLessonsByModule,
+  classroomStructureValid,
 } from "./classroom";
 
 const Q: ExamQuestion[] = [
@@ -152,5 +153,91 @@ describe("youtubeEmbedUrl", () => {
   });
   it("returns null for a malformed url", () => {
     expect(youtubeEmbedUrl("not a url")).toBeNull();
+  });
+});
+
+describe("orderLessonsForReading", () => {
+  it("orders a flat course by lesson order alone", () => {
+    const lessons = [
+      { id: 2, module: null, order: 1 },
+      { id: 1, module: null, order: 0 },
+    ];
+    expect(orderLessonsForReading(lessons, []).map((l) => l.id)).toEqual([
+      1, 2,
+    ]);
+  });
+
+  it("orders a moduled course by (module.order, lesson.order)", () => {
+    const lessons = [
+      { id: 1, module: 20, order: 0 }, // module B, first
+      { id: 2, module: 10, order: 1 }, // module A, second
+      { id: 3, module: 10, order: 0 }, // module A, first
+    ];
+    const modules = [
+      { id: 10, title: "A", order: 0 },
+      { id: 20, title: "B", order: 1 },
+    ];
+    expect(orderLessonsForReading(lessons, modules).map((l) => l.id)).toEqual([
+      3, 2, 1,
+    ]);
+  });
+});
+
+describe("groupLessonsByModule", () => {
+  it("returns a single null-module group for a flat course", () => {
+    const lessons = [
+      { id: 1, module: null, order: 0 },
+      { id: 2, module: null, order: 1 },
+    ];
+    const groups = groupLessonsByModule(lessons, []);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.module).toBeNull();
+    expect(groups[0]!.lessons.map((l) => l.id)).toEqual([1, 2]);
+  });
+
+  it("returns one group per module in module order, lessons ordered within", () => {
+    const lessons = [
+      { id: 1, module: 20, order: 0 },
+      { id: 2, module: 10, order: 1 },
+      { id: 3, module: 10, order: 0 },
+    ];
+    const modules = [
+      { id: 10, title: "A", order: 0 },
+      { id: 20, title: "B", order: 1 },
+    ];
+    const groups = groupLessonsByModule(lessons, modules);
+    expect(groups.map((g) => g.module?.id)).toEqual([10, 20]);
+    expect(groups[0]!.lessons.map((l) => l.id)).toEqual([3, 2]);
+    expect(groups[1]!.lessons.map((l) => l.id)).toEqual([1]);
+  });
+
+  it("includes an empty module (a module with no lessons yet)", () => {
+    const groups = groupLessonsByModule([], [{ id: 10, title: "A", order: 0 }]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]!.lessons).toEqual([]);
+  });
+});
+
+describe("classroomStructureValid", () => {
+  it("is valid when all lessons are flat (module null)", () => {
+    expect(
+      classroomStructureValid([{ module: null }, { module: null }]),
+    ).toBe(true);
+  });
+
+  it("is valid when every lesson has a module", () => {
+    expect(classroomStructureValid([{ module: 10 }, { module: 20 }])).toBe(
+      true,
+    );
+  });
+
+  it("is invalid when some lessons are moduled and some are not", () => {
+    expect(classroomStructureValid([{ module: 10 }, { module: null }])).toBe(
+      false,
+    );
+  });
+
+  it("is valid for an empty course", () => {
+    expect(classroomStructureValid([])).toBe(true);
   });
 });
