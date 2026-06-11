@@ -911,81 +911,102 @@ export const hackathonRouter = createTRPCRouter({
       const userId = ctx.session.user.id;
       await requireHackathonOperator(ctx.db, input.challengeId, userId);
 
-      // Funnel stage 1+2 in one pass: count(teamId) skips NULLs, so it counts
-      // exactly the enrollments that are on a team (leave/disband null it out).
-      const [enrollment] = await ctx.db
-        .select({
-          enrolled: sql<number>`count(*)`.mapWith(Number),
-          teamed: sql<number>`count(${challengeEnrollments.teamId})`.mapWith(
-            Number,
-          ),
-        })
-        .from(challengeEnrollments)
-        .where(eq(challengeEnrollments.challengeId, input.challengeId));
-
-      // Stage 3: members whose team has submitted.
-      const [submittedMembers] = await ctx.db
-        .select({ count: sql<number>`count(*)`.mapWith(Number) })
-        .from(challengeEnrollments)
-        .innerJoin(teams, eq(challengeEnrollments.teamId, teams.id))
-        .where(
-          and(
-            eq(challengeEnrollments.challengeId, input.challengeId),
-            isNotNull(teams.submittedAt),
-          ),
-        );
-
-      // Team-level context for the submitted stage ("3/5 teams submitted").
-      const [teamCounts] = await ctx.db
-        .select({
-          total:
-            sql<number>`count(*) filter (where ${teams.status} <> 'disbanded')`.mapWith(
+      // The 5 aggregates are independent reads — run them in parallel.
+      // The funnel counts non-abandoned enrollments, matching the rest of
+      // the platform (challenges.abandon keeps teamId, so filter by status).
+      const [
+        [enrollment],
+        [submittedMembers],
+        [teamCounts],
+        statusRows,
+        [verifiedRow],
+      ] = await Promise.all([
+        // Funnel stage 1+2 in one pass: count(teamId) skips NULLs, so it
+        // counts exactly the enrollments that are on a team (leave/disband
+        // null it out).
+        ctx.db
+          .select({
+            enrolled: sql<number>`count(*)`.mapWith(Number),
+            teamed: sql<number>`count(${challengeEnrollments.teamId})`.mapWith(
               Number,
             ),
-          submitted:
-            sql<number>`count(*) filter (where ${teams.submittedAt} is not null)`.mapWith(
-              Number,
+          })
+          .from(challengeEnrollments)
+          .where(
+            and(
+              eq(challengeEnrollments.challengeId, input.challengeId),
+              ne(challengeEnrollments.status, "abandoned"),
             ),
-        })
-        .from(teams)
-        .where(eq(teams.challengeId, input.challengeId));
-
-      // Cell status buckets across every competitive grid of this hackathon.
-      const statusRows = await ctx.db
-        .select({
-          status: workCells.status,
-          count: sql<number>`count(*)`.mapWith(Number),
-        })
-        .from(workCells)
-        .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
-        .where(
-          and(
-            eq(workGrids.challengeId, input.challengeId),
-            eq(workGrids.mode, "competitive"),
           ),
-        )
-        .groupBy(workCells.status);
+
+        // Stage 3: members whose team has submitted.
+        ctx.db
+          .select({ count: sql<number>`count(*)`.mapWith(Number) })
+          .from(challengeEnrollments)
+          .innerJoin(teams, eq(challengeEnrollments.teamId, teams.id))
+          .where(
+            and(
+              eq(challengeEnrollments.challengeId, input.challengeId),
+              ne(challengeEnrollments.status, "abandoned"),
+              isNotNull(teams.submittedAt),
+            ),
+          ),
+
+        // Team-level context for the submitted stage ("3/5 teams submitted").
+        ctx.db
+          .select({
+            total:
+              sql<number>`count(*) filter (where ${teams.status} <> 'disbanded')`.mapWith(
+                Number,
+              ),
+            submitted:
+              sql<number>`count(*) filter (where ${teams.status} <> 'disbanded' and ${teams.submittedAt} is not null)`.mapWith(
+                Number,
+              ),
+          })
+          .from(teams)
+          .where(eq(teams.challengeId, input.challengeId)),
+
+        // Cell status buckets across every competitive grid of this hackathon.
+        ctx.db
+          .select({
+            status: workCells.status,
+            count: sql<number>`count(*)`.mapWith(Number),
+          })
+          .from(workCells)
+          .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
+          .where(
+            and(
+              eq(workGrids.challengeId, input.challengeId),
+              eq(workGrids.mode, "competitive"),
+            ),
+          )
+          .groupBy(workCells.status),
+
+        // Verified = a VERIFIED result row, the same definition finalize
+        // scores by. DISTINCT mirrors finalize's defensive one-result-per-cell
+        // stance.
+        ctx.db
+          .select({
+            count:
+              sql<number>`count(distinct ${workCellResults.cellId})`.mapWith(
+                Number,
+              ),
+          })
+          .from(workCellResults)
+          .innerJoin(workCells, eq(workCellResults.cellId, workCells.id))
+          .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
+          .where(
+            and(
+              eq(workGrids.challengeId, input.challengeId),
+              eq(workGrids.mode, "competitive"),
+              eq(workCellResults.verificationOutcome, "verified"),
+            ),
+          ),
+      ]);
+
       const byStatus: CellStatusCounts = {};
       for (const r of statusRows) byStatus[r.status] = r.count;
-
-      // Verified = a VERIFIED result row, the same definition finalize scores
-      // by. DISTINCT mirrors finalize's defensive one-result-per-cell stance.
-      const [verifiedRow] = await ctx.db
-        .select({
-          count: sql<number>`count(distinct ${workCellResults.cellId})`.mapWith(
-            Number,
-          ),
-        })
-        .from(workCellResults)
-        .innerJoin(workCells, eq(workCellResults.cellId, workCells.id))
-        .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
-        .where(
-          and(
-            eq(workGrids.challengeId, input.challengeId),
-            eq(workGrids.mode, "competitive"),
-            eq(workCellResults.verificationOutcome, "verified"),
-          ),
-        );
 
       return {
         funnel: participationFunnel({

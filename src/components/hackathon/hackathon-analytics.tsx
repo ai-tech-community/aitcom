@@ -36,7 +36,7 @@ function StatRow({
           {detail ? ` · ${detail}` : ""}
         </span>
       </div>
-      <Progress value={pct} className="mt-1" />
+      <Progress value={pct} aria-label={label} className="mt-1" />
     </div>
   );
 }

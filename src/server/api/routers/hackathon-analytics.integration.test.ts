@@ -135,6 +135,7 @@ describe.skipIf(!RUN_DB)(
       const member2 = `it-anl-m2-${suffix}`;
       const member3 = `it-anl-m3-${suffix}`;
       const solo1 = `it-anl-solo-${suffix}`;
+      const quitter = `it-anl-quit-${suffix}`;
       const outsider = `it-anl-out-${suffix}`;
       const eventId = 12345;
 
@@ -143,6 +144,7 @@ describe.skipIf(!RUN_DB)(
       await seedUser(member2, "Analytics M2");
       await seedUser(member3, "Analytics M3");
       await seedUser(solo1, "Analytics Solo");
+      await seedUser(quitter, "Analytics Quitter");
       await seedUser(outsider, "Analytics Outsider");
 
       const payload = await getPayloadClient();
@@ -227,12 +229,16 @@ describe.skipIf(!RUN_DB)(
       );
       await mkTeam(`C ${suffix.slice(-6)}`, sponsorId, "disbanded", null, "NC");
 
-      // 4 enrollments: 2 on submitted team A, 1 on team B, 1 still solo.
+      // 4 active enrollments: 2 on submitted team A, 1 on team B, 1 still
+      // solo. Plus an ABANDONED enrollment still pointing at submitted team A
+      // (challenges.abandon keeps teamId) — it must be excluded from every
+      // funnel stage.
       await db.insert(schema.challengeEnrollments).values([
         { userId: member1, challengeId, teamId: teamAId, status: "active" },
         { userId: member2, challengeId, teamId: teamAId, status: "active" },
         { userId: member3, challengeId, teamId: teamBId, status: "active" },
         { userId: solo1, challengeId, teamId: null, status: "active" },
+        { userId: quitter, challengeId, teamId: teamAId, status: "abandoned" },
       ]);
 
       // Competitive grids: A → pending, claimed, completed(verified),
@@ -314,7 +320,15 @@ describe.skipIf(!RUN_DB)(
         member3,
         solo1,
         outsider,
-        allUserIds: [sponsorId, member1, member2, member3, solo1, outsider],
+        allUserIds: [
+          sponsorId,
+          member1,
+          member2,
+          member3,
+          solo1,
+          quitter,
+          outsider,
+        ],
         challengeId,
         teamAId,
         teamBId,
@@ -367,6 +381,8 @@ describe.skipIf(!RUN_DB)(
       });
 
       // Funnel: 4 enrolled, 3 teamed (75%), 2 on the submitted team (2/3).
+      // The abandoned enrollment (quitter, still on submitted team A) is
+      // excluded from every stage.
       expect(result.funnel.enrolled.count).toBe(4);
       expect(result.funnel.teamed).toEqual({ count: 3, rate: 0.75 });
       expect(result.funnel.submitted.count).toBe(2);
