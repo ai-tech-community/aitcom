@@ -55,6 +55,7 @@ import * as migration_20260610a_participant_workspace from "./20260610a_particip
 import * as migration_20260611a_classroom_modules from "./20260611a_classroom_modules";
 import * as migration_20260611b_modules_locked_docs_rels from "./20260611b_modules_locked_docs_rels";
 import * as migration_20260612a_hackathon_certificates from "./20260612a_hackathon_certificates";
+import * as migration_20260612b_looking_for_team from "./20260612b_looking_for_team";
 
 export const migrations = [
   {
@@ -341,5 +342,10 @@ export const migrations = [
     up: migration_20260612a_hackathon_certificates.up,
     down: migration_20260612a_hackathon_certificates.down,
     name: "20260612a_hackathon_certificates",
+  },
+  {
+    up: migration_20260612b_looking_for_team.up,
+    down: migration_20260612b_looking_for_team.down,
+    name: "20260612b_looking_for_team",
   },
 ];

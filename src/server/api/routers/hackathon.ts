@@ -42,6 +42,12 @@ import {
   cellTemplateToInserts,
 } from "@/server/hackathon/cell-template";
 import { teamScore, rankTeams, prizeSplit } from "@/server/hackathon/scoring";
+import { hackathonPhase } from "@/server/hackathon/phase";
+import {
+  assertCanToggleLookingForTeam,
+  lookingForTeamCandidates,
+  LookingForTeamError,
+} from "@/server/hackathon/looking-for-team";
 import { certificateAwards } from "@/server/hackathon/certificates";
 import { cellHeatState } from "@/server/hackathon/cell-state";
 import { awardXp, awardBadge } from "@/lib/gamification";
@@ -140,6 +146,43 @@ async function requireHackathonOperator(
     });
   }
   return challenge;
+}
+
+/**
+ * Derive the hackathon's current lifecycle phase from server truth (see
+ * src/server/hackathon/phase.ts): the bound event's status, the challenge's
+ * status, and the teams' lock/finalize markers.
+ */
+async function currentHackathonPhase(
+  db: typeof import("@/server/db").db,
+  challengeId: number,
+  challengeStatus: string,
+) {
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "events",
+    where: {
+      and: [
+        { challengeId: { equals: String(challengeId) } },
+        { type: { equals: "hackathon" } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+  });
+  const markers = await db
+    .select({
+      status: teams.status,
+      finalRank: teams.finalRank,
+      prizeAwardedAt: teams.prizeAwardedAt,
+    })
+    .from(teams)
+    .where(eq(teams.challengeId, challengeId));
+  return hackathonPhase({
+    eventStatus: docs[0]?.status ?? "draft",
+    challengeStatus,
+    teams: markers,
+  });
 }
 
 export const hackathonRouter = createTRPCRouter({
@@ -961,6 +1004,133 @@ export const hackathonRouter = createTRPCRouter({
         .where(eq(challengeEnrollments.teamId, team.id));
 
       return { team, members, isCaptain: team.captainId === userId };
+    }),
+
+  /**
+   * Toggle the caller's "looking for a team" opt-in (#164). Allowed only for a
+   * SOLO enrollment in this challenge while the hackathon is forming (phase
+   * 'live') — the pure gate lives in looking-for-team.ts. The opt-in UPDATE is
+   * re-guarded by `isNull(teamId)` so a concurrent team join can't race the
+   * pre-check and resurrect the flag on a teamed enrollment.
+   */
+  setLookingForTeam: protectedProcedure
+    .input(z.object({ challengeId: z.number(), looking: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const challenge = await loadChallenge(input.challengeId);
+
+      const [enrollment] = await ctx.db
+        .select({ teamId: challengeEnrollments.teamId })
+        .from(challengeEnrollments)
+        .where(
+          and(
+            eq(challengeEnrollments.userId, userId),
+            eq(challengeEnrollments.challengeId, input.challengeId),
+          ),
+        )
+        .limit(1);
+
+      const phase = await currentHackathonPhase(
+        ctx.db,
+        input.challengeId,
+        challenge.status ?? "",
+      );
+      try {
+        assertCanToggleLookingForTeam({
+          phase,
+          enrollment: enrollment ?? null,
+        });
+      } catch (e) {
+        if (e instanceof LookingForTeamError) {
+          throw new TRPCError({ code: "CONFLICT", message: e.message });
+        }
+        throw e;
+      }
+
+      await ctx.db
+        .update(challengeEnrollments)
+        .set({ lookingForTeamAt: input.looking ? new Date() : null })
+        .where(
+          and(
+            eq(challengeEnrollments.userId, userId),
+            eq(challengeEnrollments.challengeId, input.challengeId),
+            isNull(challengeEnrollments.teamId),
+          ),
+        );
+
+      return { lookingForTeam: input.looking };
+    }),
+
+  /**
+   * The "looking for a team" list (#164): enrolled participants browse
+   * opted-in, still-solo members with PUBLIC profiles (hidden profiles are
+   * excluded entirely — see looking-for-team.ts), sorted by opt-in time.
+   * Gated on the forming ('live') phase, so roster lock empties the list even
+   * where a stale flag survives. Also reports the viewer's own opt-in state so
+   * the panel can render the toggle. No invitation system: candidates link to
+   * their public profile and teams connect via the existing join-code flow.
+   */
+  lookingForTeamList: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [me] = await ctx.db
+        .select({
+          teamId: challengeEnrollments.teamId,
+          lookingForTeamAt: challengeEnrollments.lookingForTeamAt,
+        })
+        .from(challengeEnrollments)
+        .where(
+          and(
+            eq(challengeEnrollments.userId, userId),
+            eq(challengeEnrollments.challengeId, input.challengeId),
+          ),
+        )
+        .limit(1);
+
+      const viewer = {
+        enrolled: me !== undefined,
+        solo: me?.teamId === null,
+        lookingForTeam: me?.teamId === null && me.lookingForTeamAt !== null,
+      };
+      // The list is for enrolled participants only — spectators get nothing.
+      if (!me) return { open: false, viewer, candidates: [] };
+
+      const challenge = await loadChallenge(input.challengeId);
+      const phase = await currentHackathonPhase(
+        ctx.db,
+        input.challengeId,
+        challenge.status ?? "",
+      );
+      if (phase !== "live") return { open: false, viewer, candidates: [] };
+
+      const rows = await ctx.db
+        .select({
+          userId: challengeEnrollments.userId,
+          teamId: challengeEnrollments.teamId,
+          lookingForTeamAt: challengeEnrollments.lookingForTeamAt,
+          isPublic: memberProfiles.isPublic,
+          displayName: memberProfiles.displayName,
+          skills: memberProfiles.skills,
+        })
+        .from(challengeEnrollments)
+        .innerJoin(
+          memberProfiles,
+          eq(memberProfiles.userId, challengeEnrollments.userId),
+        )
+        .where(
+          and(
+            eq(challengeEnrollments.challengeId, input.challengeId),
+            isNotNull(challengeEnrollments.lookingForTeamAt),
+            isNull(challengeEnrollments.teamId),
+          ),
+        );
+
+      return {
+        open: true,
+        viewer,
+        candidates: lookingForTeamCandidates(rows, { excludeUserId: userId }),
+      };
     }),
 
   /**

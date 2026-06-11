@@ -1196,6 +1196,11 @@ export const challengeEnrollments = appSchema.table(
       .references(() => user.id),
     progressLogThreadId: d.varchar({ length: 255 }), // FK → challengeThreads.id (set after creation)
     teamId: d.varchar({ length: 255 }).references(() => teams.id), // nullable: set when the enrollment joins a team (ADR-0029)
+    // "Looking for a team" opt-in (#164): set while a SOLO enrollment wants to
+    // appear on the teammate-matching list (doubles as its sort order); cleared
+    // when the enrollment joins a team. Reads additionally gate on the 'live'
+    // phase, so a stale flag after roster lock is harmless.
+    lookingForTeamAt: d.timestamp({ withTimezone: true }),
     enrolledAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -2943,10 +2948,7 @@ export const hackathonCertificates = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    kind: d
-      .varchar({ length: 20 })
-      .notNull()
-      .$type<"winner" | "participant">(),
+    kind: d.varchar({ length: 20 }).notNull().$type<"winner" | "participant">(),
     issuedAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

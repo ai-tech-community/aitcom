@@ -96,7 +96,9 @@ async function joinTeamBundle(
     })
     .onConflictDoUpdate({
       target: [challengeEnrollments.userId, challengeEnrollments.challengeId],
-      set: { teamId: args.teamId, status: "active" },
+      // Joining a team ends the search: clear the looking-for-team opt-in
+      // (#164) in the same write that sets teamId.
+      set: { teamId: args.teamId, status: "active", lookingForTeamAt: null },
       setWhere: isNull(challengeEnrollments.teamId),
     })
     .returning({ id: challengeEnrollments.id });
