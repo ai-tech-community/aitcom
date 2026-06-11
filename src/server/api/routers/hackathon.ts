@@ -43,15 +43,11 @@ import { teamScore, rankTeams, prizeSplit } from "@/server/hackathon/scoring";
 import { cellHeatState } from "@/server/hackathon/cell-state";
 import { awardXp, awardBadge } from "@/lib/gamification";
 
-/**
- * Resolve the challenge sponsor gate (mirrors `requireGridAdmin`'s challenge
- * branch in work-grid.ts). Returns the Payload challenge doc on success.
- */
-async function requireChallengeSponsor(challengeId: number, userId: string) {
+/** Load a challenge by id or throw NOT_FOUND. */
+async function loadChallenge(challengeId: number) {
   const payload = await getPayloadClient();
-  let challenge;
   try {
-    challenge = await payload.findByID({
+    return await payload.findByID({
       collection: "challenges",
       id: challengeId,
       depth: 0,
@@ -59,6 +55,14 @@ async function requireChallengeSponsor(challengeId: number, userId: string) {
   } catch {
     throw new TRPCError({ code: "NOT_FOUND", message: "Challenge not found" });
   }
+}
+
+/**
+ * Resolve the challenge sponsor gate (mirrors `requireGridAdmin`'s challenge
+ * branch in work-grid.ts). Returns the Payload challenge doc on success.
+ */
+async function requireChallengeSponsor(challengeId: number, userId: string) {
+  const challenge = await loadChallenge(challengeId);
   if (challenge.creatorId !== userId) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -66,6 +70,27 @@ async function requireChallengeSponsor(challengeId: number, userId: string) {
     });
   }
   return challenge;
+}
+
+/** FORBIDDEN unless the caller is an active owner|admin of the community. */
+async function assertActiveCommunityAdmin(
+  db: typeof import("@/server/db").db,
+  communityId: string,
+  userId: string,
+) {
+  const membership = await db.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, communityId),
+      eq(communityMemberships.userId, userId),
+    ),
+  });
+  if (!isCommunityHackathonAdmin(membership ?? null)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Only an owner or admin of this community can manage the hackathon",
+    });
+  }
 }
 
 /**
@@ -79,34 +104,36 @@ async function requireCommunityHackathonAdmin(
   challengeId: number,
   userId: string,
 ) {
-  const payload = await getPayloadClient();
-  let challenge;
-  try {
-    challenge = await payload.findByID({
-      collection: "challenges",
-      id: challengeId,
-      depth: 0,
-    });
-  } catch {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Challenge not found" });
-  }
+  const challenge = await loadChallenge(challengeId);
   if (!challenge.communityId) {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "This is not a community hackathon.",
     });
   }
-  const membership = await db.query.communityMemberships.findFirst({
-    where: and(
-      eq(communityMemberships.communityId, challenge.communityId),
-      eq(communityMemberships.userId, userId),
-    ),
-  });
-  if (!isCommunityHackathonAdmin(membership ?? null)) {
+  await assertActiveCommunityAdmin(db, challenge.communityId, userId);
+  return challenge;
+}
+
+/**
+ * Lifecycle-operation gate (ADR-0031): `challenge.communityId` is the
+ * discriminator. Community-scoped → any active owner|admin of that community;
+ * Hub-wide / CMS-authored (communityId null) → the challenge sponsor
+ * (creatorId), so a Hub-wide hackathon can still be locked and finalized.
+ * Returns the Payload challenge doc on success.
+ */
+async function requireHackathonOperator(
+  db: typeof import("@/server/db").db,
+  challengeId: number,
+  userId: string,
+) {
+  const challenge = await loadChallenge(challengeId);
+  if (challenge.communityId) {
+    await assertActiveCommunityAdmin(db, challenge.communityId, userId);
+  } else if (challenge.creatorId !== userId) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message:
-        "Only an owner or admin of this community can manage the hackathon",
+      message: "Only the challenge sponsor can administer this hackathon",
     });
   }
   return challenge;
@@ -268,6 +295,27 @@ export const hackathonRouter = createTRPCRouter({
         input.description !== undefined
           ? plainTextToLexical(input.description)
           : undefined;
+
+      // cellTemplate is frozen once the bound event leaves draft: lockRosters
+      // parses the CURRENT template each run (it re-runs for late-forming
+      // teams), so a post-publish edit would hand teams grids from different
+      // template versions and skew teamScore/finalRank.
+      if (input.cellTemplate !== undefined) {
+        const { docs } = await payload.find({
+          collection: "events",
+          where: { challengeId: { equals: String(input.challengeId) } },
+          limit: 1,
+          depth: 0,
+        });
+        const boundEvent = docs[0];
+        if (boundEvent && boundEvent.status !== "draft") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "The task template can no longer be edited after the hackathon is published.",
+          });
+        }
+      }
 
       // --- Challenge side: identity + cells + team + prize ---
       const data: Record<string, unknown> = {};
@@ -445,7 +493,7 @@ export const hackathonRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
       }
 
-      if (["draft", "rejected"].includes(event.status)) {
+      if (["draft", "rejected", "cancelled"].includes(event.status)) {
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Event is not published.",
@@ -494,14 +542,15 @@ export const hackathonRouter = createTRPCRouter({
   /**
    * Lock all forming teams and instantiate one competitive grid per team from
    * the challenge's cellTemplate (ADR-0029). Idempotent: teams already locked
-   * are skipped. Sponsor-scoped. (Wiring this to a cron at the event start time
-   * is a deferred follow-up; for now an admin triggers it.)
+   * are skipped. Operator-scoped (ADR-0031): community owner|admin, or the
+   * sponsor for Hub-wide hackathons. (Wiring this to a cron at the event start
+   * time is a deferred follow-up; for now an admin triggers it.)
    */
   lockRosters: protectedProcedure
     .input(z.object({ challengeId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const challenge = await requireCommunityHackathonAdmin(
+      const challenge = await requireHackathonOperator(
         ctx.db,
         input.challengeId,
         userId,
@@ -565,16 +614,17 @@ export const hackathonRouter = createTRPCRouter({
     }),
 
   /**
-   * Finalize a hackathon (sponsor-scoped). Scores each team from its competitive
-   * grid's verified cells, ranks the submitted teams, and awards the challenge's
-   * prize XP (split equally) + badge to the winning team. Idempotent: re-running
-   * recomputes ranks/scores but never re-pays (prizeAwardedAt guard).
+   * Finalize a hackathon (operator-scoped, ADR-0031). Scores each team from its
+   * competitive grid's verified cells, ranks the submitted teams, and awards the
+   * challenge's prize XP (split equally) + badge to the winning team.
+   * Idempotent: re-running recomputes ranks/scores but never re-pays
+   * (prizeAwardedAt guard).
    */
   finalizeHackathon: protectedProcedure
     .input(z.object({ challengeId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const challenge = await requireCommunityHackathonAdmin(
+      const challenge = await requireHackathonOperator(
         ctx.db,
         input.challengeId,
         userId,

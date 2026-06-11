@@ -18,7 +18,6 @@ import {
   agentCommissions,
   communityMemberships,
   challengeEnrollments,
-  teams,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import type { CommunityRole } from "@/server/communities/role-utils";
@@ -26,6 +25,8 @@ import { awardCommissionedCellXp } from "@/server/agent/activity";
 import { isTaskTypeAllowed } from "./task-allowlist";
 import { createCollaborativeGridSchema } from "./work-grid-schema";
 import { ownerOnTeam } from "@/server/hackathon/team-membership";
+import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
+import { appendActivity } from "@/server/hackathon/activity";
 
 /**
  * Work-grid router — the runtime of a [[work-grid]] from ADR-0023.
@@ -73,11 +74,13 @@ async function requireActiveCommission(
 
 /**
  * Authorise a grid-admin action (create / verify) against the grid's scope.
- * A challenge-scoped grid requires the caller to own/sponsor the challenge
- * (its `creatorId`); a community-scoped grid requires owner/admin role in that
- * community. A grid with neither scope is unauthorisable — the trailing `else`
- * throws FORBIDDEN so an unscoped grid can never be created or verified
- * (closes the self-minted-XP authz bypass, ADR-0022).
+ * A challenge-scoped grid dispatches on the CHALLENGE's communityId (ADR-0031):
+ * a community hackathon is role-scoped — any active owner|admin of that
+ * community may administer it — while a community-less (Hub-wide) challenge
+ * keeps the creator/sponsor rule. A community-scoped grid requires owner/admin
+ * role in that community. A grid with neither scope is unauthorisable — the
+ * trailing `else` throws FORBIDDEN so an unscoped grid can never be created or
+ * verified (closes the self-minted-XP authz bypass, ADR-0022).
  */
 async function requireGridAdmin(
   db: typeof import("@/server/db").db,
@@ -99,7 +102,25 @@ async function requireGridAdmin(
         message: "Challenge not found",
       });
     }
-    if (challenge.creatorId !== userId) {
+    if (challenge.communityId) {
+      // Community hackathon (ADR-0031): role-scoped, not creator-scoped — a
+      // time-boxed contest must not hinge on one person. lockRosters creates
+      // competitive grids with communityId null on the grid itself, so this
+      // challenge-level dispatch is what lets community co-admins verify.
+      const membership = await db.query.communityMemberships.findFirst({
+        where: and(
+          eq(communityMemberships.communityId, challenge.communityId),
+          eq(communityMemberships.userId, userId),
+        ),
+      });
+      if (!isCommunityHackathonAdmin(membership ?? null)) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Only an owner or admin of this community can administer this grid",
+        });
+      }
+    } else if (challenge.creatorId !== userId) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: "Only the challenge sponsor can administer this grid",
@@ -442,6 +463,9 @@ export const workGridRouter = createTRPCRouter({
         .set({
           status: "claimed",
           claimedBy: ctx.agent.agentId,
+          // Agent-XOR-user claimant (ADR-0033): clear any user claim so a
+          // requeued formerly-human cell can never carry both claimants.
+          claimedByUserId: null,
           claimedAt: new Date(),
           deadline:
             cell.deadlineMinutes !== null
@@ -460,6 +484,17 @@ export const workGridRouter = createTRPCRouter({
         throw new TRPCError({
           code: "CONFLICT",
           message: "Cell already claimed",
+        });
+      }
+
+      // Competitive grids feed the team workspace activity stream: agents are
+      // peers to human members, so an agent claim lands in the same feed.
+      if (row.gridMode === "competitive" && row.gridTeamId !== null) {
+        await appendActivity(ctx.db, {
+          teamId: row.gridTeamId,
+          cellId: claimed.id,
+          actorAgentId: ctx.agent.agentId,
+          type: "claimed",
         });
       }
 
@@ -514,6 +549,22 @@ export const workGridRouter = createTRPCRouter({
             verificationOutcome: "pending",
           })
           .onConflictDoNothing({ target: workCellResults.cellId });
+
+        // Competitive grids feed the team workspace activity stream — the
+        // agent's report commits or rolls back with the cell flip.
+        const [grid] = await tx
+          .select({ mode: workGrids.mode, teamId: workGrids.teamId })
+          .from(workGrids)
+          .where(eq(workGrids.id, completed.gridId))
+          .limit(1);
+        if (grid?.mode === "competitive" && grid.teamId !== null) {
+          await appendActivity(tx, {
+            teamId: grid.teamId,
+            cellId: completed.id,
+            actorAgentId: ctx.agent.agentId,
+            type: "reported",
+          });
+        }
 
         return completed;
       });
@@ -641,6 +692,17 @@ export const workGridRouter = createTRPCRouter({
             verificationMode: cell.verificationMode,
             verificationOutcome: input.outcome,
             communityId: grid.communityId,
+          });
+        }
+
+        // Competitive grids feed the team workspace activity stream: the
+        // organizer's verdict ('verified'/'failed') commits with the result flip.
+        if (grid.teamId !== null) {
+          await appendActivity(tx, {
+            teamId: grid.teamId,
+            cellId: cell.id,
+            actorUserId: userId,
+            type: input.outcome,
           });
         }
 

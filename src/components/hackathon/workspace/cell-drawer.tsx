@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { authClient } from "@/server/better-auth/client";
 
 import { api } from "@/trpc/react";
-import type { RouterOutputs } from "@/trpc/react";
 import {
   Sheet,
   SheetContent,
@@ -25,18 +24,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-
-type Cell = RouterOutputs["teamWorkspace"]["cells"][number];
+import { HEAT_LABEL_KEY } from "./cell-heat";
 
 const UNASSIGNED = "__unassigned__";
-
-const heatStateKey: Record<Cell["heatState"], string> = {
-  pending: "cellPending",
-  claimed: "cellClaimed",
-  completed: "cellCompleted",
-  verified: "cellVerified",
-  failed: "cellFailed",
-};
 
 export function CellDrawer({
   teamId,
@@ -106,7 +96,7 @@ export function CellDrawer({
 
             <div className="flex flex-col gap-4 p-4">
               <div>
-                <Badge>{t(heatStateKey[cell.heatState])}</Badge>
+                <Badge>{t(HEAT_LABEL_KEY[cell.heatState])}</Badge>
               </div>
 
               <dl className="text-muted-foreground space-y-1 font-mono text-xs">

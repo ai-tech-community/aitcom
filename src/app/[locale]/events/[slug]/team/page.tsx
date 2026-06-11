@@ -32,10 +32,13 @@ export default async function TeamWorkspacePage({
   if (!event?.challengeId) redirect(`/events/${slug}`);
   const challengeId = Number(event.challengeId);
 
+  // Membership gate must mirror ownerOnTeam (team-membership.ts): only an
+  // ACTIVE enrollment counts, otherwise every workspace query throws FORBIDDEN.
   const enrollment = await db.query.challengeEnrollments.findFirst({
     where: and(
       eq(challengeEnrollments.userId, userId),
       eq(challengeEnrollments.challengeId, challengeId),
+      eq(challengeEnrollments.status, "active"),
       isNotNull(challengeEnrollments.teamId),
     ),
   });

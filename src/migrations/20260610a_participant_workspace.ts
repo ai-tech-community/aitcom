@@ -20,11 +20,25 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
   // work_cell_result: human-authored results. agent_id becomes nullable; add
   // user_id; replace the per-agent uniqueness with one result per cell.
+  // Pre-CR-1 MVP data may hold several results per cell (the old uniqueness
+  // was per (cell_id, agent_id)), which would abort the unique-index build —
+  // dedup first, keeping the most recent row per cell (submitted_at, then id).
   await db.execute(sql`
     ALTER TABLE "app"."work_cell_result"
       ALTER COLUMN "agent_id" DROP NOT NULL,
       ADD COLUMN IF NOT EXISTS "user_id" varchar(255) REFERENCES "app"."user"("id");
     DROP INDEX IF EXISTS "app"."work_cell_result_cell_agent_uidx";
+    DELETE FROM "app"."work_cell_result"
+      WHERE "id" IN (
+        SELECT "id" FROM (
+          SELECT "id", row_number() OVER (
+            PARTITION BY "cell_id"
+            ORDER BY "submitted_at" DESC, "id" DESC
+          ) AS "rn"
+          FROM "app"."work_cell_result"
+        ) "ranked"
+        WHERE "rn" > 1
+      );
     CREATE UNIQUE INDEX IF NOT EXISTS "work_cell_result_cell_uidx"
       ON "app"."work_cell_result" ("cell_id");
   `);

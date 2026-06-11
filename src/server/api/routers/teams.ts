@@ -35,7 +35,7 @@ async function hackathonEventForChallenge(challengeId: number) {
       and: [
         { challengeId: { equals: String(challengeId) } },
         { type: { equals: "hackathon" } },
-        { status: { not_in: ["draft", "rejected"] } },
+        { status: { not_in: ["draft", "rejected", "cancelled"] } },
       ],
     },
     limit: 1,

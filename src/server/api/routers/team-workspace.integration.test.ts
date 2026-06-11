@@ -427,13 +427,19 @@ describe.skipIf(!RUN_DB)(
       });
       expect(heatmap.some((h) => h.heatState === "verified")).toBe(true);
 
-      // The team activity feed recorded both forward actions.
+      // The team activity feed recorded both forward actions AND the
+      // organizer's verification verdict (appended by verifyCellResult).
       const activity = await member.teamWorkspace.activity({
         teamId: fx.teamId,
       });
       const types = activity.map((e) => e.type);
       expect(types).toContain("claimed");
       expect(types).toContain("reported");
+      expect(types).toContain("verified");
+      const verifiedEvent = activity.find((e) => e.type === "verified");
+      expect(verifiedEvent!.actorUserId).toBe(fx.sponsorId);
+      expect(verifiedEvent!.actorAgentId).toBeNull();
+      expect(verifiedEvent!.cellId).toBe(cellId);
     });
 
     // ── Assertion 3: a second member double-claiming a claimed cell → CONFLICT ─
@@ -473,6 +479,35 @@ describe.skipIf(!RUN_DB)(
         .from(schema.workCells)
         .where(eq(schema.workCells.id, cellId));
       expect(row!.claimedByUserId).toBe(fx.memberUserId);
+    });
+
+    // ── Assertion 4: human mutations require an ACTIVE grid (agent-path parity) ─
+
+    it("rejects a human claim on a non-active grid with CONFLICT, while reads still work", async () => {
+      const { db, schema, eq } = m;
+      const member = userCaller(fx.memberUserId);
+
+      const [seedCell] = await db
+        .select({ id: schema.workCells.id })
+        .from(schema.workCells)
+        .where(eq(schema.workCells.gridId, fx.gridId))
+        .limit(1);
+      const cellId = seedCell!.id;
+
+      // Finalized hackathon: the grid is no longer active.
+      await db
+        .update(schema.workGrids)
+        .set({ status: "completed" })
+        .where(eq(schema.workGrids.id, fx.gridId));
+
+      // Mutations are gated CONFLICT — same gate the agent claimCell enforces.
+      await expect(
+        member.teamWorkspace.claimCellAsMember({ cellId, teamId: fx.teamId }),
+      ).rejects.toMatchObject({ code: "CONFLICT" });
+
+      // Reads keep working regardless of grid status.
+      const cells = await member.teamWorkspace.cells({ teamId: fx.teamId });
+      expect(cells.some((c) => c.id === cellId)).toBe(true);
     });
   },
 );

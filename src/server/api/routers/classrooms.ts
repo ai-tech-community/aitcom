@@ -683,28 +683,40 @@ export const classroomsRouter = createTRPCRouter({
         depth: 0,
       });
 
-      const moduleDoc = await payload.create({
-        collection: "modules",
-        data: {
-          course: input.courseId,
-          title: input.title,
-          order: moduleCount,
-          summary: input.summary ?? undefined,
-        },
-      });
-
-      // First module on a flat course: wrap all existing lessons into it,
-      // preserving their order. A single bulk update (one SQL statement, so
-      // atomic) — never a partial loop that could leave the course mixed.
-      if (moduleCount === 0) {
-        await payload.update({
-          collection: "lessons",
-          where: { course: { equals: input.courseId } },
-          data: { module: moduleDoc.id },
+      // Create + wrap must land together: a module without the lesson wrap
+      // would leave the course mixed (moduled with module-null lessons), which
+      // groupLessonsByModule hides from learners.
+      const transactionID = await payload.db.beginTransaction();
+      const req = transactionID ? { transactionID } : undefined;
+      try {
+        const moduleDoc = await payload.create({
+          collection: "modules",
+          data: {
+            course: input.courseId,
+            title: input.title,
+            order: moduleCount,
+            summary: input.summary ?? undefined,
+          },
+          req,
         });
-      }
 
-      return { id: moduleDoc.id };
+        // First module on a flat course: wrap all existing lessons into it,
+        // preserving their order.
+        if (moduleCount === 0) {
+          await payload.update({
+            collection: "lessons",
+            where: { course: { equals: input.courseId } },
+            data: { module: moduleDoc.id },
+            req,
+          });
+        }
+
+        if (transactionID) await payload.db.commitTransaction(transactionID);
+        return { id: moduleDoc.id };
+      } catch (error) {
+        if (transactionID) await payload.db.rollbackTransaction(transactionID);
+        throw error;
+      }
     }),
 
   /** Rename / re-summarise a module on own course. */
@@ -735,8 +747,8 @@ export const classroomsRouter = createTRPCRouter({
 
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
-      if (input.summary !== undefined)
-        data.summary = input.summary ?? undefined;
+      // null passes through: explicit null clears the summary field.
+      if (input.summary !== undefined) data.summary = input.summary;
 
       await payload.update({
         collection: "modules",
@@ -778,12 +790,23 @@ export const classroomsRouter = createTRPCRouter({
         });
       }
 
-      for (let i = 0; i < input.orderedIds.length; i++) {
-        await payload.update({
-          collection: "modules",
-          id: input.orderedIds[i]!,
-          data: { order: i },
-        });
+      // All order updates land together — a partial reorder would leave
+      // duplicate/skipped order values.
+      const transactionID = await payload.db.beginTransaction();
+      const req = transactionID ? { transactionID } : undefined;
+      try {
+        for (let i = 0; i < input.orderedIds.length; i++) {
+          await payload.update({
+            collection: "modules",
+            id: input.orderedIds[i]!,
+            data: { order: i },
+            req,
+          });
+        }
+        if (transactionID) await payload.db.commitTransaction(transactionID);
+      } catch (error) {
+        if (transactionID) await payload.db.rollbackTransaction(transactionID);
+        throw error;
       }
       return { ok: true };
     }),
@@ -896,22 +919,29 @@ export const classroomsRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      // Null every lesson's module in one bulk update (atomic), then delete the
-      // modules — so the course never lingers in a partially-dissolved state.
-      await payload.update({
-        collection: "lessons",
-        where: { course: { equals: input.courseId } },
-        data: { module: null },
-      });
+      // Null-out and module deletion must land together — un-moduled lessons
+      // alongside surviving modules would make groupLessonsByModule hide the
+      // course's content.
+      const transactionID = await payload.db.beginTransaction();
+      const req = transactionID ? { transactionID } : undefined;
+      try {
+        await payload.update({
+          collection: "lessons",
+          where: { course: { equals: input.courseId } },
+          data: { module: null },
+          req,
+        });
 
-      const { docs: modules } = await payload.find({
-        collection: "modules",
-        where: { course: { equals: input.courseId } },
-        limit: 1000,
-        depth: 0,
-      });
-      for (const m of modules) {
-        await payload.delete({ collection: "modules", id: m.id });
+        await payload.delete({
+          collection: "modules",
+          where: { course: { equals: input.courseId } },
+          req,
+        });
+
+        if (transactionID) await payload.db.commitTransaction(transactionID);
+      } catch (error) {
+        if (transactionID) await payload.db.rollbackTransaction(transactionID);
+        throw error;
       }
       return { ok: true };
     }),

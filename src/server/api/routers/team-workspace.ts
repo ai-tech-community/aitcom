@@ -21,6 +21,7 @@ import {
 } from "@/server/db/schema";
 import { ownerOnTeam } from "@/server/hackathon/team-membership";
 import { cellHeatState } from "@/server/hackathon/cell-state";
+import { appendActivity } from "@/server/hackathon/activity";
 
 /** Throw FORBIDDEN unless the caller is an active member of the team. */
 async function requireTeamMember(
@@ -36,13 +37,19 @@ async function requireTeamMember(
   }
 }
 
-/** Resolve a team's single competitive grid id, or throw NOT_FOUND. */
+/**
+ * Resolve a team's single competitive grid id, or throw NOT_FOUND.
+ * With `mustBeActive` (state-changing claim/report/release), an inactive grid
+ * throws CONFLICT — gate parity with the agent claimCell path in work-grid.ts;
+ * reads (cells, activity) keep working regardless of grid status.
+ */
 async function requireTeamGridId(
   db: typeof import("@/server/db").db,
   teamId: string,
+  opts?: { mustBeActive?: boolean },
 ): Promise<string> {
   const [grid] = await db
-    .select({ id: workGrids.id })
+    .select({ id: workGrids.id, status: workGrids.status })
     .from(workGrids)
     .where(and(eq(workGrids.teamId, teamId), eq(workGrids.mode, "competitive")))
     .limit(1);
@@ -52,31 +59,13 @@ async function requireTeamGridId(
       message: "This team has no work grid yet (rosters not locked).",
     });
   }
+  if (opts?.mustBeActive && grid.status !== "active") {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "Grid is not active",
+    });
+  }
   return grid.id;
-}
-
-type Tx = Parameters<
-  Parameters<(typeof import("@/server/db").db)["transaction"]>[0]
->[0];
-
-/** Append one activity event (call inside the same tx as the action). */
-async function appendActivity(
-  tx: Tx,
-  args: {
-    teamId: string;
-    cellId: string | null;
-    actorUserId?: string | null;
-    actorAgentId?: string | null;
-    type: "assigned" | "claimed" | "reported" | "verified" | "failed";
-  },
-) {
-  await tx.insert(teamActivityEvents).values({
-    teamId: args.teamId,
-    cellId: args.cellId,
-    actorUserId: args.actorUserId ?? null,
-    actorAgentId: args.actorAgentId ?? null,
-    type: args.type,
-  });
 }
 
 export const teamWorkspaceRouter = createTRPCRouter({
@@ -168,7 +157,9 @@ export const teamWorkspaceRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       await requireTeamMember(ctx.db, userId, input.teamId);
-      const gridId = await requireTeamGridId(ctx.db, input.teamId);
+      const gridId = await requireTeamGridId(ctx.db, input.teamId, {
+        mustBeActive: true,
+      });
 
       const [cell] = await ctx.db
         .select()
@@ -223,7 +214,9 @@ export const teamWorkspaceRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       await requireTeamMember(ctx.db, userId, input.teamId);
-      const gridId = await requireTeamGridId(ctx.db, input.teamId);
+      const gridId = await requireTeamGridId(ctx.db, input.teamId, {
+        mustBeActive: true,
+      });
 
       const [released] = await ctx.db
         .update(workCells)
@@ -269,7 +262,9 @@ export const teamWorkspaceRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
       await requireTeamMember(ctx.db, userId, input.teamId);
-      const gridId = await requireTeamGridId(ctx.db, input.teamId);
+      const gridId = await requireTeamGridId(ctx.db, input.teamId, {
+        mustBeActive: true,
+      });
 
       return ctx.db.transaction(async (tx) => {
         const [completed] = await tx

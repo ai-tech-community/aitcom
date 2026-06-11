@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/server/db";
-import { communities, communityMemberships } from "@/server/db/schema";
+import { communities, communityMemberships, teams } from "@/server/db/schema";
 import { getSession } from "@/server/better-auth/server";
 import { getPayloadClient } from "@/server/payload";
 import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
@@ -37,11 +37,17 @@ export default async function ManageHackathonPage({
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
     collection: "events",
-    where: { slug: { equals: eventSlug } },
+    where: {
+      slug: { equals: eventSlug },
+      // Scope to the community from the URL — without this an admin of
+      // community A could read community B's draft hackathon by slug.
+      communityId: { equals: community.id },
+    },
     limit: 1,
     depth: 1, // populate the coverImage media relation (id + url)
   });
   const event = docs[0];
+  // No bound challenge → not a hackathon (or not this community's) → 404.
   if (!event?.challengeId) notFound();
   const cover = event.coverImage;
   const coverImageId =
@@ -64,14 +70,40 @@ export default async function ManageHackathonPage({
     badgeReward?: string | null;
   };
 
+  // Derive the lifecycle phase from server truth so a reload can't resurrect
+  // Lock/Finalize: lockRosters flips teams to status "locked"; finalize stamps
+  // finalRank/prizeAwardedAt on teams (the challenge status itself stays
+  // "active" — there is no completed flip today).
+  const challengeTeams = await db
+    .select({
+      status: teams.status,
+      finalRank: teams.finalRank,
+      prizeAwardedAt: teams.prizeAwardedAt,
+    })
+    .from(teams)
+    .where(eq(teams.challengeId, Number(challenge.id)));
+  const finalized =
+    challenge.status === "completed" ||
+    challengeTeams.some(
+      (t) => t.finalRank !== null || t.prizeAwardedAt !== null,
+    );
+  const rostersLocked = challengeTeams.some((t) => t.status === "locked");
+  const initialPhase =
+    event.status === "draft"
+      ? ("draft" as const)
+      : finalized
+        ? ("finalized" as const)
+        : rostersLocked
+          ? ("locked" as const)
+          : ("live" as const);
+
   return (
     <HackathonManage
       communitySlug={slug}
       eventId={Number(event.id)}
       eventSlug={String(event.slug)}
-      eventStatus={String(event.status)}
+      initialPhase={initialPhase}
       challengeId={Number(challenge.id)}
-      challengeStatus={String(challenge.status)}
       initialName={String(event.title ?? challenge.title ?? "")}
       initialDescription={lexicalToPlainText(event.description)}
       initialDate={event.date ? String(event.date).slice(0, 10) : ""}

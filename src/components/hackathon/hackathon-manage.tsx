@@ -34,7 +34,7 @@ export function HackathonManage({
   communitySlug,
   eventId,
   eventSlug,
-  eventStatus,
+  initialPhase,
   challengeId,
   initialName,
   initialDescription,
@@ -54,9 +54,8 @@ export function HackathonManage({
   communitySlug: string;
   eventId: number;
   eventSlug: string;
-  eventStatus: string;
+  initialPhase: "draft" | "live" | "locked" | "finalized";
   challengeId: number;
-  challengeStatus: string;
   initialName: string;
   initialDescription: string;
   initialDate: string;
@@ -97,8 +96,10 @@ export function HackathonManage({
   // Tasks
   const [cells, setCells] = useState<CellRow[]>(initialCells);
 
+  // Seeded from server truth (team lock/finalize markers) so a reload after
+  // finalizing doesn't re-enable Lock Rosters / Finalize.
   const [phase, setPhase] = useState<"draft" | "live" | "locked" | "finalized">(
-    eventStatus === "draft" ? "draft" : "live",
+    initialPhase,
   );
   const isDraft = phase === "draft";
 
