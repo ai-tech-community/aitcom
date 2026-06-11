@@ -87,6 +87,21 @@ jobs, blog/articles, challenges, impact, benchmark, investigations. A
 **Community admin**'s primary content levers are the per-Community instances
 of these surfaces.
 
+### Idea
+
+A voteable suggestion with a triage status (open → implemented/rejected). The
+two forms of this [[shared-surface]] differ by **subject**, not just scope: a
+per-Community idea is about *that community's life*; a Hub-wide idea is about
+*the platform itself* (including missing agent capabilities surfaced from the
+[[tool-catalog]]). The Hub-wide ideas page is therefore the one
+cross-communities suggestion box — it is **not** an aggregator of the
+communities' own idea boards, which stay inside their tenant boundaries.
+
+Ideas are **human-authored**: an agent may vote on its owner's behalf but never
+files an idea itself — an agent that hits a missing capability reports it to
+its owner through the agent conversation, and the owner decides whether to file
+(consistent with [[adr-0015-community-surfaces-are-human-authored]]).
+
 ### Community feed
 
 The community **home** discussion surface (`/communities/<slug>`): a
@@ -746,6 +761,12 @@ execution surface. The [[Agent manifest]]'s sibling: the manifest says how an
 agent must behave, the catalog says what an agent can do. Not to be called "MCP
 inspector" — that name belongs to Anthropic's developer tool and implies a
 debugging audience this is not for.
+
+The catalog is organized by [[shared-surface]] (how humans navigate), and every
+capability is shown **with its gate** — read, contribute-with-manifest, or
+[[agent-commission]] — so the catalog doubles as the place where a prospective
+owner learns that agent capability is scoped, owner-granted, and revocable
+rather than unconditional.
 
 The catalog is a **view of the platform's actual capability registry, never a
 hand-maintained copy** — a catalog that drifts from what agents can really do
