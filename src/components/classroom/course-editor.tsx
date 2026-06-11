@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRouter, Link } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { toast } from "sonner";
-import { ImagePlus, X, Loader2, ArrowLeft } from "lucide-react";
+import { ImagePlus, X, Loader2, ArrowLeft, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,6 +20,215 @@ import {
 import { LessonEditor } from "@/components/classroom/lesson-editor";
 
 type CourseStatus = "draft" | "published";
+
+interface CourseModule {
+  id: number;
+  title: string;
+  order: number;
+  summary?: string | null;
+}
+
+interface ModuleEditorProps {
+  courseId: number;
+  modules: CourseModule[];
+  lessonCount: (moduleId: number) => number;
+}
+
+/**
+ * Module management section for the course editor.
+ * Shown above the lesson list when the course is in edit mode.
+ */
+function ModuleEditor({ courseId, modules, lessonCount }: ModuleEditorProps) {
+  const t = useTranslations("classroom");
+  const utils = api.useUtils();
+  // Track per-module edited title (keyed by module id)
+  const [editTitles, setEditTitles] = useState<Record<number, string>>({});
+  const [deleteError, setDeleteError] = useState<Record<number, string>>({});
+
+  const addModule = api.classrooms.addModule.useMutation({
+    onSuccess: () => {
+      void utils.classrooms.get.invalidate();
+    },
+    onError: (err) => toast.error(err.message ?? t("saveFailed")),
+  });
+
+  const renameModule = api.classrooms.renameModule.useMutation({
+    onSuccess: () => {
+      void utils.classrooms.get.invalidate();
+    },
+    onError: (err) => toast.error(err.message ?? t("saveFailed")),
+  });
+
+  const reorderModules = api.classrooms.reorderModules.useMutation({
+    onSuccess: () => {
+      void utils.classrooms.get.invalidate();
+    },
+    onError: (err) => toast.error(err.message ?? t("saveFailed")),
+  });
+
+  const deleteModule = api.classrooms.deleteModule.useMutation({
+    onSuccess: () => {
+      void utils.classrooms.get.invalidate();
+    },
+    onError: (err, vars) => {
+      const msg =
+        err.message === "MODULE_NOT_EMPTY"
+          ? t("moduleNotEmpty")
+          : (err.message ?? t("deleteFailed"));
+      setDeleteError((prev) => ({ ...prev, [vars.moduleId]: msg }));
+    },
+  });
+
+  const dissolveModules = api.classrooms.dissolveModules.useMutation({
+    onSuccess: () => {
+      void utils.classrooms.get.invalidate();
+    },
+    onError: (err) => toast.error(err.message ?? t("saveFailed")),
+  });
+
+  // Flat course: show a single prompt to organise into modules
+  if (modules.length === 0) {
+    return (
+      <div className="space-y-2">
+        <h2 className="text-base font-semibold">{t("modules")}</h2>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={addModule.isPending}
+          onClick={() =>
+            addModule.mutate({ courseId, title: t("moduleDefaultTitle") })
+          }
+        >
+          {t("organiseIntoModules")}
+        </Button>
+      </div>
+    );
+  }
+
+  const moveUp = (index: number) => {
+    if (index === 0) return;
+    const reordered = [...modules];
+    const prev = reordered[index - 1]!;
+    const cur = reordered[index]!;
+    reordered[index - 1] = cur;
+    reordered[index] = prev;
+    reorderModules.mutate({ courseId, orderedIds: reordered.map((m) => m.id) });
+  };
+
+  return (
+    <div className="space-y-3">
+      <h2 className="text-base font-semibold">{t("modules")}</h2>
+
+      <div className="space-y-2">
+        {modules.map((mod, index) => {
+          const count = lessonCount(mod.id);
+          const currentTitle = editTitles[mod.id] ?? mod.title;
+          return (
+            <div
+              key={mod.id}
+              className="border-border flex items-center gap-2 rounded-lg border px-3 py-2"
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7 shrink-0"
+                disabled={index === 0 || reorderModules.isPending}
+                onClick={() => moveUp(index)}
+                aria-label={t("moveModuleUp")}
+              >
+                <ChevronUp className="size-4" />
+              </Button>
+
+              <Input
+                className="h-7 flex-1 text-sm"
+                value={currentTitle}
+                onChange={(e) =>
+                  setEditTitles((prev) => ({
+                    ...prev,
+                    [mod.id]: e.target.value,
+                  }))
+                }
+                onBlur={() => {
+                  const next = (editTitles[mod.id] ?? mod.title).trim();
+                  if (next && next !== mod.title) {
+                    renameModule.mutate({ moduleId: mod.id, title: next });
+                  }
+                }}
+                maxLength={200}
+                disabled={renameModule.isPending}
+              />
+
+              <span className="text-muted-foreground shrink-0 text-xs">
+                {t("lessonCount", { count })}
+              </span>
+
+              {count === 0 && (
+                <div className="flex shrink-0 flex-col items-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs text-red-500 hover:text-red-600"
+                    disabled={deleteModule.isPending}
+                    onClick={() => {
+                      setDeleteError((prev) => {
+                        const next = { ...prev };
+                        delete next[mod.id];
+                        return next;
+                      });
+                      deleteModule.mutate({ moduleId: mod.id });
+                    }}
+                  >
+                    {t("deleteModule")}
+                  </Button>
+                  {deleteError[mod.id] && (
+                    <span className="text-destructive text-xs">
+                      {deleteError[mod.id]}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={addModule.isPending}
+          onClick={() =>
+            addModule.mutate({
+              courseId,
+              title: `${t("moduleLabel")} ${modules.length + 1}`,
+            })
+          }
+        >
+          {t("addModule")}
+        </Button>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground text-xs"
+          disabled={dissolveModules.isPending}
+          onClick={() => {
+            if (confirm(t("dissolveModulesConfirm"))) {
+              dissolveModules.mutate({ courseId });
+            }
+          }}
+        >
+          {t("dissolveModules")}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Course create/edit UI. New mode (slug only) creates a course then redirects
@@ -246,7 +455,20 @@ export function CourseEditor({
       </div>
 
       {isEdit && data ? (
-        <LessonEditor courseId={data.course.id} lessons={data.lessons} />
+        <>
+          <ModuleEditor
+            courseId={data.course.id}
+            modules={data.modules}
+            lessonCount={(moduleId) =>
+              data.lessons.filter((l) => (l.module ?? null) === moduleId).length
+            }
+          />
+          <LessonEditor
+            courseId={data.course.id}
+            lessons={data.lessons}
+            modules={data.modules}
+          />
+        </>
       ) : null}
     </div>
   );

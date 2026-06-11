@@ -21,6 +21,7 @@ interface LessonLike {
   id: number;
   title: string;
   order?: number | null;
+  module?: number | null;
   youtubeUrl?: string | null;
   body?: unknown;
   resources?: ResourceRow[] | null;
@@ -28,6 +29,12 @@ interface LessonLike {
   examPassThreshold?: number | null;
   examMaxAttempts?: number | null;
   examQuestions?: unknown;
+}
+
+interface ModuleLike {
+  id: number;
+  title: string;
+  order: number;
 }
 
 /** A row-based editor for a lesson's resource links ({label,url}). */
@@ -161,7 +168,13 @@ function LessonFields({
 }
 
 /** One lesson row with an inline edit/delete affordance. */
-function LessonRow({ lesson }: { lesson: LessonLike }) {
+function LessonRow({
+  lesson,
+  modules,
+}: {
+  lesson: LessonLike;
+  modules: ModuleLike[];
+}) {
   const t = useTranslations("classroom");
   const utils = api.useUtils();
   const [editing, setEditing] = useState(false);
@@ -195,6 +208,13 @@ function LessonRow({ lesson }: { lesson: LessonLike }) {
     onError: (err) => toast.error(err.message ?? t("deleteFailed")),
   });
 
+  const assignToModule = api.classrooms.assignLessonToModule.useMutation({
+    onSuccess: () => {
+      void utils.classrooms.get.invalidate();
+    },
+    onError: (err) => toast.error(err.message ?? t("saveFailed")),
+  });
+
   if (!editing) {
     return (
       <div className="border-border flex items-center justify-between rounded-lg border px-3 py-2">
@@ -202,6 +222,29 @@ function LessonRow({ lesson }: { lesson: LessonLike }) {
           {(lesson.order ?? 0) + 1}
         </span>
         <span className="flex-1 truncate text-sm">{lesson.title}</span>
+        {modules.length > 0 && (
+          <select
+            aria-label={t("assignModule")}
+            className="border-border text-foreground bg-background mr-2 rounded border px-1.5 py-1 text-xs"
+            value={lesson.module ?? ""}
+            disabled={assignToModule.isPending}
+            onChange={(e) => {
+              const moduleId = Number(e.target.value);
+              if (!isNaN(moduleId) && moduleId > 0) {
+                assignToModule.mutate({ lessonId: lesson.id, moduleId });
+              }
+            }}
+          >
+            <option value="" disabled>
+              {t("assignModule")}
+            </option>
+            {modules.map((mod) => (
+              <option key={mod.id} value={mod.id}>
+                {mod.title}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="flex items-center gap-1">
           <Button
             type="button"
@@ -285,9 +328,11 @@ function LessonRow({ lesson }: { lesson: LessonLike }) {
 export function LessonEditor({
   courseId,
   lessons,
+  modules,
 }: {
   courseId: number;
   lessons: LessonLike[];
+  modules: ModuleLike[];
 }) {
   const t = useTranslations("classroom");
   const utils = api.useUtils();
@@ -327,7 +372,7 @@ export function LessonEditor({
       {lessons.length > 0 ? (
         <div className="space-y-2">
           {lessons.map((lesson) => (
-            <LessonRow key={lesson.id} lesson={lesson} />
+            <LessonRow key={lesson.id} lesson={lesson} modules={modules} />
           ))}
         </div>
       ) : (
