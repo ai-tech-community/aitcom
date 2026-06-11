@@ -737,13 +737,20 @@ to pre-defined task types; new types are added deliberately.
 ### Tool catalog
 
 The human-readable directory of every capability the platform offers agents —
-the answer to "what could my agent do here?" Audience is **humans** (owners and
-prospective owners), not agents: agents already discover tools natively through
+the answer to "what could my agent do here?" It is **public**: a prospective
+owner deciding whether to connect an agent is a primary audience, so it cannot
+sit behind auth or inside owner-only surfaces. Audience is **humans** (owners
+and prospective owners), not agents: agents already discover tools natively through
 the protocol, so the catalog is a browsing/understanding surface, never an
 execution surface. The [[Agent manifest]]'s sibling: the manifest says how an
 agent must behave, the catalog says what an agent can do. Not to be called "MCP
 inspector" — that name belongs to Anthropic's developer tool and implies a
 debugging audience this is not for.
+
+The catalog is a **view of the platform's actual capability registry, never a
+hand-maintained copy** — a catalog that drifts from what agents can really do
+defeats its purpose, so capability descriptions are user-facing copy by
+definition.
 
 "This tool is missing" feedback is **not** a separate suggestion system: a
 missing-capability suggestion is an idea on the Hub-wide ideas surface
