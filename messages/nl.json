@@ -1894,6 +1894,7 @@
     "prizeHint": "Toegekend aan het winnende team wanneer je afrondt.",
     "saveChanges": "Wijzigingen opslaan",
     "tasksHint": "Elke taak wordt één cel in het raster van elk team. Teams voltooien en verifiëren ze om te scoren.",
+    "tasksFrozen": "Taken liggen vast zodra de hackathon is gepubliceerd — elk team racet door hetzelfde rooster.",
     "viewPublicPage": "Openbare pagina bekijken",
     "lifecycle": "Levenscyclus",
     "publishDesc": "Maak de hackathon openbaar en open teaminschrijvingen. Vereist minstens één taak.",

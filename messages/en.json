@@ -1894,6 +1894,7 @@
     "prizeHint": "Awarded to the winning team when you finalize.",
     "saveChanges": "Save changes",
     "tasksHint": "Each task becomes one cell in every team's grid. Teams complete and verify them to score.",
+    "tasksFrozen": "Tasks are locked in once the hackathon is published — every team races the same grid.",
     "viewPublicPage": "View public page",
     "lifecycle": "Lifecycle",
     "publishDesc": "Make the hackathon public and open team sign-ups. Needs at least one task.",

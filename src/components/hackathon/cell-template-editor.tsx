@@ -51,9 +51,11 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 export function CellTemplateEditor({
   cells,
   onChange,
+  disabled = false,
 }: {
   cells: CellRow[];
   onChange: (next: CellRow[]) => void;
+  disabled?: boolean;
 }) {
   const t = useTranslations("hackathon");
 
@@ -71,6 +73,7 @@ export function CellTemplateEditor({
               type="button"
               variant="ghost"
               size="sm"
+              disabled={disabled}
               onClick={() => remove(i)}
             >
               {t("removeTask")}
@@ -80,18 +83,21 @@ export function CellTemplateEditor({
             <Field label={t("taskDescription")}>
               <Input
                 value={cell.description}
+                disabled={disabled}
                 onChange={(e) => update(i, { description: e.target.value })}
               />
             </Field>
             <Field label={t("taskType")}>
               <Input
                 value={cell.taskType}
+                disabled={disabled}
                 onChange={(e) => update(i, { taskType: e.target.value })}
               />
             </Field>
             <Field label={t("verificationMode")}>
               <Select
                 value={cell.verificationMode}
+                disabled={disabled}
                 onValueChange={(v) =>
                   update(i, {
                     verificationMode: v as CellRow["verificationMode"],
@@ -115,6 +121,7 @@ export function CellTemplateEditor({
                 type="number"
                 min={1}
                 value={cell.deadlineMinutes}
+                disabled={disabled}
                 onChange={(e) =>
                   update(i, { deadlineMinutes: Number(e.target.value) || 1 })
                 }
@@ -127,6 +134,7 @@ export function CellTemplateEditor({
         type="button"
         variant="secondary"
         size="sm"
+        disabled={disabled}
         onClick={() => onChange([...cells, emptyCell()])}
       >
         {t("addTask")}

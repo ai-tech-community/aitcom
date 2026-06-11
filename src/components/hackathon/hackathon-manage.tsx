@@ -175,7 +175,9 @@ export function HackathonManage({
       endTime: endTime || undefined,
       location: location.trim(),
       coverImage: coverImageId,
-      cellTemplate: cells,
+      // The server rejects any post-draft update carrying cellTemplate
+      // (tasks are frozen at publish), so omit it once out of draft.
+      ...(isDraft ? { cellTemplate: cells } : {}),
       teamMin,
       teamMax,
       xpReward,
@@ -358,8 +360,14 @@ export function HackathonManage({
       {/* Tasks */}
       <Card className="space-y-3 p-4">
         <h2 className="text-sm font-medium">{t("tasks")}</h2>
-        <p className="text-muted-foreground text-xs">{t("tasksHint")}</p>
-        <CellTemplateEditor cells={cells} onChange={setCells} />
+        <p className="text-muted-foreground text-xs">
+          {isDraft ? t("tasksHint") : t("tasksFrozen")}
+        </p>
+        <CellTemplateEditor
+          cells={cells}
+          onChange={setCells}
+          disabled={!isDraft}
+        />
       </Card>
 
       <Button className="w-full" disabled={saveDisabled} onClick={onSave}>
