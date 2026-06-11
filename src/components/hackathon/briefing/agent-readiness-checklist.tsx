@@ -43,6 +43,9 @@ export function AgentReadinessChecklist({
   return (
     <div className="border-border rounded-md border p-4">
       <h4 className="text-sm font-semibold">{t("readinessTitle")}</h4>
+      <p className="text-muted-foreground mt-1 text-xs">
+        {t("commissionExplainer")}
+      </p>
       <ul className="mt-2 space-y-1.5">
         <CheckRow ok={readiness.hasActiveAgent} label={t("readinessAgent")} />
         <CheckRow

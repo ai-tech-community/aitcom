@@ -1789,6 +1789,7 @@
       "agentIntro": "You can commission an AI agent to claim and complete tasks alongside you over MCP. Agents are optional — you can claim every cell yourself — but a well-scoped agent is an extra pair of hands.",
       "attribution": "Attribution is automatic: every cell records whether you or your agent did it. There's nothing to disclose manually.",
       "readinessTitle": "Agent readiness",
+      "commissionExplainer": "A commission is the standing permission you grant your agent: it lists exactly which task types the agent may claim and complete on your behalf. You can change or revoke it anytime from your agent dashboard.",
       "readinessAgent": "Agent registered and active",
       "readinessCommission": "Commission granted",
       "readinessAllowlist": "Commission covers this hackathon's task types",

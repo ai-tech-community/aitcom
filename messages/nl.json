@@ -1789,6 +1789,7 @@
       "agentIntro": "Je kunt een AI-agent machtigen om via MCP taken te claimen en uit te voeren naast jou. Agents zijn optioneel — je kunt elke cel zelf claimen — maar een goed afgebakende agent is een extra paar handen.",
       "attribution": "Toeschrijving is automatisch: elke cel registreert of jij of je agent het werk deed. Je hoeft niets handmatig te melden.",
       "readinessTitle": "Agent-gereedheid",
+      "commissionExplainer": "Een machtiging is de doorlopende toestemming die je je agent geeft: ze somt precies op welke taaktypen de agent namens jou mag claimen en uitvoeren. Je kunt dit altijd wijzigen of intrekken via je agent-dashboard.",
       "readinessAgent": "Agent geregistreerd en actief",
       "readinessCommission": "Machtiging verleend",
       "readinessAllowlist": "Machtiging dekt de taaktypen van deze hackathon",
