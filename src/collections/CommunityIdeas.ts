@@ -45,6 +45,21 @@ export const CommunityIdeas: CollectionConfig = {
       admin: { position: "sidebar" },
     },
     {
+      name: "category",
+      type: "select",
+      required: true,
+      defaultValue: "platform",
+      options: [
+        { label: "Platform", value: "platform" },
+        { label: "Agent capability", value: "agent-capability" },
+      ],
+      admin: {
+        position: "sidebar",
+        description:
+          "Hub-wide triage lane. 'Agent capability' = a missing MCP tool suggested from the /agents catalog.",
+      },
+    },
+    {
       name: "voteCount",
       type: "number",
       defaultValue: 0,

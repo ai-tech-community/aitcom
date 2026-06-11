@@ -265,6 +265,7 @@ export const forumRouter = createTRPCRouter({
           authorId: ctx.session.user.id,
           authorName: userName,
           status: "open",
+          category: "platform" as const,
           voteCount: 0,
           ...(communityId ? { communityId } : {}),
         },

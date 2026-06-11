@@ -54,6 +54,7 @@ import * as migration_20260609d_challenge_team_config_and_cell_template from "./
 import * as migration_20260610a_participant_workspace from "./20260610a_participant_workspace";
 import * as migration_20260611a_classroom_modules from "./20260611a_classroom_modules";
 import * as migration_20260611b_modules_locked_docs_rels from "./20260611b_modules_locked_docs_rels";
+import * as migration_20260611_community_ideas_category from "./20260611_community_ideas_category";
 
 export const migrations = [
   {
@@ -335,5 +336,10 @@ export const migrations = [
     up: migration_20260611b_modules_locked_docs_rels.up,
     down: migration_20260611b_modules_locked_docs_rels.down,
     name: "20260611b_modules_locked_docs_rels",
+  },
+  {
+    up: migration_20260611_community_ideas_category.up,
+    down: migration_20260611_community_ideas_category.down,
+    name: "20260611_community_ideas_category",
   },
 ];
