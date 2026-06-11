@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { TeamHeatmapPublic } from "@/components/hackathon/team-heatmap-public";
+import { prizeRecipients } from "@/server/hackathon/winners";
 
 export function TeamLeaderboard({
   challengeId,
@@ -22,6 +23,11 @@ export function TeamLeaderboard({
   // finalRank is only ever stamped by finalizeHackathon, so its presence is
   // the public signal that the hackathon is finalized and winners exist.
   const finalized = data.some((team) => team.finalRank !== null);
+  // The winner badge follows the disbursement marker (prizeAwarded), not
+  // finalRank === 1: a re-finalize recomputes ranks but never re-pays, so the
+  // current rank-1 team may not be the team that received the prize. Legacy
+  // data without the marker falls back to rank 1; pre-finalize both are empty.
+  const prizeTeamIds = new Set(prizeRecipients(data).map((t) => t.teamId));
 
   return (
     <div className="mt-4">
@@ -55,7 +61,7 @@ export function TeamLeaderboard({
                 <span className="text-muted-foreground font-mono text-xs">
                   {team.score} {t("score")}
                 </span>
-                {team.finalRank === 1 ? (
+                {prizeTeamIds.has(team.teamId) ? (
                   <Badge
                     variant="secondary"
                     className="bg-green-500/15 text-green-600 dark:text-green-400"

@@ -33,3 +33,22 @@ export function splitPodium<T extends PodiumSplittable>(
     ),
   };
 }
+
+export interface PrizeAttributable {
+  finalRank: number | null;
+  prizeAwarded: boolean;
+}
+
+/**
+ * Which team(s) to publicly attribute the prize to. The disbursement marker
+ * (prizeAwardedAt → prizeAwarded) is the truth: finalize re-runs recompute
+ * finalRank but never pay a second team, so after a re-finalize the current
+ * rank-1 team may not be the team that actually received the prize. Legacy
+ * rows finalized before the marker existed fall back to current rank 1 so the
+ * prize attribution doesn't silently disappear.
+ */
+export function prizeRecipients<T extends PrizeAttributable>(rows: T[]): T[] {
+  const awarded = rows.filter((t) => t.prizeAwarded);
+  if (awarded.length > 0) return awarded;
+  return rows.filter((t) => t.finalRank === 1);
+}

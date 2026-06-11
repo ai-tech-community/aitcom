@@ -8,7 +8,7 @@ import { teams } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { api } from "@/trpc/server";
 import { hackathonPhase } from "@/server/hackathon/phase";
-import { splitPodium } from "@/server/hackathon/winners";
+import { splitPodium, prizeRecipients } from "@/server/hackathon/winners";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -103,6 +103,12 @@ export default async function HackathonWinnersPage({
 
   const leaderboard = await api.hackathon.teamLeaderboard({ challengeId });
   const { podium, field } = splitPodium(leaderboard);
+  // The prize follows the disbursement marker, not the (re-computable) rank:
+  // after a re-finalize the current rank-1 team may not be the team that was
+  // actually paid. Falls back to rank 1 for legacy data without the marker.
+  const prizeTeamIds = new Set(
+    prizeRecipients(leaderboard).map((t) => t.teamId),
+  );
 
   const rewards = (challenge.rewards ?? {}) as {
     xpReward?: number | null;
@@ -157,7 +163,7 @@ export default async function HackathonWinnersPage({
               <span className="text-muted-foreground font-mono text-xs tracking-wider">
                 {t("rank")} #{team.finalRank}
               </span>
-              {team.finalRank === 1 ? (
+              {prizeTeamIds.has(team.teamId) ? (
                 <Badge
                   variant="secondary"
                   className="bg-green-500/15 text-green-600 dark:text-green-400"
@@ -176,7 +182,7 @@ export default async function HackathonWinnersPage({
               privateCount={team.memberCount - team.memberFaces.length}
             />
 
-            {team.finalRank === 1 && prizeParts.length > 0 ? (
+            {prizeTeamIds.has(team.teamId) && prizeParts.length > 0 ? (
               <div className="border-border mt-4 border-t pt-3">
                 <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
                   {t("prize")}
@@ -219,6 +225,13 @@ export default async function HackathonWinnersPage({
                 <span className="text-muted-foreground font-mono text-xs">
                   {team.score} {t("score")}
                 </span>
+                {/* A re-finalize can push the paid team below the podium; keep
+                    the prize attributed to it rather than dropping it. */}
+                {prizeTeamIds.has(team.teamId) && prizeParts.length > 0 ? (
+                  <Badge variant="secondary" title={prizeParts.join(" · ")}>
+                    {t("prize")}
+                  </Badge>
+                ) : null}
                 {team.finalRank === null ? (
                   <Badge variant="outline">{t("notRanked")}</Badge>
                 ) : null}

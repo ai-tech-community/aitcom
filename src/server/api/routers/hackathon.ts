@@ -829,6 +829,10 @@ export const hackathonRouter = createTRPCRouter({
           name: t.name,
           score: t.score ?? 0,
           finalRank: t.finalRank,
+          // Disbursement truth: re-finalizes recompute finalRank but the prize
+          // stays with the first winner, so consumers must attribute the prize
+          // by this flag, not by finalRank === 1.
+          prizeAwarded: t.prizeAwardedAt !== null,
           submitted: t.submittedAt !== null,
           memberCount: countByTeam.get(t.id) ?? 0,
           memberFaces: facesByTeam.get(t.id) ?? [],
