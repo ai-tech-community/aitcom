@@ -2926,6 +2926,38 @@ export const courseCertificates = appSchema.table(
   ],
 );
 
+/** Hackathon certificates, issued at finalize (winner = member of the team
+ *  that actually received the prize, participant = member of any other
+ *  submitted team). One certificate per user per challenge — the unique index
+ *  makes finalize re-runs structurally idempotent (ON CONFLICT DO NOTHING). */
+export const hackathonCertificates = appSchema.table(
+  "hackathon_certificate",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    challengeId: d.integer().notNull(), // References Payload challenges table
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    kind: d
+      .varchar({ length: 20 })
+      .notNull()
+      .$type<"winner" | "participant">(),
+    issuedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("hackathon_certificate_user_idx").on(t.userId),
+    uniqueIndex("hackathon_certificate_unique").on(t.challengeId, t.userId),
+  ],
+);
+
 export const communityLumaIntegrations = appSchema.table(
   "community_luma_integration",
   (d) => ({

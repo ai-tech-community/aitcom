@@ -18,7 +18,9 @@ import {
   workCells,
   workCellResults,
   challengeEnrollments,
+  hackathonCertificates,
   memberProfiles,
+  notifications,
   communityMemberships,
   communities,
 } from "@/server/db/schema";
@@ -40,6 +42,7 @@ import {
   cellTemplateToInserts,
 } from "@/server/hackathon/cell-template";
 import { teamScore, rankTeams, prizeSplit } from "@/server/hackathon/scoring";
+import { certificateAwards } from "@/server/hackathon/certificates";
 import { cellHeatState } from "@/server/hackathon/cell-state";
 import { awardXp, awardBadge } from "@/lib/gamification";
 
@@ -758,6 +761,80 @@ export const hackathonRouter = createTRPCRouter({
                   await awardBadge(tx, member.userId, badgeReward);
               }
             }
+          }
+        }
+
+        // Certificates (#163): winner certificates for members of the team(s)
+        // that actually received the prize (disbursement marker — re-runs
+        // recompute ranks but never re-pay), participation certificates for
+        // members of every other submitted team. The unique
+        // (challenge_id, user_id) index + ON CONFLICT DO NOTHING make
+        // re-finalize structurally idempotent; notifications go only to
+        // certificates actually inserted this run.
+        const awardedTeams = await tx
+          .select({ id: teams.id })
+          .from(teams)
+          .where(
+            and(
+              eq(teams.challengeId, input.challengeId),
+              isNotNull(teams.prizeAwardedAt),
+            ),
+          );
+        const awardedIds = new Set(awardedTeams.map((t) => t.id));
+        const submittedIds = submitted.map((t) => t.id);
+        const memberRows =
+          submittedIds.length > 0
+            ? await tx
+                .select({
+                  teamId: challengeEnrollments.teamId,
+                  userId: challengeEnrollments.userId,
+                })
+                .from(challengeEnrollments)
+                .where(inArray(challengeEnrollments.teamId, submittedIds))
+            : [];
+        const awards = certificateAwards(
+          challengeTeams.map((t) => ({
+            teamId: t.id,
+            submitted: t.submittedAt !== null,
+            finalRank: rankByTeam.get(t.id) ?? null,
+            prizeAwarded: awardedIds.has(t.id),
+          })),
+          memberRows.filter(
+            (m): m is { teamId: string; userId: string } => m.teamId !== null,
+          ),
+        );
+        if (awards.length > 0) {
+          const issued = await tx
+            .insert(hackathonCertificates)
+            .values(
+              awards.map((a) => ({
+                challengeId: input.challengeId,
+                userId: a.userId,
+                kind: a.kind,
+              })),
+            )
+            .onConflictDoNothing()
+            .returning();
+          if (issued.length > 0) {
+            await tx.insert(notifications).values(
+              issued.map((c) => ({
+                userId: c.userId,
+                type: "hackathon_certificate",
+                title:
+                  c.kind === "winner"
+                    ? "Winner certificate issued"
+                    : "Participation certificate issued",
+                content:
+                  c.kind === "winner"
+                    ? `You earned a winner certificate for "${challenge.title}".`
+                    : `You earned a participation certificate for "${challenge.title}".`,
+                metadata: {
+                  challengeId: String(input.challengeId),
+                  kind: c.kind,
+                },
+                communityId: challenge.communityId ?? null,
+              })),
+            );
           }
         }
       });

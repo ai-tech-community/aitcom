@@ -469,7 +469,11 @@
     "bio": "Bio",
     "socialLinks": "Links",
     "memberSince": "Lid sinds",
-    "profilePrivate": "Dit profiel is privé."
+    "profilePrivate": "Dit profiel is privé.",
+    "certificates": "Certificaten",
+    "certificateUntitled": "Hackathon",
+    "certificateWinner": "Winnaar",
+    "certificateParticipant": "Deelnemer"
   },
   "dashboard": {
     "myProfile": "MIJN PROFIEL",

@@ -469,7 +469,11 @@
     "bio": "Bio",
     "socialLinks": "Links",
     "memberSince": "Member since",
-    "profilePrivate": "This profile is private."
+    "profilePrivate": "This profile is private.",
+    "certificates": "Certificates",
+    "certificateUntitled": "Hackathon",
+    "certificateWinner": "Winner",
+    "certificateParticipant": "Participant"
   },
   "dashboard": {
     "myProfile": "MY PROFILE",
