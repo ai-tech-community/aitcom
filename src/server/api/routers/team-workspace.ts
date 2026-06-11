@@ -140,7 +140,9 @@ export const teamWorkspaceRouter = createTRPCRouter({
         const [updated] = await tx
           .update(workCells)
           .set({ assignedToUserId: input.userId })
-          .where(and(eq(workCells.id, input.cellId), eq(workCells.gridId, gridId)))
+          .where(
+            and(eq(workCells.id, input.cellId), eq(workCells.gridId, gridId)),
+          )
           .returning();
         if (!updated) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Cell not found" });
@@ -171,7 +173,9 @@ export const teamWorkspaceRouter = createTRPCRouter({
       const [cell] = await ctx.db
         .select()
         .from(workCells)
-        .where(and(eq(workCells.id, input.cellId), eq(workCells.gridId, gridId)))
+        .where(
+          and(eq(workCells.id, input.cellId), eq(workCells.gridId, gridId)),
+        )
         .limit(1);
       if (!cell) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Cell not found" });
@@ -310,7 +314,12 @@ export const teamWorkspaceRouter = createTRPCRouter({
 
   /** Recent activity for the team feed (newest first). Member-gated. */
   activity: protectedProcedure
-    .input(z.object({ teamId: z.string(), limit: z.number().min(1).max(100).default(50) }))
+    .input(
+      z.object({
+        teamId: z.string(),
+        limit: z.number().min(1).max(100).default(50),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       await requireTeamMember(ctx.db, ctx.session.user.id, input.teamId);
       return ctx.db
@@ -334,8 +343,16 @@ export const teamWorkspaceRouter = createTRPCRouter({
           displayName: memberProfiles.displayName,
         })
         .from(teamPresence)
-        .innerJoin(memberProfiles, eq(memberProfiles.userId, teamPresence.userId))
-        .where(and(eq(teamPresence.teamId, input.teamId), gte(teamPresence.lastSeenAt, since)));
+        .innerJoin(
+          memberProfiles,
+          eq(memberProfiles.userId, teamPresence.userId),
+        )
+        .where(
+          and(
+            eq(teamPresence.teamId, input.teamId),
+            gte(teamPresence.lastSeenAt, since),
+          ),
+        );
       return rows;
     }),
 

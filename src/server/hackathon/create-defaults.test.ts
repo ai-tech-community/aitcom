@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  deriveSlug,
-  buildHackathonChallengeData,
-} from "./create-defaults";
+import { deriveSlug, buildHackathonChallengeData } from "./create-defaults";
 
 describe("deriveSlug", () => {
   it("slugifies and appends the uniqueness suffix", () => {

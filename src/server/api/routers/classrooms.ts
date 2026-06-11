@@ -220,7 +220,11 @@ export const classroomsRouter = createTRPCRouter({
         summary: m.summary ?? null,
       }));
       const lessons = orderLessonsForReading(
-        rawLessons.map((l) => ({ ...l, module: l.module ?? null, order: l.order ?? 0 })),
+        rawLessons.map((l) => ({
+          ...l,
+          module: l.module ?? null,
+          order: l.order ?? 0,
+        })),
         moduleRefs,
       );
 
@@ -731,7 +735,8 @@ export const classroomsRouter = createTRPCRouter({
 
       const data: Record<string, unknown> = {};
       if (input.title !== undefined) data.title = input.title;
-      if (input.summary !== undefined) data.summary = input.summary ?? undefined;
+      if (input.summary !== undefined)
+        data.summary = input.summary ?? undefined;
 
       await payload.update({
         collection: "modules",
@@ -767,7 +772,10 @@ export const classroomsRouter = createTRPCRouter({
         input.orderedIds.length !== modules.length ||
         !input.orderedIds.every((id) => validIds.has(id))
       ) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "MODULE_SET_MISMATCH" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "MODULE_SET_MISMATCH",
+        });
       }
 
       for (let i = 0; i < input.orderedIds.length; i++) {
@@ -810,7 +818,10 @@ export const classroomsRouter = createTRPCRouter({
         depth: 0,
       });
       if (moduleDoc.course !== lesson.course) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "MODULE_COURSE_MISMATCH" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "MODULE_COURSE_MISMATCH",
+        });
       }
 
       const { totalDocs: targetCount } = await payload.find({

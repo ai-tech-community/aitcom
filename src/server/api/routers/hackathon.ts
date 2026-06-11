@@ -24,7 +24,10 @@ import {
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
-import { assertBindable, BindingError } from "@/server/hackathon/binding-invariant";
+import {
+  assertBindable,
+  BindingError,
+} from "@/server/hackathon/binding-invariant";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import {
   deriveSlug,
@@ -102,7 +105,8 @@ async function requireCommunityHackathonAdmin(
   if (!isCommunityHackathonAdmin(membership ?? null)) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Only an owner or admin of this community can manage the hackathon",
+      message:
+        "Only an owner or admin of this community can manage the hackathon",
     });
   }
   return challenge;
@@ -117,21 +121,23 @@ export const hackathonRouter = createTRPCRouter({
    */
   createHackathon: protectedProcedure
     .input(
-      z.object({
-        communitySlug: z.string(),
-        name: z.string().min(3).max(255),
-        description: z.string().max(5000).optional(),
-        date: z.string(),
-        startTime: z.string().optional(),
-        endTime: z.string().optional(),
-        location: z.string().min(1).max(255),
-        format: z.enum(EVENT_FORMAT_OPTIONS).optional(),
-        teamMin: z.number().int().min(1).default(1),
-        teamMax: z.number().int().min(1).default(5),
-      }).refine((v) => v.teamMin <= v.teamMax, {
-        message: "teamMin must not exceed teamMax",
-        path: ["teamMin"],
-      }),
+      z
+        .object({
+          communitySlug: z.string(),
+          name: z.string().min(3).max(255),
+          description: z.string().max(5000).optional(),
+          date: z.string(),
+          startTime: z.string().optional(),
+          endTime: z.string().optional(),
+          location: z.string().min(1).max(255),
+          format: z.enum(EVENT_FORMAT_OPTIONS).optional(),
+          teamMin: z.number().int().min(1).default(1),
+          teamMax: z.number().int().min(1).default(5),
+        })
+        .refine((v) => v.teamMin <= v.teamMax, {
+          message: "teamMin must not exceed teamMax",
+          path: ["teamMin"],
+        }),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
@@ -143,7 +149,10 @@ export const hackathonRouter = createTRPCRouter({
         ),
       });
       if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Community not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Community not found",
+        });
       }
       const membership = await ctx.db.query.communityMemberships.findFirst({
         where: and(
@@ -264,10 +273,13 @@ export const hackathonRouter = createTRPCRouter({
       const data: Record<string, unknown> = {};
       if (input.name !== undefined) data.title = input.name;
       if (lexicalDesc !== undefined) data.description = lexicalDesc;
-      if (input.cellTemplate !== undefined) data.cellTemplate = input.cellTemplate;
+      if (input.cellTemplate !== undefined)
+        data.cellTemplate = input.cellTemplate;
       if (input.teamMin !== undefined || input.teamMax !== undefined) {
-        const minTeamSize = input.teamMin ?? challenge.teamConfig?.minTeamSize ?? 1;
-        const maxTeamSize = input.teamMax ?? challenge.teamConfig?.maxTeamSize ?? 5;
+        const minTeamSize =
+          input.teamMin ?? challenge.teamConfig?.minTeamSize ?? 1;
+        const maxTeamSize =
+          input.teamMax ?? challenge.teamConfig?.maxTeamSize ?? 5;
         if (minTeamSize > maxTeamSize) {
           throw new TRPCError({
             code: "BAD_REQUEST",
@@ -306,10 +318,12 @@ export const hackathonRouter = createTRPCRouter({
         if (input.name !== undefined) eventData.title = input.name;
         if (lexicalDesc !== undefined) eventData.description = lexicalDesc;
         if (input.date !== undefined) eventData.date = input.date;
-        if (input.startTime !== undefined) eventData.startTime = input.startTime;
+        if (input.startTime !== undefined)
+          eventData.startTime = input.startTime;
         if (input.endTime !== undefined) eventData.endTime = input.endTime;
         if (input.location !== undefined) eventData.location = input.location;
-        if (input.coverImage !== undefined) eventData.coverImage = input.coverImage;
+        if (input.coverImage !== undefined)
+          eventData.coverImage = input.coverImage;
         if (Object.keys(eventData).length > 0) {
           let ev;
           try {
@@ -319,7 +333,10 @@ export const hackathonRouter = createTRPCRouter({
               depth: 0,
             });
           } catch {
-            throw new TRPCError({ code: "NOT_FOUND", message: "Event not found" });
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: "Event not found",
+            });
           }
           if (String(ev.challengeId ?? "") !== String(input.challengeId)) {
             throw new TRPCError({
@@ -411,7 +428,10 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ eventId: z.number(), challengeId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const challenge = await requireChallengeSponsor(input.challengeId, userId);
+      const challenge = await requireChallengeSponsor(
+        input.challengeId,
+        userId,
+      );
 
       const payload = await getPayloadClient();
       let event;
@@ -481,7 +501,11 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const challenge = await requireCommunityHackathonAdmin(ctx.db, input.challengeId, userId);
+      const challenge = await requireCommunityHackathonAdmin(
+        ctx.db,
+        input.challengeId,
+        userId,
+      );
 
       const template = cellTemplateSchema.parse(challenge.cellTemplate ?? []);
 
@@ -495,7 +519,8 @@ export const hackathonRouter = createTRPCRouter({
           ),
         );
 
-      const created: { teamId: string; gridId: string; cellCount: number }[] = [];
+      const created: { teamId: string; gridId: string; cellCount: number }[] =
+        [];
 
       for (const team of forming) {
         await ctx.db.transaction(async (tx) => {
@@ -549,7 +574,11 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ challengeId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const challenge = await requireCommunityHackathonAdmin(ctx.db, input.challengeId, userId);
+      const challenge = await requireCommunityHackathonAdmin(
+        ctx.db,
+        input.challengeId,
+        userId,
+      );
 
       const rankingMode =
         challenge.rankingMode === "thoroughness" ||
@@ -675,7 +704,8 @@ export const hackathonRouter = createTRPCRouter({
               const share = prizeSplit(xpReward, members.length);
               for (const member of members) {
                 if (share > 0) await awardXp(tx, member.userId, share);
-                if (badgeReward) await awardBadge(tx, member.userId, badgeReward);
+                if (badgeReward)
+                  await awardBadge(tx, member.userId, badgeReward);
               }
             }
           }

@@ -22,14 +22,17 @@ describe("assertBindable", () => {
 
   it("throws when the event is not a hackathon", () => {
     expect(() =>
-      assertBindable({ type: "workshop", communityId: "comm-1" }, base.challenge),
+      assertBindable(
+        { type: "workshop", communityId: "comm-1" },
+        base.challenge,
+      ),
     ).toThrow(/hackathon/i);
   });
 
   it("throws when communityIds differ", () => {
-    expect(() =>
-      assertBindable(base.event, { communityId: "comm-2" }),
-    ).toThrow(/communityId/i);
+    expect(() => assertBindable(base.event, { communityId: "comm-2" })).toThrow(
+      /communityId/i,
+    );
   });
 
   it("treats undefined and null communityId as the same (Hub-wide)", () => {

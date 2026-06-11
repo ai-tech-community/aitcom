@@ -1181,7 +1181,9 @@ describe.skipIf(!RUN_DB)(
       await db
         .delete(schema.workCells)
         .where(eq(schema.workCells.gridId, grid!.id));
-      await db.delete(schema.workGrids).where(eq(schema.workGrids.id, grid!.id));
+      await db
+        .delete(schema.workGrids)
+        .where(eq(schema.workGrids.id, grid!.id));
       await db
         .delete(schema.challengeEnrollments)
         .where(eq(schema.challengeEnrollments.challengeId, challengeId));
@@ -1288,7 +1290,9 @@ describe.skipIf(!RUN_DB)(
       await db
         .delete(schema.workCells)
         .where(eq(schema.workCells.gridId, grid!.id));
-      await db.delete(schema.workGrids).where(eq(schema.workGrids.id, grid!.id));
+      await db
+        .delete(schema.workGrids)
+        .where(eq(schema.workGrids.id, grid!.id));
       await db
         .delete(schema.challengeEnrollments)
         .where(eq(schema.challengeEnrollments.challengeId, challengeId));

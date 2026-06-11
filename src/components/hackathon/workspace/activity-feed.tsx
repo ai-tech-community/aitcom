@@ -3,12 +3,7 @@
 import { api } from "@/trpc/react";
 import type { RouterOutputs } from "@/trpc/react";
 import { useTranslations } from "next-intl";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 type ActivityEvent = RouterOutputs["teamWorkspace"]["activity"][number];
@@ -63,8 +58,7 @@ export function ActivityFeed({
 
   const events = data ? [...data] : [];
   events.sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 
   return (

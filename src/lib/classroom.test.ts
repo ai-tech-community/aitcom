@@ -220,9 +220,9 @@ describe("groupLessonsByModule", () => {
 
 describe("classroomStructureValid", () => {
   it("is valid when all lessons are flat (module null)", () => {
-    expect(
-      classroomStructureValid([{ module: null }, { module: null }]),
-    ).toBe(true);
+    expect(classroomStructureValid([{ module: null }, { module: null }])).toBe(
+      true,
+    );
   });
 
   it("is valid when every lesson has a module", () => {

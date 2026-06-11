@@ -162,9 +162,7 @@ export function CellDrawer({
               {cell.heatState === "pending" ? (
                 <Button
                   disabled={claimCell.isPending}
-                  onClick={() =>
-                    claimCell.mutate({ cellId: cell.id, teamId })
-                  }
+                  onClick={() => claimCell.mutate({ cellId: cell.id, teamId })}
                 >
                   {t("claim")}
                 </Button>

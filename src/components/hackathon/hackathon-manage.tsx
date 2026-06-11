@@ -147,7 +147,10 @@ export function HackathonManage({
       const formData = new FormData();
       formData.append("file", file);
       formData.append("alt", name || "Hackathon cover");
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
       if (!res.ok) throw new Error("Upload failed");
       const data = (await res.json()) as { url: string; id: number };
       setCoverImageId(data.id);
@@ -210,7 +213,9 @@ export function HackathonManage({
               {t("viewPublicPage")}
             </Link>
           ) : null}
-          <Badge variant={isDraft ? "outline" : "secondary"}>{statusLabel}</Badge>
+          <Badge variant={isDraft ? "outline" : "secondary"}>
+            {statusLabel}
+          </Badge>
         </div>
       </div>
 

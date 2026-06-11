@@ -55,10 +55,7 @@ export function PresenceStrip({ teamId }: { teamId: string }) {
             return (
               <Tooltip key={row.userId}>
                 <TooltipTrigger asChild>
-                  <Avatar
-                    size="sm"
-                    className="ring-background ring-2"
-                  >
+                  <Avatar size="sm" className="ring-background ring-2">
                     <AvatarFallback>{initials(name)}</AvatarFallback>
                   </Avatar>
                 </TooltipTrigger>

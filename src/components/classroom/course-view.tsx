@@ -152,7 +152,11 @@ export function CourseView({
 
   const { course } = data;
   const groups = groupLessonsByModule(
-    lessons.map((l) => ({ ...l, module: l.module ?? null, order: l.order ?? 0 })),
+    lessons.map((l) => ({
+      ...l,
+      module: l.module ?? null,
+      order: l.order ?? 0,
+    })),
     data.modules,
   );
   const completedSet = new Set(completedLessonIds);
@@ -394,9 +398,7 @@ export function CourseView({
                                         : "border-border"
                                     }`}
                                   >
-                                    {done ? (
-                                      <Check className="size-3" />
-                                    ) : null}
+                                    {done ? <Check className="size-3" /> : null}
                                   </span>
                                   <span className="truncate">
                                     {lesson.title}

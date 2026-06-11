@@ -318,7 +318,9 @@ describe.skipIf(!RUN_DB)(
       await db
         .delete(schema.workCells)
         .where(eq(schema.workCells.gridId, fx.gridId));
-      await db.delete(schema.workGrids).where(eq(schema.workGrids.id, fx.gridId));
+      await db
+        .delete(schema.workGrids)
+        .where(eq(schema.workGrids.id, fx.gridId));
 
       await db
         .delete(schema.teamActivityEvents)

@@ -79,7 +79,12 @@ type Tx = Parameters<
  */
 async function joinTeamBundle(
   tx: Tx,
-  args: { userId: string; challengeId: number; eventId: number; teamId: string },
+  args: {
+    userId: string;
+    challengeId: number;
+    eventId: number;
+    teamId: string;
+  },
 ) {
   const [enrolled] = await tx
     .insert(challengeEnrollments)
@@ -125,7 +130,9 @@ async function joinTeamBundle(
 export const teamsRouter = createTRPCRouter({
   /** Create a team for a hackathon challenge; the caller becomes captain. */
   createTeam: protectedProcedure
-    .input(z.object({ challengeId: z.number(), name: z.string().min(1).max(100) }))
+    .input(
+      z.object({ challengeId: z.number(), name: z.string().min(1).max(100) }),
+    )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 

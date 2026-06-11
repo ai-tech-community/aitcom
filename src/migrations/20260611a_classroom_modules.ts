@@ -43,6 +43,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 }
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
-  await db.execute(sql.raw(`ALTER TABLE "lessons" DROP COLUMN IF EXISTS "module"`));
+  await db.execute(
+    sql.raw(`ALTER TABLE "lessons" DROP COLUMN IF EXISTS "module"`),
+  );
   await db.execute(sql.raw(`DROP TABLE IF EXISTS "modules"`));
 }
