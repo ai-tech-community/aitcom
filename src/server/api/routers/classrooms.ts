@@ -477,19 +477,46 @@ export const classroomsRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      const { totalDocs } = await payload.find({
-        collection: "lessons",
+      // Keep the flat-or-fully-moduled invariant: if the course is moduled,
+      // a new lesson must land in a module (never null). Default to the last
+      // module; the author can reassign it via assignLessonToModule.
+      const { docs: courseModules } = await payload.find({
+        collection: "modules",
         where: { course: { equals: input.courseId } },
-        limit: 0,
+        sort: "-order",
+        limit: 1,
         depth: 0,
       });
+      const targetModuleId = courseModules[0]?.id ?? null;
+
+      let lessonOrder: number;
+      if (targetModuleId !== null) {
+        // Moduled course: order within the target module
+        const { totalDocs: moduleLessonCount } = await payload.find({
+          collection: "lessons",
+          where: { module: { equals: targetModuleId } },
+          limit: 0,
+          depth: 0,
+        });
+        lessonOrder = moduleLessonCount;
+      } else {
+        // Flat course: order across all lessons in the course
+        const { totalDocs } = await payload.find({
+          collection: "lessons",
+          where: { course: { equals: input.courseId } },
+          limit: 0,
+          depth: 0,
+        });
+        lessonOrder = totalDocs;
+      }
 
       const lesson = await payload.create({
         collection: "lessons",
         data: {
           course: input.courseId,
           title: input.title,
-          order: totalDocs,
+          order: lessonOrder,
+          ...(targetModuleId !== null ? { module: targetModuleId } : {}),
           youtubeUrl: input.youtubeUrl ?? undefined,
           body: input.body ?? undefined,
           resources: input.resources,
@@ -622,7 +649,8 @@ export const classroomsRouter = createTRPCRouter({
   /**
    * Create a module on own course. Creating the FIRST module auto-wraps every
    * existing flat lesson into it, so the course goes flat → fully-moduled in one
-   * atomic step (never a mixed state). Later modules start empty.
+   * step (the wrap runs immediately after creation, keeping the course fully-moduled).
+   * Later modules start empty.
    */
   addModule: protectedProcedure
     .input(
@@ -847,8 +875,8 @@ export const classroomsRouter = createTRPCRouter({
     }),
 
   /**
-   * Revert a course to flat: atomically null every lesson's module and delete
-   * all the course's modules. The only sanctioned moduled → flat path.
+   * Revert a course to flat: null every lesson's module, then delete all the
+   * course's modules. The only sanctioned moduled → flat path.
    */
   dissolveModules: protectedProcedure
     .input(z.object({ courseId: z.number() }))
