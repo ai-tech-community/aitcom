@@ -15,6 +15,7 @@ import { LazyMotion, domAnimation, m } from "framer-motion";
 import { fireConfetti } from "./celebrate";
 import {
   courseProgressPercent,
+  groupLessonsByModule,
   youtubeEmbedUrl,
   type CommunityRole,
 } from "@/lib/classroom";
@@ -41,6 +42,8 @@ interface LessonLike {
   resources?: ResourceRow[] | null;
   /** Present (with correctIndex) only when the viewer is the course author. */
   examQuestions?: unknown;
+  module?: number | null;
+  order?: number | null;
 }
 
 export function CourseView({
@@ -148,6 +151,15 @@ export function CourseView({
   }
 
   const { course } = data;
+  const groups = groupLessonsByModule(
+    lessons.map((l) => ({
+      ...l,
+      module: l.module ?? null,
+      order: l.order ?? 0,
+    })),
+    data.modules,
+  );
+  const completedSet = new Set(completedLessonIds);
   const percent = courseProgressPercent(
     completedLessonIds.length,
     lessons.length,
@@ -324,47 +336,82 @@ export function CourseView({
                   {t("noLessons")}
                 </p>
               ) : (
-                <ul className="border-border divide-border divide-y overflow-hidden rounded-lg border">
-                  {lessons.map((lesson) => {
-                    const done = completedLessonIds.includes(lesson.id);
-                    const active = selectedLesson?.id === lesson.id;
-                    if (!canViewContent) {
-                      return (
-                        <li
-                          key={lesson.id}
-                          className="text-muted-foreground flex items-center gap-2 px-3 py-2.5 text-sm"
-                        >
-                          <Lock className="size-3.5 shrink-0" />
-                          <span className="truncate">{lesson.title}</span>
-                        </li>
-                      );
-                    }
+                <div className="space-y-6">
+                  {groups.map((group) => {
+                    const groupCompleted = group.lessons.filter((l) =>
+                      completedSet.has(l.id),
+                    ).length;
                     return (
-                      <li key={lesson.id}>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(lesson.id)}
-                          className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors ${
-                            active
-                              ? "bg-secondary/60 font-medium"
-                              : "hover:bg-secondary/40"
-                          }`}
-                        >
-                          <span
-                            className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
-                              done
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border"
-                            }`}
-                          >
-                            {done ? <Check className="size-3" /> : null}
-                          </span>
-                          <span className="truncate">{lesson.title}</span>
-                        </button>
-                      </li>
+                      <section
+                        key={group.module?.id ?? "flat"}
+                        className="space-y-2"
+                      >
+                        {group.module ? (
+                          <div className="flex items-baseline justify-between">
+                            <div>
+                              <h3 className="font-semibold">
+                                {group.module.title}
+                              </h3>
+                              {group.module.summary ? (
+                                <p className="text-muted-foreground text-sm">
+                                  {group.module.summary}
+                                </p>
+                              ) : null}
+                            </div>
+                            <span className="text-muted-foreground font-mono text-xs">
+                              {groupCompleted}/{group.lessons.length}
+                            </span>
+                          </div>
+                        ) : null}
+                        <ul className="border-border divide-border divide-y overflow-hidden rounded-lg border">
+                          {group.lessons.map((lesson) => {
+                            const done = completedSet.has(lesson.id);
+                            const active = selectedLesson?.id === lesson.id;
+                            if (!canViewContent) {
+                              return (
+                                <li
+                                  key={lesson.id}
+                                  className="text-muted-foreground flex items-center gap-2 px-3 py-2.5 text-sm"
+                                >
+                                  <Lock className="size-3.5 shrink-0" />
+                                  <span className="truncate">
+                                    {lesson.title}
+                                  </span>
+                                </li>
+                              );
+                            }
+                            return (
+                              <li key={lesson.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedId(lesson.id)}
+                                  className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors ${
+                                    active
+                                      ? "bg-secondary/60 font-medium"
+                                      : "hover:bg-secondary/40"
+                                  }`}
+                                >
+                                  <span
+                                    className={`flex size-4 shrink-0 items-center justify-center rounded-full border ${
+                                      done
+                                        ? "border-primary bg-primary text-primary-foreground"
+                                        : "border-border"
+                                    }`}
+                                  >
+                                    {done ? <Check className="size-3" /> : null}
+                                  </span>
+                                  <span className="truncate">
+                                    {lesson.title}
+                                  </span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </section>
                     );
                   })}
-                </ul>
+                </div>
               )}
             </div>
 

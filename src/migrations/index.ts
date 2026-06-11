@@ -49,6 +49,11 @@ import * as migration_20260608e_lesson_exams from "./20260608e_lesson_exams";
 import * as migration_20260608f_topic_slug_not_null from "./20260608f_topic_slug_not_null";
 import * as migration_20260609a_hackathon_teams from "./20260609a_hackathon_teams";
 import * as migration_20260609b_team_judging from "./20260609b_team_judging";
+import * as migration_20260609c_events_challenge_binding from "./20260609c_events_challenge_binding";
+import * as migration_20260609d_challenge_team_config_and_cell_template from "./20260609d_challenge_team_config_and_cell_template";
+import * as migration_20260610a_participant_workspace from "./20260610a_participant_workspace";
+import * as migration_20260611a_classroom_modules from "./20260611a_classroom_modules";
+import * as migration_20260611b_modules_locked_docs_rels from "./20260611b_modules_locked_docs_rels";
 
 export const migrations = [
   {
@@ -305,5 +310,30 @@ export const migrations = [
     up: migration_20260609b_team_judging.up,
     down: migration_20260609b_team_judging.down,
     name: "20260609b_team_judging",
+  },
+  {
+    up: migration_20260609c_events_challenge_binding.up,
+    down: migration_20260609c_events_challenge_binding.down,
+    name: "20260609c_events_challenge_binding",
+  },
+  {
+    up: migration_20260609d_challenge_team_config_and_cell_template.up,
+    down: migration_20260609d_challenge_team_config_and_cell_template.down,
+    name: "20260609d_challenge_team_config_and_cell_template",
+  },
+  {
+    up: migration_20260610a_participant_workspace.up,
+    down: migration_20260610a_participant_workspace.down,
+    name: "20260610a_participant_workspace",
+  },
+  {
+    up: migration_20260611a_classroom_modules.up,
+    down: migration_20260611a_classroom_modules.down,
+    name: "20260611a_classroom_modules",
+  },
+  {
+    up: migration_20260611b_modules_locked_docs_rels.up,
+    down: migration_20260611b_modules_locked_docs_rels.down,
+    name: "20260611b_modules_locked_docs_rels",
   },
 ];

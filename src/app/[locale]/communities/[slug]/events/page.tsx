@@ -17,6 +17,7 @@ import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { EventFormDialog } from "@/components/communities/event-form-dialog";
+import { CreateHackathonDialog } from "@/components/hackathon/create-hackathon-dialog";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -271,15 +272,28 @@ export default function CommunityEventsPage({
     }
 
     if (event.slug) {
-      return (
-        <Link
-          key={event.id}
-          href={`/events/${event.slug}` as never}
-          className={sharedRowClassName}
-        >
-          {innerContent}
-        </Link>
-      );
+      // A draft hackathon has no public event page yet (it 404s) — send admins
+      // and owners to its manage surface instead. Moderators can see the row
+      // but the manage page would redirect them, so leave it unlinked (like
+      // slug-less rows below). Published hackathons keep the public link.
+      const isDraftHackathon =
+        event.type === "hackathon" && event.status === "draft";
+      const href = isDraftHackathon
+        ? isAdminOrOwner
+          ? `/communities/${slug}/events/${event.slug}/manage`
+          : null
+        : `/events/${event.slug}`;
+      if (href) {
+        return (
+          <Link
+            key={event.id}
+            href={href as never}
+            className={sharedRowClassName}
+          >
+            {innerContent}
+          </Link>
+        );
+      }
     }
 
     return (
@@ -349,18 +363,21 @@ export default function CommunityEventsPage({
           )}
         </div>
 
-        {isActiveMember && (
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditingEvent(null);
-              setDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-1.5 size-4" />
-            {canModerate ? t("createEvent") : "Submit Event"}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {isAdminOrOwner && <CreateHackathonDialog communitySlug={slug} />}
+          {isActiveMember && (
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingEvent(null);
+                setDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-1.5 size-4" />
+              {canModerate ? t("createEvent") : "Submit Event"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* PUBLISHED tab */}

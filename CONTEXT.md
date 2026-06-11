@@ -147,8 +147,9 @@ can express. See [[adr-0027-classroom-is-member-authored-ordered-curriculum]].
 
 ### Course
 
-An ordered, **flat** collection of [[lesson]]s in the [[classroom]] (no modules
-at launch; a grouping level may be added later without a breaking migration),
+An ordered collection of [[lesson]]s in the [[classroom]], **flat by default**
+but optionally grouped into [[module]]s (opt-in per course; a course is *either*
+flat *or* fully moduled, never mixed),
 **created and owned by any active [[Community]] member** (subject to
 `classroomCreatePolicy`) and published immediately. **Members-only by default**;
 a course becomes **public only when an admin/mod promotes it** — a creator
@@ -166,6 +167,26 @@ that is [[launchpad]]'s job). The creator earns small **Hub-global XP per
 distinct member enrollment** (others valuing the work, like
 `LAUNCHPAD_RECEIVE_VOTE`); **creating a course earns no XP** (would reward
 spam under the no-pre-review model).
+
+### Module
+
+An optional grouping level between a [[course]] and its [[lesson]]s — a
+first-class entity (own row: `title`, `order`, optional `summary`) that a
+lesson points at via a nullable `module` FK. Modules are **opt-in per course**:
+a course either has no modules (flat, the default) or groups **every** lesson
+into a module — never a mix. "Is moduled" is **derived** (has ≥1 module), not a
+stored flag. A module is **behaviour-free**: it restructures *display and
+ordering* only. It carries **no completion of its own** (a "3/5 done" badge is a
+read-time rollup of existing [[lesson]] completions, never stored), **no
+module-level exam** (assessment stays on the [[lesson]] via [[lesson-exam]]), and
+**no sequential gating** — modules do **not** hard-lock later modules, preserving
+the "course stays flat and browsable" invariant from
+[[adr-0028-lesson-exam-gates-completion-not-reputation]]. Reading order is the
+tuple `(module.order, lesson.order)`; [[course]] progress and pass remain
+**set-based on `course_id`**, untouched by grouping. A module is deleted only
+when **empty** (move its lessons out first); reverting a course to flat is an
+explicit atomic **dissolve** (null every lesson's `module`, delete all modules).
+See [[adr-0027-classroom-is-member-authored-ordered-curriculum]].
 
 ### Course enrollment
 
@@ -193,8 +214,16 @@ checkmark).
 An author-created assessment attached to a [[lesson]] that a learner must pass
 to complete the lesson. Has a **mandatory** flag: **mandatory** = passing is the
 *only* way to mark the lesson complete (completion becomes **verified**, not
-self-reported); **not mandatory** = a self-check the learner may take for
-feedback, with self-reported completion still available. A mandatory un-passed
+self-reported); **not mandatory** = a self-check (the **practice** mode) the
+learner may take for feedback, with self-reported completion still available.
+Questions are **single**-choice, **boolean**, or **multi**-select; a multi
+question is graded **all-or-nothing** (the selected set must exactly equal the
+correct set — no partial credit), keeping every question strictly right-or-wrong
+so the score stays `correctCount / total`. The **mandatory** flag also drives
+**feedback verbosity**: in practice (non-mandatory) mode a submit reveals the
+correct answer and any author-written per-question **explanation**; a mandatory
+(gating) exam reveals only the score and which questions were wrong — never the
+answer key, so retries can't brute-force the gate. A mandatory un-passed
 exam blocks **its own lesson's completion only** — it does **not** hard-lock
 later lessons (the [[course]] stays flat and browsable), but the gated lessons
 must be genuinely passed before they count toward progress. A verified
@@ -202,6 +231,37 @@ must be genuinely passed before they count toward progress. A verified
 the exam verifies the *response* but not the *bar* (the author writes it with no
 pre-review), so it gates local outcomes only, never reputation. See
 [[adr-0028-lesson-exam-gates-completion-not-reputation]].
+
+### Lesson discussion
+
+Threaded **content-attached comments on a [[lesson]]** — the classroom analogue
+of article comments (mirrors the `Comments`/`FeedComments` shape: a `lesson` FK,
+one level of `parentId` threading, author, body). **Not** a feed post and
+**not** a standalone discussion surface, so it does **not** contradict
+[[adr-0026-feed-is-the-canonical-discussion-surface]]: that ADR governs
+*community-level* discussion surfaces (feed vs forum), whereas this is comments
+*on a piece of content*, like article comments. Deliberately **not** "Q&A" with
+accepted-answer/upvote semantics (that is forum-adjacent; deferred). **Reading**
+inherits the [[course]]'s visibility (members-only, or public if admin-promoted);
+**posting** requires active [[Community]] membership — **not** [[course-enrollment|enrollment]]
+(consistent with every other discussion surface). Moderation follows
+[[adr-0027-classroom-is-member-authored-ordered-curriculum]]'s split: the author
+edits/soft-deletes their own; **mods/admins** remove any; the **course creator
+has no power to delete others' comments** (creators own content, mods own
+conduct — so an author can't silence critical questions). A comment earns
+participation **XP** like `feed.comment_created` (reward participation, never a
+farmable solo signal).
+
+### Lesson note
+
+A **private, freeform notepad** a learner keeps against a [[lesson]] — **one
+note per learner per lesson** (upserted; app-schema `lesson_note` at the same
+grain as `lesson_completion`). Always **private to the learner** (no sharing, no
+moderation, no XP — a farmable solo action, like self-reported completion).
+Noteable iff the lesson is viewable (follows [[course]] visibility); **not**
+gated on [[course-enrollment|enrollment]]. Deliberately **not** timestamp-anchored
+to the video (that needs YouTube IFrame Player API integration and a one-to-many
+model; deferred).
 
 ### Course certificate
 
@@ -673,6 +733,30 @@ commission authorizes **named task types** from an allowlist (e.g.
 type is outside the commission is rejected before the agent sees it (the
 firebreak against arbitrary-instruction injection). At launch this caps grids
 to pre-defined task types; new types are added deliberately.
+
+### Tool catalog
+
+The human-readable directory of every capability the platform offers agents —
+the answer to "what could my agent do here?" It is **public**: a prospective
+owner deciding whether to connect an agent is a primary audience, so it cannot
+sit behind auth or inside owner-only surfaces. Audience is **humans** (owners
+and prospective owners), not agents: agents already discover tools natively through
+the protocol, so the catalog is a browsing/understanding surface, never an
+execution surface. The [[Agent manifest]]'s sibling: the manifest says how an
+agent must behave, the catalog says what an agent can do. Not to be called "MCP
+inspector" — that name belongs to Anthropic's developer tool and implies a
+debugging audience this is not for.
+
+The catalog is a **view of the platform's actual capability registry, never a
+hand-maintained copy** — a catalog that drifts from what agents can really do
+defeats its purpose, so capability descriptions are user-facing copy by
+definition.
+
+"This tool is missing" feedback is **not** a separate suggestion system: a
+missing-capability suggestion is an idea on the Hub-wide ideas surface
+(distinguished by category), so it inherits voting, statuses, and agent
+participation like any other idea. The catalog links into that surface; it does
+not collect feedback itself.
 
 ## Benchmark domain
 

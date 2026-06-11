@@ -42,7 +42,10 @@ rather than the heavier curated `articles` review flow.
 - **Visibility:** members-only by default; **public requires admin/mod
   promotion** — a creator cannot self-publish unvetted content to the open web.
 - **Structure:** flat Course → ordered Lessons (a module grouping may be added
-  later without a breaking migration). Lessons are YouTube embed/reference +
+  later without a breaking migration). *Exercised in
+  [[adr-0034-module-is-an-optional-behaviour-free-grouping]]: an opt-in,
+  behaviour-free module layer via a nullable FK, no migration.* Lessons are
+  YouTube embed/reference +
   rich text + resource links; no native video hosting.
 - **Enrollment & progress:** explicit [[course-enrollment]] (modelled on event
   registration); per-lesson completion → course progress %.

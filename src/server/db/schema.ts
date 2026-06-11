@@ -13,6 +13,7 @@ import {
   jsonb,
   numeric,
   pgSchema,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -1563,6 +1564,90 @@ export const teamsRelations = relations(teams, ({ one, many }) => ({
   members: many(challengeEnrollments),
 }));
 
+// Append-only activity log for a team workspace (Plan 4). One row per workspace
+// action; powers the feed. The actor is a user (actorUserId) OR an agent
+// (actorAgentId) — agent actions show in the feed even though agents are not
+// shown as "present".
+export const teamActivityEvents = appSchema.table(
+  "team_activity_event",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    teamId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => teams.id),
+    cellId: d.varchar({ length: 255 }).references(() => workCells.id),
+    actorUserId: d.varchar({ length: 255 }).references(() => user.id),
+    actorAgentId: d.varchar({ length: 255 }).references(() => agentProfiles.id),
+    type: d
+      .varchar({ length: 20 })
+      .notNull()
+      .$type<"assigned" | "claimed" | "reported" | "verified" | "failed">(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("team_activity_team_idx").on(t.teamId),
+    index("team_activity_created_idx").on(t.createdAt),
+  ],
+);
+
+// Per-member presence heartbeat for a team workspace (Plan 4). One row per
+// (team, user); upserted by the heartbeat mutation. "Online" is derived at read
+// time from lastSeenAt (no stored online flag).
+export const teamPresence = appSchema.table(
+  "team_presence",
+  (d) => ({
+    teamId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => teams.id),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    lastSeenAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    primaryKey({ columns: [t.teamId, t.userId] }),
+    index("team_presence_team_idx").on(t.teamId),
+  ],
+);
+
+export const teamActivityEventsRelations = relations(
+  teamActivityEvents,
+  ({ one }) => ({
+    team: one(teams, {
+      fields: [teamActivityEvents.teamId],
+      references: [teams.id],
+    }),
+    cell: one(workCells, {
+      fields: [teamActivityEvents.cellId],
+      references: [workCells.id],
+    }),
+  }),
+);
+
+export const teamPresenceRelations = relations(teamPresence, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamPresence.teamId],
+    references: [teams.id],
+  }),
+  user: one(user, {
+    fields: [teamPresence.userId],
+    references: [user.id],
+  }),
+}));
+
 // Work grids (decompose one problem into independent claimable cells — ADR-0023)
 export const workGrids = appSchema.table(
   "work_grid",
@@ -1634,6 +1719,13 @@ export const workCells = appSchema.table(
       .default("pending")
       .$type<"pending" | "claimed" | "completed" | "failed" | "requeued">(),
     claimedBy: d.varchar({ length: 255 }).references(() => agentProfiles.id),
+    // Plan 4: a human team member can claim a cell as a peer to a commissioned
+    // agent. A cell is claimed by an agent (claimedBy) OR a user
+    // (claimedByUserId), never both — enforced by the claim mutations, which
+    // set one and null the other. assignedToUserId is a soft planning layer
+    // (who the team intends to do it) with no lock.
+    claimedByUserId: d.varchar({ length: 255 }).references(() => user.id),
+    assignedToUserId: d.varchar({ length: 255 }).references(() => user.id),
     claimedAt: d.timestamp({ withTimezone: true }),
     deadline: d.timestamp({ withTimezone: true }),
     deadlineMinutes: d.integer(),
@@ -1651,6 +1743,7 @@ export const workCells = appSchema.table(
     index("work_cell_grid_idx").on(t.gridId),
     index("work_cell_status_idx").on(t.status),
     index("work_cell_claimed_by_idx").on(t.claimedBy),
+    index("work_cell_claimed_by_user_idx").on(t.claimedByUserId),
   ],
 );
 
@@ -1662,6 +1755,16 @@ export const workCellsRelations = relations(workCells, ({ one, many }) => ({
   claimer: one(agentProfiles, {
     fields: [workCells.claimedBy],
     references: [agentProfiles.id],
+  }),
+  claimedByUser: one(user, {
+    fields: [workCells.claimedByUserId],
+    references: [user.id],
+    relationName: "workCells_claimedByUser",
+  }),
+  assignedToUser: one(user, {
+    fields: [workCells.assignedToUserId],
+    references: [user.id],
+    relationName: "workCells_assignedToUser",
   }),
   results: many(workCellResults),
 }));
@@ -1679,10 +1782,10 @@ export const workCellResults = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => workCells.id),
-    agentId: d
-      .varchar({ length: 255 })
-      .notNull()
-      .references(() => agentProfiles.id),
+    // Plan 4: a result is authored by an agent (agentId) OR a human team member
+    // (userId), never both. agentId is now nullable for human-authored results.
+    agentId: d.varchar({ length: 255 }).references(() => agentProfiles.id),
+    userId: d.varchar({ length: 255 }).references(() => user.id),
     output: d.text(),
     verificationOutcome: d
       .varchar({ length: 20 })
@@ -1699,7 +1802,7 @@ export const workCellResults = appSchema.table(
   (t) => [
     index("work_cell_result_cell_idx").on(t.cellId),
     index("work_cell_result_agent_idx").on(t.agentId),
-    uniqueIndex("work_cell_result_cell_agent_uidx").on(t.cellId, t.agentId),
+    uniqueIndex("work_cell_result_cell_uidx").on(t.cellId),
   ],
 );
 
@@ -1713,6 +1816,10 @@ export const workCellResultsRelations = relations(
     agent: one(agentProfiles, {
       fields: [workCellResults.agentId],
       references: [agentProfiles.id],
+    }),
+    user: one(user, {
+      fields: [workCellResults.userId],
+      references: [user.id],
     }),
   }),
 );

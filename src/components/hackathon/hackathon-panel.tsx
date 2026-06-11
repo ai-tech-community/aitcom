@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Link } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -15,16 +16,15 @@ import { TeamGridProgress } from "./team-grid-progress";
 
 export function HackathonPanel({
   challengeId,
-  challengeCreatorId,
+  eventSlug,
 }: {
   challengeId: number;
-  challengeCreatorId: string;
+  eventSlug: string;
 }) {
   const t = useTranslations("hackathon");
   const utils = api.useUtils();
   const { data: session } = authClient.useSession();
   const userId = session?.user?.id ?? null;
-  const isSponsor = userId !== null && userId === challengeCreatorId;
 
   const { data: myTeam } = api.hackathon.myTeam.useQuery(
     { challengeId },
@@ -74,14 +74,6 @@ export function HackathonPanel({
     },
     onError: (e) => toast.error(e.message),
   });
-  const finalize = api.hackathon.finalizeHackathon.useMutation({
-    onSuccess: () => {
-      toast.success(t("finalize"));
-      void utils.hackathon.teamLeaderboard.invalidate({ challengeId });
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
   return (
     <section className="mt-8">
       <h2 className="text-lg font-semibold">{t("title")}</h2>
@@ -158,6 +150,12 @@ export function HackathonPanel({
 
           <TeamGridProgress teamId={myTeam.team.id} />
 
+          <Button asChild className="mt-3" size="sm" variant="secondary">
+            <Link href={`/events/${eventSlug}/team`}>
+              {t("enterWorkspace")} →
+            </Link>
+          </Button>
+
           {!myTeam.isCaptain && myTeam.team.status === "forming" ? (
             <Button
               className="mt-3"
@@ -200,17 +198,6 @@ export function HackathonPanel({
             </div>
           ) : null}
         </Card>
-      ) : null}
-
-      {isSponsor ? (
-        <Button
-          className="mt-4"
-          variant="destructive"
-          disabled={finalize.isPending}
-          onClick={() => finalize.mutate({ challengeId })}
-        >
-          {t("finalize")}
-        </Button>
       ) : null}
 
       <TeamLeaderboard challengeId={challengeId} />

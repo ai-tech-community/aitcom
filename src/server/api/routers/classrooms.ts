@@ -26,6 +26,7 @@ import {
   stripAnswerKey,
   gradeExam,
   examPassed,
+  orderLessonsForReading,
   type CommunityRole,
   type ExamQuestion,
 } from "@/lib/classroom";
@@ -199,13 +200,33 @@ export const classroomsRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      const { docs: lessons } = await payload.find({
+      const { docs: rawLessons } = await payload.find({
         collection: "lessons",
         where: { course: { equals: course.id } },
-        sort: "order",
         limit: 200,
         depth: 0,
       });
+      const { docs: modules } = await payload.find({
+        collection: "modules",
+        where: { course: { equals: course.id } },
+        sort: "order",
+        limit: 1000,
+        depth: 0,
+      });
+      const moduleRefs = modules.map((m) => ({
+        id: m.id,
+        title: m.title,
+        order: m.order ?? 0,
+        summary: m.summary ?? null,
+      }));
+      const lessons = orderLessonsForReading(
+        rawLessons.map((l) => ({
+          ...l,
+          module: l.module ?? null,
+          order: l.order ?? 0,
+        })),
+        moduleRefs,
+      );
 
       let enrolled = false;
       let completedLessonIds: number[] = [];
@@ -302,6 +323,7 @@ export const classroomsRouter = createTRPCRouter({
       return {
         course,
         lessons: safeLessons,
+        modules: moduleRefs,
         enrolled,
         completedLessonIds,
         lessonExams,
@@ -459,19 +481,46 @@ export const classroomsRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      const { totalDocs } = await payload.find({
-        collection: "lessons",
+      // Keep the flat-or-fully-moduled invariant: if the course is moduled,
+      // a new lesson must land in a module (never null). Default to the last
+      // module; the author can reassign it via assignLessonToModule.
+      const { docs: courseModules } = await payload.find({
+        collection: "modules",
         where: { course: { equals: input.courseId } },
-        limit: 0,
+        sort: "-order",
+        limit: 1,
         depth: 0,
       });
+      const targetModuleId = courseModules[0]?.id ?? null;
+
+      let lessonOrder: number;
+      if (targetModuleId !== null) {
+        // Moduled course: order within the target module
+        const { totalDocs: moduleLessonCount } = await payload.find({
+          collection: "lessons",
+          where: { module: { equals: targetModuleId } },
+          limit: 0,
+          depth: 0,
+        });
+        lessonOrder = moduleLessonCount;
+      } else {
+        // Flat course: order across all lessons in the course
+        const { totalDocs } = await payload.find({
+          collection: "lessons",
+          where: { course: { equals: input.courseId } },
+          limit: 0,
+          depth: 0,
+        });
+        lessonOrder = totalDocs;
+      }
 
       const lesson = await payload.create({
         collection: "lessons",
         data: {
           course: input.courseId,
           title: input.title,
-          order: totalDocs,
+          order: lessonOrder,
+          ...(targetModuleId !== null ? { module: targetModuleId } : {}),
           youtubeUrl: input.youtubeUrl ?? undefined,
           body: input.body ?? undefined,
           resources: input.resources,
@@ -598,6 +647,302 @@ export const classroomsRouter = createTRPCRouter({
         id: input.lessonId,
       });
 
+      return { ok: true };
+    }),
+
+  /**
+   * Create a module on own course. Creating the FIRST module auto-wraps every
+   * existing flat lesson into it, so the course goes flat → fully-moduled in one
+   * step (the wrap runs immediately after creation, keeping the course fully-moduled).
+   * Later modules start empty.
+   */
+  addModule: protectedProcedure
+    .input(
+      z.object({
+        courseId: z.number(),
+        title: z.string().min(1).max(200),
+        summary: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const course = await payload.findByID({
+        collection: "courses",
+        id: input.courseId,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const { totalDocs: moduleCount } = await payload.find({
+        collection: "modules",
+        where: { course: { equals: input.courseId } },
+        limit: 0,
+        depth: 0,
+      });
+
+      // Create + wrap must land together: a module without the lesson wrap
+      // would leave the course mixed (moduled with module-null lessons), which
+      // groupLessonsByModule hides from learners.
+      const transactionID = await payload.db.beginTransaction();
+      const req = transactionID ? { transactionID } : undefined;
+      try {
+        const moduleDoc = await payload.create({
+          collection: "modules",
+          data: {
+            course: input.courseId,
+            title: input.title,
+            order: moduleCount,
+            summary: input.summary ?? undefined,
+          },
+          req,
+        });
+
+        // First module on a flat course: wrap all existing lessons into it,
+        // preserving their order.
+        if (moduleCount === 0) {
+          await payload.update({
+            collection: "lessons",
+            where: { course: { equals: input.courseId } },
+            data: { module: moduleDoc.id },
+            req,
+          });
+        }
+
+        if (transactionID) await payload.db.commitTransaction(transactionID);
+        return { id: moduleDoc.id };
+      } catch (error) {
+        if (transactionID) await payload.db.rollbackTransaction(transactionID);
+        throw error;
+      }
+    }),
+
+  /** Rename / re-summarise a module on own course. */
+  renameModule: protectedProcedure
+    .input(
+      z.object({
+        moduleId: z.number(),
+        title: z.string().min(1).max(200).optional(),
+        summary: z.string().max(500).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const moduleDoc = await payload.findByID({
+        collection: "modules",
+        id: input.moduleId,
+        depth: 0,
+      });
+      const course = await payload.findByID({
+        collection: "courses",
+        id: moduleDoc.course,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const data: Record<string, unknown> = {};
+      if (input.title !== undefined) data.title = input.title;
+      // null passes through: explicit null clears the summary field.
+      if (input.summary !== undefined) data.summary = input.summary;
+
+      await payload.update({
+        collection: "modules",
+        id: input.moduleId,
+        data,
+      });
+      return { ok: true };
+    }),
+
+  /** Reorder a course's modules. orderedIds must be exactly that course's modules. */
+  reorderModules: protectedProcedure
+    .input(z.object({ courseId: z.number(), orderedIds: z.array(z.number()) }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const course = await payload.findByID({
+        collection: "courses",
+        id: input.courseId,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const { docs: modules } = await payload.find({
+        collection: "modules",
+        where: { course: { equals: input.courseId } },
+        limit: 1000,
+        depth: 0,
+      });
+      const validIds = new Set(modules.map((m) => m.id));
+      if (
+        input.orderedIds.length !== modules.length ||
+        !input.orderedIds.every((id) => validIds.has(id))
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "MODULE_SET_MISMATCH",
+        });
+      }
+
+      // All order updates land together — a partial reorder would leave
+      // duplicate/skipped order values.
+      const transactionID = await payload.db.beginTransaction();
+      const req = transactionID ? { transactionID } : undefined;
+      try {
+        for (let i = 0; i < input.orderedIds.length; i++) {
+          await payload.update({
+            collection: "modules",
+            id: input.orderedIds[i]!,
+            data: { order: i },
+            req,
+          });
+        }
+        if (transactionID) await payload.db.commitTransaction(transactionID);
+      } catch (error) {
+        if (transactionID) await payload.db.rollbackTransaction(transactionID);
+        throw error;
+      }
+      return { ok: true };
+    }),
+
+  /**
+   * Move a lesson into a module of the same course. moduleId is never null here
+   * — the only way back to flat is dissolveModules — so a moduled course stays
+   * fully moduled. The lesson is appended to the end of the target module.
+   */
+  assignLessonToModule: protectedProcedure
+    .input(z.object({ lessonId: z.number(), moduleId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const lesson = await payload.findByID({
+        collection: "lessons",
+        id: input.lessonId,
+        depth: 0,
+      });
+      const course = await payload.findByID({
+        collection: "courses",
+        id: lesson.course,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const moduleDoc = await payload.findByID({
+        collection: "modules",
+        id: input.moduleId,
+        depth: 0,
+      });
+      if (moduleDoc.course !== lesson.course) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "MODULE_COURSE_MISMATCH",
+        });
+      }
+
+      const { totalDocs: targetCount } = await payload.find({
+        collection: "lessons",
+        where: {
+          and: [
+            { course: { equals: lesson.course } },
+            { module: { equals: input.moduleId } },
+          ],
+        },
+        limit: 0,
+        depth: 0,
+      });
+
+      await payload.update({
+        collection: "lessons",
+        id: input.lessonId,
+        data: { module: input.moduleId, order: targetCount },
+      });
+      return { ok: true };
+    }),
+
+  /** Delete a module — only when empty (move its lessons out first). */
+  deleteModule: protectedProcedure
+    .input(z.object({ moduleId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const moduleDoc = await payload.findByID({
+        collection: "modules",
+        id: input.moduleId,
+        depth: 0,
+      });
+      const course = await payload.findByID({
+        collection: "courses",
+        id: moduleDoc.course,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const { totalDocs: lessonCount } = await payload.find({
+        collection: "lessons",
+        where: { module: { equals: input.moduleId } },
+        limit: 0,
+        depth: 0,
+      });
+      if (lessonCount > 0) {
+        throw new TRPCError({ code: "CONFLICT", message: "MODULE_NOT_EMPTY" });
+      }
+
+      await payload.delete({ collection: "modules", id: input.moduleId });
+      return { ok: true };
+    }),
+
+  /**
+   * Revert a course to flat: null every lesson's module, then delete all the
+   * course's modules. The only sanctioned moduled → flat path.
+   */
+  dissolveModules: protectedProcedure
+    .input(z.object({ courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const course = await payload.findByID({
+        collection: "courses",
+        id: input.courseId,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      // Null-out and module deletion must land together — un-moduled lessons
+      // alongside surviving modules would make groupLessonsByModule hide the
+      // course's content.
+      const transactionID = await payload.db.beginTransaction();
+      const req = transactionID ? { transactionID } : undefined;
+      try {
+        await payload.update({
+          collection: "lessons",
+          where: { course: { equals: input.courseId } },
+          data: { module: null },
+          req,
+        });
+
+        await payload.delete({
+          collection: "modules",
+          where: { course: { equals: input.courseId } },
+          req,
+        });
+
+        if (transactionID) await payload.db.commitTransaction(transactionID);
+      } catch (error) {
+        if (transactionID) await payload.db.rollbackTransaction(transactionID);
+        throw error;
+      }
       return { ok: true };
     }),
 

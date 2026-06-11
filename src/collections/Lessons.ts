@@ -43,6 +43,14 @@ export const Lessons: CollectionConfig = {
       index: true,
       admin: { description: "courses.id" },
     },
+    {
+      name: "module",
+      type: "number",
+      index: true,
+      admin: {
+        description: "modules.id (null = flat/ungrouped). See ADR-0034.",
+      },
+    },
     { name: "title", type: "text", required: true, maxLength: 200 },
     { name: "order", type: "number", defaultValue: 0, index: true },
     { name: "youtubeUrl", type: "text", maxLength: 500 },

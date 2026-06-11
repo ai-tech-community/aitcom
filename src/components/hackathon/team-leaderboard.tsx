@@ -3,6 +3,7 @@
 import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
+import { TeamHeatmapPublic } from "@/components/hackathon/team-heatmap-public";
 
 export function TeamLeaderboard({ challengeId }: { challengeId: number }) {
   const t = useTranslations("hackathon");
@@ -20,32 +21,34 @@ export function TeamLeaderboard({ challengeId }: { challengeId: number }) {
         {data.map((team, i) => {
           const privateCount = team.memberCount - team.memberFaces.length;
           return (
-            <div
-              key={team.teamId}
-              className="flex items-center gap-3 rounded px-2 py-1.5 text-sm"
-            >
-              <span className="text-muted-foreground w-6 font-mono text-xs">
-                #{team.finalRank ?? i + 1}
-              </span>
-              <span className="flex-1 font-medium">{team.name}</span>
-              <span className="text-muted-foreground truncate font-mono text-xs">
-                {team.memberFaces.join(", ")}
-                {privateCount > 0 ? ` +${privateCount}` : ""}
-              </span>
-              <span className="text-muted-foreground font-mono text-xs">
-                {team.score} {t("score")}
-              </span>
-              {team.finalRank === 1 ? (
-                <Badge
-                  variant="secondary"
-                  className="bg-green-500/15 text-green-600 dark:text-green-400"
-                >
-                  {t("winner")}
-                </Badge>
-              ) : null}
-              {team.submitted ? (
-                <Badge variant="secondary">{t("submitted")}</Badge>
-              ) : null}
+            <div key={team.teamId} className="rounded px-2 py-1.5">
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-muted-foreground w-6 font-mono text-xs">
+                  #{team.finalRank ?? i + 1}
+                </span>
+                <span className="flex-1 font-medium">{team.name}</span>
+                <span className="text-muted-foreground truncate font-mono text-xs">
+                  {team.memberFaces.join(", ")}
+                  {privateCount > 0 ? ` +${privateCount}` : ""}
+                </span>
+                <span className="text-muted-foreground font-mono text-xs">
+                  {team.score} {t("score")}
+                </span>
+                {team.finalRank === 1 ? (
+                  <Badge
+                    variant="secondary"
+                    className="bg-green-500/15 text-green-600 dark:text-green-400"
+                  >
+                    {t("winner")}
+                  </Badge>
+                ) : null}
+                {team.submitted ? (
+                  <Badge variant="secondary">{t("submitted")}</Badge>
+                ) : null}
+              </div>
+              <div className="mt-1 pl-9">
+                <TeamHeatmapPublic teamId={team.teamId} />
+              </div>
             </div>
           );
         })}
