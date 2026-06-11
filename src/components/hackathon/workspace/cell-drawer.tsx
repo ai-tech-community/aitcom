@@ -45,7 +45,12 @@ export function CellDrawer({
   const utils = api.useUtils();
   const [output, setOutput] = useState("");
 
-  const { data: cells } = api.teamWorkspace.cells.useQuery({ teamId });
+  // Only fetch while the drawer is open — pre-lock there is no grid and an
+  // always-on subscriber would spam NOT_FOUND retries/focus-refetches.
+  const { data: cells } = api.teamWorkspace.cells.useQuery(
+    { teamId },
+    { enabled: cellId !== null },
+  );
   const cell = cellId ? cells?.find((c) => c.id === cellId) : undefined;
 
   const invalidate = async () => {

@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { getLocale } from "next-intl/server";
 
 import { db } from "@/server/db";
 import { challengeEnrollments, memberProfiles } from "@/server/db/schema";
 import { getSession } from "@/server/better-auth/server";
 import { getPayloadClient } from "@/server/payload";
+import { TEAM_MEMBER_ENROLLMENT_STATUSES } from "@/server/hackathon/team-membership";
 import { TeamWorkspace } from "@/components/hackathon/workspace/team-workspace";
 
 export default async function TeamWorkspacePage({
@@ -32,13 +33,16 @@ export default async function TeamWorkspacePage({
   if (!event?.challengeId) redirect(`/events/${slug}`);
   const challengeId = Number(event.challengeId);
 
-  // Membership gate must mirror ownerOnTeam (team-membership.ts): only an
-  // ACTIVE enrollment counts, otherwise every workspace query throws FORBIDDEN.
+  // Membership gate must mirror ownerOnTeam (team-membership.ts): any
+  // non-abandoned enrollment carrying the teamId counts — completing your
+  // objectives must not lock you out of the workspace mid-hackathon.
   const enrollment = await db.query.challengeEnrollments.findFirst({
     where: and(
       eq(challengeEnrollments.userId, userId),
       eq(challengeEnrollments.challengeId, challengeId),
-      eq(challengeEnrollments.status, "active"),
+      inArray(challengeEnrollments.status, [
+        ...TEAM_MEMBER_ENROLLMENT_STATUSES,
+      ]),
       isNotNull(challengeEnrollments.teamId),
     ),
   });

@@ -509,5 +509,57 @@ describe.skipIf(!RUN_DB)(
       const cells = await member.teamWorkspace.cells({ teamId: fx.teamId });
       expect(cells.some((c) => c.id === cellId)).toBe(true);
     });
+
+    // ── Assertion 5: enrollment progress states don't revoke membership ─────
+
+    it("keeps workspace access for a member whose enrollment auto-completed, while an abandoned enrollment stays excluded", async () => {
+      const { db, schema, eq, and } = m;
+      const member = userCaller(fx.memberUserId);
+
+      // checkEnrollmentCompletion (agent/activity.ts) flips active → completed
+      // the moment a member's last objective lands. Membership is the teamId
+      // binding (ADR-0029), not the progress state — the flip must not eject
+      // the member from their own workspace mid-hackathon.
+      await db
+        .update(schema.challengeEnrollments)
+        .set({ status: "completed" })
+        .where(
+          and(
+            eq(schema.challengeEnrollments.userId, fx.memberUserId),
+            eq(schema.challengeEnrollments.challengeId, fx.challengeId),
+          ),
+        );
+
+      // Reads still work …
+      const cells = await member.teamWorkspace.cells({ teamId: fx.teamId });
+      expect(cells.length).toBeGreaterThan(0);
+
+      // … and so do mutations: the completed member can still claim a cell.
+      const pending = cells.find((c) => c.status === "pending");
+      await member.teamWorkspace.claimCellAsMember({
+        cellId: pending!.id,
+        teamId: fx.teamId,
+      });
+      const [claimedRow] = await db
+        .select({ claimedByUserId: schema.workCells.claimedByUserId })
+        .from(schema.workCells)
+        .where(eq(schema.workCells.id, pending!.id));
+      expect(claimedRow!.claimedByUserId).toBe(fx.memberUserId);
+
+      // Abandoning is the membership exit: the row keeps its stale teamId but
+      // the member is FORBIDDEN.
+      await db
+        .update(schema.challengeEnrollments)
+        .set({ status: "abandoned" })
+        .where(
+          and(
+            eq(schema.challengeEnrollments.userId, fx.memberUserId),
+            eq(schema.challengeEnrollments.challengeId, fx.challengeId),
+          ),
+        );
+      await expect(
+        member.teamWorkspace.cells({ teamId: fx.teamId }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
   },
 );

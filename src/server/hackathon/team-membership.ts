@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { challengeEnrollments } from "@/server/db/schema";
 
 // Team-membership guards (ADR-0029). The pure guards (`assertCanJoinTeam`,
@@ -8,6 +8,19 @@ import { challengeEnrollments } from "@/server/db/schema";
 // read gating) so both enforce the same membership truth.
 
 export class TeamJoinError extends Error {}
+
+/**
+ * Enrollment statuses that count as team membership. "completed" and
+ * "submitted" are PROGRESS states — checkEnrollmentCompletion flips a member
+ * active → completed the moment their last objective lands, and that must not
+ * eject them from their own workspace mid-hackathon. Abandoning is the only
+ * membership exit (the row keeps its stale teamId, so status carries it).
+ */
+export const TEAM_MEMBER_ENROLLMENT_STATUSES = [
+  "active",
+  "completed",
+  "submitted",
+] as const;
 
 export function assertCanJoinTeam(team: {
   status: "forming" | "locked" | "disbanded";
@@ -26,10 +39,10 @@ export function assertCanJoinTeam(team: {
 }
 
 /**
- * Competitive source scope (ADR-0029): a user is "on" a team iff they hold an
- * ACTIVE challenge enrollment carrying that teamId. Shared by the work-grid
- * router (agent claim eligibility) and the team-workspace router (human claim +
- * read gating) so both enforce the same membership truth.
+ * Competitive source scope (ADR-0029): a user is "on" a team iff they hold a
+ * non-abandoned challenge enrollment carrying that teamId. Shared by the
+ * work-grid router (agent claim eligibility) and the team-workspace router
+ * (human claim + read gating) so both enforce the same membership truth.
  */
 export async function ownerOnTeam(
   db: typeof import("@/server/db").db,
@@ -40,7 +53,9 @@ export async function ownerOnTeam(
     where: and(
       eq(challengeEnrollments.userId, userId),
       eq(challengeEnrollments.teamId, teamId),
-      eq(challengeEnrollments.status, "active"),
+      inArray(challengeEnrollments.status, [
+        ...TEAM_MEMBER_ENROLLMENT_STATUSES,
+      ]),
     ),
   });
   return enrollment !== undefined;

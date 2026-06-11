@@ -20,10 +20,30 @@ export function TeamHeatmap({
   onSelectCell: (cellId: string) => void;
 }) {
   const t = useTranslations("hackathon");
-  const { data: cells, isLoading } = api.teamWorkspace.cells.useQuery(
+  // Pre-lock there is no grid yet (rosters not locked → cells throws
+  // NOT_FOUND): show the waiting state and stop polling/retrying until the
+  // operator locks rosters; any other error keeps the live 5s poll.
+  const {
+    data: cells,
+    isLoading,
+    error,
+  } = api.teamWorkspace.cells.useQuery(
     { teamId },
-    { refetchInterval: 5_000 },
+    {
+      refetchInterval: (query) =>
+        query.state.error?.data?.code === "NOT_FOUND" ? false : 5_000,
+      refetchOnWindowFocus: (query) =>
+        query.state.error?.data?.code !== "NOT_FOUND",
+      retry: (failureCount, err) =>
+        err.data?.code !== "NOT_FOUND" && failureCount < 3,
+    },
   );
+
+  if (error?.data?.code === "NOT_FOUND") {
+    return (
+      <p className="text-muted-foreground text-sm">{t("workspaceLocked")}</p>
+    );
+  }
 
   if (isLoading) {
     return (
