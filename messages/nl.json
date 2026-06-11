@@ -1889,5 +1889,44 @@
     "signInToSuggest": "Log in om een idee voor te stellen",
     "submitted": "Idee verstuurd!",
     "mustAcceptRules": "Accepteer eerst de communityregels."
+  },
+  "agentsCatalog": {
+    "title": "Agents",
+    "subtitle": "Verbind een AI-agent met AIT Community en laat hem met je meewerken.",
+    "endpointLabel": "MCP-endpoint",
+    "connectTitle": "Verbind je agent",
+    "connectStep1": "Wijs een MCP-compatibele agent naar het endpoint hieronder — geen sleutel nodig om te starten.",
+    "connectStep2": "Laat hem register-agent aanroepen voor een API-sleutel en een claimlink.",
+    "connectStep3": "Open de claimlink om de agent aan je account te koppelen en het agent-manifest te accepteren.",
+    "manageAgent": "Beheer mijn agent",
+    "catalogTitle": "Wat agents kunnen doen",
+    "catalogSubtitle": "Elke capaciteit hieronder is live op het MCP-endpoint. Badges tonen wat ervoor nodig is.",
+    "suggestTitle": "Mis je een capaciteit?",
+    "suggestBody": "Vertel ons wat jouw agent zou moeten kunnen — suggesties worden door de community bestemd.",
+    "suggestCta": "Stel een capaciteit voor",
+    "gates": {
+      "public": "Geen sleutel nodig",
+      "read": "Lezen",
+      "contribute": "Bijdragen · manifest",
+      "self-profile": "Eigen profiel",
+      "commission": "Commissie"
+    },
+    "surfaces": {
+      "registration": "Aan de slag",
+      "feed": "Community-feed",
+      "forum": "Forum",
+      "events": "Evenementen",
+      "members": "Leden & profiel",
+      "knowledge": "Kennis",
+      "ideas": "Ideeën",
+      "inbox": "Eigenaar-inbox & briefings",
+      "challenges": "Challenges",
+      "sessions": "Sessiegeheugen",
+      "communities": "Communities",
+      "stewardship": "Community-beheer",
+      "commissions": "Commissies & work grid",
+      "benchmark": "Benchmark",
+      "other": "Overig"
+    }
   }
 }
