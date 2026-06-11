@@ -328,9 +328,31 @@ describe.skipIf(!RUN_DB)(
       await db
         .delete(schema.teamPresence)
         .where(eq(schema.teamPresence.teamId, fx.teamId));
+      const enrollments = await db
+        .select({ id: schema.challengeEnrollments.id })
+        .from(schema.challengeEnrollments)
+        .where(eq(schema.challengeEnrollments.challengeId, fx.challengeId));
+      if (enrollments.length > 0) {
+        await db.delete(schema.challengeProgress).where(
+          m.inArray(
+            schema.challengeProgress.enrollmentId,
+            enrollments.map((e) => e.id),
+          ),
+        );
+      }
       await db
         .delete(schema.challengeEnrollments)
         .where(eq(schema.challengeEnrollments.challengeId, fx.challengeId));
+      await db
+        .delete(schema.activityEvents)
+        .where(
+          m.inArray(schema.activityEvents.actorId, [
+            fx.memberUserId,
+            fx.otherMemberUserId,
+            fx.outsiderUserId,
+            fx.sponsorId,
+          ]),
+        );
       await db.delete(schema.teams).where(eq(schema.teams.id, fx.teamId));
 
       for (const id of [
@@ -560,6 +582,63 @@ describe.skipIf(!RUN_DB)(
       await expect(
         member.teamWorkspace.cells({ teamId: fx.teamId }),
       ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+
+    // ── Assertion 6: zero tracked objectives must never auto-complete ────────
+
+    it("never auto-completes an enrollment with zero challengeProgress rows, but still completes once a tracked objective finishes", async () => {
+      const { db, schema, eq, and } = m;
+      const { checkEnrollmentCompletion } = await import(
+        "@/server/agent/activity"
+      );
+
+      const [enrollment] = await db
+        .select({ id: schema.challengeEnrollments.id })
+        .from(schema.challengeEnrollments)
+        .where(
+          and(
+            eq(schema.challengeEnrollments.userId, fx.memberUserId),
+            eq(schema.challengeEnrollments.challengeId, fx.challengeId),
+          ),
+        );
+      const enrollmentId = enrollment!.id;
+
+      // Hackathon-scaffolded challenges have EMPTY objectives, so the
+      // enrollment has ZERO progress rows. "No incomplete rows" must not be
+      // read as "all complete" — the flip would silently revoke the member's
+      // agent claim eligibility (active-only source scope) mid-hackathon.
+      await checkEnrollmentCompletion(
+        db,
+        enrollmentId,
+        fx.challengeId,
+        fx.memberUserId,
+      );
+      const [afterZero] = await db
+        .select({ status: schema.challengeEnrollments.status })
+        .from(schema.challengeEnrollments)
+        .where(eq(schema.challengeEnrollments.id, enrollmentId));
+      expect(afterZero!.status).toBe("active");
+
+      // Positive control: with one tracked objective that IS complete, the
+      // normal auto-complete path still fires.
+      await db.insert(schema.challengeProgress).values({
+        enrollmentId,
+        objectiveIndex: 0,
+        currentCount: 1,
+        verificationMode: "self-report",
+        completedAt: new Date(),
+      });
+      await checkEnrollmentCompletion(
+        db,
+        enrollmentId,
+        fx.challengeId,
+        fx.memberUserId,
+      );
+      const [afterComplete] = await db
+        .select({ status: schema.challengeEnrollments.status })
+        .from(schema.challengeEnrollments)
+        .where(eq(schema.challengeEnrollments.id, enrollmentId));
+      expect(afterComplete!.status).toBe("completed");
     });
   },
 );
