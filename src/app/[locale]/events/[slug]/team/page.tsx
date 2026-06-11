@@ -17,6 +17,7 @@ import { cellTemplateSchema } from "@/server/hackathon/cell-template";
 import { getToolCatalog } from "@/server/mcp/catalog";
 import { groupBySurface } from "@/server/mcp/catalog-meta";
 import { HackathonBriefing } from "@/components/hackathon/briefing/hackathon-briefing";
+import { filterBriefingGroups } from "@/components/hackathon/briefing/briefing-surfaces";
 
 export default async function TeamWorkspacePage({
   params,
@@ -104,13 +105,8 @@ export default async function TeamWorkspacePage({
       challenge.rankingMode === "collaboration"
         ? challenge.rankingMode
         : "speed";
-    const rewards = challenge.rewards as
-      | { xpReward?: number; badgeReward?: string }
-      | undefined;
-
-    const BRIEFING_SURFACES = ["commissions", "challenges", "inbox"];
-    const catalogGroups = groupBySurface(await getToolCatalog()).filter((g) =>
-      BRIEFING_SURFACES.includes(g.surface),
+    const catalogGroups = filterBriefingGroups(
+      groupBySurface(await getToolCatalog()),
     );
 
     return (
@@ -118,11 +114,11 @@ export default async function TeamWorkspacePage({
         <HackathonBriefing
           eventSlug={slug}
           challengeId={challengeId}
-          challengeSlug={challenge.slug ?? ""}
+          challengeSlug={challenge.slug}
           cellTemplate={cellTemplate}
           rankingMode={rankingMode}
-          xpReward={rewards?.xpReward ?? 0}
-          badgeReward={rewards?.badgeReward ?? null}
+          xpReward={challenge.rewards.xpReward}
+          badgeReward={challenge.rewards.badgeReward ?? null}
           members={members}
           teamName={team?.name ?? ""}
           catalogGroups={catalogGroups}
