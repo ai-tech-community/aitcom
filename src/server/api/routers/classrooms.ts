@@ -26,6 +26,7 @@ import {
   stripAnswerKey,
   gradeExam,
   examPassed,
+  orderLessonsForReading,
   type CommunityRole,
   type ExamQuestion,
 } from "@/lib/classroom";
@@ -199,13 +200,29 @@ export const classroomsRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      const { docs: lessons } = await payload.find({
+      const { docs: rawLessons } = await payload.find({
         collection: "lessons",
         where: { course: { equals: course.id } },
-        sort: "order",
         limit: 200,
         depth: 0,
       });
+      const { docs: modules } = await payload.find({
+        collection: "modules",
+        where: { course: { equals: course.id } },
+        sort: "order",
+        limit: 1000,
+        depth: 0,
+      });
+      const moduleRefs = modules.map((m) => ({
+        id: m.id,
+        title: m.title,
+        order: m.order ?? 0,
+        summary: m.summary ?? null,
+      }));
+      const lessons = orderLessonsForReading(
+        rawLessons.map((l) => ({ ...l, module: l.module ?? null, order: l.order ?? 0 })),
+        moduleRefs,
+      );
 
       let enrolled = false;
       let completedLessonIds: number[] = [];
@@ -302,6 +319,7 @@ export const classroomsRouter = createTRPCRouter({
       return {
         course,
         lessons: safeLessons,
+        modules: moduleRefs,
         enrolled,
         completedLessonIds,
         lessonExams,
@@ -598,6 +616,279 @@ export const classroomsRouter = createTRPCRouter({
         id: input.lessonId,
       });
 
+      return { ok: true };
+    }),
+
+  /**
+   * Create a module on own course. Creating the FIRST module auto-wraps every
+   * existing flat lesson into it, so the course goes flat → fully-moduled in one
+   * atomic step (never a mixed state). Later modules start empty.
+   */
+  addModule: protectedProcedure
+    .input(
+      z.object({
+        courseId: z.number(),
+        title: z.string().min(1).max(200),
+        summary: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const course = await payload.findByID({
+        collection: "courses",
+        id: input.courseId,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const { totalDocs: moduleCount } = await payload.find({
+        collection: "modules",
+        where: { course: { equals: input.courseId } },
+        limit: 0,
+        depth: 0,
+      });
+
+      const moduleDoc = await payload.create({
+        collection: "modules",
+        data: {
+          course: input.courseId,
+          title: input.title,
+          order: moduleCount,
+          summary: input.summary ?? undefined,
+        },
+      });
+
+      // First module on a flat course: wrap all existing lessons into it,
+      // preserving their order. This keeps the course fully-moduled, not mixed.
+      if (moduleCount === 0) {
+        const { docs: lessons } = await payload.find({
+          collection: "lessons",
+          where: { course: { equals: input.courseId } },
+          limit: 1000,
+          depth: 0,
+        });
+        for (const l of lessons) {
+          await payload.update({
+            collection: "lessons",
+            id: l.id,
+            data: { module: moduleDoc.id },
+          });
+        }
+      }
+
+      return { id: moduleDoc.id };
+    }),
+
+  /** Rename / re-summarise a module on own course. */
+  renameModule: protectedProcedure
+    .input(
+      z.object({
+        moduleId: z.number(),
+        title: z.string().min(1).max(200).optional(),
+        summary: z.string().max(500).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const moduleDoc = await payload.findByID({
+        collection: "modules",
+        id: input.moduleId,
+        depth: 0,
+      });
+      const course = await payload.findByID({
+        collection: "courses",
+        id: moduleDoc.course,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const data: Record<string, unknown> = {};
+      if (input.title !== undefined) data.title = input.title;
+      if (input.summary !== undefined) data.summary = input.summary ?? undefined;
+
+      await payload.update({
+        collection: "modules",
+        id: input.moduleId,
+        data,
+      });
+      return { ok: true };
+    }),
+
+  /** Reorder a course's modules. orderedIds must be exactly that course's modules. */
+  reorderModules: protectedProcedure
+    .input(z.object({ courseId: z.number(), orderedIds: z.array(z.number()) }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const course = await payload.findByID({
+        collection: "courses",
+        id: input.courseId,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const { docs: modules } = await payload.find({
+        collection: "modules",
+        where: { course: { equals: input.courseId } },
+        limit: 1000,
+        depth: 0,
+      });
+      const validIds = new Set(modules.map((m) => m.id));
+      if (
+        input.orderedIds.length !== modules.length ||
+        !input.orderedIds.every((id) => validIds.has(id))
+      ) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "MODULE_SET_MISMATCH" });
+      }
+
+      for (let i = 0; i < input.orderedIds.length; i++) {
+        await payload.update({
+          collection: "modules",
+          id: input.orderedIds[i]!,
+          data: { order: i },
+        });
+      }
+      return { ok: true };
+    }),
+
+  /**
+   * Move a lesson into a module of the same course. moduleId is never null here
+   * — the only way back to flat is dissolveModules — so a moduled course stays
+   * fully moduled. The lesson is appended to the end of the target module.
+   */
+  assignLessonToModule: protectedProcedure
+    .input(z.object({ lessonId: z.number(), moduleId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const lesson = await payload.findByID({
+        collection: "lessons",
+        id: input.lessonId,
+        depth: 0,
+      });
+      const course = await payload.findByID({
+        collection: "courses",
+        id: lesson.course,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const moduleDoc = await payload.findByID({
+        collection: "modules",
+        id: input.moduleId,
+        depth: 0,
+      });
+      if (moduleDoc.course !== lesson.course) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "MODULE_COURSE_MISMATCH" });
+      }
+
+      const { totalDocs: targetCount } = await payload.find({
+        collection: "lessons",
+        where: {
+          and: [
+            { course: { equals: lesson.course } },
+            { module: { equals: input.moduleId } },
+          ],
+        },
+        limit: 0,
+        depth: 0,
+      });
+
+      await payload.update({
+        collection: "lessons",
+        id: input.lessonId,
+        data: { module: input.moduleId, order: targetCount },
+      });
+      return { ok: true };
+    }),
+
+  /** Delete a module — only when empty (move its lessons out first). */
+  deleteModule: protectedProcedure
+    .input(z.object({ moduleId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const moduleDoc = await payload.findByID({
+        collection: "modules",
+        id: input.moduleId,
+        depth: 0,
+      });
+      const course = await payload.findByID({
+        collection: "courses",
+        id: moduleDoc.course,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const { totalDocs: lessonCount } = await payload.find({
+        collection: "lessons",
+        where: { module: { equals: input.moduleId } },
+        limit: 0,
+        depth: 0,
+      });
+      if (lessonCount > 0) {
+        throw new TRPCError({ code: "CONFLICT", message: "MODULE_NOT_EMPTY" });
+      }
+
+      await payload.delete({ collection: "modules", id: input.moduleId });
+      return { ok: true };
+    }),
+
+  /**
+   * Revert a course to flat: atomically null every lesson's module and delete
+   * all the course's modules. The only sanctioned moduled → flat path.
+   */
+  dissolveModules: protectedProcedure
+    .input(z.object({ courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+
+      const course = await payload.findByID({
+        collection: "courses",
+        id: input.courseId,
+        depth: 0,
+      });
+      if (course.authorId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+
+      const { docs: lessons } = await payload.find({
+        collection: "lessons",
+        where: { course: { equals: input.courseId } },
+        limit: 1000,
+        depth: 0,
+      });
+      for (const l of lessons) {
+        if (l.module !== null && l.module !== undefined) {
+          await payload.update({
+            collection: "lessons",
+            id: l.id,
+            data: { module: null },
+          });
+        }
+      }
+
+      const { docs: modules } = await payload.find({
+        collection: "modules",
+        where: { course: { equals: input.courseId } },
+        limit: 1000,
+        depth: 0,
+      });
+      for (const m of modules) {
+        await payload.delete({ collection: "modules", id: m.id });
+      }
       return { ok: true };
     }),
 
