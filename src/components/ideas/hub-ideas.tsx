@@ -67,7 +67,26 @@ export function HubIdeas({
   });
 
   const voteMutation = api.forum.toggleVote.useMutation({
-    onError: (err) => {
+    onMutate: async ({ ideaId }) => {
+      await utils.forum.getIdeas.cancel();
+      const prev = utils.forum.getIdeas.getData(queryInput);
+      utils.forum.getIdeas.setData(queryInput, (old) =>
+        old?.map((idea) =>
+          idea.id === ideaId
+            ? {
+                ...idea,
+                hasVoted: !idea.hasVoted,
+                voteCount: idea.hasVoted
+                  ? (idea.voteCount ?? 0) - 1
+                  : (idea.voteCount ?? 0) + 1,
+              }
+            : idea,
+        ),
+      );
+      return { prev };
+    },
+    onError: (err, _input, ctx) => {
+      if (ctx?.prev) utils.forum.getIdeas.setData(queryInput, ctx.prev);
       if (err.message === "RULES_NOT_ACCEPTED") {
         toast.error(t("mustAcceptRules"));
         return;
@@ -140,6 +159,7 @@ export function HubIdeas({
                 key={c}
                 type="button"
                 onClick={() => setFormCategory(c)}
+                aria-pressed={formCategory === c}
                 className={`rounded px-2 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
                   formCategory === c
                     ? "bg-primary/10 text-primary"
@@ -171,6 +191,7 @@ export function HubIdeas({
           <button
             key={s}
             onClick={() => setSort(s)}
+            aria-pressed={sort === s}
             className={`rounded px-3 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
               sort === s
                 ? "bg-primary/10 text-primary"
@@ -185,6 +206,7 @@ export function HubIdeas({
           <button
             key={c}
             onClick={() => setCategoryFilter(c)}
+            aria-pressed={categoryFilter === c}
             className={`rounded px-3 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
               categoryFilter === c
                 ? "bg-primary/10 text-primary"

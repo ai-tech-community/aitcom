@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { HubIdeas } from "./hub-ideas";
 
@@ -72,5 +72,39 @@ describe("HubIdeas", () => {
     expect(
       screen.getByPlaceholderText("formTitlePlaceholder"),
     ).toBeInTheDocument();
+  });
+
+  it("clicking the vote button calls toggleVote.mutate with the idea id", () => {
+    const mutate = vi.fn();
+    mockUseUtils.mockReturnValue({
+      forum: {
+        getIdeas: {
+          invalidate: vi.fn(),
+          cancel: vi.fn(),
+          getData: vi.fn(),
+          setData: vi.fn(),
+        },
+      },
+    });
+    mockUseMutation.mockReturnValue({ mutate, isPending: false });
+    mockGetIdeas.mockReturnValue({
+      isLoading: false,
+      data: [
+        {
+          id: 7,
+          title: "Calendar tool",
+          description: null,
+          status: "open",
+          category: "platform",
+          voteCount: 0,
+          hasVoted: false,
+          authorName: "zvi",
+        },
+      ],
+    });
+
+    render(<HubIdeas />);
+    fireEvent.click(screen.getByRole("button", { name: /0/ }));
+    expect(mutate).toHaveBeenCalledWith({ ideaId: 7 });
   });
 });
