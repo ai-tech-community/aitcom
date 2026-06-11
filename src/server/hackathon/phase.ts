@@ -19,7 +19,12 @@ export function hackathonPhase(args: {
   challengeStatus: string;
   teams: TeamPhaseMarkers[];
 }): HackathonPhase {
-  if (args.eventStatus === "draft") return "draft";
+  // Cancelled/rejected events must never read as live (or any later phase):
+  // they collapse to "draft", the closed/not-public phase, matching the
+  // ["draft", "rejected", "cancelled"] gate used elsewhere in the codebase.
+  if (["draft", "rejected", "cancelled"].includes(args.eventStatus)) {
+    return "draft";
+  }
   const finalized =
     args.challengeStatus === "completed" ||
     args.teams.some((t) => t.finalRank !== null || t.prizeAwardedAt !== null);

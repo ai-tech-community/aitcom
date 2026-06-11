@@ -1820,6 +1820,7 @@
     "lookingForTeamHint": "Show yourself on the teammate list so other participants can find you.",
     "lookingForTeamOn": "I'm looking for a team",
     "lookingForTeamOff": "Stop looking",
+    "lookingForTeamHiddenProfile": "Your profile is hidden — you won't appear in this list. Make your profile public to be visible.",
     "lookingForTeamList": "Members looking for a team",
     "filterBySkill": "Filter by skill",
     "noCandidates": "No one is looking for a team right now.",

@@ -34,7 +34,9 @@ export function HackathonPanel({
 
   const { data: lookingList } = api.hackathon.lookingForTeamList.useQuery(
     { challengeId },
-    { enabled: userId !== null },
+    // staleTime: the list is a 5-round-trip query; don't refetch it on every
+    // window focus. Mutations invalidate it explicitly.
+    { enabled: userId !== null, staleTime: 30_000 },
   );
 
   const [teamName, setTeamName] = useState("");
@@ -145,6 +147,13 @@ export function HackathonPanel({
               <p className="text-muted-foreground mt-1 text-xs">
                 {t("lookingForTeamHint")}
               </p>
+              {/* Hidden profiles never surface in the candidate list — warn
+                  instead of silently dropping the viewer (#164 review). */}
+              {lookingList.viewer.profileHidden ? (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                  {t("lookingForTeamHiddenProfile")}
+                </p>
+              ) : null}
             </div>
             <Button
               size="sm"

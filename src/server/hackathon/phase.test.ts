@@ -30,6 +30,26 @@ describe("hackathonPhase", () => {
     ).toBe("draft");
   });
 
+  it("is never live for a cancelled or rejected event", () => {
+    for (const eventStatus of ["cancelled", "rejected"]) {
+      expect(
+        hackathonPhase({
+          eventStatus,
+          challengeStatus: "active",
+          teams: [team()],
+        }),
+      ).toBe("draft");
+      // Even stray finalize markers stay closed once the event is cancelled.
+      expect(
+        hackathonPhase({
+          eventStatus,
+          challengeStatus: "active",
+          teams: [team({ finalRank: 1 })],
+        }),
+      ).toBe("draft");
+    }
+  });
+
   it("is live once published with no locked teams and no finalize markers", () => {
     expect(
       hackathonPhase({

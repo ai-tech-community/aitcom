@@ -1078,8 +1078,13 @@ export const hackathonRouter = createTRPCRouter({
         .select({
           teamId: challengeEnrollments.teamId,
           lookingForTeamAt: challengeEnrollments.lookingForTeamAt,
+          isPublic: memberProfiles.isPublic,
         })
         .from(challengeEnrollments)
+        .leftJoin(
+          memberProfiles,
+          eq(memberProfiles.userId, challengeEnrollments.userId),
+        )
         .where(
           and(
             eq(challengeEnrollments.userId, userId),
@@ -1092,6 +1097,11 @@ export const hackathonRouter = createTRPCRouter({
         enrolled: me !== undefined,
         solo: me?.teamId === null,
         lookingForTeam: me?.teamId === null && me.lookingForTeamAt !== null,
+        // A hidden (or missing) member profile never surfaces in the candidate
+        // list; the panel uses this to warn the viewer that opting in won't
+        // make them visible. The toggle itself stays allowed — flipping the
+        // profile public later makes an existing opt-in appear.
+        profileHidden: me !== undefined && me.isPublic !== true,
       };
       // The list is for enrolled participants only — spectators get nothing.
       if (!me) return { open: false, viewer, candidates: [] };
