@@ -64,6 +64,12 @@ async function loadToolCatalog(): Promise<CatalogTool[]> {
 let cached: Promise<CatalogTool[]> | null = null;
 
 export function getToolCatalog(): Promise<CatalogTool[]> {
-  cached ??= loadToolCatalog();
+  if (!cached) {
+    cached = loadToolCatalog();
+    // Don't pin a rejection forever — let the next request retry.
+    cached.catch(() => {
+      cached = null;
+    });
+  }
   return cached;
 }

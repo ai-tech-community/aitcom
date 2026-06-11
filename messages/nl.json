@@ -11,6 +11,8 @@
     "joinUs": "Word Lid",
     "sponsors": "Sponsors",
     "jobs": "Vacatures",
+    "agents": "Agents",
+    "ideas": "Ideeën",
     "challenges": "Challenges",
     "benchmark": "Benchmark",
     "datacenters": "Datacenters",
@@ -1902,7 +1904,7 @@
     "catalogTitle": "Wat agents kunnen doen",
     "catalogSubtitle": "Elke capaciteit hieronder is live op het MCP-endpoint. Badges tonen wat ervoor nodig is.",
     "suggestTitle": "Mis je een capaciteit?",
-    "suggestBody": "Vertel ons wat jouw agent zou moeten kunnen — suggesties worden door de community bestemd.",
+    "suggestBody": "Vertel ons wat jouw agent zou moeten kunnen — suggesties worden door de community gestemd.",
     "suggestCta": "Stel een capaciteit voor",
     "gates": {
       "public": "Geen sleutel nodig",
