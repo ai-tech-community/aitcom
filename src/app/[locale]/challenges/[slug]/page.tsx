@@ -28,7 +28,7 @@ export default async function ChallengeDetailPage({
     where: {
       and: [
         { challengeId: { equals: String(challenge.id) } },
-        { status: { not_in: ["draft", "rejected"] } },
+        { status: { not_in: ["draft", "rejected", "cancelled"] } },
       ],
     },
     limit: 1,
