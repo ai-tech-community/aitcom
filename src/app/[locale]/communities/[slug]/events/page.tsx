@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { EventFormDialog } from "@/components/communities/event-form-dialog";
@@ -40,6 +40,8 @@ export default function CommunityEventsPage({
 }) {
   const { slug } = use(params);
   const t = useTranslations("events");
+  const tHackathon = useTranslations("hackathon");
+  const router = useRouter();
   const { data: session } = authClient.useSession();
 
   const [activeTab, setActiveTab] = useState<Tab>("published");
@@ -199,6 +201,20 @@ export default function CommunityEventsPage({
             className="flex shrink-0 items-center gap-1 sm:order-6"
             onClick={(e) => e.preventDefault()}
           >
+            {event.type === "hackathon" &&
+              event.status !== "draft" &&
+              event.slug && (
+                <button
+                  className="border-border text-muted-foreground hover:bg-secondary/40 rounded border px-2 py-0.5 font-mono text-[11px]"
+                  onClick={() =>
+                    router.push(
+                      `/communities/${slug}/events/${event.slug}/manage` as never,
+                    )
+                  }
+                >
+                  {tHackathon("manage")}
+                </button>
+              )}
             <button
               className="rounded p-1 hover:bg-zinc-100"
               onClick={() => {
