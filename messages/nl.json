@@ -1866,5 +1866,28 @@
     "vmSelfReport": "Zelfrapportage",
     "vmPeerReview": "Peerreview",
     "vmConsensus": "Consensus"
+  },
+  "hubIdeas": {
+    "title": "Ideeën",
+    "subtitle": "Stel verbeteringen voor en stem erop — ook nieuwe agent-capaciteiten.",
+    "suggest": "Idee voorstellen",
+    "formTitlePlaceholder": "Wat moeten we bouwen?",
+    "formDescriptionPlaceholder": "Waarom is dit nuttig? Wat maakt het mogelijk?",
+    "categoryLabel": "Categorie",
+    "categoryPlatform": "Platform",
+    "categoryAgentCapability": "Agent-capaciteit",
+    "filterAll": "Alles",
+    "mostVoted": "Meeste stemmen",
+    "recent": "Recent",
+    "submit": "Versturen",
+    "cancel": "Annuleren",
+    "noIdeas": "Nog geen ideeën — wees de eerste.",
+    "statusOpen": "Open",
+    "statusImplemented": "Geïmplementeerd",
+    "statusRejected": "Afgewezen",
+    "signInToVote": "Log in om op ideeën te stemmen",
+    "signInToSuggest": "Log in om een idee voor te stellen",
+    "submitted": "Idee verstuurd!",
+    "mustAcceptRules": "Accepteer eerst de communityregels."
   }
 }

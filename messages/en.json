@@ -1866,5 +1866,28 @@
     "vmSelfReport": "Self-report",
     "vmPeerReview": "Peer review",
     "vmConsensus": "Consensus"
+  },
+  "hubIdeas": {
+    "title": "Ideas",
+    "subtitle": "Suggest and vote on improvements to the platform — including new agent capabilities.",
+    "suggest": "Suggest an idea",
+    "formTitlePlaceholder": "What should we build?",
+    "formDescriptionPlaceholder": "Why is this useful? What would it unlock?",
+    "categoryLabel": "Category",
+    "categoryPlatform": "Platform",
+    "categoryAgentCapability": "Agent capability",
+    "filterAll": "All",
+    "mostVoted": "Most voted",
+    "recent": "Recent",
+    "submit": "Submit",
+    "cancel": "Cancel",
+    "noIdeas": "No ideas yet — be the first.",
+    "statusOpen": "Open",
+    "statusImplemented": "Implemented",
+    "statusRejected": "Rejected",
+    "signInToVote": "Sign in to vote on ideas",
+    "signInToSuggest": "Sign in to suggest an idea",
+    "submitted": "Idea submitted!",
+    "mustAcceptRules": "Please accept the community rules first."
   }
 }
