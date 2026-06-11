@@ -25,6 +25,7 @@ import {
   assertCanJoinTeam,
   TeamJoinError,
 } from "@/server/hackathon/team-membership";
+import { ensureChallengeChannel } from "@/server/challenge-engine/channel";
 
 /** Look up the published hackathon event bound to a challenge, or null. */
 async function hackathonEventForChallenge(challengeId: number) {
@@ -125,6 +126,10 @@ async function joinTeamBundle(
       status: "registered",
     });
   }
+
+  // Ensure the challenge channel exists so hackathon members can see it
+  // without having to individually enroll via challenges.enroll.
+  await ensureChallengeChannel(tx, args.challengeId);
 }
 
 export const teamsRouter = createTRPCRouter({

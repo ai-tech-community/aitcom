@@ -40,6 +40,15 @@ export function ChallengeProgress({
 
   if (!data) return null;
 
+  if (objectives.length === 0) {
+    return (
+      <p className="text-muted-foreground font-mono text-xs tracking-wider">
+        This challenge has no individual objectives. For hackathons, your work
+        lives in the team workspace.
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-2">
       {objectives.map((objective, index) => {

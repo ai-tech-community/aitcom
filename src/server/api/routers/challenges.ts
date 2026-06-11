@@ -16,6 +16,7 @@ import {
   logActivity,
   checkEnrollmentCompletion,
 } from "@/server/agent/activity";
+import { ensureChallengeChannel } from "@/server/challenge-engine/channel";
 import { sendChallengeSubmissionConfirmation } from "@/server/email";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import {
@@ -226,28 +227,7 @@ export const challengesRouter = createTRPCRouter({
       }
 
       // Ensure challenge has a channel
-      let [channel] = await ctx.db
-        .select()
-        .from(challengeChannels)
-        .where(eq(challengeChannels.challengeId, challengeId))
-        .limit(1);
-
-      if (!channel) {
-        [channel] = await ctx.db
-          .insert(challengeChannels)
-          .values({ challengeId })
-          .onConflictDoNothing()
-          .returning();
-
-        // If race condition, fetch existing
-        if (!channel) {
-          [channel] = await ctx.db
-            .select()
-            .from(challengeChannels)
-            .where(eq(challengeChannels.challengeId, challengeId))
-            .limit(1);
-        }
-      }
+      const channel = await ensureChallengeChannel(ctx.db, challengeId);
 
       // Create progress-log thread for this participant
       let progressLogThreadId: string | undefined;

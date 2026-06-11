@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { api } from "@/trpc/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,8 +57,14 @@ interface ChallengeDoc {
   generatedBy?: string | null;
 }
 
+interface HackathonEventRef {
+  slug: string;
+  title: string;
+}
+
 interface ChallengeDetailContentProps {
   challenge: ChallengeDoc;
+  hackathonEvent?: HackathonEventRef | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +93,7 @@ type Tab = "overview" | "channel" | "progress" | "participants";
 
 export function ChallengeDetailContent({
   challenge,
+  hackathonEvent,
 }: ChallengeDetailContentProps) {
   const [tab, setTab] = useState<Tab>("overview");
 
@@ -129,6 +137,40 @@ export function ChallengeDetailContent({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+      {/* Hackathon banner — shown when this challenge runs inside an event */}
+      {hackathonEvent && (
+        <div className="border-border mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3">
+          <span className="text-muted-foreground font-mono text-xs tracking-wider">
+            This challenge runs as part of the{" "}
+            <span className="text-foreground font-medium">
+              {hackathonEvent.title}
+            </span>{" "}
+            hackathon.
+          </span>
+          <div className="flex gap-2">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="font-mono text-xs tracking-wider"
+            >
+              <Link href={`/events/${hackathonEvent.slug}`}>
+                Back to the event
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="sm"
+              className="font-mono text-xs tracking-wider"
+            >
+              <Link href={`/events/${hackathonEvent.slug}/team`}>
+                Team workspace
+              </Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Tab navigation */}
       <div className="flex gap-2">
         <button
@@ -385,7 +427,12 @@ export function ChallengeDetailContent({
       )}
 
       {/* ── Channel Tab ───────────────────────────────────────────────── */}
-      {tab === "channel" && <ChallengeChannelView challengeId={challenge.id} />}
+      {tab === "channel" && (
+        <ChallengeChannelView
+          challengeId={challenge.id}
+          isEnrolled={isEnrolled}
+        />
+      )}
 
       {/* ── My Progress Tab ───────────────────────────────────────────── */}
       {tab === "progress" && (

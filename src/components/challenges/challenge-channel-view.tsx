@@ -14,6 +14,7 @@ import { ChallengeCompose } from "@/components/challenges/challenge-compose";
 
 interface ChallengeChannelViewProps {
   challengeId: number;
+  isEnrolled?: boolean;
 }
 
 type ThreadTypeFilter =
@@ -48,6 +49,7 @@ const filterTabs: FilterTab[] = [
 
 export function ChallengeChannelView({
   challengeId,
+  isEnrolled,
 }: ChallengeChannelViewProps) {
   const [typeFilter, setTypeFilter] = useState<ThreadTypeFilter>(undefined);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -98,7 +100,9 @@ export function ChallengeChannelView({
       <div className="mt-8">
         <div className="border-border rounded-lg border border-dashed px-6 py-12 text-center">
           <p className="text-muted-foreground text-sm">
-            No channel yet. Enroll to create the channel.
+            {isEnrolled
+              ? "No channel yet — it opens when the first participant enrolls or a team forms."
+              : "No channel yet. Enroll to create the channel."}
           </p>
         </div>
       </div>
