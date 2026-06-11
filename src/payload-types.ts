@@ -96,6 +96,7 @@ export interface Config {
     'brand-alias-queue': BrandAliasQueue;
     courses: Course;
     lessons: Lesson;
+    modules: Module;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -133,6 +134,7 @@ export interface Config {
     'brand-alias-queue': BrandAliasQueueSelect<false> | BrandAliasQueueSelect<true>;
     courses: CoursesSelect<false> | CoursesSelect<true>;
     lessons: LessonsSelect<false> | LessonsSelect<true>;
+    modules: ModulesSelect<false> | ModulesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -1206,6 +1208,10 @@ export interface Lesson {
    * courses.id
    */
   course: number;
+  /**
+   * modules.id (null = flat/ungrouped). See ADR-0034.
+   */
+  module?: number | null;
   title: string;
   order?: number | null;
   youtubeUrl?: string | null;
@@ -1252,6 +1258,24 @@ export interface Lesson {
         id?: string | null;
       }[]
     | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Optional grouping of lessons within a course (ADR-0034).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "modules".
+ */
+export interface Module {
+  id: number;
+  /**
+   * courses.id
+   */
+  course: number;
+  title: string;
+  order?: number | null;
+  summary?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1394,6 +1418,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'lessons';
         value: number | Lesson;
+      } | null)
+    | ({
+        relationTo: 'modules';
+        value: number | Module;
       } | null)
     | ({
         relationTo: 'users';
@@ -2047,6 +2075,7 @@ export interface CoursesSelect<T extends boolean = true> {
  */
 export interface LessonsSelect<T extends boolean = true> {
   course?: T;
+  module?: T;
   title?: T;
   order?: T;
   youtubeUrl?: T;
@@ -2062,6 +2091,18 @@ export interface LessonsSelect<T extends boolean = true> {
         url?: T;
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "modules_select".
+ */
+export interface ModulesSelect<T extends boolean = true> {
+  course?: T;
+  title?: T;
+  order?: T;
+  summary?: T;
   updatedAt?: T;
   createdAt?: T;
 }

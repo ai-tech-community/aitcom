@@ -36,6 +36,7 @@ import { Brands } from "./collections/Brands";
 import { BrandAliasQueue } from "./collections/BrandAliasQueue";
 import { Courses } from "./collections/Courses";
 import { Lessons } from "./collections/Lessons";
+import { Modules } from "./collections/Modules";
 
 function normalizePgSslMode(connectionString: string | undefined): string {
   if (!connectionString) {
@@ -101,6 +102,7 @@ export default buildConfig({
     BrandAliasQueue,
     Courses,
     Lessons,
+    Modules,
     {
       slug: "users",
       auth: {
