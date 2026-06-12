@@ -16,7 +16,14 @@
  *
  * Enable with:
  *
- *   RUN_DB_TESTS=1 pnpm exec vitest run src/server/api/routers/hackathon-analytics.integration.test.ts
+ *   RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 \
+ *     DATABASE_URL=postgres://postgres:postgres@localhost:5432/aitcom \
+ *     NEON_LOCAL_PROXY=localhost:5433 \
+ *     pnpm exec vitest run src/server/api/routers/hackathon-analytics.integration.test.ts
+ *
+ * (SKIP_ENV_VALIDATION is needed because vitest's jsdom environment trips
+ * the t3-env server-var guard; the DATABASE_URL/NEON_LOCAL_PROXY values
+ * match the repo's docker compose dev stack.)
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
