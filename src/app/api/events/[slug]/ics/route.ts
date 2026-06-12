@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPayloadClient } from "@/server/payload";
 import { env } from "@/env";
+import { isValidTimeZone } from "@/lib/event-time";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -64,23 +65,32 @@ export async function GET(
       : null;
 
   const hasTime = typeof event.startTime === "string" && event.startTime;
+  // Qualify wall-clock times with the event's IANA timezone when we have one
+  // (major calendar clients resolve bare IANA TZIDs); legacy events without a
+  // timezone keep floating local times.
+  const tzid = isValidTimeZone(event.timezone) ? event.timezone : null;
+  const tzParam = tzid ? `;TZID=${tzid}` : "";
   const dtStamp = new Date()
     .toISOString()
     .replace(/[-:]/g, "")
     .replace(/\.\d{3}Z$/, "Z");
 
   const dtStartLine = hasTime
-    ? `DTSTART:${toIcsFloating(event.date, event.startTime!)}`
+    ? `DTSTART${tzParam}:${toIcsFloating(event.date, event.startTime!)}`
     : `DTSTART;VALUE=DATE:${toIcsDate(event.date)}`;
 
   const dtEndLine = hasTime
-    ? `DTEND:${toIcsFloating(event.date, event.endTime ?? event.startTime!)}`
+    ? `DTEND${tzParam}:${toIcsFloating(event.date, event.endTime ?? event.startTime!)}`
     : null;
 
   const description = [
     event.summary,
     sourceUrl ? `Source: ${sourceUrl}` : null,
-    hasTime ? "Times shown are local to the event location." : null,
+    hasTime
+      ? tzid
+        ? `Times are in ${tzid}.`
+        : "Times shown are local to the event location."
+      : null,
   ]
     .filter(Boolean)
     .join("\n\n");

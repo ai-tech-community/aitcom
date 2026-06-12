@@ -10,6 +10,7 @@ import {
   user,
 } from "@/server/db/schema";
 import { sendEventReminderEmail } from "@/server/email";
+import { formatEventWhenText } from "@/lib/event-time";
 import {
   EVENT_REMINDER_LEAD_HOURS,
   currentWindowKey,
@@ -70,7 +71,13 @@ export async function GET(req: Request) {
 
     const title = String(event.title ?? "your event");
     // `date` field is the event's start date in the events collection.
-    const whenText = new Date(String(event.date)).toUTCString();
+    // Timezone-qualified, e.g. "15 Jul 2026, 18:00–21:00 CEST (Europe/Amsterdam)".
+    const whenText = formatEventWhenText({
+      date: String(event.date),
+      startTime: event.startTime,
+      endTime: event.endTime,
+      timezone: event.timezone,
+    });
 
     for (const reg of regs) {
       // Claim-before-send: insert dedupe row first via partial unique index

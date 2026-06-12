@@ -14,6 +14,7 @@ import {
   CellTemplateEditor,
   type CellRow,
 } from "@/components/hackathon/cell-template-editor";
+import { HackathonAnalytics } from "@/components/hackathon/hackathon-analytics";
 
 function LabeledInput({
   label,
@@ -373,6 +374,9 @@ export function HackathonManage({
       <Button className="w-full" disabled={saveDisabled} onClick={onSave}>
         {t("saveChanges")}
       </Button>
+
+      {/* Analytics (#165) — participation funnel + cell completion */}
+      <HackathonAnalytics challengeId={challengeId} phase={phase} />
 
       {/* Lifecycle */}
       <Card className="space-y-4 p-4">

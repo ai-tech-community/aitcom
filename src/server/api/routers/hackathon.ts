@@ -3,7 +3,7 @@
 // what makes the challenge team-based. AIT is plumbing only — no cognition.
 
 import { z } from "zod";
-import { and, eq, inArray, isNull, isNotNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, isNotNull, ne, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import type { RequiredDataFromCollectionSlug } from "payload";
 
@@ -18,7 +18,10 @@ import {
   workCells,
   workCellResults,
   challengeEnrollments,
+  hackathonCertificates,
+  hackathonVotes,
   memberProfiles,
+  notifications,
   communityMemberships,
   communities,
 } from "@/server/db/schema";
@@ -40,6 +43,22 @@ import {
   cellTemplateToInserts,
 } from "@/server/hackathon/cell-template";
 import { teamScore, rankTeams, prizeSplit } from "@/server/hackathon/scoring";
+import { hackathonPhase } from "@/server/hackathon/phase";
+import {
+  assertCanToggleLookingForTeam,
+  lookingForTeamCandidates,
+  LookingForTeamError,
+} from "@/server/hackathon/looking-for-team";
+import { certificateAwards } from "@/server/hackathon/certificates";
+import {
+  votingOpen as peoplesChoiceVotingOpen,
+  peoplesChoice,
+} from "@/server/hackathon/peoples-choice";
+import {
+  participationFunnel,
+  cellCompletion,
+  type CellStatusCounts,
+} from "@/server/hackathon/analytics";
 import { cellHeatState } from "@/server/hackathon/cell-state";
 import { awardXp, awardBadge } from "@/lib/gamification";
 
@@ -137,6 +156,43 @@ async function requireHackathonOperator(
     });
   }
   return challenge;
+}
+
+/**
+ * Derive the hackathon's current lifecycle phase from server truth (see
+ * src/server/hackathon/phase.ts): the bound event's status, the challenge's
+ * status, and the teams' lock/finalize markers.
+ */
+async function currentHackathonPhase(
+  db: typeof import("@/server/db").db,
+  challengeId: number,
+  challengeStatus: string,
+) {
+  const payload = await getPayloadClient();
+  const { docs } = await payload.find({
+    collection: "events",
+    where: {
+      and: [
+        { challengeId: { equals: String(challengeId) } },
+        { type: { equals: "hackathon" } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+  });
+  const markers = await db
+    .select({
+      status: teams.status,
+      finalRank: teams.finalRank,
+      prizeAwardedAt: teams.prizeAwardedAt,
+    })
+    .from(teams)
+    .where(eq(teams.challengeId, challengeId));
+  return hackathonPhase({
+    eventStatus: docs[0]?.status ?? "draft",
+    challengeStatus,
+    teams: markers,
+  });
 }
 
 export const hackathonRouter = createTRPCRouter({
@@ -760,6 +816,80 @@ export const hackathonRouter = createTRPCRouter({
             }
           }
         }
+
+        // Certificates (#163): winner certificates for members of the team(s)
+        // that actually received the prize (disbursement marker — re-runs
+        // recompute ranks but never re-pay), participation certificates for
+        // members of every other submitted team. The unique
+        // (challenge_id, user_id) index + ON CONFLICT DO NOTHING make
+        // re-finalize structurally idempotent; notifications go only to
+        // certificates actually inserted this run.
+        const awardedTeams = await tx
+          .select({ id: teams.id })
+          .from(teams)
+          .where(
+            and(
+              eq(teams.challengeId, input.challengeId),
+              isNotNull(teams.prizeAwardedAt),
+            ),
+          );
+        const awardedIds = new Set(awardedTeams.map((t) => t.id));
+        const submittedIds = submitted.map((t) => t.id);
+        const memberRows =
+          submittedIds.length > 0
+            ? await tx
+                .select({
+                  teamId: challengeEnrollments.teamId,
+                  userId: challengeEnrollments.userId,
+                })
+                .from(challengeEnrollments)
+                .where(inArray(challengeEnrollments.teamId, submittedIds))
+            : [];
+        const awards = certificateAwards(
+          challengeTeams.map((t) => ({
+            teamId: t.id,
+            submitted: t.submittedAt !== null,
+            finalRank: rankByTeam.get(t.id) ?? null,
+            prizeAwarded: awardedIds.has(t.id),
+          })),
+          memberRows.filter(
+            (m): m is { teamId: string; userId: string } => m.teamId !== null,
+          ),
+        );
+        if (awards.length > 0) {
+          const issued = await tx
+            .insert(hackathonCertificates)
+            .values(
+              awards.map((a) => ({
+                challengeId: input.challengeId,
+                userId: a.userId,
+                kind: a.kind,
+              })),
+            )
+            .onConflictDoNothing()
+            .returning();
+          if (issued.length > 0) {
+            await tx.insert(notifications).values(
+              issued.map((c) => ({
+                userId: c.userId,
+                type: "hackathon_certificate",
+                title:
+                  c.kind === "winner"
+                    ? "Winner certificate issued"
+                    : "Participation certificate issued",
+                content:
+                  c.kind === "winner"
+                    ? `You earned a winner certificate for "${challenge.title}".`
+                    : `You earned a participation certificate for "${challenge.title}".`,
+                metadata: {
+                  challengeId: String(input.challengeId),
+                  kind: c.kind,
+                },
+                communityId: challenge.communityId ?? null,
+              })),
+            );
+          }
+        }
       });
 
       return {
@@ -769,6 +899,131 @@ export const hackathonRouter = createTRPCRouter({
           rank: r.rank,
           score: scoreByTeam.get(r.teamId) ?? 0,
         })),
+      };
+    }),
+
+  /**
+   * Organizer analytics for the manage page (#165): the participation funnel
+   * (enrolled → teamed → on a submitted team, with conversion rates) plus
+   * cumulative cell-completion buckets (claimed/reported/verified) aggregated
+   * across all of the hackathon's competitive grids. Read-only SQL aggregation
+   * — counts, never row content. Operator-scoped (ADR-0031), same gate as
+   * lockRosters/finalizeHackathon; the rate math lives in analytics.ts.
+   */
+  analytics: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      await requireHackathonOperator(ctx.db, input.challengeId, userId);
+
+      // The 5 aggregates are independent reads — run them in parallel.
+      // The funnel counts non-abandoned enrollments, matching the rest of
+      // the platform (challenges.abandon keeps teamId, so filter by status).
+      const [
+        [enrollment],
+        [submittedMembers],
+        [teamCounts],
+        statusRows,
+        [verifiedRow],
+      ] = await Promise.all([
+        // Funnel stage 1+2 in one pass: count(teamId) skips NULLs, so it
+        // counts exactly the enrollments that are on a team (leave/disband
+        // null it out).
+        ctx.db
+          .select({
+            enrolled: sql<number>`count(*)`.mapWith(Number),
+            teamed: sql<number>`count(${challengeEnrollments.teamId})`.mapWith(
+              Number,
+            ),
+          })
+          .from(challengeEnrollments)
+          .where(
+            and(
+              eq(challengeEnrollments.challengeId, input.challengeId),
+              ne(challengeEnrollments.status, "abandoned"),
+            ),
+          ),
+
+        // Stage 3: members whose team has submitted.
+        ctx.db
+          .select({ count: sql<number>`count(*)`.mapWith(Number) })
+          .from(challengeEnrollments)
+          .innerJoin(teams, eq(challengeEnrollments.teamId, teams.id))
+          .where(
+            and(
+              eq(challengeEnrollments.challengeId, input.challengeId),
+              ne(challengeEnrollments.status, "abandoned"),
+              isNotNull(teams.submittedAt),
+            ),
+          ),
+
+        // Team-level context for the submitted stage ("3/5 teams submitted").
+        ctx.db
+          .select({
+            total:
+              sql<number>`count(*) filter (where ${teams.status} <> 'disbanded')`.mapWith(
+                Number,
+              ),
+            submitted:
+              sql<number>`count(*) filter (where ${teams.status} <> 'disbanded' and ${teams.submittedAt} is not null)`.mapWith(
+                Number,
+              ),
+          })
+          .from(teams)
+          .where(eq(teams.challengeId, input.challengeId)),
+
+        // Cell status buckets across every competitive grid of this hackathon.
+        ctx.db
+          .select({
+            status: workCells.status,
+            count: sql<number>`count(*)`.mapWith(Number),
+          })
+          .from(workCells)
+          .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
+          .where(
+            and(
+              eq(workGrids.challengeId, input.challengeId),
+              eq(workGrids.mode, "competitive"),
+            ),
+          )
+          .groupBy(workCells.status),
+
+        // Verified = a VERIFIED result row, the same definition finalize
+        // scores by. DISTINCT mirrors finalize's defensive one-result-per-cell
+        // stance.
+        ctx.db
+          .select({
+            count:
+              sql<number>`count(distinct ${workCellResults.cellId})`.mapWith(
+                Number,
+              ),
+          })
+          .from(workCellResults)
+          .innerJoin(workCells, eq(workCellResults.cellId, workCells.id))
+          .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
+          .where(
+            and(
+              eq(workGrids.challengeId, input.challengeId),
+              eq(workGrids.mode, "competitive"),
+              eq(workCellResults.verificationOutcome, "verified"),
+            ),
+          ),
+      ]);
+
+      const byStatus: CellStatusCounts = {};
+      for (const r of statusRows) byStatus[r.status] = r.count;
+
+      return {
+        funnel: participationFunnel({
+          enrolled: enrollment?.enrolled ?? 0,
+          teamed: enrollment?.teamed ?? 0,
+          inSubmittedTeams: submittedMembers?.count ?? 0,
+        }),
+        teams: {
+          total: teamCounts?.total ?? 0,
+          submitted: teamCounts?.submitted ?? 0,
+        },
+        cells: cellCompletion(byStatus, verifiedRow?.count ?? 0),
       };
     }),
 
@@ -790,6 +1045,7 @@ export const hackathonRouter = createTRPCRouter({
       const enrollments = await ctx.db
         .select({
           teamId: challengeEnrollments.teamId,
+          userId: challengeEnrollments.userId,
           displayName: memberProfiles.displayName,
           isPublic: memberProfiles.isPublic,
         })
@@ -805,14 +1061,19 @@ export const hackathonRouter = createTRPCRouter({
           ),
         );
 
-      const facesByTeam = new Map<string, string[]>();
+      // Faces carry the userId so consumers can link to the public member
+      // profile (/members/[id]); private profiles stay anonymous counts only.
+      const facesByTeam = new Map<
+        string,
+        { userId: string; displayName: string }[]
+      >();
       const countByTeam = new Map<string, number>();
       for (const e of enrollments) {
         if (!e.teamId) continue;
         countByTeam.set(e.teamId, (countByTeam.get(e.teamId) ?? 0) + 1);
         if (e.isPublic) {
           const list = facesByTeam.get(e.teamId) ?? [];
-          list.push(e.displayName);
+          list.push({ userId: e.userId, displayName: e.displayName });
           facesByTeam.set(e.teamId, list);
         }
       }
@@ -823,7 +1084,16 @@ export const hackathonRouter = createTRPCRouter({
           name: t.name,
           score: t.score ?? 0,
           finalRank: t.finalRank,
+          // Disbursement truth: re-finalizes recompute finalRank but the prize
+          // stays with the first winner, so consumers must attribute the prize
+          // by this flag, not by finalRank === 1.
+          prizeAwarded: t.prizeAwardedAt !== null,
           submitted: t.submittedAt !== null,
+          // Project gallery (#167): once a team submits, the when/what/where
+          // of the artifact is public data alongside the score.
+          submittedAt: t.submittedAt,
+          artifactUrl: t.artifactUrl,
+          artifactSummary: t.artifactSummary,
           memberCount: countByTeam.get(t.id) ?? 0,
           memberFaces: facesByTeam.get(t.id) ?? [],
         }))
@@ -874,6 +1144,147 @@ export const hackathonRouter = createTRPCRouter({
         .where(eq(challengeEnrollments.teamId, team.id));
 
       return { team, members, isCaptain: team.captainId === userId };
+    }),
+
+  /**
+   * Toggle the caller's "looking for a team" opt-in (#164). Allowed only for a
+   * SOLO enrollment in this challenge while the hackathon is forming (phase
+   * 'live') — the pure gate lives in looking-for-team.ts. The opt-in UPDATE is
+   * re-guarded by `isNull(teamId)` so a concurrent team join can't race the
+   * pre-check and resurrect the flag on a teamed enrollment.
+   */
+  setLookingForTeam: protectedProcedure
+    .input(z.object({ challengeId: z.number(), looking: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const challenge = await loadChallenge(input.challengeId);
+
+      const [enrollment] = await ctx.db
+        .select({ teamId: challengeEnrollments.teamId })
+        .from(challengeEnrollments)
+        .where(
+          and(
+            eq(challengeEnrollments.userId, userId),
+            eq(challengeEnrollments.challengeId, input.challengeId),
+          ),
+        )
+        .limit(1);
+
+      const phase = await currentHackathonPhase(
+        ctx.db,
+        input.challengeId,
+        challenge.status ?? "",
+      );
+      try {
+        assertCanToggleLookingForTeam({
+          phase,
+          enrollment: enrollment ?? null,
+        });
+      } catch (e) {
+        if (e instanceof LookingForTeamError) {
+          throw new TRPCError({ code: "CONFLICT", message: e.message });
+        }
+        throw e;
+      }
+
+      await ctx.db
+        .update(challengeEnrollments)
+        .set({ lookingForTeamAt: input.looking ? new Date() : null })
+        .where(
+          and(
+            eq(challengeEnrollments.userId, userId),
+            eq(challengeEnrollments.challengeId, input.challengeId),
+            isNull(challengeEnrollments.teamId),
+          ),
+        );
+
+      return { lookingForTeam: input.looking };
+    }),
+
+  /**
+   * The "looking for a team" list (#164): enrolled participants browse
+   * opted-in, still-solo members with PUBLIC profiles (hidden profiles are
+   * excluded entirely — see looking-for-team.ts), sorted by opt-in time.
+   * Gated on the forming ('live') phase, so roster lock empties the list even
+   * where a stale flag survives. Also reports the viewer's own opt-in state so
+   * the panel can render the toggle. No invitation system: candidates link to
+   * their public profile and teams connect via the existing join-code flow.
+   */
+  lookingForTeamList: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const [me] = await ctx.db
+        .select({
+          teamId: challengeEnrollments.teamId,
+          lookingForTeamAt: challengeEnrollments.lookingForTeamAt,
+          isPublic: memberProfiles.isPublic,
+        })
+        .from(challengeEnrollments)
+        .leftJoin(
+          memberProfiles,
+          eq(memberProfiles.userId, challengeEnrollments.userId),
+        )
+        .where(
+          and(
+            eq(challengeEnrollments.userId, userId),
+            eq(challengeEnrollments.challengeId, input.challengeId),
+          ),
+        )
+        .limit(1);
+
+      const viewer = {
+        enrolled: me !== undefined,
+        solo: me?.teamId === null,
+        lookingForTeam: me?.teamId === null && me.lookingForTeamAt !== null,
+        // A hidden (or missing) member profile never surfaces in the candidate
+        // list; the panel uses this to warn the viewer that opting in won't
+        // make them visible. The toggle itself stays allowed — flipping the
+        // profile public later makes an existing opt-in appear.
+        profileHidden: me !== undefined && me.isPublic !== true,
+      };
+      // The list is for enrolled participants only — spectators get nothing.
+      if (!me) return { open: false, viewer, candidates: [] };
+
+      const challenge = await loadChallenge(input.challengeId);
+      const phase = await currentHackathonPhase(
+        ctx.db,
+        input.challengeId,
+        challenge.status ?? "",
+      );
+      if (phase !== "live") return { open: false, viewer, candidates: [] };
+
+      const rows = await ctx.db
+        .select({
+          userId: challengeEnrollments.userId,
+          teamId: challengeEnrollments.teamId,
+          lookingForTeamAt: challengeEnrollments.lookingForTeamAt,
+          isPublic: memberProfiles.isPublic,
+          displayName: memberProfiles.displayName,
+          skills: memberProfiles.skills,
+        })
+        .from(challengeEnrollments)
+        .innerJoin(
+          memberProfiles,
+          eq(memberProfiles.userId, challengeEnrollments.userId),
+        )
+        .where(
+          and(
+            eq(challengeEnrollments.challengeId, input.challengeId),
+            isNotNull(challengeEnrollments.lookingForTeamAt),
+            isNull(challengeEnrollments.teamId),
+            // Abandoned enrollments never surface (SQL-level filter; status is
+            // not part of the pure projection input below) — consistent with
+            // the analytics funnel.
+            ne(challengeEnrollments.status, "abandoned"),
+          ),
+        );
+
+      return {
+        open: true,
+        viewer,
+        candidates: lookingForTeamCandidates(rows, { excludeUserId: userId }),
+      };
     }),
 
   /**
@@ -954,5 +1365,154 @@ export const hackathonRouter = createTRPCRouter({
           verifiedCells.has(c.id) ? "verified" : null,
         ),
       }));
+    }),
+
+  /**
+   * Cast (or retarget) the caller's People's Choice vote (#169). Any
+   * authenticated member — enrolled or not — gets exactly ONE vote per
+   * hackathon: the unique (challenge_id, user_id) index makes that structural
+   * and the UPSERT makes it changeable while the window is open. The window
+   * follows the lifecycle (open iff phase === 'locked'; see
+   * peoples-choice.ts), derived server-side from the same event/phase truth
+   * as setLookingForTeam so a stale client can't vote early or late. Only
+   * submitted, non-disbanded teams of THIS challenge are votable — exactly
+   * the set the gallery shows. Deliberately non-scoring (ADR-0029).
+   */
+  castPeoplesChoiceVote: protectedProcedure
+    .input(z.object({ challengeId: z.number(), teamId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const challenge = await loadChallenge(input.challengeId);
+      const phase = await currentHackathonPhase(
+        ctx.db,
+        input.challengeId,
+        challenge.status ?? "",
+      );
+      if (!peoplesChoiceVotingOpen(phase)) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "Voting is not open — it runs from roster lock until the results are finalized.",
+        });
+      }
+
+      const [team] = await ctx.db
+        .select({ id: teams.id, submittedAt: teams.submittedAt })
+        .from(teams)
+        .where(
+          and(
+            eq(teams.id, input.teamId),
+            eq(teams.challengeId, input.challengeId),
+            ne(teams.status, "disbanded"),
+          ),
+        )
+        .limit(1);
+      if (team?.submittedAt == null) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Only submitted projects in this hackathon can be voted for.",
+        });
+      }
+
+      await ctx.db
+        .insert(hackathonVotes)
+        .values({
+          challengeId: input.challengeId,
+          userId,
+          teamId: input.teamId,
+        })
+        .onConflictDoUpdate({
+          target: [hackathonVotes.challengeId, hackathonVotes.userId],
+          // updatedAt is bumped by the column's $onUpdate hook, which drizzle
+          // applies to onConflictDoUpdate sets too.
+          set: { teamId: input.teamId },
+        });
+
+      return { teamId: input.teamId };
+    }),
+
+  /**
+   * Public People's Choice projection for the gallery and winners pages
+   * (#169): per-team vote counts, whether the window is open, the viewer's
+   * current vote (null when unauthenticated), and — only once finalized —
+   * the People's Choice team. Kept separate from teamLeaderboard so the
+   * scored leaderboard projection stays untouched (non-scoring by
+   * construction, ADR-0029).
+   */
+  peoplesChoiceState: publicProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const challenge = await loadChallenge(input.challengeId);
+      const phase = await currentHackathonPhase(
+        ctx.db,
+        input.challengeId,
+        challenge.status ?? "",
+      );
+
+      const counts = await ctx.db
+        .select({
+          teamId: hackathonVotes.teamId,
+          votes: sql<number>`count(*)::int`,
+        })
+        .from(hackathonVotes)
+        .where(eq(hackathonVotes.challengeId, input.challengeId))
+        .groupBy(hackathonVotes.teamId);
+
+      let viewerVote: string | null = null;
+      if (ctx.session?.user) {
+        const [mine] = await ctx.db
+          .select({ teamId: hackathonVotes.teamId })
+          .from(hackathonVotes)
+          .where(
+            and(
+              eq(hackathonVotes.challengeId, input.challengeId),
+              eq(hackathonVotes.userId, ctx.session.user.id),
+            ),
+          )
+          .limit(1);
+        viewerVote = mine?.teamId ?? null;
+      }
+
+      // The award only exists once finalized; it is recomputed per request
+      // from the (now-stable) votes table. The submittedAt tiebreak needs the
+      // voted teams' submission times (see peoples-choice.ts). Disbanded
+      // teams are excluded — teamLeaderboard never shows them, so a team
+      // disbanded after voting drops out and the award falls to the
+      // runner-up instead of pointing at a vanished card.
+      let peoplesChoiceTeamId: string | null = null;
+      if (phase === "finalized" && counts.length > 0) {
+        const teamRows = await ctx.db
+          .select({ id: teams.id, submittedAt: teams.submittedAt })
+          .from(teams)
+          .where(
+            and(
+              inArray(
+                teams.id,
+                counts.map((c) => c.teamId),
+              ),
+              ne(teams.status, "disbanded"),
+            ),
+          );
+        const submittedAtById = new Map(
+          teamRows.map((t) => [t.id, t.submittedAt]),
+        );
+        peoplesChoiceTeamId = peoplesChoice(
+          counts
+            .filter((c) => submittedAtById.has(c.teamId))
+            .map((c) => ({
+              teamId: c.teamId,
+              votes: c.votes,
+              submittedAt: submittedAtById.get(c.teamId) ?? null,
+            })),
+        );
+      }
+
+      return {
+        votingOpen: peoplesChoiceVotingOpen(phase),
+        counts,
+        viewerVote,
+        peoplesChoiceTeamId,
+      };
     }),
 });

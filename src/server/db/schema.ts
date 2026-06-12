@@ -1196,6 +1196,11 @@ export const challengeEnrollments = appSchema.table(
       .references(() => user.id),
     progressLogThreadId: d.varchar({ length: 255 }), // FK → challengeThreads.id (set after creation)
     teamId: d.varchar({ length: 255 }).references(() => teams.id), // nullable: set when the enrollment joins a team (ADR-0029)
+    // "Looking for a team" opt-in (#164): set while a SOLO enrollment wants to
+    // appear on the teammate-matching list (doubles as its sort order); cleared
+    // when the enrollment joins a team. Reads additionally gate on the 'live'
+    // phase, so a stale flag after roster lock is harmless.
+    lookingForTeamAt: d.timestamp({ withTimezone: true }),
     enrolledAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
@@ -2923,6 +2928,74 @@ export const courseCertificates = appSchema.table(
   (t) => [
     index("course_certificate_user_idx").on(t.userId),
     uniqueIndex("course_certificate_unique").on(t.courseId, t.userId),
+  ],
+);
+
+/** Hackathon certificates, issued at finalize (winner = member of the team
+ *  that actually received the prize, participant = member of any other
+ *  submitted team). One certificate per user per challenge — the unique index
+ *  makes finalize re-runs structurally idempotent (ON CONFLICT DO NOTHING). */
+export const hackathonCertificates = appSchema.table(
+  "hackathon_certificate",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    challengeId: d.integer().notNull(), // References Payload challenges table
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    kind: d.varchar({ length: 20 }).notNull().$type<"winner" | "participant">(),
+    issuedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("hackathon_certificate_user_idx").on(t.userId),
+    uniqueIndex("hackathon_certificate_unique").on(t.challengeId, t.userId),
+  ],
+);
+
+/** People's Choice votes on submitted gallery projects (#169). One vote per
+ *  member per hackathon — the unique (challenge_id, user_id) index is the
+ *  uniqueness guarantee; "changeable while voting is open" is an UPSERT that
+ *  retargets team_id. Deliberately NON-SCORING (ADR-0029): nothing reads this
+ *  table in the scoring/finalize path — it powers a parallel recognition
+ *  award only. */
+export const hackathonVotes = appSchema.table(
+  "hackathon_vote",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    challengeId: d.integer().notNull(), // References Payload challenges table
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    teamId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => teams.id),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("hackathon_vote_team_idx").on(t.teamId),
+    uniqueIndex("hackathon_vote_unique").on(t.challengeId, t.userId),
   ],
 );
 

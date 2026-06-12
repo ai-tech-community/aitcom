@@ -57,7 +57,13 @@ export default async function MemberProfilePage({
   ]);
   if (!data) notFound();
 
-  const { profile, user: memberUser, badges, eventsAttended } = data;
+  const {
+    profile,
+    user: memberUser,
+    badges,
+    certificates,
+    eventsAttended,
+  } = data;
 
   // Filter out badges where the BADGES lookup returned undefined (noUncheckedIndexedAccess)
   const validBadges = badges.filter(
@@ -211,6 +217,37 @@ export default async function MemberProfilePage({
                   {badge.earnedAt
                     ? new Date(badge.earnedAt).toLocaleDateString()
                     : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Hackathon certificates */}
+      {certificates.length > 0 && (
+        <div className="border-border mt-8 border-t pt-8">
+          <div className="border-border border-b pb-4">
+            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+              / {t("certificates").toUpperCase()}
+            </h2>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {certificates.map((cert) => (
+              <div
+                key={cert.id}
+                className="border-border rounded border border-dashed px-3 py-2.5"
+              >
+                <p className="font-mono text-xs font-medium">
+                  {cert.challengeTitle ?? t("certificateUntitled")}
+                </p>
+                <p className="text-muted-foreground mt-0.5 font-mono text-[10px] tracking-wider">
+                  {(cert.kind === "winner"
+                    ? t("certificateWinner")
+                    : t("certificateParticipant")
+                  ).toUpperCase()}
+                  {" · "}
+                  {new Date(cert.issuedAt).toLocaleDateString()}
                 </p>
               </div>
             ))}

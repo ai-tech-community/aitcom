@@ -290,7 +290,9 @@ export const challengesRouter = createTRPCRouter({
 
       const [updated] = await ctx.db
         .update(challengeEnrollments)
-        .set({ status: "abandoned" })
+        // Clear the looking-for-team opt-in too: an abandoned participant must
+        // not linger in the teammate-matching list.
+        .set({ status: "abandoned", lookingForTeamAt: null })
         .where(
           and(
             eq(challengeEnrollments.challengeId, challengeId),

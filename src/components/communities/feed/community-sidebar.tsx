@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { formatEventTimeRange } from "@/lib/event-time";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@/i18n/navigation";
 import { MessageSquare, Calendar, ChevronUp } from "lucide-react";
@@ -141,7 +142,13 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
                   <p className="truncate text-sm font-medium">{event.title}</p>
                   <p className="text-muted-foreground text-[11px]">
                     {formatDate(event.date)}
-                    {event.startTime && ` · ${event.startTime}`}
+                    {event.startTime &&
+                      ` · ${formatEventTimeRange({
+                        date: event.date,
+                        startTime: event.startTime,
+                        endTime: event.endTime,
+                        timezone: event.timezone,
+                      })}`}
                     {event.location && ` · ${event.location}`}
                   </p>
                 </div>

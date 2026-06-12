@@ -20,6 +20,7 @@ import {
   eventRegistrations,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
+import { safeArtifactHref } from "@/server/hackathon/gallery";
 import { generateTeamJoinCode } from "@/server/hackathon/team-join-code";
 import {
   assertCanJoinTeam,
@@ -97,7 +98,9 @@ async function joinTeamBundle(
     })
     .onConflictDoUpdate({
       target: [challengeEnrollments.userId, challengeEnrollments.challengeId],
-      set: { teamId: args.teamId, status: "active" },
+      // Joining a team ends the search: clear the looking-for-team opt-in
+      // (#164) in the same write that sets teamId.
+      set: { teamId: args.teamId, status: "active", lookingForTeamAt: null },
       setWhere: isNull(challengeEnrollments.teamId),
     })
     .returning({ id: challengeEnrollments.id });
@@ -331,7 +334,16 @@ export const teamsRouter = createTRPCRouter({
     .input(
       z.object({
         teamId: z.string(),
-        artifactUrl: z.string().url().max(2048).optional(),
+        artifactUrl: z
+          .string()
+          .url()
+          .max(2048)
+          // Rendered as a public href on the gallery/winners pages: only
+          // http(s) is accepted (same allowlist as safeArtifactHref).
+          .refine((url) => safeArtifactHref(url) !== null, {
+            message: "The project link must be an http:// or https:// URL.",
+          })
+          .optional(),
         artifactSummary: z.string().max(5000).optional(),
       }),
     )

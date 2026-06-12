@@ -20,6 +20,11 @@ import {
   EVENT_TYPE_LABELS,
 } from "@/lib/event-metadata";
 import type { EventAudience, EventFocus } from "@/lib/event-metadata";
+import {
+  formatEventIsoWithOffset,
+  formatEventTimeRange,
+} from "@/lib/event-time";
+import { EventTimeDisplay } from "@/components/event-time-display";
 import { HackathonPanel } from "@/components/hackathon/hackathon-panel";
 
 type MediaValue =
@@ -265,10 +270,20 @@ export default async function EventDetailPage({
           name: event.title,
           description: event.summary ?? undefined,
           startDate: event.startTime
-            ? `${event.date.split("T")[0]}T${event.startTime}`
+            ? formatEventIsoWithOffset(
+                event.date,
+                event.startTime,
+                event.timezone,
+              )
             : event.date,
           ...(event.endTime
-            ? { endDate: `${event.date.split("T")[0]}T${event.endTime}` }
+            ? {
+                endDate: formatEventIsoWithOffset(
+                  event.date,
+                  event.endTime,
+                  event.timezone,
+                ),
+              }
             : {}),
           location: {
             "@type": "Place",
@@ -341,8 +356,12 @@ export default async function EventDetailPage({
         dateMonth={dateMonth}
         dateDay={dateDay}
         dateYear={dateYear}
-        startTime={event.startTime ?? null}
-        endTime={event.endTime ?? null}
+        timeLabel={formatEventTimeRange({
+          date: event.date,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          timezone: event.timezone,
+        })}
         location={event.location}
         aitFitScore={
           typeof event.aitFitScore === "number" ? event.aitFitScore : null
@@ -605,12 +624,12 @@ export default async function EventDetailPage({
               <div className="text-muted-foreground font-mono text-[11px] tracking-wider">
                 {dateMonth} {dateDay}, {dateYear}
               </div>
-              {event.startTime && (
-                <div className="font-mono text-sm tracking-wider">
-                  {event.startTime}
-                  {event.endTime ? ` – ${event.endTime}` : ""}
-                </div>
-              )}
+              <EventTimeDisplay
+                date={event.date}
+                startTime={event.startTime ?? null}
+                endTime={event.endTime ?? null}
+                timezone={event.timezone ?? null}
+              />
             </div>
 
             <div className="border-border border-t pt-4 text-sm">
@@ -708,8 +727,7 @@ function EventHero({
   dateMonth,
   dateDay,
   dateYear,
-  startTime,
-  endTime,
+  timeLabel,
   location,
   aitFitScore,
 }: {
@@ -721,8 +739,7 @@ function EventHero({
   dateMonth: string;
   dateDay: number;
   dateYear: number;
-  startTime: string | null;
-  endTime: string | null;
+  timeLabel: string | null;
   location: string;
   aitFitScore: number | null;
 }) {
@@ -767,13 +784,10 @@ function EventHero({
                   <span>{formatLabel}</span>
                 </>
               )}
-              {startTime && (
+              {timeLabel && (
                 <>
                   <span>·</span>
-                  <span>
-                    {startTime}
-                    {endTime ? `–${endTime}` : ""}
-                  </span>
+                  <span>{timeLabel}</span>
                 </>
               )}
               {aitFitScore !== null && (

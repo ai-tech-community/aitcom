@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TeamLeaderboard } from "./team-leaderboard";
 import { TeamGridProgress } from "./team-grid-progress";
+import { matchesSkillFilter } from "@/server/hackathon/looking-for-team";
 
 export function HackathonPanel({
   challengeId,
@@ -31,13 +32,23 @@ export function HackathonPanel({
     { enabled: userId !== null },
   );
 
+  const { data: lookingList } = api.hackathon.lookingForTeamList.useQuery(
+    { challengeId },
+    // staleTime: the list is a 5-round-trip query; don't refetch it on every
+    // window focus. Mutations invalidate it explicitly.
+    { enabled: userId !== null, staleTime: 30_000 },
+  );
+
   const [teamName, setTeamName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [artifactUrl, setArtifactUrl] = useState("");
   const [artifactSummary, setArtifactSummary] = useState("");
+  const [skillFilter, setSkillFilter] = useState("");
 
-  const invalidate = () =>
+  const invalidate = () => {
     void utils.hackathon.myTeam.invalidate({ challengeId });
+    void utils.hackathon.lookingForTeamList.invalidate({ challengeId });
+  };
 
   const createTeam = api.teams.createTeam.useMutation({
     onSuccess: () => {
@@ -74,6 +85,15 @@ export function HackathonPanel({
     },
     onError: (e) => toast.error(e.message),
   });
+  const setLookingForTeam = api.hackathon.setLookingForTeam.useMutation({
+    onSuccess: () =>
+      void utils.hackathon.lookingForTeamList.invalidate({ challengeId }),
+    onError: (e) => toast.error(e.message),
+  });
+
+  const candidates = (lookingList?.candidates ?? []).filter((c) =>
+    matchesSkillFilter(c.skills, skillFilter),
+  );
   return (
     <section className="mt-8">
       <h2 className="text-lg font-semibold">{t("title")}</h2>
@@ -116,6 +136,87 @@ export function HackathonPanel({
             </Button>
           </Card>
         </div>
+      ) : null}
+
+      {/* "Looking for a team" opt-in (#164): solo-enrolled, forming phase only. */}
+      {userId && !myTeam && lookingList?.open && lookingList.viewer.solo ? (
+        <Card className="mt-4 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-medium">{t("lookingForTeam")}</h3>
+              <p className="text-muted-foreground mt-1 text-xs">
+                {t("lookingForTeamHint")}
+              </p>
+              {/* Hidden profiles never surface in the candidate list — warn
+                  instead of silently dropping the viewer (#164 review). */}
+              {lookingList.viewer.profileHidden ? (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                  {t("lookingForTeamHiddenProfile")}
+                </p>
+              ) : null}
+            </div>
+            <Button
+              size="sm"
+              variant={
+                lookingList.viewer.lookingForTeam ? "secondary" : "default"
+              }
+              disabled={setLookingForTeam.isPending}
+              onClick={() =>
+                setLookingForTeam.mutate({
+                  challengeId,
+                  looking: !lookingList.viewer.lookingForTeam,
+                })
+              }
+            >
+              {lookingList.viewer.lookingForTeam
+                ? t("lookingForTeamOff")
+                : t("lookingForTeamOn")}
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+
+      {/* Skill-filterable teammate list, visible to enrolled participants. */}
+      {userId && lookingList?.open && lookingList.viewer.enrolled ? (
+        <Card className="mt-4 p-4">
+          <h3 className="text-sm font-medium">{t("lookingForTeamList")}</h3>
+          <Input
+            className="mt-2"
+            placeholder={t("filterBySkill")}
+            value={skillFilter}
+            onChange={(e) => setSkillFilter(e.target.value)}
+          />
+          {candidates.length === 0 ? (
+            <p className="text-muted-foreground mt-3 text-xs">
+              {skillFilter.trim()
+                ? t("noCandidatesForSkill")
+                : t("noCandidates")}
+            </p>
+          ) : (
+            <ul className="mt-3 space-y-2">
+              {candidates.map((c) => (
+                <li
+                  key={c.userId}
+                  className="flex flex-wrap items-center justify-between gap-2"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm">{c.displayName}</span>
+                    {c.skills.map((skill) => (
+                      <Badge key={skill} variant="outline">
+                        {skill}
+                      </Badge>
+                    ))}
+                  </div>
+                  <Button asChild size="sm" variant="ghost">
+                    <Link href={`/members/${c.userId}`}>
+                      {t("viewProfile")} →
+                    </Link>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
       ) : null}
 
       {userId && myTeam ? (
@@ -200,7 +301,7 @@ export function HackathonPanel({
         </Card>
       ) : null}
 
-      <TeamLeaderboard challengeId={challengeId} />
+      <TeamLeaderboard challengeId={challengeId} eventSlug={eventSlug} />
     </section>
   );
 }

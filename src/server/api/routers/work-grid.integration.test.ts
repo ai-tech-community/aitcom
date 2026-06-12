@@ -16,7 +16,14 @@
  * Enable it (once Docker Postgres + wsproxy are up — see the repo's docker
  * compose dev stack) with:
  *
- *   RUN_DB_TESTS=1 pnpm exec vitest run src/server/api/routers/work-grid.integration.test.ts
+ *   RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 \
+ *     DATABASE_URL=postgres://postgres:postgres@localhost:5432/aitcom \
+ *     NEON_LOCAL_PROXY=localhost:5433 \
+ *     pnpm exec vitest run src/server/api/routers/work-grid.integration.test.ts
+ *
+ * (SKIP_ENV_VALIDATION is needed because vitest's jsdom environment trips
+ * the t3-env server-var guard; the DATABASE_URL/NEON_LOCAL_PROXY values
+ * match the repo's docker compose dev stack.)
  *
  * (NEON_LOCAL_PROXY / DATABASE_URL come from your local .env; the dev stack sets
  * them to the local Postgres reached through the wsproxy container.)

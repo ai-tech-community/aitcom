@@ -55,6 +55,12 @@ import * as migration_20260610a_participant_workspace from "./20260610a_particip
 import * as migration_20260611a_classroom_modules from "./20260611a_classroom_modules";
 import * as migration_20260611b_modules_locked_docs_rels from "./20260611b_modules_locked_docs_rels";
 import * as migration_20260611_community_ideas_category from "./20260611_community_ideas_category";
+import * as migration_20260611c_events_status_enum_values from "./20260611c_events_status_enum_values";
+import * as migration_20260612a_hackathon_certificates from "./20260612a_hackathon_certificates";
+import * as migration_20260612b_looking_for_team from "./20260612b_looking_for_team";
+import * as migration_20260612c_event_timezone from "./20260612c_event_timezone";
+import * as migration_20260612d_peoples_choice_votes from "./20260612d_peoples_choice_votes";
+import * as migration_20260612e_email_templates from "./20260612e_email_templates";
 
 export const migrations = [
   {
@@ -341,5 +347,35 @@ export const migrations = [
     up: migration_20260611_community_ideas_category.up,
     down: migration_20260611_community_ideas_category.down,
     name: "20260611_community_ideas_category",
+  },
+  {
+    up: migration_20260611c_events_status_enum_values.up,
+    down: migration_20260611c_events_status_enum_values.down,
+    name: "20260611c_events_status_enum_values",
+  },
+  {
+    up: migration_20260612a_hackathon_certificates.up,
+    down: migration_20260612a_hackathon_certificates.down,
+    name: "20260612a_hackathon_certificates",
+  },
+  {
+    up: migration_20260612b_looking_for_team.up,
+    down: migration_20260612b_looking_for_team.down,
+    name: "20260612b_looking_for_team",
+  },
+  {
+    up: migration_20260612c_event_timezone.up,
+    down: migration_20260612c_event_timezone.down,
+    name: "20260612c_event_timezone",
+  },
+  {
+    up: migration_20260612d_peoples_choice_votes.up,
+    down: migration_20260612d_peoples_choice_votes.down,
+    name: "20260612d_peoples_choice_votes",
+  },
+  {
+    up: migration_20260612e_email_templates.up,
+    down: migration_20260612e_email_templates.down,
+    name: "20260612e_email_templates",
   },
 ];

@@ -21,7 +21,14 @@
  * Enable it (once Docker Postgres + wsproxy + Payload are up — see the repo's
  * docker compose dev stack) with:
  *
- *   RUN_DB_TESTS=1 pnpm exec vitest run src/server/api/routers/team-workspace.integration.test.ts
+ *   RUN_DB_TESTS=1 SKIP_ENV_VALIDATION=1 \
+ *     DATABASE_URL=postgres://postgres:postgres@localhost:5432/aitcom \
+ *     NEON_LOCAL_PROXY=localhost:5433 \
+ *     pnpm exec vitest run src/server/api/routers/team-workspace.integration.test.ts
+ *
+ * (SKIP_ENV_VALIDATION is needed because vitest's jsdom environment trips
+ * the t3-env server-var guard; the DATABASE_URL/NEON_LOCAL_PROXY values
+ * match the repo's docker compose dev stack.)
  *
  * What it exercises against the REAL local DB, end to end:
  *   - a real Payload challenge whose creatorId is the sponsor (so the sponsor
@@ -304,8 +311,12 @@ describe.skipIf(!RUN_DB)(
       if (!fx) return;
       const { db, schema, eq, getPayloadClient } = m;
 
-      // FK-safe teardown: results → cells → grid; activity/presence/enrollments;
-      // team; then the four users + profiles; then the Payload challenge.
+      // FK-safe teardown: activity events first (they FK work_cell via cell_id),
+      // then results → cells → grid; presence/enrollments; team; then the four
+      // users + profiles; then the Payload challenge.
+      await db
+        .delete(schema.teamActivityEvents)
+        .where(eq(schema.teamActivityEvents.teamId, fx.teamId));
       const cells = await db
         .select({ id: schema.workCells.id })
         .from(schema.workCells)
@@ -322,9 +333,6 @@ describe.skipIf(!RUN_DB)(
         .delete(schema.workGrids)
         .where(eq(schema.workGrids.id, fx.gridId));
 
-      await db
-        .delete(schema.teamActivityEvents)
-        .where(eq(schema.teamActivityEvents.teamId, fx.teamId));
       await db
         .delete(schema.teamPresence)
         .where(eq(schema.teamPresence.teamId, fx.teamId));

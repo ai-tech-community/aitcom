@@ -37,6 +37,28 @@ import {
   type EventLevel,
   type EventType,
 } from "@/lib/event-metadata";
+import { DEFAULT_EVENT_TIMEZONE } from "@/lib/event-time";
+
+function getBrowserTimeZone(): string {
+  try {
+    return (
+      Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_EVENT_TIMEZONE
+    );
+  } catch {
+    return DEFAULT_EVENT_TIMEZONE;
+  }
+}
+
+function getTimeZoneOptions(current: string): string[] {
+  let zones: string[];
+  try {
+    zones = [...Intl.supportedValuesOf("timeZone")];
+  } catch {
+    zones = [DEFAULT_EVENT_TIMEZONE];
+  }
+  if (current && !zones.includes(current)) zones = [current, ...zones];
+  return zones;
+}
 
 /**
  * Pull a user-readable message out of a tRPC mutation error. Surfaces zod
@@ -80,6 +102,7 @@ interface EventFormData {
   date: string;
   startTime: string;
   endTime: string;
+  timezone: string;
   location: string;
   format: EventFormat | "";
   region: string;
@@ -109,6 +132,7 @@ const emptyForm: EventFormData = {
   date: "",
   startTime: "",
   endTime: "",
+  timezone: "",
   location: "",
   format: "",
   region: "",
@@ -176,6 +200,11 @@ export function EventFormDialog({
         date: editData.date,
         startTime: editData.startTime,
         endTime: editData.endTime,
+        // Legacy events without a timezone were backfilled to the platform
+        // default; stamping the editor's browser zone here would silently
+        // shift the event's wall-clock times to wherever the editor happens
+        // to be. Match the backfill instead.
+        timezone: editData.timezone || DEFAULT_EVENT_TIMEZONE,
         location: editData.location,
         format: editData.format as EventFormat | "",
         region: editData.region,
@@ -197,7 +226,10 @@ export function EventFormDialog({
         coverImageUrl: editData.coverImageUrl,
       });
     } else {
-      setForm(emptyForm);
+      // New events default their timezone from the organizer's browser —
+      // geocoding (Nominatim) can't tell us the zone, so the organizer's own
+      // zone is the best available signal. They can still override it below.
+      setForm({ ...emptyForm, timezone: getBrowserTimeZone() });
       setImportUrl("");
     }
   }, [open, isEditing, editData]);
@@ -258,6 +290,7 @@ export function EventFormDialog({
     date: form.date,
     startTime: form.startTime || undefined,
     endTime: form.endTime || undefined,
+    timezone: form.timezone || undefined,
     location: form.location,
     format: form.format || undefined,
     region: form.region || undefined,
@@ -505,6 +538,27 @@ export function EventFormDialog({
                     setForm({ ...form, endTime: e.target.value })
                   }
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="event-timezone">{t("eventTimezone")}</Label>
+                <Select
+                  value={form.timezone || DEFAULT_EVENT_TIMEZONE}
+                  onValueChange={(v) => setForm({ ...form, timezone: v })}
+                >
+                  <SelectTrigger id="event-timezone">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getTimeZoneOptions(form.timezone).map((zone) => (
+                      <SelectItem key={zone} value={zone}>
+                        {zone.replace(/_/g, " ")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-muted-foreground text-xs">
+                  {t("eventTimezoneHint")}
+                </p>
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="event-location">{t("eventLocation")}</Label>

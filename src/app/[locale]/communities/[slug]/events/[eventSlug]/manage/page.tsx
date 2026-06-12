@@ -6,6 +6,7 @@ import { getSession } from "@/server/better-auth/server";
 import { getPayloadClient } from "@/server/payload";
 import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
 import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
+import { hackathonPhase } from "@/server/hackathon/phase";
 import { HackathonManage } from "@/components/hackathon/hackathon-manage";
 import type { CellRow } from "@/components/hackathon/cell-template-editor";
 
@@ -71,9 +72,7 @@ export default async function ManageHackathonPage({
   };
 
   // Derive the lifecycle phase from server truth so a reload can't resurrect
-  // Lock/Finalize: lockRosters flips teams to status "locked"; finalize stamps
-  // finalRank/prizeAwardedAt on teams (the challenge status itself stays
-  // "active" — there is no completed flip today).
+  // Lock/Finalize (see hackathonPhase for the marker semantics).
   const challengeTeams = await db
     .select({
       status: teams.status,
@@ -82,20 +81,11 @@ export default async function ManageHackathonPage({
     })
     .from(teams)
     .where(eq(teams.challengeId, Number(challenge.id)));
-  const finalized =
-    challenge.status === "completed" ||
-    challengeTeams.some(
-      (t) => t.finalRank !== null || t.prizeAwardedAt !== null,
-    );
-  const rostersLocked = challengeTeams.some((t) => t.status === "locked");
-  const initialPhase =
-    event.status === "draft"
-      ? ("draft" as const)
-      : finalized
-        ? ("finalized" as const)
-        : rostersLocked
-          ? ("locked" as const)
-          : ("live" as const);
+  const initialPhase = hackathonPhase({
+    eventStatus: event.status,
+    challengeStatus: challenge.status ?? "",
+    teams: challengeTeams,
+  });
 
   return (
     <HackathonManage

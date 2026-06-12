@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, sql, and, or, ilike, inArray } from "drizzle-orm";
+import { eq, sql, and, or, ilike, inArray, desc } from "drizzle-orm";
 
 import {
   createTRPCRouter,
@@ -12,7 +12,9 @@ import {
   user,
   eventRegistrations,
   agentProfiles,
+  hackathonCertificates,
 } from "@/server/db/schema";
+import { getPayloadClient } from "@/server/payload";
 import {
   awardXp,
   awardBadge,
@@ -165,6 +167,27 @@ export const membersRouter = createTRPCRouter({
           ),
         );
 
+      // Hackathon certificates (issued at finalize), shown alongside badges.
+      // Same isPublic gate as the rest of the profile (early return above).
+      const certificates = await ctx.db
+        .select()
+        .from(hackathonCertificates)
+        .where(eq(hackathonCertificates.userId, input.userId))
+        .orderBy(desc(hackathonCertificates.issuedAt));
+
+      let challengeTitleById = new Map<number, string>();
+      if (certificates.length > 0) {
+        const payload = await getPayloadClient();
+        const { docs } = await payload.find({
+          collection: "challenges",
+          where: { id: { in: certificates.map((c) => c.challengeId) } },
+          depth: 0,
+          limit: certificates.length,
+          pagination: false,
+        });
+        challengeTitleById = new Map(docs.map((d) => [d.id, d.title]));
+      }
+
       return {
         profile,
         user: memberUser
@@ -176,6 +199,13 @@ export const membersRouter = createTRPCRouter({
         badges: badges.map((b) => ({
           ...BADGES[b.badgeSlug],
           earnedAt: b.earnedAt,
+        })),
+        certificates: certificates.map((c) => ({
+          id: c.id,
+          challengeId: c.challengeId,
+          challengeTitle: challengeTitleById.get(c.challengeId) ?? null,
+          kind: c.kind,
+          issuedAt: c.issuedAt,
         })),
         eventsAttended: attendedCount?.count ?? 0,
       };

@@ -17,6 +17,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { EventFormDialog } from "@/components/communities/event-form-dialog";
+import { formatEventTimeRange } from "@/lib/event-time";
 import { CreateHackathonDialog } from "@/components/hackathon/create-hackathon-dialog";
 
 const typeLabels: Record<string, string> = {
@@ -124,6 +125,7 @@ export default function CommunityEventsPage({
       date: string;
       startTime?: string | null;
       endTime?: string | null;
+      timezone?: string | null;
       location: string;
       status: string;
       source?: string;
@@ -153,6 +155,14 @@ export default function CommunityEventsPage({
           <div className="bg-foreground h-2 w-2 rounded-full" />
           <span className="font-mono text-[12px] sm:text-[13px]">
             {formatDate(event.date)}
+            {event.startTime
+              ? ` · ${formatEventTimeRange({
+                  date: event.date,
+                  startTime: event.startTime,
+                  endTime: event.endTime,
+                  timezone: event.timezone,
+                })}`
+              : ""}
           </span>
           <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden">
             {typeLabels[event.type] ?? event.type}
