@@ -40,7 +40,7 @@ export const EmailTemplates: CollectionConfig = {
       },
       validate: (value: string | null | undefined) => {
         if (typeof value !== "string" || !/^[\w-]+$/.test(value)) {
-          return "Key may only contain letters, numbers, underscores, and hyphens (e.g. \"event-registration-confirmation\").";
+          return 'Key may only contain letters, numbers, underscores, and hyphens (e.g. "event-registration-confirmation").';
         }
         return true;
       },

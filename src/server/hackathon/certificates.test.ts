@@ -61,7 +61,10 @@ describe("certificateAwards", () => {
   });
 
   it("falls back to current rank 1 when no team carries the marker (legacy finalize)", () => {
-    const teams = [team("first", true, 1, false), team("second", true, 2, false)];
+    const teams = [
+      team("first", true, 1, false),
+      team("second", true, 2, false),
+    ];
     const members = [member("first", "a"), member("second", "b")];
     expect(certificateAwards(teams, members)).toEqual([
       { userId: "a", kind: "winner" },

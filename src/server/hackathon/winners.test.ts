@@ -108,10 +108,7 @@ describe("prizeRecipients", () => {
   });
 
   it("returns empty when nothing is finalized yet", () => {
-    const rows = [
-      prizeRow("a", null, false),
-      prizeRow("b", null, false),
-    ];
+    const rows = [prizeRow("a", null, false), prizeRow("b", null, false)];
     expect(prizeRecipients(rows)).toEqual([]);
   });
 

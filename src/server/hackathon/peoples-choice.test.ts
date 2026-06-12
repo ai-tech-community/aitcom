@@ -39,9 +39,9 @@ describe("peoplesChoice", () => {
   });
 
   it("picks the team with the most votes", () => {
-    expect(
-      peoplesChoice([entry("a", 2), entry("b", 5), entry("c", 1)]),
-    ).toBe("b");
+    expect(peoplesChoice([entry("a", 2), entry("b", 5), entry("c", 1)])).toBe(
+      "b",
+    );
   });
 
   it("breaks a vote tie by earliest submission", () => {

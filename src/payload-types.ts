@@ -1286,7 +1286,7 @@ export interface Module {
   createdAt: string;
 }
 /**
- * Editable email templates. Use {{variable}} placeholders; unknown variables render as empty text. Variables for "event-registration-confirmation": {{name}}, {{eventTitle}}, {{eventDate}}, {{eventTime}}, {{eventLocation}}, {{eventSlug}}, {{eventUrl}}.
+ * Editable email templates. Use {{variable}} placeholders; unknown variables render as empty text. Variables for "event-registration-confirmation": {{name}}, {{eventTitle}}, {{eventDate}}, {{eventTime}}, {{eventLocation}}, {{eventSlug}}, {{eventUrl}}. Note: {{eventTime}} may be empty when the event has no start time set.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "email-templates".
