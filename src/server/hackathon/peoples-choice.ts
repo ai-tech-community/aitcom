@@ -10,8 +10,8 @@ import type { HackathonPhase } from "./phase";
 
 /**
  * Voting window follows the hackathon lifecycle: opens when rosters lock
- * (projects start existing) and closes at finalize (the award freezes with
- * the rest of the results).
+ * (projects start existing) and closes at finalize. After that the winner is
+ * recomputed per request from the now-stable votes table, not stored.
  */
 export function votingOpen(phase: HackathonPhase): boolean {
   return phase === "locked";

@@ -1917,7 +1917,7 @@
     "galleryViewProject": "View project",
     "viewGallery": "Project gallery",
     "peoplesChoice": "People's Choice",
-    "peoplesChoiceIntro": "The community's favourite project, voted by members.",
+    "peoplesChoiceIntro": "The community's favorite project, voted by members.",
     "voteCount": "{count, plural, one {# vote} other {# votes}}",
     "vote": "Vote",
     "changeVote": "Change vote",

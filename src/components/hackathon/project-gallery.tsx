@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
+import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,12 @@ export function ProjectGallery({
   });
   const castVote = api.hackathon.castPeoplesChoiceVote.useMutation({
     onSuccess: () => utils.hackathon.peoplesChoiceState.invalidate(),
+    onError: (e) => {
+      toast.error(e.message);
+      // A rejected vote usually means stale state (e.g. the window closed);
+      // refetch so the UI catches up and the vote button disappears.
+      void utils.hackathon.peoplesChoiceState.invalidate();
+    },
   });
   const votesByTeam = new Map(
     (voteState?.counts ?? []).map((c) => [c.teamId, c.votes]),

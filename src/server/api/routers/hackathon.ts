@@ -1420,7 +1420,9 @@ export const hackathonRouter = createTRPCRouter({
         })
         .onConflictDoUpdate({
           target: [hackathonVotes.challengeId, hackathonVotes.userId],
-          set: { teamId: input.teamId, updatedAt: new Date() },
+          // updatedAt is bumped by the column's $onUpdate hook, which drizzle
+          // applies to onConflictDoUpdate sets too.
+          set: { teamId: input.teamId },
         });
 
       return { teamId: input.teamId };
@@ -1468,28 +1470,37 @@ export const hackathonRouter = createTRPCRouter({
         viewerVote = mine?.teamId ?? null;
       }
 
-      // The award only exists once results freeze; the submittedAt tiebreak
-      // needs the voted teams' submission times (see peoples-choice.ts).
+      // The award only exists once finalized; it is recomputed per request
+      // from the (now-stable) votes table. The submittedAt tiebreak needs the
+      // voted teams' submission times (see peoples-choice.ts). Disbanded
+      // teams are excluded — teamLeaderboard never shows them, so a team
+      // disbanded after voting drops out and the award falls to the
+      // runner-up instead of pointing at a vanished card.
       let peoplesChoiceTeamId: string | null = null;
       if (phase === "finalized" && counts.length > 0) {
         const teamRows = await ctx.db
           .select({ id: teams.id, submittedAt: teams.submittedAt })
           .from(teams)
           .where(
-            inArray(
-              teams.id,
-              counts.map((c) => c.teamId),
+            and(
+              inArray(
+                teams.id,
+                counts.map((c) => c.teamId),
+              ),
+              ne(teams.status, "disbanded"),
             ),
           );
         const submittedAtById = new Map(
           teamRows.map((t) => [t.id, t.submittedAt]),
         );
         peoplesChoiceTeamId = peoplesChoice(
-          counts.map((c) => ({
-            teamId: c.teamId,
-            votes: c.votes,
-            submittedAt: submittedAtById.get(c.teamId) ?? null,
-          })),
+          counts
+            .filter((c) => submittedAtById.has(c.teamId))
+            .map((c) => ({
+              teamId: c.teamId,
+              votes: c.votes,
+              submittedAt: submittedAtById.get(c.teamId) ?? null,
+            })),
         );
       }
 
