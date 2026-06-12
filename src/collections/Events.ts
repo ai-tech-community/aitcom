@@ -12,6 +12,7 @@ import {
   EVENT_REVIEW_STATUS_LABELS,
   EVENT_REVIEW_STATUS_OPTIONS,
 } from "@/lib/event-metadata";
+import { DEFAULT_EVENT_TIMEZONE, isValidTimeZone } from "@/lib/event-time";
 import { geocodeEvent } from "@/server/geocoding/nominatim";
 
 function locationChanged(
@@ -180,6 +181,26 @@ export const Events: CollectionConfig = {
                 { name: "startTime", type: "text", admin: { width: "25%" } },
                 { name: "endTime", type: "text", admin: { width: "25%" } },
               ],
+            },
+            // IANA timezone the start/end wall-clock times are expressed in.
+            // Design decision (#166): Nominatim geocoding cannot return a
+            // timezone and we deliberately avoid heavy tz-boundary deps
+            // (geo-tz). The default therefore comes from the organizer's
+            // browser in the community create flow (and from Luma's own
+            // timezone on imports), with this platform-home fallback for
+            // admin-created events. Organizers can always override it.
+            {
+              name: "timezone",
+              type: "text",
+              defaultValue: DEFAULT_EVENT_TIMEZONE,
+              validate: (value: string | null | undefined) =>
+                !value ||
+                isValidTimeZone(value) ||
+                "Must be a valid IANA timezone, e.g. Europe/Amsterdam",
+              admin: {
+                description:
+                  'IANA timezone for start/end times, e.g. "Europe/Amsterdam".',
+              },
             },
             { name: "maxAttendees", type: "number" },
             {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import { isValidTimeZone } from "@/lib/event-time";
 import {
   EVENT_AUDIENCE_OPTIONS,
   EVENT_FOCUS_OPTIONS,
@@ -17,8 +18,24 @@ export const eventUpsertSchema = z.object({
     .optional(),
   type: z.enum(EVENT_TYPES),
   date: z.string(),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
+  startTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format.")
+    .optional(),
+  endTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format.")
+    .optional(),
+  // IANA timezone the start/end times are expressed in. The form defaults it
+  // from the organizer's browser; missing values fall back to the
+  // collection-level default (Europe/Amsterdam).
+  timezone: z
+    .string()
+    .max(64)
+    .optional()
+    .refine((value) => !value || isValidTimeZone(value), {
+      message: "Invalid timezone — use an IANA name like Europe/Amsterdam.",
+    }),
   location: z.string().min(1).max(255),
   format: z.enum(EVENT_FORMAT_OPTIONS).optional(),
   region: z.string().max(255).optional(),
@@ -56,6 +73,7 @@ export function buildEventPayloadData(
     date: input.date,
     startTime: normalizeOptionalString(input.startTime),
     endTime: normalizeOptionalString(input.endTime),
+    timezone: normalizeOptionalString(input.timezone),
     location: input.location,
     format: input.format,
     region: normalizeOptionalString(input.region),

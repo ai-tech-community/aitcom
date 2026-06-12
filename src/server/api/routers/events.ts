@@ -42,6 +42,7 @@ import {
 } from "./event-upsert-data";
 import { runEventImport } from "@/server/events/import-from-url";
 import { checkEventImportRateLimit } from "@/server/events/import-rate-limit";
+import { formatEventTimeRange, isValidTimeZone } from "@/lib/event-time";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -54,6 +55,15 @@ async function getEventEmailData(eventId: number) {
   return {
     eventTitle: event.title,
     eventDate: formatDate(event.date),
+    // Timezone-qualified time, e.g. "18:00–21:00 CEST (Europe/Amsterdam)"
+    eventTime: event.startTime
+      ? `${formatEventTimeRange({
+          date: event.date,
+          startTime: event.startTime,
+          endTime: event.endTime,
+          timezone: event.timezone,
+        })}${isValidTimeZone(event.timezone) ? ` (${event.timezone})` : ""}`
+      : null,
     eventLocation: event.location,
     eventSlug: event.slug,
   };
@@ -478,6 +488,7 @@ export const eventsRouter = createTRPCRouter({
         date: e.date,
         startTime: e.startTime ?? null,
         endTime: e.endTime ?? null,
+        timezone: e.timezone ?? null,
         location: e.location,
         maxAttendees: (e.maxAttendees as number | null) ?? null,
         image: null,
@@ -1180,6 +1191,7 @@ export const eventsRouter = createTRPCRouter({
         date: typeof e.date === "string" ? (e.date.split("T")[0] ?? "") : "",
         startTime: e.startTime ?? "",
         endTime: e.endTime ?? "",
+        timezone: e.timezone ?? "",
         location: e.location ?? "",
         format: e.format ?? "",
         region: e.region ?? "",

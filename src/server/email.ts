@@ -2,6 +2,11 @@
 
 import { Resend } from "resend";
 import { env } from "@/env";
+import {
+  escapeHtml,
+  renderEmailFromTemplate,
+  REGISTRATION_CONFIRMATION_TEMPLATE_KEY,
+} from "@/server/email-template";
 
 let resendInstance: Resend | null = null;
 
@@ -15,24 +20,35 @@ export function getResend(): Resend | null {
 
 const FROM_EMAIL = "AIT Community <noreply@mailer.aitcommunity.org>";
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 interface EventEmailData {
   eventTitle: string;
   eventDate: string;
+  /** Timezone-qualified time, e.g. "18:00–21:00 CEST (Europe/Amsterdam)". */
+  eventTime?: string | null;
   eventLocation: string;
   eventSlug: string;
 }
 
+function eventDetailsRows(event: EventEmailData): string {
+  return [
+    `<tr><td style="padding: 4px 12px 4px 0; color: #666;">Date</td><td>${escapeHtml(event.eventDate)}</td></tr>`,
+    event.eventTime
+      ? `<tr><td style="padding: 4px 12px 4px 0; color: #666;">Time</td><td>${escapeHtml(event.eventTime)}</td></tr>`
+      : "",
+    `<tr><td style="padding: 4px 12px 4px 0; color: #666;">Location</td><td>${escapeHtml(event.eventLocation)}</td></tr>`,
+  ]
+    .filter(Boolean)
+    .join("\n          ");
+}
+
 /**
  * Send registration confirmation email.
+ *
+ * Renders the Payload-managed "event-registration-confirmation" template when
+ * one exists (editable in the admin; see EmailTemplates collection for the
+ * available variables) and falls back to the hardcoded email below when the
+ * template is missing, disabled, or fails to load — sending is never blocked
+ * by template content.
  */
 export async function sendRegistrationConfirmation(
   to: string,
@@ -42,21 +58,36 @@ export async function sendRegistrationConfirmation(
   const resend = getResend();
   if (!resend) return;
 
+  const eventUrl = `https://www.aitcommunity.org/en/events/${encodeURIComponent(event.eventSlug)}`;
+  const rendered = await renderEmailFromTemplate(
+    REGISTRATION_CONFIRMATION_TEMPLATE_KEY,
+    {
+      name: userName,
+      eventTitle: event.eventTitle,
+      eventDate: event.eventDate,
+      eventTime: event.eventTime,
+      eventLocation: event.eventLocation,
+      eventSlug: event.eventSlug,
+      eventUrl,
+    },
+  );
+
   await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: `Registration confirmed: ${event.eventTitle}`,
-    html: `
+    subject: rendered?.subject ?? `Registration confirmed: ${event.eventTitle}`,
+    html:
+      rendered?.html ??
+      `
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
         <h2 style="font-size: 18px;">You're registered!</h2>
         <p>Hi ${escapeHtml(userName)},</p>
         <p>Your registration for <strong>${escapeHtml(event.eventTitle)}</strong> has been confirmed.</p>
         <table style="margin: 16px 0; font-size: 14px;">
-          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Date</td><td>${escapeHtml(event.eventDate)}</td></tr>
-          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Location</td><td>${escapeHtml(event.eventLocation)}</td></tr>
+          ${eventDetailsRows(event)}
         </table>
         <p style="margin-top: 24px;">
-          <a href="https://www.aitcommunity.org/en/events/${encodeURIComponent(event.eventSlug)}" style="color: #000; font-weight: bold;">
+          <a href="${eventUrl}" style="color: #000; font-weight: bold;">
             View event details →
           </a>
         </p>
@@ -125,8 +156,7 @@ export async function sendWaitlistPromotion(
         <p>Hi ${escapeHtml(userName)},</p>
         <p>Good news - a spot opened up for <strong>${escapeHtml(event.eventTitle)}</strong> and you've been moved from the waitlist to registered!</p>
         <table style="margin: 16px 0; font-size: 14px;">
-          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Date</td><td>${escapeHtml(event.eventDate)}</td></tr>
-          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Location</td><td>${escapeHtml(event.eventLocation)}</td></tr>
+          ${eventDetailsRows(event)}
         </table>
         <p style="margin-top: 24px;">
           <a href="https://www.aitcommunity.org/en/events/${encodeURIComponent(event.eventSlug)}" style="color: #000; font-weight: bold;">

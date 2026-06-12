@@ -266,6 +266,7 @@ export const agentRouter = createTRPCRouter({
         date: e.date,
         startTime: e.startTime ?? null,
         endTime: e.endTime ?? null,
+        timezone: e.timezone ?? null,
         location: e.location,
         maxAttendees: e.maxAttendees ?? null,
         descriptionEn: richTextSnippet(e.description, 500),
