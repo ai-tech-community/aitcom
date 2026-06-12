@@ -23,6 +23,9 @@ export function TeamLeaderboard({
   // finalRank is only ever stamped by finalizeHackathon, so its presence is
   // the public signal that the hackathon is finalized and winners exist.
   const finalized = data.some((team) => team.finalRank !== null);
+  // The gallery only ever shows submitted teams, so link it as soon as the
+  // first submission exists (post-lock by construction).
+  const hasSubmissions = data.some((team) => team.submitted);
   // The winner badge follows the disbursement marker (prizeAwarded), not
   // finalRank === 1: a re-finalize recomputes ranks but never re-pays, so the
   // current rank-1 team may not be the team that received the prize. Legacy
@@ -35,14 +38,24 @@ export function TeamLeaderboard({
         <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
           {t("leaderboard")}
         </span>
-        {finalized && eventSlug ? (
-          <Link
-            href={`/events/${eventSlug}/winners`}
-            className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider underline underline-offset-4 transition-colors"
-          >
-            {t("viewWinners")} →
-          </Link>
-        ) : null}
+        <span className="flex items-center gap-4">
+          {hasSubmissions && eventSlug ? (
+            <Link
+              href={`/events/${eventSlug}/gallery`}
+              className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider underline underline-offset-4 transition-colors"
+            >
+              {t("viewGallery")} →
+            </Link>
+          ) : null}
+          {finalized && eventSlug ? (
+            <Link
+              href={`/events/${eventSlug}/winners`}
+              className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider underline underline-offset-4 transition-colors"
+            >
+              {t("viewWinners")} →
+            </Link>
+          ) : null}
+        </span>
       </div>
       <div className="mt-2 space-y-1">
         {data.map((team, i) => {

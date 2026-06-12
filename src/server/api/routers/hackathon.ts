@@ -1084,6 +1084,11 @@ export const hackathonRouter = createTRPCRouter({
           // by this flag, not by finalRank === 1.
           prizeAwarded: t.prizeAwardedAt !== null,
           submitted: t.submittedAt !== null,
+          // Project gallery (#167): once a team submits, the when/what/where
+          // of the artifact is public data alongside the score.
+          submittedAt: t.submittedAt,
+          artifactUrl: t.artifactUrl,
+          artifactSummary: t.artifactSummary,
           memberCount: countByTeam.get(t.id) ?? 0,
           memberFaces: facesByTeam.get(t.id) ?? [],
         }))

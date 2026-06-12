@@ -1905,6 +1905,16 @@
     "allTeams": "All teams",
     "notRanked": "Not ranked",
     "badge": "Badge",
-    "sponsorPrize": "Sponsor reward"
+    "sponsorPrize": "Sponsor reward",
+    "gallery": "Project gallery",
+    "galleryIntro": "Browse the projects teams built and submitted for this hackathon.",
+    "galleryPreLock": "Projects appear here once rosters lock and teams start submitting.",
+    "galleryNoProjects": "No projects have been submitted yet. Check back soon.",
+    "gallerySortBy": "Sort by",
+    "gallerySortNewest": "Newest",
+    "gallerySortName": "Team name",
+    "gallerySortRank": "Rank",
+    "galleryViewProject": "View project",
+    "viewGallery": "Project gallery"
   }
 }

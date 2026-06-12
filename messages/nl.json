@@ -1905,6 +1905,16 @@
     "allTeams": "Alle teams",
     "notRanked": "Niet gerangschikt",
     "badge": "Badge",
-    "sponsorPrize": "Sponsorbeloning"
+    "sponsorPrize": "Sponsorbeloning",
+    "gallery": "Projectgalerij",
+    "galleryIntro": "Bekijk de projecten die teams tijdens deze hackathon hebben gebouwd en ingezonden.",
+    "galleryPreLock": "Projecten verschijnen hier zodra de teams vaststaan en beginnen met inzenden.",
+    "galleryNoProjects": "Er zijn nog geen projecten ingezonden. Kom snel terug.",
+    "gallerySortBy": "Sorteer op",
+    "gallerySortNewest": "Nieuwste",
+    "gallerySortName": "Teamnaam",
+    "gallerySortRank": "Positie",
+    "galleryViewProject": "Bekijk project",
+    "viewGallery": "Projectgalerij"
   }
 }
