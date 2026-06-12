@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { api } from "@/trpc/server";
@@ -9,7 +9,7 @@ import {
 } from "@/server/hackathon/resolve-public-hackathon";
 import { splitPodium, prizeRecipients } from "@/server/hackathon/winners";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
-import { Link } from "@/i18n/navigation";
+import { Link, redirect } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { MemberFaces } from "@/components/hackathon/member-faces";
 import type { MemberFace } from "@/components/hackathon/member-faces";
@@ -56,7 +56,7 @@ export default async function HackathonWinnersPage({
 
   // Finalized-only gate: bounce earlier phases back to the event page —
   // winners must not leak before they exist.
-  if (phase !== "finalized") redirect(`/events/${slug}`);
+  if (phase !== "finalized") redirect({ href: `/events/${slug}`, locale });
 
   const [leaderboard, peoplesChoiceState] = await Promise.all([
     api.hackathon.teamLeaderboard({ challengeId }),

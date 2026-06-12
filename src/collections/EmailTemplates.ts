@@ -1,4 +1,8 @@
-import type { CollectionConfig } from "payload";
+import type { CollectionConfig, FieldHook, TypeWithID } from "payload";
+
+/** Trim surrounding whitespace from the key so lookups match exactly. */
+const trimKey: FieldHook<TypeWithID, unknown> = ({ value }) =>
+  typeof value === "string" ? value.trim() : value;
 
 /**
  * Organizer-editable email templates (#168, tracer bullet).
@@ -32,9 +36,7 @@ export const EmailTemplates: CollectionConfig = {
       unique: true,
       index: true,
       hooks: {
-        beforeValidate: [
-          ({ value }) => (typeof value === "string" ? value.trim() : value),
-        ],
+        beforeValidate: [trimKey],
       },
       validate: (value: string | null | undefined) => {
         if (typeof value !== "string" || !/^[\w-]+$/.test(value)) {

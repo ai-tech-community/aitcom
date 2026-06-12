@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { api } from "@/trpc/server";
@@ -10,7 +10,7 @@ import {
 } from "@/server/hackathon/resolve-public-hackathon";
 import { submittedProjects } from "@/server/hackathon/gallery";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
-import { Link } from "@/i18n/navigation";
+import { Link, redirect } from "@/i18n/navigation";
 import {
   ProjectGallery,
   type GalleryProject,
@@ -59,7 +59,7 @@ export default async function HackathonGalleryPage({
   // Phase gate from server truth (same derivation as the winners page).
   // Cancelled events collapse to "draft" and bounce back to the event page;
   // "live" renders an explainer (submissions only start once rosters lock).
-  if (phase === "draft") redirect(`/events/${slug}`);
+  if (phase === "draft") redirect({ href: `/events/${slug}`, locale });
 
   // Auth presence only (no role gate): the vote button renders for any
   // signed-in member; unauthenticated viewers just see the counts (#169).

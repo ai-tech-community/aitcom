@@ -1273,6 +1273,10 @@ export const hackathonRouter = createTRPCRouter({
             eq(challengeEnrollments.challengeId, input.challengeId),
             isNotNull(challengeEnrollments.lookingForTeamAt),
             isNull(challengeEnrollments.teamId),
+            // Abandoned enrollments never surface (SQL-level filter; status is
+            // not part of the pure projection input below) — consistent with
+            // the analytics funnel.
+            ne(challengeEnrollments.status, "abandoned"),
           ),
         );
 

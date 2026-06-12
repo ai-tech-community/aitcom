@@ -3,6 +3,7 @@
 import { Resend } from "resend";
 import { env } from "@/env";
 import {
+  escapeHtml,
   renderEmailFromTemplate,
   REGISTRATION_CONFIRMATION_TEMPLATE_KEY,
 } from "@/server/email-template";
@@ -18,15 +19,6 @@ export function getResend(): Resend | null {
 }
 
 const FROM_EMAIL = "AIT Community <noreply@mailer.aitcommunity.org>";
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 interface EventEmailData {
   eventTitle: string;

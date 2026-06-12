@@ -30,7 +30,8 @@ export interface RenderedEmail {
   html: string;
 }
 
-function escapeHtml(str: string): string {
+/** Escape a string for safe interpolation into email HTML (shared with email.ts). */
+export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
