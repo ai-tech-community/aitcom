@@ -19,6 +19,7 @@ import {
   workCellResults,
   challengeEnrollments,
   hackathonCertificates,
+  hackathonVotes,
   memberProfiles,
   notifications,
   communityMemberships,
@@ -49,6 +50,10 @@ import {
   LookingForTeamError,
 } from "@/server/hackathon/looking-for-team";
 import { certificateAwards } from "@/server/hackathon/certificates";
+import {
+  votingOpen as peoplesChoiceVotingOpen,
+  peoplesChoice,
+} from "@/server/hackathon/peoples-choice";
 import {
   participationFunnel,
   cellCompletion,
@@ -1356,5 +1361,143 @@ export const hackathonRouter = createTRPCRouter({
           verifiedCells.has(c.id) ? "verified" : null,
         ),
       }));
+    }),
+
+  /**
+   * Cast (or retarget) the caller's People's Choice vote (#169). Any
+   * authenticated member — enrolled or not — gets exactly ONE vote per
+   * hackathon: the unique (challenge_id, user_id) index makes that structural
+   * and the UPSERT makes it changeable while the window is open. The window
+   * follows the lifecycle (open iff phase === 'locked'; see
+   * peoples-choice.ts), derived server-side from the same event/phase truth
+   * as setLookingForTeam so a stale client can't vote early or late. Only
+   * submitted, non-disbanded teams of THIS challenge are votable — exactly
+   * the set the gallery shows. Deliberately non-scoring (ADR-0029).
+   */
+  castPeoplesChoiceVote: protectedProcedure
+    .input(z.object({ challengeId: z.number(), teamId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const challenge = await loadChallenge(input.challengeId);
+      const phase = await currentHackathonPhase(
+        ctx.db,
+        input.challengeId,
+        challenge.status ?? "",
+      );
+      if (!peoplesChoiceVotingOpen(phase)) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "Voting is not open — it runs from roster lock until the results are finalized.",
+        });
+      }
+
+      const [team] = await ctx.db
+        .select({ id: teams.id, submittedAt: teams.submittedAt })
+        .from(teams)
+        .where(
+          and(
+            eq(teams.id, input.teamId),
+            eq(teams.challengeId, input.challengeId),
+            ne(teams.status, "disbanded"),
+          ),
+        )
+        .limit(1);
+      if (team?.submittedAt == null) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Only submitted projects in this hackathon can be voted for.",
+        });
+      }
+
+      await ctx.db
+        .insert(hackathonVotes)
+        .values({
+          challengeId: input.challengeId,
+          userId,
+          teamId: input.teamId,
+        })
+        .onConflictDoUpdate({
+          target: [hackathonVotes.challengeId, hackathonVotes.userId],
+          set: { teamId: input.teamId, updatedAt: new Date() },
+        });
+
+      return { teamId: input.teamId };
+    }),
+
+  /**
+   * Public People's Choice projection for the gallery and winners pages
+   * (#169): per-team vote counts, whether the window is open, the viewer's
+   * current vote (null when unauthenticated), and — only once finalized —
+   * the People's Choice team. Kept separate from teamLeaderboard so the
+   * scored leaderboard projection stays untouched (non-scoring by
+   * construction, ADR-0029).
+   */
+  peoplesChoiceState: publicProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const challenge = await loadChallenge(input.challengeId);
+      const phase = await currentHackathonPhase(
+        ctx.db,
+        input.challengeId,
+        challenge.status ?? "",
+      );
+
+      const counts = await ctx.db
+        .select({
+          teamId: hackathonVotes.teamId,
+          votes: sql<number>`count(*)::int`,
+        })
+        .from(hackathonVotes)
+        .where(eq(hackathonVotes.challengeId, input.challengeId))
+        .groupBy(hackathonVotes.teamId);
+
+      let viewerVote: string | null = null;
+      if (ctx.session?.user) {
+        const [mine] = await ctx.db
+          .select({ teamId: hackathonVotes.teamId })
+          .from(hackathonVotes)
+          .where(
+            and(
+              eq(hackathonVotes.challengeId, input.challengeId),
+              eq(hackathonVotes.userId, ctx.session.user.id),
+            ),
+          )
+          .limit(1);
+        viewerVote = mine?.teamId ?? null;
+      }
+
+      // The award only exists once results freeze; the submittedAt tiebreak
+      // needs the voted teams' submission times (see peoples-choice.ts).
+      let peoplesChoiceTeamId: string | null = null;
+      if (phase === "finalized" && counts.length > 0) {
+        const teamRows = await ctx.db
+          .select({ id: teams.id, submittedAt: teams.submittedAt })
+          .from(teams)
+          .where(
+            inArray(
+              teams.id,
+              counts.map((c) => c.teamId),
+            ),
+          );
+        const submittedAtById = new Map(
+          teamRows.map((t) => [t.id, t.submittedAt]),
+        );
+        peoplesChoiceTeamId = peoplesChoice(
+          counts.map((c) => ({
+            teamId: c.teamId,
+            votes: c.votes,
+            submittedAt: submittedAtById.get(c.teamId) ?? null,
+          })),
+        );
+      }
+
+      return {
+        votingOpen: peoplesChoiceVotingOpen(phase),
+        counts,
+        viewerVote,
+        peoplesChoiceTeamId,
+      };
     }),
 });

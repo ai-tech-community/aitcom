@@ -58,8 +58,24 @@ export default async function HackathonWinnersPage({
   // winners must not leak before they exist.
   if (phase !== "finalized") redirect(`/events/${slug}`);
 
-  const leaderboard = await api.hackathon.teamLeaderboard({ challengeId });
+  const [leaderboard, peoplesChoiceState] = await Promise.all([
+    api.hackathon.teamLeaderboard({ challengeId }),
+    api.hackathon.peoplesChoiceState({ challengeId }),
+  ]);
   const { podium, field } = splitPodium(leaderboard);
+
+  // People's Choice (#169): a parallel community award — surfaced next to the
+  // results but never an input to scores or final ranks (ADR-0029 intact).
+  const peoplesChoiceTeam = peoplesChoiceState.peoplesChoiceTeamId
+    ? (leaderboard.find(
+        (t) => t.teamId === peoplesChoiceState.peoplesChoiceTeamId,
+      ) ?? null)
+    : null;
+  const peoplesChoiceVotes = peoplesChoiceTeam
+    ? (peoplesChoiceState.counts.find(
+        (c) => c.teamId === peoplesChoiceTeam.teamId,
+      )?.votes ?? 0)
+    : 0;
   // The prize follows the disbursement marker, not the (re-computable) rank:
   // after a re-finalize the current rank-1 team may not be the team that was
   // actually paid. Falls back to rank 1 for legacy data without the marker.
@@ -154,6 +170,34 @@ export default async function HackathonWinnersPage({
           </div>
         ))}
       </div>
+
+      {/* People's Choice — community-voted, parallel to the scored podium */}
+      {peoplesChoiceTeam ? (
+        <div className="border-border bg-card mt-6 rounded-lg border p-5">
+          <div className="flex items-center justify-between gap-2">
+            <Badge
+              variant="secondary"
+              className="bg-amber-500/15 text-amber-600 dark:text-amber-400"
+            >
+              {t("peoplesChoice")}
+            </Badge>
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
+              {t("voteCount", { count: peoplesChoiceVotes })}
+            </span>
+          </div>
+          <h2 className="mt-2 text-xl font-bold">{peoplesChoiceTeam.name}</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {t("peoplesChoiceIntro")}
+          </p>
+          <MemberFaces
+            faces={peoplesChoiceTeam.memberFaces}
+            privateCount={
+              peoplesChoiceTeam.memberCount -
+              peoplesChoiceTeam.memberFaces.length
+            }
+          />
+        </div>
+      ) : null}
 
       {/* All participating teams */}
       {field.length > 0 ? (

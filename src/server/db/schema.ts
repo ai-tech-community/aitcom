@@ -2960,6 +2960,45 @@ export const hackathonCertificates = appSchema.table(
   ],
 );
 
+/** People's Choice votes on submitted gallery projects (#169). One vote per
+ *  member per hackathon — the unique (challenge_id, user_id) index is the
+ *  uniqueness guarantee; "changeable while voting is open" is an UPSERT that
+ *  retargets team_id. Deliberately NON-SCORING (ADR-0029): nothing reads this
+ *  table in the scoring/finalize path — it powers a parallel recognition
+ *  award only. */
+export const hackathonVotes = appSchema.table(
+  "hackathon_vote",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    challengeId: d.integer().notNull(), // References Payload challenges table
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    teamId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => teams.id),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    index("hackathon_vote_team_idx").on(t.teamId),
+    uniqueIndex("hackathon_vote_unique").on(t.challengeId, t.userId),
+  ],
+);
+
 export const communityLumaIntegrations = appSchema.table(
   "community_luma_integration",
   (d) => ({

@@ -1915,6 +1915,12 @@
     "gallerySortName": "Team name",
     "gallerySortRank": "Rank",
     "galleryViewProject": "View project",
-    "viewGallery": "Project gallery"
+    "viewGallery": "Project gallery",
+    "peoplesChoice": "People's Choice",
+    "peoplesChoiceIntro": "The community's favourite project, voted by members.",
+    "voteCount": "{count, plural, one {# vote} other {# votes}}",
+    "vote": "Vote",
+    "changeVote": "Change vote",
+    "yourVote": "Your vote"
   }
 }

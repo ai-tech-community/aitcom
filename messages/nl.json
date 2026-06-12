@@ -1915,6 +1915,12 @@
     "gallerySortName": "Teamnaam",
     "gallerySortRank": "Positie",
     "galleryViewProject": "Bekijk project",
-    "viewGallery": "Projectgalerij"
+    "viewGallery": "Projectgalerij",
+    "peoplesChoice": "Publieksprijs",
+    "peoplesChoiceIntro": "Het favoriete project van de community, gekozen door de leden.",
+    "voteCount": "{count, plural, one {# stem} other {# stemmen}}",
+    "vote": "Stem",
+    "changeVote": "Wijzig stem",
+    "yourVote": "Jouw stem"
   }
 }

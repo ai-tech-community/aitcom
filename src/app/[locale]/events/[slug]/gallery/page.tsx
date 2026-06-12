@@ -3,6 +3,7 @@ import { redirect, notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { api } from "@/trpc/server";
+import { getSession } from "@/server/better-auth/server";
 import {
   findPublicEvent,
   resolvePublicHackathonPage,
@@ -60,6 +61,10 @@ export default async function HackathonGalleryPage({
   // "live" renders an explainer (submissions only start once rosters lock).
   if (phase === "draft") redirect(`/events/${slug}`);
 
+  // Auth presence only (no role gate): the vote button renders for any
+  // signed-in member; unauthenticated viewers just see the counts (#169).
+  const session = await getSession();
+
   let projects: GalleryProject[] = [];
   if (phase !== "live") {
     const leaderboard = await api.hackathon.teamLeaderboard({ challengeId });
@@ -106,7 +111,12 @@ export default async function HackathonGalleryPage({
       ) : projects.length === 0 ? (
         <EmptyState message={t("galleryNoProjects")} />
       ) : (
-        <ProjectGallery projects={projects} finalized={phase === "finalized"} />
+        <ProjectGallery
+          projects={projects}
+          finalized={phase === "finalized"}
+          challengeId={challengeId}
+          viewerAuthenticated={session?.user !== undefined}
+        />
       )}
     </div>
   );

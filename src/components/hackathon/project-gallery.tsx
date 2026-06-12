@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 
+import { api } from "@/trpc/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MemberFaces } from "@/components/hackathon/member-faces";
@@ -30,17 +31,37 @@ export interface GalleryProject {
  * Client half of the public project gallery (#167): holds the sort state and
  * re-orders the server-fetched entries locally. The rank sort only appears
  * once the hackathon is finalized (final ranks exist).
+ *
+ * Also hosts the People's Choice vote (#169): per-card vote counts, a
+ * vote/change-vote button while the window is open (authenticated members
+ * only — one changeable vote per hackathon), and the People's Choice badge
+ * once finalized. Non-scoring: purely a recognition award (ADR-0029 intact).
  */
 export function ProjectGallery({
   projects,
   finalized,
+  challengeId,
+  viewerAuthenticated,
 }: {
   projects: GalleryProject[];
   finalized: boolean;
+  challengeId: number;
+  viewerAuthenticated: boolean;
 }) {
   const t = useTranslations("hackathon");
   const format = useFormatter();
   const [sortKey, setSortKey] = useState<GallerySortKey>("newest");
+
+  const utils = api.useUtils();
+  const { data: voteState } = api.hackathon.peoplesChoiceState.useQuery({
+    challengeId,
+  });
+  const castVote = api.hackathon.castPeoplesChoiceVote.useMutation({
+    onSuccess: () => utils.hackathon.peoplesChoiceState.invalidate(),
+  });
+  const votesByTeam = new Map(
+    (voteState?.counts ?? []).map((c) => [c.teamId, c.votes]),
+  );
 
   const sortLabel: Record<GallerySortKey, string> = {
     newest: t("gallerySortNewest"),
@@ -76,6 +97,10 @@ export function ProjectGallery({
         {sorted.map((project) => {
           // Captain-controlled URL: only http(s) may render as a public href.
           const artifactHref = safeArtifactHref(project.artifactUrl);
+          const votes = votesByTeam.get(project.teamId) ?? 0;
+          const isViewerVote = voteState?.viewerVote === project.teamId;
+          const isPeoplesChoice =
+            voteState?.peoplesChoiceTeamId === project.teamId;
           return (
             <div
               key={project.teamId}
@@ -83,13 +108,23 @@ export function ProjectGallery({
             >
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-lg font-bold">{project.name}</h2>
-                {project.finalRank !== null ? (
-                  <span className="text-muted-foreground font-mono text-xs tracking-wider">
-                    {t("rank")} #{project.finalRank}
-                  </span>
-                ) : (
-                  <Badge variant="secondary">{t("submitted")}</Badge>
-                )}
+                <div className="flex items-center gap-2">
+                  {isPeoplesChoice ? (
+                    <Badge
+                      variant="secondary"
+                      className="bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                    >
+                      {t("peoplesChoice")}
+                    </Badge>
+                  ) : null}
+                  {project.finalRank !== null ? (
+                    <span className="text-muted-foreground font-mono text-xs tracking-wider">
+                      {t("rank")} #{project.finalRank}
+                    </span>
+                  ) : (
+                    <Badge variant="secondary">{t("submitted")}</Badge>
+                  )}
+                </div>
               </div>
               <div className="text-muted-foreground mt-1 font-mono text-[11px] tracking-wider">
                 {format.dateTime(new Date(project.submittedAt), {
@@ -118,6 +153,35 @@ export function ProjectGallery({
                 faces={project.memberFaces}
                 privateCount={project.memberCount - project.memberFaces.length}
               />
+
+              {/* People's Choice (#169): community vote, never a score input. */}
+              {voteState ? (
+                <div className="border-border mt-4 flex items-center justify-between gap-2 border-t pt-3">
+                  <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+                    {t("voteCount", { count: votes })}
+                  </span>
+                  {voteState.votingOpen && viewerAuthenticated ? (
+                    <Button
+                      size="sm"
+                      variant={isViewerVote ? "secondary" : "outline"}
+                      aria-pressed={isViewerVote}
+                      disabled={castVote.isPending || isViewerVote}
+                      onClick={() =>
+                        castVote.mutate({
+                          challengeId,
+                          teamId: project.teamId,
+                        })
+                      }
+                    >
+                      {isViewerVote
+                        ? t("yourVote")
+                        : voteState.viewerVote
+                          ? t("changeVote")
+                          : t("vote")}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           );
         })}
