@@ -23,6 +23,7 @@ import { EventsMap, type MapEvent } from "@/components/events-map";
 import { UseMyLocationButton } from "@/components/use-my-location-button";
 import { getVisitorLocation } from "@/lib/visitor-location";
 import { haversineDistanceKm, formatDistance } from "@/lib/geo";
+import { formatEventTimeRange } from "@/lib/event-time";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -399,6 +400,19 @@ export default async function EventsPage({
                 <div className="space-y-4 p-5">
                   <div className="text-muted-foreground flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-wider">
                     <span>{formatDate(event.date)}</span>
+                    {event.startTime && (
+                      <>
+                        <span>•</span>
+                        <span>
+                          {formatEventTimeRange({
+                            date: event.date,
+                            startTime: event.startTime,
+                            endTime: event.endTime,
+                            timezone: event.timezone,
+                          })}
+                        </span>
+                      </>
+                    )}
                     <span>•</span>
                     <span>{EVENT_TYPE_LABELS[event.type] ?? event.type}</span>
                     {event.format && (

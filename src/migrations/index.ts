@@ -56,6 +56,7 @@ import * as migration_20260611a_classroom_modules from "./20260611a_classroom_mo
 import * as migration_20260611b_modules_locked_docs_rels from "./20260611b_modules_locked_docs_rels";
 import * as migration_20260612a_hackathon_certificates from "./20260612a_hackathon_certificates";
 import * as migration_20260612b_looking_for_team from "./20260612b_looking_for_team";
+import * as migration_20260612c_event_timezone from "./20260612c_event_timezone";
 
 export const migrations = [
   {
@@ -347,5 +348,10 @@ export const migrations = [
     up: migration_20260612b_looking_for_team.up,
     down: migration_20260612b_looking_for_team.down,
     name: "20260612b_looking_for_team",
+  },
+  {
+    up: migration_20260612c_event_timezone.up,
+    down: migration_20260612c_event_timezone.down,
+    name: "20260612c_event_timezone",
   },
 ];

@@ -27,8 +27,22 @@ function escapeHtml(str: string): string {
 interface EventEmailData {
   eventTitle: string;
   eventDate: string;
+  /** Timezone-qualified time, e.g. "18:00–21:00 CEST (Europe/Amsterdam)". */
+  eventTime?: string | null;
   eventLocation: string;
   eventSlug: string;
+}
+
+function eventDetailsRows(event: EventEmailData): string {
+  return [
+    `<tr><td style="padding: 4px 12px 4px 0; color: #666;">Date</td><td>${escapeHtml(event.eventDate)}</td></tr>`,
+    event.eventTime
+      ? `<tr><td style="padding: 4px 12px 4px 0; color: #666;">Time</td><td>${escapeHtml(event.eventTime)}</td></tr>`
+      : "",
+    `<tr><td style="padding: 4px 12px 4px 0; color: #666;">Location</td><td>${escapeHtml(event.eventLocation)}</td></tr>`,
+  ]
+    .filter(Boolean)
+    .join("\n          ");
 }
 
 /**
@@ -52,8 +66,7 @@ export async function sendRegistrationConfirmation(
         <p>Hi ${escapeHtml(userName)},</p>
         <p>Your registration for <strong>${escapeHtml(event.eventTitle)}</strong> has been confirmed.</p>
         <table style="margin: 16px 0; font-size: 14px;">
-          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Date</td><td>${escapeHtml(event.eventDate)}</td></tr>
-          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Location</td><td>${escapeHtml(event.eventLocation)}</td></tr>
+          ${eventDetailsRows(event)}
         </table>
         <p style="margin-top: 24px;">
           <a href="https://www.aitcommunity.org/en/events/${encodeURIComponent(event.eventSlug)}" style="color: #000; font-weight: bold;">
@@ -125,8 +138,7 @@ export async function sendWaitlistPromotion(
         <p>Hi ${escapeHtml(userName)},</p>
         <p>Good news - a spot opened up for <strong>${escapeHtml(event.eventTitle)}</strong> and you've been moved from the waitlist to registered!</p>
         <table style="margin: 16px 0; font-size: 14px;">
-          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Date</td><td>${escapeHtml(event.eventDate)}</td></tr>
-          <tr><td style="padding: 4px 12px 4px 0; color: #666;">Location</td><td>${escapeHtml(event.eventLocation)}</td></tr>
+          ${eventDetailsRows(event)}
         </table>
         <p style="margin-top: 24px;">
           <a href="https://www.aitcommunity.org/en/events/${encodeURIComponent(event.eventSlug)}" style="color: #000; font-weight: bold;">

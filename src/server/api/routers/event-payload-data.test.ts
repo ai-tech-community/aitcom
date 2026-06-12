@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildEventPayloadData } from "./event-upsert-data";
+import { buildEventPayloadData, eventUpsertSchema } from "./event-upsert-data";
 
 describe("buildEventPayloadData", () => {
   const base = {
@@ -17,5 +17,52 @@ describe("buildEventPayloadData", () => {
   it("leaves coverImage undefined when not provided", () => {
     const data = buildEventPayloadData(base);
     expect(data.coverImage).toBeUndefined();
+  });
+
+  it("passes a valid IANA timezone through", () => {
+    const data = buildEventPayloadData({
+      ...base,
+      timezone: "America/New_York",
+    });
+    expect(data.timezone).toBe("America/New_York");
+  });
+
+  it("leaves timezone undefined when not provided, so the collection default (Europe/Amsterdam) applies", () => {
+    const data = buildEventPayloadData(base);
+    expect(data.timezone).toBeUndefined();
+  });
+});
+
+describe("eventUpsertSchema timezone validation", () => {
+  const base = {
+    title: "AI Builders Meetup",
+    type: "meetup" as const,
+    date: "2026-06-12",
+    location: "Amsterdam",
+  };
+
+  it("accepts a valid IANA timezone", () => {
+    const parsed = eventUpsertSchema.safeParse({
+      ...base,
+      timezone: "Europe/Amsterdam",
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("accepts a missing timezone", () => {
+    expect(eventUpsertSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("rejects a non-IANA timezone", () => {
+    const parsed = eventUpsertSchema.safeParse({
+      ...base,
+      timezone: "Not/A_Zone",
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects a bare abbreviation", () => {
+    const parsed = eventUpsertSchema.safeParse({ ...base, timezone: "CEST" });
+    expect(parsed.success).toBe(false);
   });
 });

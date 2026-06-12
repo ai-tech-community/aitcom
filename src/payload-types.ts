@@ -217,6 +217,10 @@ export interface Event {
   date: string;
   startTime?: string | null;
   endTime?: string | null;
+  /**
+   * IANA timezone for start/end times, e.g. "Europe/Amsterdam".
+   */
+  timezone?: string | null;
   maxAttendees?: number | null;
   /**
    * Price in EUR cents (e.g. 1500 = €15.00). Leave empty for free events.
@@ -1490,6 +1494,7 @@ export interface EventsSelect<T extends boolean = true> {
   date?: T;
   startTime?: T;
   endTime?: T;
+  timezone?: T;
   maxAttendees?: T;
   price?: T;
   focus?: T;
