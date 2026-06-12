@@ -24,6 +24,7 @@ function mockPayloadFind(result: unknown) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
+  vi.spyOn(console, "warn").mockImplementation(() => undefined);
 });
 
 describe("renderTemplate", () => {
@@ -149,6 +150,8 @@ describe("renderEmailFromTemplate", () => {
     await expect(renderEmailFromTemplate("missing-key", vars)).resolves.toBe(
       null,
     );
+    // Missing templates are the normal case — no warning expected.
+    expect(console.warn).not.toHaveBeenCalled();
   });
 
   it("returns null when the template has a blank subject or body (fallback)", async () => {
@@ -156,11 +159,16 @@ describe("renderEmailFromTemplate", () => {
     await expect(
       renderEmailFromTemplate(REGISTRATION_CONFIRMATION_TEMPLATE_KEY, vars),
     ).resolves.toBe(null);
+    expect(console.warn).toHaveBeenCalledTimes(1);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(REGISTRATION_CONFIRMATION_TEMPLATE_KEY),
+    );
 
     mockPayloadFind({ docs: [{ subject: "Hi", body: "   " }] });
     await expect(
       renderEmailFromTemplate(REGISTRATION_CONFIRMATION_TEMPLATE_KEY, vars),
     ).resolves.toBe(null);
+    expect(console.warn).toHaveBeenCalledTimes(2);
   });
 
   it("returns null when the template renders to blank output (fallback)", async () => {
@@ -170,6 +178,10 @@ describe("renderEmailFromTemplate", () => {
     await expect(
       renderEmailFromTemplate(REGISTRATION_CONFIRMATION_TEMPLATE_KEY, vars),
     ).resolves.toBe(null);
+    expect(console.warn).toHaveBeenCalledTimes(1);
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(REGISTRATION_CONFIRMATION_TEMPLATE_KEY),
+    );
   });
 
   it("returns null when the payload query throws (fallback, never rejects)", async () => {
@@ -193,7 +205,9 @@ describe("renderEmailFromTemplate", () => {
     const find = mockPayloadFind({ docs: [] });
     await renderEmailFromTemplate(REGISTRATION_CONFIRMATION_TEMPLATE_KEY, vars);
     expect(find).toHaveBeenCalledTimes(1);
-    const arg = find.mock.calls[0]?.[0] as { where: unknown };
-    expect(JSON.stringify(arg.where)).toContain("enabled");
+    const arg = find.mock.calls[0]?.[0] as { where: { and: unknown[] } };
+    expect(arg.where.and).toContainEqual({
+      enabled: { not_equals: false },
+    });
   });
 });

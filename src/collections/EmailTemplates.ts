@@ -21,7 +21,8 @@ export const EmailTemplates: CollectionConfig = {
       "variables render as empty text. Variables for " +
       '"event-registration-confirmation": {{name}}, {{eventTitle}}, ' +
       "{{eventDate}}, {{eventTime}}, {{eventLocation}}, {{eventSlug}}, " +
-      "{{eventUrl}}.",
+      "{{eventUrl}}. Note: {{eventTime}} may be empty when the event has no " +
+      "start time set.",
   },
   fields: [
     {
@@ -30,6 +31,17 @@ export const EmailTemplates: CollectionConfig = {
       required: true,
       unique: true,
       index: true,
+      hooks: {
+        beforeValidate: [
+          ({ value }) => (typeof value === "string" ? value.trim() : value),
+        ],
+      },
+      validate: (value: string | null | undefined) => {
+        if (typeof value !== "string" || !/^[\w-]+$/.test(value)) {
+          return "Key may only contain letters, numbers, underscores, and hyphens (e.g. \"event-registration-confirmation\").";
+        }
+        return true;
+      },
       admin: {
         description:
           'Template identifier used by the send path, e.g. "event-registration-confirmation".',

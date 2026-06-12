@@ -101,11 +101,19 @@ export async function renderEmailFromTemplate(
     if (!doc) return null;
     const subject = typeof doc.subject === "string" ? doc.subject : "";
     const body = typeof doc.body === "string" ? doc.body : "";
-    if (subject.trim() === "" || body.trim() === "") return null;
+    if (subject.trim() === "" || body.trim() === "") {
+      console.warn(
+        `[email-template] Template "${key}" found but has a blank subject or body; falling back to built-in email`,
+      );
+      return null;
+    }
     const rendered = renderTemplate({ subject, body }, vars);
     // A template made only of unknown placeholders renders to nothing —
     // treat that as invalid and use the built-in email instead.
     if (rendered.subject.trim() === "" || rendered.html.trim() === "") {
+      console.warn(
+        `[email-template] Template "${key}" rendered to blank output; falling back to built-in email`,
+      );
       return null;
     }
     return rendered;
