@@ -2,6 +2,10 @@
 
 import { Resend } from "resend";
 import { env } from "@/env";
+import {
+  renderEmailFromTemplate,
+  REGISTRATION_CONFIRMATION_TEMPLATE_KEY,
+} from "@/server/email-template";
 
 let resendInstance: Resend | null = null;
 
@@ -47,6 +51,12 @@ function eventDetailsRows(event: EventEmailData): string {
 
 /**
  * Send registration confirmation email.
+ *
+ * Renders the Payload-managed "event-registration-confirmation" template when
+ * one exists (editable in the admin; see EmailTemplates collection for the
+ * available variables) and falls back to the hardcoded email below when the
+ * template is missing, disabled, or fails to load — sending is never blocked
+ * by template content.
  */
 export async function sendRegistrationConfirmation(
   to: string,
@@ -56,11 +66,27 @@ export async function sendRegistrationConfirmation(
   const resend = getResend();
   if (!resend) return;
 
+  const eventUrl = `https://www.aitcommunity.org/en/events/${encodeURIComponent(event.eventSlug)}`;
+  const rendered = await renderEmailFromTemplate(
+    REGISTRATION_CONFIRMATION_TEMPLATE_KEY,
+    {
+      name: userName,
+      eventTitle: event.eventTitle,
+      eventDate: event.eventDate,
+      eventTime: event.eventTime,
+      eventLocation: event.eventLocation,
+      eventSlug: event.eventSlug,
+      eventUrl,
+    },
+  );
+
   await resend.emails.send({
     from: FROM_EMAIL,
     to,
-    subject: `Registration confirmed: ${event.eventTitle}`,
-    html: `
+    subject: rendered?.subject ?? `Registration confirmed: ${event.eventTitle}`,
+    html:
+      rendered?.html ??
+      `
       <div style="font-family: monospace; max-width: 600px; margin: 0 auto;">
         <h2 style="font-size: 18px;">You're registered!</h2>
         <p>Hi ${escapeHtml(userName)},</p>
@@ -69,7 +95,7 @@ export async function sendRegistrationConfirmation(
           ${eventDetailsRows(event)}
         </table>
         <p style="margin-top: 24px;">
-          <a href="https://www.aitcommunity.org/en/events/${encodeURIComponent(event.eventSlug)}" style="color: #000; font-weight: bold;">
+          <a href="${eventUrl}" style="color: #000; font-weight: bold;">
             View event details →
           </a>
         </p>

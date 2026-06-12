@@ -1807,6 +1807,36 @@ export const rules_acceptance = pgTable(
   ],
 );
 
+export const email_templates = pgTable(
+  "email_templates",
+  {
+    id: serial("id").primaryKey(),
+    key: varchar("key").notNull(),
+    subject: varchar("subject").notNull(),
+    body: varchar("body").notNull(),
+    enabled: boolean("enabled").default(true),
+    updatedAt: timestamp("updated_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+    createdAt: timestamp("created_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (columns) => [
+    uniqueIndex("email_templates_key_idx").on(columns.key),
+    index("email_templates_updated_at_idx").on(columns.updatedAt),
+    index("email_templates_created_at_idx").on(columns.createdAt),
+  ],
+);
+
 export const community_rules_sections = pgTable(
   "community_rules_sections",
   {
@@ -2951,6 +2981,7 @@ export const relations_rules_acceptance = relations(
   rules_acceptance,
   () => ({}),
 );
+export const relations_email_templates = relations(email_templates, () => ({}));
 export const relations_community_rules_sections_locales = relations(
   community_rules_sections_locales,
   ({ one }) => ({
@@ -3353,6 +3384,7 @@ type DatabaseSchema = {
   jobs_tags: typeof jobs_tags;
   jobs: typeof jobs;
   rules_acceptance: typeof rules_acceptance;
+  email_templates: typeof email_templates;
   community_rules_sections: typeof community_rules_sections;
   community_rules_sections_locales: typeof community_rules_sections_locales;
   community_rules: typeof community_rules;
@@ -3413,6 +3445,7 @@ type DatabaseSchema = {
   relations_jobs_tags: typeof relations_jobs_tags;
   relations_jobs: typeof relations_jobs;
   relations_rules_acceptance: typeof relations_rules_acceptance;
+  relations_email_templates: typeof relations_email_templates;
   relations_community_rules_sections_locales: typeof relations_community_rules_sections_locales;
   relations_community_rules_sections: typeof relations_community_rules_sections;
   relations_community_rules: typeof relations_community_rules;

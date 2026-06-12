@@ -97,6 +97,7 @@ export interface Config {
     courses: Course;
     lessons: Lesson;
     modules: Module;
+    'email-templates': EmailTemplate;
     users: User;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -135,6 +136,7 @@ export interface Config {
     courses: CoursesSelect<false> | CoursesSelect<true>;
     lessons: LessonsSelect<false> | LessonsSelect<true>;
     modules: ModulesSelect<false> | ModulesSelect<true>;
+    'email-templates': EmailTemplatesSelect<false> | EmailTemplatesSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -1284,6 +1286,33 @@ export interface Module {
   createdAt: string;
 }
 /**
+ * Editable email templates. Use {{variable}} placeholders; unknown variables render as empty text. Variables for "event-registration-confirmation": {{name}}, {{eventTitle}}, {{eventDate}}, {{eventTime}}, {{eventLocation}}, {{eventSlug}}, {{eventUrl}}.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-templates".
+ */
+export interface EmailTemplate {
+  id: number;
+  /**
+   * Template identifier used by the send path, e.g. "event-registration-confirmation".
+   */
+  key: string;
+  /**
+   * Email subject line. Supports {{variable}} placeholders (plain text, not HTML).
+   */
+  subject: string;
+  /**
+   * Email body HTML. Supports {{variable}} placeholders; variable values are HTML-escaped when inserted.
+   */
+  body: string;
+  /**
+   * Untick to ignore this template and fall back to the built-in email.
+   */
+  enabled?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -1426,6 +1455,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'modules';
         value: number | Module;
+      } | null)
+    | ({
+        relationTo: 'email-templates';
+        value: number | EmailTemplate;
       } | null)
     | ({
         relationTo: 'users';
@@ -2108,6 +2141,18 @@ export interface ModulesSelect<T extends boolean = true> {
   title?: T;
   order?: T;
   summary?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-templates_select".
+ */
+export interface EmailTemplatesSelect<T extends boolean = true> {
+  key?: T;
+  subject?: T;
+  body?: T;
+  enabled?: T;
   updatedAt?: T;
   createdAt?: T;
 }
