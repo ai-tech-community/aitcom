@@ -304,8 +304,12 @@ describe.skipIf(!RUN_DB)(
       if (!fx) return;
       const { db, schema, eq, getPayloadClient } = m;
 
-      // FK-safe teardown: results → cells → grid; activity/presence/enrollments;
-      // team; then the four users + profiles; then the Payload challenge.
+      // FK-safe teardown: activity events first (they FK work_cell via cell_id),
+      // then results → cells → grid; presence/enrollments; team; then the four
+      // users + profiles; then the Payload challenge.
+      await db
+        .delete(schema.teamActivityEvents)
+        .where(eq(schema.teamActivityEvents.teamId, fx.teamId));
       const cells = await db
         .select({ id: schema.workCells.id })
         .from(schema.workCells)
@@ -322,9 +326,6 @@ describe.skipIf(!RUN_DB)(
         .delete(schema.workGrids)
         .where(eq(schema.workGrids.id, fx.gridId));
 
-      await db
-        .delete(schema.teamActivityEvents)
-        .where(eq(schema.teamActivityEvents.teamId, fx.teamId));
       await db
         .delete(schema.teamPresence)
         .where(eq(schema.teamPresence.teamId, fx.teamId));
