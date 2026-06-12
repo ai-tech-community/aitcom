@@ -24,7 +24,9 @@ export function submittedProjects<
 }
 
 function submittedMillis(value: Date | string | null): number {
-  if (value === null) return Number.NEGATIVE_INFINITY; // unsubmitted = oldest
+  // Unsubmitted = oldest. MIN_SAFE_INTEGER (not -Infinity) so two nulls
+  // subtract to 0 rather than NaN, keeping the comparator well-defined.
+  if (value === null) return Number.MIN_SAFE_INTEGER;
   return new Date(value).getTime();
 }
 
@@ -65,4 +67,23 @@ export function sortGallery<T extends GalleryListable>(
 /** Rank sort only exists once finalize has stamped final ranks. */
 export function gallerySortKeys(finalized: boolean): GallerySortKey[] {
   return finalized ? ["newest", "name", "rank"] : ["newest", "name"];
+}
+
+/**
+ * Scheme allowlist for the captain-controlled artifact link: only http(s)
+ * URLs may render as a public href (javascript:/data:/etc. are dropped).
+ */
+export function safeArtifactHref(
+  url: string | null | undefined,
+): string | null {
+  if (!url) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  return parsed.protocol === "http:" || parsed.protocol === "https:"
+    ? url
+    : null;
 }

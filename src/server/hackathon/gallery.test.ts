@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 
-import { submittedProjects, sortGallery, gallerySortKeys } from "./gallery";
+import {
+  submittedProjects,
+  sortGallery,
+  gallerySortKeys,
+  safeArtifactHref,
+} from "./gallery";
 
 interface Row {
   teamId: string;
@@ -126,6 +131,15 @@ describe("sortGallery", () => {
     ]);
   });
 
+  it("breaks ties between two missing submission times by name", () => {
+    // Two nulls must compare 0 (not NaN) so the name fallback kicks in.
+    const rows = [row("b", "Bravo", null), row("a", "Alpha", null)];
+    expect(sortGallery(rows, "newest").map((t) => t.teamId)).toEqual([
+      "a",
+      "b",
+    ]);
+  });
+
   it("does not mutate its input", () => {
     const rows = [
       row("b", "Beta", "2026-06-02"),
@@ -155,6 +169,41 @@ describe("sortGallery", () => {
       "new",
       "old",
     ]);
+  });
+});
+
+describe("safeArtifactHref", () => {
+  it("allows https URLs", () => {
+    expect(safeArtifactHref("https://example.com/project")).toBe(
+      "https://example.com/project",
+    );
+  });
+
+  it("allows http URLs", () => {
+    expect(safeArtifactHref("http://example.com")).toBe("http://example.com");
+  });
+
+  it("rejects javascript: URLs", () => {
+    expect(safeArtifactHref("javascript:alert(1)")).toBeNull();
+  });
+
+  it("rejects data: URLs", () => {
+    expect(safeArtifactHref("data:text/html,<script>alert(1)</script>")).toBe(
+      null,
+    );
+  });
+
+  it("rejects vbscript: URLs", () => {
+    expect(safeArtifactHref("vbscript:msgbox(1)")).toBeNull();
+  });
+
+  it("rejects unparseable garbage", () => {
+    expect(safeArtifactHref("not a url at all")).toBeNull();
+  });
+
+  it("rejects null and undefined", () => {
+    expect(safeArtifactHref(null)).toBeNull();
+    expect(safeArtifactHref(undefined)).toBeNull();
   });
 });
 

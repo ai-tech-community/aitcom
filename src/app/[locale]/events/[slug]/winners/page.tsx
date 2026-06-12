@@ -1,38 +1,18 @@
 import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { eq } from "drizzle-orm";
 
-import { db } from "@/server/db";
-import { teams } from "@/server/db/schema";
-import { getPayloadClient } from "@/server/payload";
 import { api } from "@/trpc/server";
-import { hackathonPhase } from "@/server/hackathon/phase";
+import {
+  findPublicEvent,
+  resolvePublicHackathonPage,
+} from "@/server/hackathon/resolve-public-hackathon";
 import { splitPodium, prizeRecipients } from "@/server/hackathon/winners";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { MemberFaces } from "@/components/hackathon/member-faces";
 import type { MemberFace } from "@/components/hackathon/member-faces";
-
-// Same public-visibility filter as the event details page: hide un-approved
-// submissions (pending/rejected) and drafts.
-async function findPublicEvent(slug: string, locale: "en" | "nl") {
-  const payload = await getPayloadClient();
-  const { docs } = await payload.find({
-    collection: "events",
-    where: {
-      and: [
-        { slug: { equals: slug } },
-        { status: { not_in: ["draft", "rejected"] } },
-      ],
-    },
-    locale,
-    limit: 1,
-    depth: 0,
-  });
-  return docs[0] ?? null;
-}
 
 export async function generateMetadata({
   params,
@@ -66,39 +46,16 @@ export default async function HackathonWinnersPage({
   const locale = await getLocale();
   const t = await getTranslations("hackathon");
 
-  const event = await findPublicEvent(slug, locale as "en" | "nl");
-  // Not a hackathon (no bound challenge) → there is no winners page.
-  if (!event?.challengeId) notFound();
+  // Not a hackathon (no public event / no bound challenge) → no winners page.
+  const resolved = await resolvePublicHackathonPage(
+    slug,
+    locale as "en" | "nl",
+  );
+  if (!resolved.found) notFound();
+  const { event, challenge, challengeId, phase } = resolved;
 
-  const payload = await getPayloadClient();
-  let challenge;
-  try {
-    challenge = await payload.findByID({
-      collection: "challenges",
-      id: Number(event.challengeId),
-      depth: 0,
-    });
-  } catch {
-    notFound();
-  }
-  const challengeId = Number(challenge.id);
-
-  // Finalized-only gate: derive the lifecycle phase from server truth (the
-  // finalize markers stamped on teams) and bounce earlier phases back to the
-  // event page — winners must not leak before they exist.
-  const phaseMarkers = await db
-    .select({
-      status: teams.status,
-      finalRank: teams.finalRank,
-      prizeAwardedAt: teams.prizeAwardedAt,
-    })
-    .from(teams)
-    .where(eq(teams.challengeId, challengeId));
-  const phase = hackathonPhase({
-    eventStatus: event.status,
-    challengeStatus: challenge.status ?? "",
-    teams: phaseMarkers,
-  });
+  // Finalized-only gate: bounce earlier phases back to the event page —
+  // winners must not leak before they exist.
   if (phase !== "finalized") redirect(`/events/${slug}`);
 
   const leaderboard = await api.hackathon.teamLeaderboard({ challengeId });

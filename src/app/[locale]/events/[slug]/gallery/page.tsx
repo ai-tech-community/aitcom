@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { eq } from "drizzle-orm";
 
-import { db } from "@/server/db";
-import { teams } from "@/server/db/schema";
-import { getPayloadClient } from "@/server/payload";
 import { api } from "@/trpc/server";
-import { hackathonPhase } from "@/server/hackathon/phase";
+import {
+  findPublicEvent,
+  resolvePublicHackathonPage,
+} from "@/server/hackathon/resolve-public-hackathon";
 import { submittedProjects } from "@/server/hackathon/gallery";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { Link } from "@/i18n/navigation";
@@ -15,25 +14,6 @@ import {
   ProjectGallery,
   type GalleryProject,
 } from "@/components/hackathon/project-gallery";
-
-// Same public-visibility filter as the event details page: hide un-approved
-// submissions (pending/rejected) and drafts.
-async function findPublicEvent(slug: string, locale: "en" | "nl") {
-  const payload = await getPayloadClient();
-  const { docs } = await payload.find({
-    collection: "events",
-    where: {
-      and: [
-        { slug: { equals: slug } },
-        { status: { not_in: ["draft", "rejected"] } },
-      ],
-    },
-    locale,
-    limit: 1,
-    depth: 0,
-  });
-  return docs[0] ?? null;
-}
 
 export async function generateMetadata({
   params,
@@ -67,39 +47,17 @@ export default async function HackathonGalleryPage({
   const locale = await getLocale();
   const t = await getTranslations("hackathon");
 
-  const event = await findPublicEvent(slug, locale as "en" | "nl");
-  // Not a hackathon (no bound challenge) → there is no project gallery.
-  if (!event?.challengeId) notFound();
-
-  const payload = await getPayloadClient();
-  let challenge;
-  try {
-    challenge = await payload.findByID({
-      collection: "challenges",
-      id: Number(event.challengeId),
-      depth: 0,
-    });
-  } catch {
-    notFound();
-  }
-  const challengeId = Number(challenge.id);
+  // Not a hackathon (no public event / no bound challenge) → no gallery.
+  const resolved = await resolvePublicHackathonPage(
+    slug,
+    locale as "en" | "nl",
+  );
+  if (!resolved.found) notFound();
+  const { event, challengeId, phase } = resolved;
 
   // Phase gate from server truth (same derivation as the winners page).
   // Cancelled events collapse to "draft" and bounce back to the event page;
   // "live" renders an explainer (submissions only start once rosters lock).
-  const phaseMarkers = await db
-    .select({
-      status: teams.status,
-      finalRank: teams.finalRank,
-      prizeAwardedAt: teams.prizeAwardedAt,
-    })
-    .from(teams)
-    .where(eq(teams.challengeId, challengeId));
-  const phase = hackathonPhase({
-    eventStatus: event.status,
-    challengeStatus: challenge.status ?? "",
-    teams: phaseMarkers,
-  });
   if (phase === "draft") redirect(`/events/${slug}`);
 
   let projects: GalleryProject[] = [];
