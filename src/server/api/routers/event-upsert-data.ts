@@ -18,8 +18,14 @@ export const eventUpsertSchema = z.object({
     .optional(),
   type: z.enum(EVENT_TYPES),
   date: z.string(),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
+  startTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format.")
+    .optional(),
+  endTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format.")
+    .optional(),
   // IANA timezone the start/end times are expressed in. The form defaults it
   // from the organizer's browser; missing values fall back to the
   // collection-level default (Europe/Amsterdam).

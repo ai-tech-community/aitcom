@@ -1,3 +1,5 @@
+import { instantToZonedDateString } from "@/lib/event-time";
+
 import type { LumaEvent } from "./client";
 
 export interface NormalizedEvent {
@@ -52,7 +54,9 @@ export function normalizeLumaEvent(
     slug: null,
     description: event.description_md,
     type: "meetup",
-    date: event.start_at,
+    // start_at is an absolute UTC instant; the stored `date` must be the
+    // event-local calendar date (east/west of UTC it can differ by a day).
+    date: instantToZonedDateString(event.start_at, timezone),
     startTime: extractTime(event.start_at, timezone),
     endTime: event.end_at ? extractTime(event.end_at, timezone) : null,
     timezone,

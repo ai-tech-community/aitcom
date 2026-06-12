@@ -84,6 +84,17 @@ function getDateParts(date: string): { y: number; m: number; d: number } {
   return { y, m, d };
 }
 
+/**
+ * Whether `date` carries numeric Y-M-D parts. Malformed/corrupt rows (e.g. a
+ * mangled `date` column) must degrade to raw-string rendering in the display
+ * helpers below rather than throw "Invalid time value" — the reminder cron
+ * formats events in a loop and one bad row must not abort the whole run.
+ */
+function hasValidDateParts(date: string): boolean {
+  const { y, m, d } = getDateParts(date);
+  return Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d);
+}
+
 function getTimeParts(time: string): { hh: number; mm: number } {
   const [hh = 0, mm = 0] = time.split(":").map(Number);
   return { hh: Number.isFinite(hh) ? hh : 0, mm: Number.isFinite(mm) ? mm : 0 };
@@ -135,6 +146,29 @@ export function eventWallTimeToUtc(
  */
 const ABBREVIATION_LOCALES = ["en-US", "en-GB", "nl-NL"];
 
+// Keyed by `locale|zone`, mirroring getPartsFormatter: Intl.DateTimeFormat
+// construction is expensive and getTimeZoneAbbreviation may probe up to three
+// locales per call.
+const abbreviationFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+function getAbbreviationFormatter(
+  locale: string,
+  timeZone: string,
+): Intl.DateTimeFormat {
+  const key = `${locale}|${timeZone}`;
+  let cached = abbreviationFormatterCache.get(key);
+  if (!cached) {
+    cached = new Intl.DateTimeFormat(locale, {
+      timeZone,
+      timeZoneName: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    abbreviationFormatterCache.set(key, cached);
+  }
+  return cached;
+}
+
 /**
  * Short timezone label at a given instant, e.g. "CET" / "CEST" / "GMT+9".
  * Falls back to the IANA name when the zone cannot be formatted.
@@ -146,12 +180,9 @@ export function getTimeZoneAbbreviation(
   let fallback: string | null = null;
   for (const locale of ABBREVIATION_LOCALES) {
     try {
-      const parts = new Intl.DateTimeFormat(locale, {
-        timeZone: timezone,
-        timeZoneName: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).formatToParts(instant);
+      const parts = getAbbreviationFormatter(locale, timezone).formatToParts(
+        instant,
+      );
       const value = parts.find((p) => p.type === "timeZoneName")?.value;
       if (!value) continue;
       if (/^[A-Za-z]+$/.test(value) && !/^(GMT|UTC)$/i.test(value)) {
@@ -186,9 +217,30 @@ export function formatEventTimeRange({
 }: EventTimeFields): string | null {
   if (!startTime) return null;
   const range = `${startTime}${endTime ? `–${endTime}` : ""}`;
-  if (!isValidTimeZone(timezone)) return range;
+  if (!isValidTimeZone(timezone) || !hasValidDateParts(date)) return range;
   const instant = eventWallTimeToUtc(date, startTime, timezone);
   return `${range} ${getTimeZoneAbbreviation(timezone, instant)}`;
+}
+
+/**
+ * Calendar date (YYYY-MM-DD) of a UTC instant as observed in `timezone`.
+ * Used by the Luma import: Luma hands us an absolute `start_at` instant plus
+ * the event's zone, and the stored `date` must be the event-local calendar
+ * date (a Tokyo 02:00 event is "the 15th" locally even when start_at is still
+ * the 14th in UTC). Falls back to the raw string's date part when the instant
+ * is unparseable or the zone unusable.
+ */
+export function instantToZonedDateString(
+  isoInstant: string,
+  timezone: string | null | undefined,
+): string {
+  const instant = new Date(isoInstant);
+  if (Number.isNaN(instant.getTime())) return isoInstant.split("T")[0] ?? "";
+  const zone = isValidTimeZone(timezone) ? timezone : "UTC";
+  const parts = getPartsFormatter(zone).formatToParts(instant);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 /** Wall-clock rendering of a UTC instant in an arbitrary zone (viewer-local conversion). */
@@ -223,10 +275,17 @@ export function formatEventWhenText({
   endTime,
   timezone,
 }: EventTimeFields): string {
-  const { y, m, d } = getDateParts(date);
-  const dayLabel = WHEN_DATE_FORMAT.format(new Date(Date.UTC(y, m - 1, d)));
+  const validDate = hasValidDateParts(date);
+  let dayLabel: string;
+  if (validDate) {
+    const { y, m, d } = getDateParts(date);
+    dayLabel = WHEN_DATE_FORMAT.format(new Date(Date.UTC(y, m - 1, d)));
+  } else {
+    // Corrupt `date` row: render the raw string rather than throw mid-cron.
+    dayLabel = date.split("T")[0] ?? date;
+  }
   if (!startTime) return dayLabel;
-  if (!isValidTimeZone(timezone)) {
+  if (!validDate || !isValidTimeZone(timezone)) {
     return `${dayLabel}, ${startTime}${endTime ? `–${endTime}` : ""}`;
   }
   const instant = eventWallTimeToUtc(date, startTime, timezone);
@@ -247,7 +306,7 @@ export function formatEventIsoWithOffset(
   const datePart = date.split("T")[0] ?? date;
   const { hh, mm } = getTimeParts(time);
   const local = `${datePart}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`;
-  if (!isValidTimeZone(timezone)) return local;
+  if (!isValidTimeZone(timezone) || !hasValidDateParts(date)) return local;
   const instant = eventWallTimeToUtc(date, time, timezone);
   const offsetMin = Math.round(getZoneOffsetMs(timezone, instant) / 60_000);
   if (offsetMin === 0) return `${local}+00:00`;

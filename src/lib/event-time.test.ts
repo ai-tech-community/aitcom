@@ -8,6 +8,7 @@ import {
   formatEventWhenText,
   formatInstantInZone,
   getTimeZoneAbbreviation,
+  instantToZonedDateString,
   isValidTimeZone,
 } from "./event-time";
 
@@ -89,6 +90,65 @@ describe("eventWallTimeToUtc", () => {
     const instant = eventWallTimeToUtc("2026-01-15", "18:00", "UTC");
     expect(instant.toISOString()).toBe("2026-01-15T18:00:00.000Z");
   });
+
+  // DST edge cases — pinning the offset-inversion behavior as intended.
+  it("resolves a nonexistent spring-forward wall time by shifting forward", () => {
+    // 02:30 on 2026-03-29 does not exist in Europe/Amsterdam (clocks jump
+    // 02:00 CET → 03:00 CEST). The two-pass inversion lands on 01:30Z, i.e.
+    // the wall time shifts forward to 03:30 CEST.
+    const instant = eventWallTimeToUtc(
+      "2026-03-29T00:00:00.000Z",
+      "02:30",
+      "Europe/Amsterdam",
+    );
+    expect(instant.toISOString()).toBe("2026-03-29T01:30:00.000Z");
+    expect(formatInstantInZone(instant, "Europe/Amsterdam")).toEqual({
+      date: "2026-03-29",
+      time: "03:30",
+      abbreviation: "CEST",
+    });
+  });
+
+  it("resolves an ambiguous fall-back wall time to the second occurrence (CET)", () => {
+    // 02:30 on 2026-10-25 occurs twice in Europe/Amsterdam (clocks fall back
+    // 03:00 CEST → 02:00 CET). The inversion picks the post-transition CET
+    // occurrence: 01:30Z, not the earlier 00:30Z CEST one.
+    const instant = eventWallTimeToUtc(
+      "2026-10-25T00:00:00.000Z",
+      "02:30",
+      "Europe/Amsterdam",
+    );
+    expect(instant.toISOString()).toBe("2026-10-25T01:30:00.000Z");
+    expect(getTimeZoneAbbreviation("Europe/Amsterdam", instant)).toBe("CET");
+  });
+});
+
+describe("instantToZonedDateString", () => {
+  it("returns the next calendar day for an early-morning Tokyo event", () => {
+    // 17:00Z on Jul 14 is already 02:00 on Jul 15 in Tokyo.
+    expect(
+      instantToZonedDateString("2026-07-14T17:00:00.000Z", "Asia/Tokyo"),
+    ).toBe("2026-07-15");
+  });
+
+  it("returns the previous calendar day for a late-evening New York event", () => {
+    // 02:00Z on Jul 15 is still 22:00 on Jul 14 in New York (EDT).
+    expect(
+      instantToZonedDateString("2026-07-15T02:00:00.000Z", "America/New_York"),
+    ).toBe("2026-07-14");
+  });
+
+  it("falls back to the UTC calendar date without a usable timezone", () => {
+    expect(instantToZonedDateString("2026-07-15T02:00:00.000Z", null)).toBe(
+      "2026-07-15",
+    );
+  });
+
+  it("falls back to the raw date part for an unparseable instant", () => {
+    expect(instantToZonedDateString("not-a-date", "Asia/Tokyo")).toBe(
+      "not-a-date",
+    );
+  });
 });
 
 describe("getTimeZoneAbbreviation", () => {
@@ -158,6 +218,17 @@ describe("formatEventTimeRange", () => {
       }),
     ).toBe("18:00–21:00");
   });
+
+  it("omits the abbreviation for a malformed date instead of throwing", () => {
+    expect(
+      formatEventTimeRange({
+        date: "not-a-date",
+        startTime: "18:00",
+        endTime: "21:00",
+        timezone: "Europe/Amsterdam",
+      }),
+    ).toBe("18:00–21:00");
+  });
 });
 
 describe("formatInstantInZone", () => {
@@ -215,6 +286,38 @@ describe("formatEventWhenText", () => {
       }),
     ).toBe("15 Jan 2026, 18:00");
   });
+
+  it("falls back to raw-string rendering for a malformed date instead of throwing", () => {
+    // The reminder cron formats events in a loop — one corrupt `date` row
+    // must not abort the run with "Invalid time value".
+    expect(() =>
+      formatEventWhenText({
+        date: "not-a-date",
+        startTime: "18:00",
+        endTime: "21:00",
+        timezone: "Europe/Amsterdam",
+      }),
+    ).not.toThrow();
+    expect(
+      formatEventWhenText({
+        date: "not-a-date",
+        startTime: "18:00",
+        endTime: "21:00",
+        timezone: "Europe/Amsterdam",
+      }),
+    ).toBe("not-a-date, 18:00–21:00");
+  });
+
+  it("renders a malformed date alone when no start time exists", () => {
+    expect(
+      formatEventWhenText({
+        date: "garbage",
+        startTime: null,
+        endTime: null,
+        timezone: "Europe/Amsterdam",
+      }),
+    ).toBe("garbage");
+  });
 });
 
 describe("formatEventIsoWithOffset", () => {
@@ -248,5 +351,11 @@ describe("formatEventIsoWithOffset", () => {
     expect(formatEventIsoWithOffset("2026-07-15", "18:00", null)).toBe(
       "2026-07-15T18:00:00",
     );
+  });
+
+  it("falls back to a floating local datetime for a malformed date instead of throwing", () => {
+    expect(
+      formatEventIsoWithOffset("not-a-date", "18:00", "Europe/Amsterdam"),
+    ).toBe("not-a-dateT18:00:00");
   });
 });

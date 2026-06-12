@@ -200,7 +200,11 @@ export function EventFormDialog({
         date: editData.date,
         startTime: editData.startTime,
         endTime: editData.endTime,
-        timezone: editData.timezone || getBrowserTimeZone(),
+        // Legacy events without a timezone were backfilled to the platform
+        // default; stamping the editor's browser zone here would silently
+        // shift the event's wall-clock times to wherever the editor happens
+        // to be. Match the backfill instead.
+        timezone: editData.timezone || DEFAULT_EVENT_TIMEZONE,
         location: editData.location,
         format: editData.format as EventFormat | "",
         region: editData.region,

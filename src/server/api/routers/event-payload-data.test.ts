@@ -66,3 +66,28 @@ describe("eventUpsertSchema timezone validation", () => {
     expect(parsed.success).toBe(false);
   });
 });
+
+describe("eventUpsertSchema time shape validation", () => {
+  const base = {
+    title: "AI Builders Meetup",
+    type: "meetup" as const,
+    date: "2026-06-12",
+    location: "Amsterdam",
+  };
+
+  it("accepts HH:MM times and missing times", () => {
+    expect(
+      eventUpsertSchema.safeParse({
+        ...base,
+        startTime: "18:00",
+        endTime: "21:00",
+      }).success,
+    ).toBe(true);
+    expect(eventUpsertSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("rejects a startTime that is not HH:MM", () => {
+    const parsed = eventUpsertSchema.safeParse({ ...base, startTime: "6pm" });
+    expect(parsed.success).toBe(false);
+  });
+});
