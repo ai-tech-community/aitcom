@@ -1136,15 +1136,22 @@ export const hackathonRouter = createTRPCRouter({
           })
           .from(judgeRankings)
           .where(eq(judgeRankings.challengeId, input.challengeId));
-        const judgesWhoRanked = new Set(rankingRows.map((r) => r.judgeUserId));
-        const allRanked = activeJudges.every((j) =>
-          judgesWhoRanked.has(j.userId),
-        );
+        const submittedIds = submitted.map((t) => t.id);
+        const teamsByJudge = new Map<string, Set<string>>();
+        for (const r of rankingRows) {
+          const set = teamsByJudge.get(r.judgeUserId) ?? new Set<string>();
+          set.add(r.teamId);
+          teamsByJudge.set(r.judgeUserId, set);
+        }
+        const allRanked = activeJudges.every((j) => {
+          const ranked = teamsByJudge.get(j.userId);
+          return !!ranked && submittedIds.every((id) => ranked.has(id));
+        });
         if (!allRanked) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message:
-              "All assigned judges must submit rankings before finalizing (or revoke a non-responsive judge).",
+              "Every assigned judge must rank all submitted teams before finalizing (a team may have submitted after a judge ranked). Ask judges to re-submit, or revoke a non-responsive judge.",
           });
         }
         const submittedAtMap = new Map(
