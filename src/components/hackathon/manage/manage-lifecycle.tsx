@@ -52,6 +52,19 @@ export function ManageLifecycle({
     },
     onError: (e) => toast.error(e.message),
   });
+  const openJudging = api.hackathon.openJudging.useMutation({
+    onSuccess: () => {
+      setPhase("judging");
+      toast.success("Judging opened");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  // Only meaningful once judging is open; gating the query keeps it from
+  // firing (and 403-ing on the organizer gate) during earlier phases.
+  const progress = api.hackathon.judgingProgress.useQuery(
+    { challengeId },
+    { enabled: phase === "judging" },
+  );
 
   return (
     <Card className="space-y-4 p-4">
@@ -81,6 +94,28 @@ export function ManageLifecycle({
           {isDraft ? t("publishFirst") : t("lockRostersDesc")}
         </p>
       </div>
+
+      {phase === "locked" && (
+        <div className="space-y-1">
+          <Button
+            className="w-full"
+            variant="secondary"
+            disabled={openJudging.isPending}
+            onClick={() => openJudging.mutate({ challengeId })}
+          >
+            Open judging
+          </Button>
+          <p className="text-muted-foreground text-xs">
+            Open judging to let assigned judges rank submitted teams.
+          </p>
+        </div>
+      )}
+
+      {phase === "judging" && progress.data && (
+        <p className="text-sm">
+          {progress.data.submitted} of {progress.data.total} judges submitted
+        </p>
+      )}
 
       <div className="space-y-1">
         <Button

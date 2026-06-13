@@ -784,6 +784,42 @@ export const hackathonRouter = createTRPCRouter({
     }),
 
   /**
+   * Judge-progress indicator for the manage Lifecycle tab (organizer-scoped):
+   * how many of the hackathon's active judges have submitted a ranking ballot.
+   * "submitted" = the judge has at least one judgeRankings row for this
+   * challenge (selectDistinct collapses the per-team ballot rows to one per
+   * judge). Read-only.
+   */
+  judgingProgress: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireHackathonOrganizer(
+        ctx.db,
+        input.challengeId,
+        ctx.session.user.id,
+      );
+      const judges = await ctx.db
+        .select({ userId: hackathonStaff.userId })
+        .from(hackathonStaff)
+        .where(
+          and(
+            eq(hackathonStaff.challengeId, input.challengeId),
+            eq(hackathonStaff.role, "judge"),
+            isNull(hackathonStaff.revokedAt),
+          ),
+        );
+      const ranked = await ctx.db
+        .selectDistinct({ judgeUserId: judgeRankings.judgeUserId })
+        .from(judgeRankings)
+        .where(eq(judgeRankings.challengeId, input.challengeId));
+      const rankedSet = new Set(ranked.map((r) => r.judgeUserId));
+      return {
+        total: judges.length,
+        submitted: judges.filter((j) => rankedSet.has(j.userId)).length,
+      };
+    }),
+
+  /**
    * The submitted teams a judge ranks (judge-scoped), decorated with the
    * caller's own existing rank/comment so the ballot can be re-opened and
    * edited. Only teams with a submittedAt are judgeable.
