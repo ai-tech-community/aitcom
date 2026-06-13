@@ -256,6 +256,7 @@ async function currentHackathonPhase(
   db: typeof import("@/server/db").db,
   challengeId: number,
   challengeStatus: string,
+  judgingOpenedAt: Date | string | null,
 ) {
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
@@ -280,6 +281,7 @@ async function currentHackathonPhase(
   return hackathonPhase({
     eventStatus: docs[0]?.status ?? "draft",
     challengeStatus,
+    judgingOpenedAt,
     teams: markers,
   });
 }
@@ -1476,6 +1478,7 @@ export const hackathonRouter = createTRPCRouter({
         ctx.db,
         input.challengeId,
         challenge.status ?? "",
+        challenge.judgingOpenedAt ?? null,
       );
       try {
         assertCanToggleLookingForTeam({
@@ -1553,6 +1556,7 @@ export const hackathonRouter = createTRPCRouter({
         ctx.db,
         input.challengeId,
         challenge.status ?? "",
+        challenge.judgingOpenedAt ?? null,
       );
       if (phase !== "live") return { open: false, viewer, candidates: [] };
 
@@ -1689,6 +1693,7 @@ export const hackathonRouter = createTRPCRouter({
         ctx.db,
         input.challengeId,
         challenge.status ?? "",
+        challenge.judgingOpenedAt ?? null,
       );
       if (!peoplesChoiceVotingOpen(phase)) {
         throw new TRPCError({
@@ -1750,6 +1755,7 @@ export const hackathonRouter = createTRPCRouter({
         ctx.db,
         input.challengeId,
         challenge.status ?? "",
+        challenge.judgingOpenedAt ?? null,
       );
 
       const counts = await ctx.db

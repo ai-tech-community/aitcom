@@ -53,7 +53,7 @@ export function ManageSetup({
 }: {
   challengeId: number;
   eventId: number;
-  phase: "draft" | "live" | "locked" | "finalized";
+  phase: "draft" | "live" | "locked" | "judging" | "finalized";
   initialName: string;
   initialDescription: string;
   initialDate: string;

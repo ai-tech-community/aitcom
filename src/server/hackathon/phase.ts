@@ -6,7 +6,12 @@
 // finalize marker for forward-compatibility). Db-free + deterministic so it can
 // be unit-tested in isolation and shared by the manage and winners pages.
 
-export type HackathonPhase = "draft" | "live" | "locked" | "finalized";
+export type HackathonPhase =
+  | "draft"
+  | "live"
+  | "locked"
+  | "judging"
+  | "finalized";
 
 export interface TeamPhaseMarkers {
   status: string;
@@ -17,6 +22,7 @@ export interface TeamPhaseMarkers {
 export function hackathonPhase(args: {
   eventStatus: string;
   challengeStatus: string;
+  judgingOpenedAt: Date | string | null;
   teams: TeamPhaseMarkers[];
 }): HackathonPhase {
   // Cancelled/rejected events must never read as live (or any later phase):
@@ -29,6 +35,10 @@ export function hackathonPhase(args: {
     args.challengeStatus === "completed" ||
     args.teams.some((t) => t.finalRank !== null || t.prizeAwardedAt !== null);
   if (finalized) return "finalized";
-  if (args.teams.some((t) => t.status === "locked")) return "locked";
+  if (args.teams.some((t) => t.status === "locked")) {
+    // Once an organizer opens judging on a locked-but-not-finalized hackathon,
+    // it advances to "judging" (gates judge ranking). Finalize still wins above.
+    return args.judgingOpenedAt !== null ? "judging" : "locked";
+  }
   return "live";
 }

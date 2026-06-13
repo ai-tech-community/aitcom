@@ -10,6 +10,7 @@ const PHASE_LABEL_KEY = {
   draft: "statusDraft",
   live: "statusLive",
   locked: "statusLocked",
+  judging: "statusJudging",
   finalized: "statusFinalized",
 } as const;
 

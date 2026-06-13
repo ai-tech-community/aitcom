@@ -144,6 +144,7 @@ export async function loadManageData(
   const phase = hackathonPhase({
     eventStatus: event.status,
     challengeStatus: challenge.status ?? "",
+    judgingOpenedAt: challenge.judgingOpenedAt ?? null,
     teams: challengeTeams,
   });
 

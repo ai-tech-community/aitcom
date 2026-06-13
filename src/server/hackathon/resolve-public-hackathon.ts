@@ -89,6 +89,7 @@ export async function resolvePublicHackathonPage(
   const phase = hackathonPhase({
     eventStatus: event.status,
     challengeStatus: challenge.status ?? "",
+    judgingOpenedAt: challenge.judgingOpenedAt ?? null,
     teams: phaseMarkers,
   });
 

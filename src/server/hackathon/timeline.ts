@@ -31,6 +31,9 @@ const CURRENT_BY_PHASE: Record<
   draft: null,
   live: "kickoff",
   locked: "submissions",
+  // Judging deliberates over the submitted projects toward results — the
+  // submissions milestone stays "current" until finalize stamps results.
+  judging: "submissions",
   finalized: "results",
 };
 

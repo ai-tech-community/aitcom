@@ -64,6 +64,7 @@ import * as migration_20260612e_email_templates from "./20260612e_email_template
 import * as migration_20260612f_work_cell_progress from "./20260612f_work_cell_progress";
 import * as migration_20260613a_hackathon_staff from "./20260613a_hackathon_staff";
 import * as migration_20260613b_judge_rankings from "./20260613b_judge_rankings";
+import * as migration_20260613c_challenge_judging_opened from "./20260613c_challenge_judging_opened";
 
 export const migrations = [
   {
@@ -395,5 +396,10 @@ export const migrations = [
     up: migration_20260613b_judge_rankings.up,
     down: migration_20260613b_judge_rankings.down,
     name: "20260613b_judge_rankings",
+  },
+  {
+    up: migration_20260613c_challenge_judging_opened.up,
+    down: migration_20260613c_challenge_judging_opened.down,
+    name: "20260613c_challenge_judging_opened",
   },
 ];

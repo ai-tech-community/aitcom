@@ -24,7 +24,7 @@ export function ManageTasks({
   initialCells,
 }: {
   challengeId: number;
-  phase: "draft" | "live" | "locked" | "finalized";
+  phase: "draft" | "live" | "locked" | "judging" | "finalized";
   initialCells: CellRow[];
 }) {
   const t = useTranslations("hackathon");

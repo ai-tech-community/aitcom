@@ -22,7 +22,7 @@ export function ManageLifecycle({
 }: {
   challengeId: number;
   eventId: number;
-  initialPhase: "draft" | "live" | "locked" | "finalized";
+  initialPhase: "draft" | "live" | "locked" | "judging" | "finalized";
   hasCells: boolean;
 }) {
   const t = useTranslations("hackathon");
