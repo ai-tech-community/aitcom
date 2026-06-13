@@ -252,7 +252,7 @@ export function HackathonPanel({
           <TeamGridProgress teamId={myTeam.team.id} />
 
           <Button asChild className="mt-3" size="sm" variant="secondary">
-            <Link href={`/events/${eventSlug}/team`}>
+            <Link href={`/events/${eventSlug}/workspace`}>
               {t("enterWorkspace")} →
             </Link>
           </Button>

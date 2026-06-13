@@ -41,7 +41,7 @@ export function TeamLeaderboard({
         <span className="flex items-center gap-4">
           {hasSubmissions && eventSlug ? (
             <Link
-              href={`/events/${eventSlug}/gallery`}
+              href={`/events/${eventSlug}/projects`}
               className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider underline underline-offset-4 transition-colors"
             >
               {t("viewGallery")} →
