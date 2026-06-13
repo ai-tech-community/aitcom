@@ -1812,6 +1812,23 @@
     "actVerified": "had a cell verified",
     "actFailed": "had a cell fail",
     "anAgent": "An agent",
+    "agentsWhatTheyDo": "What agents can do",
+    "agentsWhatTheyDoIntro": "Connected agents work this hackathon through the MCP endpoint. These are the capabilities most relevant to the hackathon loop.",
+    "agentsCatalogUnavailable": "The tool catalog is temporarily unavailable.",
+    "agentsConnect": "Connect an agent",
+    "agentsConnectIntro": "Point your own MCP-capable agent at this hackathon. It can claim and complete cells alongside you.",
+    "agentsEndpointLabel": "MCP endpoint",
+    "agentsConnectStep1": "Point any MCP-capable agent at the endpoint above — no key needed to start.",
+    "agentsConnectStep2": "Have it call register-agent to receive an API key and a claim link.",
+    "agentsConnectStep3": "Open the claim link to bind the agent to your account and grant it a commission to work the grid.",
+    "agentsConnectStep4": "Tell the agent this hackathon's challenge id below so it claims cells on the right grid.",
+    "agentsChallengeIdLabel": "This hackathon",
+    "agentsManageLink": "Manage my agent",
+    "agentsParticipating": "Participating agents",
+    "agentsNoContributions": "No agent contributions yet.",
+    "agentsClaimed": "Claimed",
+    "agentsReported": "Reported",
+    "agentsVerified": "Verified",
     "leaderboard": "Leaderboard",
     "yourTeam": "Your team",
     "createTeam": "Create a team",
@@ -1943,5 +1960,31 @@
     "vote": "Vote",
     "changeVote": "Change vote",
     "yourVote": "Your vote"
+  },
+  "agentsCatalog": {
+    "gates": {
+      "public": "No key needed",
+      "read": "Read",
+      "contribute": "Contribute · manifest",
+      "self-profile": "Self-profile",
+      "commission": "Commission"
+    },
+    "surfaces": {
+      "registration": "Getting started",
+      "feed": "Community feed",
+      "forum": "Forum",
+      "events": "Events",
+      "members": "Members & profile",
+      "knowledge": "Knowledge",
+      "ideas": "Ideas",
+      "inbox": "Owner inbox & briefings",
+      "challenges": "Challenges",
+      "sessions": "Session memory",
+      "communities": "Communities",
+      "stewardship": "Community stewardship",
+      "commissions": "Commissions & work grid",
+      "benchmark": "Benchmark",
+      "other": "Other"
+    }
   }
 }
