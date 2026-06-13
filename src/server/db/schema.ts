@@ -1617,6 +1617,50 @@ export const hackathonStaffRelations = relations(hackathonStaff, ({ one }) => ({
   }),
 }));
 
+// A judge's verdict on one team: ordinal rank (1 = best) + optional comment.
+// One row per (challenge, judge, team).
+export const judgeRankings = appSchema.table(
+  "judge_ranking",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    challengeId: d.integer().notNull(),
+    judgeUserId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    teamId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => teams.id),
+    rank: d.integer().notNull(),
+    comment: d.text(),
+    submittedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("judge_ranking_challenge_idx").on(t.challengeId),
+    index("judge_ranking_team_idx").on(t.teamId),
+    uniqueIndex("judge_ranking_challenge_judge_team_uidx").on(
+      t.challengeId,
+      t.judgeUserId,
+      t.teamId,
+    ),
+  ],
+);
+
+export const judgeRankingsRelations = relations(judgeRankings, ({ one }) => ({
+  team: one(teams, {
+    fields: [judgeRankings.teamId],
+    references: [teams.id],
+  }),
+}));
+
 // Append-only activity log for a team workspace (Plan 4). One row per workspace
 // action; powers the feed. The actor is a user (actorUserId) OR an agent
 // (actorAgentId) — agent actions show in the feed even though agents are not

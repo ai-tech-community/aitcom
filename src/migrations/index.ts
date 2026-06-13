@@ -63,6 +63,7 @@ import * as migration_20260612d_peoples_choice_votes from "./20260612d_peoples_c
 import * as migration_20260612e_email_templates from "./20260612e_email_templates";
 import * as migration_20260612f_work_cell_progress from "./20260612f_work_cell_progress";
 import * as migration_20260613a_hackathon_staff from "./20260613a_hackathon_staff";
+import * as migration_20260613b_judge_rankings from "./20260613b_judge_rankings";
 
 export const migrations = [
   {
@@ -389,5 +390,10 @@ export const migrations = [
     up: migration_20260613a_hackathon_staff.up,
     down: migration_20260613a_hackathon_staff.down,
     name: "20260613a_hackathon_staff",
+  },
+  {
+    up: migration_20260613b_judge_rankings.up,
+    down: migration_20260613b_judge_rankings.down,
+    name: "20260613b_judge_rankings",
   },
 ];
