@@ -900,7 +900,7 @@ export const hackathonRouter = createTRPCRouter({
       // Only after finalize (finalRank set) to avoid leaking in-progress
       // deliberation.
       const [team] = await ctx.db
-        .select({ finalRank: teams.finalRank })
+        .select({ finalRank: teams.finalRank, challengeId: teams.challengeId })
         .from(teams)
         .where(eq(teams.id, input.teamId))
         .limit(1);
@@ -909,6 +909,15 @@ export const hackathonRouter = createTRPCRouter({
       const rows = await ctx.db
         .select({ comment: judgeRankings.comment })
         .from(judgeRankings)
+        .innerJoin(
+          hackathonStaff,
+          and(
+            eq(hackathonStaff.userId, judgeRankings.judgeUserId),
+            eq(hackathonStaff.challengeId, judgeRankings.challengeId),
+            eq(hackathonStaff.role, "judge"),
+            isNull(hackathonStaff.revokedAt),
+          ),
+        )
         .where(eq(judgeRankings.teamId, input.teamId));
       return {
         finalized: true,
@@ -1221,9 +1230,13 @@ export const hackathonRouter = createTRPCRouter({
           })
           .from(judgeRankings)
           .where(eq(judgeRankings.challengeId, input.challengeId));
+        const activeJudgeIds = new Set(activeJudges.map((j) => j.userId));
+        const activeRankingRows = rankingRows.filter((r) =>
+          activeJudgeIds.has(r.judgeUserId),
+        );
         const submittedIds = submitted.map((t) => t.id);
         const teamsByJudge = new Map<string, Set<string>>();
-        for (const r of rankingRows) {
+        for (const r of activeRankingRows) {
           const set = teamsByJudge.get(r.judgeUserId) ?? new Set<string>();
           set.add(r.teamId);
           teamsByJudge.set(r.judgeUserId, set);
@@ -1245,7 +1258,7 @@ export const hackathonRouter = createTRPCRouter({
             .map((t) => [t.id, t.submittedAt!]),
         );
         ranked = aggregateJudgeRankings(
-          rankingRows,
+          activeRankingRows,
           scoreByTeam,
           submittedAtMap,
         ).map((r) => ({ teamId: r.teamId, rank: r.finalRank }));
