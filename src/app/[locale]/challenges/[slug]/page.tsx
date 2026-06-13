@@ -38,8 +38,8 @@ export default async function ChallengeDetailPage({
   const boundEvent = eventDocs[0] ?? null;
   const hackathonEvent = boundEvent
     ? {
-        slug: boundEvent.slug as string,
-        title: boundEvent.title as string,
+        slug: boundEvent.slug,
+        title: boundEvent.title,
       }
     : null;
 

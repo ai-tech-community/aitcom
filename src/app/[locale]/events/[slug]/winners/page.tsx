@@ -8,8 +8,11 @@ import {
   resolvePublicHackathonPage,
 } from "@/server/hackathon/resolve-public-hackathon";
 import { splitPodium, prizeRecipients } from "@/server/hackathon/winners";
+import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
+import { hubTabStates } from "@/server/hackathon/hub-tabs";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
-import { Link, redirect } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
+import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
 import { Badge } from "@/components/ui/badge";
 import { MemberFaces } from "@/components/hackathon/member-faces";
 import type { MemberFace } from "@/components/hackathon/member-faces";
@@ -54,9 +57,18 @@ export default async function HackathonWinnersPage({
   if (!resolved.found) notFound();
   const { event, challenge, challengeId, phase } = resolved;
 
-  // Finalized-only gate: bounce earlier phases back to the event page —
-  // winners must not leak before they exist.
-  if (phase !== "finalized") redirect({ href: `/events/${slug}`, locale });
+  // Finalized-only gate via the shared hub tab state: pre-finalized phases show
+  // the locked panel in-place (the tab stays clickable) rather than bouncing
+  // back to Overview — winners still must not leak before they exist.
+  const viewer = await getHubViewerContext(challengeId, phase);
+  const winnersState = hubTabStates(viewer).find((t) => t.key === "winners")!;
+  if (!winnersState.available) {
+    return (
+      <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
+        <LockedTabPanel message={t(winnersState.lockedReasonKey!)} />
+      </div>
+    );
+  }
 
   const [leaderboard, peoplesChoiceState] = await Promise.all([
     api.hackathon.teamLeaderboard({ challengeId }),

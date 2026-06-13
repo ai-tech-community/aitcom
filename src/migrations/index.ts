@@ -61,6 +61,7 @@ import * as migration_20260612b_looking_for_team from "./20260612b_looking_for_t
 import * as migration_20260612c_event_timezone from "./20260612c_event_timezone";
 import * as migration_20260612d_peoples_choice_votes from "./20260612d_peoples_choice_votes";
 import * as migration_20260612e_email_templates from "./20260612e_email_templates";
+import * as migration_20260612f_work_cell_progress from "./20260612f_work_cell_progress";
 
 export const migrations = [
   {
@@ -377,5 +378,10 @@ export const migrations = [
     up: migration_20260612e_email_templates.up,
     down: migration_20260612e_email_templates.down,
     name: "20260612e_email_templates",
+  },
+  {
+    up: migration_20260612f_work_cell_progress.up,
+    down: migration_20260612f_work_cell_progress.down,
+    name: "20260612f_work_cell_progress",
   },
 ];

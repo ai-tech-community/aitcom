@@ -1734,6 +1734,12 @@ export const workCells = appSchema.table(
     claimedAt: d.timestamp({ withTimezone: true }),
     deadline: d.timestamp({ withTimezone: true }),
     deadlineMinutes: d.integer(),
+    progressStatus: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("todo")
+      .$type<"todo" | "in_progress" | "blocked" | "done">(),
+    progressNote: d.text(),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)
