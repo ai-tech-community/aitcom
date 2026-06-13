@@ -7,6 +7,7 @@
 
 import "server-only";
 
+import { cache } from "react";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/server/db";
@@ -17,25 +18,26 @@ import type { Challenge, Event } from "@/payload-types";
 
 // Same public-visibility filter as the event details page: hide un-approved
 // submissions (pending/rejected) and drafts.
-export async function findPublicEvent(
-  slug: string,
-  locale: "en" | "nl",
-): Promise<Event | null> {
-  const payload = await getPayloadClient();
-  const { docs } = await payload.find({
-    collection: "events",
-    where: {
-      and: [
-        { slug: { equals: slug } },
-        { status: { not_in: ["draft", "rejected"] } },
-      ],
-    },
-    locale,
-    limit: 1,
-    depth: 0,
-  });
-  return docs[0] ?? null;
-}
+// Wrapped in React cache() so the layout + page (and the hub sub-pages) that
+// each resolve the same slug within one request share a single Payload lookup.
+export const findPublicEvent = cache(
+  async (slug: string, locale: "en" | "nl"): Promise<Event | null> => {
+    const payload = await getPayloadClient();
+    const { docs } = await payload.find({
+      collection: "events",
+      where: {
+        and: [
+          { slug: { equals: slug } },
+          { status: { not_in: ["draft", "rejected"] } },
+        ],
+      },
+      locale,
+      limit: 1,
+      depth: 0,
+    });
+    return docs[0] ?? null;
+  },
+);
 
 export type PublicHackathonResolution =
   | { found: false }
