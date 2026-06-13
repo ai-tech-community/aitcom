@@ -870,6 +870,55 @@ export const hackathonRouter = createTRPCRouter({
     }),
 
   /**
+   * The anonymous judge comments left on a team's submission, visible to that
+   * team's own members only after the hackathon is finalized (team.finalRank
+   * set). Returns `{ finalized: false, comments: [] }` before finalize so the
+   * UI can stay silent without leaking in-progress deliberation. Judge
+   * identity is never returned.
+   */
+  teamJudgeFeedback: protectedProcedure
+    .input(z.object({ teamId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      // Caller must be a member of this team (enrollment with teamId).
+      const membership = await ctx.db
+        .select({ id: challengeEnrollments.id })
+        .from(challengeEnrollments)
+        .where(
+          and(
+            eq(challengeEnrollments.teamId, input.teamId),
+            eq(challengeEnrollments.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (membership.length === 0) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Not a member of this team",
+        });
+      }
+      // Only after finalize (finalRank set) to avoid leaking in-progress
+      // deliberation.
+      const [team] = await ctx.db
+        .select({ finalRank: teams.finalRank })
+        .from(teams)
+        .where(eq(teams.id, input.teamId))
+        .limit(1);
+      if (!team?.finalRank)
+        return { finalized: false, comments: [] as string[] };
+      const rows = await ctx.db
+        .select({ comment: judgeRankings.comment })
+        .from(judgeRankings)
+        .where(eq(judgeRankings.teamId, input.teamId));
+      return {
+        finalized: true,
+        comments: rows
+          .map((r) => r.comment)
+          .filter((c): c is string => !!c && c.trim().length > 0),
+      };
+    }),
+
+  /**
    * Submit (or replace) a judge's complete ranking ballot (judge-scoped).
    * Judging must be open. The ballot must rank every submitted team exactly
    * once with distinct ranks; the prior ballot is replaced atomically.

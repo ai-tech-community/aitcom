@@ -31,6 +31,11 @@ export function MyTeamPanel({
 
   const { data: myTeam } = api.hackathon.myTeam.useQuery({ challengeId });
 
+  const feedback = api.hackathon.teamJudgeFeedback.useQuery(
+    { teamId: myTeam?.team.id ?? "" },
+    { enabled: !!myTeam?.team.id },
+  );
+
   const [teamName, setTeamName] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [artifactUrl, setArtifactUrl] = useState("");
@@ -198,6 +203,22 @@ export function MyTeamPanel({
               >
                 {t("submit")}
               </Button>
+            </div>
+          ) : null}
+
+          {feedback.data?.finalized && feedback.data.comments.length > 0 ? (
+            <div className="mt-4 border-t pt-3">
+              <h4 className="text-sm font-medium">Judge feedback</h4>
+              <ul className="mt-2 space-y-2">
+                {feedback.data.comments.map((comment, i) => (
+                  <li
+                    key={i}
+                    className="text-muted-foreground bg-muted/40 rounded-md p-2 text-xs"
+                  >
+                    {comment}
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
         </Card>
