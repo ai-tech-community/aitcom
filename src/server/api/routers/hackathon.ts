@@ -166,7 +166,7 @@ async function requireHackathonOperator(
   return challenge;
 }
 
-/** Active (non-revoked) staff grants for one user on one hackathon. */
+/** All staff grants for one user on one hackathon (revocation filtered by hasActiveGrant). */
 async function loadHackathonGrants(
   db: typeof import("@/server/db").db,
   challengeId: number,
