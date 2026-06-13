@@ -1157,7 +1157,7 @@ export const hackathonRouter = createTRPCRouter({
         const submittedAtMap = new Map(
           submitted
             .filter((t) => t.submittedAt !== null)
-            .map((t) => [t.id, t.submittedAt as Date]),
+            .map((t) => [t.id, t.submittedAt!]),
         );
         ranked = aggregateJudgeRankings(
           rankingRows,
