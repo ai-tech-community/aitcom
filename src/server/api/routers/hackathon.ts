@@ -758,6 +758,125 @@ export const hackathonRouter = createTRPCRouter({
       return { lockedTeams: created.length, grids: created };
     }),
 
+  listStaff: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireHackathonOrganizer(
+        ctx.db,
+        input.challengeId,
+        ctx.session.user.id,
+      );
+      const rows = await ctx.db
+        .select({
+          id: hackathonStaff.id,
+          userId: hackathonStaff.userId,
+          role: hackathonStaff.role,
+          revokedAt: hackathonStaff.revokedAt,
+          grantedAt: hackathonStaff.grantedAt,
+        })
+        .from(hackathonStaff)
+        .where(eq(hackathonStaff.challengeId, input.challengeId));
+      const active = rows.filter((r) => r.revokedAt === null);
+      return {
+        organizers: active.filter((r) => r.role === "organizer"),
+        judges: active.filter((r) => r.role === "judge"),
+      };
+    }),
+
+  grantStaff: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        userId: z.string(),
+        role: z.enum(["organizer", "judge"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const actorId = ctx.session.user.id;
+      // Granting organizers is admin-only; granting judges is organizer-or-admin.
+      if (input.role === "organizer") {
+        await requireCommunityHackathonAdmin(
+          ctx.db,
+          input.challengeId,
+          actorId,
+        );
+      } else {
+        await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
+      }
+      const challenge = await loadChallenge(input.challengeId);
+      // Re-grant after revoke: reactivate the existing row rather than violating
+      // the (challenge_id, user_id, role) unique index.
+      const [existing] = await ctx.db
+        .select({ id: hackathonStaff.id })
+        .from(hackathonStaff)
+        .where(
+          and(
+            eq(hackathonStaff.challengeId, input.challengeId),
+            eq(hackathonStaff.userId, input.userId),
+            eq(hackathonStaff.role, input.role),
+          ),
+        )
+        .limit(1);
+      if (existing) {
+        await ctx.db
+          .update(hackathonStaff)
+          .set({ revokedAt: null, grantedBy: actorId, grantedAt: new Date() })
+          .where(eq(hackathonStaff.id, existing.id));
+      } else {
+        await ctx.db.insert(hackathonStaff).values({
+          challengeId: input.challengeId,
+          userId: input.userId,
+          role: input.role,
+          grantedBy: actorId,
+        });
+      }
+      await ctx.db.insert(notifications).values({
+        userId: input.userId,
+        type: "hackathon_staff_grant",
+        title:
+          input.role === "organizer"
+            ? "You're now an organizer"
+            : "You're now a judge",
+        content: `You were added as ${input.role === "organizer" ? "an organizer" : "a judge"} for "${challenge.title}".`,
+        metadata: { challengeId: String(input.challengeId), role: input.role },
+        communityId: challenge.communityId ?? null,
+      });
+      return { ok: true };
+    }),
+
+  revokeStaff: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        userId: z.string(),
+        role: z.enum(["organizer", "judge"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const actorId = ctx.session.user.id;
+      if (input.role === "organizer") {
+        await requireCommunityHackathonAdmin(
+          ctx.db,
+          input.challengeId,
+          actorId,
+        );
+      } else {
+        await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
+      }
+      await ctx.db
+        .update(hackathonStaff)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(hackathonStaff.challengeId, input.challengeId),
+            eq(hackathonStaff.userId, input.userId),
+            eq(hackathonStaff.role, input.role),
+            isNull(hackathonStaff.revokedAt),
+          ),
+        );
+      return { ok: true };
+    }),
+
   /**
    * Finalize a hackathon (operator-scoped, ADR-0031). Scores each team from its
    * competitive grid's verified cells, ranks the submitted teams, and awards the
