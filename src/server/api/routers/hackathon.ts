@@ -25,9 +25,15 @@ import {
   notifications,
   communityMemberships,
   communities,
+  hackathonStaff,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
+import {
+  hasActiveGrant,
+  resolveHackathonCapability,
+  type StaffGrantRow,
+} from "@/server/hackathon/staff-roles";
 import {
   assertBindable,
   BindingError,
@@ -155,6 +161,87 @@ async function requireHackathonOperator(
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Only the challenge sponsor can administer this hackathon",
+    });
+  }
+  return challenge;
+}
+
+/** Active (non-revoked) staff grants for one user on one hackathon. */
+async function loadHackathonGrants(
+  db: typeof import("@/server/db").db,
+  challengeId: number,
+  userId: string,
+): Promise<StaffGrantRow[]> {
+  const rows = await db
+    .select({ role: hackathonStaff.role, revokedAt: hackathonStaff.revokedAt })
+    .from(hackathonStaff)
+    .where(
+      and(
+        eq(hackathonStaff.challengeId, challengeId),
+        eq(hackathonStaff.userId, userId),
+      ),
+    );
+  return rows as StaffGrantRow[];
+}
+
+/** Load the caller's community membership for a challenge (null for Hub-wide). */
+async function loadMembershipForChallenge(
+  db: typeof import("@/server/db").db,
+  communityId: string | null | undefined,
+  userId: string,
+) {
+  if (!communityId) return null;
+  return (
+    (await db.query.communityMemberships.findFirst({
+      where: and(
+        eq(communityMemberships.communityId, communityId),
+        eq(communityMemberships.userId, userId),
+      ),
+    })) ?? null
+  );
+}
+
+/**
+ * Organizer-tier gate: community owner/admin, the Hub-wide sponsor, OR an active
+ * organizer grant. Used for Setup/Tasks/Analytics + opening judging. Returns the
+ * challenge doc.
+ */
+async function requireHackathonOrganizer(
+  db: typeof import("@/server/db").db,
+  challengeId: number,
+  userId: string,
+) {
+  const challenge = await loadChallenge(challengeId);
+  const membership = await loadMembershipForChallenge(
+    db,
+    challenge.communityId,
+    userId,
+  );
+  const grants = await loadHackathonGrants(db, challengeId, userId);
+  const capability = resolveHackathonCapability(membership, grants);
+  const isHubSponsor =
+    !challenge.communityId && challenge.creatorId === userId;
+  if (capability === "admin" || capability === "organizer" || isHubSponsor) {
+    return challenge;
+  }
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message: "Only an organizer or community admin can manage this hackathon",
+  });
+}
+
+/** Judge-tier gate: an active judge grant is required (admins are not implicitly judges). */
+async function requireHackathonJudge(
+  db: typeof import("@/server/db").db,
+  challengeId: number,
+  userId: string,
+) {
+  const challenge = await loadChallenge(challengeId);
+  const grants = await loadHackathonGrants(db, challengeId, userId);
+  if (!hasActiveGrant(grants, "judge")) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only an assigned judge can rank this hackathon",
     });
   }
   return challenge;
