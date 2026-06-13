@@ -1,20 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  CellTemplateEditor,
-  type CellRow,
-} from "@/components/hackathon/cell-template-editor";
-import { HackathonAnalytics } from "@/components/hackathon/hackathon-analytics";
 
 function LabeledInput({
   label,
@@ -31,12 +25,16 @@ function LabeledInput({
   );
 }
 
-export function HackathonManage({
-  communitySlug,
-  eventId,
-  eventSlug,
-  initialPhase,
+/**
+ * Setup tab: event details (name/description/date/times/location/cover) + team
+ * size + rewards. Saves its own slice via updateHackathon. Editable only in
+ * draft — once published the config is frozen, so fields go read-only and Save
+ * is replaced with a frozen notice.
+ */
+export function ManageSetup({
   challengeId,
+  eventId,
+  phase,
   initialName,
   initialDescription,
   initialDate,
@@ -45,18 +43,15 @@ export function HackathonManage({
   initialLocation,
   initialCoverImageId,
   initialCoverImageUrl,
-  initialCells,
-  teamMin: initialTeamMin,
-  teamMax: initialTeamMax,
+  initialTeamMin,
+  initialTeamMax,
   initialXpReward,
   initialSponsorReward,
   initialBadgeReward,
 }: {
-  communitySlug: string;
-  eventId: number;
-  eventSlug: string;
-  initialPhase: "draft" | "live" | "locked" | "finalized";
   challengeId: number;
+  eventId: number;
+  phase: "draft" | "live" | "locked" | "finalized";
   initialName: string;
   initialDescription: string;
   initialDate: string;
@@ -65,81 +60,37 @@ export function HackathonManage({
   initialLocation: string;
   initialCoverImageId: number | null;
   initialCoverImageUrl: string;
-  initialCells: CellRow[];
-  teamMin: number;
-  teamMax: number;
+  initialTeamMin: number;
+  initialTeamMax: number;
   initialXpReward: number;
   initialSponsorReward: string;
   initialBadgeReward: string;
 }) {
   const t = useTranslations("hackathon");
+  const isDraft = phase === "draft";
 
-  // Details
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
   const [date, setDate] = useState(initialDate);
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime);
   const [location, setLocation] = useState(initialLocation);
-  // Cover image
   const [coverImageId, setCoverImageId] = useState<number | null>(
     initialCoverImageId,
   );
   const [coverImageUrl, setCoverImageUrl] = useState(initialCoverImageUrl);
   const [coverUploading, setCoverUploading] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
-  // Teams + prize
   const [teamMin, setTeamMin] = useState(initialTeamMin);
   const [teamMax, setTeamMax] = useState(initialTeamMax);
   const [xpReward, setXpReward] = useState(initialXpReward);
   const [sponsorReward, setSponsorReward] = useState(initialSponsorReward);
   const [badgeReward, setBadgeReward] = useState(initialBadgeReward);
-  // Tasks
-  const [cells, setCells] = useState<CellRow[]>(initialCells);
 
-  // Seeded from server truth (team lock/finalize markers) so a reload after
-  // finalizing doesn't re-enable Lock Rosters / Finalize.
-  const [phase, setPhase] = useState<"draft" | "live" | "locked" | "finalized">(
-    initialPhase,
-  );
-  const isDraft = phase === "draft";
-
-  const utils = api.useUtils();
   const save = api.hackathon.updateHackathon.useMutation({
     onSuccess: () => toast.success(t("saveChanges")),
     onError: (e) => toast.error(e.message),
   });
-  const publish = api.hackathon.publishHackathon.useMutation({
-    onSuccess: () => {
-      setPhase("live");
-      toast.success(t("statusLive"));
-    },
-    onError: (e) => toast.error(e.message),
-  });
-  const lock = api.hackathon.lockRosters.useMutation({
-    onSuccess: () => {
-      setPhase("locked");
-      toast.success(t("statusLocked"));
-    },
-    onError: (e) => toast.error(e.message),
-  });
-  const finalize = api.hackathon.finalizeHackathon.useMutation({
-    onSuccess: () => {
-      setPhase("finalized");
-      void utils.hackathon.teamLeaderboard.invalidate({ challengeId });
-      toast.success(t("statusFinalized"));
-    },
-    onError: (e) => toast.error(e.message),
-  });
-
-  const statusLabel =
-    phase === "draft"
-      ? t("statusDraft")
-      : phase === "locked"
-        ? t("statusLocked")
-        : phase === "finalized"
-          ? t("statusFinalized")
-          : t("statusLive");
 
   const onCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -176,7 +127,6 @@ export function HackathonManage({
       endTime: endTime || undefined,
       location: location.trim(),
       coverImage: coverImageId,
-      cellTemplate: cells,
       teamMin,
       teamMax,
       xpReward,
@@ -192,44 +142,27 @@ export function HackathonManage({
     teamMin > teamMax;
 
   return (
-    <section className="mx-auto max-w-3xl space-y-6 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Link
-            href={`/communities/${communitySlug}/events`}
-            className="text-muted-foreground text-sm hover:underline"
-          >
-            ← {communitySlug}
-          </Link>
-          <h1 className="truncate text-xl font-semibold">
-            {name || t("createTitle")}
-          </h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {!isDraft ? (
-            <Link
-              href={`/events/${eventSlug}`}
-              className="text-sm hover:underline"
-              target="_blank"
-            >
-              {t("viewPublicPage")}
-            </Link>
-          ) : null}
-          <Badge variant={isDraft ? "outline" : "secondary"}>
-            {statusLabel}
-          </Badge>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {!isDraft ? (
+        <Card className="border-dashed p-4">
+          <p className="text-muted-foreground text-xs">{t("manageFrozen")}</p>
+        </Card>
+      ) : null}
 
       {/* Details */}
       <Card className="space-y-3 p-4">
         <h2 className="text-sm font-medium">{t("details")}</h2>
         <LabeledInput label={t("name")}>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
+          <Input
+            value={name}
+            disabled={!isDraft}
+            onChange={(e) => setName(e.target.value)}
+          />
         </LabeledInput>
         <LabeledInput label={t("description")}>
           <Textarea
             value={description}
+            disabled={!isDraft}
             onChange={(e) => setDescription(e.target.value)}
           />
         </LabeledInput>
@@ -238,6 +171,7 @@ export function HackathonManage({
             <Input
               type="date"
               value={date}
+              disabled={!isDraft}
               onChange={(e) => setDate(e.target.value)}
             />
           </LabeledInput>
@@ -245,6 +179,7 @@ export function HackathonManage({
             <Input
               type="time"
               value={startTime}
+              disabled={!isDraft}
               onChange={(e) => setStartTime(e.target.value)}
             />
           </LabeledInput>
@@ -252,6 +187,7 @@ export function HackathonManage({
             <Input
               type="time"
               value={endTime}
+              disabled={!isDraft}
               onChange={(e) => setEndTime(e.target.value)}
             />
           </LabeledInput>
@@ -259,6 +195,7 @@ export function HackathonManage({
         <LabeledInput label={t("location")}>
           <Input
             value={location}
+            disabled={!isDraft}
             onChange={(e) => setLocation(e.target.value)}
           />
         </LabeledInput>
@@ -274,37 +211,39 @@ export function HackathonManage({
               className="border-border h-32 w-full rounded-md border object-cover"
             />
           ) : null}
-          <div className="flex items-center gap-2">
-            <input
-              ref={coverInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={onCoverUpload}
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={coverUploading}
-              onClick={() => coverInputRef.current?.click()}
-            >
-              {coverUploading ? t("uploading") : t("uploadImage")}
-            </Button>
-            {coverImageId !== null ? (
+          {isDraft ? (
+            <div className="flex items-center gap-2">
+              <input
+                ref={coverInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onCoverUpload}
+              />
               <Button
                 type="button"
-                variant="ghost"
+                variant="secondary"
                 size="sm"
-                onClick={() => {
-                  setCoverImageId(null);
-                  setCoverImageUrl("");
-                }}
+                disabled={coverUploading}
+                onClick={() => coverInputRef.current?.click()}
               >
-                {t("removeImage")}
+                {coverUploading ? t("uploading") : t("uploadImage")}
               </Button>
-            ) : null}
-          </div>
+              {coverImageId !== null ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setCoverImageId(null);
+                    setCoverImageUrl("");
+                  }}
+                >
+                  {t("removeImage")}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </Card>
 
@@ -319,6 +258,7 @@ export function HackathonManage({
               type="number"
               min={1}
               value={teamMin}
+              disabled={!isDraft}
               onChange={(e) => setTeamMin(Number(e.target.value) || 1)}
             />
           </LabeledInput>
@@ -327,6 +267,7 @@ export function HackathonManage({
               type="number"
               min={1}
               value={teamMax}
+              disabled={!isDraft}
               onChange={(e) => setTeamMax(Number(e.target.value) || 1)}
             />
           </LabeledInput>
@@ -337,18 +278,21 @@ export function HackathonManage({
               type="number"
               min={0}
               value={xpReward}
+              disabled={!isDraft}
               onChange={(e) => setXpReward(Number(e.target.value) || 0)}
             />
           </LabeledInput>
           <LabeledInput label={t("sponsorReward")}>
             <Input
               value={sponsorReward}
+              disabled={!isDraft}
               onChange={(e) => setSponsorReward(e.target.value)}
             />
           </LabeledInput>
           <LabeledInput label={t("badgeReward")}>
             <Input
               value={badgeReward}
+              disabled={!isDraft}
               onChange={(e) => setBadgeReward(e.target.value)}
             />
           </LabeledInput>
@@ -356,67 +300,11 @@ export function HackathonManage({
         <p className="text-muted-foreground text-xs">{t("prizeHint")}</p>
       </Card>
 
-      {/* Tasks */}
-      <Card className="space-y-3 p-4">
-        <h2 className="text-sm font-medium">{t("tasks")}</h2>
-        <p className="text-muted-foreground text-xs">{t("tasksHint")}</p>
-        <CellTemplateEditor cells={cells} onChange={setCells} />
-      </Card>
-
-      <Button className="w-full" disabled={saveDisabled} onClick={onSave}>
-        {t("saveChanges")}
-      </Button>
-
-      {/* Analytics (#165) — participation funnel + cell completion */}
-      <HackathonAnalytics challengeId={challengeId} phase={phase} />
-
-      {/* Lifecycle */}
-      <Card className="space-y-4 p-4">
-        <h2 className="text-sm font-medium">{t("lifecycle")}</h2>
-
-        <div className="space-y-1">
-          <Button
-            className="w-full"
-            disabled={publish.isPending || !isDraft || cells.length === 0}
-            onClick={() => publish.mutate({ challengeId, eventId })}
-          >
-            {t("publish")}
-          </Button>
-          <p className="text-muted-foreground text-xs">{t("publishDesc")}</p>
-        </div>
-
-        <div className="space-y-1">
-          <Button
-            className="w-full"
-            variant="secondary"
-            disabled={lock.isPending || isDraft || phase === "finalized"}
-            onClick={() => lock.mutate({ challengeId })}
-          >
-            {t("lockRosters")}
-          </Button>
-          <p className="text-muted-foreground text-xs">
-            {isDraft ? t("publishFirst") : t("lockRostersDesc")}
-          </p>
-        </div>
-
-        <div className="space-y-1">
-          <Button
-            className="w-full"
-            variant="destructive"
-            disabled={finalize.isPending || isDraft || phase === "finalized"}
-            onClick={() => {
-              if (window.confirm(t("finalizeConfirm"))) {
-                finalize.mutate({ challengeId });
-              }
-            }}
-          >
-            {t("finalize")}
-          </Button>
-          <p className="text-muted-foreground text-xs">
-            {isDraft ? t("publishFirst") : t("finalizeDesc")}
-          </p>
-        </div>
-      </Card>
-    </section>
+      {isDraft ? (
+        <Button className="w-full" disabled={saveDisabled} onClick={onSave}>
+          {t("saveChanges")}
+        </Button>
+      ) : null}
+    </div>
   );
 }
