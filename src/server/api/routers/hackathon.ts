@@ -14,6 +14,7 @@ import {
 } from "@/server/api/trpc";
 import {
   teams,
+  agentProfiles,
   workGrids,
   workCells,
   workCellResults,
@@ -60,6 +61,7 @@ import {
   type CellStatusCounts,
 } from "@/server/hackathon/analytics";
 import { cellHeatState } from "@/server/hackathon/cell-state";
+import { mergeAgentStats } from "@/server/hackathon/agent-stats";
 import { awardXp, awardBadge } from "@/lib/gamification";
 
 /** Load a challenge by id or throw NOT_FOUND. */
@@ -1025,6 +1027,108 @@ export const hackathonRouter = createTRPCRouter({
         },
         cells: cellCompletion(byStatus, verifiedRow?.count ?? 0),
       };
+    }),
+
+  agentStats: publicProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      // Two independent per-agent aggregates over this hackathon's competitive
+      // grids, then merged + ranked by the pure helper. Mirrors analytics().
+      const [claimRows, resultRows] = await Promise.all([
+        // Cells currently claimed by each agent, with the team they belong to.
+        ctx.db
+          .select({
+            agentId: workCells.claimedBy,
+            teamId: workGrids.teamId,
+            claimed: sql<number>`count(*)`.mapWith(Number),
+          })
+          .from(workCells)
+          .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
+          .where(
+            and(
+              eq(workGrids.challengeId, input.challengeId),
+              eq(workGrids.mode, "competitive"),
+              isNotNull(workCells.claimedBy),
+            ),
+          )
+          .groupBy(workCells.claimedBy, workGrids.teamId),
+
+        // Results authored by each agent: reported total + verified subset.
+        ctx.db
+          .select({
+            agentId: workCellResults.agentId,
+            reported: sql<number>`count(*)`.mapWith(Number),
+            verified:
+              sql<number>`count(*) filter (where ${workCellResults.verificationOutcome} = 'verified')`.mapWith(
+                Number,
+              ),
+          })
+          .from(workCellResults)
+          .innerJoin(workCells, eq(workCellResults.cellId, workCells.id))
+          .innerJoin(workGrids, eq(workCells.gridId, workGrids.id))
+          .where(
+            and(
+              eq(workGrids.challengeId, input.challengeId),
+              eq(workGrids.mode, "competitive"),
+              isNotNull(workCellResults.agentId),
+            ),
+          )
+          .groupBy(workCellResults.agentId),
+      ]);
+
+      const stats = mergeAgentStats(
+        claimRows
+          .filter(
+            (
+              r,
+            ): r is {
+              agentId: string;
+              teamId: string | null;
+              claimed: number;
+            } => r.agentId !== null,
+          )
+          .map((r) => ({
+            agentId: r.agentId,
+            teamId: r.teamId,
+            claimed: r.claimed,
+          })),
+        resultRows
+          .filter(
+            (r): r is { agentId: string; reported: number; verified: number } =>
+              r.agentId !== null,
+          )
+          .map((r) => ({
+            agentId: r.agentId,
+            reported: r.reported,
+            verified: r.verified,
+          })),
+      );
+
+      if (stats.length === 0) return [];
+
+      // Decorate with agent identity for display.
+      const profiles = await ctx.db
+        .select({
+          id: agentProfiles.id,
+          name: agentProfiles.name,
+          avatar: agentProfiles.avatar,
+          ownerId: agentProfiles.ownerId,
+        })
+        .from(agentProfiles)
+        .where(
+          inArray(
+            agentProfiles.id,
+            stats.map((s) => s.agentId),
+          ),
+        );
+      const profileById = new Map(profiles.map((p) => [p.id, p]));
+
+      return stats.map((s) => ({
+        ...s,
+        name: profileById.get(s.agentId)?.name ?? "Agent",
+        avatar: profileById.get(s.agentId)?.avatar ?? null,
+        ownerId: profileById.get(s.agentId)?.ownerId ?? null,
+      }));
     }),
 
   /** Public team leaderboard for a hackathon challenge (isPublic-respecting). */

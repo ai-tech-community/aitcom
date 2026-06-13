@@ -25,7 +25,7 @@ import {
   formatEventTimeRange,
 } from "@/lib/event-time";
 import { EventTimeDisplay } from "@/components/event-time-display";
-import { HackathonPanel } from "@/components/hackathon/hackathon-panel";
+import { getTranslations } from "next-intl/server";
 
 type MediaValue =
   | { url?: string | null; alt?: string | null }
@@ -214,7 +214,14 @@ export default async function EventDetailPage({
         ? "Free"
         : null;
 
-  let hackathonChallenge: { id: number } | null = null;
+  let hackathonChallenge: {
+    id: number;
+    rewards: {
+      xpReward?: number | null;
+      sponsorReward?: string | null;
+      badgeReward?: string | null;
+    };
+  } | null = null;
   if (event.challengeId) {
     try {
       const ch = await payload.findByID({
@@ -222,7 +229,14 @@ export default async function EventDetailPage({
         id: Number(event.challengeId),
         depth: 0,
       });
-      hackathonChallenge = { id: Number(ch.id) };
+      hackathonChallenge = {
+        id: Number(ch.id),
+        rewards: (ch.rewards ?? {}) as {
+          xpReward?: number | null;
+          sponsorReward?: string | null;
+          badgeReward?: string | null;
+        },
+      };
     } catch {
       hackathonChallenge = null;
     }
@@ -250,6 +264,20 @@ export default async function EventDetailPage({
     limit: 3,
   });
 
+  // Prizes for hackathons — reuse the same labels the winners page uses.
+  let prizeParts: Array<{ label: string; value: string }> = [];
+  if (hackathonChallenge) {
+    const t = await getTranslations("hackathon");
+    const r = hackathonChallenge.rewards;
+    const parts: Array<{ label: string; value: string }> = [];
+    if (r.xpReward)
+      parts.push({ label: t("xpReward"), value: `${r.xpReward} XP` });
+    if (r.badgeReward) parts.push({ label: t("badge"), value: r.badgeReward });
+    if (r.sponsorReward)
+      parts.push({ label: t("sponsorPrize"), value: r.sponsorReward });
+    prizeParts = parts;
+  }
+
   const aitFitScore =
     typeof event.aitFitScore === "number" ? event.aitFitScore : null;
   const showAitCallout =
@@ -261,6 +289,298 @@ export default async function EventDetailPage({
         aitFitScore,
       })
     : null;
+
+  // HACKATHON: the hub layout owns the chrome (cover/title/phase/tabs + the
+  // max-w container). Render ONLY the overview body — no breadcrumb, no
+  // EventHero, no outer container — plus a Prizes block. Team-formation UI
+  // (formerly HackathonPanel) lives in the My Team / Participants tabs now.
+  if (hackathonChallenge) {
+    return (
+      <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
+        <div className="min-w-0 space-y-8">
+          {event.summary && (
+            <p className="text-foreground/90 text-lg leading-relaxed">
+              {event.summary}
+            </p>
+          )}
+
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="border-border text-muted-foreground rounded-full border px-3 py-1 text-xs"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {prizeParts.length > 0 && (
+            <div className="border-border bg-card space-y-3 rounded-lg border p-4">
+              <div className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+                / PRIZES
+              </div>
+              <dl className="grid gap-3 sm:grid-cols-2">
+                {prizeParts.map((part) => (
+                  <div key={part.label} className="flex flex-col gap-1">
+                    <dt className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+                      {part.label}
+                    </dt>
+                    <dd className="text-sm font-medium">{part.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
+          {Boolean(
+            event.focus ??
+            event.level ??
+            event.videoUrl ??
+            (audience.length > 0 || locationParts.length > 0 || null),
+          ) && (
+            <div className="border-border grid gap-4 rounded-lg border p-4 text-sm sm:grid-cols-2">
+              {event.focus && (
+                <DetailRow
+                  label="Focus"
+                  value={EVENT_FOCUS_LABELS[event.focus] ?? event.focus}
+                />
+              )}
+              {event.level && (
+                <DetailRow
+                  label="Level"
+                  value={EVENT_LEVEL_LABELS[event.level] ?? event.level}
+                />
+              )}
+              {audience.length > 0 && (
+                <DetailRow
+                  label="Audience"
+                  value={audience
+                    .map((entry) => EVENT_AUDIENCE_LABELS[entry] ?? entry)
+                    .join(", ")}
+                />
+              )}
+              {locationParts.length > 0 && (
+                <DetailRow label="Region" value={locationShort} />
+              )}
+              {event.videoUrl && (
+                <DetailRow
+                  label="Video"
+                  value={
+                    <a
+                      href={event.videoUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline underline-offset-4"
+                    >
+                      Watch video
+                    </a>
+                  }
+                />
+              )}
+            </div>
+          )}
+
+          {event.description && (
+            <div className="border-border border-t pt-8">
+              <div className="border-border border-b pb-4">
+                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+                  / ABOUT
+                </h2>
+              </div>
+              <div className="mt-4">
+                <LexicalRenderer content={event.description} />
+              </div>
+            </div>
+          )}
+
+          {speakers.length > 0 && (
+            <div className="border-border border-t pt-8">
+              <div className="border-border border-b pb-4">
+                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+                  / SPEAKERS
+                </h2>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {speakers.map((speaker) => {
+                  const photoUrl =
+                    speaker.photo && typeof speaker.photo === "object"
+                      ? speaker.photo.url
+                      : undefined;
+                  return (
+                    <div
+                      key={speaker.id}
+                      className="border-border flex items-start gap-3 rounded-lg border p-4"
+                    >
+                      {photoUrl ? (
+                        <Image
+                          src={photoUrl}
+                          alt={speaker.name}
+                          className="h-10 w-10 shrink-0 rounded-full object-cover"
+                          width={40}
+                          height={40}
+                        />
+                      ) : (
+                        <div className="bg-secondary text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-mono text-xs">
+                          {speaker.name
+                            .split(" ")
+                            .map((p) => p[0])
+                            .join("")
+                            .toUpperCase()
+                            .slice(0, 2)}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="truncate font-medium">
+                          {speaker.name}
+                        </div>
+                        {speaker.company && (
+                          <div className="text-muted-foreground truncate font-mono text-xs">
+                            {speaker.company}
+                          </div>
+                        )}
+                        {speaker.bio && (
+                          <p className="text-muted-foreground mt-2 line-clamp-3 text-sm leading-relaxed">
+                            {speaker.bio}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {gallery.length > 0 && (
+            <div className="border-border border-t pt-8">
+              <div className="border-border border-b pb-4">
+                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+                  / GALLERY
+                </h2>
+              </div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {gallery.map((image, index) => (
+                  <div
+                    key={`${image?.url}-${index}`}
+                    className="border-border overflow-hidden rounded-lg border"
+                  >
+                    {image?.url && (
+                      <Image
+                        src={image.url}
+                        alt={
+                          image.alt ??
+                          `${event.title} gallery image ${index + 1}`
+                        }
+                        width={600}
+                        height={400}
+                        className="h-56 w-full object-cover"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="border-border border-t pt-8">
+            <div className="border-border border-b pb-4">
+              <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+                / ATTENDEES
+              </h2>
+            </div>
+            <div className="mt-4">
+              <EventAttendees
+                eventId={eventId}
+                maxAttendees={maxAttendees}
+                isExternal={isExternal}
+              />
+            </div>
+          </div>
+        </div>
+
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="border-border bg-card space-y-4 rounded-lg border p-5">
+            <div className="space-y-1">
+              <div className="text-muted-foreground font-mono text-[11px] tracking-wider">
+                {dateMonth} {dateDay}, {dateYear}
+              </div>
+              <EventTimeDisplay
+                date={event.date}
+                startTime={event.startTime ?? null}
+                endTime={event.endTime ?? null}
+                timezone={event.timezone ?? null}
+              />
+            </div>
+
+            <div className="border-border border-t pt-4 text-sm">
+              <div className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+                Location
+              </div>
+              <div className="mt-1">{event.location}</div>
+              {locationParts.length > 0 && locationShort !== event.location && (
+                <div className="text-muted-foreground mt-0.5 text-xs">
+                  {locationShort}
+                </div>
+              )}
+              {event.format !== "online" && (
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    [event.location, locationShort].filter(Boolean).join(", "),
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-[10px] tracking-wider underline underline-offset-4"
+                >
+                  View on map ↗
+                </a>
+              )}
+            </div>
+
+            {(event.format ?? priceLabel) && (
+              <div className="border-border flex flex-wrap gap-2 border-t pt-4 font-mono text-[11px] tracking-wider">
+                {event.format && (
+                  <span className="border-border rounded border px-2 py-0.5">
+                    {EVENT_FORMAT_LABELS[event.format] ?? event.format}
+                  </span>
+                )}
+                {priceLabel && (
+                  <span className="border-border rounded border px-2 py-0.5">
+                    {priceLabel}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="border-border border-t pt-4">
+              <EventRegisterButton
+                eventId={eventId}
+                price={price}
+                isExternal={isExternal}
+                sourceUrl={sourceUrl}
+              />
+            </div>
+
+            {isExternal && sourceUrl && (
+              <div className="text-muted-foreground border-border border-t pt-4 font-mono text-[10px] tracking-wider">
+                SOURCE ·{" "}
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-4"
+                >
+                  Original event ↗
+                </a>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
@@ -557,13 +877,6 @@ export default async function EventDetailPage({
               />
             </div>
           </div>
-
-          {hackathonChallenge ? (
-            <HackathonPanel
-              challengeId={hackathonChallenge.id}
-              eventSlug={slug}
-            />
-          ) : null}
 
           {relatedEvents.length > 0 && (
             <div className="border-border border-t pt-8">

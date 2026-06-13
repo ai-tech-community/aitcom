@@ -18,10 +18,16 @@ import {
   teamActivityEvents,
   teamPresence,
   memberProfiles,
+  teams,
 } from "@/server/db/schema";
 import { ownerOnTeam } from "@/server/hackathon/team-membership";
 import { cellHeatState } from "@/server/hackathon/cell-state";
 import { appendActivity } from "@/server/hackathon/activity";
+import {
+  canEditCellProgress,
+  isTaskProgressStatus,
+  TASK_PROGRESS_STATUSES,
+} from "@/server/hackathon/task-progress";
 
 /** Throw FORBIDDEN unless the caller is an active member of the team. */
 async function requireTeamMember(
@@ -144,6 +150,72 @@ export const teamWorkspaceRouter = createTRPCRouter({
         });
         return updated;
       });
+    }),
+
+  /**
+   * Set a cell's manual, kanban-style progress status (and optional note).
+   * Informational only — does NOT touch verification or score. Editable by the
+   * cell's current claimant or the team captain.
+   */
+  updateCellProgress: protectedProcedure
+    .input(
+      z.object({
+        cellId: z.string(),
+        teamId: z.string(),
+        status: z.enum(TASK_PROGRESS_STATUSES),
+        note: z.string().max(500).nullish(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      await requireTeamMember(ctx.db, userId, input.teamId);
+      const gridId = await requireTeamGridId(ctx.db, input.teamId);
+
+      // Defence in depth: the input is already z.enum-constrained.
+      if (!isTaskProgressStatus(input.status)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid status" });
+      }
+
+      const [team] = await ctx.db
+        .select({ captainId: teams.captainId })
+        .from(teams)
+        .where(eq(teams.id, input.teamId));
+      if (!team) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
+      }
+
+      const [cell] = await ctx.db
+        .select({ claimedByUserId: workCells.claimedByUserId })
+        .from(workCells)
+        .where(
+          and(eq(workCells.id, input.cellId), eq(workCells.gridId, gridId)),
+        );
+      if (!cell) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Cell not found" });
+      }
+
+      if (
+        !canEditCellProgress({
+          userId,
+          captainId: team.captainId,
+          claimedByUserId: cell.claimedByUserId,
+        })
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Only the cell's claimant or the team captain can update its progress.",
+        });
+      }
+
+      const [updated] = await ctx.db
+        .update(workCells)
+        .set({ progressStatus: input.status, progressNote: input.note ?? null })
+        .where(
+          and(eq(workCells.id, input.cellId), eq(workCells.gridId, gridId)),
+        )
+        .returning();
+      return updated;
     }),
 
   /**

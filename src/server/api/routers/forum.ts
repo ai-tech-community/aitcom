@@ -18,6 +18,8 @@ import {
 } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import { IDEA_CATEGORIES } from "@/lib/idea-categories";
+import { buildIdeasWhere } from "./ideas-filter";
 
 async function requireRulesAcceptance(userId: string, communityId?: string) {
   if (!communityId) return;
@@ -185,12 +187,13 @@ export const forumRouter = createTRPCRouter({
       z.object({
         sort: z.enum(["votes", "recent"]).default("votes"),
         communitySlug: z.string().optional(),
+        category: z.enum(IDEA_CATEGORIES).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
 
-      let where: Where | undefined;
+      let communityId: string | undefined;
       if (input.communitySlug) {
         const community = await ctx.db.query.communities.findFirst({
           where: and(
@@ -199,10 +202,14 @@ export const forumRouter = createTRPCRouter({
           ),
           columns: { id: true },
         });
-        if (community) {
-          where = { communityId: { equals: community.id } };
-        }
+        if (!community) return [];
+        communityId = community.id;
       }
+
+      const where = buildIdeasWhere({
+        communityId,
+        category: input.category,
+      });
 
       const { docs } = await payload.find({
         collection: "community-ideas",
@@ -239,6 +246,7 @@ export const forumRouter = createTRPCRouter({
         title: z.string().min(3).max(100),
         description: z.string().max(500).optional(),
         communitySlug: z.string().optional(),
+        category: z.enum(IDEA_CATEGORIES).default("platform"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -265,6 +273,7 @@ export const forumRouter = createTRPCRouter({
           authorId: ctx.session.user.id,
           authorName: userName,
           status: "open",
+          category: communityId ? "platform" : input.category,
           voteCount: 0,
           ...(communityId ? { communityId } : {}),
         },

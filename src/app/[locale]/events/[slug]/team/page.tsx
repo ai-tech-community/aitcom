@@ -1,74 +1,43 @@
-import { redirect } from "next/navigation";
-import { and, eq, isNotNull } from "drizzle-orm";
-import { getLocale } from "next-intl/server";
+import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
-import { db } from "@/server/db";
-import { challengeEnrollments, memberProfiles } from "@/server/db/schema";
-import { getSession } from "@/server/better-auth/server";
-import { getPayloadClient } from "@/server/payload";
-import { TeamWorkspace } from "@/components/hackathon/workspace/team-workspace";
+import { resolvePublicHackathonPage } from "@/server/hackathon/resolve-public-hackathon";
+import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
+import { hubTabStates } from "@/server/hackathon/hub-tabs";
+import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
+import { MyTeamPanel } from "@/components/hackathon/hub/my-team-panel";
+import { EventRegisterButton } from "@/components/event-register-button";
 
-export default async function TeamWorkspacePage({
+export default async function MyTeamTabPage({
   params,
 }: {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ locale: "en" | "nl"; slug: string }>;
 }) {
-  const { slug } = await params;
-  const locale = await getLocale();
+  const { locale, slug } = await params;
+  const t = await getTranslations("hackathon");
 
-  const session = await getSession();
-  const userId = session?.user?.id ?? null;
-  if (!userId) redirect(`/events/${slug}`);
+  const resolved = await resolvePublicHackathonPage(slug, locale);
+  if (!resolved.found) notFound();
+  const { event, challengeId, phase } = resolved;
 
-  const payload = await getPayloadClient();
-  const { docs } = await payload.find({
-    collection: "events",
-    where: { slug: { equals: slug } },
-    locale: locale as "en" | "nl",
-    limit: 1,
-    depth: 0,
-  });
-  const event = docs[0];
-  if (!event?.challengeId) redirect(`/events/${slug}`);
-  const challengeId = Number(event.challengeId);
+  const viewer = await getHubViewerContext(challengeId, phase);
+  const tabs = hubTabStates(viewer);
+  const tab = tabs.find((tabState) => tabState.key === "team")!;
 
-  // Membership gate must mirror ownerOnTeam (team-membership.ts): only an
-  // ACTIVE enrollment counts, otherwise every workspace query throws FORBIDDEN.
-  const enrollment = await db.query.challengeEnrollments.findFirst({
-    where: and(
-      eq(challengeEnrollments.userId, userId),
-      eq(challengeEnrollments.challengeId, challengeId),
-      eq(challengeEnrollments.status, "active"),
-      isNotNull(challengeEnrollments.teamId),
-    ),
-  });
-  if (!enrollment?.teamId) redirect(`/events/${slug}`);
-  const teamId = enrollment.teamId;
+  // Non-enrolled viewers get the locked panel — but with a register CTA right
+  // below it so they can act (the `team` tab is available only when enrolled).
+  if (!tab.available) {
+    const eventId = Number(event.id);
+    const price = (event.price as number | undefined) ?? null;
+    return (
+      <div className="space-y-4">
+        <LockedTabPanel message={t(tab.lockedReasonKey!)} />
+        <div className="mx-auto max-w-xs">
+          <EventRegisterButton eventId={eventId} price={price} />
+        </div>
+      </div>
+    );
+  }
 
-  const memberRows = await db
-    .select({
-      userId: challengeEnrollments.userId,
-      displayName: memberProfiles.displayName,
-    })
-    .from(challengeEnrollments)
-    .innerJoin(
-      memberProfiles,
-      eq(memberProfiles.userId, challengeEnrollments.userId),
-    )
-    .where(eq(challengeEnrollments.teamId, teamId));
-
-  const members = memberRows.map((row) => ({
-    userId: row.userId,
-    displayName: row.displayName,
-  }));
-
-  return (
-    <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
-      <TeamWorkspace
-        teamId={teamId}
-        challengeId={challengeId}
-        members={members}
-      />
-    </div>
-  );
+  return <MyTeamPanel challengeId={challengeId} eventSlug={slug} />;
 }

@@ -487,6 +487,10 @@ export interface CommunityIdea {
   authorId: string;
   authorName?: string | null;
   status: 'open' | 'implemented' | 'rejected';
+  /**
+   * Hub-wide triage lane. 'Agent capability' = a missing MCP tool suggested from the /agents catalog.
+   */
+  category: 'platform' | 'agent-capability';
   voteCount?: number | null;
   communityId?: string | null;
   updatedAt: string;
@@ -1652,6 +1656,7 @@ export interface CommunityIdeasSelect<T extends boolean = true> {
   authorId?: T;
   authorName?: T;
   status?: T;
+  category?: T;
   voteCount?: T;
   communityId?: T;
   updatedAt?: T;

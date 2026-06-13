@@ -279,17 +279,20 @@ export async function checkEnrollmentCompletion(
   challengeId: number,
   userId: string,
 ) {
-  const [incompleteCount] = await db
-    .select({ count: sql<number>`count(*)::int` })
+  const [progress] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      incomplete: sql<number>`count(*) FILTER (WHERE ${challengeProgress.completedAt} IS NULL)::int`,
+    })
     .from(challengeProgress)
-    .where(
-      and(
-        eq(challengeProgress.enrollmentId, enrollmentId),
-        sql`${challengeProgress.completedAt} IS NULL`,
-      ),
-    );
+    .where(eq(challengeProgress.enrollmentId, enrollmentId));
 
-  if ((incompleteCount?.count ?? 0) !== 0) return;
+  // Zero tracked objectives (e.g. hackathon-scaffolded challenges with empty
+  // objectives) can never auto-complete — completing requires at least one
+  // objective to have existed. Without this, incomplete === 0 vacuously and the
+  // first progress-adjacent event would flip the enrollment mid-hackathon.
+  if ((progress?.total ?? 0) === 0) return;
+  if ((progress?.incomplete ?? 0) !== 0) return;
 
   // All objectives complete - mark enrollment
   const [enrollment] = await db

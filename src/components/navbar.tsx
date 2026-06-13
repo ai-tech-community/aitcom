@@ -34,6 +34,8 @@ const navLinks = [
   { href: "/launchpad", key: "launchpad", shortcut: "L", primary: true },
   { href: "/benchmark", key: "benchmark", shortcut: "K", primary: false },
   { href: "/jobs", key: "jobs", shortcut: "W", primary: false },
+  { href: "/agents", key: "agents", shortcut: "T", primary: false },
+  { href: "/ideas", key: "ideas", shortcut: "F", primary: false },
   { href: "/members", key: "members", shortcut: "M", primary: false },
   { href: "/blog", key: "blog", shortcut: "B", primary: false },
   {
