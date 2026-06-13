@@ -44,7 +44,8 @@ export default async function TeamWorkspacePage({
   // query mirrors ownerOnTeam (team-membership.ts): only an ACTIVE enrollment
   // counts, otherwise every workspace query throws FORBIDDEN.
   const session = await getSession();
-  const userId = session!.user!.id;
+  if (!session?.user) notFound();
+  const userId = session.user.id;
   const enrollment = await db.query.challengeEnrollments.findFirst({
     where: and(
       eq(challengeEnrollments.userId, userId),
