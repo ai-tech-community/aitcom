@@ -2,11 +2,19 @@ import { notFound, redirect } from "next/navigation";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { communities, communityMemberships, teams } from "@/server/db/schema";
+import {
+  communities,
+  communityMemberships,
+  hackathonStaff,
+  teams,
+} from "@/server/db/schema";
 import { getSession } from "@/server/better-auth/server";
 import { getPayloadClient } from "@/server/payload";
 import { lexicalToPlainText } from "@/server/challenge-engine/lexical";
-import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
+import {
+  resolveHackathonCapability,
+  type StaffGrantRow,
+} from "@/server/hackathon/staff-roles";
 import { hackathonPhase, type HackathonPhase } from "@/server/hackathon/phase";
 import type { CellRow } from "@/components/hackathon/cell-template-editor";
 
@@ -30,6 +38,7 @@ export interface ManageData {
   xpReward: number;
   sponsorReward: string;
   badgeReward: string;
+  isAdmin: boolean;
 }
 
 /**
@@ -59,9 +68,6 @@ export async function loadManageData(
       eq(communityMemberships.userId, userId),
     ),
   });
-  if (!isCommunityHackathonAdmin(membership ?? null)) {
-    redirect(`/communities/${slug}/events`);
-  }
 
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
@@ -92,6 +98,32 @@ export async function loadManageData(
     id: Number(event.challengeId),
     depth: 0,
   });
+
+  // Organizer-tier gate (ADR-0031): staff grants are keyed by challenge.id, so
+  // this must run after the challenge is resolved. Community owner/admin >
+  // organizer grant > judge grant pass; a hub-challenge sponsor (no community,
+  // they created it) also passes. Everyone else is redirected away.
+  const grants = await db
+    .select({
+      role: hackathonStaff.role,
+      revokedAt: hackathonStaff.revokedAt,
+    })
+    .from(hackathonStaff)
+    .where(
+      and(
+        eq(hackathonStaff.challengeId, Number(challenge.id)),
+        eq(hackathonStaff.userId, userId),
+      ),
+    );
+  const capability = resolveHackathonCapability(
+    membership ?? null,
+    grants as StaffGrantRow[],
+  );
+  const isHubSponsor = !challenge.communityId && challenge.creatorId === userId;
+  if (capability === null && !isHubSponsor) {
+    redirect(`/communities/${slug}/events`);
+  }
+  const isAdmin = capability === "admin" || isHubSponsor;
 
   const rewards = (challenge.rewards ?? {}) as {
     xpReward?: number | null;
@@ -135,5 +167,6 @@ export async function loadManageData(
     xpReward: rewards.xpReward ?? 0,
     sponsorReward: rewards.sponsorReward ?? "",
     badgeReward: rewards.badgeReward ?? "",
+    isAdmin,
   };
 }
