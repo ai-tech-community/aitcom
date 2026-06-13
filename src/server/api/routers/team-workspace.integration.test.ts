@@ -596,9 +596,8 @@ describe.skipIf(!RUN_DB)(
 
     it("never auto-completes an enrollment with zero challengeProgress rows, but still completes once a tracked objective finishes", async () => {
       const { db, schema, eq, and } = m;
-      const { checkEnrollmentCompletion } = await import(
-        "@/server/agent/activity"
-      );
+      const { checkEnrollmentCompletion } =
+        await import("@/server/agent/activity");
 
       const [enrollment] = await db
         .select({ id: schema.challengeEnrollments.id })

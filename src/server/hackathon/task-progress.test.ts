@@ -25,7 +25,16 @@ describe("isTaskProgressStatus", () => {
   });
 
   it("rejects anything else", () => {
-    for (const s of ["", "TODO", "done ", "verified", "claimed", null, undefined, 3]) {
+    for (const s of [
+      "",
+      "TODO",
+      "done ",
+      "verified",
+      "claimed",
+      null,
+      undefined,
+      3,
+    ]) {
       expect(isTaskProgressStatus(s)).toBe(false);
     }
   });
@@ -34,25 +43,41 @@ describe("isTaskProgressStatus", () => {
 describe("canEditCellProgress", () => {
   it("lets the cell's current claimant edit", () => {
     expect(
-      canEditCellProgress({ userId: "u1", captainId: "cap", claimedByUserId: "u1" }),
+      canEditCellProgress({
+        userId: "u1",
+        captainId: "cap",
+        claimedByUserId: "u1",
+      }),
     ).toBe(true);
   });
 
   it("lets the team captain edit even an unclaimed cell", () => {
     expect(
-      canEditCellProgress({ userId: "cap", captainId: "cap", claimedByUserId: null }),
+      canEditCellProgress({
+        userId: "cap",
+        captainId: "cap",
+        claimedByUserId: null,
+      }),
     ).toBe(true);
   });
 
   it("blocks a non-claimant non-captain team member", () => {
     expect(
-      canEditCellProgress({ userId: "u2", captainId: "cap", claimedByUserId: "u1" }),
+      canEditCellProgress({
+        userId: "u2",
+        captainId: "cap",
+        claimedByUserId: "u1",
+      }),
     ).toBe(false);
   });
 
   it("blocks a member on an unclaimed cell when they are not captain", () => {
     expect(
-      canEditCellProgress({ userId: "u2", captainId: "cap", claimedByUserId: null }),
+      canEditCellProgress({
+        userId: "u2",
+        captainId: "cap",
+        claimedByUserId: null,
+      }),
     ).toBe(false);
   });
 });

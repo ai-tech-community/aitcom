@@ -21,7 +21,10 @@ export default async function TeamWorkspacePage({
   const t = await getTranslations("hackathon");
 
   // Not a hackathon (no public event / no bound challenge) → no workspace.
-  const resolved = await resolvePublicHackathonPage(slug, locale as "en" | "nl");
+  const resolved = await resolvePublicHackathonPage(
+    slug,
+    locale as "en" | "nl",
+  );
   if (!resolved.found) notFound();
   const { challengeId, phase } = resolved;
 

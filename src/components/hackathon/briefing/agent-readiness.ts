@@ -39,6 +39,7 @@ export function deriveAgentReadiness(input: {
     hasActiveAgent,
     hasActiveCommission,
     missingTaskTypes,
-    ready: hasActiveAgent && hasActiveCommission && missingTaskTypes.length === 0,
+    ready:
+      hasActiveAgent && hasActiveCommission && missingTaskTypes.length === 0,
   };
 }

@@ -69,7 +69,9 @@ export default async function AgentsTabPage({
   // it so a catalog/MCP hiccup can never 500 the whole tab.
   let catalogGroups: CatalogGroup[] = [];
   try {
-    catalogGroups = filterAgentTabGroups(groupBySurface(await getToolCatalog()));
+    catalogGroups = filterAgentTabGroups(
+      groupBySurface(await getToolCatalog()),
+    );
   } catch {
     catalogGroups = [];
   }
@@ -126,8 +128,7 @@ export default async function AgentsTabPage({
               {t("agentsChallengeIdLabel")}
             </span>
             <div className="bg-muted mt-1 rounded-md px-3 py-2 font-mono text-xs">
-              challengeId:{" "}
-              <code className="font-semibold">{challengeId}</code>
+              challengeId: <code className="font-semibold">{challengeId}</code>
             </div>
           </div>
 

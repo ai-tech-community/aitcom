@@ -211,7 +211,9 @@ export const teamWorkspaceRouter = createTRPCRouter({
       const [updated] = await ctx.db
         .update(workCells)
         .set({ progressStatus: input.status, progressNote: input.note ?? null })
-        .where(and(eq(workCells.id, input.cellId), eq(workCells.gridId, gridId)))
+        .where(
+          and(eq(workCells.id, input.cellId), eq(workCells.gridId, gridId)),
+        )
         .returning();
       return updated;
     }),

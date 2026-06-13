@@ -112,7 +112,9 @@ export async function HackathonBriefing({
           <p className="text-muted-foreground">{t("scoringBody")}</p>
           <p className="text-muted-foreground">{t(tiebreakKey[rankingMode])}</p>
           {xpReward > 0 ? <p>{t("prizeXp", { xp: xpReward })}</p> : null}
-          {badgeReward ? <p>{t("prizeBadge", { badge: badgeReward })}</p> : null}
+          {badgeReward ? (
+            <p>{t("prizeBadge", { badge: badgeReward })}</p>
+          ) : null}
         </CardContent>
       </Card>
 

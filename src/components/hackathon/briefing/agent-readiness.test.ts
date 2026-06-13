@@ -32,9 +32,7 @@ describe("deriveAgentReadiness", () => {
   it("revoked commission does not count", () => {
     const r = deriveAgentReadiness({
       agent: { status: "active" },
-      commissions: [
-        { revokedAt: new Date(), taskTypeAllowlist: REQUIRED },
-      ],
+      commissions: [{ revokedAt: new Date(), taskTypeAllowlist: REQUIRED }],
       requiredTaskTypes: REQUIRED,
     });
     expect(r.hasActiveCommission).toBe(false);

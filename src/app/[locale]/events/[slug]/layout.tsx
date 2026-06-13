@@ -23,7 +23,10 @@ export default async function EventLayout({
   if (!resolved.found) return <>{children}</>;
 
   const t = await getTranslations("hackathon");
-  const viewer = await getHubViewerContext(resolved.challengeId, resolved.phase);
+  const viewer = await getHubViewerContext(
+    resolved.challengeId,
+    resolved.phase,
+  );
   const tabs = hubTabStates(viewer);
   const labels: Record<HubTabKey, string> = {
     overview: t("tabOverview"),

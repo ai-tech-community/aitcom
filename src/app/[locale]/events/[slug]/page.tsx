@@ -270,7 +270,8 @@ export default async function EventDetailPage({
     const t = await getTranslations("hackathon");
     const r = hackathonChallenge.rewards;
     const parts: Array<{ label: string; value: string }> = [];
-    if (r.xpReward) parts.push({ label: t("xpReward"), value: `${r.xpReward} XP` });
+    if (r.xpReward)
+      parts.push({ label: t("xpReward"), value: `${r.xpReward} XP` });
     if (r.badgeReward) parts.push({ label: t("badge"), value: r.badgeReward });
     if (r.sponsorReward)
       parts.push({ label: t("sponsorPrize"), value: r.sponsorReward });

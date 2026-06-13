@@ -40,7 +40,11 @@ export interface HubTabState {
 }
 
 function decide(key: HubTabKey, ctx: HubViewerContext): HubTabState {
-  const open = (): HubTabState => ({ key, available: true, lockedReasonKey: null });
+  const open = (): HubTabState => ({
+    key,
+    available: true,
+    lockedReasonKey: null,
+  });
   const lock = (reason: string): HubTabState => ({
     key,
     available: false,

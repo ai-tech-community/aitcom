@@ -46,35 +46,55 @@ describe("hubTabStates", () => {
   });
 
   it("locks projects in live with a pre-lock reason, opens it at lock", () => {
-    expect(state("projects", hubTabStates(ctx({ phase: "live" }))).available).toBe(false);
-    expect(state("projects", hubTabStates(ctx({ phase: "live" }))).lockedReasonKey).toBe(
-      "lockedProjectsPreLock",
-    );
-    expect(state("projects", hubTabStates(ctx({ phase: "locked" }))).available).toBe(true);
-    expect(state("projects", hubTabStates(ctx({ phase: "finalized" }))).available).toBe(true);
+    expect(
+      state("projects", hubTabStates(ctx({ phase: "live" }))).available,
+    ).toBe(false);
+    expect(
+      state("projects", hubTabStates(ctx({ phase: "live" }))).lockedReasonKey,
+    ).toBe("lockedProjectsPreLock");
+    expect(
+      state("projects", hubTabStates(ctx({ phase: "locked" }))).available,
+    ).toBe(true);
+    expect(
+      state("projects", hubTabStates(ctx({ phase: "finalized" }))).available,
+    ).toBe(true);
   });
 
   it("locks My Team for a non-enrolled viewer, opens it once enrolled", () => {
-    expect(state("team", hubTabStates(ctx({ isEnrolled: false }))).available).toBe(false);
-    expect(state("team", hubTabStates(ctx({ isEnrolled: false }))).lockedReasonKey).toBe(
-      "lockedTeamNotEnrolled",
-    );
-    expect(state("team", hubTabStates(ctx({ isEnrolled: true }))).available).toBe(true);
+    expect(
+      state("team", hubTabStates(ctx({ isEnrolled: false }))).available,
+    ).toBe(false);
+    expect(
+      state("team", hubTabStates(ctx({ isEnrolled: false }))).lockedReasonKey,
+    ).toBe("lockedTeamNotEnrolled");
+    expect(
+      state("team", hubTabStates(ctx({ isEnrolled: true }))).available,
+    ).toBe(true);
   });
 
   it("locks Workspace unless the viewer is on a locked team", () => {
-    expect(state("workspace", hubTabStates(ctx({ isOnLockedTeam: false }))).available).toBe(false);
-    expect(state("workspace", hubTabStates(ctx({ isOnLockedTeam: false }))).lockedReasonKey).toBe(
-      "lockedWorkspaceNotReady",
-    );
-    expect(state("workspace", hubTabStates(ctx({ isOnLockedTeam: true }))).available).toBe(true);
+    expect(
+      state("workspace", hubTabStates(ctx({ isOnLockedTeam: false })))
+        .available,
+    ).toBe(false);
+    expect(
+      state("workspace", hubTabStates(ctx({ isOnLockedTeam: false })))
+        .lockedReasonKey,
+    ).toBe("lockedWorkspaceNotReady");
+    expect(
+      state("workspace", hubTabStates(ctx({ isOnLockedTeam: true }))).available,
+    ).toBe(true);
   });
 
   it("locks Winners until finalized", () => {
-    expect(state("winners", hubTabStates(ctx({ phase: "locked" }))).available).toBe(false);
-    expect(state("winners", hubTabStates(ctx({ phase: "locked" }))).lockedReasonKey).toBe(
-      "lockedWinnersPending",
-    );
-    expect(state("winners", hubTabStates(ctx({ phase: "finalized" }))).available).toBe(true);
+    expect(
+      state("winners", hubTabStates(ctx({ phase: "locked" }))).available,
+    ).toBe(false);
+    expect(
+      state("winners", hubTabStates(ctx({ phase: "locked" }))).lockedReasonKey,
+    ).toBe("lockedWinnersPending");
+    expect(
+      state("winners", hubTabStates(ctx({ phase: "finalized" }))).available,
+    ).toBe(true);
   });
 });

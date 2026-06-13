@@ -1079,16 +1079,29 @@ export const hackathonRouter = createTRPCRouter({
       const stats = mergeAgentStats(
         claimRows
           .filter(
-            (r): r is { agentId: string; teamId: string | null; claimed: number } =>
-              r.agentId !== null,
+            (
+              r,
+            ): r is {
+              agentId: string;
+              teamId: string | null;
+              claimed: number;
+            } => r.agentId !== null,
           )
-          .map((r) => ({ agentId: r.agentId, teamId: r.teamId, claimed: r.claimed })),
+          .map((r) => ({
+            agentId: r.agentId,
+            teamId: r.teamId,
+            claimed: r.claimed,
+          })),
         resultRows
           .filter(
             (r): r is { agentId: string; reported: number; verified: number } =>
               r.agentId !== null,
           )
-          .map((r) => ({ agentId: r.agentId, reported: r.reported, verified: r.verified })),
+          .map((r) => ({
+            agentId: r.agentId,
+            reported: r.reported,
+            verified: r.verified,
+          })),
       );
 
       if (stats.length === 0) return [];

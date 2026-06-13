@@ -100,9 +100,7 @@ export function MatchmakingPanel({ challengeId }: { challengeId: number }) {
         />
         {candidates.length === 0 ? (
           <p className="text-muted-foreground mt-3 text-xs">
-            {skillFilter.trim()
-              ? t("noCandidatesForSkill")
-              : t("noCandidates")}
+            {skillFilter.trim() ? t("noCandidatesForSkill") : t("noCandidates")}
           </p>
         ) : (
           <ul className="mt-3 space-y-2">

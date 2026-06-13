@@ -36,7 +36,7 @@ export default async function TimelineTabPage({
   return (
     <div className="relative">
       {/* Left rail: a continuous line behind the milestone dots. */}
-      <ol className="relative space-y-6 border-l border-border pl-6">
+      <ol className="border-border relative space-y-6 border-l pl-6">
         {milestones.map((milestone) => {
           const isDone = milestone.status === "done";
           const isCurrent = milestone.status === "current";
@@ -45,19 +45,19 @@ export default async function TimelineTabPage({
               {/* Dot, centered on the rail. */}
               <span
                 aria-hidden
-                className={`absolute -left-[1.6875rem] top-1 h-3 w-3 rounded-full ring-4 ring-background ${
+                className={`ring-background absolute top-1 -left-[1.6875rem] h-3 w-3 rounded-full ring-4 ${
                   isCurrent
                     ? "bg-primary"
                     : isDone
                       ? "bg-foreground/40"
-                      : "border border-border bg-background"
+                      : "border-border bg-background border"
                 }`}
               />
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={
                     isCurrent
-                      ? "font-semibold text-foreground"
+                      ? "text-foreground font-semibold"
                       : isDone
                         ? "text-muted-foreground"
                         : "text-muted-foreground/60"

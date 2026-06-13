@@ -44,8 +44,7 @@ const CURRENT_BY_PHASE: Record<
  */
 export function hackathonTimeline(phase: HackathonPhase): TimelineMilestone[] {
   const current = CURRENT_BY_PHASE[phase];
-  const currentIndex =
-    current === null ? -1 : MILESTONE_KEYS.indexOf(current);
+  const currentIndex = current === null ? -1 : MILESTONE_KEYS.indexOf(current);
 
   return MILESTONE_KEYS.map((key, index) => {
     let status: MilestoneStatus;
