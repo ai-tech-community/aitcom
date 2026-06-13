@@ -794,42 +794,34 @@ export const hackathonRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const actorId = ctx.session.user.id;
       // Granting organizers is admin-only; granting judges is organizer-or-admin.
-      if (input.role === "organizer") {
-        await requireCommunityHackathonAdmin(
-          ctx.db,
-          input.challengeId,
-          actorId,
-        );
-      } else {
-        await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
-      }
-      const challenge = await loadChallenge(input.challengeId);
-      // Re-grant after revoke: reactivate the existing row rather than violating
-      // the (challenge_id, user_id, role) unique index.
-      const [existing] = await ctx.db
-        .select({ id: hackathonStaff.id })
-        .from(hackathonStaff)
-        .where(
-          and(
-            eq(hackathonStaff.challengeId, input.challengeId),
-            eq(hackathonStaff.userId, input.userId),
-            eq(hackathonStaff.role, input.role),
-          ),
-        )
-        .limit(1);
-      if (existing) {
-        await ctx.db
-          .update(hackathonStaff)
-          .set({ revokedAt: null, grantedBy: actorId, grantedAt: new Date() })
-          .where(eq(hackathonStaff.id, existing.id));
-      } else {
-        await ctx.db.insert(hackathonStaff).values({
+      // Both gates load and return the Payload challenge doc, so reuse it.
+      const challenge =
+        input.role === "organizer"
+          ? await requireCommunityHackathonAdmin(
+              ctx.db,
+              input.challengeId,
+              actorId,
+            )
+          : await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
+      // Atomic upsert: a single first-time grant or a re-grant after revoke both
+      // resolve via the (challenge_id, user_id, role) unique index, avoiding the
+      // TOCTOU race where two concurrent inserts both hit the duplicate-key error.
+      await ctx.db
+        .insert(hackathonStaff)
+        .values({
           challengeId: input.challengeId,
           userId: input.userId,
           role: input.role,
           grantedBy: actorId,
+        })
+        .onConflictDoUpdate({
+          target: [
+            hackathonStaff.challengeId,
+            hackathonStaff.userId,
+            hackathonStaff.role,
+          ],
+          set: { revokedAt: null, grantedBy: actorId, grantedAt: new Date() },
         });
-      }
       await ctx.db.insert(notifications).values({
         userId: input.userId,
         type: "hackathon_staff_grant",
