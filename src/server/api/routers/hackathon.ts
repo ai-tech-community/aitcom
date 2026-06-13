@@ -51,6 +51,7 @@ import {
   cellTemplateToInserts,
 } from "@/server/hackathon/cell-template";
 import { teamScore, rankTeams, prizeSplit } from "@/server/hackathon/scoring";
+import { aggregateJudgeRankings } from "@/server/hackathon/judge-aggregation";
 import { hackathonPhase } from "@/server/hackathon/phase";
 import {
   assertCanToggleLookingForTeam,
@@ -1111,14 +1112,61 @@ export const hackathonRouter = createTRPCRouter({
         scoreByTeam.set(team.id, teamScore(modes));
       }
       const submitted = challengeTeams.filter((t) => t.submittedAt !== null);
-      const ranked = rankTeams(
-        submitted.map((t) => ({
-          teamId: t.id,
-          score: scoreByTeam.get(t.id) ?? 0,
-          submittedAt: t.submittedAt,
-        })),
-        rankingMode,
-      );
+
+      // Judge-driven path: if this hackathon has any active judge grants, their
+      // aggregated ranking is authoritative; otherwise keep the automated ranking.
+      const activeJudges = await ctx.db
+        .select({ userId: hackathonStaff.userId })
+        .from(hackathonStaff)
+        .where(
+          and(
+            eq(hackathonStaff.challengeId, input.challengeId),
+            eq(hackathonStaff.role, "judge"),
+            isNull(hackathonStaff.revokedAt),
+          ),
+        );
+
+      let ranked: { teamId: string; rank: number }[];
+      if (activeJudges.length > 0) {
+        const rankingRows = await ctx.db
+          .select({
+            judgeUserId: judgeRankings.judgeUserId,
+            teamId: judgeRankings.teamId,
+            rank: judgeRankings.rank,
+          })
+          .from(judgeRankings)
+          .where(eq(judgeRankings.challengeId, input.challengeId));
+        const judgesWhoRanked = new Set(rankingRows.map((r) => r.judgeUserId));
+        const allRanked = activeJudges.every((j) =>
+          judgesWhoRanked.has(j.userId),
+        );
+        if (!allRanked) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "All assigned judges must submit rankings before finalizing (or revoke a non-responsive judge).",
+          });
+        }
+        const submittedAtMap = new Map(
+          submitted
+            .filter((t) => t.submittedAt !== null)
+            .map((t) => [t.id, t.submittedAt as Date]),
+        );
+        ranked = aggregateJudgeRankings(
+          rankingRows,
+          scoreByTeam,
+          submittedAtMap,
+        ).map((r) => ({ teamId: r.teamId, rank: r.finalRank }));
+      } else {
+        ranked = rankTeams(
+          submitted.map((t) => ({
+            teamId: t.id,
+            score: scoreByTeam.get(t.id) ?? 0,
+            submittedAt: t.submittedAt,
+          })),
+          rankingMode,
+        );
+      }
       const rankByTeam = new Map(ranked.map((r) => [r.teamId, r.rank]));
       const winnerTeamId = ranked.find((r) => r.rank === 1)?.teamId ?? null;
 
