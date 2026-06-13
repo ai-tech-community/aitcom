@@ -9,8 +9,11 @@ import {
   resolvePublicHackathonPage,
 } from "@/server/hackathon/resolve-public-hackathon";
 import { submittedProjects } from "@/server/hackathon/gallery";
+import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
+import { hubTabStates } from "@/server/hackathon/hub-tabs";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
-import { Link, redirect } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
+import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
 import {
   ProjectGallery,
   type GalleryProject,
@@ -56,17 +59,24 @@ export default async function HackathonGalleryPage({
   if (!resolved.found) notFound();
   const { event, challengeId, phase } = resolved;
 
-  // Phase gate from server truth (same derivation as the winners page).
-  // Cancelled events collapse to "draft" and bounce back to the event page;
-  // "live" renders an explainer (submissions only start once rosters lock).
-  if (phase === "draft") redirect({ href: `/events/${slug}`, locale });
+  // Cancelled events collapse to "draft" inside the phase derivation; a draft
+  // hackathon has no public gallery (the tab shell never links it for a
+  // non-public event, but guard the direct hit anyway).
+  if (phase === "draft") notFound();
+
+  // Phase gate via the shared hub tab state: in "live" the gallery is not yet
+  // ready (rosters haven't locked) → render the locked panel in-place. The
+  // LockedTabPanel replaces the page's own pre-lock empty-state to avoid
+  // double "pre-lock" messaging. "locked"/"finalized" render the gallery.
+  const viewer = await getHubViewerContext(challengeId, phase);
+  const projectsState = hubTabStates(viewer).find((t) => t.key === "projects")!;
 
   // Auth presence only (no role gate): the vote button renders for any
   // signed-in member; unauthenticated viewers just see the counts (#169).
   const session = await getSession();
 
   let projects: GalleryProject[] = [];
-  if (phase !== "live") {
+  if (projectsState.available) {
     const leaderboard = await api.hackathon.teamLeaderboard({ challengeId });
     projects = submittedProjects(leaderboard).map((team) => ({
       teamId: team.teamId,
@@ -106,8 +116,8 @@ export default async function HackathonGalleryPage({
       </h1>
       <p className="text-muted-foreground mt-2">{t("galleryIntro")}</p>
 
-      {phase === "live" ? (
-        <EmptyState message={t("galleryPreLock")} />
+      {!projectsState.available ? (
+        <LockedTabPanel message={t(projectsState.lockedReasonKey!)} />
       ) : projects.length === 0 ? (
         <EmptyState message={t("galleryNoProjects")} />
       ) : (
