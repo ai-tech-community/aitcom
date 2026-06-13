@@ -26,6 +26,7 @@ import {
   communityMemberships,
   communities,
   hackathonStaff,
+  judgeRankings,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
@@ -219,8 +220,7 @@ async function requireHackathonOrganizer(
   );
   const grants = await loadHackathonGrants(db, challengeId, userId);
   const capability = resolveHackathonCapability(membership, grants);
-  const isHubSponsor =
-    !challenge.communityId && challenge.creatorId === userId;
+  const isHubSponsor = !challenge.communityId && challenge.creatorId === userId;
   if (capability === "admin" || capability === "organizer" || isHubSponsor) {
     return challenge;
   }
@@ -758,6 +758,160 @@ export const hackathonRouter = createTRPCRouter({
       }
 
       return { lockedTeams: created.length, grids: created };
+    }),
+
+  /**
+   * Open judging for a hackathon (organizer-scoped). Stamps the challenge's
+   * judgingOpenedAt so submitRankings will accept ballots and the lifecycle
+   * phase can advance. Payload `date` fields accept ISO strings.
+   */
+  openJudging: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await requireHackathonOrganizer(
+        ctx.db,
+        input.challengeId,
+        ctx.session.user.id,
+      );
+      const payload = await getPayloadClient();
+      await payload.update({
+        collection: "challenges",
+        id: input.challengeId,
+        data: { judgingOpenedAt: new Date().toISOString() },
+      });
+      return { ok: true };
+    }),
+
+  /**
+   * The submitted teams a judge ranks (judge-scoped), decorated with the
+   * caller's own existing rank/comment so the ballot can be re-opened and
+   * edited. Only teams with a submittedAt are judgeable.
+   */
+  judgeableTeams: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireHackathonJudge(
+        ctx.db,
+        input.challengeId,
+        ctx.session.user.id,
+      );
+      const rows = await ctx.db
+        .select({
+          teamId: teams.id,
+          name: teams.name,
+          artifactUrl: teams.artifactUrl,
+          artifactSummary: teams.artifactSummary,
+          score: teams.score,
+          submittedAt: teams.submittedAt,
+        })
+        .from(teams)
+        .where(
+          and(
+            eq(teams.challengeId, input.challengeId),
+            isNotNull(teams.submittedAt),
+          ),
+        );
+      const mine = await ctx.db
+        .select({
+          teamId: judgeRankings.teamId,
+          rank: judgeRankings.rank,
+          comment: judgeRankings.comment,
+        })
+        .from(judgeRankings)
+        .where(
+          and(
+            eq(judgeRankings.challengeId, input.challengeId),
+            eq(judgeRankings.judgeUserId, ctx.session.user.id),
+          ),
+        );
+      const byTeam = new Map(mine.map((m) => [m.teamId, m]));
+      return rows.map((t) => ({
+        ...t,
+        myRank: byTeam.get(t.teamId)?.rank ?? null,
+        myComment: byTeam.get(t.teamId)?.comment ?? null,
+      }));
+    }),
+
+  /**
+   * Submit (or replace) a judge's complete ranking ballot (judge-scoped).
+   * Judging must be open. The ballot must rank every submitted team exactly
+   * once with distinct ranks; the prior ballot is replaced atomically.
+   */
+  submitRankings: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        rankings: z
+          .array(
+            z.object({
+              teamId: z.string(),
+              rank: z.number().int().positive(),
+              comment: z.string().max(2000).optional(),
+            }),
+          )
+          .min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const judgeId = ctx.session.user.id;
+      const challenge = await requireHackathonJudge(
+        ctx.db,
+        input.challengeId,
+        judgeId,
+      );
+      if (!challenge.judgingOpenedAt) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Judging is not open yet",
+        });
+      }
+      const submitted = await ctx.db
+        .select({ teamId: teams.id })
+        .from(teams)
+        .where(
+          and(
+            eq(teams.challengeId, input.challengeId),
+            isNotNull(teams.submittedAt),
+          ),
+        );
+      const submittedIds = new Set(submitted.map((t) => t.teamId));
+      const givenIds = new Set(input.rankings.map((r) => r.teamId));
+      if (
+        submittedIds.size !== givenIds.size ||
+        [...givenIds].some((id) => !submittedIds.has(id))
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Rank every submitted team exactly once",
+        });
+      }
+      const ranks = input.rankings.map((r) => r.rank);
+      if (new Set(ranks).size !== ranks.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Ranks must be distinct",
+        });
+      }
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .delete(judgeRankings)
+          .where(
+            and(
+              eq(judgeRankings.challengeId, input.challengeId),
+              eq(judgeRankings.judgeUserId, judgeId),
+            ),
+          );
+        await tx.insert(judgeRankings).values(
+          input.rankings.map((r) => ({
+            challengeId: input.challengeId,
+            judgeUserId: judgeId,
+            teamId: r.teamId,
+            rank: r.rank,
+            comment: r.comment ?? null,
+          })),
+        );
+      });
+      return { ok: true };
     }),
 
   listStaff: protectedProcedure
