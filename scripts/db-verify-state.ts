@@ -75,6 +75,16 @@ try {
       "app.work_cell_result UNIQUE(cell_id)",
       `SELECT count(*) > 0 AS ok FROM pg_indexes WHERE schemaname='app' AND tablename='work_cell_result' AND indexdef ILIKE '%UNIQUE%' AND indexdef LIKE '%(cell_id)%'`,
     ],
+    // Must mirror the status options in src/collections/Events.ts — a select
+    // option without its enum value makes any query mentioning it throw.
+    [
+      "enum_events_status has all Events.status options",
+      `SELECT count(*) = 5 AS ok FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'enum_events_status' AND e.enumlabel IN ('draft','published','cancelled','completed','rejected')`,
+    ],
+    [
+      "enum__events_v_version_status has all Events.status options",
+      `SELECT count(*) = 5 AS ok FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'enum__events_v_version_status' AND e.enumlabel IN ('draft','published','cancelled','completed','rejected')`,
+    ],
   ];
   let fail = 0;
   for (const [label, q] of checks) {
