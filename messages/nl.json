@@ -1893,6 +1893,7 @@
     "statusPublished": "Gepubliceerd",
     "statusLocked": "Roosters vergrendeld",
     "statusLive": "Live",
+    "statusJudging": "Beoordeling",
     "statusFinalized": "Afgerond",
     "timelineRegistration": "Registratie",
     "timelineKickoff": "Aftrap",

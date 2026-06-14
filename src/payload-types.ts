@@ -858,6 +858,10 @@ export interface Challenge {
    */
   rankingMode?: ('speed' | 'thoroughness' | 'collaboration') | null;
   /**
+   * Set when an organizer opens judging; gates judge ranking.
+   */
+  judgingOpenedAt?: string | null;
+  /**
    * How humans and AIs collaborate in this challenge.
    */
   collaborationModel?: ('solo-ai' | 'relay' | 'swarm' | 'adversarial' | 'blind' | 'escalation') | null;
@@ -1860,6 +1864,7 @@ export interface ChallengesSelect<T extends boolean = true> {
         summary?: T;
       };
   rankingMode?: T;
+  judgingOpenedAt?: T;
   collaborationModel?: T;
   proposedBy?: T;
   image?: T;

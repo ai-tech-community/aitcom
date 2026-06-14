@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ManageStaff } from "./manage-staff";
 
 function LabeledInput({
   label,
@@ -48,10 +49,11 @@ export function ManageSetup({
   initialXpReward,
   initialSponsorReward,
   initialBadgeReward,
+  isAdmin,
 }: {
   challengeId: number;
   eventId: number;
-  phase: "draft" | "live" | "locked" | "finalized";
+  phase: "draft" | "live" | "locked" | "judging" | "finalized";
   initialName: string;
   initialDescription: string;
   initialDate: string;
@@ -65,6 +67,7 @@ export function ManageSetup({
   initialXpReward: number;
   initialSponsorReward: string;
   initialBadgeReward: string;
+  isAdmin: boolean;
 }) {
   const t = useTranslations("hackathon");
   const isDraft = phase === "draft";
@@ -305,6 +308,8 @@ export function ManageSetup({
           {t("saveChanges")}
         </Button>
       ) : null}
+
+      <ManageStaff challengeId={challengeId} isAdmin={isAdmin} />
     </div>
   );
 }

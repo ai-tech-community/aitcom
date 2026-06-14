@@ -46,7 +46,7 @@ export function HackathonAnalytics({
   phase,
 }: {
   challengeId: number;
-  phase: "draft" | "live" | "locked" | "finalized";
+  phase: "draft" | "live" | "locked" | "judging" | "finalized";
 }) {
   const t = useTranslations("hackathon");
   const isDraft = phase === "draft";

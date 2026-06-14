@@ -371,6 +371,16 @@ export const Challenges: CollectionConfig = {
       },
     },
     {
+      name: "judgingOpenedAt",
+      type: "date",
+      admin: {
+        position: "sidebar",
+        readOnly: true,
+        description:
+          "Set when an organizer opens judging; gates judge ranking.",
+      },
+    },
+    {
       name: "collaborationModel",
       type: "select",
       defaultValue: "solo-ai",

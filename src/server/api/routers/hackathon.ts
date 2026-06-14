@@ -25,9 +25,17 @@ import {
   notifications,
   communityMemberships,
   communities,
+  hackathonStaff,
+  judgeRankings,
+  user,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
+import {
+  hasActiveGrant,
+  resolveHackathonCapability,
+  type StaffGrantRow,
+} from "@/server/hackathon/staff-roles";
 import {
   assertBindable,
   BindingError,
@@ -44,6 +52,7 @@ import {
   cellTemplateToInserts,
 } from "@/server/hackathon/cell-template";
 import { teamScore, rankTeams, prizeSplit } from "@/server/hackathon/scoring";
+import { aggregateJudgeRankings } from "@/server/hackathon/judge-aggregation";
 import { hackathonPhase } from "@/server/hackathon/phase";
 import {
   assertCanToggleLookingForTeam,
@@ -160,6 +169,86 @@ async function requireHackathonOperator(
   return challenge;
 }
 
+/** All staff grants for one user on one hackathon (revocation filtered by hasActiveGrant). */
+async function loadHackathonGrants(
+  db: typeof import("@/server/db").db,
+  challengeId: number,
+  userId: string,
+): Promise<StaffGrantRow[]> {
+  const rows = await db
+    .select({ role: hackathonStaff.role, revokedAt: hackathonStaff.revokedAt })
+    .from(hackathonStaff)
+    .where(
+      and(
+        eq(hackathonStaff.challengeId, challengeId),
+        eq(hackathonStaff.userId, userId),
+      ),
+    );
+  return rows as StaffGrantRow[];
+}
+
+/** Load the caller's community membership for a challenge (null for Hub-wide). */
+async function loadMembershipForChallenge(
+  db: typeof import("@/server/db").db,
+  communityId: string | null | undefined,
+  userId: string,
+) {
+  if (!communityId) return null;
+  return (
+    (await db.query.communityMemberships.findFirst({
+      where: and(
+        eq(communityMemberships.communityId, communityId),
+        eq(communityMemberships.userId, userId),
+      ),
+    })) ?? null
+  );
+}
+
+/**
+ * Organizer-tier gate: community owner/admin, the Hub-wide sponsor, OR an active
+ * organizer grant. Used for Setup/Tasks/Analytics + opening judging. Returns the
+ * challenge doc.
+ */
+async function requireHackathonOrganizer(
+  db: typeof import("@/server/db").db,
+  challengeId: number,
+  userId: string,
+) {
+  const challenge = await loadChallenge(challengeId);
+  const membership = await loadMembershipForChallenge(
+    db,
+    challenge.communityId,
+    userId,
+  );
+  const grants = await loadHackathonGrants(db, challengeId, userId);
+  const capability = resolveHackathonCapability(membership, grants);
+  const isHubSponsor = !challenge.communityId && challenge.creatorId === userId;
+  if (capability === "admin" || capability === "organizer" || isHubSponsor) {
+    return challenge;
+  }
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message: "Only an organizer or community admin can manage this hackathon",
+  });
+}
+
+/** Judge-tier gate: an active judge grant is required (admins are not implicitly judges). */
+async function requireHackathonJudge(
+  db: typeof import("@/server/db").db,
+  challengeId: number,
+  userId: string,
+) {
+  const challenge = await loadChallenge(challengeId);
+  const grants = await loadHackathonGrants(db, challengeId, userId);
+  if (!hasActiveGrant(grants, "judge")) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Only an assigned judge can rank this hackathon",
+    });
+  }
+  return challenge;
+}
+
 /**
  * Derive the hackathon's current lifecycle phase from server truth (see
  * src/server/hackathon/phase.ts): the bound event's status, the challenge's
@@ -169,6 +258,7 @@ async function currentHackathonPhase(
   db: typeof import("@/server/db").db,
   challengeId: number,
   challengeStatus: string,
+  judgingOpenedAt: Date | string | null,
 ) {
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
@@ -193,6 +283,7 @@ async function currentHackathonPhase(
   return hackathonPhase({
     eventStatus: docs[0]?.status ?? "draft",
     challengeStatus,
+    judgingOpenedAt,
     teams: markers,
   });
 }
@@ -672,6 +763,450 @@ export const hackathonRouter = createTRPCRouter({
     }),
 
   /**
+   * Open judging for a hackathon (organizer-scoped). Stamps the challenge's
+   * judgingOpenedAt so submitRankings will accept ballots and the lifecycle
+   * phase can advance. Payload `date` fields accept ISO strings.
+   */
+  openJudging: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await requireHackathonOrganizer(
+        ctx.db,
+        input.challengeId,
+        ctx.session.user.id,
+      );
+      // Judging may only be opened from the locked phase: rosters must be locked
+      // (projects exist to judge) and the hackathon must not yet be finalized.
+      // Without this guard a direct call could stamp judgingOpenedAt while live
+      // (jumping locked → judging the moment teams lock) or after finalize.
+      const challengeTeams = await ctx.db
+        .select({
+          status: teams.status,
+          finalRank: teams.finalRank,
+          prizeAwardedAt: teams.prizeAwardedAt,
+        })
+        .from(teams)
+        .where(eq(teams.challengeId, input.challengeId));
+      const finalized = challengeTeams.some(
+        (t) => t.finalRank !== null || t.prizeAwardedAt !== null,
+      );
+      const rostersLocked = challengeTeams.some((t) => t.status === "locked");
+      if (finalized || !rostersLocked) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Judging can only be opened after rosters are locked and before the hackathon is finalized.",
+        });
+      }
+      const payload = await getPayloadClient();
+      await payload.update({
+        collection: "challenges",
+        id: input.challengeId,
+        data: { judgingOpenedAt: new Date().toISOString() },
+      });
+      return { ok: true };
+    }),
+
+  /**
+   * Judge-progress indicator for the manage Lifecycle tab (organizer-scoped):
+   * how many of the hackathon's active judges have submitted a ranking ballot.
+   * "submitted" = the judge has at least one judgeRankings row for this
+   * challenge (selectDistinct collapses the per-team ballot rows to one per
+   * judge). Read-only.
+   */
+  judgingProgress: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireHackathonOrganizer(
+        ctx.db,
+        input.challengeId,
+        ctx.session.user.id,
+      );
+      const judges = await ctx.db
+        .select({ userId: hackathonStaff.userId })
+        .from(hackathonStaff)
+        .where(
+          and(
+            eq(hackathonStaff.challengeId, input.challengeId),
+            eq(hackathonStaff.role, "judge"),
+            isNull(hackathonStaff.revokedAt),
+          ),
+        );
+      const ranked = await ctx.db
+        .selectDistinct({ judgeUserId: judgeRankings.judgeUserId })
+        .from(judgeRankings)
+        .where(eq(judgeRankings.challengeId, input.challengeId));
+      const rankedSet = new Set(ranked.map((r) => r.judgeUserId));
+      return {
+        total: judges.length,
+        submitted: judges.filter((j) => rankedSet.has(j.userId)).length,
+      };
+    }),
+
+  /**
+   * The submitted teams a judge ranks (judge-scoped), decorated with the
+   * caller's own existing rank/comment so the ballot can be re-opened and
+   * edited. Only teams with a submittedAt are judgeable.
+   */
+  judgeableTeams: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireHackathonJudge(
+        ctx.db,
+        input.challengeId,
+        ctx.session.user.id,
+      );
+      const rows = await ctx.db
+        .select({
+          teamId: teams.id,
+          name: teams.name,
+          artifactUrl: teams.artifactUrl,
+          artifactSummary: teams.artifactSummary,
+          score: teams.score,
+          submittedAt: teams.submittedAt,
+        })
+        .from(teams)
+        .where(
+          and(
+            eq(teams.challengeId, input.challengeId),
+            isNotNull(teams.submittedAt),
+          ),
+        );
+      const mine = await ctx.db
+        .select({
+          teamId: judgeRankings.teamId,
+          rank: judgeRankings.rank,
+          comment: judgeRankings.comment,
+        })
+        .from(judgeRankings)
+        .where(
+          and(
+            eq(judgeRankings.challengeId, input.challengeId),
+            eq(judgeRankings.judgeUserId, ctx.session.user.id),
+          ),
+        );
+      const byTeam = new Map(mine.map((m) => [m.teamId, m]));
+      return rows.map((t) => ({
+        ...t,
+        myRank: byTeam.get(t.teamId)?.rank ?? null,
+        myComment: byTeam.get(t.teamId)?.comment ?? null,
+      }));
+    }),
+
+  /**
+   * The anonymous judge comments left on a team's submission, visible to that
+   * team's own members only after the hackathon is finalized (team.finalRank
+   * set). Returns `{ finalized: false, comments: [] }` before finalize so the
+   * UI can stay silent without leaking in-progress deliberation. Judge
+   * identity is never returned.
+   */
+  teamJudgeFeedback: protectedProcedure
+    .input(z.object({ teamId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      // Caller must be a CURRENT member of this team. challenges.abandon keeps
+      // the teamId on the enrollment row, so filter out abandoned memberships —
+      // an ex-member must not read the team's judge feedback (matches the
+      // non-abandoned filter used across analytics and the finalize paths).
+      const membership = await ctx.db
+        .select({ id: challengeEnrollments.id })
+        .from(challengeEnrollments)
+        .where(
+          and(
+            eq(challengeEnrollments.teamId, input.teamId),
+            eq(challengeEnrollments.userId, userId),
+            ne(challengeEnrollments.status, "abandoned"),
+          ),
+        )
+        .limit(1);
+      if (membership.length === 0) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Not a member of this team",
+        });
+      }
+      // Only after finalize (finalRank set) to avoid leaking in-progress
+      // deliberation.
+      const [team] = await ctx.db
+        .select({ finalRank: teams.finalRank, challengeId: teams.challengeId })
+        .from(teams)
+        .where(eq(teams.id, input.teamId))
+        .limit(1);
+      if (!team?.finalRank)
+        return { finalized: false, comments: [] as string[] };
+      const rows = await ctx.db
+        .select({ comment: judgeRankings.comment })
+        .from(judgeRankings)
+        .innerJoin(
+          hackathonStaff,
+          and(
+            eq(hackathonStaff.userId, judgeRankings.judgeUserId),
+            eq(hackathonStaff.challengeId, judgeRankings.challengeId),
+            eq(hackathonStaff.role, "judge"),
+            isNull(hackathonStaff.revokedAt),
+          ),
+        )
+        .where(eq(judgeRankings.teamId, input.teamId));
+      return {
+        finalized: true,
+        comments: rows
+          .map((r) => r.comment)
+          .filter((c): c is string => !!c && c.trim().length > 0),
+      };
+    }),
+
+  /**
+   * Submit (or replace) a judge's complete ranking ballot (judge-scoped).
+   * Judging must be open. The ballot must rank every submitted team exactly
+   * once with distinct ranks; the prior ballot is replaced atomically.
+   */
+  submitRankings: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        rankings: z
+          .array(
+            z.object({
+              teamId: z.string(),
+              rank: z.number().int().positive(),
+              comment: z.string().max(2000).optional(),
+            }),
+          )
+          .min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const judgeId = ctx.session.user.id;
+      const challenge = await requireHackathonJudge(
+        ctx.db,
+        input.challengeId,
+        judgeId,
+      );
+      if (!challenge.judgingOpenedAt) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Judging is not open yet",
+        });
+      }
+      const submitted = await ctx.db
+        .select({
+          teamId: teams.id,
+          finalRank: teams.finalRank,
+          prizeAwardedAt: teams.prizeAwardedAt,
+        })
+        .from(teams)
+        .where(
+          and(
+            eq(teams.challengeId, input.challengeId),
+            isNotNull(teams.submittedAt),
+          ),
+        );
+      // Ballots are frozen once the hackathon is finalized: re-opening the
+      // workspace must not let a judge rewrite ranks/comments after the awarded
+      // ranking is set (team feedback reads these comments live).
+      if (
+        submitted.some((t) => t.finalRank !== null || t.prizeAwardedAt !== null)
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Judging is closed — this hackathon has been finalized.",
+        });
+      }
+      const submittedIds = new Set(submitted.map((t) => t.teamId));
+      const givenIds = new Set(input.rankings.map((r) => r.teamId));
+      if (
+        submittedIds.size !== givenIds.size ||
+        [...givenIds].some((id) => !submittedIds.has(id))
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Rank every submitted team exactly once",
+        });
+      }
+      const ranks = input.rankings.map((r) => r.rank);
+      if (new Set(ranks).size !== ranks.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Ranks must be distinct",
+        });
+      }
+      // Ranks must be the contiguous ordinals 1..N (no gaps): aggregateJudge-
+      // Rankings sums the raw rank as the Borda weight, so a gap like {1,2,1000}
+      // would let one ballot dominate the mean. Distinct + positive + count N +
+      // min 1 + max N forces exactly {1..N}.
+      if (Math.min(...ranks) !== 1 || Math.max(...ranks) !== ranks.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Ranks must be 1 to N with no gaps",
+        });
+      }
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .delete(judgeRankings)
+          .where(
+            and(
+              eq(judgeRankings.challengeId, input.challengeId),
+              eq(judgeRankings.judgeUserId, judgeId),
+            ),
+          );
+        await tx.insert(judgeRankings).values(
+          input.rankings.map((r) => ({
+            challengeId: input.challengeId,
+            judgeUserId: judgeId,
+            teamId: r.teamId,
+            rank: r.rank,
+            comment: r.comment ?? null,
+          })),
+        );
+      });
+      return { ok: true };
+    }),
+
+  listStaff: protectedProcedure
+    .input(z.object({ challengeId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      await requireHackathonOrganizer(
+        ctx.db,
+        input.challengeId,
+        ctx.session.user.id,
+      );
+      const rows = await ctx.db
+        .select({
+          id: hackathonStaff.id,
+          userId: hackathonStaff.userId,
+          role: hackathonStaff.role,
+          revokedAt: hackathonStaff.revokedAt,
+          grantedAt: hackathonStaff.grantedAt,
+        })
+        .from(hackathonStaff)
+        .where(eq(hackathonStaff.challengeId, input.challengeId));
+      const active = rows.filter((r) => r.revokedAt === null);
+      return {
+        organizers: active.filter((r) => r.role === "organizer"),
+        judges: active.filter((r) => r.role === "judge"),
+      };
+    }),
+
+  grantStaff: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        userId: z.string(),
+        role: z.enum(["organizer", "judge"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const actorId = ctx.session.user.id;
+      // Granting organizers is admin-tier (community owner/admin, or the hub-wide
+      // sponsor for a CMS-authored hackathon — requireHackathonOperator covers
+      // both, so hub-wide hackathons can still delegate organizers); granting
+      // judges is organizer-or-admin. Both gates load and return the Payload
+      // challenge doc, so reuse it.
+      const challenge =
+        input.role === "organizer"
+          ? await requireHackathonOperator(ctx.db, input.challengeId, actorId)
+          : await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
+      // The grant target must be a real person, not an arbitrary id typed into
+      // the manage form: a granted judge can call submitRankings and drive the
+      // official finalize ranking, so a non-member must never be grantable.
+      // Community hackathon → require an active membership; hub-wide (no
+      // community) → require the user simply exists.
+      if (challenge.communityId) {
+        const [member] = await ctx.db
+          .select({ id: communityMemberships.id })
+          .from(communityMemberships)
+          .where(
+            and(
+              eq(communityMemberships.communityId, challenge.communityId),
+              eq(communityMemberships.userId, input.userId),
+              eq(communityMemberships.status, "active"),
+            ),
+          )
+          .limit(1);
+        if (!member) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "That user is not an active member of this community.",
+          });
+        }
+      } else {
+        const [exists] = await ctx.db
+          .select({ id: user.id })
+          .from(user)
+          .where(eq(user.id, input.userId))
+          .limit(1);
+        if (!exists) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "No such user.",
+          });
+        }
+      }
+      // Atomic upsert: a single first-time grant or a re-grant after revoke both
+      // resolve via the (challenge_id, user_id, role) unique index, avoiding the
+      // TOCTOU race where two concurrent inserts both hit the duplicate-key error.
+      await ctx.db
+        .insert(hackathonStaff)
+        .values({
+          challengeId: input.challengeId,
+          userId: input.userId,
+          role: input.role,
+          grantedBy: actorId,
+        })
+        .onConflictDoUpdate({
+          target: [
+            hackathonStaff.challengeId,
+            hackathonStaff.userId,
+            hackathonStaff.role,
+          ],
+          set: { revokedAt: null, grantedBy: actorId, grantedAt: new Date() },
+        });
+      await ctx.db.insert(notifications).values({
+        userId: input.userId,
+        type: "hackathon_staff_grant",
+        title:
+          input.role === "organizer"
+            ? "You're now an organizer"
+            : "You're now a judge",
+        content: `You were added as ${input.role === "organizer" ? "an organizer" : "a judge"} for "${challenge.title}".`,
+        metadata: { challengeId: String(input.challengeId), role: input.role },
+        communityId: challenge.communityId ?? null,
+      });
+      return { ok: true };
+    }),
+
+  revokeStaff: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        userId: z.string(),
+        role: z.enum(["organizer", "judge"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const actorId = ctx.session.user.id;
+      if (input.role === "organizer") {
+        // Admin-tier (community owner/admin or hub-wide sponsor), mirroring the
+        // grant path so hub-wide hackathons can revoke organizers too.
+        await requireHackathonOperator(ctx.db, input.challengeId, actorId);
+      } else {
+        await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
+      }
+      await ctx.db
+        .update(hackathonStaff)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(hackathonStaff.challengeId, input.challengeId),
+            eq(hackathonStaff.userId, input.userId),
+            eq(hackathonStaff.role, input.role),
+            isNull(hackathonStaff.revokedAt),
+          ),
+        );
+      return { ok: true };
+    }),
+
+  /**
    * Finalize a hackathon (operator-scoped, ADR-0031). Scores each team from its
    * competitive grid's verified cells, ranks the submitted teams, and awards the
    * challenge's prize XP (split equally) + badge to the winning team.
@@ -757,14 +1292,72 @@ export const hackathonRouter = createTRPCRouter({
         scoreByTeam.set(team.id, teamScore(modes));
       }
       const submitted = challengeTeams.filter((t) => t.submittedAt !== null);
-      const ranked = rankTeams(
-        submitted.map((t) => ({
-          teamId: t.id,
-          score: scoreByTeam.get(t.id) ?? 0,
-          submittedAt: t.submittedAt,
-        })),
-        rankingMode,
-      );
+
+      // Judge-driven path: if this hackathon has any active judge grants, their
+      // aggregated ranking is authoritative; otherwise keep the automated ranking.
+      const activeJudges = await ctx.db
+        .select({ userId: hackathonStaff.userId })
+        .from(hackathonStaff)
+        .where(
+          and(
+            eq(hackathonStaff.challengeId, input.challengeId),
+            eq(hackathonStaff.role, "judge"),
+            isNull(hackathonStaff.revokedAt),
+          ),
+        );
+
+      let ranked: { teamId: string; rank: number }[];
+      if (activeJudges.length > 0) {
+        const rankingRows = await ctx.db
+          .select({
+            judgeUserId: judgeRankings.judgeUserId,
+            teamId: judgeRankings.teamId,
+            rank: judgeRankings.rank,
+          })
+          .from(judgeRankings)
+          .where(eq(judgeRankings.challengeId, input.challengeId));
+        const activeJudgeIds = new Set(activeJudges.map((j) => j.userId));
+        const activeRankingRows = rankingRows.filter((r) =>
+          activeJudgeIds.has(r.judgeUserId),
+        );
+        const submittedIds = submitted.map((t) => t.id);
+        const teamsByJudge = new Map<string, Set<string>>();
+        for (const r of activeRankingRows) {
+          const set = teamsByJudge.get(r.judgeUserId) ?? new Set<string>();
+          set.add(r.teamId);
+          teamsByJudge.set(r.judgeUserId, set);
+        }
+        const allRanked = activeJudges.every((j) => {
+          const ranked = teamsByJudge.get(j.userId);
+          return !!ranked && submittedIds.every((id) => ranked.has(id));
+        });
+        if (!allRanked) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Every assigned judge must rank all submitted teams before finalizing (a team may have submitted after a judge ranked). Ask judges to re-submit, or revoke a non-responsive judge.",
+          });
+        }
+        const submittedAtMap = new Map(
+          submitted
+            .filter((t) => t.submittedAt !== null)
+            .map((t) => [t.id, t.submittedAt!]),
+        );
+        ranked = aggregateJudgeRankings(
+          activeRankingRows,
+          scoreByTeam,
+          submittedAtMap,
+        ).map((r) => ({ teamId: r.teamId, rank: r.finalRank }));
+      } else {
+        ranked = rankTeams(
+          submitted.map((t) => ({
+            teamId: t.id,
+            score: scoreByTeam.get(t.id) ?? 0,
+            submittedAt: t.submittedAt,
+          })),
+          rankingMode,
+        );
+      }
       const rankByTeam = new Map(ranked.map((r) => [r.teamId, r.rank]));
       const winnerTeamId = ranked.find((r) => r.rank === 1)?.teamId ?? null;
 
@@ -1278,6 +1871,7 @@ export const hackathonRouter = createTRPCRouter({
         ctx.db,
         input.challengeId,
         challenge.status ?? "",
+        challenge.judgingOpenedAt ?? null,
       );
       try {
         assertCanToggleLookingForTeam({
@@ -1355,6 +1949,7 @@ export const hackathonRouter = createTRPCRouter({
         ctx.db,
         input.challengeId,
         challenge.status ?? "",
+        challenge.judgingOpenedAt ?? null,
       );
       if (phase !== "live") return { open: false, viewer, candidates: [] };
 
@@ -1491,6 +2086,7 @@ export const hackathonRouter = createTRPCRouter({
         ctx.db,
         input.challengeId,
         challenge.status ?? "",
+        challenge.judgingOpenedAt ?? null,
       );
       if (!peoplesChoiceVotingOpen(phase)) {
         throw new TRPCError({
@@ -1552,6 +2148,7 @@ export const hackathonRouter = createTRPCRouter({
         ctx.db,
         input.challengeId,
         challenge.status ?? "",
+        challenge.judgingOpenedAt ?? null,
       );
 
       const counts = await ctx.db

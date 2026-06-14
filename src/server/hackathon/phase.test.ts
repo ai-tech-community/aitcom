@@ -17,6 +17,7 @@ describe("hackathonPhase", () => {
       hackathonPhase({
         eventStatus: "draft",
         challengeStatus: "draft",
+        judgingOpenedAt: null,
         teams: [],
       }),
     ).toBe("draft");
@@ -25,6 +26,7 @@ describe("hackathonPhase", () => {
       hackathonPhase({
         eventStatus: "draft",
         challengeStatus: "active",
+        judgingOpenedAt: null,
         teams: [team({ finalRank: 1 })],
       }),
     ).toBe("draft");
@@ -36,6 +38,7 @@ describe("hackathonPhase", () => {
         hackathonPhase({
           eventStatus,
           challengeStatus: "active",
+          judgingOpenedAt: null,
           teams: [team()],
         }),
       ).toBe("draft");
@@ -44,6 +47,7 @@ describe("hackathonPhase", () => {
         hackathonPhase({
           eventStatus,
           challengeStatus: "active",
+          judgingOpenedAt: null,
           teams: [team({ finalRank: 1 })],
         }),
       ).toBe("draft");
@@ -55,6 +59,7 @@ describe("hackathonPhase", () => {
       hackathonPhase({
         eventStatus: "published",
         challengeStatus: "active",
+        judgingOpenedAt: null,
         teams: [team(), team()],
       }),
     ).toBe("live");
@@ -65,6 +70,7 @@ describe("hackathonPhase", () => {
       hackathonPhase({
         eventStatus: "published",
         challengeStatus: "active",
+        judgingOpenedAt: null,
         teams: [],
       }),
     ).toBe("live");
@@ -75,6 +81,7 @@ describe("hackathonPhase", () => {
       hackathonPhase({
         eventStatus: "published",
         challengeStatus: "active",
+        judgingOpenedAt: null,
         teams: [team(), team({ status: "locked" })],
       }),
     ).toBe("locked");
@@ -85,6 +92,7 @@ describe("hackathonPhase", () => {
       hackathonPhase({
         eventStatus: "published",
         challengeStatus: "active",
+        judgingOpenedAt: null,
         teams: [team({ status: "locked", finalRank: 1 })],
       }),
     ).toBe("finalized");
@@ -95,6 +103,7 @@ describe("hackathonPhase", () => {
       hackathonPhase({
         eventStatus: "published",
         challengeStatus: "active",
+        judgingOpenedAt: null,
         teams: [team({ status: "locked", prizeAwardedAt: new Date() })],
       }),
     ).toBe("finalized");
@@ -105,6 +114,7 @@ describe("hackathonPhase", () => {
       hackathonPhase({
         eventStatus: "published",
         challengeStatus: "completed",
+        judgingOpenedAt: null,
         teams: [],
       }),
     ).toBe("finalized");
@@ -115,8 +125,42 @@ describe("hackathonPhase", () => {
       hackathonPhase({
         eventStatus: "published",
         challengeStatus: "active",
+        judgingOpenedAt: null,
         teams: [team({ status: "locked" }), team({ finalRank: 2 })],
       }),
     ).toBe("finalized");
+  });
+
+  it("advances a locked hackathon to judging once judgingOpenedAt is set", () => {
+    expect(
+      hackathonPhase({
+        eventStatus: "published",
+        challengeStatus: "active",
+        judgingOpenedAt: new Date(),
+        teams: [team({ status: "locked" })],
+      }),
+    ).toBe("judging");
+  });
+
+  it("prefers finalized over judging when finalize markers are present", () => {
+    expect(
+      hackathonPhase({
+        eventStatus: "published",
+        challengeStatus: "active",
+        judgingOpenedAt: new Date(),
+        teams: [team({ status: "locked", finalRank: 1 })],
+      }),
+    ).toBe("finalized");
+  });
+
+  it("stays live (not judging) when no team is locked yet", () => {
+    expect(
+      hackathonPhase({
+        eventStatus: "published",
+        challengeStatus: "active",
+        judgingOpenedAt: new Date(),
+        teams: [team(), team()],
+      }),
+    ).toBe("live");
   });
 });

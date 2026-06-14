@@ -3,11 +3,18 @@ import { getTranslations } from "next-intl/server";
 import type { HackathonPhase } from "@/server/hackathon/phase";
 import { cn } from "@/lib/utils";
 
-const ORDER: HackathonPhase[] = ["draft", "live", "locked", "finalized"];
+const ORDER: HackathonPhase[] = [
+  "draft",
+  "live",
+  "locked",
+  "judging",
+  "finalized",
+];
 const LABEL_KEY: Record<HackathonPhase, string> = {
   draft: "statusDraft",
   live: "statusLive",
   locked: "statusLocked",
+  judging: "statusJudging",
   finalized: "statusFinalized",
 };
 

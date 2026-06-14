@@ -27,6 +27,7 @@ export default async function ManageSetupPage({
       initialXpReward={data.xpReward}
       initialSponsorReward={data.sponsorReward}
       initialBadgeReward={data.badgeReward}
+      isAdmin={data.isAdmin}
     />
   );
 }

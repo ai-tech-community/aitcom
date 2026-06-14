@@ -21,6 +21,7 @@ const PHASE_LABEL_KEY: Record<HackathonPhase, string> = {
   draft: "statusDraft",
   live: "statusLive",
   locked: "statusLocked",
+  judging: "statusJudging",
   finalized: "statusFinalized",
 };
 
