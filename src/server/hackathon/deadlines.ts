@@ -12,18 +12,29 @@ export interface EventDeadlines {
   judgingDeadline: Date | string | null;
 }
 
+/** Stable i18n/error keys emitted when a gate is closed. */
+export type DeadlineReason =
+  | "registration_closed"
+  | "submission_closed"
+  | "judging_closed";
+
 export interface GateResult {
   open: boolean;
   /** The effective deadline, or null when none is set. */
   deadline: Date | null;
   /** Stable i18n/error key when closed, else null. */
-  reason: string | null;
+  reason: DeadlineReason | null;
+}
+
+function toTime(raw: Date | string | null | undefined): number | null {
+  if (raw === null || raw === undefined) return null;
+  return (raw instanceof Date ? raw : new Date(raw)).getTime();
 }
 
 function gate(
   raw: Date | string | null | undefined,
   now: Date,
-  reason: string,
+  reason: DeadlineReason,
 ): GateResult {
   if (raw === null || raw === undefined) {
     return { open: true, deadline: null, reason: null };
@@ -52,8 +63,6 @@ export function isJudgingOpen(event: EventDeadlines, now: Date): GateResult {
  * deadlines out of order while drafting).
  */
 export function deadlineOrderWarnings(event: EventDeadlines): string[] {
-  const toTime = (raw: Date | string | null) =>
-    raw === null ? null : (raw instanceof Date ? raw : new Date(raw)).getTime();
   const reg = toTime(event.registrationDeadline);
   const sub = toTime(event.submissionDeadline);
   const judge = toTime(event.judgingDeadline);

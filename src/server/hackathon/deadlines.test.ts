@@ -111,4 +111,26 @@ describe("deadlineOrderWarnings", () => {
     expect(warnings.length).toBeGreaterThan(0);
     expect(warnings[0]).toMatch(/submission/i);
   });
+
+  it("warns when judging precedes submission", () => {
+    const warnings = deadlineOrderWarnings(
+      ev({
+        submissionDeadline: "2026-06-14T12:00:00.000Z",
+        judgingDeadline: "2026-06-14T11:00:00.000Z",
+      }),
+    );
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings[0]).toMatch(/judging/i);
+  });
+
+  it("returns both warnings when both pairs are out of order", () => {
+    const warnings = deadlineOrderWarnings(
+      ev({
+        registrationDeadline: "2026-06-14T13:00:00.000Z",
+        submissionDeadline: "2026-06-14T12:00:00.000Z",
+        judgingDeadline: "2026-06-14T11:00:00.000Z",
+      }),
+    );
+    expect(warnings).toHaveLength(2);
+  });
 });
