@@ -235,9 +235,8 @@ describe("inviteStaffByEmail", () => {
       title: "Hack",
       creatorId: "user-1",
     };
-    // Gate requireHackathonOrganizer (judge) consumes [0] (grants). Then the
-    // existing-user-by-email lookup consumes [1] → empty (no existing user).
-    dbHooks.selectResults = [[], []];
+    // gate grants[0]; user-lookup[1] (none); dup-invite check[2] (none).
+    dbHooks.selectResults = [[], [], []];
 
     const res = await caller().hackathon.inviteStaffByEmail({
       challengeId: 1,
@@ -296,19 +295,19 @@ describe("inviteStaffByEmail", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("existing email (community): upserts membership then grants, no email", async () => {
+  it("existing email (community, already a member): grants without minting membership", async () => {
     payloadHooks.challenge = {
       id: 1,
       communityId: "comm-1",
       title: "Hack",
       creatorId: "user-1",
     };
-    // Community hackathon: requireHackathonOrganizer needs the actor to be an
-    // organizer (membership findFirst → undefined; grants select[0] supplies an
-    // active organizer grant). Then user-by-email lookup [1] → found.
+    // gate grants[0] (organizer) → passes judge gate; user-lookup[1] found;
+    // membership-existence check[2] → already an active member.
     dbHooks.selectResults = [
       [{ role: "organizer", revokedAt: null }],
       [{ id: "existing-1" }],
+      [{ id: "mem-1" }],
     ];
 
     const res = await caller().hackathon.inviteStaffByEmail({
@@ -318,9 +317,53 @@ describe("inviteStaffByEmail", () => {
     });
 
     expect(res.kind).toBe("granted");
-    expect(dbHooks.conflictDoNothing).toBe(true); // community membership upsert ran
-    expect(dbHooks.insertConflict).toBe(true); // staff grant upsert ran
+    expect(dbHooks.conflictDoNothing).toBe(false); // no membership minted
+    expect(dbHooks.insertConflict).toBe(true); // staff grant ran
     expect(emailHooks.sent).toHaveLength(0);
+  });
+
+  it("existing email (community, not a member): an organizer cannot mint membership", async () => {
+    payloadHooks.challenge = {
+      id: 1,
+      communityId: "comm-1",
+      title: "Hack",
+      creatorId: "user-1",
+    };
+    // gate grants[0] (organizer) → passes judge gate; user-lookup[1] found;
+    // membership-existence check[2] → NOT a member → requireHackathonOperator →
+    // assertActiveCommunityAdmin (findFirst → undefined) → FORBIDDEN.
+    dbHooks.selectResults = [
+      [{ role: "organizer", revokedAt: null }],
+      [{ id: "existing-1" }],
+      [],
+    ];
+
+    await expect(
+      caller().hackathon.inviteStaffByEmail({
+        challengeId: 1,
+        email: "outsider@example.com",
+        role: "judge",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("rejects a duplicate pending invite with CONFLICT", async () => {
+    payloadHooks.challenge = {
+      id: 1,
+      communityId: null,
+      title: "Hack",
+      creatorId: "user-1",
+    };
+    // gate grants[0]; user-lookup[1] none; dup-check[2] → an existing live invite.
+    dbHooks.selectResults = [[], [], [{ id: "inv-dup" }]];
+
+    await expect(
+      caller().hackathon.inviteStaffByEmail({
+        challengeId: 1,
+        email: "dup@example.com",
+        role: "judge",
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 });
 

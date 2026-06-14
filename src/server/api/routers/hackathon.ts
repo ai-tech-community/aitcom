@@ -1280,6 +1280,7 @@ export const hackathonRouter = createTRPCRouter({
           eq(eventRegistrations.userId, memberProfiles.userId),
         )
         .where(and(...conditions))
+        .orderBy(user.id)
         .limit(input.limit);
       return {
         items: rows.map((r) => ({
@@ -1389,18 +1390,34 @@ export const hackathonRouter = createTRPCRouter({
         .limit(1);
       if (existing) {
         // For a community hackathon, ensure an active membership exists so
-        // grantStaff's membership check passes (idempotent upsert).
+        // grantStaff's membership check passes.
         if (challenge.communityId) {
-          await ctx.db
-            .insert(communityMemberships)
-            .values({
-              communityId: challenge.communityId,
-              userId: existing.id,
-              status: "active",
-              role: "member",
-              invitedBy: actorId,
-            })
-            .onConflictDoNothing();
+          // Already an active member? Then any organizer may grant (matches grantStaff).
+          const [member] = await ctx.db
+            .select({ id: communityMemberships.id })
+            .from(communityMemberships)
+            .where(
+              and(
+                eq(communityMemberships.communityId, challenge.communityId),
+                eq(communityMemberships.userId, existing.id),
+                eq(communityMemberships.status, "active"),
+              ),
+            )
+            .limit(1);
+          if (!member) {
+            // Pulling a brand-new person into the community is admin-tier only.
+            await requireHackathonOperator(ctx.db, input.challengeId, actorId);
+            await ctx.db
+              .insert(communityMemberships)
+              .values({
+                communityId: challenge.communityId,
+                userId: existing.id,
+                status: "active",
+                role: "member",
+                invitedBy: actorId,
+              })
+              .onConflictDoNothing();
+          }
         }
         await grantStaffInternal(ctx.db, {
           challenge,
@@ -1410,6 +1427,26 @@ export const hackathonRouter = createTRPCRouter({
           grantedBy: actorId,
         });
         return { kind: "granted" as const };
+      }
+
+      const [dup] = await ctx.db
+        .select({ id: hackathonStaffInvite.id })
+        .from(hackathonStaffInvite)
+        .where(
+          and(
+            eq(hackathonStaffInvite.challengeId, input.challengeId),
+            eq(hackathonStaffInvite.email, email),
+            eq(hackathonStaffInvite.role, input.role),
+            isNull(hackathonStaffInvite.redeemedAt),
+            isNull(hackathonStaffInvite.revokedAt),
+          ),
+        )
+        .limit(1);
+      if (dup) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "That email already has a pending invite for this role.",
+        });
       }
 
       // New address → pending invite + email.
@@ -1425,7 +1462,7 @@ export const hackathonRouter = createTRPCRouter({
         invitedBy: actorId,
         expiresAt: inviteExpiry(now),
       });
-      const signupUrl = `${env.NEXT_PUBLIC_APP_URL}/en/sign-up?invite=${code}&email=${encodeURIComponent(email)}`;
+      const signupUrl = `${env.NEXT_PUBLIC_APP_URL}/en/auth/signup?invite=${code}&email=${encodeURIComponent(email)}`;
       await sendHackathonStaffInvite(
         email,
         input.role,
