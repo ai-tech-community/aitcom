@@ -53,6 +53,7 @@ import {
 } from "@/server/hackathon/cell-template";
 import { teamScore, rankTeams, prizeSplit } from "@/server/hackathon/scoring";
 import { aggregateJudgeRankings } from "@/server/hackathon/judge-aggregation";
+import { isJudgingOpen } from "@/server/hackathon/deadlines";
 import { hackathonPhase } from "@/server/hackathon/phase";
 import {
   assertCanToggleLookingForTeam,
@@ -987,6 +988,29 @@ export const hackathonRouter = createTRPCRouter({
           code: "BAD_REQUEST",
           message: "Judging is not open yet",
         });
+      }
+      const payload = await getPayloadClient();
+      const { docs: eventDocs } = await payload.find({
+        collection: "events",
+        where: {
+          and: [
+            { challengeId: { equals: String(input.challengeId) } },
+            { type: { equals: "hackathon" } },
+            { status: { not_in: ["draft", "rejected", "cancelled"] } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+      });
+      const event = eventDocs[0];
+      if (event) {
+        const judging = isJudgingOpen(event, new Date());
+        if (!judging.open) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "The judging deadline for this hackathon has passed.",
+          });
+        }
       }
       const submitted = await ctx.db
         .select({
