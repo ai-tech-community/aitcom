@@ -27,7 +27,10 @@ import {
   TeamJoinError,
 } from "@/server/hackathon/team-membership";
 import { ensureChallengeChannel } from "@/server/challenge-engine/channel";
-import { isRegistrationOpen } from "@/server/hackathon/deadlines";
+import {
+  isRegistrationOpen,
+  isSubmissionOpen,
+} from "@/server/hackathon/deadlines";
 
 /** Look up the published hackathon event bound to a challenge, or null. */
 async function hackathonEventForChallenge(challengeId: number) {
@@ -398,6 +401,20 @@ export const teamsRouter = createTRPCRouter({
         throw new TRPCError({
           code: "CONFLICT",
           message: "This team has already been submitted.",
+        });
+      }
+
+      const payload = await getPayloadClient();
+      const event = await payload.findByID({
+        collection: "events",
+        id: team.eventId,
+        depth: 0,
+      });
+      const sub = isSubmissionOpen(event, new Date());
+      if (!sub.open) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "The submission deadline for this hackathon has passed.",
         });
       }
 
