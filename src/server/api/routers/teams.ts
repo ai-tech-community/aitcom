@@ -27,6 +27,7 @@ import {
   TeamJoinError,
 } from "@/server/hackathon/team-membership";
 import { ensureChallengeChannel } from "@/server/challenge-engine/channel";
+import { isRegistrationOpen } from "@/server/hackathon/deadlines";
 
 /** Look up the published hackathon event bound to a challenge, or null. */
 async function hackathonEventForChallenge(challengeId: number) {
@@ -152,6 +153,14 @@ export const teamsRouter = createTRPCRouter({
         });
       }
 
+      const reg = isRegistrationOpen(event, new Date());
+      if (!reg.open) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Registration for this hackathon has closed.",
+        });
+      }
+
       const payload = await getPayloadClient();
       const challenge = await payload.findByID({
         collection: "challenges",
@@ -207,6 +216,20 @@ export const teamsRouter = createTRPCRouter({
         .limit(1);
       if (!team) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
+      }
+
+      const payload = await getPayloadClient();
+      const event = await payload.findByID({
+        collection: "events",
+        id: team.eventId,
+        depth: 0,
+      });
+      const reg = isRegistrationOpen(event, new Date());
+      if (!reg.open) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Registration for this hackathon has closed.",
+        });
       }
 
       await assertNotAlreadyOnTeam(ctx.db, userId, team.challengeId);
