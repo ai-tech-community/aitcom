@@ -1468,6 +1468,42 @@ export const hackathonRouter = createTRPCRouter({
       return { ok: true };
     }),
 
+  // Cancel a pending email invite. Auth mirrors the grant for the invite's role.
+  revokeStaffInvite: protectedProcedure
+    .input(z.object({ inviteId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const actorId = ctx.session.user.id;
+      const [invite] = await ctx.db
+        .select({
+          id: hackathonStaffInvite.id,
+          challengeId: hackathonStaffInvite.challengeId,
+          role: hackathonStaffInvite.role,
+          revokedAt: hackathonStaffInvite.revokedAt,
+        })
+        .from(hackathonStaffInvite)
+        .where(eq(hackathonStaffInvite.id, input.inviteId))
+        .limit(1);
+      if (!invite) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No such invite." });
+      }
+      if (invite.role === "organizer") {
+        await requireHackathonOperator(ctx.db, invite.challengeId, actorId);
+      } else {
+        await requireHackathonOrganizer(ctx.db, invite.challengeId, actorId);
+      }
+      await ctx.db
+        .update(hackathonStaffInvite)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(hackathonStaffInvite.id, input.inviteId),
+            isNull(hackathonStaffInvite.redeemedAt),
+            isNull(hackathonStaffInvite.revokedAt),
+          ),
+        );
+      return { ok: true };
+    }),
+
   /**
    * Finalize a hackathon (operator-scoped, ADR-0031). Scores each team from its
    * competitive grid's verified cells, ranks the submitted teams, and awards the

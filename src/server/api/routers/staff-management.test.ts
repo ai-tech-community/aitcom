@@ -323,3 +323,26 @@ describe("inviteStaffByEmail", () => {
     expect(emailHooks.sent).toHaveLength(0);
   });
 });
+
+describe("revokeStaffInvite", () => {
+  it("cancels a pending invite after authorizing for its role", async () => {
+    payloadHooks.challenge = {
+      id: 1,
+      communityId: null,
+      title: "Hack",
+      creatorId: "user-1",
+    };
+    // 1) load invite by id → a judge invite for challenge 1 (selectResults[0]).
+    //    Then the gate for role "judge" (requireHackathonOrganizer) consumes
+    //    selectResults[1] (grants). Hub-wide creator=actor → passes.
+    dbHooks.selectResults = [
+      [{ id: "inv1", challengeId: 1, role: "judge", revokedAt: null }],
+      [],
+    ];
+
+    const res = await caller().hackathon.revokeStaffInvite({ inviteId: "inv1" });
+
+    expect(res.ok).toBe(true);
+    expect(dbHooks.updateRan).toBe(true);
+  });
+});
