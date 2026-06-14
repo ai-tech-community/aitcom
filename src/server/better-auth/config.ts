@@ -8,6 +8,7 @@ import { checkEarlyAdopterBadge } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
 import { sendMemberWelcome } from "@/server/email";
 import { getResend } from "@/server/email";
+import { redeemPendingStaffInvites } from "@/server/hackathon/redeem-staff-invites";
 import { resolveBetterAuthBaseUrl, resolveTrustedOrigins } from "./base-url";
 
 export const auth = betterAuth({
@@ -52,6 +53,13 @@ export const auth = betterAuth({
           });
           sendMemberWelcome(user.email, displayName).catch(() => {
             /* non-blocking */
+          });
+          redeemPendingStaffInvites(db, {
+            userId: user.id,
+            email: user.email.toLowerCase(),
+            now: new Date(),
+          }).catch(() => {
+            /* non-blocking: a failed redemption must never fail signup */
           });
         },
       },
