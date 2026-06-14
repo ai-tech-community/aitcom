@@ -181,3 +181,43 @@ describe("listStaff", () => {
     ]);
   });
 });
+
+describe("listStaffCandidates", () => {
+  it("community hackathon: returns members excluding existing staff", async () => {
+    payloadHooks.challenge = {
+      id: 1,
+      communityId: "comm-1",
+      title: "Hack",
+      creatorId: "user-1",
+    };
+    // Gate (requireHackathonOrganizer, role "judge") for a community hackathon:
+    //   loadMembershipForChallenge -> db.query.communityMemberships.findFirst
+    //     (mocked to undefined; consumes NO selectResults entry), so the caller
+    //     must qualify via an active organizer GRANT instead.
+    //   loadHackathonGrants            -> selectResults[0]
+    //   candidate select (members)     -> selectResults[1]
+    dbHooks.selectResults = [
+      [{ role: "organizer", revokedAt: null }], // loadHackathonGrants -> organizer capability
+      // candidate rows (already-staff filtered out in SQL via NOT EXISTS):
+      [
+        {
+          userId: "m1",
+          displayName: "Mara Member",
+          email: "mara@example.com",
+          image: null,
+          joinedAt: new Date("2026-06-01T00:00:00Z"),
+        },
+      ],
+    ];
+
+    const res = await caller().hackathon.listStaffCandidates({
+      challengeId: 1,
+      role: "judge",
+    });
+
+    expect(res.items).toEqual([
+      expect.objectContaining({ userId: "m1", displayName: "Mara Member" }),
+    ]);
+    expect(res.nextCursor).toBeUndefined();
+  });
+});

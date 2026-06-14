@@ -3,7 +3,7 @@
 // what makes the challenge team-based. AIT is plumbing only — no cognition.
 
 import { z } from "zod";
-import { and, eq, inArray, isNull, isNotNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, isNotNull, ne, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import type { RequiredDataFromCollectionSlug } from "payload";
 
@@ -28,6 +28,7 @@ import {
   hackathonStaff,
   hackathonStaffInvite,
   judgeRankings,
+  eventRegistrations,
   user,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
@@ -1129,6 +1130,121 @@ export const hackathonRouter = createTRPCRouter({
         organizers: active.filter((r) => r.role === "organizer"),
         judges: active.filter((r) => r.role === "judge"),
         pendingInvites,
+      };
+    }),
+
+  // Browse list for the manage UI's add-control. Community hackathon → active
+  // community members; hub-wide → attendees of the bound event. Existing active
+  // staff for THIS challenge are excluded. Auth mirrors the corresponding grant.
+  listStaffCandidates: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        role: z.enum(["organizer", "judge"]),
+        search: z.string().trim().optional(),
+        cursor: z
+          .object({ joinedAt: z.string(), userId: z.string() })
+          .nullish(),
+        limit: z.number().min(1).max(50).default(20),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const actorId = ctx.session.user.id;
+      const challenge =
+        input.role === "organizer"
+          ? await requireHackathonOperator(ctx.db, input.challengeId, actorId)
+          : await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
+
+      // Exclude anyone already an active staff member for this challenge.
+      const notAlreadyStaff = sql`NOT EXISTS (
+        SELECT 1 FROM ${hackathonStaff} hs
+        WHERE hs.challenge_id = ${input.challengeId}
+          AND hs.user_id = ${user.id}
+          AND hs.revoked_at IS NULL
+      )`;
+      const searchClause = input.search
+        ? sql`(${memberProfiles.displayName} ILIKE ${"%" + input.search + "%"} OR ${user.email} ILIKE ${"%" + input.search + "%"})`
+        : undefined;
+
+      if (challenge.communityId) {
+        const conditions = [
+          eq(communityMemberships.communityId, challenge.communityId),
+          eq(communityMemberships.status, "active"),
+          notAlreadyStaff,
+        ];
+        if (searchClause) conditions.push(searchClause);
+        if (input.cursor) {
+          conditions.push(
+            sql`(${communityMemberships.joinedAt}, ${communityMemberships.userId}) < (${input.cursor.joinedAt}, ${input.cursor.userId})`,
+          );
+        }
+        const items = await ctx.db
+          .select({
+            userId: communityMemberships.userId,
+            displayName: memberProfiles.displayName,
+            email: user.email,
+            image: user.image,
+            joinedAt: communityMemberships.joinedAt,
+          })
+          .from(communityMemberships)
+          .innerJoin(user, eq(communityMemberships.userId, user.id))
+          .leftJoin(
+            memberProfiles,
+            eq(communityMemberships.userId, memberProfiles.userId),
+          )
+          .where(and(...conditions))
+          .orderBy(
+            desc(communityMemberships.joinedAt),
+            desc(communityMemberships.userId),
+          )
+          .limit(input.limit + 1);
+
+        let nextCursor: typeof input.cursor | undefined;
+        if (items.length > input.limit) {
+          const next = items.pop()!;
+          nextCursor = {
+            joinedAt: next.joinedAt.toISOString(),
+            userId: next.userId,
+          };
+        }
+        return { items, nextCursor };
+      }
+
+      // Hub-wide: candidates are attendees of the bound event. No keyset cursor
+      // here (registration lists are small); paginate by a simple limit.
+      const event = await boundHackathonEvent(input.challengeId);
+      if (!event) return { items: [], nextCursor: undefined };
+      const conditions = [
+        eq(eventRegistrations.eventId, Number(event.id)),
+        sql`${eventRegistrations.status} IN ('registered', 'attended')`,
+        notAlreadyStaff,
+      ];
+      if (searchClause) conditions.push(searchClause);
+      const rows = await ctx.db
+        .select({
+          userId: user.id,
+          displayName: memberProfiles.displayName,
+          email: user.email,
+          image: user.image,
+          name: user.name,
+        })
+        .from(eventRegistrations)
+        .innerJoin(user, eq(eventRegistrations.userId, user.id))
+        .leftJoin(
+          memberProfiles,
+          eq(eventRegistrations.userId, memberProfiles.userId),
+        )
+        .where(and(...conditions))
+        .limit(input.limit);
+      return {
+        items: rows.map((r) => ({
+          userId: r.userId,
+          displayName: r.displayName ?? r.name ?? "Anonymous",
+          email: r.email,
+          image: r.image,
+          joinedAt: null as Date | null,
+        })),
+        nextCursor: undefined,
       };
     }),
 
