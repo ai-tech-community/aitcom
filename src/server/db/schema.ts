@@ -1614,6 +1614,48 @@ export const hackathonStaffRelations = relations(hackathonStaff, ({ one }) => ({
   }),
 }));
 
+// Pending email invites for hackathon staff (organizer | judge). A row exists
+// only until the invited email signs up (redeemedAt) or an organizer cancels it
+// (revokedAt). communityId + challengeTitle are snapshotted at invite time so the
+// signup-hook redemption path needs no Payload call.
+export const hackathonStaffInvite = appSchema.table(
+  "hackathon_staff_invite",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    challengeId: d.integer().notNull(),
+    communityId: d.varchar({ length: 255 }), // null = hub-wide hackathon
+    challengeTitle: d.varchar({ length: 255 }).notNull(),
+    email: d.varchar({ length: 255 }).notNull(), // normalized (lowercased/trimmed)
+    role: d.varchar({ length: 20 }).notNull().$type<"organizer" | "judge">(),
+    code: d.varchar({ length: 255 }).notNull(),
+    invitedBy: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    expiresAt: d.timestamp({ withTimezone: true }),
+    redeemedAt: d.timestamp({ withTimezone: true }),
+    redeemedUserId: d.varchar({ length: 255 }).references(() => user.id),
+    revokedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [
+    index("hackathon_staff_invite_challenge_idx").on(t.challengeId),
+    index("hackathon_staff_invite_email_idx").on(t.email),
+    uniqueIndex("hackathon_staff_invite_code_uidx").on(t.code),
+    // One live invite per (challenge, email, role); cancelled/redeemed rows don't count.
+    uniqueIndex("hackathon_staff_invite_live_uidx")
+      .on(t.challengeId, t.email, t.role)
+      .where(sql`${t.revokedAt} is null and ${t.redeemedAt} is null`),
+  ],
+);
+
 // A judge's verdict on one team: ordinal rank (1 = best) + optional comment.
 // One row per (challenge, judge, team).
 export const judgeRankings = appSchema.table(
