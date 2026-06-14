@@ -30,6 +30,7 @@ import {
   user,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
+import { boundHackathonEvent } from "@/server/hackathon/bound-event";
 import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
 import {
   hasActiveGrant,
@@ -992,20 +993,7 @@ export const hackathonRouter = createTRPCRouter({
           message: "Judging is not open yet",
         });
       }
-      const payload = await getPayloadClient();
-      const { docs: eventDocs } = await payload.find({
-        collection: "events",
-        where: {
-          and: [
-            { challengeId: { equals: String(input.challengeId) } },
-            { type: { equals: "hackathon" } },
-            { status: { not_in: ["draft", "rejected", "cancelled"] } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-      });
-      const event = eventDocs[0];
+      const event = await boundHackathonEvent(input.challengeId);
       if (event) {
         const judging = isJudgingOpen(event, new Date());
         if (!judging.open) {
@@ -1902,20 +1890,7 @@ export const hackathonRouter = createTRPCRouter({
       );
 
       // Close matchmaking once the event's registration deadline has passed.
-      const payload = await getPayloadClient();
-      const { docs: eventDocs } = await payload.find({
-        collection: "events",
-        where: {
-          and: [
-            { challengeId: { equals: String(input.challengeId) } },
-            { type: { equals: "hackathon" } },
-            { status: { not_in: ["draft", "rejected", "cancelled"] } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-      });
-      const event = eventDocs[0] ?? null;
+      const event = await boundHackathonEvent(input.challengeId);
 
       try {
         assertCanToggleLookingForTeam({

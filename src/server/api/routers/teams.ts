@@ -31,23 +31,11 @@ import {
   isRegistrationOpen,
   isSubmissionOpen,
 } from "@/server/hackathon/deadlines";
+import { boundHackathonEvent } from "@/server/hackathon/bound-event";
 
 /** Look up the published hackathon event bound to a challenge, or null. */
 async function hackathonEventForChallenge(challengeId: number) {
-  const payload = await getPayloadClient();
-  const { docs } = await payload.find({
-    collection: "events",
-    where: {
-      and: [
-        { challengeId: { equals: String(challengeId) } },
-        { type: { equals: "hackathon" } },
-        { status: { not_in: ["draft", "rejected", "cancelled"] } },
-      ],
-    },
-    limit: 1,
-    depth: 0,
-  });
-  return docs[0] ?? null;
+  return boundHackathonEvent(challengeId);
 }
 
 /** Guard: reject if the user already holds a team for this challenge. */
