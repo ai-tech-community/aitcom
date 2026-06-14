@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 
 import { resolvePublicHackathonPage } from "@/server/hackathon/resolve-public-hackathon";
 import { hubTabStates, type HubTabKey } from "@/server/hackathon/hub-tabs";
+import { HackathonBreadcrumb } from "@/components/hackathon/hub/hackathon-breadcrumb";
 import { HackathonHeader } from "@/components/hackathon/hub/hackathon-header";
 import { HackathonTabBar } from "@/components/hackathon/hub/hackathon-tab-bar";
 import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
@@ -41,6 +42,11 @@ export default async function EventLayout({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6">
+      <HackathonBreadcrumb
+        slug={slug}
+        title={resolved.event.title}
+        labels={labels}
+      />
       <HackathonHeader event={resolved.event} phase={resolved.phase} />
       <div className="mt-6">
         <HackathonTabBar slug={slug} tabs={tabs} labels={labels} />

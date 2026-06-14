@@ -12,7 +12,6 @@ import { submittedProjects } from "@/server/hackathon/gallery";
 import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
 import { hubTabStates } from "@/server/hackathon/hub-tabs";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
-import { Link } from "@/i18n/navigation";
 import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
 import {
   ProjectGallery,
@@ -57,7 +56,7 @@ export default async function HackathonGalleryPage({
     locale as "en" | "nl",
   );
   if (!resolved.found) notFound();
-  const { event, challengeId, phase } = resolved;
+  const { challengeId, phase } = resolved;
 
   // Cancelled events collapse to "draft" inside the phase derivation; a draft
   // hackathon has no public gallery (the tab shell never links it for a
@@ -93,24 +92,6 @@ export default async function HackathonGalleryPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
-      <nav className="mb-6 flex items-center gap-2 font-mono text-[11px] tracking-wider">
-        <Link
-          href="/events"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          / EVENTS
-        </Link>
-        <span className="text-muted-foreground">/</span>
-        <Link
-          href={`/events/${slug}`}
-          className="text-muted-foreground hover:text-foreground truncate transition-colors"
-        >
-          {event.title}
-        </Link>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-foreground/80">{t("gallery")}</span>
-      </nav>
-
       <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
         {t("gallery")}
       </h1>
