@@ -67,14 +67,20 @@ describe("StaffSection", () => {
     expect(screen.getByText("ext@example.com")).toBeInTheDocument();
     expect(screen.getByText(/invited · pending/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /remove judy judge/i }),
+    );
     expect(revokeMutate).toHaveBeenCalledWith({
       challengeId: 1,
       userId: "u1",
       role: "judge",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /cancel invite for ext@example.com/i,
+      }),
+    );
     expect(cancelMutate).toHaveBeenCalledWith({ inviteId: "inv1" });
   });
 });

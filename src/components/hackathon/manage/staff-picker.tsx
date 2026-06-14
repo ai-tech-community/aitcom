@@ -7,6 +7,7 @@ import { api } from "@/trpc/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { isLikelyEmail } from "@/server/hackathon/staff-invite";
 
 export function StaffPicker({
@@ -18,10 +19,14 @@ export function StaffPicker({
 }) {
   const utils = api.useUtils();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   const candidates = api.hackathon.listStaffCandidates.useQuery(
-    { challengeId, role, search: search || undefined },
-    { enabled: search.length > 0 },
+    { challengeId, role, search: debouncedSearch || undefined },
+    {
+      enabled: debouncedSearch.length > 0,
+      placeholderData: (prev) => prev,
+    },
   );
 
   const invalidate = () => {
@@ -51,7 +56,9 @@ export function StaffPicker({
   const roleLabel = role === "organizer" ? "organizer" : "judge";
   const items = candidates.data?.items ?? [];
   const showInviteByEmail =
-    isLikelyEmail(search) && items.length === 0 && !candidates.isFetching;
+    isLikelyEmail(debouncedSearch) &&
+    items.length === 0 &&
+    !candidates.isFetching;
 
   return (
     <div className="mt-3 space-y-2">
@@ -61,7 +68,7 @@ export function StaffPicker({
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      {search.length > 0 && (
+      {debouncedSearch.length > 0 && (
         <ul className="divide-y rounded-md border">
           {items.map((c) => {
             const displayName = c.displayName ?? c.email ?? "Member";
@@ -88,6 +95,7 @@ export function StaffPicker({
               </span>
               <Button
                 size="sm"
+                aria-label={`Add ${displayName} as ${roleLabel}`}
                 disabled={grant.isPending}
                 onClick={() =>
                   grant.mutate({ challengeId, userId: c.userId, role })
@@ -103,14 +111,20 @@ export function StaffPicker({
             <li className="flex items-center justify-between gap-2 px-3 py-2">
               <span className="truncate text-sm">
                 No member matches. Invite{" "}
-                <span className="font-medium">{search.trim()}</span> by email.
+                <span className="font-medium">{debouncedSearch.trim()}</span> by
+                email.
               </span>
               <Button
                 size="sm"
                 variant="outline"
+                aria-label={`Invite ${debouncedSearch.trim()} as ${roleLabel}`}
                 disabled={invite.isPending}
                 onClick={() =>
-                  invite.mutate({ challengeId, email: search.trim(), role })
+                  invite.mutate({
+                    challengeId,
+                    email: debouncedSearch.trim(),
+                    role,
+                  })
                 }
               >
                 Invite {roleLabel}

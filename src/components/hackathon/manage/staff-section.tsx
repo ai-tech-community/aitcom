@@ -86,6 +86,7 @@ export function StaffSection({
                 size="sm"
                 variant="ghost"
                 className="text-red-600"
+                aria-label={`Remove ${name} from ${title.toLowerCase()}`}
                 disabled={revoke.isPending}
                 onClick={() =>
                   revoke.mutate({ challengeId, userId: m.userId, role })
@@ -111,6 +112,7 @@ export function StaffSection({
             <Button
               size="sm"
               variant="ghost"
+              aria-label={`Cancel invite for ${inv.email}`}
               disabled={revokeInvite.isPending}
               onClick={() => revokeInvite.mutate({ inviteId: inv.id })}
             >
