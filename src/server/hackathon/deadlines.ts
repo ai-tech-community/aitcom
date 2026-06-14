@@ -7,9 +7,9 @@
 // the deadline instant: open === now <= deadline.
 
 export interface EventDeadlines {
-  registrationDeadline: Date | string | null;
-  submissionDeadline: Date | string | null;
-  judgingDeadline: Date | string | null;
+  registrationDeadline?: Date | string | null;
+  submissionDeadline?: Date | string | null;
+  judgingDeadline?: Date | string | null;
 }
 
 /** Stable i18n/error keys emitted when a gate is closed. */
