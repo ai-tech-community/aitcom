@@ -7,6 +7,7 @@ import {
   renderEmailFromTemplate,
   REGISTRATION_CONFIRMATION_TEMPLATE_KEY,
 } from "@/server/email-template";
+import { STAFF_INVITE_TTL_DAYS } from "@/server/hackathon/staff-invite";
 
 let resendInstance: Resend | null = null;
 
@@ -290,6 +291,32 @@ export async function sendMemberWelcome(to: string, displayName: string) {
         <p style="font-size: 12px; color: #999;">AIT Community · Amsterdam</p>
       </div>
     `,
+  });
+}
+
+/**
+ * Invite an external person to be a hackathon organizer/judge. The link points at
+ * the normal signup flow carrying the invite code; the Better Auth user.create
+ * hook redeems the invite on first signup. Non-blocking when Resend is unset.
+ */
+export async function sendHackathonStaffInvite(
+  to: string,
+  role: "organizer" | "judge",
+  challengeTitle: string,
+  signupUrl: string,
+) {
+  const resend = getResend();
+  if (!resend) return;
+  const roleLabel = role === "organizer" ? "an organizer" : "a judge";
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: `You're invited to be ${roleLabel} for "${challengeTitle}"`,
+    html: `<p>You've been invited to be ${roleLabel} for the hackathon <strong>${escapeHtml(
+      challengeTitle,
+    )}</strong> on AIT Community.</p><p>Create your account to accept: <a href="${signupUrl}">${signupUrl}</a></p><p>This invite expires in ${String(
+      STAFF_INVITE_TTL_DAYS,
+    )} days.</p>`,
   });
 }
 
