@@ -80,6 +80,9 @@ import {
 import { cellHeatState } from "@/server/hackathon/cell-state";
 import { mergeAgentStats } from "@/server/hackathon/agent-stats";
 import { awardXp, awardBadge } from "@/lib/gamification";
+import { normalizeEmail, inviteExpiry } from "@/server/hackathon/staff-invite";
+import { sendHackathonStaffInvite } from "@/server/email";
+import { env } from "@/env";
 
 /** Load a challenge by id or throw NOT_FOUND. */
 async function loadChallenge(challengeId: number) {
@@ -293,6 +296,48 @@ async function currentHackathonPhase(
     challengeStatus,
     judgingOpenedAt,
     teams: markers,
+  });
+}
+
+// The grant + notification body shared by grantStaff and the inviteStaffByEmail
+// shortcut. Callers MUST have already authorized the actor and validated the
+// target is grantable (active member / existing user).
+async function grantStaffInternal(
+  db: typeof import("@/server/db").db,
+  args: {
+    challenge: { communityId?: string | null; title: string };
+    challengeId: number;
+    userId: string;
+    role: "organizer" | "judge";
+    grantedBy: string;
+  },
+) {
+  await db
+    .insert(hackathonStaff)
+    .values({
+      challengeId: args.challengeId,
+      userId: args.userId,
+      role: args.role,
+      grantedBy: args.grantedBy,
+    })
+    .onConflictDoUpdate({
+      target: [
+        hackathonStaff.challengeId,
+        hackathonStaff.userId,
+        hackathonStaff.role,
+      ],
+      set: { revokedAt: null, grantedBy: args.grantedBy, grantedAt: new Date() },
+    });
+  await db.insert(notifications).values({
+    userId: args.userId,
+    type: "hackathon_staff_grant",
+    title:
+      args.role === "organizer"
+        ? "You're now an organizer"
+        : "You're now a judge",
+    content: `You were added as ${args.role === "organizer" ? "an organizer" : "a judge"} for "${args.challenge.title}".`,
+    metadata: { challengeId: String(args.challengeId), role: args.role },
+    communityId: args.challenge.communityId ?? null,
   });
 }
 
@@ -1306,34 +1351,90 @@ export const hackathonRouter = createTRPCRouter({
       // Atomic upsert: a single first-time grant or a re-grant after revoke both
       // resolve via the (challenge_id, user_id, role) unique index, avoiding the
       // TOCTOU race where two concurrent inserts both hit the duplicate-key error.
-      await ctx.db
-        .insert(hackathonStaff)
-        .values({
-          challengeId: input.challengeId,
-          userId: input.userId,
-          role: input.role,
-          grantedBy: actorId,
-        })
-        .onConflictDoUpdate({
-          target: [
-            hackathonStaff.challengeId,
-            hackathonStaff.userId,
-            hackathonStaff.role,
-          ],
-          set: { revokedAt: null, grantedBy: actorId, grantedAt: new Date() },
-        });
-      await ctx.db.insert(notifications).values({
+      await grantStaffInternal(ctx.db, {
+        challenge,
+        challengeId: input.challengeId,
         userId: input.userId,
-        type: "hackathon_staff_grant",
-        title:
-          input.role === "organizer"
-            ? "You're now an organizer"
-            : "You're now a judge",
-        content: `You were added as ${input.role === "organizer" ? "an organizer" : "a judge"} for "${challenge.title}".`,
-        metadata: { challengeId: String(input.challengeId), role: input.role },
-        communityId: challenge.communityId ?? null,
+        role: input.role,
+        grantedBy: actorId,
       });
       return { ok: true };
+    }),
+
+  // Invite by email. If the address already has an account, grant immediately
+  // (adding an active community membership first for a community hackathon);
+  // otherwise persist a pending invite and email a signup link. The signup hook
+  // wires the grant in on first login. Auth mirrors grantStaff.
+  inviteStaffByEmail: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        email: z.string().email(),
+        role: z.enum(["organizer", "judge"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const actorId = ctx.session.user.id;
+      const challenge =
+        input.role === "organizer"
+          ? await requireHackathonOperator(ctx.db, input.challengeId, actorId)
+          : await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
+      const email = normalizeEmail(input.email);
+
+      // Existing-account shortcut.
+      const [existing] = await ctx.db
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.email, email))
+        .limit(1);
+      if (existing) {
+        // For a community hackathon, ensure an active membership exists so
+        // grantStaff's membership check passes (idempotent upsert).
+        if (challenge.communityId) {
+          await ctx.db
+            .insert(communityMemberships)
+            .values({
+              communityId: challenge.communityId,
+              userId: existing.id,
+              status: "active",
+              role: "member",
+              invitedBy: actorId,
+            })
+            .onConflictDoNothing();
+        }
+        await grantStaffInternal(ctx.db, {
+          challenge,
+          challengeId: input.challengeId,
+          userId: existing.id,
+          role: input.role,
+          grantedBy: actorId,
+        });
+        return { kind: "granted" as const };
+      }
+
+      // New address → pending invite + email.
+      const now = new Date();
+      const code = crypto.randomUUID();
+      await ctx.db.insert(hackathonStaffInvite).values({
+        challengeId: input.challengeId,
+        communityId: challenge.communityId ?? null,
+        challengeTitle: challenge.title,
+        email,
+        role: input.role,
+        code,
+        invitedBy: actorId,
+        expiresAt: inviteExpiry(now),
+      });
+      const signupUrl = `${env.NEXT_PUBLIC_APP_URL}/en/sign-up?invite=${code}&email=${encodeURIComponent(email)}`;
+      await sendHackathonStaffInvite(
+        email,
+        input.role,
+        challenge.title,
+        signupUrl,
+      ).catch(() => {
+        /* email failure is non-fatal; invite row persists for resend */
+      });
+      return { kind: "invited" as const };
     }),
 
   revokeStaff: protectedProcedure

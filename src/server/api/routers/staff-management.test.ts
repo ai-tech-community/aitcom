@@ -6,6 +6,7 @@ const dbHooks = {
   selectResults: [] as SelectResult[],
   insertValues: undefined as unknown,
   insertConflict: false,
+  conflictDoNothing: false,
   updateRan: false,
 };
 
@@ -29,7 +30,10 @@ function makeInsertChain() {
     dbHooks.insertConflict = true;
     return Promise.resolve();
   };
-  chain.onConflictDoNothing = () => Promise.resolve();
+  chain.onConflictDoNothing = () => {
+    dbHooks.conflictDoNothing = true;
+    return Promise.resolve();
+  };
   chain.then = (resolve: (v: unknown) => unknown) =>
     Promise.resolve(undefined).then(resolve);
   return chain;
@@ -108,6 +112,7 @@ beforeEach(() => {
   dbHooks.selectResults = [];
   dbHooks.insertValues = undefined;
   dbHooks.insertConflict = false;
+  dbHooks.conflictDoNothing = false;
   dbHooks.updateRan = false;
   emailHooks.sent = [];
   payloadHooks.challenge = {
@@ -219,5 +224,102 @@ describe("listStaffCandidates", () => {
       expect.objectContaining({ userId: "m1", displayName: "Mara Member" }),
     ]);
     expect(res.nextCursor).toBeUndefined();
+  });
+});
+
+describe("inviteStaffByEmail", () => {
+  it("new email (hub-wide): inserts a pending invite and sends the email", async () => {
+    payloadHooks.challenge = {
+      id: 1,
+      communityId: null,
+      title: "Hack",
+      creatorId: "user-1",
+    };
+    // Gate requireHackathonOrganizer (judge) consumes [0] (grants). Then the
+    // existing-user-by-email lookup consumes [1] → empty (no existing user).
+    dbHooks.selectResults = [[], []];
+
+    const res = await caller().hackathon.inviteStaffByEmail({
+      challengeId: 1,
+      email: "New.Judge@Example.com",
+      role: "judge",
+    });
+
+    expect(res.kind).toBe("invited");
+    expect(dbHooks.insertValues).toEqual(
+      expect.objectContaining({
+        challengeId: 1,
+        email: "new.judge@example.com", // normalized
+        role: "judge",
+        challengeTitle: "Hack",
+        communityId: null,
+      }),
+    );
+    expect(emailHooks.sent).toHaveLength(1);
+  });
+
+  it("existing email: grants immediately, no email", async () => {
+    payloadHooks.challenge = {
+      id: 1,
+      communityId: null,
+      title: "Hack",
+      creatorId: "user-1",
+    };
+    // Gate consumes [0] (grants). User-by-email lookup [1] → found.
+    dbHooks.selectResults = [[], [{ id: "existing-1" }]];
+
+    const res = await caller().hackathon.inviteStaffByEmail({
+      challengeId: 1,
+      email: "known@example.com",
+      role: "judge",
+    });
+
+    expect(res.kind).toBe("granted");
+    expect(emailHooks.sent).toHaveLength(0);
+    expect(dbHooks.insertConflict).toBe(true); // grantStaffInternal upsert ran
+  });
+
+  it("rejects a non-operator inviting an organizer", async () => {
+    payloadHooks.challenge = {
+      id: 1,
+      communityId: null,
+      title: "Hack",
+      creatorId: "someone-else",
+    };
+    // role organizer → requireHackathonOperator; hub-wide + actor !== creator → FORBIDDEN, no select consumed.
+    await expect(
+      caller("user-1").hackathon.inviteStaffByEmail({
+        challengeId: 1,
+        email: "x@example.com",
+        role: "organizer",
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("existing email (community): upserts membership then grants, no email", async () => {
+    payloadHooks.challenge = {
+      id: 1,
+      communityId: "comm-1",
+      title: "Hack",
+      creatorId: "user-1",
+    };
+    // Community hackathon: requireHackathonOrganizer needs the actor to be an
+    // organizer (membership findFirst → undefined; grants select[0] supplies an
+    // active organizer grant). Then user-by-email lookup [1] → found.
+    dbHooks.selectResults = [
+      [{ role: "organizer", revokedAt: null }],
+      [{ id: "existing-1" }],
+    ];
+
+    const res = await caller().hackathon.inviteStaffByEmail({
+      challengeId: 1,
+      email: "member@example.com",
+      role: "judge",
+    });
+
+    expect(res.kind).toBe("granted");
+    expect(dbHooks.conflictDoNothing).toBe(true); // community membership upsert ran
+    expect(dbHooks.insertConflict).toBe(true); // staff grant upsert ran
+    expect(emailHooks.sent).toHaveLength(0);
   });
 });
