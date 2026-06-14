@@ -3,7 +3,7 @@
 // what makes the challenge team-based. AIT is plumbing only — no cognition.
 
 import { z } from "zod";
-import { and, eq, inArray, isNull, isNotNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, isNotNull, ne, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import type { RequiredDataFromCollectionSlug } from "payload";
 
@@ -26,7 +26,9 @@ import {
   communityMemberships,
   communities,
   hackathonStaff,
+  hackathonStaffInvite,
   judgeRankings,
+  eventRegistrations,
   user,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
@@ -78,6 +80,9 @@ import {
 import { cellHeatState } from "@/server/hackathon/cell-state";
 import { mergeAgentStats } from "@/server/hackathon/agent-stats";
 import { awardXp, awardBadge } from "@/lib/gamification";
+import { normalizeEmail, inviteExpiry } from "@/server/hackathon/staff-invite";
+import { sendHackathonStaffInvite } from "@/server/email";
+import { env } from "@/env";
 
 /** Load a challenge by id or throw NOT_FOUND. */
 async function loadChallenge(challengeId: number) {
@@ -291,6 +296,48 @@ async function currentHackathonPhase(
     challengeStatus,
     judgingOpenedAt,
     teams: markers,
+  });
+}
+
+// The grant + notification body shared by grantStaff and the inviteStaffByEmail
+// shortcut. Callers MUST have already authorized the actor and validated the
+// target is grantable (active member / existing user).
+async function grantStaffInternal(
+  db: typeof import("@/server/db").db,
+  args: {
+    challenge: { communityId?: string | null; title: string };
+    challengeId: number;
+    userId: string;
+    role: "organizer" | "judge";
+    grantedBy: string;
+  },
+) {
+  await db
+    .insert(hackathonStaff)
+    .values({
+      challengeId: args.challengeId,
+      userId: args.userId,
+      role: args.role,
+      grantedBy: args.grantedBy,
+    })
+    .onConflictDoUpdate({
+      target: [
+        hackathonStaff.challengeId,
+        hackathonStaff.userId,
+        hackathonStaff.role,
+      ],
+      set: { revokedAt: null, grantedBy: args.grantedBy, grantedAt: new Date() },
+    });
+  await db.insert(notifications).values({
+    userId: args.userId,
+    type: "hackathon_staff_grant",
+    title:
+      args.role === "organizer"
+        ? "You're now an organizer"
+        : "You're now a judge",
+    content: `You were added as ${args.role === "organizer" ? "an organizer" : "a judge"} for "${args.challenge.title}".`,
+    metadata: { challengeId: String(args.challengeId), role: args.role },
+    communityId: args.challenge.communityId ?? null,
   });
 }
 
@@ -1087,6 +1134,7 @@ export const hackathonRouter = createTRPCRouter({
         input.challengeId,
         ctx.session.user.id,
       );
+      // Active grants, joined to user/profile so the UI shows a person, not a uuid.
       const rows = await ctx.db
         .select({
           id: hackathonStaff.id,
@@ -1094,13 +1142,155 @@ export const hackathonRouter = createTRPCRouter({
           role: hackathonStaff.role,
           revokedAt: hackathonStaff.revokedAt,
           grantedAt: hackathonStaff.grantedAt,
+          displayName: memberProfiles.displayName,
+          email: user.email,
+          image: user.image,
         })
         .from(hackathonStaff)
+        .innerJoin(user, eq(hackathonStaff.userId, user.id))
+        .leftJoin(
+          memberProfiles,
+          eq(hackathonStaff.userId, memberProfiles.userId),
+        )
         .where(eq(hackathonStaff.challengeId, input.challengeId));
       const active = rows.filter((r) => r.revokedAt === null);
+      // Pending (un-redeemed, un-revoked) email invites.
+      const pendingInvites = await ctx.db
+        .select({
+          id: hackathonStaffInvite.id,
+          email: hackathonStaffInvite.email,
+          role: hackathonStaffInvite.role,
+          invitedBy: hackathonStaffInvite.invitedBy,
+          createdAt: hackathonStaffInvite.createdAt,
+        })
+        .from(hackathonStaffInvite)
+        .where(
+          and(
+            eq(hackathonStaffInvite.challengeId, input.challengeId),
+            isNull(hackathonStaffInvite.redeemedAt),
+            isNull(hackathonStaffInvite.revokedAt),
+          ),
+        );
       return {
         organizers: active.filter((r) => r.role === "organizer"),
         judges: active.filter((r) => r.role === "judge"),
+        pendingInvites,
+      };
+    }),
+
+  // Browse list for the manage UI's add-control. Community hackathon → active
+  // community members; hub-wide → attendees of the bound event. Existing active
+  // staff for THIS challenge are excluded. Auth mirrors the corresponding grant.
+  listStaffCandidates: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        role: z.enum(["organizer", "judge"]),
+        search: z.string().trim().optional(),
+        cursor: z
+          .object({ joinedAt: z.string(), userId: z.string() })
+          .nullish(),
+        limit: z.number().min(1).max(50).default(20),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const actorId = ctx.session.user.id;
+      const challenge =
+        input.role === "organizer"
+          ? await requireHackathonOperator(ctx.db, input.challengeId, actorId)
+          : await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
+
+      // Exclude anyone already an active staff member for this challenge.
+      const notAlreadyStaff = sql`NOT EXISTS (
+        SELECT 1 FROM ${hackathonStaff} hs
+        WHERE hs.challenge_id = ${input.challengeId}
+          AND hs.user_id = ${user.id}
+          AND hs.revoked_at IS NULL
+      )`;
+      const searchClause = input.search
+        ? sql`(${memberProfiles.displayName} ILIKE ${"%" + input.search + "%"} OR ${user.email} ILIKE ${"%" + input.search + "%"})`
+        : undefined;
+
+      if (challenge.communityId) {
+        const conditions = [
+          eq(communityMemberships.communityId, challenge.communityId),
+          eq(communityMemberships.status, "active"),
+          notAlreadyStaff,
+        ];
+        if (searchClause) conditions.push(searchClause);
+        if (input.cursor) {
+          conditions.push(
+            sql`(${communityMemberships.joinedAt}, ${communityMemberships.userId}) < (${input.cursor.joinedAt}::timestamptz, ${input.cursor.userId})`,
+          );
+        }
+        const items = await ctx.db
+          .select({
+            userId: communityMemberships.userId,
+            displayName: memberProfiles.displayName,
+            email: user.email,
+            image: user.image,
+            joinedAt: communityMemberships.joinedAt,
+          })
+          .from(communityMemberships)
+          .innerJoin(user, eq(communityMemberships.userId, user.id))
+          .leftJoin(
+            memberProfiles,
+            eq(communityMemberships.userId, memberProfiles.userId),
+          )
+          .where(and(...conditions))
+          .orderBy(
+            desc(communityMemberships.joinedAt),
+            desc(communityMemberships.userId),
+          )
+          .limit(input.limit + 1);
+
+        let nextCursor: typeof input.cursor | undefined;
+        if (items.length > input.limit) {
+          const next = items.pop()!;
+          nextCursor = {
+            joinedAt: next.joinedAt.toISOString(),
+            userId: next.userId,
+          };
+        }
+        return { items, nextCursor };
+      }
+
+      // Hub-wide: candidates are attendees of the bound event. No keyset cursor
+      // here (registration lists are small); paginate by a simple limit.
+      const event = await boundHackathonEvent(input.challengeId);
+      if (!event) return { items: [], nextCursor: undefined };
+      const conditions = [
+        eq(eventRegistrations.eventId, Number(event.id)),
+        sql`${eventRegistrations.status} IN ('registered', 'attended')`,
+        notAlreadyStaff,
+      ];
+      if (searchClause) conditions.push(searchClause);
+      const rows = await ctx.db
+        .select({
+          userId: user.id,
+          displayName: memberProfiles.displayName,
+          email: user.email,
+          image: user.image,
+          name: user.name,
+        })
+        .from(eventRegistrations)
+        .innerJoin(user, eq(eventRegistrations.userId, user.id))
+        .leftJoin(
+          memberProfiles,
+          eq(eventRegistrations.userId, memberProfiles.userId),
+        )
+        .where(and(...conditions))
+        .orderBy(user.id)
+        .limit(input.limit);
+      return {
+        items: rows.map((r) => ({
+          userId: r.userId,
+          displayName: r.displayName ?? r.name ?? "Anonymous",
+          email: r.email,
+          image: r.image,
+          joinedAt: null as Date | null,
+        })),
+        nextCursor: undefined,
       };
     }),
 
@@ -1162,34 +1352,140 @@ export const hackathonRouter = createTRPCRouter({
       // Atomic upsert: a single first-time grant or a re-grant after revoke both
       // resolve via the (challenge_id, user_id, role) unique index, avoiding the
       // TOCTOU race where two concurrent inserts both hit the duplicate-key error.
-      await ctx.db
-        .insert(hackathonStaff)
-        .values({
-          challengeId: input.challengeId,
-          userId: input.userId,
-          role: input.role,
-          grantedBy: actorId,
-        })
-        .onConflictDoUpdate({
-          target: [
-            hackathonStaff.challengeId,
-            hackathonStaff.userId,
-            hackathonStaff.role,
-          ],
-          set: { revokedAt: null, grantedBy: actorId, grantedAt: new Date() },
-        });
-      await ctx.db.insert(notifications).values({
+      await grantStaffInternal(ctx.db, {
+        challenge,
+        challengeId: input.challengeId,
         userId: input.userId,
-        type: "hackathon_staff_grant",
-        title:
-          input.role === "organizer"
-            ? "You're now an organizer"
-            : "You're now a judge",
-        content: `You were added as ${input.role === "organizer" ? "an organizer" : "a judge"} for "${challenge.title}".`,
-        metadata: { challengeId: String(input.challengeId), role: input.role },
-        communityId: challenge.communityId ?? null,
+        role: input.role,
+        grantedBy: actorId,
       });
       return { ok: true };
+    }),
+
+  // Invite by email. If the address already has an account, grant immediately
+  // (adding an active community membership first for a community hackathon);
+  // otherwise persist a pending invite and email a signup link. The signup hook
+  // wires the grant in on first login. Auth mirrors grantStaff.
+  inviteStaffByEmail: protectedProcedure
+    .input(
+      z.object({
+        challengeId: z.number(),
+        email: z.string().email(),
+        role: z.enum(["organizer", "judge"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const actorId = ctx.session.user.id;
+      const challenge =
+        input.role === "organizer"
+          ? await requireHackathonOperator(ctx.db, input.challengeId, actorId)
+          : await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
+      const email = normalizeEmail(input.email);
+
+      // Existing-account shortcut.
+      const [existing] = await ctx.db
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.email, email))
+        .limit(1);
+      if (existing) {
+        // For a community hackathon, ensure an active membership exists so
+        // grantStaff's membership check passes.
+        if (challenge.communityId) {
+          // Already an active member? Then any organizer may grant (matches grantStaff).
+          const [member] = await ctx.db
+            .select({ id: communityMemberships.id })
+            .from(communityMemberships)
+            .where(
+              and(
+                eq(communityMemberships.communityId, challenge.communityId),
+                eq(communityMemberships.userId, existing.id),
+                eq(communityMemberships.status, "active"),
+              ),
+            )
+            .limit(1);
+          if (!member) {
+            // Pulling a brand-new person into the community is admin-tier only.
+            await requireHackathonOperator(ctx.db, input.challengeId, actorId);
+            await ctx.db
+              .insert(communityMemberships)
+              .values({
+                communityId: challenge.communityId,
+                userId: existing.id,
+                status: "active",
+                role: "member",
+                invitedBy: actorId,
+              })
+              .onConflictDoNothing();
+          }
+        }
+        await grantStaffInternal(ctx.db, {
+          challenge,
+          challengeId: input.challengeId,
+          userId: existing.id,
+          role: input.role,
+          grantedBy: actorId,
+        });
+        // If a pending invite already existed for this address (e.g. they signed
+        // up before redemption matched), clear it so it stops showing as pending.
+        await ctx.db
+          .update(hackathonStaffInvite)
+          .set({ redeemedAt: new Date(), redeemedUserId: existing.id })
+          .where(
+            and(
+              eq(hackathonStaffInvite.challengeId, input.challengeId),
+              eq(hackathonStaffInvite.email, email),
+              eq(hackathonStaffInvite.role, input.role),
+              isNull(hackathonStaffInvite.redeemedAt),
+              isNull(hackathonStaffInvite.revokedAt),
+            ),
+          );
+        return { kind: "granted" as const };
+      }
+
+      const [dup] = await ctx.db
+        .select({ id: hackathonStaffInvite.id })
+        .from(hackathonStaffInvite)
+        .where(
+          and(
+            eq(hackathonStaffInvite.challengeId, input.challengeId),
+            eq(hackathonStaffInvite.email, email),
+            eq(hackathonStaffInvite.role, input.role),
+            isNull(hackathonStaffInvite.redeemedAt),
+            isNull(hackathonStaffInvite.revokedAt),
+          ),
+        )
+        .limit(1);
+      if (dup) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "That email already has a pending invite for this role.",
+        });
+      }
+
+      // New address → pending invite + email.
+      const now = new Date();
+      const code = crypto.randomUUID();
+      await ctx.db.insert(hackathonStaffInvite).values({
+        challengeId: input.challengeId,
+        communityId: challenge.communityId ?? null,
+        challengeTitle: challenge.title,
+        email,
+        role: input.role,
+        code,
+        invitedBy: actorId,
+        expiresAt: inviteExpiry(now),
+      });
+      const signupUrl = `${env.NEXT_PUBLIC_APP_URL}/en/auth/signup?invite=${code}&email=${encodeURIComponent(email)}`;
+      await sendHackathonStaffInvite(
+        email,
+        input.role,
+        challenge.title,
+        signupUrl,
+      ).catch(() => {
+        /* email failure is non-fatal; invite row persists for resend */
+      });
+      return { kind: "invited" as const };
     }),
 
   revokeStaff: protectedProcedure
@@ -1218,6 +1514,42 @@ export const hackathonRouter = createTRPCRouter({
             eq(hackathonStaff.userId, input.userId),
             eq(hackathonStaff.role, input.role),
             isNull(hackathonStaff.revokedAt),
+          ),
+        );
+      return { ok: true };
+    }),
+
+  // Cancel a pending email invite. Auth mirrors the grant for the invite's role.
+  revokeStaffInvite: protectedProcedure
+    .input(z.object({ inviteId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const actorId = ctx.session.user.id;
+      const [invite] = await ctx.db
+        .select({
+          id: hackathonStaffInvite.id,
+          challengeId: hackathonStaffInvite.challengeId,
+          role: hackathonStaffInvite.role,
+          revokedAt: hackathonStaffInvite.revokedAt,
+        })
+        .from(hackathonStaffInvite)
+        .where(eq(hackathonStaffInvite.id, input.inviteId))
+        .limit(1);
+      if (!invite) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No such invite." });
+      }
+      if (invite.role === "organizer") {
+        await requireHackathonOperator(ctx.db, invite.challengeId, actorId);
+      } else {
+        await requireHackathonOrganizer(ctx.db, invite.challengeId, actorId);
+      }
+      await ctx.db
+        .update(hackathonStaffInvite)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(hackathonStaffInvite.id, input.inviteId),
+            isNull(hackathonStaffInvite.redeemedAt),
+            isNull(hackathonStaffInvite.revokedAt),
           ),
         );
       return { ok: true };

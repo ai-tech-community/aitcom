@@ -8,6 +8,10 @@ import { checkEarlyAdopterBadge } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
 import { sendMemberWelcome } from "@/server/email";
 import { getResend } from "@/server/email";
+import {
+  redeemForCreatedUser,
+  redeemAfterVerification,
+} from "@/server/hackathon/redeem-on-auth";
 import { resolveBetterAuthBaseUrl, resolveTrustedOrigins } from "./base-url";
 
 export const auth = betterAuth({
@@ -53,6 +57,9 @@ export const auth = betterAuth({
           sendMemberWelcome(user.email, displayName).catch(() => {
             /* non-blocking */
           });
+          redeemForCreatedUser(user).catch(() => {
+            /* non-blocking: a failed redemption must never fail signup */
+          });
         },
       },
     },
@@ -90,6 +97,13 @@ export const auth = betterAuth({
         to: user.email,
         subject: "Reset your password — AIT Community",
         html: `<p>Hi ${user.name ?? "there"},</p><p>You requested a password reset. Click <a href="${url}">this link</a> to set a new password.</p><p>If you didn't request this, you can safely ignore this email.</p>`,
+      });
+    },
+  },
+  emailVerification: {
+    afterEmailVerification: async (user: { id: string; email: string }) => {
+      await redeemAfterVerification(user).catch(() => {
+        /* non-blocking */
       });
     },
   },
