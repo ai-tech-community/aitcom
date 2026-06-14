@@ -36,11 +36,7 @@ export default async function TeamWorkspacePage({
     (s) => s.key === "workspace",
   )!;
   if (!workspaceState.available) {
-    return (
-      <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
-        <LockedTabPanel message={t(workspaceState.lockedReasonKey!)} />
-      </div>
-    );
+    return <LockedTabPanel message={t(workspaceState.lockedReasonKey!)} />;
   }
 
   // On a locked team — resolve the concrete teamId for the grid. The membership
@@ -60,11 +56,7 @@ export default async function TeamWorkspacePage({
   // Defensive: isOnLockedTeam already implies an enrolled team, but keep the
   // panel rather than crashing if the active-enrollment narrowing misses.
   if (!enrollment?.teamId) {
-    return (
-      <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
-        <LockedTabPanel message={t("lockedWorkspaceNotReady")} />
-      </div>
-    );
+    return <LockedTabPanel message={t("lockedWorkspaceNotReady")} />;
   }
   const teamId = enrollment.teamId;
 
@@ -86,12 +78,10 @@ export default async function TeamWorkspacePage({
   }));
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
-      <TeamWorkspace
-        teamId={teamId}
-        challengeId={challengeId}
-        members={members}
-      />
-    </div>
+    <TeamWorkspace
+      teamId={teamId}
+      challengeId={challengeId}
+      members={members}
+    />
   );
 }

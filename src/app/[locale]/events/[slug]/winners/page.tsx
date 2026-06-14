@@ -55,7 +55,7 @@ export default async function HackathonWinnersPage({
     locale as "en" | "nl",
   );
   if (!resolved.found) notFound();
-  const { event, challenge, challengeId, phase } = resolved;
+  const { challenge, challengeId, phase } = resolved;
 
   // Finalized-only gate via the shared hub tab state: pre-finalized phases show
   // the locked panel in-place (the tab stays clickable) rather than bouncing
@@ -63,11 +63,7 @@ export default async function HackathonWinnersPage({
   const viewer = await getHubViewerContext(challengeId, phase);
   const winnersState = hubTabStates(viewer).find((t) => t.key === "winners")!;
   if (!winnersState.available) {
-    return (
-      <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
-        <LockedTabPanel message={t(winnersState.lockedReasonKey!)} />
-      </div>
-    );
+    return <LockedTabPanel message={t(winnersState.lockedReasonKey!)} />;
   }
 
   const [leaderboard, peoplesChoiceState] = await Promise.all([
@@ -108,32 +104,14 @@ export default async function HackathonWinnersPage({
     prizeParts.push(`${t("sponsorPrize")}: ${rewards.sponsorReward}`);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
-      <nav className="mb-6 flex items-center gap-2 font-mono text-[11px] tracking-wider">
-        <Link
-          href="/events"
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          / EVENTS
-        </Link>
-        <span className="text-muted-foreground">/</span>
-        <Link
-          href={`/events/${slug}`}
-          className="text-muted-foreground hover:text-foreground truncate transition-colors"
-        >
-          {event.title}
-        </Link>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-foreground/80">{t("winners")}</span>
-      </nav>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          {t("winners")}
-        </h1>
+    <div>
+      <div className="border-border flex flex-wrap items-center gap-3 border-b pb-4">
+        <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+          / {t("winners").toUpperCase()}
+        </h2>
         <Badge variant="secondary">{t("statusFinalized")}</Badge>
       </div>
-      <p className="text-muted-foreground mt-2">{t("winnersIntro")}</p>
+      <p className="text-muted-foreground mt-4 text-sm">{t("winnersIntro")}</p>
 
       {/* Podium */}
       <div className="mt-8 grid gap-4 sm:grid-cols-3">

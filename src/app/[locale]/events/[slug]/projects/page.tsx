@@ -91,25 +91,29 @@ export default async function HackathonGalleryPage({
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-10 sm:px-12 sm:py-16">
-      <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-        {t("gallery")}
-      </h1>
-      <p className="text-muted-foreground mt-2">{t("galleryIntro")}</p>
+    <section>
+      <h2 className="text-muted-foreground border-border border-b pb-4 font-mono text-xs font-medium tracking-wider">
+        / {t("gallery").toUpperCase()}
+      </h2>
+      <p className="text-muted-foreground mt-4 text-sm">{t("galleryIntro")}</p>
 
       {!projectsState.available ? (
-        <LockedTabPanel message={t(projectsState.lockedReasonKey!)} />
+        <div className="mt-6">
+          <LockedTabPanel message={t(projectsState.lockedReasonKey!)} />
+        </div>
       ) : projects.length === 0 ? (
         <EmptyState message={t("galleryNoProjects")} />
       ) : (
-        <ProjectGallery
-          projects={projects}
-          finalized={phase === "finalized"}
-          challengeId={challengeId}
-          viewerAuthenticated={session?.user !== undefined}
-        />
+        <div className="mt-6">
+          <ProjectGallery
+            projects={projects}
+            finalized={phase === "finalized"}
+            challengeId={challengeId}
+            viewerAuthenticated={session?.user !== undefined}
+          />
+        </div>
       )}
-    </div>
+    </section>
   );
 }
 
