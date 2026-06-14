@@ -3,7 +3,12 @@ import { redeemPendingStaffInvites } from "./redeem-staff-invites";
 
 // Minimal fake db capturing inserts/updates and serving queued select results.
 function makeFakeDb(selectQueue: unknown[][]) {
-  const calls = { inserts: [] as unknown[], membershipInserts: 0, updates: 0 };
+  const calls = {
+    inserts: [] as unknown[],
+    membershipInserts: 0,
+    updates: 0,
+    claimReturns: [{ id: "inv" }] as unknown[],
+  };
   const db = {
     select: () => {
       const chain: Record<string, unknown> = {};
@@ -35,9 +40,10 @@ function makeFakeDb(selectQueue: unknown[][]) {
     update: () => {
       const chain: Record<string, unknown> = {};
       chain.set = () => chain;
-      chain.where = () => {
+      chain.where = () => chain;
+      chain.returning = () => {
         calls.updates++;
-        return Promise.resolve();
+        return Promise.resolve(calls.claimReturns);
       };
       return chain;
     },
@@ -129,5 +135,35 @@ describe("redeemPendingStaffInvites", () => {
 
     expect(calls.inserts).toHaveLength(0);
     expect(calls.updates).toBe(0);
+  });
+
+  it("claim returns empty → no notification (idempotent double-fire)", async () => {
+    const { db, calls } = makeFakeDb([
+      [
+        {
+          id: "inv4",
+          challengeId: 4,
+          communityId: null,
+          challengeTitle: "Hack",
+          role: "judge",
+          invitedBy: "u-host",
+          revokedAt: null,
+          redeemedAt: null,
+          expiresAt: null,
+        },
+      ],
+    ]);
+    calls.claimReturns = []; // someone else already claimed this invite
+
+    await redeemPendingStaffInvites(db as never, {
+      userId: "new-4",
+      email: "race@example.com",
+      now,
+    });
+
+    // The idempotent grant upsert still ran, but the claim returned nothing so
+    // processing stopped before the (non-idempotent) notification insert.
+    expect(calls.inserts).toHaveLength(1); // grant upsert
+    expect(calls.updates).toBe(1); // claim attempted once
   });
 });

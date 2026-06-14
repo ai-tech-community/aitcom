@@ -1220,7 +1220,7 @@ export const hackathonRouter = createTRPCRouter({
         if (searchClause) conditions.push(searchClause);
         if (input.cursor) {
           conditions.push(
-            sql`(${communityMemberships.joinedAt}, ${communityMemberships.userId}) < (${input.cursor.joinedAt}, ${input.cursor.userId})`,
+            sql`(${communityMemberships.joinedAt}, ${communityMemberships.userId}) < (${input.cursor.joinedAt}::timestamptz, ${input.cursor.userId})`,
           );
         }
         const items = await ctx.db
@@ -1426,6 +1426,20 @@ export const hackathonRouter = createTRPCRouter({
           role: input.role,
           grantedBy: actorId,
         });
+        // If a pending invite already existed for this address (e.g. they signed
+        // up before redemption matched), clear it so it stops showing as pending.
+        await ctx.db
+          .update(hackathonStaffInvite)
+          .set({ redeemedAt: new Date(), redeemedUserId: existing.id })
+          .where(
+            and(
+              eq(hackathonStaffInvite.challengeId, input.challengeId),
+              eq(hackathonStaffInvite.email, email),
+              eq(hackathonStaffInvite.role, input.role),
+              isNull(hackathonStaffInvite.redeemedAt),
+              isNull(hackathonStaffInvite.revokedAt),
+            ),
+          );
         return { kind: "granted" as const };
       }
 

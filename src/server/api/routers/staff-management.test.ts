@@ -8,6 +8,7 @@ const dbHooks = {
   insertConflict: false,
   conflictDoNothing: false,
   updateRan: false,
+  membershipFindFirst: (async () => undefined) as () => Promise<unknown>,
 };
 
 function makeSelectChain() {
@@ -55,7 +56,9 @@ vi.mock("@/server/db", () => ({
     insert: () => makeInsertChain(),
     update: () => makeUpdateChain(),
     query: {
-      communityMemberships: { findFirst: async () => undefined },
+      communityMemberships: {
+        findFirst: (...a: unknown[]) => dbHooks.membershipFindFirst(),
+      },
       communities: { findFirst: async () => undefined },
     },
   },
@@ -114,6 +117,7 @@ beforeEach(() => {
   dbHooks.insertConflict = false;
   dbHooks.conflictDoNothing = false;
   dbHooks.updateRan = false;
+  dbHooks.membershipFindFirst = async () => undefined;
   emailHooks.sent = [];
   payloadHooks.challenge = {
     id: 1,
@@ -184,6 +188,46 @@ describe("listStaff", () => {
     expect(res.pendingInvites).toEqual([
       expect.objectContaining({ email: "external@example.com", role: "judge" }),
     ]);
+  });
+
+  it("excludes revoked grants from organizers/judges", async () => {
+    // Order: (0) gate's loadHackathonGrants → empty (hub-wide creator passes),
+    //        (1) active-staff select (one active + one revoked judge),
+    //        (2) pending invites → empty.
+    dbHooks.selectResults = [
+      [],
+      [
+        {
+          id: "s-active",
+          userId: "u-judge",
+          role: "judge",
+          revokedAt: null,
+          grantedAt: new Date("2026-06-11T00:00:00Z"),
+          displayName: "Judy Judge",
+          email: "judy@example.com",
+          image: null,
+        },
+        {
+          id: "s-rev",
+          userId: "u-old",
+          role: "judge",
+          revokedAt: new Date("2026-06-12T00:00:00Z"),
+          grantedAt: new Date("2026-06-10T00:00:00Z"),
+          displayName: "Removed Judge",
+          email: "removed@example.com",
+          image: null,
+        },
+      ],
+      [],
+    ];
+
+    const res = await caller().hackathon.listStaff({ challengeId: 1 });
+
+    expect(res.judges).toHaveLength(1);
+    expect(res.judges.some((j) => j.id === "s-rev")).toBe(false);
+    expect(res.judges[0]).toEqual(
+      expect.objectContaining({ id: "s-active", userId: "u-judge" }),
+    );
   });
 });
 
@@ -345,6 +389,30 @@ describe("inviteStaffByEmail", () => {
         role: "judge",
       }),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("existing email (community, admin, not a member): mints membership then grants", async () => {
+    payloadHooks.challenge = {
+      id: 1,
+      communityId: "comm-1",
+      title: "Hack",
+      creatorId: "user-1",
+    };
+    // role organizer → outer gate requireHackathonOperator → assertActiveCommunityAdmin
+    // (findFirst → admin). user-lookup[0] found; membership-existence[1] → not a member;
+    // inner requireHackathonOperator → findFirst → admin again → mint allowed.
+    dbHooks.membershipFindFirst = async () => ({ status: "active", role: "admin" });
+    dbHooks.selectResults = [[{ id: "existing-1" }], []];
+
+    const res = await caller().hackathon.inviteStaffByEmail({
+      challengeId: 1,
+      email: "newadmin@example.com",
+      role: "organizer",
+    });
+
+    expect(res.kind).toBe("granted");
+    expect(dbHooks.conflictDoNothing).toBe(true); // membership minted
+    expect(dbHooks.insertConflict).toBe(true); // staff grant ran
   });
 
   it("rejects a duplicate pending invite with CONFLICT", async () => {

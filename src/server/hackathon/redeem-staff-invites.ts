@@ -39,56 +39,71 @@ export async function redeemPendingStaffInvites(
 
   for (const invite of invites) {
     if (!isInviteRedeemable(invite, args.now)) continue;
+    try {
+      // Idempotent writes first (safe to repeat on a retry / concurrent fire).
+      if (invite.communityId) {
+        await db
+          .insert(communityMemberships)
+          .values({
+            communityId: invite.communityId,
+            userId: args.userId,
+            status: "active",
+            role: "member",
+            invitedBy: invite.invitedBy,
+          })
+          .onConflictDoNothing();
+      }
 
-    if (invite.communityId) {
       await db
-        .insert(communityMemberships)
+        .insert(hackathonStaff)
         .values({
-          communityId: invite.communityId,
+          challengeId: invite.challengeId,
           userId: args.userId,
-          status: "active",
-          role: "member",
-          invitedBy: invite.invitedBy,
-        })
-        .onConflictDoNothing();
-    }
-
-    await db
-      .insert(hackathonStaff)
-      .values({
-        challengeId: invite.challengeId,
-        userId: args.userId,
-        role: invite.role,
-        grantedBy: invite.invitedBy,
-      })
-      .onConflictDoUpdate({
-        target: [
-          hackathonStaff.challengeId,
-          hackathonStaff.userId,
-          hackathonStaff.role,
-        ],
-        set: {
-          revokedAt: null,
+          role: invite.role,
           grantedBy: invite.invitedBy,
-          grantedAt: args.now,
-        },
+        })
+        .onConflictDoUpdate({
+          target: [
+            hackathonStaff.challengeId,
+            hackathonStaff.userId,
+            hackathonStaff.role,
+          ],
+          set: {
+            revokedAt: null,
+            grantedBy: invite.invitedBy,
+            grantedAt: args.now,
+          },
+        });
+
+      // Atomically claim the invite: only the run that flips redeemedAt proceeds
+      // to the one-time notification, so concurrent hook firings can't double-notify.
+      const claimed = await db
+        .update(hackathonStaffInvite)
+        .set({ redeemedAt: args.now, redeemedUserId: args.userId })
+        .where(
+          and(
+            eq(hackathonStaffInvite.id, invite.id),
+            isNull(hackathonStaffInvite.redeemedAt),
+            isNull(hackathonStaffInvite.revokedAt),
+          ),
+        )
+        .returning({ id: hackathonStaffInvite.id });
+      if (claimed.length === 0) continue;
+
+      await db.insert(notifications).values({
+        userId: args.userId,
+        type: "hackathon_staff_grant",
+        title:
+          invite.role === "organizer"
+            ? "You're now an organizer"
+            : "You're now a judge",
+        content: `You were added as ${invite.role === "organizer" ? "an organizer" : "a judge"} for "${invite.challengeTitle}".`,
+        metadata: { challengeId: String(invite.challengeId), role: invite.role },
+        communityId: invite.communityId ?? null,
       });
-
-    await db.insert(notifications).values({
-      userId: args.userId,
-      type: "hackathon_staff_grant",
-      title:
-        invite.role === "organizer"
-          ? "You're now an organizer"
-          : "You're now a judge",
-      content: `You were added as ${invite.role === "organizer" ? "an organizer" : "a judge"} for "${invite.challengeTitle}".`,
-      metadata: { challengeId: String(invite.challengeId), role: invite.role },
-      communityId: invite.communityId ?? null,
-    });
-
-    await db
-      .update(hackathonStaffInvite)
-      .set({ redeemedAt: args.now, redeemedUserId: args.userId })
-      .where(eq(hackathonStaffInvite.id, invite.id));
+    } catch {
+      // Best-effort: a failure on one invite must not block the others.
+      continue;
+    }
   }
 }
