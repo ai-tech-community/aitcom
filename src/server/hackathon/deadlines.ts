@@ -96,3 +96,29 @@ export function deadlineOrderWarnings(event: EventDeadlines): string[] {
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+/**
+ * Adapter for the Events beforeValidate hook: returns deadline-order warnings for
+ * hackathon events only (empty for any other type), normalizing the loosely-typed
+ * admin `data` object's optional fields. Pure — the hook layers logging on top.
+ */
+export function eventDeadlineWarnings(
+  data:
+    | {
+        type?: string | null;
+        registrationDeadline?: Date | string | null;
+        submissionDeadline?: Date | string | null;
+        judgingDeadline?: Date | string | null;
+        resultsDate?: Date | string | null;
+      }
+    | null
+    | undefined,
+): string[] {
+  if (data?.type !== "hackathon") return [];
+  return deadlineOrderWarnings({
+    registrationDeadline: data.registrationDeadline ?? null,
+    submissionDeadline: data.submissionDeadline ?? null,
+    judgingDeadline: data.judgingDeadline ?? null,
+    resultsDate: data.resultsDate ?? null,
+  });
+}

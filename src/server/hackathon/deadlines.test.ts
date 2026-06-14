@@ -6,6 +6,7 @@ import {
   isSubmissionOpen,
   isJudgingOpen,
   deadlineOrderWarnings,
+  eventDeadlineWarnings,
   type EventDeadlines,
 } from "./deadlines";
 
@@ -161,5 +162,42 @@ describe("deadlineOrderWarnings", () => {
     );
     expect(warnings.length).toBeGreaterThan(0);
     expect(warnings[0]).toMatch(/judging/i);
+  });
+});
+
+describe("eventDeadlineWarnings", () => {
+  it("returns no warnings for a non-hackathon event", () => {
+    expect(
+      eventDeadlineWarnings({
+        type: "workshop",
+        registrationDeadline: "2026-06-14T12:00:00.000Z",
+        judgingDeadline: "2026-06-14T10:00:00.000Z",
+      }),
+    ).toEqual([]);
+  });
+
+  it("returns no warnings for null/undefined data", () => {
+    expect(eventDeadlineWarnings(null)).toEqual([]);
+    expect(eventDeadlineWarnings(undefined)).toEqual([]);
+  });
+
+  it("normalizes missing fields and warns on an out-of-order hackathon", () => {
+    const warnings = eventDeadlineWarnings({
+      type: "hackathon",
+      registrationDeadline: "2026-06-14T12:00:00.000Z",
+      submissionDeadline: "2026-06-14T10:00:00.000Z",
+    });
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings[0]).toMatch(/submission/i);
+  });
+
+  it("returns no warnings for a chronological hackathon", () => {
+    expect(
+      eventDeadlineWarnings({
+        type: "hackathon",
+        registrationDeadline: "2026-06-14T10:00:00.000Z",
+        submissionDeadline: "2026-06-14T11:00:00.000Z",
+      }),
+    ).toEqual([]);
   });
 });
