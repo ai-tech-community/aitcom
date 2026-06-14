@@ -98,7 +98,10 @@ export async function redeemPendingStaffInvites(
             ? "You're now an organizer"
             : "You're now a judge",
         content: `You were added as ${invite.role === "organizer" ? "an organizer" : "a judge"} for "${invite.challengeTitle}".`,
-        metadata: { challengeId: String(invite.challengeId), role: invite.role },
+        metadata: {
+          challengeId: String(invite.challengeId),
+          role: invite.role,
+        },
         communityId: invite.communityId ?? null,
       });
     } catch {

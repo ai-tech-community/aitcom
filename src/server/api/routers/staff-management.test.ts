@@ -13,7 +13,14 @@ const dbHooks = {
 
 function makeSelectChain() {
   const chain: Record<string, unknown> = {};
-  for (const m of ["from", "where", "innerJoin", "leftJoin", "orderBy", "groupBy"])
+  for (const m of [
+    "from",
+    "where",
+    "innerJoin",
+    "leftJoin",
+    "orderBy",
+    "groupBy",
+  ])
     chain[m] = () => chain;
   chain.limit = () => chain;
   chain.then = (resolve: (v: SelectResult) => unknown) =>
@@ -401,7 +408,10 @@ describe("inviteStaffByEmail", () => {
     // role organizer → outer gate requireHackathonOperator → assertActiveCommunityAdmin
     // (findFirst → admin). user-lookup[0] found; membership-existence[1] → not a member;
     // inner requireHackathonOperator → findFirst → admin again → mint allowed.
-    dbHooks.membershipFindFirst = async () => ({ status: "active", role: "admin" });
+    dbHooks.membershipFindFirst = async () => ({
+      status: "active",
+      role: "admin",
+    });
     dbHooks.selectResults = [[{ id: "existing-1" }], []];
 
     const res = await caller().hackathon.inviteStaffByEmail({
@@ -451,7 +461,9 @@ describe("revokeStaffInvite", () => {
       [],
     ];
 
-    const res = await caller().hackathon.revokeStaffInvite({ inviteId: "inv1" });
+    const res = await caller().hackathon.revokeStaffInvite({
+      inviteId: "inv1",
+    });
 
     expect(res.ok).toBe(true);
     expect(dbHooks.updateRan).toBe(true);

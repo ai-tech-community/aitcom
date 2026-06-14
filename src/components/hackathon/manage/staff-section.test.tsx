@@ -40,7 +40,10 @@ describe("StaffSection", () => {
     const revokeMutate = vi.fn();
     mockRevoke.mockReturnValue({ mutate: revokeMutate, isPending: false });
     const cancelMutate = vi.fn();
-    mockRevokeInvite.mockReturnValue({ mutate: cancelMutate, isPending: false });
+    mockRevokeInvite.mockReturnValue({
+      mutate: cancelMutate,
+      isPending: false,
+    });
 
     render(
       <StaffSection
@@ -67,9 +70,7 @@ describe("StaffSection", () => {
     expect(screen.getByText("ext@example.com")).toBeInTheDocument();
     expect(screen.getByText(/invited · pending/i)).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /remove judy judge/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /remove judy judge/i }));
     expect(revokeMutate).toHaveBeenCalledWith({
       challengeId: 1,
       userId: "u1",

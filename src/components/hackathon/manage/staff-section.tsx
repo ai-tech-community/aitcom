@@ -54,9 +54,7 @@ export function StaffSection({
 
       <ul className="mt-2 divide-y rounded-md border">
         {members.length === 0 && roleInvites.length === 0 && (
-          <li className="px-3 py-2 text-sm text-muted-foreground">
-            None yet.
-          </li>
+          <li className="text-muted-foreground px-3 py-2 text-sm">None yet.</li>
         )}
 
         {members.map((m) => {
@@ -77,7 +75,7 @@ export function StaffSection({
                   <span className="block truncate text-sm font-medium">
                     {name}
                   </span>
-                  <span className="block truncate text-xs text-muted-foreground">
+                  <span className="text-muted-foreground block truncate text-xs">
                     {m.email}
                   </span>
                 </span>
@@ -105,7 +103,7 @@ export function StaffSection({
           >
             <span className="min-w-0">
               <span className="block truncate text-sm">{inv.email}</span>
-              <span className="block text-xs text-muted-foreground">
+              <span className="text-muted-foreground block text-xs">
                 Invited · pending
               </span>
             </span>

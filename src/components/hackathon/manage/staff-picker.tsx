@@ -73,37 +73,37 @@ export function StaffPicker({
           {items.map((c) => {
             const displayName = c.displayName ?? c.email ?? "Member";
             return (
-            <li
-              key={c.userId}
-              className="flex items-center justify-between gap-2 px-3 py-2"
-            >
-              <span className="flex min-w-0 items-center gap-2">
-                <Avatar className="size-7">
-                  <AvatarImage src={c.image ?? undefined} alt={displayName} />
-                  <AvatarFallback>
-                    {displayName.slice(0, 1).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">
-                    {displayName}
-                  </span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {c.email}
+              <li
+                key={c.userId}
+                className="flex items-center justify-between gap-2 px-3 py-2"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <Avatar className="size-7">
+                    <AvatarImage src={c.image ?? undefined} alt={displayName} />
+                    <AvatarFallback>
+                      {displayName.slice(0, 1).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium">
+                      {displayName}
+                    </span>
+                    <span className="text-muted-foreground block truncate text-xs">
+                      {c.email}
+                    </span>
                   </span>
                 </span>
-              </span>
-              <Button
-                size="sm"
-                aria-label={`Add ${displayName} as ${roleLabel}`}
-                disabled={grant.isPending}
-                onClick={() =>
-                  grant.mutate({ challengeId, userId: c.userId, role })
-                }
-              >
-                Add
-              </Button>
-            </li>
+                <Button
+                  size="sm"
+                  aria-label={`Add ${displayName} as ${roleLabel}`}
+                  disabled={grant.isPending}
+                  onClick={() =>
+                    grant.mutate({ challengeId, userId: c.userId, role })
+                  }
+                >
+                  Add
+                </Button>
+              </li>
             );
           })}
 
@@ -132,11 +132,13 @@ export function StaffPicker({
             </li>
           )}
 
-          {!showInviteByEmail && items.length === 0 && !candidates.isFetching && (
-            <li className="px-3 py-2 text-sm text-muted-foreground">
-              No matches.
-            </li>
-          )}
+          {!showInviteByEmail &&
+            items.length === 0 &&
+            !candidates.isFetching && (
+              <li className="text-muted-foreground px-3 py-2 text-sm">
+                No matches.
+              </li>
+            )}
         </ul>
       )}
     </div>

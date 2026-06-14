@@ -3,7 +3,16 @@
 // what makes the challenge team-based. AIT is plumbing only — no cognition.
 
 import { z } from "zod";
-import { and, desc, eq, inArray, isNull, isNotNull, ne, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  isNotNull,
+  ne,
+  sql,
+} from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import type { RequiredDataFromCollectionSlug } from "payload";
 
@@ -326,7 +335,11 @@ async function grantStaffInternal(
         hackathonStaff.userId,
         hackathonStaff.role,
       ],
-      set: { revokedAt: null, grantedBy: args.grantedBy, grantedAt: new Date() },
+      set: {
+        revokedAt: null,
+        grantedBy: args.grantedBy,
+        grantedAt: new Date(),
+      },
     });
   await db.insert(notifications).values({
     userId: args.userId,
