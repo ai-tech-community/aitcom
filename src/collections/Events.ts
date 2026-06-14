@@ -14,6 +14,7 @@ import {
 } from "@/lib/event-metadata";
 import { DEFAULT_EVENT_TIMEZONE, isValidTimeZone } from "@/lib/event-time";
 import { geocodeEvent } from "@/server/geocoding/nominatim";
+import { deadlineOrderWarnings } from "@/server/hackathon/deadlines";
 
 function locationChanged(
   doc: Record<string, unknown>,
@@ -75,6 +76,22 @@ export const Events: CollectionConfig = {
   },
   versions: { drafts: true },
   hooks: {
+    beforeValidate: [
+      ({ data, req }) => {
+        if (data?.type === "hackathon") {
+          for (const warning of deadlineOrderWarnings({
+            registrationDeadline: data.registrationDeadline ?? null,
+            submissionDeadline: data.submissionDeadline ?? null,
+            judgingDeadline: data.judgingDeadline ?? null,
+          })) {
+            req?.payload?.logger?.warn(
+              `Event ${data.slug ?? "(new)"}: ${warning}`,
+            );
+          }
+        }
+        return data;
+      },
+    ],
     afterChange: [
       async (args) => {
         if ((args.req.context as { skipGeocode?: boolean })?.skipGeocode) {
