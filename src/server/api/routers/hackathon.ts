@@ -53,7 +53,10 @@ import {
 } from "@/server/hackathon/cell-template";
 import { teamScore, rankTeams, prizeSplit } from "@/server/hackathon/scoring";
 import { aggregateJudgeRankings } from "@/server/hackathon/judge-aggregation";
-import { isJudgingOpen } from "@/server/hackathon/deadlines";
+import {
+  isJudgingOpen,
+  isRegistrationOpen,
+} from "@/server/hackathon/deadlines";
 import { hackathonPhase } from "@/server/hackathon/phase";
 import {
   assertCanToggleLookingForTeam,
@@ -1897,10 +1900,30 @@ export const hackathonRouter = createTRPCRouter({
         challenge.status ?? "",
         challenge.judgingOpenedAt ?? null,
       );
+
+      // Close matchmaking once the event's registration deadline has passed.
+      const payload = await getPayloadClient();
+      const { docs: eventDocs } = await payload.find({
+        collection: "events",
+        where: {
+          and: [
+            { challengeId: { equals: String(input.challengeId) } },
+            { type: { equals: "hackathon" } },
+            { status: { not_in: ["draft", "rejected", "cancelled"] } },
+          ],
+        },
+        limit: 1,
+        depth: 0,
+      });
+      const event = eventDocs[0] ?? null;
+
       try {
         assertCanToggleLookingForTeam({
           phase,
           enrollment: enrollment ?? null,
+          registrationOpen: event
+            ? isRegistrationOpen(event, new Date()).open
+            : true,
         });
       } catch (e) {
         if (e instanceof LookingForTeamError) {

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   assertCanToggleLookingForTeam,
+  LookingForTeamError,
   lookingForTeamCandidates,
   matchesSkillFilter,
 } from "./looking-for-team";
@@ -55,6 +56,25 @@ describe("assertCanToggleLookingForTeam", () => {
         enrollment: { teamId: null },
       }),
     ).toThrow(/closed/i);
+  });
+
+  it("rejects toggling once registration has closed, even in the live phase", () => {
+    expect(() =>
+      assertCanToggleLookingForTeam({
+        phase: "live",
+        enrollment: { teamId: null },
+        registrationOpen: false,
+      }),
+    ).toThrow(LookingForTeamError);
+  });
+
+  it("allows toggling when registration is open (default) in the live phase", () => {
+    expect(() =>
+      assertCanToggleLookingForTeam({
+        phase: "live",
+        enrollment: { teamId: null },
+      }),
+    ).not.toThrow();
   });
 });
 
