@@ -1585,10 +1585,7 @@ export const hackathonStaff = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    role: d
-      .varchar({ length: 20 })
-      .notNull()
-      .$type<"organizer" | "judge">(),
+    role: d.varchar({ length: 20 }).notNull().$type<"organizer" | "judge">(),
     grantedBy: d
       .varchar({ length: 255 })
       .notNull()

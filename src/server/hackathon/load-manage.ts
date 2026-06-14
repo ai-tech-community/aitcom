@@ -100,9 +100,11 @@ export async function loadManageData(
   });
 
   // Organizer-tier gate (ADR-0031): staff grants are keyed by challenge.id, so
-  // this must run after the challenge is resolved. Community owner/admin >
-  // organizer grant > judge grant pass; a hub-challenge sponsor (no community,
-  // they created it) also passes. Everyone else is redirected away.
+  // this must run after the challenge is resolved. Community owner/admin and
+  // organizer grants pass; a hub-challenge sponsor (no community, they created
+  // it) also passes. A judge-only grant does NOT — judges have their own
+  // workspace page and must not see the organizer management console. Everyone
+  // else is redirected away.
   const grants = await db
     .select({
       role: hackathonStaff.role,
@@ -120,7 +122,9 @@ export async function loadManageData(
     grants as StaffGrantRow[],
   );
   const isHubSponsor = !challenge.communityId && challenge.creatorId === userId;
-  if (capability === null && !isHubSponsor) {
+  const isOrganizerTier =
+    capability === "admin" || capability === "organizer" || isHubSponsor;
+  if (!isOrganizerTier) {
     redirect(`/communities/${slug}/events`);
   }
   const isAdmin = capability === "admin" || isHubSponsor;

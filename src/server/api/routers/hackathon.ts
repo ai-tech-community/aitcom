@@ -27,6 +27,7 @@ import {
   communities,
   hackathonStaff,
   judgeRankings,
+  user,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
@@ -774,6 +775,29 @@ export const hackathonRouter = createTRPCRouter({
         input.challengeId,
         ctx.session.user.id,
       );
+      // Judging may only be opened from the locked phase: rosters must be locked
+      // (projects exist to judge) and the hackathon must not yet be finalized.
+      // Without this guard a direct call could stamp judgingOpenedAt while live
+      // (jumping locked → judging the moment teams lock) or after finalize.
+      const challengeTeams = await ctx.db
+        .select({
+          status: teams.status,
+          finalRank: teams.finalRank,
+          prizeAwardedAt: teams.prizeAwardedAt,
+        })
+        .from(teams)
+        .where(eq(teams.challengeId, input.challengeId));
+      const finalized = challengeTeams.some(
+        (t) => t.finalRank !== null || t.prizeAwardedAt !== null,
+      );
+      const rostersLocked = challengeTeams.some((t) => t.status === "locked");
+      if (finalized || !rostersLocked) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Judging can only be opened after rosters are locked and before the hackathon is finalized.",
+        });
+      }
       const payload = await getPayloadClient();
       await payload.update({
         collection: "challenges",
@@ -880,7 +904,10 @@ export const hackathonRouter = createTRPCRouter({
     .input(z.object({ teamId: z.string() }))
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      // Caller must be a member of this team (enrollment with teamId).
+      // Caller must be a CURRENT member of this team. challenges.abandon keeps
+      // the teamId on the enrollment row, so filter out abandoned memberships —
+      // an ex-member must not read the team's judge feedback (matches the
+      // non-abandoned filter used across analytics and the finalize paths).
       const membership = await ctx.db
         .select({ id: challengeEnrollments.id })
         .from(challengeEnrollments)
@@ -888,6 +915,7 @@ export const hackathonRouter = createTRPCRouter({
           and(
             eq(challengeEnrollments.teamId, input.teamId),
             eq(challengeEnrollments.userId, userId),
+            ne(challengeEnrollments.status, "abandoned"),
           ),
         )
         .limit(1);
@@ -961,7 +989,11 @@ export const hackathonRouter = createTRPCRouter({
         });
       }
       const submitted = await ctx.db
-        .select({ teamId: teams.id })
+        .select({
+          teamId: teams.id,
+          finalRank: teams.finalRank,
+          prizeAwardedAt: teams.prizeAwardedAt,
+        })
         .from(teams)
         .where(
           and(
@@ -969,6 +1001,17 @@ export const hackathonRouter = createTRPCRouter({
             isNotNull(teams.submittedAt),
           ),
         );
+      // Ballots are frozen once the hackathon is finalized: re-opening the
+      // workspace must not let a judge rewrite ranks/comments after the awarded
+      // ranking is set (team feedback reads these comments live).
+      if (
+        submitted.some((t) => t.finalRank !== null || t.prizeAwardedAt !== null)
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Judging is closed — this hackathon has been finalized.",
+        });
+      }
       const submittedIds = new Set(submitted.map((t) => t.teamId));
       const givenIds = new Set(input.rankings.map((r) => r.teamId));
       if (
@@ -985,6 +1028,16 @@ export const hackathonRouter = createTRPCRouter({
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: "Ranks must be distinct",
+        });
+      }
+      // Ranks must be the contiguous ordinals 1..N (no gaps): aggregateJudge-
+      // Rankings sums the raw rank as the Borda weight, so a gap like {1,2,1000}
+      // would let one ballot dominate the mean. Distinct + positive + count N +
+      // min 1 + max N forces exactly {1..N}.
+      if (Math.min(...ranks) !== 1 || Math.max(...ranks) !== ranks.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Ranks must be 1 to N with no gaps",
         });
       }
       await ctx.db.transaction(async (tx) => {
@@ -1044,16 +1097,51 @@ export const hackathonRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const actorId = ctx.session.user.id;
-      // Granting organizers is admin-only; granting judges is organizer-or-admin.
-      // Both gates load and return the Payload challenge doc, so reuse it.
+      // Granting organizers is admin-tier (community owner/admin, or the hub-wide
+      // sponsor for a CMS-authored hackathon — requireHackathonOperator covers
+      // both, so hub-wide hackathons can still delegate organizers); granting
+      // judges is organizer-or-admin. Both gates load and return the Payload
+      // challenge doc, so reuse it.
       const challenge =
         input.role === "organizer"
-          ? await requireCommunityHackathonAdmin(
-              ctx.db,
-              input.challengeId,
-              actorId,
-            )
+          ? await requireHackathonOperator(ctx.db, input.challengeId, actorId)
           : await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
+      // The grant target must be a real person, not an arbitrary id typed into
+      // the manage form: a granted judge can call submitRankings and drive the
+      // official finalize ranking, so a non-member must never be grantable.
+      // Community hackathon → require an active membership; hub-wide (no
+      // community) → require the user simply exists.
+      if (challenge.communityId) {
+        const [member] = await ctx.db
+          .select({ id: communityMemberships.id })
+          .from(communityMemberships)
+          .where(
+            and(
+              eq(communityMemberships.communityId, challenge.communityId),
+              eq(communityMemberships.userId, input.userId),
+              eq(communityMemberships.status, "active"),
+            ),
+          )
+          .limit(1);
+        if (!member) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "That user is not an active member of this community.",
+          });
+        }
+      } else {
+        const [exists] = await ctx.db
+          .select({ id: user.id })
+          .from(user)
+          .where(eq(user.id, input.userId))
+          .limit(1);
+        if (!exists) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "No such user.",
+          });
+        }
+      }
       // Atomic upsert: a single first-time grant or a re-grant after revoke both
       // resolve via the (challenge_id, user_id, role) unique index, avoiding the
       // TOCTOU race where two concurrent inserts both hit the duplicate-key error.
@@ -1098,11 +1186,9 @@ export const hackathonRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const actorId = ctx.session.user.id;
       if (input.role === "organizer") {
-        await requireCommunityHackathonAdmin(
-          ctx.db,
-          input.challengeId,
-          actorId,
-        );
+        // Admin-tier (community owner/admin or hub-wide sponsor), mirroring the
+        // grant path so hub-wide hackathons can revoke organizers too.
+        await requireHackathonOperator(ctx.db, input.challengeId, actorId);
       } else {
         await requireHackathonOrganizer(ctx.db, input.challengeId, actorId);
       }

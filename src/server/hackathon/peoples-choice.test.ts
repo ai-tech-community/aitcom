@@ -18,6 +18,10 @@ describe("votingOpen", () => {
     expect(votingOpen("locked")).toBe(true);
   });
 
+  it("stays open while judging is underway", () => {
+    expect(votingOpen("judging")).toBe(true);
+  });
+
   it("closes at finalize", () => {
     expect(votingOpen("finalized")).toBe(false);
   });

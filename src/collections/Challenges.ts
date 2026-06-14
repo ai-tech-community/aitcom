@@ -376,7 +376,8 @@ export const Challenges: CollectionConfig = {
       admin: {
         position: "sidebar",
         readOnly: true,
-        description: "Set when an organizer opens judging; gates judge ranking.",
+        description:
+          "Set when an organizer opens judging; gates judge ranking.",
       },
     },
     {

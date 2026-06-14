@@ -30,6 +30,22 @@ export function JudgeWorkspace({ challengeId }: { challengeId: number }) {
   if (teams.isLoading || !teams.data) return null;
   if (teams.data.length === 0) return <p>No submitted teams to judge yet.</p>;
 
+  // Mirror the server validation (submitRankings) client-side so the judge gets
+  // a clear message instead of an opaque Zod error: every team needs a rank,
+  // and the ranks must be the distinct contiguous ordinals 1..N.
+  const n = teams.data.length;
+  const parsed = teams.data.map((t) => Number(ranks[t.teamId]));
+  const allFilled = teams.data.every((t) => (ranks[t.teamId] ?? "") !== "");
+  const allValid = parsed.every((r) => Number.isInteger(r) && r >= 1 && r <= n);
+  const distinct = new Set(parsed).size === parsed.length;
+  const ballotError = !allFilled
+    ? "Give every team a rank."
+    : !allValid
+      ? `Ranks must be whole numbers from 1 to ${n}.`
+      : !distinct
+        ? "Each rank must be used exactly once."
+        : null;
+
   return (
     <div className="space-y-4">
       {teams.data.map((t) => (
@@ -73,8 +89,9 @@ export function JudgeWorkspace({ challengeId }: { challengeId: number }) {
           </div>
         </div>
       ))}
+      {ballotError && <p className="text-sm text-red-600">{ballotError}</p>}
       <button
-        disabled={submit.isPending}
+        disabled={submit.isPending || ballotError !== null}
         onClick={() =>
           submit.mutate({
             challengeId,
