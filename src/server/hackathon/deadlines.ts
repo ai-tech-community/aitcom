@@ -10,6 +10,7 @@ export interface EventDeadlines {
   registrationDeadline?: Date | string | null;
   submissionDeadline?: Date | string | null;
   judgingDeadline?: Date | string | null;
+  resultsDate?: Date | string | null;
 }
 
 /** Stable i18n/error keys emitted when a gate is closed. */
@@ -58,7 +59,8 @@ export function isJudgingOpen(event: EventDeadlines, now: Date): GateResult {
 
 /**
  * Soft validation: returns human-readable warnings when the set deadlines are not
- * chronological (registration ≤ submission ≤ judging). Unset deadlines are skipped.
+ * chronological (registration ≤ submission ≤ judging ≤ results). Unset deadlines
+ * are skipped.
  * Returns [] when fine. Callers WARN — they must not block the save (organizers set
  * deadlines out of order while drafting).
  */
@@ -66,12 +68,16 @@ export function deadlineOrderWarnings(event: EventDeadlines): string[] {
   const reg = toTime(event.registrationDeadline);
   const sub = toTime(event.submissionDeadline);
   const judge = toTime(event.judgingDeadline);
+  const results = toTime(event.resultsDate);
   const warnings: string[] = [];
   if (reg !== null && sub !== null && sub < reg) {
     warnings.push("Submission deadline is before the registration deadline.");
   }
   if (sub !== null && judge !== null && judge < sub) {
     warnings.push("Judging deadline is before the submission deadline.");
+  }
+  if (judge !== null && results !== null && results < judge) {
+    warnings.push("Results date is before the judging deadline.");
   }
   return warnings;
 }

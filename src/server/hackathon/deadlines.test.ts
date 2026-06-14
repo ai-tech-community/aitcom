@@ -14,6 +14,7 @@ function ev(overrides: Partial<EventDeadlines> = {}): EventDeadlines {
     registrationDeadline: null,
     submissionDeadline: null,
     judgingDeadline: null,
+    resultsDate: null,
     ...overrides,
   };
 }
@@ -121,6 +122,17 @@ describe("deadlineOrderWarnings", () => {
     );
     expect(warnings.length).toBeGreaterThan(0);
     expect(warnings[0]).toMatch(/judging/i);
+  });
+
+  it("warns when results precede judging", () => {
+    const warnings = deadlineOrderWarnings(
+      ev({
+        judgingDeadline: "2026-06-14T12:00:00.000Z",
+        resultsDate: "2026-06-14T11:00:00.000Z",
+      }),
+    );
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings[0]).toMatch(/results/i);
   });
 
   it("returns both warnings when both pairs are out of order", () => {

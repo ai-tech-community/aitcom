@@ -83,6 +83,7 @@ export const Events: CollectionConfig = {
             registrationDeadline: data.registrationDeadline ?? null,
             submissionDeadline: data.submissionDeadline ?? null,
             judgingDeadline: data.judgingDeadline ?? null,
+            resultsDate: data.resultsDate ?? null,
           })) {
             req?.payload?.logger?.warn(
               `Event ${data.slug ?? "(new)"}: ${warning}`,

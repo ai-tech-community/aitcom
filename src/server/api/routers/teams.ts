@@ -210,6 +210,8 @@ export const teamsRouter = createTRPCRouter({
       }
 
       const payload = await getPayloadClient();
+      // Team pins a concrete eventId, so fetch by id directly (vs the
+      // status-filtered boundHackathonEvent used on challenge-keyed paths).
       const event = await payload.findByID({
         collection: "events",
         id: team.eventId,
@@ -393,6 +395,8 @@ export const teamsRouter = createTRPCRouter({
       }
 
       const payload = await getPayloadClient();
+      // Team pins a concrete eventId, so fetch by id directly (vs the
+      // status-filtered boundHackathonEvent used on challenge-keyed paths).
       const event = await payload.findByID({
         collection: "events",
         id: team.eventId,
