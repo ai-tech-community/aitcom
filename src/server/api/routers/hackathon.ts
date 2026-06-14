@@ -30,6 +30,7 @@ import {
   user,
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
+import { boundHackathonEvent } from "@/server/hackathon/bound-event";
 import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
 import {
   hasActiveGrant,
@@ -53,6 +54,11 @@ import {
 } from "@/server/hackathon/cell-template";
 import { teamScore, rankTeams, prizeSplit } from "@/server/hackathon/scoring";
 import { aggregateJudgeRankings } from "@/server/hackathon/judge-aggregation";
+import {
+  isJudgingOpen,
+  isRegistrationOpen,
+  DEADLINE_MESSAGES,
+} from "@/server/hackathon/deadlines";
 import { hackathonPhase } from "@/server/hackathon/phase";
 import {
   assertCanToggleLookingForTeam,
@@ -988,6 +994,17 @@ export const hackathonRouter = createTRPCRouter({
           message: "Judging is not open yet",
         });
       }
+      const event = await boundHackathonEvent(input.challengeId);
+      if (event) {
+        const judging = isJudgingOpen(event, new Date());
+        if (!judging.open && judging.reason) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: DEADLINE_MESSAGES[judging.reason],
+            cause: { deadlineReason: judging.reason },
+          });
+        }
+      }
       const submitted = await ctx.db
         .select({
           teamId: teams.id,
@@ -1873,10 +1890,17 @@ export const hackathonRouter = createTRPCRouter({
         challenge.status ?? "",
         challenge.judgingOpenedAt ?? null,
       );
+
+      // Close matchmaking once the event's registration deadline has passed.
+      const event = await boundHackathonEvent(input.challengeId);
+
       try {
         assertCanToggleLookingForTeam({
           phase,
           enrollment: enrollment ?? null,
+          registrationOpen: event
+            ? isRegistrationOpen(event, new Date()).open
+            : true,
         });
       } catch (e) {
         if (e instanceof LookingForTeamError) {

@@ -14,6 +14,7 @@ import {
 } from "@/lib/event-metadata";
 import { DEFAULT_EVENT_TIMEZONE, isValidTimeZone } from "@/lib/event-time";
 import { geocodeEvent } from "@/server/geocoding/nominatim";
+import { eventDeadlineWarnings } from "@/server/hackathon/deadlines";
 
 function locationChanged(
   doc: Record<string, unknown>,
@@ -75,6 +76,16 @@ export const Events: CollectionConfig = {
   },
   versions: { drafts: true },
   hooks: {
+    beforeValidate: [
+      ({ data, req }) => {
+        for (const warning of eventDeadlineWarnings(data)) {
+          req?.payload?.logger?.warn(
+            `Event ${data?.slug ?? "(new)"}: ${warning}`,
+          );
+        }
+        return data;
+      },
+    ],
     afterChange: [
       async (args) => {
         if ((args.req.context as { skipGeocode?: boolean })?.skipGeocode) {
@@ -201,6 +212,65 @@ export const Events: CollectionConfig = {
                 description:
                   'IANA timezone for start/end times, e.g. "Europe/Amsterdam".',
               },
+            },
+            {
+              type: "row",
+              admin: {
+                // Hackathon timeline deadlines (event-level, all optional).
+                // Authoritative over the manual phase buttons: a passed deadline
+                // closes its gate regardless of phase; extend by editing the date.
+                // Unset = no enforced window (today's phase-driven behavior).
+                condition: (data) => data?.type === "hackathon",
+              },
+              fields: [
+                {
+                  name: "registrationDeadline",
+                  type: "date",
+                  admin: {
+                    width: "50%",
+                    date: { pickerAppearance: "dayAndTime" },
+                    description:
+                      "After this, team create/join is closed (interpreted in the event timezone).",
+                  },
+                },
+                {
+                  name: "submissionDeadline",
+                  type: "date",
+                  admin: {
+                    width: "50%",
+                    date: { pickerAppearance: "dayAndTime" },
+                    description: "After this, project submission is closed.",
+                  },
+                },
+              ],
+            },
+            {
+              type: "row",
+              admin: {
+                condition: (data) => data?.type === "hackathon",
+              },
+              fields: [
+                {
+                  name: "judgingDeadline",
+                  type: "date",
+                  admin: {
+                    width: "50%",
+                    date: { pickerAppearance: "dayAndTime" },
+                    description:
+                      "After this, judges can no longer submit rankings.",
+                  },
+                },
+                {
+                  name: "resultsDate",
+                  type: "date",
+                  admin: {
+                    width: "50%",
+                    date: { pickerAppearance: "dayAndTime" },
+                    description:
+                      "Results announcement target — display/notification only, not enforced.",
+                  },
+                },
+              ],
             },
             { name: "maxAttendees", type: "number" },
             {

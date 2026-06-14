@@ -17,6 +17,8 @@ export class LookingForTeamError extends Error {}
 export function assertCanToggleLookingForTeam(args: {
   phase: HackathonPhase;
   enrollment: { teamId: string | null } | null;
+  /** Event-level registration gate; defaults to open when omitted. */
+  registrationOpen?: boolean;
 }): void {
   if (!args.enrollment) {
     throw new LookingForTeamError(
@@ -31,6 +33,11 @@ export function assertCanToggleLookingForTeam(args: {
   }
   if (args.phase !== "live") {
     throw new LookingForTeamError("Team formation has closed.");
+  }
+  if (args.registrationOpen === false) {
+    throw new LookingForTeamError(
+      "Registration for this hackathon has closed.",
+    );
   }
 }
 

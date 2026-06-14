@@ -27,23 +27,16 @@ import {
   TeamJoinError,
 } from "@/server/hackathon/team-membership";
 import { ensureChallengeChannel } from "@/server/challenge-engine/channel";
+import {
+  isRegistrationOpen,
+  isSubmissionOpen,
+  DEADLINE_MESSAGES,
+} from "@/server/hackathon/deadlines";
+import { boundHackathonEvent } from "@/server/hackathon/bound-event";
 
 /** Look up the published hackathon event bound to a challenge, or null. */
 async function hackathonEventForChallenge(challengeId: number) {
-  const payload = await getPayloadClient();
-  const { docs } = await payload.find({
-    collection: "events",
-    where: {
-      and: [
-        { challengeId: { equals: String(challengeId) } },
-        { type: { equals: "hackathon" } },
-        { status: { not_in: ["draft", "rejected", "cancelled"] } },
-      ],
-    },
-    limit: 1,
-    depth: 0,
-  });
-  return docs[0] ?? null;
+  return boundHackathonEvent(challengeId);
 }
 
 /** Guard: reject if the user already holds a team for this challenge. */
@@ -152,6 +145,15 @@ export const teamsRouter = createTRPCRouter({
         });
       }
 
+      const reg = isRegistrationOpen(event, new Date());
+      if (!reg.open && reg.reason) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: DEADLINE_MESSAGES[reg.reason],
+          cause: { deadlineReason: reg.reason },
+        });
+      }
+
       const payload = await getPayloadClient();
       const challenge = await payload.findByID({
         collection: "challenges",
@@ -207,6 +209,23 @@ export const teamsRouter = createTRPCRouter({
         .limit(1);
       if (!team) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
+      }
+
+      const payload = await getPayloadClient();
+      // Team pins a concrete eventId, so fetch by id directly (vs the
+      // status-filtered boundHackathonEvent used on challenge-keyed paths).
+      const event = await payload.findByID({
+        collection: "events",
+        id: team.eventId,
+        depth: 0,
+      });
+      const reg = isRegistrationOpen(event, new Date());
+      if (!reg.open && reg.reason) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: DEADLINE_MESSAGES[reg.reason],
+          cause: { deadlineReason: reg.reason },
+        });
       }
 
       await assertNotAlreadyOnTeam(ctx.db, userId, team.challengeId);
@@ -375,6 +394,23 @@ export const teamsRouter = createTRPCRouter({
         throw new TRPCError({
           code: "CONFLICT",
           message: "This team has already been submitted.",
+        });
+      }
+
+      const payload = await getPayloadClient();
+      // Team pins a concrete eventId, so fetch by id directly (vs the
+      // status-filtered boundHackathonEvent used on challenge-keyed paths).
+      const event = await payload.findByID({
+        collection: "events",
+        id: team.eventId,
+        depth: 0,
+      });
+      const sub = isSubmissionOpen(event, new Date());
+      if (!sub.open && sub.reason) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: DEADLINE_MESSAGES[sub.reason],
+          cause: { deadlineReason: sub.reason },
         });
       }
 

@@ -223,6 +223,22 @@ export interface Event {
    * IANA timezone for start/end times, e.g. "Europe/Amsterdam".
    */
   timezone?: string | null;
+  /**
+   * After this, team create/join is closed (interpreted in the event timezone).
+   */
+  registrationDeadline?: string | null;
+  /**
+   * After this, project submission is closed.
+   */
+  submissionDeadline?: string | null;
+  /**
+   * After this, judges can no longer submit rankings.
+   */
+  judgingDeadline?: string | null;
+  /**
+   * Results announcement target — display/notification only, not enforced.
+   */
+  resultsDate?: string | null;
   maxAttendees?: number | null;
   /**
    * Price in EUR cents (e.g. 1500 = €15.00). Leave empty for free events.
@@ -1536,6 +1552,10 @@ export interface EventsSelect<T extends boolean = true> {
   startTime?: T;
   endTime?: T;
   timezone?: T;
+  registrationDeadline?: T;
+  submissionDeadline?: T;
+  judgingDeadline?: T;
+  resultsDate?: T;
   maxAttendees?: T;
   price?: T;
   focus?: T;

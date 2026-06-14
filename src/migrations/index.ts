@@ -65,6 +65,7 @@ import * as migration_20260612f_work_cell_progress from "./20260612f_work_cell_p
 import * as migration_20260613a_hackathon_staff from "./20260613a_hackathon_staff";
 import * as migration_20260613b_judge_rankings from "./20260613b_judge_rankings";
 import * as migration_20260613c_challenge_judging_opened from "./20260613c_challenge_judging_opened";
+import * as migration_20260614a_event_deadlines from "./20260614a_event_deadlines";
 
 export const migrations = [
   {
@@ -401,5 +402,10 @@ export const migrations = [
     up: migration_20260613c_challenge_judging_opened.up,
     down: migration_20260613c_challenge_judging_opened.down,
     name: "20260613c_challenge_judging_opened",
+  },
+  {
+    up: migration_20260614a_event_deadlines.up,
+    down: migration_20260614a_event_deadlines.down,
+    name: "20260614a_event_deadlines",
   },
 ];
