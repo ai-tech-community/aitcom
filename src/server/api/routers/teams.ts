@@ -30,6 +30,7 @@ import { ensureChallengeChannel } from "@/server/challenge-engine/channel";
 import {
   isRegistrationOpen,
   isSubmissionOpen,
+  DEADLINE_MESSAGES,
 } from "@/server/hackathon/deadlines";
 import { boundHackathonEvent } from "@/server/hackathon/bound-event";
 
@@ -145,10 +146,11 @@ export const teamsRouter = createTRPCRouter({
       }
 
       const reg = isRegistrationOpen(event, new Date());
-      if (!reg.open) {
+      if (!reg.open && reg.reason) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Registration for this hackathon has closed.",
+          message: DEADLINE_MESSAGES[reg.reason],
+          cause: { deadlineReason: reg.reason },
         });
       }
 
@@ -218,10 +220,11 @@ export const teamsRouter = createTRPCRouter({
         depth: 0,
       });
       const reg = isRegistrationOpen(event, new Date());
-      if (!reg.open) {
+      if (!reg.open && reg.reason) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Registration for this hackathon has closed.",
+          message: DEADLINE_MESSAGES[reg.reason],
+          cause: { deadlineReason: reg.reason },
         });
       }
 
@@ -403,10 +406,11 @@ export const teamsRouter = createTRPCRouter({
         depth: 0,
       });
       const sub = isSubmissionOpen(event, new Date());
-      if (!sub.open) {
+      if (!sub.open && sub.reason) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "The submission deadline for this hackathon has passed.",
+          message: DEADLINE_MESSAGES[sub.reason],
+          cause: { deadlineReason: sub.reason },
         });
       }
 

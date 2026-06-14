@@ -27,9 +27,17 @@ export interface GateResult {
   reason: DeadlineReason | null;
 }
 
+/** Human-readable messages keyed by stable reason (single source of i18n prose). */
+export const DEADLINE_MESSAGES: Record<DeadlineReason, string> = {
+  registration_closed: "Registration for this hackathon has closed.",
+  submission_closed: "The submission deadline for this hackathon has passed.",
+  judging_closed: "The judging deadline for this hackathon has passed.",
+};
+
 function toTime(raw: Date | string | null | undefined): number | null {
   if (raw === null || raw === undefined) return null;
-  return (raw instanceof Date ? raw : new Date(raw)).getTime();
+  const t = (raw instanceof Date ? raw : new Date(raw)).getTime();
+  return Number.isNaN(t) ? null : t;
 }
 
 function gate(
@@ -37,12 +45,12 @@ function gate(
   now: Date,
   reason: DeadlineReason,
 ): GateResult {
-  if (raw === null || raw === undefined) {
+  const t = toTime(raw);
+  if (t === null) {
     return { open: true, deadline: null, reason: null };
   }
-  const deadline = raw instanceof Date ? raw : new Date(raw);
-  const open = now.getTime() <= deadline.getTime();
-  return { open, deadline, reason: open ? null : reason };
+  const open = now.getTime() <= t;
+  return { open, deadline: new Date(t), reason: open ? null : reason };
 }
 
 export function isRegistrationOpen(event: EventDeadlines, now: Date): GateResult {
@@ -65,19 +73,26 @@ export function isJudgingOpen(event: EventDeadlines, now: Date): GateResult {
  * deadlines out of order while drafting).
  */
 export function deadlineOrderWarnings(event: EventDeadlines): string[] {
-  const reg = toTime(event.registrationDeadline);
-  const sub = toTime(event.submissionDeadline);
-  const judge = toTime(event.judgingDeadline);
-  const results = toTime(event.resultsDate);
+  const chain: { label: string; t: number | null }[] = [
+    { label: "registration", t: toTime(event.registrationDeadline) },
+    { label: "submission", t: toTime(event.submissionDeadline) },
+    { label: "judging", t: toTime(event.judgingDeadline) },
+    { label: "results", t: toTime(event.resultsDate) },
+  ];
   const warnings: string[] = [];
-  if (reg !== null && sub !== null && sub < reg) {
-    warnings.push("Submission deadline is before the registration deadline.");
-  }
-  if (sub !== null && judge !== null && judge < sub) {
-    warnings.push("Judging deadline is before the submission deadline.");
-  }
-  if (judge !== null && results !== null && results < judge) {
-    warnings.push("Results date is before the judging deadline.");
+  let prev: { label: string; t: number } | null = null;
+  for (const cur of chain) {
+    if (cur.t === null) continue; // unset: skip, don't reset the predecessor
+    if (prev !== null && cur.t < prev.t) {
+      warnings.push(
+        `${capitalize(cur.label)} deadline is before the ${prev.label} deadline.`,
+      );
+    }
+    prev = { label: cur.label, t: cur.t };
   }
   return warnings;
+}
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

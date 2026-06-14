@@ -61,6 +61,11 @@ describe("isRegistrationOpen", () => {
     );
     expect(r.open).toBe(false);
   });
+
+  it("treats an unparseable deadline string as unset (open)", () => {
+    const r = isRegistrationOpen(ev({ registrationDeadline: "not-a-date" }), NOW);
+    expect(r).toEqual({ open: true, deadline: null, reason: null });
+  });
 });
 
 describe("isSubmissionOpen", () => {
@@ -144,5 +149,17 @@ describe("deadlineOrderWarnings", () => {
       }),
     );
     expect(warnings).toHaveLength(2);
+  });
+
+  it("warns across an unset middle deadline (sparse chain)", () => {
+    const warnings = deadlineOrderWarnings(
+      ev({
+        registrationDeadline: "2026-06-14T12:00:00.000Z",
+        // submission unset
+        judgingDeadline: "2026-06-14T10:00:00.000Z",
+      }),
+    );
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings[0]).toMatch(/judging/i);
   });
 });

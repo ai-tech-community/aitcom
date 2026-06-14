@@ -57,6 +57,7 @@ import { aggregateJudgeRankings } from "@/server/hackathon/judge-aggregation";
 import {
   isJudgingOpen,
   isRegistrationOpen,
+  DEADLINE_MESSAGES,
 } from "@/server/hackathon/deadlines";
 import { hackathonPhase } from "@/server/hackathon/phase";
 import {
@@ -996,10 +997,11 @@ export const hackathonRouter = createTRPCRouter({
       const event = await boundHackathonEvent(input.challengeId);
       if (event) {
         const judging = isJudgingOpen(event, new Date());
-        if (!judging.open) {
+        if (!judging.open && judging.reason) {
           throw new TRPCError({
             code: "FORBIDDEN",
-            message: "The judging deadline for this hackathon has passed.",
+            message: DEADLINE_MESSAGES[judging.reason],
+            cause: { deadlineReason: judging.reason },
           });
         }
       }
