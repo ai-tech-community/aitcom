@@ -1,0 +1,183 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+type SelectResult = unknown[];
+const dbHooks = {
+  // FIFO queue of results for successive db.select(...) chains in one call.
+  selectResults: [] as SelectResult[],
+  insertValues: undefined as unknown,
+  insertConflict: false,
+  updateRan: false,
+};
+
+function makeSelectChain() {
+  const chain: Record<string, unknown> = {};
+  for (const m of ["from", "where", "innerJoin", "leftJoin", "orderBy", "groupBy"])
+    chain[m] = () => chain;
+  chain.limit = () => chain;
+  chain.then = (resolve: (v: SelectResult) => unknown) =>
+    Promise.resolve(dbHooks.selectResults.shift() ?? []).then(resolve);
+  return chain;
+}
+
+function makeInsertChain() {
+  const chain: Record<string, unknown> = {};
+  chain.values = (v: unknown) => {
+    dbHooks.insertValues = v;
+    return chain;
+  };
+  chain.onConflictDoUpdate = () => {
+    dbHooks.insertConflict = true;
+    return Promise.resolve();
+  };
+  chain.onConflictDoNothing = () => Promise.resolve();
+  chain.then = (resolve: (v: unknown) => unknown) =>
+    Promise.resolve(undefined).then(resolve);
+  return chain;
+}
+
+function makeUpdateChain() {
+  const chain: Record<string, unknown> = {};
+  chain.set = () => chain;
+  chain.where = () => {
+    dbHooks.updateRan = true;
+    return Promise.resolve();
+  };
+  return chain;
+}
+
+vi.mock("@/server/db", () => ({
+  db: {
+    select: () => makeSelectChain(),
+    insert: () => makeInsertChain(),
+    update: () => makeUpdateChain(),
+    query: {
+      communityMemberships: { findFirst: async () => undefined },
+      communities: { findFirst: async () => undefined },
+    },
+  },
+}));
+
+vi.mock("@/env", () => ({
+  env: {
+    NODE_ENV: "test",
+    DATABASE_URL: "postgres://localhost:5432/test",
+    NEXT_PUBLIC_APP_URL: "https://app.test",
+  },
+}));
+vi.mock("@/server/better-auth", () => ({
+  auth: { api: { getSession: async () => null } },
+}));
+
+// requireHackathonOperator / requireHackathonOrganizer call loadChallenge, which
+// reads Payload. Return a controllable challenge doc.
+const payloadHooks = {
+  challenge: {
+    id: 1,
+    communityId: null as string | null,
+    title: "Hack",
+    creatorId: "user-1",
+  },
+};
+vi.mock("@/server/payload", () => ({
+  getPayloadClient: async () => ({
+    findByID: async () => payloadHooks.challenge,
+    find: async () => ({ docs: [] }),
+  }),
+}));
+
+// Email send is a no-op in these tests.
+const emailHooks = { sent: [] as unknown[] };
+vi.mock("@/server/email", () => ({
+  sendHackathonStaffInvite: async (...args: unknown[]) => {
+    emailHooks.sent.push(args);
+  },
+}));
+
+import { createCaller } from "@/server/api/root";
+import { db as mockedDb } from "@/server/db";
+
+function caller(userId = "user-1") {
+  return createCaller({
+    db: mockedDb,
+    session: { user: { id: userId } } as never,
+    headers: new Headers(),
+  });
+}
+
+beforeEach(() => {
+  dbHooks.selectResults = [];
+  dbHooks.insertValues = undefined;
+  dbHooks.insertConflict = false;
+  dbHooks.updateRan = false;
+  emailHooks.sent = [];
+  payloadHooks.challenge = {
+    id: 1,
+    communityId: null,
+    title: "Hack",
+    creatorId: "user-1",
+  };
+});
+
+describe("listStaff", () => {
+  it("returns active organizers/judges enriched with name/email/image, plus pending invites", async () => {
+    // requireHackathonOrganizer for a hub-wide hackathon where the actor is the
+    // creator (creatorId === "user-1") passes via the isHubSponsor path. But the
+    // real gate ALWAYS calls loadHackathonGrants (a db.select) before reaching
+    // that check, so it consumes ONE select result first. Order:
+    //   (0) gate's loadHackathonGrants  -> empty (sponsor path doesn't need grants)
+    //   (1) active staff rows
+    //   (2) pending invites
+    dbHooks.selectResults = [
+      [],
+      [
+        {
+          id: "s1",
+          userId: "u-org",
+          role: "organizer",
+          revokedAt: null,
+          grantedAt: new Date("2026-06-10T00:00:00Z"),
+          displayName: "Olivia Org",
+          email: "olivia@example.com",
+          image: "https://img/olivia.png",
+        },
+        {
+          id: "s2",
+          userId: "u-judge",
+          role: "judge",
+          revokedAt: null,
+          grantedAt: new Date("2026-06-11T00:00:00Z"),
+          displayName: "Judy Judge",
+          email: "judy@example.com",
+          image: null,
+        },
+      ],
+      [
+        {
+          id: "inv1",
+          email: "external@example.com",
+          role: "judge",
+          invitedBy: "user-1",
+          createdAt: new Date("2026-06-12T00:00:00Z"),
+        },
+      ],
+    ];
+
+    const res = await caller().hackathon.listStaff({ challengeId: 1 });
+
+    expect(res.organizers).toEqual([
+      expect.objectContaining({
+        userId: "u-org",
+        displayName: "Olivia Org",
+        email: "olivia@example.com",
+        image: "https://img/olivia.png",
+      }),
+    ]);
+    expect(res.judges).toHaveLength(1);
+    expect(res.judges[0]).toEqual(
+      expect.objectContaining({ userId: "u-judge", displayName: "Judy Judge" }),
+    );
+    expect(res.pendingInvites).toEqual([
+      expect.objectContaining({ email: "external@example.com", role: "judge" }),
+    ]);
+  });
+});

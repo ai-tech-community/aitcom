@@ -26,6 +26,7 @@ import {
   communityMemberships,
   communities,
   hackathonStaff,
+  hackathonStaffInvite,
   judgeRankings,
   user,
 } from "@/server/db/schema";
@@ -1087,6 +1088,7 @@ export const hackathonRouter = createTRPCRouter({
         input.challengeId,
         ctx.session.user.id,
       );
+      // Active grants, joined to user/profile so the UI shows a person, not a uuid.
       const rows = await ctx.db
         .select({
           id: hackathonStaff.id,
@@ -1094,13 +1096,39 @@ export const hackathonRouter = createTRPCRouter({
           role: hackathonStaff.role,
           revokedAt: hackathonStaff.revokedAt,
           grantedAt: hackathonStaff.grantedAt,
+          displayName: memberProfiles.displayName,
+          email: user.email,
+          image: user.image,
         })
         .from(hackathonStaff)
+        .innerJoin(user, eq(hackathonStaff.userId, user.id))
+        .leftJoin(
+          memberProfiles,
+          eq(hackathonStaff.userId, memberProfiles.userId),
+        )
         .where(eq(hackathonStaff.challengeId, input.challengeId));
       const active = rows.filter((r) => r.revokedAt === null);
+      // Pending (un-redeemed, un-revoked) email invites.
+      const pendingInvites = await ctx.db
+        .select({
+          id: hackathonStaffInvite.id,
+          email: hackathonStaffInvite.email,
+          role: hackathonStaffInvite.role,
+          invitedBy: hackathonStaffInvite.invitedBy,
+          createdAt: hackathonStaffInvite.createdAt,
+        })
+        .from(hackathonStaffInvite)
+        .where(
+          and(
+            eq(hackathonStaffInvite.challengeId, input.challengeId),
+            isNull(hackathonStaffInvite.redeemedAt),
+            isNull(hackathonStaffInvite.revokedAt),
+          ),
+        );
       return {
         organizers: active.filter((r) => r.role === "organizer"),
         judges: active.filter((r) => r.role === "judge"),
+        pendingInvites,
       };
     }),
 
