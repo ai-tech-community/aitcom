@@ -64,7 +64,10 @@ describe("isRegistrationOpen", () => {
   });
 
   it("treats an unparseable deadline string as unset (open)", () => {
-    const r = isRegistrationOpen(ev({ registrationDeadline: "not-a-date" }), NOW);
+    const r = isRegistrationOpen(
+      ev({ registrationDeadline: "not-a-date" }),
+      NOW,
+    );
     expect(r).toEqual({ open: true, deadline: null, reason: null });
   });
 });

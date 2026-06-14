@@ -53,7 +53,10 @@ function gate(
   return { open, deadline: new Date(t), reason: open ? null : reason };
 }
 
-export function isRegistrationOpen(event: EventDeadlines, now: Date): GateResult {
+export function isRegistrationOpen(
+  event: EventDeadlines,
+  now: Date,
+): GateResult {
   return gate(event.registrationDeadline, now, "registration_closed");
 }
 

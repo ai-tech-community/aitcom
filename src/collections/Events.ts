@@ -256,7 +256,8 @@ export const Events: CollectionConfig = {
                   admin: {
                     width: "50%",
                     date: { pickerAppearance: "dayAndTime" },
-                    description: "After this, judges can no longer submit rankings.",
+                    description:
+                      "After this, judges can no longer submit rankings.",
                   },
                 },
                 {

@@ -201,7 +201,13 @@ describe("joinTeam registration deadline enforcement", () => {
     // joinTeam first selects the team by joinCode (db.select), then fetches the
     // event by id (payload.findByID), then runs the registration gate.
     dbHooks.selectResult = () => [
-      { id: "team-1", eventId: 42, challengeId: 1, status: "forming", maxSize: 5 },
+      {
+        id: "team-1",
+        eventId: 42,
+        challengeId: 1,
+        status: "forming",
+        maxSize: 5,
+      },
     ];
     payloadHooks.findByID = async ({ collection }) => {
       expect(collection).toBe("events");
@@ -218,9 +224,18 @@ describe("joinTeam registration deadline enforcement", () => {
 
   it("proceeds PAST the gate when the registration deadline is unset", async () => {
     dbHooks.selectResult = () => [
-      { id: "team-1", eventId: 42, challengeId: 1, status: "forming", maxSize: 5 },
+      {
+        id: "team-1",
+        eventId: 42,
+        challengeId: 1,
+        status: "forming",
+        maxSize: 5,
+      },
     ];
-    payloadHooks.findByID = async () => ({ id: 42, registrationDeadline: null });
+    payloadHooks.findByID = async () => ({
+      id: 42,
+      registrationDeadline: null,
+    });
     // Next step after the gate is assertNotAlreadyOnTeam → enrollment.findFirst.
     dbHooks.enrollmentFindFirst = async () => throwPastGate();
 
@@ -333,7 +348,9 @@ describe("submitRankings judging deadline enforcement", () => {
       id: 1,
       judgingOpenedAt: "2024-01-01T00:00:00.000Z",
     });
-    payloadHooks.find = async () => ({ docs: [{ id: 42, judgingDeadline: null }] });
+    payloadHooks.find = async () => ({
+      docs: [{ id: 42, judgingDeadline: null }],
+    });
     let call = 0;
     dbHooks.selectResult = () => {
       call += 1;

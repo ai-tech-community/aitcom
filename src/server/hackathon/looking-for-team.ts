@@ -35,7 +35,9 @@ export function assertCanToggleLookingForTeam(args: {
     throw new LookingForTeamError("Team formation has closed.");
   }
   if (args.registrationOpen === false) {
-    throw new LookingForTeamError("Registration for this hackathon has closed.");
+    throw new LookingForTeamError(
+      "Registration for this hackathon has closed.",
+    );
   }
 }
 
