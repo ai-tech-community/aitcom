@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull } from "drizzle-orm";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { db } from "@/server/db";
@@ -8,6 +8,7 @@ import { getSession } from "@/server/better-auth/server";
 import { resolvePublicHackathonPage } from "@/server/hackathon/resolve-public-hackathon";
 import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
 import { hubTabStates } from "@/server/hackathon/hub-tabs";
+import { TEAM_MEMBER_ENROLLMENT_STATUSES } from "@/server/hackathon/team-membership";
 import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
 import { TeamWorkspace } from "@/components/hackathon/workspace/team-workspace";
 
@@ -40,8 +41,11 @@ export default async function TeamWorkspacePage({
   }
 
   // On a locked team — resolve the concrete teamId for the grid. The membership
-  // query mirrors ownerOnTeam (team-membership.ts): only an ACTIVE enrollment
-  // counts, otherwise every workspace query throws FORBIDDEN.
+  // query mirrors ownerOnTeam (team-membership.ts): any non-abandoned
+  // enrollment counts. Filtering to status === "active" would eject a member
+  // the moment checkEnrollmentCompletion flips them active → completed once
+  // their last objective lands — locking them out of their own workspace
+  // mid-hackathon (the regression TEAM_MEMBER_ENROLLMENT_STATUSES guards).
   const session = await getSession();
   if (!session?.user) notFound();
   const userId = session.user.id;
@@ -49,7 +53,9 @@ export default async function TeamWorkspacePage({
     where: and(
       eq(challengeEnrollments.userId, userId),
       eq(challengeEnrollments.challengeId, challengeId),
-      eq(challengeEnrollments.status, "active"),
+      inArray(challengeEnrollments.status, [
+        ...TEAM_MEMBER_ENROLLMENT_STATUSES,
+      ]),
       isNotNull(challengeEnrollments.teamId),
     ),
   });
