@@ -143,7 +143,7 @@ export function NotificationsPageContent() {
                     {n.content}
                   </ReactMarkdown>
                 </div>
-                <p className="text-muted-foreground text-[10px]">
+                <p className="text-muted-foreground text-xs">
                   {new Date(n.createdAt).toLocaleString()}
                 </p>
                 {reviewPath && (

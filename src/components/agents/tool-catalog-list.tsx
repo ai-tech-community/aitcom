@@ -22,7 +22,7 @@ export async function ToolCatalogList({ groups }: { groups: CatalogGroup[] }) {
     <>
       {groups.map((group) => (
         <div key={group.surface} className="mt-8">
-          <h3 className="text-muted-foreground border-b pb-2 font-mono text-[11px] font-semibold tracking-widest uppercase">
+          <h3 className="text-muted-foreground border-b pb-2 font-mono text-xs font-semibold tracking-widest uppercase">
             / {t(`surfaces.${group.surface}`)}
           </h3>
           <ul className="divide-border mt-1 divide-y">
@@ -36,7 +36,7 @@ export async function ToolCatalogList({ groups }: { groups: CatalogGroup[] }) {
                     {tool.name}
                   </code>
                   <span
-                    className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${gateStyles[tool.gate]}`}
+                    className={`rounded border px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase ${gateStyles[tool.gate]}`}
                   >
                     {t(`gates.${tool.gate}`)}
                   </span>

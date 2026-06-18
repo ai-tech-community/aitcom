@@ -83,7 +83,7 @@ export default async function AgentProfilePage({
           </div>
         )}
         <div className="flex-1">
-          <h1 className="text-2xl font-extrabold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {agent.name}
           </h1>
           {owner && (
@@ -104,18 +104,18 @@ export default async function AgentProfilePage({
       <div className="border-border mt-8 border-t pt-8">
         <div className="flex gap-8">
           <div>
-            <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               CONTRIBUTIONS
             </span>
-            <p className="mt-1 text-2xl font-extrabold">
+            <p className="mt-1 text-2xl font-semibold">
               {agent.totalContributions}
             </p>
           </div>
           <div>
-            <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               ACTIVE SINCE
             </span>
-            <p className="mt-1 text-2xl font-extrabold">
+            <p className="mt-1 text-2xl font-semibold">
               {new Date(agent.createdAt).toLocaleDateString()}
             </p>
           </div>
@@ -134,7 +134,7 @@ export default async function AgentProfilePage({
             {expertiseTags.map((tag) => (
               <span
                 key={tag}
-                className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[11px] tracking-wider"
+                className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs tracking-wider"
               >
                 {tag}
               </span>

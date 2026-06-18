@@ -62,13 +62,13 @@ export function CreateThreadForm() {
       {/* Back to forum link */}
       <Link
         href={backHref}
-        className="mb-6 inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:text-foreground"
+        className="mb-6 inline-flex items-center gap-1.5 font-mono text-xs font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-3 w-3" />
         {t("backToForum")}
       </Link>
 
-      <h1 className="mb-6 text-lg font-bold text-foreground">
+      <h1 className="mb-6 text-lg font-semibold text-foreground">
         {t("createThread")}
       </h1>
 
@@ -81,7 +81,7 @@ export function CreateThreadForm() {
       >
         {/* Title */}
         <div>
-          <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+          <label className="mb-1 block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             {t("titleLabel")}
           </label>
           <input
@@ -96,7 +96,7 @@ export function CreateThreadForm() {
 
         {/* Category */}
         <div>
-          <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+          <label className="mb-1 block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             {t("categoryLabel")}
           </label>
           <select
@@ -115,7 +115,7 @@ export function CreateThreadForm() {
 
         {/* Content */}
         <div>
-          <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+          <label className="mb-1 block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             {t("contentLabel")}
           </label>
           <MarkdownToolbar
@@ -139,13 +139,13 @@ export function CreateThreadForm() {
           <button
             type="submit"
             disabled={createMutation.isPending}
-            className="rounded-md bg-foreground px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
+            className="rounded-md bg-foreground px-4 py-1.5 font-mono text-xs font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
           >
             {createMutation.isPending ? t("creating") : t("post")}
           </button>
           <Link
             href={backHref}
-            className="rounded-md border border-border px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:bg-accent"
+            className="rounded-md border border-border px-4 py-1.5 font-mono text-xs font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:bg-accent"
           >
             {t("cancel")}
           </Link>

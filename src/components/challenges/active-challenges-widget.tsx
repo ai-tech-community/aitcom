@@ -71,7 +71,7 @@ export function ActiveChallengesWidget() {
                     <GitBranchIcon className="text-muted-foreground h-3.5 w-3.5" />
                   )}
                 </div>
-                <span className="text-muted-foreground font-mono text-[11px]">
+                <span className="text-muted-foreground font-mono text-xs">
                   {daysLeft !== null
                     ? t("timeLeft", { days: daysLeft })
                     : t("openEnded")}

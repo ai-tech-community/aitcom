@@ -129,7 +129,7 @@ export default async function HackathonWinnersPage({
                 <Badge variant="success">{t("winner")}</Badge>
               ) : null}
             </div>
-            <h2 className="mt-2 text-xl font-bold">{team.name}</h2>
+            <h2 className="mt-2 text-xl font-semibold">{team.name}</h2>
             <div className="text-muted-foreground mt-1 font-mono text-xs tracking-wider">
               {team.score} {t("score")}
             </div>
@@ -141,7 +141,7 @@ export default async function HackathonWinnersPage({
 
             {prizeTeamIds.has(team.teamId) && prizeParts.length > 0 ? (
               <div className="border-border mt-4 border-t pt-3">
-                <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+                <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
                   {t("prize")}
                 </span>
                 <ul className="mt-1 space-y-0.5 text-sm">
@@ -164,7 +164,7 @@ export default async function HackathonWinnersPage({
               {t("voteCount", { count: peoplesChoiceVotes })}
             </span>
           </div>
-          <h2 className="mt-2 text-xl font-bold">{peoplesChoiceTeam.name}</h2>
+          <h2 className="mt-2 text-xl font-semibold">{peoplesChoiceTeam.name}</h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {t("peoplesChoiceIntro")}
           </p>

@@ -148,7 +148,7 @@ export function EventsMapView({
             icon={markerIcon}
           >
             <Popup>
-              <div className="font-mono text-[11px] tracking-wider text-neutral-500">
+              <div className="font-mono text-xs tracking-wider text-neutral-500">
                 {formatDate(event.date)} · {event.type.toUpperCase()}
               </div>
               <Link
@@ -161,7 +161,7 @@ export function EventsMapView({
                 {event.location}
               </div>
               {typeof event.aitFitScore === "number" && (
-                <div className="mt-1 inline-block rounded bg-black px-1.5 py-0.5 font-mono text-[10px] text-white">
+                <div className="mt-1 inline-block rounded bg-black px-1.5 py-0.5 font-mono text-xs text-white">
                   AIT {event.aitFitScore}/10
                 </div>
               )}

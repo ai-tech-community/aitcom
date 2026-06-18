@@ -146,7 +146,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
         <div className="flex items-center justify-between gap-3">
           {/* Stage is a categorical attribute, not a status → neutral Badge. */}
           <Badge
-            className="rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase"
+            className="rounded px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase"
             variant="secondary"
           >
             {t(`stage.${project.stage}`)}
@@ -154,7 +154,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
           {isAuthor && (
             <Link
               href={`/launchpad/${slug}/edit`}
-              className="flex items-center gap-1 rounded border border-border px-2 py-1 font-mono text-[9px] font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent"
+              className="flex items-center gap-1 rounded border border-border px-2 py-1 font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent"
             >
               <Edit className="h-3 w-3" />
               {tDetail("editProject")}
@@ -163,7 +163,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl leading-snug font-bold tracking-tight text-foreground sm:text-3xl">
+        <h1 className="text-2xl leading-snug font-semibold tracking-tight text-foreground sm:text-3xl">
           {project.title}
         </h1>
 
@@ -172,11 +172,11 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
           {/* Author */}
           {authorDisplayName && (
             <div className="flex items-center gap-1.5">
-              <span className="font-mono text-[10px] text-muted-foreground">
+              <span className="font-mono text-xs text-muted-foreground">
                 {authorDisplayName}
               </span>
               {authorLevel !== null && (
-                <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[9px] font-semibold text-muted-foreground">
+                <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs font-semibold text-muted-foreground">
                   Lv {authorLevel}
                 </span>
               )}
@@ -190,7 +190,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
               voteMutation.mutate({ projectId: project.id });
             }}
             disabled={voteMutation.isPending}
-            className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-[11px] font-bold transition-colors disabled:opacity-60 ${
+            className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-xs font-semibold transition-colors disabled:opacity-60 ${
               project.hasVoted
                 ? "bg-orange-50 text-orange-600"
                 : "border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -210,7 +210,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 rounded-full border border-border bg-muted px-3 py-1 font-mono text-[10px] text-muted-foreground transition-colors hover:border-border hover:bg-card"
+                className="flex items-center gap-1 rounded-full border border-border bg-muted px-3 py-1 font-mono text-xs text-muted-foreground transition-colors hover:border-border hover:bg-card"
               >
                 <ExternalLink className="h-2.5 w-2.5" />
                 {link.label}

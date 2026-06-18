@@ -98,15 +98,15 @@ export function ChallengeProgress({
                   )}
                   {objective.description}
                   {verification && (
-                    <span className="text-muted-foreground font-mono text-[11px]">
+                    <span className="text-muted-foreground font-mono text-xs">
                       {verification}
                     </span>
                   )}
                 </span>
-                <span className="text-muted-foreground flex items-center gap-1.5 font-mono text-[11px]">
+                <span className="text-muted-foreground flex items-center gap-1.5 font-mono text-xs">
                   {latestTestResult && (
                     <span
-                      className={`font-mono text-[10px] font-semibold ${
+                      className={`font-mono text-xs font-semibold ${
                         latestTestResult.passed
                           ? "text-success"
                           : "text-destructive"
@@ -117,7 +117,7 @@ export function ChallengeProgress({
                   )}
                   {isPeerReview && (
                     <span
-                      className={`font-mono text-[10px] ${
+                      className={`font-mono text-xs ${
                         isReviewed
                           ? "font-semibold text-success"
                           : "text-muted-foreground"

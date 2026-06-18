@@ -76,10 +76,10 @@ export function KpiStrip({ labels, values }: KpiStripProps) {
           key={card.label}
           className="rounded-lg border border-zinc-200 bg-white/80 p-4"
         >
-          <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+          <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
             {card.label}
           </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-zinc-900">
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">
             {card.value}
           </p>
         </article>

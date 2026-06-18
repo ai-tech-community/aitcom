@@ -233,7 +233,7 @@ export default async function ArticleDetailPage({
       </div>
 
       {/* Title */}
-      <h1 className="mt-4 text-4xl font-extrabold tracking-tight">
+      <h1 className="mt-4 text-4xl font-semibold tracking-tight">
         {article.title}
       </h1>
 
@@ -244,7 +244,7 @@ export default async function ArticleDetailPage({
             <Link
               key={tag}
               href={`/blog?tag=${encodeURIComponent(tag)}`}
-              className="border-border text-muted-foreground hover:text-foreground cursor-pointer rounded border border-dashed px-1.5 py-0.5 font-mono text-[10px] tracking-wider transition-colors"
+              className="border-border text-muted-foreground hover:text-foreground cursor-pointer rounded border border-dashed px-1.5 py-0.5 font-mono text-xs tracking-wider transition-colors"
             >
               {tag}
             </Link>
@@ -329,7 +329,7 @@ export default async function ArticleDetailPage({
                 <span className="text-sm leading-snug font-medium">
                   {related.title}
                 </span>
-                <div className="text-muted-foreground mt-2 flex items-center gap-2 font-mono text-[10px] tracking-wider">
+                <div className="text-muted-foreground mt-2 flex items-center gap-2 font-mono text-xs tracking-wider">
                   <span className="border-border rounded border px-1.5 py-0.5 font-medium">
                     {typeLabels[related.type] ?? related.type}
                   </span>

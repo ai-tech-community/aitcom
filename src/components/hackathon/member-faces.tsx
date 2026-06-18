@@ -24,7 +24,7 @@ export function MemberFaces({
           href={`/members/${face.userId}`}
           className="border-border hover:bg-secondary/40 flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition-colors"
         >
-          <span className="bg-secondary text-muted-foreground flex h-5 w-5 items-center justify-center rounded-full font-mono text-[9px]">
+          <span className="bg-secondary text-muted-foreground flex h-5 w-5 items-center justify-center rounded-full font-mono text-xs">
             {getInitials(face.displayName)}
           </span>
           {face.displayName}

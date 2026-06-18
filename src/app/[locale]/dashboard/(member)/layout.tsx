@@ -15,7 +15,7 @@ export default async function MemberDashboardLayout({
 
   return (
     <>
-      <h1 className="text-3xl font-extrabold tracking-tight">Dashboard</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
       <p className="text-muted-foreground mt-2">
         Welcome back, {session!.user.name ?? session!.user.email}
       </p>
@@ -24,7 +24,7 @@ export default async function MemberDashboardLayout({
         <DashboardTabs />
       </div>
 
-      <div className="text-muted-foreground mt-4 flex flex-wrap items-center gap-3 font-mono text-[11px] tracking-wider">
+      <div className="text-muted-foreground mt-4 flex flex-wrap items-center gap-3 font-mono text-xs tracking-wider">
         <span>{t("quickLinks")}:</span>
         <Link href="/dashboard/onboarding" className="hover:text-foreground">
           {t("onboarding")}

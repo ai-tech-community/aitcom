@@ -57,7 +57,7 @@ export default async function CommunityJobsPage() {
                       {sponsor.name}
                     </span>
                   )}
-                  <div className="text-muted-foreground mt-1 flex gap-2 font-mono text-[10px] tracking-wider">
+                  <div className="text-muted-foreground mt-1 flex gap-2 font-mono text-xs tracking-wider">
                     <span>{job.location}</span>
                     <span className="border-border rounded border px-1.5 py-0.5">
                       {typeLabels[job.type] ?? job.type}

@@ -68,7 +68,7 @@ export default async function SponsorsPage() {
         </span>
       </div>
       <div className="mt-8 max-w-2xl space-y-4">
-        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           {t("heroTitle")}
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
@@ -134,7 +134,7 @@ export default async function SponsorsPage() {
         <div className="mt-6 space-y-3 sm:hidden">
           {benefits.map((row) => (
             <div key={row.key} className="border-border rounded-lg border p-3">
-              <p className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+              <p className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
                 {t(row.key)}
               </p>
               <div className="mt-2 grid grid-cols-3 gap-2">
@@ -145,7 +145,7 @@ export default async function SponsorsPage() {
                     : t(val as Parameters<typeof t>[0]);
                   return (
                     <div key={tier} className="text-center">
-                      <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+                      <span className="text-muted-foreground font-mono text-xs tracking-wider">
                         {t(
                           `tier${tier.charAt(0).toUpperCase() + tier.slice(1)}` as
                             | "tierGold"
@@ -180,10 +180,10 @@ export default async function SponsorsPage() {
         <div className="mt-8 grid gap-6 sm:grid-cols-3">
           {(["publish", "engage", "discover"] as const).map((step, i) => (
             <div key={step} className="border-border rounded-lg border p-6">
-              <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+              <span className="text-muted-foreground font-mono text-xs tracking-wider">
                 0{i + 1}
               </span>
-              <h3 className="mt-2 text-lg font-bold">
+              <h3 className="mt-2 text-lg font-semibold">
                 {t(`challengeSteps.${step}`)}
               </h3>
               <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
@@ -228,7 +228,7 @@ export default async function SponsorsPage() {
                     />
                   )}
                   <span className="text-sm font-medium">{sponsor.name}</span>
-                  <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider uppercase">
+                  <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider uppercase">
                     {sponsor.tier}
                   </span>
                 </a>

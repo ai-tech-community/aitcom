@@ -131,7 +131,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
                 <Calendar className="text-muted-foreground size-4 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{event.title}</p>
-                  <p className="text-muted-foreground text-[11px]">
+                  <p className="text-muted-foreground text-xs">
                     {formatDate(event.date)}
                     {event.startTime &&
                       ` · ${formatEventTimeRange({
@@ -145,7 +145,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
                 </div>
                 <Badge
                   variant="outline"
-                  className="shrink-0 text-[9px] uppercase"
+                  className="shrink-0 text-xs uppercase"
                 >
                   {typeLabels[event.type] ?? event.type}
                 </Badge>
@@ -178,11 +178,11 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
                 <MessageSquare className="text-muted-foreground size-4 shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{thread.title}</p>
-                  <p className="text-muted-foreground text-[11px]">
+                  <p className="text-muted-foreground text-xs">
                     {thread.authorName} ·{" "}
                     <RelativeTime
                       date={thread.lastActivityAt ?? thread.createdAt}
-                      className="text-[11px]"
+                      className="text-xs"
                     />
                     {(thread.replyCount ?? 0) > 0 &&
                       ` · ${t("replies", { count: thread.replyCount ?? 0 })}`}
@@ -190,7 +190,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
                 </div>
                 <Badge
                   variant="secondary"
-                  className="shrink-0 text-[9px] uppercase"
+                  className="shrink-0 text-xs uppercase"
                 >
                   {thread.category}
                 </Badge>
@@ -221,13 +221,13 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
               >
                 <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
                   <ChevronUp className="text-muted-foreground size-3" />
-                  <span className="font-mono text-[10px] font-bold">
+                  <span className="font-mono text-xs font-semibold">
                     {idea.voteCount ?? 0}
                   </span>
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{idea.title}</p>
-                  <p className="text-muted-foreground text-[11px]">
+                  <p className="text-muted-foreground text-xs">
                     {idea.authorName}
                   </p>
                 </div>
@@ -235,7 +235,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
                   variant={
                     idea.status === "implemented" ? "default" : "secondary"
                   }
-                  className="shrink-0 text-[9px] uppercase"
+                  className="shrink-0 text-xs uppercase"
                 >
                   {idea.status}
                 </Badge>
@@ -265,7 +265,7 @@ function SectionHeader({
       {show && linkHref && linkLabel ? (
         <Link
           href={linkHref as never}
-          className="text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-wider transition-colors"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
         >
           {linkLabel}
         </Link>
@@ -277,8 +277,8 @@ function SectionHeader({
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <div className="border-border rounded-lg border px-2 py-3">
-      <div className="text-lg font-bold">{value}</div>
-      <div className="text-muted-foreground text-[10px] tracking-wider uppercase">
+      <div className="text-lg font-semibold">{value}</div>
+      <div className="text-muted-foreground text-xs tracking-wider uppercase">
         {label}
       </div>
     </div>

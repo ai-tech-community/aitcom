@@ -96,7 +96,7 @@ export function ThreadsModal({
           <button
             key={tab.key}
             onClick={() => setCategory(tab.key)}
-            className={`rounded px-2.5 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
+            className={`rounded px-2.5 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors ${
               category === tab.key
                 ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -137,31 +137,31 @@ export function ThreadsModal({
               <div className="flex items-start justify-between gap-2">
                 <p className="text-sm leading-snug font-medium text-foreground">
                   {thread.isPinned && (
-                    <span className="mr-1 font-mono text-[9px] text-orange-600">
+                    <span className="mr-1 font-mono text-xs text-orange-600">
                       PIN
                     </span>
                   )}
                   {thread.title}
                 </p>
                 <span
-                  className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${categoryStyles[thread.category]}`}
+                  className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase ${categoryStyles[thread.category]}`}
                 >
                   {t(thread.category)}
                 </span>
               </div>
               <div className="mt-1.5 flex items-center gap-3">
-                <span className="flex items-center gap-1 font-mono text-[9px] text-muted-foreground">
+                <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
                   <MessageSquare className="h-2.5 w-2.5" />
                   {t("replies", { count: thread.replyCount ?? 0 })}
                 </span>
                 {thread.lastActivityAt && (
                   <RelativeTime
                     date={thread.lastActivityAt}
-                    className="text-[9px] text-muted-foreground"
+                    className="text-xs text-muted-foreground"
                   />
                 )}
                 {thread.authorName && (
-                  <span className="font-mono text-[9px] text-muted-foreground">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {thread.authorName}
                   </span>
                 )}
@@ -174,13 +174,13 @@ export function ThreadsModal({
       {/* New thread section */}
       <div className="mt-4 border-t border-border pt-4">
         {!session?.user ? (
-          <p className="font-mono text-[10px] text-muted-foreground">
+          <p className="font-mono text-xs text-muted-foreground">
             {t("loginToPost")}
           </p>
         ) : !showForm ? (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:text-foreground"
+            className="flex items-center gap-1.5 font-mono text-xs font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:text-foreground"
           >
             <Plus className="h-3 w-3" />
             {t("newThread")}
@@ -194,7 +194,7 @@ export function ThreadsModal({
             className="space-y-3"
           >
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+              <label className="mb-1 block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 {t("titleLabel")}
               </label>
               <input
@@ -207,7 +207,7 @@ export function ThreadsModal({
               />
             </div>
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+              <label className="mb-1 block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 {t("categoryLabel")}
               </label>
               <select
@@ -227,7 +227,7 @@ export function ThreadsModal({
               </select>
             </div>
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+              <label className="mb-1 block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 {t("contentLabel")}
               </label>
               <textarea
@@ -244,14 +244,14 @@ export function ThreadsModal({
               <button
                 type="submit"
                 disabled={createMutation.isPending}
-                className="rounded-md bg-foreground px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
+                className="rounded-md bg-foreground px-4 py-1.5 font-mono text-xs font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
               >
                 {createMutation.isPending ? "Posting..." : "Post"}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded-md border border-border px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:bg-muted"
+                className="rounded-md border border-border px-4 py-1.5 font-mono text-xs font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:bg-muted"
               >
                 Cancel
               </button>

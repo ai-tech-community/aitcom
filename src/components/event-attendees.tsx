@@ -37,7 +37,7 @@ export function EventAttendees({
     <div className="space-y-6">
       {showCapacity && (
         <div className="space-y-2">
-          <div className="flex items-center justify-between font-mono text-[11px] tracking-wider">
+          <div className="flex items-center justify-between font-mono text-xs tracking-wider">
             <span className="text-muted-foreground">
               {count} / {maxAttendees} {countLabel}
             </span>
@@ -55,7 +55,7 @@ export function EventAttendees({
       )}
 
       {isExternal && count > 0 && (
-        <div className="font-mono text-[11px] tracking-wider">
+        <div className="font-mono text-xs tracking-wider">
           <span className="text-muted-foreground">
             {count} {count === 1 ? "MEMBER" : "MEMBERS"} {countLabel}
           </span>
@@ -83,18 +83,18 @@ export function EventAttendees({
                       className="object-cover"
                     />
                   ) : null}
-                  <AvatarFallback className="bg-secondary font-mono text-[8px]">
+                  <AvatarFallback className="bg-secondary font-mono text-xs">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-muted-foreground group-hover:text-foreground font-mono text-[10px] tracking-wider">
+                <span className="text-muted-foreground group-hover:text-foreground font-mono text-xs tracking-wider">
                   {attendee.displayName}
                 </span>
               </Link>
             );
           })}
           {count > attendees.length && (
-            <span className="text-muted-foreground flex items-center px-2 font-mono text-[10px] tracking-wider">
+            <span className="text-muted-foreground flex items-center px-2 font-mono text-xs tracking-wider">
               +{count - attendees.length} more
             </span>
           )}

@@ -61,7 +61,7 @@ function VerificationSection({
   if (isVerified) {
     return (
       <div className="border-info/30 bg-info/10 flex items-center gap-2 rounded border px-3 py-2">
-        <span className="text-info inline-flex items-center gap-1 font-mono text-[11px] tracking-wider">
+        <span className="text-info inline-flex items-center gap-1 font-mono text-xs tracking-wider">
           <svg
             viewBox="0 0 16 16"
             fill="currentColor"
@@ -77,7 +77,7 @@ function VerificationSection({
           VERIFIED
         </span>
         {xHandle && (
-          <span className="text-muted-foreground font-mono text-[10px]">
+          <span className="text-muted-foreground font-mono text-xs">
             @{xHandle}
           </span>
         )}
@@ -88,7 +88,7 @@ function VerificationSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <SectionLabel bordered={false} marker={false} className="text-[11px]">
+        <SectionLabel bordered={false} marker={false} className="text-xs">
           VERIFICATION
         </SectionLabel>
       </div>
@@ -101,7 +101,7 @@ function VerificationSection({
           <Button
             variant="outline"
             size="sm"
-            className="font-mono text-[10px] tracking-wider"
+            className="font-mono text-xs tracking-wider"
             onClick={() => startVerification.mutate()}
             disabled={startVerification.isPending}
           >
@@ -124,7 +124,7 @@ function VerificationSection({
           <Button
             variant="outline"
             size="sm"
-            className="font-mono text-[10px] tracking-wider"
+            className="font-mono text-xs tracking-wider"
             asChild
           >
             <a
@@ -147,7 +147,7 @@ function VerificationSection({
             />
             <Button
               size="sm"
-              className="font-mono text-[10px] tracking-wider"
+              className="font-mono text-xs tracking-wider"
               onClick={() => submitVerification.mutate({ tweetUrl })}
               disabled={submitVerification.isPending || !tweetUrl.trim()}
             >
@@ -231,7 +231,7 @@ function ClaimHistorySection() {
         as="h3"
         bordered={false}
         marker={false}
-        className="text-[11px]"
+        className="text-xs"
       >
         HISTORY
       </SectionLabel>
@@ -255,7 +255,7 @@ function ClaimHistorySection() {
               </span>
               <RelativeTime
                 date={new Date(event.createdAt)}
-                className="text-muted-foreground/50 text-[9px] tracking-wider"
+                className="text-muted-foreground/50 text-xs tracking-wider"
               />
             </div>
           );
@@ -294,7 +294,7 @@ function AgentActivitySection() {
         as="h3"
         bordered={false}
         marker={false}
-        className="text-[11px]"
+        className="text-xs"
       >
         AGENT ACTIVITY
       </SectionLabel>
@@ -310,7 +310,7 @@ function AgentActivitySection() {
               <span className="text-muted-foreground text-xs">{label}</span>
               <RelativeTime
                 date={new Date(event.createdAt)}
-                className="text-muted-foreground/50 text-[9px] tracking-wider"
+                className="text-muted-foreground/50 text-xs tracking-wider"
               />
             </div>
           );
@@ -320,7 +320,7 @@ function AgentActivitySection() {
         <button
           type="button"
           onClick={() => setCursor(data.nextCursor!)}
-          className="text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-wider"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
           disabled={isLoading}
         >
           {isLoading ? "..." : "LOAD MORE"}
@@ -588,21 +588,21 @@ function N8nPanel({
     <div className="space-y-4">
       {/* Step 1: Install community node */}
       <div className="space-y-2">
-        <p className="text-foreground font-mono text-[11px] font-medium tracking-wider">
+        <p className="text-foreground font-mono text-xs font-medium tracking-wider">
           {t("n8nStep1")}
         </p>
         <p className="text-muted-foreground text-sm">
           {t("n8nInstallNodeDesc")}
         </p>
         <CodeBlock code="n8n-nodes-ait-community" />
-        <p className="text-muted-foreground text-[11px]">
+        <p className="text-muted-foreground text-xs">
           {t("n8nInstallNodeHint")}
         </p>
       </div>
 
       {/* Step 2: Download & import workflow */}
       <div className="space-y-2">
-        <p className="text-foreground font-mono text-[11px] font-medium tracking-wider">
+        <p className="text-foreground font-mono text-xs font-medium tracking-wider">
           {t("n8nStep2")}
         </p>
         <p className="text-muted-foreground text-sm">{t("n8nDownloadDesc")}</p>
@@ -644,7 +644,7 @@ function N8nPanel({
                     : "bg-success"
               }`}
             />
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               WEBHOOK {webhook.isEnabled ? "REGISTERED" : "DISABLED"}
             </span>
           </div>
@@ -653,7 +653,7 @@ function N8nPanel({
           </code>
         </div>
       ) : (
-        <p className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <p className="text-muted-foreground font-mono text-xs tracking-wider">
           Webhook registers automatically when you activate the n8n workflow.
         </p>
       )}
@@ -661,7 +661,7 @@ function N8nPanel({
       <button
         type="button"
         onClick={() => setShowManual(!showManual)}
-        className="text-muted-foreground hover:text-foreground font-mono text-[11px] tracking-wider"
+        className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
       >
         {showManual ? "\u25BE" : "\u25B8"} {t("manualSetup")}
       </button>
@@ -772,7 +772,7 @@ function WebhookPanel() {
 
       {/* URL */}
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           WEBHOOK URL
         </label>
         <Input
@@ -785,7 +785,7 @@ function WebhookPanel() {
 
       {/* Categories */}
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           EVENT SUBSCRIPTIONS
         </label>
         <div className="mt-2 grid grid-cols-2 gap-2">
@@ -909,13 +909,13 @@ function InviteCodeSection() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <SectionLabel bordered={false} marker={false} className="text-[11px]">
+        <SectionLabel bordered={false} marker={false} className="text-xs">
           INVITE CODES
         </SectionLabel>
         <Button
           variant="outline"
           size="sm"
-          className="font-mono text-[10px] tracking-wider"
+          className="font-mono text-xs tracking-wider"
           onClick={() => generateCode.mutate()}
           disabled={generateCode.isPending}
         >
@@ -942,7 +942,7 @@ function InviteCodeSection() {
                         ? "info"
                         : "secondary"
                   }
-                  className="font-mono text-[9px] tracking-wider"
+                  className="font-mono text-xs tracking-wider"
                 >
                   {code.status.toUpperCase()}
                 </Badge>
@@ -953,7 +953,7 @@ function InviteCodeSection() {
         </div>
       )}
 
-      <p className="text-muted-foreground/60 text-[10px]">
+      <p className="text-muted-foreground/60 text-xs">
         Invite codes expire after 24 hours. Give the code to your AI agent for
         instant activation.
       </p>
@@ -988,7 +988,7 @@ function UnclaimedAgentsSection() {
         as="h3"
         bordered={false}
         marker={false}
-        className="text-[11px]"
+        className="text-xs"
       >
         UNCLAIMED AGENTS
       </SectionLabel>
@@ -1003,7 +1003,7 @@ function UnclaimedAgentsSection() {
           >
             <div className="flex items-center gap-2">
               <Avatar>
-                <AvatarFallback className="bg-primary/10 text-primary font-mono text-[10px] font-medium tracking-wider">
+                <AvatarFallback className="bg-primary/10 text-primary font-mono text-xs font-medium tracking-wider">
                   {getInitials(agent.name)}
                 </AvatarFallback>
               </Avatar>
@@ -1020,12 +1020,12 @@ function UnclaimedAgentsSection() {
               </p>
             )}
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground/50 font-mono text-[9px] tracking-wider">
+              <span className="text-muted-foreground/50 font-mono text-xs tracking-wider">
                 EXPIRES{" "}
                 {agent.claimTokenExpiresAt ? (
                   <RelativeTime
                     date={new Date(agent.claimTokenExpiresAt)}
-                    className="text-[9px] tracking-wider"
+                    className="text-xs tracking-wider"
                   />
                 ) : (
                   "\u2014"
@@ -1035,7 +1035,7 @@ function UnclaimedAgentsSection() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="font-mono text-[10px] tracking-wider"
+                  className="font-mono text-xs tracking-wider"
                   onClick={() =>
                     setConfirmAgent({ id: agent.id, name: agent.name })
                   }
@@ -1058,7 +1058,7 @@ function UnclaimedAgentsSection() {
           <div className="flex items-center gap-2">
             <Button
               size="sm"
-              className="font-mono text-[10px] tracking-wider"
+              className="font-mono text-xs tracking-wider"
               onClick={() => handleClaim(confirmAgent.id)}
               disabled={claimMutation.isPending}
             >
@@ -1067,7 +1067,7 @@ function UnclaimedAgentsSection() {
             <Button
               variant="outline"
               size="sm"
-              className="font-mono text-[10px] tracking-wider"
+              className="font-mono text-xs tracking-wider"
               onClick={() => setConfirmAgent(null)}
               disabled={claimMutation.isPending}
             >
@@ -1078,7 +1078,7 @@ function UnclaimedAgentsSection() {
       )}
 
       {data.userAlreadyOwnsAgent && (
-        <p className="text-muted-foreground/50 font-mono text-[10px] tracking-wider">
+        <p className="text-muted-foreground/50 font-mono text-xs tracking-wider">
           You already own an agent. Each user can own one agent.
         </p>
       )}
@@ -1111,7 +1111,7 @@ function OpenClawPanel({ apiKey }: { apiKey: string }) {
       <InviteCodeSection />
 
       <details className="group">
-        <summary className="text-muted-foreground hover:text-foreground cursor-pointer font-mono text-[11px] tracking-wider">
+        <summary className="text-muted-foreground hover:text-foreground cursor-pointer font-mono text-xs tracking-wider">
           MANUAL SETUP (ADVANCED)
         </summary>
         <div className="mt-3 space-y-3">
@@ -1135,7 +1135,7 @@ function CustomPanel({ apiKey }: { apiKey: string }) {
     <div className="space-y-3">
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+          <span className="text-muted-foreground font-mono text-xs tracking-wider">
             {t("endpoint")}
           </span>
           <CopyButton text="https://www.aitcommunity.org/api/mcp" />
@@ -1146,14 +1146,14 @@ function CustomPanel({ apiKey }: { apiKey: string }) {
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+          <span className="text-muted-foreground font-mono text-xs tracking-wider">
             API KEY
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setShowKey(!showKey)}
-              className="text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-wider"
+              className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
             >
               {showKey ? t("hideKey") : t("showKey")}
             </button>
@@ -1164,7 +1164,7 @@ function CustomPanel({ apiKey }: { apiKey: string }) {
           {showKey ? apiKey : `${apiKey.slice(0, 16)}${"•".repeat(20)}`}
         </code>
       </div>
-      <span className="text-muted-foreground block font-mono text-[11px] tracking-wider">
+      <span className="text-muted-foreground block font-mono text-xs tracking-wider">
         {t("protocol")}
       </span>
     </div>
@@ -1247,7 +1247,7 @@ function AgentCustomizeSection({
   return (
     <div className="border-border mt-3 space-y-4 rounded border p-4">
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           AGENT NAME
         </label>
         <Input
@@ -1258,7 +1258,7 @@ function AgentCustomizeSection({
         />
       </div>
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           BIO
         </label>
         <textarea
@@ -1270,7 +1270,7 @@ function AgentCustomizeSection({
         />
       </div>
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           VISIBILITY MODE
         </label>
         <SegmentedControl
@@ -1324,7 +1324,7 @@ function CopyButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="border-border bg-background text-muted-foreground hover:text-foreground rounded border px-2 py-1 font-mono text-[10px] tracking-wider transition-colors"
+      className="border-border bg-background text-muted-foreground hover:text-foreground rounded border px-2 py-1 font-mono text-xs tracking-wider transition-colors"
     >
       {copied ? "COPIED" : "COPY"}
     </button>

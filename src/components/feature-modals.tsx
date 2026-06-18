@@ -51,7 +51,7 @@ export function FeatureModals() {
             className="group border-border hover:border-foreground/30 overflow-hidden rounded-lg border border-dashed text-left transition-colors"
           >
             <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-muted-foreground font-mono text-[10px] font-medium tracking-wider">
+              <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
                 [ FIG. {feat.fig} ]
               </span>
               <ArrowUpRight className="text-muted-foreground group-hover:text-foreground h-3.5 w-3.5 transition-colors" />
@@ -62,7 +62,7 @@ export function FeatureModals() {
               {feat.fig === 3 && <AsciiConnectScene />}
             </div>
             <div className="space-y-2 p-4 pb-5">
-              <h3 className="text-lg font-bold">{t(`${feat.key}.title`)}</h3>
+              <h3 className="text-lg font-semibold">{t(`${feat.key}.title`)}</h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {t(`${feat.key}.description`)}
               </p>
@@ -124,7 +124,7 @@ function FeatureModal({
             key={item.label}
             className="border-border bg-muted/50 rounded-lg border p-3"
           >
-            <span className="text-muted-foreground font-mono text-[10px] font-semibold tracking-widest uppercase">
+            <span className="text-muted-foreground font-mono text-xs font-semibold tracking-widest uppercase">
               {item.label}
             </span>
             <p className="text-foreground mt-1 text-sm leading-relaxed">
@@ -137,7 +137,7 @@ function FeatureModal({
       <div className="border-border mt-6 border-t pt-4">
         <Button
           asChild
-          className="font-mono text-[11px] font-semibold tracking-widest uppercase"
+          className="font-mono text-xs font-semibold tracking-widest uppercase"
         >
           <Link href={href} onClick={onClose}>
             {cta}

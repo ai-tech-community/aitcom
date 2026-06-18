@@ -68,7 +68,7 @@ export function ChallengeList() {
       {/* Hero */}
       <SectionLabel>{t("title")}</SectionLabel>
       <div className="mt-8 max-w-2xl space-y-4">
-        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           {tLanding("headline")}
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
@@ -113,7 +113,7 @@ export function ChallengeList() {
 
       {/* Filters */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+        <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
           Difficulty:
         </span>
         {DIFFICULTIES.map((d) => (
@@ -127,7 +127,7 @@ export function ChallengeList() {
         ))}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+        <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
           Type:
         </span>
         {TYPES.map((tp) => (

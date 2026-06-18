@@ -83,7 +83,7 @@ export function OnboardingQuestions({
       {/* Step 0: Intent */}
       {step === 0 && (
         <div>
-          <h2 className="text-xl font-bold tracking-tight">{t("q1Title")}</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{t("q1Title")}</h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {t("q1Subtitle")}
           </p>
@@ -116,7 +116,7 @@ export function OnboardingQuestions({
       {/* Step 1: Interests */}
       {step === 1 && (
         <div>
-          <h2 className="text-xl font-bold tracking-tight">{t("q2Title")}</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{t("q2Title")}</h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {t("q2Subtitle")}
           </p>
@@ -148,7 +148,7 @@ export function OnboardingQuestions({
       {/* Step 2: Experience */}
       {step === 2 && (
         <div>
-          <h2 className="text-xl font-bold tracking-tight">{t("q3Title")}</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{t("q3Title")}</h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {t("q3Subtitle")}
           </p>

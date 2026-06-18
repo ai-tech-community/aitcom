@@ -96,7 +96,7 @@ function renderPercentage(value: unknown) {
   const clamped = Math.min(100, Math.max(0, value));
   return (
     <div className="mt-2">
-      <p className="text-2xl font-bold text-zinc-900">{formatValue(value)}%</p>
+      <p className="text-2xl font-semibold text-zinc-900">{formatValue(value)}%</p>
       <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
         <div
           className="h-full rounded-full bg-zinc-900"
@@ -110,7 +110,7 @@ function renderPercentage(value: unknown) {
 function renderNumber(value: unknown, suffix?: string) {
   return (
     <p className="mt-2 flex items-baseline gap-1.5">
-      <span className="text-2xl font-bold text-zinc-900">
+      <span className="text-2xl font-semibold text-zinc-900">
         {formatValue(value)}
       </span>
       {suffix ? <span className="text-sm text-zinc-500">{suffix}</span> : null}
@@ -132,7 +132,7 @@ function renderDuration(value: unknown, suffix?: string) {
 
   return (
     <p className="mt-2 flex items-baseline gap-1.5">
-      <span className="text-2xl font-bold text-zinc-900">{display}</span>
+      <span className="text-2xl font-semibold text-zinc-900">{display}</span>
       {suffix && display !== "-" ? (
         <span className="text-sm text-zinc-500">{suffix}</span>
       ) : null}
@@ -226,7 +226,7 @@ function renderMetricValue(item: ExperimentalItem) {
       return renderTrend(item.value, item.data);
     default:
       return (
-        <p className="mt-2 text-2xl font-bold text-zinc-900">
+        <p className="mt-2 text-2xl font-semibold text-zinc-900">
           {formatValue(item.value)}
           {item.suffix ? ` ${item.suffix}` : ""}
         </p>
@@ -247,7 +247,7 @@ export function ExperimentalInsights({
     <section className="space-y-3">
       <div className="flex items-center gap-2">
         <h3 className="font-semibold text-zinc-900">{title}</h3>
-        <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2 py-0.5 font-mono text-[9px] tracking-widest text-zinc-600 uppercase">
+        <span className="rounded-full border border-zinc-300 bg-zinc-100 px-2 py-0.5 font-mono text-xs tracking-widest text-zinc-600 uppercase">
           {badge}
         </span>
       </div>
@@ -260,7 +260,7 @@ export function ExperimentalInsights({
                 key={item.key}
                 className="rounded-lg border border-zinc-200 bg-white/80 p-4"
               >
-                <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+                <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
                   {item.key}
                 </p>
                 {renderMetricValue(item)}
@@ -272,7 +272,7 @@ export function ExperimentalInsights({
               key={item.key}
               className="rounded-lg border border-zinc-200 bg-white/80 p-4"
             >
-              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+              <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
                 {detail.title}
               </p>
               <p className="mt-1 text-xs text-zinc-500">{detail.definition}</p>
@@ -280,7 +280,7 @@ export function ExperimentalInsights({
               <Dialog>
                 <DialogTrigger asChild>
                   <button
-                    className="mt-3 font-mono text-[10px] tracking-widest text-zinc-600 uppercase underline underline-offset-2"
+                    className="mt-3 font-mono text-xs tracking-widest text-zinc-600 uppercase underline underline-offset-2"
                     type="button"
                   >
                     {openDetails}

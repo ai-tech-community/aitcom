@@ -151,7 +151,7 @@ export function HubIdeas({
             rows={3}
           />
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground font-mono text-[10px] tracking-widest uppercase">
+            <span className="text-muted-foreground font-mono text-xs tracking-widest uppercase">
               {t("categoryLabel")}
             </span>
             {IDEA_CATEGORIES.map((c) => (
@@ -160,7 +160,7 @@ export function HubIdeas({
                 type="button"
                 onClick={() => setFormCategory(c)}
                 aria-pressed={formCategory === c}
-                className={`rounded px-2 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
+                className={`rounded px-2 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors ${
                   formCategory === c
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground"
@@ -192,7 +192,7 @@ export function HubIdeas({
             key={s}
             onClick={() => setSort(s)}
             aria-pressed={sort === s}
-            className={`rounded px-3 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
+            className={`rounded px-3 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors ${
               sort === s
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground"
@@ -207,7 +207,7 @@ export function HubIdeas({
             key={c}
             onClick={() => setCategoryFilter(c)}
             aria-pressed={categoryFilter === c}
-            className={`rounded px-3 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
+            className={`rounded px-3 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors ${
               categoryFilter === c
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground"
@@ -242,7 +242,7 @@ export function HubIdeas({
                     t("signInToVote"),
                   )
                 }
-                className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-[10px] font-bold transition-colors ${
+                className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-xs font-semibold transition-colors ${
                   idea.hasVoted
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground"
@@ -255,13 +255,13 @@ export function HubIdeas({
               <div className="min-w-0 flex-1">
                 <p className="text-sm leading-snug font-medium">{idea.title}</p>
                 {idea.description && (
-                  <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-relaxed">
+                  <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed">
                     {idea.description}
                   </p>
                 )}
                 <div className="mt-1 flex items-center gap-2">
                   <span
-                    className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${statusStyles[idea.status]}`}
+                    className={`rounded border px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase ${statusStyles[idea.status]}`}
                   >
                     {idea.status === "open"
                       ? t("statusOpen")
@@ -269,11 +269,11 @@ export function HubIdeas({
                         ? t("statusImplemented")
                         : t("statusRejected")}
                   </span>
-                  <span className="text-muted-foreground rounded border border-zinc-200 px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase">
+                  <span className="text-muted-foreground rounded border border-zinc-200 px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase">
                     {categoryLabel(idea.category)}
                   </span>
                   {idea.authorName && (
-                    <span className="text-muted-foreground text-[10px]">
+                    <span className="text-muted-foreground text-xs">
                       {idea.authorName}
                     </span>
                   )}

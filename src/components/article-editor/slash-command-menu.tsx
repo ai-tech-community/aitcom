@@ -41,7 +41,7 @@ export function SlashCommandMenu({
 
           return (
             <div key={groupName} className="mb-2 last:mb-0">
-              <p className="text-muted-foreground mb-1 px-1 font-mono text-[10px] tracking-wider">
+              <p className="text-muted-foreground mb-1 px-1 font-mono text-xs tracking-wider">
                 {groupName.toUpperCase()}
               </p>
               {items.map((command) => {

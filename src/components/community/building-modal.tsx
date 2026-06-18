@@ -183,7 +183,7 @@ export function BuildingModal({
               <div className="flex items-center gap-2">
                 <Terminal className="text-muted-foreground h-3.5 w-3.5" />
               </div>
-              <span className="text-muted-foreground pointer-events-none font-mono text-[11px] font-medium tracking-wider">
+              <span className="text-muted-foreground pointer-events-none font-mono text-xs font-medium tracking-wider">
                 {title.toUpperCase()}
               </span>
               <div className="flex items-center gap-0.5">
@@ -235,10 +235,10 @@ export function BuildingModal({
                 {/* Title block */}
                 {subtitle && (
                   <div className="mb-3 shrink-0 sm:mb-4">
-                    <h2 className="text-foreground text-lg font-extrabold tracking-tight sm:text-2xl">
+                    <h2 className="text-foreground text-lg font-semibold tracking-tight sm:text-2xl">
                       {title}
                     </h2>
-                    <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed sm:mt-1 sm:text-[15px]">
+                    <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed sm:mt-1 sm:text-base">
                       {subtitle}
                     </p>
                   </div>

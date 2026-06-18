@@ -206,7 +206,7 @@ export function Navbar() {
                         alt={user.name ?? "Account"}
                       />
                     ) : null}
-                    <AvatarFallback className="font-mono text-[10px]">
+                    <AvatarFallback className="font-mono text-xs">
                       {initialsFrom(user.name, user.email)}
                     </AvatarFallback>
                   </Avatar>

@@ -36,7 +36,7 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
 
   if (isLocked) {
     return (
-      <p className="mt-6 rounded-lg border border-border bg-muted px-4 py-3 font-mono text-[10px] text-muted-foreground">
+      <p className="mt-6 rounded-lg border border-border bg-muted px-4 py-3 font-mono text-xs text-muted-foreground">
         {t("threadLocked")}
       </p>
     );
@@ -44,7 +44,7 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
 
   if (!session?.user) {
     return (
-      <p className="mt-6 font-mono text-[10px] text-muted-foreground">
+      <p className="mt-6 font-mono text-xs text-muted-foreground">
         {t("loginToReply")}
       </p>
     );
@@ -58,7 +58,7 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
       }}
       className="mt-6 space-y-3"
     >
-      <label className="block font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+      <label className="block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
         {t("replyLabel")}
       </label>
       <textarea
@@ -74,7 +74,7 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
         <button
           type="submit"
           disabled={replyMutation.isPending}
-          className="rounded-md bg-foreground px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
+          className="rounded-md bg-foreground px-4 py-1.5 font-mono text-xs font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
         >
           {replyMutation.isPending ? t("replying") : t("reply")}
         </button>

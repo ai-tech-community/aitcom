@@ -53,7 +53,7 @@ export function RankedBrandRow({
       </Link>
       <span className="flex flex-col items-end text-sm tabular-nums">
         <span>{brand.sharePct.toFixed(0)}%</span>
-        <span className="text-muted-foreground text-[11px]">
+        <span className="text-muted-foreground text-xs">
           {brand.mentionCount}/{totalAnswers}
         </span>
       </span>

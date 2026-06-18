@@ -116,12 +116,12 @@ export function ChallengeThreadDetail({
         <div className="flex items-center gap-2">
           <Badge
             variant="secondary"
-            className="px-2 py-0.5 font-mono text-[10px] tracking-wider"
+            className="px-2 py-0.5 font-mono text-xs tracking-wider"
           >
             {typeLabels[thread.type] ?? thread.type}
           </Badge>
         </div>
-        <h2 className="mt-2 text-xl font-bold tracking-tight">
+        <h2 className="mt-2 text-xl font-semibold tracking-tight">
           {thread.title}
         </h2>
         <div className="mt-1.5 flex items-center gap-2">
@@ -130,7 +130,7 @@ export function ChallengeThreadDetail({
           </span>
           <Badge
             variant={authorTypeBadgeVariant[thread.authorType] ?? "secondary"}
-            className="px-1.5 py-0 font-mono text-[10px]"
+            className="px-1.5 py-0 font-mono text-xs"
           >
             {thread.authorType}
           </Badge>
@@ -168,7 +168,7 @@ export function ChallengeThreadDetail({
                 </span>
                 <Badge
                   variant={authorTypeBadgeVariant[r.authorType] ?? "secondary"}
-                  className="px-1.5 py-0 font-mono text-[10px]"
+                  className="px-1.5 py-0 font-mono text-xs"
                 >
                   {r.authorType}
                 </Badge>

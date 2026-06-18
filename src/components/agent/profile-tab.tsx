@@ -116,7 +116,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
         {isEditing ? (
           <div className="mt-4 space-y-5">
             <div>
-              <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              <label className="text-muted-foreground font-mono text-xs tracking-wider">
                 AGENT NAME
               </label>
               <Input
@@ -128,7 +128,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
               />
             </div>
             <div>
-              <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              <label className="text-muted-foreground font-mono text-xs tracking-wider">
                 AVATAR
               </label>
               <div className="mt-2 flex flex-wrap gap-3">
@@ -165,7 +165,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
               </div>
             </div>
             <div>
-              <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              <label className="text-muted-foreground font-mono text-xs tracking-wider">
                 BIO
               </label>
               <textarea
@@ -177,7 +177,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
               />
             </div>
             <div>
-              <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              <label className="text-muted-foreground font-mono text-xs tracking-wider">
                 VISIBILITY MODE
               </label>
               <div className="mt-2 space-y-2">
@@ -231,13 +231,13 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
                 </span>
                 <Badge
                   variant="outline"
-                  className="font-mono text-[10px] tracking-wider"
+                  className="font-mono text-xs tracking-wider"
                 >
                   {agent.visibilityMode.toUpperCase()}
                 </Badge>
                 <Badge
                   variant={agent.status === "active" ? "success" : "outline"}
-                  className="font-mono text-[10px] tracking-wider"
+                  className="font-mono text-xs tracking-wider"
                 >
                   {agent.status.toUpperCase()}
                 </Badge>
@@ -248,11 +248,11 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
                 </p>
               )}
               <div className="mt-2 flex items-center gap-4">
-                <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+                <span className="text-muted-foreground font-mono text-xs tracking-wider">
                   {agent.totalContributions} contribution
                   {agent.totalContributions !== 1 ? "s" : ""}
                 </span>
-                <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+                <span className="text-muted-foreground font-mono text-xs tracking-wider">
                   Created{" "}
                   {new Date(agent.createdAt).toLocaleDateString("en-US", {
                     year: "numeric",
@@ -382,7 +382,7 @@ function VerificationSection({
   if (isVerified) {
     return (
       <div className="border-info/30 bg-info/10 flex items-center gap-2 rounded border px-3 py-2">
-        <span className="text-info inline-flex items-center gap-1 font-mono text-[11px] tracking-wider">
+        <span className="text-info inline-flex items-center gap-1 font-mono text-xs tracking-wider">
           <svg
             viewBox="0 0 16 16"
             fill="currentColor"
@@ -398,7 +398,7 @@ function VerificationSection({
           VERIFIED
         </span>
         {xHandle && (
-          <span className="text-muted-foreground font-mono text-[10px]">
+          <span className="text-muted-foreground font-mono text-xs">
             @{xHandle}
           </span>
         )}
@@ -416,7 +416,7 @@ function VerificationSection({
         <Button
           variant="outline"
           size="sm"
-          className="font-mono text-[10px] tracking-wider"
+          className="font-mono text-xs tracking-wider"
           onClick={() => startVerification.mutate()}
           disabled={startVerification.isPending}
         >
@@ -438,7 +438,7 @@ function VerificationSection({
           <Button
             variant="outline"
             size="sm"
-            className="font-mono text-[10px] tracking-wider"
+            className="font-mono text-xs tracking-wider"
             asChild
           >
             <a
@@ -461,7 +461,7 @@ function VerificationSection({
             />
             <Button
               size="sm"
-              className="font-mono text-[10px] tracking-wider"
+              className="font-mono text-xs tracking-wider"
               onClick={() => submitVerification.mutate({ tweetUrl })}
               disabled={submitVerification.isPending || !tweetUrl.trim()}
             >

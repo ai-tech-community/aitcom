@@ -84,7 +84,7 @@ export function ProjectGallery({
         aria-label={t("gallerySortBy")}
         className="flex flex-wrap items-center gap-2"
       >
-        <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+        <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
           {t("gallerySortBy")}
         </span>
         {gallerySortKeys(finalized).map((key) => (
@@ -114,7 +114,7 @@ export function ProjectGallery({
               className="border-border bg-card rounded-lg border p-5"
             >
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-bold">{project.name}</h2>
+                <h2 className="text-lg font-semibold">{project.name}</h2>
                 <div className="flex items-center gap-2">
                   {isPeoplesChoice ? (
                     <Badge variant="secondary">{t("peoplesChoice")}</Badge>
@@ -128,7 +128,7 @@ export function ProjectGallery({
                   )}
                 </div>
               </div>
-              <div className="text-muted-foreground mt-1 font-mono text-[11px] tracking-wider">
+              <div className="text-muted-foreground mt-1 font-mono text-xs tracking-wider">
                 {format.dateTime(new Date(project.submittedAt), {
                   dateStyle: "medium",
                 })}
@@ -159,7 +159,7 @@ export function ProjectGallery({
               {/* People's Choice (#169): community vote, never a score input. */}
               {voteState ? (
                 <div className="border-border mt-4 flex items-center justify-between gap-2 border-t pt-3">
-                  <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+                  <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
                     {t("voteCount", { count: votes })}
                   </span>
                   {voteState.votingOpen && viewerAuthenticated ? (

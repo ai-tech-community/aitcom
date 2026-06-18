@@ -72,7 +72,7 @@ export function InboxConversationItem({
           {isLastMessageAtValid && parsedLastMessageAt && (
             <RelativeTime
               date={parsedLastMessageAt}
-              className="text-muted-foreground ml-2 shrink-0 text-[10px]"
+              className="text-muted-foreground ml-2 shrink-0 text-xs"
             />
           )}
         </div>

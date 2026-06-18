@@ -19,7 +19,7 @@ export default function OnboardingPage() {
   return (
     <div className="py-8">
       <div className="mb-8 text-center">
-        <h1 className="text-2xl font-bold tracking-tight">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {t("welcomeTitle")}
         </h1>
         <p className="text-muted-foreground mt-2 text-sm">

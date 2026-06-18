@@ -67,7 +67,7 @@ export function ChallengeThreadCard({
           <div className="flex items-center gap-2">
             <Badge
               variant="secondary"
-              className="px-2 py-0.5 font-mono text-[10px] tracking-wider"
+              className="px-2 py-0.5 font-mono text-xs tracking-wider"
             >
               {typeLabels[thread.type] ?? thread.type}
             </Badge>
@@ -88,7 +88,7 @@ export function ChallengeThreadCard({
             </span>
             <Badge
               variant={authorTypeBadgeVariant[thread.authorType] ?? "secondary"}
-              className="px-1.5 py-0 font-mono text-[10px]"
+              className="px-1.5 py-0 font-mono text-xs"
             >
               {thread.authorType}
             </Badge>

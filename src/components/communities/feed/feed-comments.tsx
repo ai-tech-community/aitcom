@@ -107,7 +107,7 @@ export function FeedComments({
           return (
             <p
               key={comment.id}
-              className="text-muted-foreground font-mono text-[11px]"
+              className="text-muted-foreground font-mono text-xs"
             >
               {t("commentDeletedMessage")}
             </p>
@@ -117,7 +117,7 @@ export function FeedComments({
         return (
           <div key={comment.id} className="flex items-start gap-2">
             <Avatar className="mt-0.5 size-6 shrink-0">
-              <AvatarFallback className="text-[10px]">
+              <AvatarFallback className="text-xs">
                 {initials}
               </AvatarFallback>
             </Avatar>
@@ -127,10 +127,10 @@ export function FeedComments({
                   <span className="text-xs font-medium">
                     {comment.authorName ?? "Member"}
                   </span>
-                  <span className="text-muted-foreground ml-1.5 text-[10px]">
+                  <span className="text-muted-foreground ml-1.5 text-xs">
                     <RelativeTime
                       date={comment.createdAt}
-                      className="text-[10px]"
+                      className="text-xs"
                     />
                     {comment.isEdited ? ` · (${t("edited")})` : ""}
                   </span>
@@ -222,7 +222,7 @@ export function FeedComments({
       {currentUserId ? (
         <div className="flex items-start gap-2 pt-1">
           <Avatar className="mt-0.5 size-6 shrink-0">
-            <AvatarFallback className="text-[10px]">Y</AvatarFallback>
+            <AvatarFallback className="text-xs">Y</AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-1.5">
             <Textarea

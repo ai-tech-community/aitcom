@@ -85,7 +85,7 @@ export function AgentDrafts() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider">
+                  <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider">
                     {TYPE_LABELS[draft.type] ?? draft.type.toUpperCase()}
                   </span>
                   {threadTitle && (
@@ -121,7 +121,7 @@ export function AgentDrafts() {
                 draft.type === "welcome_nudge" ? (
                   <Button
                     size="xs"
-                    className="font-mono text-[11px] tracking-wider"
+                    className="font-mono text-xs tracking-wider"
                     onClick={() =>
                       sendRevival.mutate({
                         draftId: draft.id,
@@ -135,7 +135,7 @@ export function AgentDrafts() {
                 ) : (
                   <Button
                     size="xs"
-                    className="font-mono text-[11px] tracking-wider"
+                    className="font-mono text-xs tracking-wider"
                     onClick={() =>
                       reviewDraft.mutate({
                         draftId: draft.id,
@@ -150,7 +150,7 @@ export function AgentDrafts() {
                 <Button
                   variant="ghost"
                   size="xs"
-                  className="text-muted-foreground font-mono text-[11px] tracking-wider"
+                  className="text-muted-foreground font-mono text-xs tracking-wider"
                   onClick={() =>
                     reviewDraft.mutate({
                       draftId: draft.id,

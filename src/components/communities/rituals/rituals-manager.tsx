@@ -79,14 +79,14 @@ export function RitualsManager({ slug }: { slug: string }) {
                     <p className="truncate text-sm font-medium">{r.title}</p>
                     <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
                       <span>{weekdayLabel(r.weekday)}</span>
-                      <Badge variant="outline" className="text-[10px]">
+                      <Badge variant="outline" className="text-xs">
                         {r.mode === "auto" ? "Auto" : "Review"}
                       </Badge>
                       <Badge
                         variant={
                           r.status === "active" ? "secondary" : "outline"
                         }
-                        className="text-[10px] capitalize"
+                        className="text-xs capitalize"
                       >
                         {r.status}
                       </Badge>

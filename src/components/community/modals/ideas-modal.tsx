@@ -144,7 +144,7 @@ export function IdeasModal({
                   }
                   voteMutation.mutate({ ideaId: idea.id });
                 }}
-                className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-[10px] font-bold transition-colors ${
+                className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-xs font-semibold transition-colors ${
                   idea.hasVoted
                     ? "bg-orange-50 text-orange-600"
                     : "text-muted-foreground hover:text-foreground"
@@ -160,13 +160,13 @@ export function IdeasModal({
                   {idea.title}
                 </p>
                 {idea.description && (
-                  <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                     {idea.description}
                   </p>
                 )}
                 <div className="mt-1 flex items-center gap-2">
                   <span
-                    className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${statusStyles[idea.status]}`}
+                    className={`rounded border px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase ${statusStyles[idea.status]}`}
                   >
                     {idea.status === "open"
                       ? t("statusOpen")
@@ -184,13 +184,13 @@ export function IdeasModal({
       {/* Submit idea section */}
       <div className="mt-4 border-t border-border pt-4">
         {!session?.user ? (
-          <p className="font-mono text-[10px] text-muted-foreground">
+          <p className="font-mono text-xs text-muted-foreground">
             {t("loginToSubmit")}
           </p>
         ) : !showForm ? (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-widest text-orange-600 uppercase transition-colors hover:text-orange-500"
+            className="flex items-center gap-1.5 font-mono text-xs font-semibold tracking-widest text-orange-600 uppercase transition-colors hover:text-orange-500"
           >
             <Lightbulb className="h-3 w-3" />
             {t("submit")}
@@ -207,7 +207,7 @@ export function IdeasModal({
             className="space-y-3"
           >
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+              <label className="mb-1 block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 {t("titleLabel")}
               </label>
               <input
@@ -220,7 +220,7 @@ export function IdeasModal({
               />
             </div>
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+              <label className="mb-1 block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 {t("descriptionLabel")}
               </label>
               <textarea
@@ -236,14 +236,14 @@ export function IdeasModal({
               <button
                 type="submit"
                 disabled={submitMutation.isPending}
-                className="rounded-md bg-foreground px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
+                className="rounded-md bg-foreground px-4 py-1.5 font-mono text-xs font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
               >
                 {submitMutation.isPending ? t("submitting") : t("submit")}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded-md border border-border px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:bg-muted"
+                className="rounded-md border border-border px-4 py-1.5 font-mono text-xs font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:bg-muted"
               >
                 Cancel
               </button>

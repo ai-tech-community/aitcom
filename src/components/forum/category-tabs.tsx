@@ -26,7 +26,7 @@ export function CategoryTabs({ active, onChange }: CategoryTabsProps) {
         <button
           key={cat}
           onClick={() => onChange(cat)}
-          className={`shrink-0 rounded px-2.5 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
+          className={`shrink-0 rounded px-2.5 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors ${
             active === cat
               ? "bg-zinc-100 text-zinc-900"
               : "text-zinc-400 hover:text-zinc-600"

@@ -105,7 +105,7 @@ export default async function AgentsTabPage({
 
         <div className="mt-4 space-y-3">
           <div>
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
               {t("agentsEndpointLabel")}
             </span>
             <div className="bg-muted mt-1 rounded-md px-3 py-2 font-mono text-xs break-all">
@@ -121,7 +121,7 @@ export default async function AgentsTabPage({
           </ol>
 
           <div>
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
               {t("agentsChallengeIdLabel")}
             </span>
             <div className="bg-muted mt-1 rounded-md px-3 py-2 font-mono text-xs">
@@ -147,7 +147,7 @@ export default async function AgentsTabPage({
           </p>
         ) : (
           <div className="mt-4">
-            <div className="text-muted-foreground hidden items-center gap-3 px-2 pb-2 font-mono text-[11px] tracking-wider uppercase sm:flex">
+            <div className="text-muted-foreground hidden items-center gap-3 px-2 pb-2 font-mono text-xs tracking-wider uppercase sm:flex">
               <span className="w-6" />
               <span className="flex-1">{t("anAgent")}</span>
               <span className="w-16 text-right">{t("agentsClaimed")}</span>

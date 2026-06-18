@@ -61,7 +61,7 @@ export function ThreadCard({
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm leading-snug font-medium text-foreground">
               {thread.isPinned && (
-                <span className="mr-1 font-mono text-[9px] text-orange-600">
+                <span className="mr-1 font-mono text-xs text-orange-600">
                   PIN
                 </span>
               )}
@@ -72,7 +72,7 @@ export function ThreadCard({
               {/* Post type is categorical, not a status → neutral Badge. */}
               <Badge
                 variant="secondary"
-                className="rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase"
+                className="rounded px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase"
               >
                 {t(thread.category)}
               </Badge>
@@ -115,12 +115,12 @@ export function ThreadCard({
             </div>
           </div>
           <div className="mt-1.5 flex items-center gap-3">
-            <span className="flex items-center gap-1 font-mono text-[9px] text-muted-foreground">
+            <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
               <MessageSquare className="h-2.5 w-2.5" />
               {t("replies", { count: thread.replyCount ?? 0 })}
             </span>
             {(thread.viewCount ?? 0) > 0 && (
-              <span className="hidden items-center gap-1 font-mono text-[9px] text-muted-foreground sm:flex">
+              <span className="hidden items-center gap-1 font-mono text-xs text-muted-foreground sm:flex">
                 <Eye className="h-2.5 w-2.5" />
                 {t("views", { count: thread.viewCount ?? 0 })}
               </span>
@@ -128,11 +128,11 @@ export function ThreadCard({
             {thread.lastActivityAt && (
               <RelativeTime
                 date={thread.lastActivityAt}
-                className="text-[9px] text-muted-foreground"
+                className="text-xs text-muted-foreground"
               />
             )}
             {thread.authorName && (
-              <span className="flex items-center gap-1.5 font-mono text-[9px] text-muted-foreground">
+              <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
                 {thread.authorName}
                 <RoleBadge role={thread.authorRole} />
               </span>

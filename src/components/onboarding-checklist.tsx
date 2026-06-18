@@ -87,7 +87,7 @@ export function OnboardingChecklist() {
         <div className="flex items-center justify-between">
           <SectionLabel bordered={false}>{t("checklistTitle")}</SectionLabel>
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               {completedCount}/{totalCount}
             </span>
             <button

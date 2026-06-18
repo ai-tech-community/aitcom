@@ -316,7 +316,7 @@ export default async function DatacenterDetailPage({ params }: PageProps) {
                     {s.supplier.canonicalName}
                     <SourceBadge count={s.link.sources?.length ?? 0} />
                     {!s.link.verified && (
-                      <span className="bg-muted text-muted-foreground rounded px-1 py-0.5 text-[10px]">
+                      <span className="bg-muted text-muted-foreground rounded px-1 py-0.5 text-xs">
                         unverified
                       </span>
                     )}
@@ -500,7 +500,7 @@ function SourceBadge({ count }: { count: number }) {
     return (
       <span
         title="No sources"
-        className="rounded border border-amber-500/60 px-1 py-0.5 text-[10px] text-amber-600"
+        className="rounded border border-amber-500/60 px-1 py-0.5 text-xs text-amber-600"
       >
         ⚠ no sources
       </span>
@@ -515,7 +515,7 @@ function SourceBadge({ count }: { count: number }) {
   return (
     <span
       title={`${count} source${count === 1 ? "" : "s"}`}
-      className={`rounded border px-1 py-0.5 text-[10px] ${tone}`}
+      className={`rounded border px-1 py-0.5 text-xs ${tone}`}
     >
       {count} src
     </span>

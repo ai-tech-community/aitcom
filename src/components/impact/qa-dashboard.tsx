@@ -110,7 +110,7 @@ export function QADashboard() {
           {t("qa.subtitle")}
         </p>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-black tracking-tight text-zinc-900">
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
             {t("qa.title")}
           </h1>
           <div className="flex items-center gap-2">
@@ -119,7 +119,7 @@ export function QADashboard() {
                 key={btn.value}
                 type="button"
                 onClick={() => setRange(btn.value)}
-                className={`rounded-md border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase ${
+                className={`rounded-md border px-3 py-1.5 font-mono text-xs tracking-widest uppercase ${
                   range === btn.value
                     ? "border-zinc-900 bg-zinc-900 text-white"
                     : "border-zinc-300 bg-white text-zinc-600"
@@ -135,7 +135,7 @@ export function QADashboard() {
       {/* Confidence + data point count */}
       <div className="flex items-center gap-4">
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[10px] font-medium tracking-widest uppercase ${
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-xs font-medium tracking-widest uppercase ${
             data.confidence === "low"
               ? "bg-amber-100 text-amber-800"
               : "bg-green-100 text-green-800"
@@ -155,10 +155,10 @@ export function QADashboard() {
             key={card.label}
             className="rounded-lg border border-zinc-200 bg-white p-4"
           >
-            <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+            <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
               {card.label}
             </p>
-            <p className="mt-1 text-2xl font-bold text-zinc-900">
+            <p className="mt-1 text-2xl font-semibold text-zinc-900">
               {card.value}
             </p>
           </div>
@@ -176,7 +176,7 @@ export function QADashboard() {
               key={entry.label}
               className="rounded-lg border border-zinc-200 bg-white p-4"
             >
-              <p className="mb-2 font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+              <p className="mb-2 font-mono text-xs tracking-widest text-zinc-500 uppercase">
                 {entry.label}
               </p>
               <Sparkline data={entry.data} />
@@ -195,7 +195,7 @@ export function QADashboard() {
             <div className="space-y-2">
               {personalityEntries.map(([label, value]) => (
                 <div key={label} className="flex items-center gap-3">
-                  <span className="w-24 shrink-0 font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+                  <span className="w-24 shrink-0 font-mono text-xs tracking-widest text-zinc-500 uppercase">
                     {label}
                   </span>
                   <div className="h-3 flex-1 rounded-full bg-zinc-100">
@@ -222,7 +222,7 @@ export function QADashboard() {
           {t("experimental.learningLoop.title")}
         </h2>
         <span
-          className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[10px] font-medium tracking-widest uppercase ${
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-xs font-medium tracking-widest uppercase ${
             data.metrics.learningLoopSignal === "improving"
               ? "bg-green-100 text-green-800"
               : data.metrics.learningLoopSignal === "declining"
@@ -243,56 +243,56 @@ export function QADashboard() {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+              <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
                 Total Events
               </p>
-              <p className="mt-1 text-2xl font-bold text-zinc-900">
+              <p className="mt-1 text-2xl font-semibold text-zinc-900">
                 {data.admin.dataQuality.totalEvents}
               </p>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+              <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
                 With Session ID
               </p>
-              <p className="mt-1 text-2xl font-bold text-zinc-900">
+              <p className="mt-1 text-2xl font-semibold text-zinc-900">
                 {data.admin.dataQuality.withSessionId.toFixed(1)}%
               </p>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+              <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
                 With Personality Label
               </p>
-              <p className="mt-1 text-2xl font-bold text-zinc-900">
+              <p className="mt-1 text-2xl font-semibold text-zinc-900">
                 {data.admin.dataQuality.withPersonality.toFixed(1)}%
               </p>
             </div>
           </div>
 
-          <h3 className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+          <h3 className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
             Aggregate Row Counts
           </h3>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+              <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
                 Core
               </p>
-              <p className="mt-1 text-xl font-bold text-zinc-900">
+              <p className="mt-1 text-xl font-semibold text-zinc-900">
                 {data.admin.aggregateRows.core}
               </p>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+              <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
                 Mix
               </p>
-              <p className="mt-1 text-xl font-bold text-zinc-900">
+              <p className="mt-1 text-xl font-semibold text-zinc-900">
                 {data.admin.aggregateRows.mix}
               </p>
             </div>
             <div className="rounded-lg border border-zinc-200 bg-white p-4">
-              <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+              <p className="font-mono text-xs tracking-widest text-zinc-500 uppercase">
                 Experimental
               </p>
-              <p className="mt-1 text-xl font-bold text-zinc-900">
+              <p className="mt-1 text-xl font-semibold text-zinc-900">
                 {data.admin.aggregateRows.experimental}
               </p>
             </div>

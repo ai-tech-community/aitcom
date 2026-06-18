@@ -123,7 +123,7 @@ export function ActivityFeed() {
               </div>
               <RelativeTime
                 date={item.createdAt}
-                className="text-muted-foreground text-[11px] whitespace-nowrap"
+                className="text-muted-foreground text-xs whitespace-nowrap"
               />
             </div>
           );

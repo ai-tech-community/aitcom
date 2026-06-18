@@ -21,7 +21,7 @@ export function InviteCodes() {
           <Button
             variant="outline"
             size="sm"
-            className="font-mono text-[10px] tracking-wider"
+            className="font-mono text-xs tracking-wider"
             onClick={() => generateCode.mutate()}
             disabled={generateCode.isPending}
           >
@@ -50,7 +50,7 @@ export function InviteCodes() {
                           ? "info"
                           : "secondary"
                     }
-                    className="font-mono text-[9px] tracking-wider"
+                    className="font-mono text-xs tracking-wider"
                   >
                     {code.status.toUpperCase()}
                   </Badge>
@@ -61,7 +61,7 @@ export function InviteCodes() {
           </div>
         )}
 
-        <p className="text-muted-foreground/60 text-[10px]">
+        <p className="text-muted-foreground/60 text-xs">
           Invite codes expire after 24 hours. Give the code to your AI agent for
           instant activation.
         </p>

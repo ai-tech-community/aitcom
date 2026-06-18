@@ -324,7 +324,7 @@ export default async function EventDetailPage({
               <dl className="grid gap-3 sm:grid-cols-2">
                 {prizeParts.map((part) => (
                   <div key={part.label} className="flex flex-col gap-1">
-                    <dt className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+                    <dt className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
                       {part.label}
                     </dt>
                     <dd className="text-sm font-medium">{part.value}</dd>
@@ -481,7 +481,7 @@ export default async function EventDetailPage({
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="border-border bg-card space-y-4 rounded-lg border p-5">
             <div className="space-y-1">
-              <div className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              <div className="text-muted-foreground font-mono text-xs tracking-wider">
                 {dateMonth} {dateDay}, {dateYear}
               </div>
               <EventTimeDisplay
@@ -493,7 +493,7 @@ export default async function EventDetailPage({
             </div>
 
             <div className="border-border border-t pt-4 text-sm">
-              <div className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+              <div className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
                 Location
               </div>
               <div className="mt-1">{event.location}</div>
@@ -509,7 +509,7 @@ export default async function EventDetailPage({
                   )}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-[10px] tracking-wider underline underline-offset-4"
+                  className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-xs tracking-wider underline underline-offset-4"
                 >
                   View on map ↗
                 </a>
@@ -521,7 +521,7 @@ export default async function EventDetailPage({
                 {event.format && (
                   <Badge
                     variant="outline"
-                    className="rounded-md font-mono text-[11px] tracking-wider"
+                    className="rounded-md font-mono text-xs tracking-wider"
                   >
                     {EVENT_FORMAT_LABELS[event.format] ?? event.format}
                   </Badge>
@@ -529,7 +529,7 @@ export default async function EventDetailPage({
                 {priceLabel && (
                   <Badge
                     variant="outline"
-                    className="rounded-md font-mono text-[11px] tracking-wider"
+                    className="rounded-md font-mono text-xs tracking-wider"
                   >
                     {priceLabel}
                   </Badge>
@@ -547,7 +547,7 @@ export default async function EventDetailPage({
             </div>
 
             {isExternal && sourceUrl && (
-              <div className="text-muted-foreground border-border border-t pt-4 font-mono text-[10px] tracking-wider">
+              <div className="text-muted-foreground border-border border-t pt-4 font-mono text-xs tracking-wider">
                 SOURCE ·{" "}
                 <a
                   href={sourceUrl}
@@ -635,7 +635,7 @@ export default async function EventDetailPage({
         }}
       />
 
-      <nav className="mb-6 flex items-center gap-2 font-mono text-[11px] tracking-wider">
+      <nav className="mb-6 flex items-center gap-2 font-mono text-xs tracking-wider">
         <Link
           href="/events"
           className="text-muted-foreground hover:text-foreground transition-colors"
@@ -864,7 +864,7 @@ export default async function EventDetailPage({
                         </div>
                       )}
                       <div className="space-y-2 p-3">
-                        <div className="text-muted-foreground font-mono text-[10px] tracking-wider">
+                        <div className="text-muted-foreground font-mono text-xs tracking-wider">
                           {MONTH_SHORT[relDate.getMonth()]} {relDate.getDate()},{" "}
                           {relDate.getFullYear()}
                           {" · "}
@@ -888,7 +888,7 @@ export default async function EventDetailPage({
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="border-border bg-card space-y-4 rounded-lg border p-5">
             <div className="space-y-1">
-              <div className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              <div className="text-muted-foreground font-mono text-xs tracking-wider">
                 {dateMonth} {dateDay}, {dateYear}
               </div>
               <EventTimeDisplay
@@ -900,7 +900,7 @@ export default async function EventDetailPage({
             </div>
 
             <div className="border-border border-t pt-4 text-sm">
-              <div className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+              <div className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
                 Location
               </div>
               <div className="mt-1">{event.location}</div>
@@ -916,7 +916,7 @@ export default async function EventDetailPage({
                   )}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-[10px] tracking-wider underline underline-offset-4"
+                  className="text-muted-foreground hover:text-foreground mt-2 inline-block font-mono text-xs tracking-wider underline underline-offset-4"
                 >
                   View on map ↗
                 </a>
@@ -928,7 +928,7 @@ export default async function EventDetailPage({
                 {event.format && (
                   <Badge
                     variant="outline"
-                    className="rounded-md font-mono text-[11px] tracking-wider"
+                    className="rounded-md font-mono text-xs tracking-wider"
                   >
                     {EVENT_FORMAT_LABELS[event.format] ?? event.format}
                   </Badge>
@@ -936,7 +936,7 @@ export default async function EventDetailPage({
                 {priceLabel && (
                   <Badge
                     variant="outline"
-                    className="rounded-md font-mono text-[11px] tracking-wider"
+                    className="rounded-md font-mono text-xs tracking-wider"
                   >
                     {priceLabel}
                   </Badge>
@@ -954,7 +954,7 @@ export default async function EventDetailPage({
             </div>
 
             {isExternal && sourceUrl && (
-              <div className="text-muted-foreground border-border border-t pt-4 font-mono text-[10px] tracking-wider">
+              <div className="text-muted-foreground border-border border-t pt-4 font-mono text-xs tracking-wider">
                 SOURCE ·{" "}
                 <a
                   href={sourceUrl}
@@ -970,8 +970,8 @@ export default async function EventDetailPage({
 
           {showAitCallout && aitRationale && (
             <div className="border-border bg-secondary/30 mt-4 space-y-2 rounded-lg border p-4">
-              <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider">
-                <Badge className="rounded-md font-mono text-[10px] tracking-wider">
+              <div className="flex items-center gap-2 font-mono text-xs tracking-wider">
+                <Badge className="rounded-md font-mono text-xs tracking-wider">
                   AIT PICK
                 </Badge>
                 {aitFitScore !== null && (
@@ -1037,19 +1037,19 @@ function EventHero({
       <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
         <div className="flex flex-wrap items-end gap-4 sm:gap-6">
           <div className="bg-background/95 text-foreground flex h-16 w-16 flex-col items-center justify-center rounded-lg text-center shadow-lg sm:h-20 sm:w-20">
-            <span className="font-mono text-[10px] tracking-wider sm:text-xs">
+            <span className="font-mono text-xs tracking-wider sm:text-xs">
               {dateMonth}
             </span>
-            <span className="text-2xl leading-none font-bold sm:text-3xl">
+            <span className="text-2xl leading-none font-semibold sm:text-3xl">
               {dateDay}
             </span>
-            <span className="text-muted-foreground font-mono text-[9px] tracking-wider sm:text-[10px]">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider sm:text-xs">
               {dateYear}
             </span>
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] tracking-wider text-white/80 sm:text-[11px]">
+            <div className="flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider text-white/80 sm:text-xs">
               <span>{typeLabel}</span>
               {formatLabel && (
                 <>
@@ -1072,10 +1072,10 @@ function EventHero({
                 </>
               )}
             </div>
-            <h1 className="mt-2 text-2xl leading-tight font-extrabold tracking-tight text-white sm:text-4xl">
+            <h1 className="mt-2 text-2xl leading-tight font-semibold tracking-tight text-white sm:text-4xl">
               {title}
             </h1>
-            <div className="mt-1 font-mono text-[11px] tracking-wider text-white/80 sm:text-xs">
+            <div className="mt-1 font-mono text-xs tracking-wider text-white/80 sm:text-xs">
               {location}
             </div>
           </div>
@@ -1088,7 +1088,7 @@ function EventHero({
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+      <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
         {label}
       </span>
       <span>{value}</span>

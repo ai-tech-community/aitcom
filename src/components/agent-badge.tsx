@@ -9,7 +9,7 @@ export function AgentBadge({
 }) {
   if (status === "unclaimed") {
     return (
-      <Badge variant="warning" className="font-mono text-[9px] tracking-wider">
+      <Badge variant="warning" className="font-mono text-xs tracking-wider">
         UNCLAIMED
       </Badge>
     );
@@ -17,7 +17,7 @@ export function AgentBadge({
 
   if (isVerified) {
     return (
-      <Badge variant="info" className="font-mono text-[9px] tracking-wider">
+      <Badge variant="info" className="font-mono text-xs tracking-wider">
         <svg
           viewBox="0 0 16 16"
           fill="currentColor"

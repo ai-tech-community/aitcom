@@ -66,16 +66,16 @@ export function ContributeModal({
             key={key}
             className={`rounded-lg border p-4 transition-colors ${border} ${disabled ? "opacity-50" : ""}`}
           >
-            <h3 className="font-mono text-xs font-bold tracking-wider text-foreground uppercase">
+            <h3 className="font-mono text-xs font-semibold tracking-wider text-foreground uppercase">
               {t(`${key}.title`)}
             </h3>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
               {t(`${key}.description`)}
             </p>
             <div className="mt-3">
               {disabled ? (
                 <span
-                  className={`inline-block rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold tracking-widest uppercase ${badge}`}
+                  className={`inline-block rounded-md px-2.5 py-1 font-mono text-xs font-semibold tracking-widest uppercase ${badge}`}
                 >
                   {t(`${key}.cta`)}
                 </span>
@@ -83,13 +83,13 @@ export function ContributeModal({
                 <Link
                   href={href}
                   onClick={onClose}
-                  className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold tracking-widest uppercase transition-colors ${badge} hover:opacity-80`}
+                  className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors ${badge} hover:opacity-80`}
                 >
                   {t(`${key}.cta`)}
                 </Link>
               ) : (
                 <button
-                  className={`rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold tracking-widest uppercase transition-colors ${badge} hover:opacity-80`}
+                  className={`rounded-md px-2.5 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors ${badge} hover:opacity-80`}
                 >
                   {t(`${key}.cta`)}
                 </button>

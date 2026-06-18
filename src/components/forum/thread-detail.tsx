@@ -151,15 +151,15 @@ export function ThreadDetail({
 
       {/* Thread header */}
       <div className="mt-6">
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           {thread.isPinned && (
-            <span className="mr-1.5 font-mono text-[9px] font-semibold text-orange-600">
+            <span className="mr-1.5 font-mono text-xs font-semibold text-orange-600">
               {t("pinned").toUpperCase()}
             </span>
           )}
           {thread.title}
         </h1>
-        <div className="mt-2 flex items-center gap-2 font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+        <div className="mt-2 flex items-center gap-2 font-mono text-xs tracking-widest text-muted-foreground uppercase">
           {/* Post type is categorical, not a status → neutral Badge. */}
           <Badge
             variant="secondary"
@@ -185,7 +185,7 @@ export function ThreadDetail({
         {(canModerate || isAuthor) && !thread.isDeleted && (
           <div className="mt-3">
             <DropdownMenu>
-              <DropdownMenuTrigger className="rounded border border-border px-2 py-1 font-mono text-[9px] font-semibold tracking-wider text-muted-foreground uppercase hover:bg-accent">
+              <DropdownMenuTrigger className="rounded border border-border px-2 py-1 font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase hover:bg-accent">
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">

@@ -32,21 +32,21 @@ export default async function SecurityPage() {
   return (
     <ManPageLayout pageName="SECURITY" lastUpdated={t("lastUpdated")}>
       <section>
-        <h2 className="font-mono text-sm font-bold tracking-wider">NAME</h2>
+        <h2 className="font-mono text-sm font-semibold tracking-wider">NAME</h2>
         <p className="text-muted-foreground mt-2 pl-6 font-mono text-sm">
           {t("name")}
         </p>
       </section>
 
       <section className="mt-8">
-        <h2 className="font-mono text-sm font-bold tracking-wider">SYNOPSIS</h2>
+        <h2 className="font-mono text-sm font-semibold tracking-wider">SYNOPSIS</h2>
         <p className="text-muted-foreground mt-2 pl-6 text-sm leading-relaxed">
           {t("synopsis")}
         </p>
       </section>
 
       <section className="mt-8">
-        <h2 className="font-mono text-sm font-bold tracking-wider">
+        <h2 className="font-mono text-sm font-semibold tracking-wider">
           DESCRIPTION
         </h2>
       </section>

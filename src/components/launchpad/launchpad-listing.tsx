@@ -68,7 +68,7 @@ export function LaunchpadListing() {
     <div className="mx-auto max-w-6xl px-6 py-12 sm:px-12">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           {t("title")}
         </h1>
         <p className="mt-1 font-mono text-xs tracking-wider text-muted-foreground">
@@ -91,7 +91,7 @@ export function LaunchpadListing() {
         {session?.user && (
           <Link
             href="/launchpad/new"
-            className="flex shrink-0 items-center gap-1.5 rounded-md bg-foreground px-4 py-2 font-mono text-[10px] font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90"
+            className="flex shrink-0 items-center gap-1.5 rounded-md bg-foreground px-4 py-2 font-mono text-xs font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90"
           >
             <Plus className="h-3 w-3" />
             {t("submitProject")}
@@ -102,13 +102,13 @@ export function LaunchpadListing() {
       {/* Sort + Stage filters */}
       <div className="mb-5 flex flex-wrap items-center gap-3 border-b border-border pb-3">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] tracking-widest text-muted-foreground uppercase">
+          <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
             Sort:
           </span>
           <select
             value={sort}
             onChange={(e) => handleSortChange(e.target.value as Sort)}
-            className="rounded border border-border bg-background px-2 py-1 font-mono text-[10px] text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
+            className="rounded border border-border bg-background px-2 py-1 font-mono text-xs text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
           >
             <option value="newest">{t("sort.newest")}</option>
             <option value="mostVoted">{t("sort.mostVoted")}</option>
@@ -120,7 +120,7 @@ export function LaunchpadListing() {
           <select
             value={stage}
             onChange={(e) => handleStageChange(e.target.value as Stage)}
-            className="rounded border border-border bg-background px-2 py-1 font-mono text-[10px] text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
+            className="rounded border border-border bg-background px-2 py-1 font-mono text-xs text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
           >
             <option value="all">{t("filter.allStages")}</option>
             <option value="idea">{t("stage.idea")}</option>
@@ -159,7 +159,7 @@ export function LaunchpadListing() {
           {page > 1 && (
             <button
               onClick={() => setPage((p) => p - 1)}
-              className="rounded-md border border-border px-6 py-2 font-mono text-[10px] font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:border-border hover:bg-accent"
+              className="rounded-md border border-border px-6 py-2 font-mono text-xs font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:border-border hover:bg-accent"
             >
               Prev
             </button>
@@ -167,7 +167,7 @@ export function LaunchpadListing() {
           {hasNextPage && (
             <button
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-md border border-border px-6 py-2 font-mono text-[10px] font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:border-border hover:bg-accent"
+              className="rounded-md border border-border px-6 py-2 font-mono text-xs font-semibold tracking-widest text-muted-foreground uppercase transition-colors hover:border-border hover:bg-accent"
             >
               Next
             </button>

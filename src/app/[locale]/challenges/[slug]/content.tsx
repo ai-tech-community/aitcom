@@ -255,7 +255,7 @@ export function ChallengeDetailContent({
           </div>
 
           {/* Title */}
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight">
+          <h1 className="mt-4 text-3xl font-semibold tracking-tight">
             {challenge.title}
           </h1>
 
@@ -357,13 +357,13 @@ export function ChallengeDetailContent({
                         {obj.verification && (
                           <Badge
                             variant="secondary"
-                            className="font-mono text-[10px]"
+                            className="font-mono text-xs"
                           >
                             {verificationLabels[obj.verification] ??
                               obj.verification}
                           </Badge>
                         )}
-                        <span className="text-muted-foreground font-mono text-[11px]">
+                        <span className="text-muted-foreground font-mono text-xs">
                           Target: {obj.targetCount}
                         </span>
                       </div>

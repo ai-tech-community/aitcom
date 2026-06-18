@@ -121,7 +121,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
           <div className="flex items-center justify-between gap-2">
             {/* Stage is a categorical attribute, not a status → neutral Badge. */}
             <Badge
-              className="rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase"
+              className="rounded px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase"
               variant="secondary"
             >
               {t(
@@ -129,7 +129,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
               )}
             </Badge>
             {project.authorName && (
-              <span className="truncate font-mono text-[10px] text-muted-foreground">
+              <span className="truncate font-mono text-xs text-muted-foreground">
                 {project.authorName}
               </span>
             )}
@@ -146,7 +146,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
               {project.tags.slice(0, 4).map((t, i) => (
                 <span
                   key={t.id ?? i}
-                  className="rounded-full border border-border bg-muted px-2 py-0.5 font-mono text-[9px] text-muted-foreground"
+                  className="rounded-full border border-border bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground"
                 >
                   {t.tag}
                 </span>
@@ -167,7 +167,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
               }
               voteMutation.mutate({ projectId: project.id });
             }}
-            className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-[10px] font-bold transition-colors ${
+            className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-xs font-semibold transition-colors ${
               project.hasVoted
                 ? "bg-orange-50 text-orange-600"
                 : "text-muted-foreground hover:text-foreground"
@@ -177,17 +177,17 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
             {project.voteCount ?? 0}
           </button>
 
-          <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
             <MessageSquare className="h-2.5 w-2.5" />
             {project.commentCount ?? 0}
           </span>
 
-          <span className="ml-auto flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+          <span className="ml-auto flex items-center gap-1 font-mono text-xs text-muted-foreground">
             <Clock className="h-2.5 w-2.5" />
             {project.createdAt && (
               <RelativeTime
                 date={project.createdAt}
-                className="text-[10px] text-muted-foreground"
+                className="text-xs text-muted-foreground"
               />
             )}
           </span>

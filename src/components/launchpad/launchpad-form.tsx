@@ -197,7 +197,7 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-foreground">
+      <h1 className="mb-6 text-2xl font-semibold text-foreground">
         {mode === "create" ? "Submit Project" : "Edit Project"}
       </h1>
 

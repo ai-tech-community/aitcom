@@ -70,7 +70,7 @@ export function RulesModal({
         <div className="flex flex-col gap-4">
           {/* Table of Contents */}
           <nav className="rounded-md border border-border bg-muted p-3">
-            <p className="mb-2 font-mono text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+            <p className="mb-2 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
               {t("toc")}
             </p>
             <ul className="space-y-1">
@@ -103,7 +103,7 @@ export function RulesModal({
               const Icon = section.icon ? iconMap[section.icon] : null;
               return (
                 <section key={section.slug} id={`rule-${section.slug}`}>
-                  <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
+                  <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                     {Icon && <Icon className="h-4.5 w-4.5 text-orange-500" />}
                     {section.title}
                   </h2>
@@ -118,7 +118,7 @@ export function RulesModal({
           {/* Version & Acceptance Footer */}
           <div className="mt-4 border-t border-border pt-4">
             {rules?.version && (
-              <p className="mb-2 font-mono text-[10px] text-muted-foreground">
+              <p className="mb-2 font-mono text-xs text-muted-foreground">
                 {t("versionLabel", { version: rules.version })}
               </p>
             )}

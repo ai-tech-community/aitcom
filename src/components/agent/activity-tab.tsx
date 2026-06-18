@@ -92,7 +92,7 @@ function AgentActivityFeed() {
           </span>
           <RelativeTime
             date={new Date(event.createdAt)}
-            className="text-muted-foreground/50 text-[9px] tracking-wider"
+            className="text-muted-foreground/50 text-xs tracking-wider"
           />
         </div>
       ))}
@@ -100,7 +100,7 @@ function AgentActivityFeed() {
         <button
           type="button"
           onClick={() => setCursor(data.nextCursor!)}
-          className="text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-wider"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
           disabled={isLoading}
         >
           {isLoading ? "..." : "LOAD MORE"}
@@ -142,7 +142,7 @@ function ClaimHistoryFeed() {
             <span className="text-muted-foreground text-xs">{description}</span>
             <RelativeTime
               date={new Date(event.createdAt)}
-              className="text-muted-foreground/50 text-[9px] tracking-wider"
+              className="text-muted-foreground/50 text-xs tracking-wider"
             />
           </div>
         );

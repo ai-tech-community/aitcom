@@ -108,7 +108,7 @@ export function NotificationPanel({ onClose }: Props) {
           <Link
             href="/dashboard/notifications"
             onClick={onClose}
-            className="text-muted-foreground text-[10px] underline-offset-4 hover:underline"
+            className="text-muted-foreground text-xs underline-offset-4 hover:underline"
           >
             View all
           </Link>
@@ -189,7 +189,7 @@ export function NotificationPanel({ onClose }: Props) {
                       .replace(/^[-*]\s/gm, "")
                       .replace(/#{1,6}\s/g, "")}
                   </p>
-                  <p className="text-muted-foreground mt-1 text-[10px]">
+                  <p className="text-muted-foreground mt-1 text-xs">
                     {new Date(n.createdAt).toLocaleDateString()}
                   </p>
                 </button>

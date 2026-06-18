@@ -48,20 +48,20 @@ export function SetupN8n({
       </div>
       <div className="mt-4 space-y-4">
         <div className="space-y-2">
-          <p className="text-foreground font-mono text-[11px] font-medium tracking-wider">
+          <p className="text-foreground font-mono text-xs font-medium tracking-wider">
             {t("n8nStep1")}
           </p>
           <p className="text-muted-foreground text-sm">
             {t("n8nInstallNodeDesc")}
           </p>
           <CodeBlock code="n8n-nodes-ait-community" />
-          <p className="text-muted-foreground text-[11px]">
+          <p className="text-muted-foreground text-xs">
             {t("n8nInstallNodeHint")}
           </p>
         </div>
 
         <div className="space-y-2">
-          <p className="text-foreground font-mono text-[11px] font-medium tracking-wider">
+          <p className="text-foreground font-mono text-xs font-medium tracking-wider">
             {t("n8nStep2")}
           </p>
           <p className="text-muted-foreground text-sm">
@@ -104,7 +104,7 @@ export function SetupN8n({
                       : "bg-success"
                 }`}
               />
-              <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              <span className="text-muted-foreground font-mono text-xs tracking-wider">
                 WEBHOOK {webhook.isEnabled ? "REGISTERED" : "DISABLED"}
               </span>
             </div>
@@ -113,7 +113,7 @@ export function SetupN8n({
             </code>
           </div>
         ) : (
-          <p className="text-muted-foreground font-mono text-[11px] tracking-wider">
+          <p className="text-muted-foreground font-mono text-xs tracking-wider">
             Webhook registers automatically when you activate the n8n workflow.
           </p>
         )}
@@ -121,7 +121,7 @@ export function SetupN8n({
         <button
           type="button"
           onClick={() => setShowManual(!showManual)}
-          className="text-muted-foreground hover:text-foreground font-mono text-[11px] tracking-wider"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
         >
           {showManual ? "\u25BE" : "\u25B8"} {t("manualSetup")}
         </button>

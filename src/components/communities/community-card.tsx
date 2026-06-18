@@ -61,7 +61,7 @@ export function CommunityCard({
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-semibold">{name}</span>
-          <Badge variant="outline" className="shrink-0 text-[10px]">
+          <Badge variant="outline" className="shrink-0 text-xs">
             {t(`create.${JOIN_POLICY_KEY[joinPolicy] ?? "joinPolicyOpen"}`)}
           </Badge>
         </div>
@@ -76,7 +76,7 @@ export function CommunityCard({
           {shouldRenderStack(memberCount) && faces.length > 0 ? (
             <MemberStackView faces={faces} total={memberCount} />
           ) : (
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               {t("stack.label", { count: memberCount })}
             </span>
           )}

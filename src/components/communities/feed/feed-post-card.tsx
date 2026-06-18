@@ -126,14 +126,14 @@ export function FeedPostCard({
             <p className="text-sm leading-tight font-medium">
               {post.authorName ?? "Member"}
             </p>
-            <p className="text-muted-foreground flex items-center gap-1 text-[11px]">
+            <p className="text-muted-foreground flex items-center gap-1 text-xs">
               {post.isPinned ? (
                 <span className="text-foreground inline-flex items-center gap-0.5">
                   <Pin className="size-3 fill-current" /> {t("pinned")}
                 </span>
               ) : null}
               <span>
-                <RelativeTime date={post.createdAt} className="text-[11px]" />
+                <RelativeTime date={post.createdAt} className="text-xs" />
                 {post.isEdited ? ` · (${t("edited")})` : ""}
               </span>
             </p>
@@ -250,7 +250,7 @@ export function FeedPostCard({
           <Heart
             className={`size-4 ${post.hasLiked ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}
           />
-          <span className="text-muted-foreground font-mono text-[11px]">
+          <span className="text-muted-foreground font-mono text-xs">
             {post.likeCount ?? 0}
           </span>
         </button>
@@ -261,7 +261,7 @@ export function FeedPostCard({
           className="flex items-center gap-1.5 text-sm transition-colors"
         >
           <MessageSquare className="text-muted-foreground size-4" />
-          <span className="text-muted-foreground font-mono text-[11px]">
+          <span className="text-muted-foreground font-mono text-xs">
             {post.commentCount ?? 0}
           </span>
         </button>

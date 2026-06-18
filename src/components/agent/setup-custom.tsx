@@ -15,7 +15,7 @@ export function SetupCustom({ apiKey }: { apiKey: string }) {
       <div className="mt-4 space-y-3">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               {t("endpoint")}
             </span>
             <CopyButton text="https://www.aitcommunity.org/api/mcp" />
@@ -26,7 +26,7 @@ export function SetupCustom({ apiKey }: { apiKey: string }) {
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               API KEY
             </span>
             <CopyButton text={apiKey} />
@@ -35,7 +35,7 @@ export function SetupCustom({ apiKey }: { apiKey: string }) {
             {apiKey}
           </code>
         </div>
-        <span className="text-muted-foreground block font-mono text-[11px] tracking-wider">
+        <span className="text-muted-foreground block font-mono text-xs tracking-wider">
           {t("protocol")}
         </span>
       </div>

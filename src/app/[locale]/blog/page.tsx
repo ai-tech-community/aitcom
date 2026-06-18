@@ -153,15 +153,15 @@ export default async function BlogPage({
 
         {tag && (
           <div className="flex items-center gap-2">
-            <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               {t("filter.activeTag")}
             </span>
-            <span className="bg-foreground/10 border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-[10px] tracking-wider">
+            <span className="bg-foreground/10 border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-xs tracking-wider">
               {tag}
             </span>
             <Link
               href={buildBlogUrl({ q: q || undefined })}
-              className="text-muted-foreground hover:text-foreground font-mono text-[10px] transition-colors"
+              className="text-muted-foreground hover:text-foreground font-mono text-xs transition-colors"
             >
               ×
             </Link>
@@ -177,16 +177,16 @@ export default async function BlogPage({
         <>
           {/* Table Header - desktop only */}
           <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
-            <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
+            <span className="text-muted-foreground w-32 font-mono text-xs font-medium tracking-wider">
               / DATE
             </span>
-            <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
+            <span className="text-muted-foreground flex-1 font-mono text-xs font-medium tracking-wider">
               / TITLE
             </span>
-            <span className="text-muted-foreground w-20 font-mono text-[11px] font-medium tracking-wider">
+            <span className="text-muted-foreground w-20 font-mono text-xs font-medium tracking-wider">
               / READ
             </span>
-            <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
               / TYPE
             </span>
           </div>
@@ -199,10 +199,10 @@ export default async function BlogPage({
               className="border-border hover:bg-secondary/50 flex flex-col gap-2 border-b px-4 py-4 transition-colors sm:flex-row sm:items-center sm:gap-0 sm:py-3.5"
             >
               {/* Title - first on mobile for readability */}
-              <span className="text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
+              <span className="text-base leading-snug font-medium sm:order-2 sm:flex-1">
                 {article.title}
                 {article.authorType === "member" && article.authorName && (
-                  <span className="text-muted-foreground ml-2 font-mono text-[10px] font-normal tracking-wider">
+                  <span className="text-muted-foreground ml-2 font-mono text-xs font-normal tracking-wider">
                     by {article.authorName}
                   </span>
                 )}
@@ -211,15 +211,15 @@ export default async function BlogPage({
               {/* Date + type row on mobile, split on desktop */}
               <div className="flex items-center gap-3 sm:order-1 sm:w-32">
                 <div className="bg-foreground h-2 w-2 rounded-full" />
-                <span className="font-mono text-[12px] sm:text-[13px]">
+                <span className="font-mono text-xs sm:text-sm">
                   {article.publishedAt ? formatDate(article.publishedAt) : "-"}
                 </span>
                 {/* Type badge - inline on mobile */}
-                <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden">
+                <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider sm:hidden">
                   {typeLabels[article.type] ?? article.type}
                 </span>
                 {/* Reading time - inline on mobile */}
-                <span className="text-muted-foreground font-mono text-[10px] tracking-wider sm:hidden">
+                <span className="text-muted-foreground font-mono text-xs tracking-wider sm:hidden">
                   {t("readingTime", {
                     minutes: estimateReadingTime(article.content),
                   })}
@@ -227,14 +227,14 @@ export default async function BlogPage({
               </div>
 
               {/* Reading time - desktop */}
-              <span className="text-muted-foreground hidden w-20 font-mono text-[11px] tracking-wider sm:order-3 sm:inline">
+              <span className="text-muted-foreground hidden w-20 font-mono text-xs tracking-wider sm:order-3 sm:inline">
                 {t("readingTime", {
                   minutes: estimateReadingTime(article.content),
                 })}
               </span>
 
               {/* Type badge - desktop only */}
-              <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-4 sm:inline">
+              <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-xs font-medium tracking-wider sm:order-4 sm:inline">
                 {typeLabels[article.type] ?? article.type}
               </span>
               <span className="text-muted-foreground ml-4 hidden font-mono text-lg font-light sm:order-5 sm:inline">

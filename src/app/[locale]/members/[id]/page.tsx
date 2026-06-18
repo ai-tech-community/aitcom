@@ -93,10 +93,10 @@ export default async function MemberProfilePage({
         )}
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-extrabold tracking-tight">
+            <h1 className="text-2xl font-semibold tracking-tight">
               {profile.displayName}
             </h1>
-            <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[11px] font-medium tracking-wider">
+            <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider">
               {t("level")} {profile.level}
             </span>
             {session?.user && session.user.id !== id && (
@@ -118,7 +118,7 @@ export default async function MemberProfilePage({
                 }}
               />
             </div>
-            <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               {profile.xp} {t("xp")}
             </span>
           </div>
@@ -187,7 +187,7 @@ export default async function MemberProfilePage({
             {profile.skills.map((skill) => (
               <span
                 key={skill}
-                className="border-border text-muted-foreground rounded border px-2.5 py-0.5 font-mono text-[11px] tracking-wider"
+                className="border-border text-muted-foreground rounded border px-2.5 py-0.5 font-mono text-xs tracking-wider"
               >
                 {skill}
               </span>
@@ -213,7 +213,7 @@ export default async function MemberProfilePage({
                 <p className="font-mono text-xs font-medium">
                   {tBadges(badge.slug)}
                 </p>
-                <p className="text-muted-foreground mt-0.5 font-mono text-[10px] tracking-wider">
+                <p className="text-muted-foreground mt-0.5 font-mono text-xs tracking-wider">
                   {badge.earnedAt
                     ? new Date(badge.earnedAt).toLocaleDateString()
                     : ""}
@@ -241,7 +241,7 @@ export default async function MemberProfilePage({
                 <p className="font-mono text-xs font-medium">
                   {cert.challengeTitle ?? t("certificateUntitled")}
                 </p>
-                <p className="text-muted-foreground mt-0.5 font-mono text-[10px] tracking-wider">
+                <p className="text-muted-foreground mt-0.5 font-mono text-xs tracking-wider">
                   {(cert.kind === "winner"
                     ? t("certificateWinner")
                     : t("certificateParticipant")
@@ -259,16 +259,16 @@ export default async function MemberProfilePage({
       <div className="border-border mt-8 border-t pt-8">
         <div className="flex gap-8">
           <div>
-            <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               {t("eventsAttended").toUpperCase()}
             </span>
-            <p className="mt-1 text-2xl font-extrabold">{eventsAttended}</p>
+            <p className="mt-1 text-2xl font-semibold">{eventsAttended}</p>
           </div>
           <div>
-            <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               {t("badges").toUpperCase()}
             </span>
-            <p className="mt-1 text-2xl font-extrabold">{badges.length}</p>
+            <p className="mt-1 text-2xl font-semibold">{badges.length}</p>
           </div>
         </div>
       </div>
@@ -300,7 +300,7 @@ export default async function MemberProfilePage({
             )}
             <div className="flex-1">
               <p className="font-medium">{agentProfile.name}</p>
-              <p className="text-muted-foreground font-mono text-[10px] tracking-wider">
+              <p className="text-muted-foreground font-mono text-xs tracking-wider">
                 {agentProfile.totalContributions} contributions
               </p>
             </div>

@@ -75,7 +75,7 @@ export function GreenwashPanel({ data }: { data: GreenwashRow[] }) {
                 </td>
                 <td className="pl-3">
                   <span
-                    className={`inline-block rounded ${tone.color} px-1.5 py-0.5 text-[10px] text-white`}
+                    className={`inline-block rounded ${tone.color} px-1.5 py-0.5 text-xs text-white`}
                   >
                     {tone.label}
                   </span>
@@ -97,7 +97,7 @@ export function GreenwashPanel({ data }: { data: GreenwashRow[] }) {
           })}
         </tbody>
       </table>
-      <p className="text-muted-foreground/70 mt-3 text-[10px]">
+      <p className="text-muted-foreground/70 mt-3 text-xs">
         Gap = commitment % − actual carbon-free MW %
         (solar/wind/hydro/geothermal/nuclear). Public commitments per operator
         press; actual derived from facility power-source field. Operator press

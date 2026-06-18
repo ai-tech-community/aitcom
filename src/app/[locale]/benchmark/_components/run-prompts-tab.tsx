@@ -192,7 +192,7 @@ export function RunPromptsTab() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-6 px-2 text-[11px]"
+                        className="h-6 px-2 text-xs"
                         onClick={() => retryExtraction.mutate({ runId: r.id })}
                         disabled={
                           retryExtraction.isPending &&

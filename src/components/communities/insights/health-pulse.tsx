@@ -44,10 +44,10 @@ export function HealthPulse({ slug }: { slug: string }) {
           key={c.label}
           className="rounded-lg border border-border bg-card/80 p-4"
         >
-          <p className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+          <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
             {c.label}
           </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">
             {c.value}
           </p>
           {c.sub ? (

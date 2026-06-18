@@ -60,7 +60,7 @@ export function ReplyList({
 
   if (replies.length === 0) {
     return (
-      <p className="py-6 text-center font-mono text-[10px] text-muted-foreground">
+      <p className="py-6 text-center font-mono text-xs text-muted-foreground">
         No replies yet. Be the first to respond.
       </p>
     );
@@ -84,7 +84,7 @@ export function ReplyList({
             className="rounded-lg border border-border bg-muted p-3"
           >
             <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-[9px] tracking-wider text-muted-foreground">
+              <div className="flex items-center gap-2 font-mono text-xs tracking-wider text-muted-foreground">
                 <span>{reply.authorName ?? "member"}</span>
                 <RoleBadge role={reply.authorRole} />
                 <span>&middot;</span>

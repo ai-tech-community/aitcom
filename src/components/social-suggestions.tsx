@@ -62,7 +62,7 @@ export function SocialSuggestions() {
                       <span className="truncate text-sm font-medium">
                         {member.displayName}
                       </span>
-                      <span className="text-muted-foreground font-mono text-[10px]">
+                      <span className="text-muted-foreground font-mono text-xs">
                         {member.xp} XP
                       </span>
                     </div>
@@ -71,7 +71,7 @@ export function SocialSuggestions() {
                         {member.skills.slice(0, 3).map((skill) => (
                           <span
                             key={skill}
-                            className="bg-secondary text-muted-foreground truncate rounded px-1.5 py-0.5 font-mono text-[10px]"
+                            className="bg-secondary text-muted-foreground truncate rounded px-1.5 py-0.5 font-mono text-xs"
                           >
                             {skill}
                           </span>
@@ -135,7 +135,7 @@ export function SocialSuggestions() {
                       </p>
                     )}
                   </div>
-                  <span className="text-muted-foreground font-mono text-[10px]">
+                  <span className="text-muted-foreground font-mono text-xs">
                     {agent.totalContributions} {t("contributions")}
                   </span>
                 </Link>

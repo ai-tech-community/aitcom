@@ -55,7 +55,7 @@ export function PermitsTimeline({ data }: { data: PermitRow[] }) {
                 </span>
               </div>
               <span
-                className={`rounded px-1.5 py-0.5 text-[10px] text-white ${
+                className={`rounded px-1.5 py-0.5 text-xs text-white ${
                   p.status === "granted"
                     ? "bg-green-600"
                     : p.status === "denied"

@@ -53,7 +53,7 @@ export function AgentSuggestions() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider">
+                <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider">
                   {TYPE_LABELS[suggestion.type] ??
                     suggestion.type.toUpperCase()}
                 </span>
@@ -73,7 +73,7 @@ export function AgentSuggestions() {
               {suggestion.type === "topic" && (
                 <Link
                   href="/forum/new"
-                  className="text-primary hover:text-primary/80 font-mono text-[11px] tracking-wider underline underline-offset-4"
+                  className="text-primary hover:text-primary/80 font-mono text-xs tracking-wider underline underline-offset-4"
                 >
                   Create Thread
                 </Link>
@@ -81,7 +81,7 @@ export function AgentSuggestions() {
               {suggestion.type === "introduction" && (
                 <Button
                   size="xs"
-                  className="font-mono text-[11px] tracking-wider"
+                  className="font-mono text-xs tracking-wider"
                   onClick={() =>
                     approveIntro.mutate({ suggestionId: suggestion.id })
                   }
@@ -93,7 +93,7 @@ export function AgentSuggestions() {
               <Button
                 variant="ghost"
                 size="xs"
-                className="text-muted-foreground font-mono text-[11px] tracking-wider"
+                className="text-muted-foreground font-mono text-xs tracking-wider"
                 onClick={() =>
                   dismissSuggestion.mutate({
                     suggestionId: suggestion.id,

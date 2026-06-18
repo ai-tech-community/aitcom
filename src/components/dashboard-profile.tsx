@@ -81,7 +81,7 @@ export function DashboardProfile({
         <SectionLabel bordered={false}>{t("myProfile")}</SectionLabel>
         <button
           onClick={() => setEditing(!editing)}
-          className="text-muted-foreground hover:text-foreground font-mono text-[11px] tracking-wider transition-colors"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
         >
           [{editing ? "CLOSE" : t("editProfile")}]
         </button>
@@ -103,7 +103,7 @@ export function DashboardProfile({
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="font-medium">{profile.displayName}</span>
-              <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider">
+              <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-xs font-medium tracking-wider">
                 {tMembers("level")} {profile.level}
               </span>
             </div>
@@ -122,7 +122,7 @@ export function DashboardProfile({
                   }}
                 />
               </div>
-              <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+              <span className="text-muted-foreground font-mono text-xs tracking-wider">
                 {profile.xp} {tMembers("xp")}
               </span>
             </div>
@@ -132,7 +132,7 @@ export function DashboardProfile({
                 {badges.map((badge) => (
                   <span
                     key={badge.slug}
-                    className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-[10px] tracking-wider"
+                    className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-xs tracking-wider"
                     title={badge.description}
                   >
                     {tBadges(badge.slug)}

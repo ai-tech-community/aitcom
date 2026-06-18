@@ -128,7 +128,7 @@ export function AgentWebhook() {
 
       {/* Webhook URL */}
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           WEBHOOK URL
         </label>
         <Input
@@ -141,7 +141,7 @@ export function AgentWebhook() {
 
       {/* Event Categories */}
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           EVENT SUBSCRIPTIONS
         </label>
         <div className="mt-2 grid grid-cols-2 gap-2">
@@ -172,7 +172,7 @@ export function AgentWebhook() {
       {/* Secret (shown once after creation) */}
       {revealedSecret && (
         <div className="border-warning/30 bg-warning/10 rounded border p-3">
-          <p className="text-warning font-mono text-[11px] tracking-wider">
+          <p className="text-warning font-mono text-xs tracking-wider">
             WEBHOOK SECRET — SAVE THIS NOW
           </p>
           <code className="text-warning mt-1 block font-mono text-xs break-all">

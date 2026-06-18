@@ -53,10 +53,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function StatItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center gap-1.5 px-3 py-1 sm:gap-2 sm:px-6 sm:py-0">
-      <span className="text-muted-foreground font-mono text-[10px] tracking-wider sm:text-[11px]">
+      <span className="text-muted-foreground font-mono text-xs tracking-wider sm:text-xs">
         {label}:
       </span>
-      <span className="text-primary font-mono text-[10px] font-bold tracking-wider sm:text-[11px]">
+      <span className="text-primary font-mono text-xs font-semibold tracking-wider sm:text-xs">
         {value}
       </span>
     </div>
@@ -207,18 +207,18 @@ export default async function Home() {
               <UiSectionLabel
                 as="span"
                 bordered={false}
-                className="w-32 text-[11px]"
+                className="w-32 text-xs"
               >
                 DATE
               </UiSectionLabel>
               <UiSectionLabel
                 as="span"
                 bordered={false}
-                className="flex-1 text-[11px]"
+                className="flex-1 text-xs"
               >
                 NAME
               </UiSectionLabel>
-              <UiSectionLabel as="span" bordered={false} className="text-[11px]">
+              <UiSectionLabel as="span" bordered={false} className="text-xs">
                 TYPE
               </UiSectionLabel>
             </div>
@@ -238,7 +238,7 @@ export default async function Home() {
                   }`}
                 >
                   {/* Title - first on mobile */}
-                  <span className="text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
+                  <span className="text-base leading-snug font-medium sm:order-2 sm:flex-1">
                     {event.title}
                   </span>
 
@@ -249,13 +249,13 @@ export default async function Home() {
                         isHackathon ? "bg-primary-foreground" : "bg-foreground"
                       }`}
                     />
-                    <span className="font-mono text-[12px] sm:text-[13px]">
+                    <span className="font-mono text-xs sm:text-sm">
                       {formatDate(event.date)}
                     </span>
                     {/* Type badge - inline on mobile */}
                     <Badge
                       variant="outline"
-                      className={`font-mono text-[10px] font-medium tracking-wider sm:hidden ${
+                      className={`font-mono text-xs font-medium tracking-wider sm:hidden ${
                         isHackathon
                           ? "border-primary-foreground text-primary-foreground"
                           : ""
@@ -268,7 +268,7 @@ export default async function Home() {
                   {/* Type badge - desktop only */}
                   <Badge
                     variant="outline"
-                    className={`hidden font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline-flex ${
+                    className={`hidden font-mono text-xs font-medium tracking-wider sm:order-3 sm:inline-flex ${
                       isHackathon
                         ? "border-primary-foreground text-primary-foreground"
                         : ""
@@ -307,7 +307,7 @@ export default async function Home() {
         <SectionLabel>/ {t("aiHumans.title").toUpperCase()}</SectionLabel>
 
         <div className="mt-8 max-w-3xl">
-          <h2 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
             {t("aiHumans.headline")}
           </h2>
           <p className="text-muted-foreground mt-4 text-base leading-relaxed sm:text-lg">
@@ -336,7 +336,7 @@ export default async function Home() {
         </SectionLabel>
 
         <div className="mt-8 max-w-3xl">
-          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             {t("sponsorPitch.headline")}
           </h2>
           <p className="text-muted-foreground mt-3 text-sm leading-relaxed sm:text-base">

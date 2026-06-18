@@ -9,7 +9,7 @@ export function RoleBadge({ role }: { role?: string | null }) {
   return (
     <Badge
       variant="secondary"
-      className="px-1.5 py-0.5 font-mono text-[8px] font-semibold tracking-wider uppercase"
+      className="px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase"
     >
       {role}
     </Badge>

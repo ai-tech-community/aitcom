@@ -334,7 +334,7 @@ export default async function EventsPage({
         visitorCountryName={visitor?.countryName ?? null}
       />
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-wider">
+      <div className="mt-4 flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">
         <UseMyLocationButton />
         <Link
           href={buildViewHref("grid")}
@@ -396,7 +396,7 @@ export default async function EventsPage({
                   </div>
                 )}
                 <div className="space-y-4 p-5">
-                  <div className="text-muted-foreground flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-wider">
+                  <div className="text-muted-foreground flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">
                     <span>{formatDate(event.date)}</span>
                     {event.startTime && (
                       <>
@@ -524,7 +524,7 @@ function Pagination({
   }
 
   const linkBase =
-    "font-mono text-[11px] tracking-wider rounded border px-3 py-1.5 transition-colors";
+    "font-mono text-xs tracking-wider rounded border px-3 py-1.5 transition-colors";
   const inactive = "border-border text-muted-foreground hover:bg-secondary/40";
   const active = "border-foreground bg-foreground text-background";
   const disabled =
@@ -547,7 +547,7 @@ function Pagination({
         p === "gap" ? (
           <span
             key={`gap-${idx}`}
-            className="text-muted-foreground font-mono text-[11px] tracking-wider"
+            className="text-muted-foreground font-mono text-xs tracking-wider"
           >
             …
           </span>

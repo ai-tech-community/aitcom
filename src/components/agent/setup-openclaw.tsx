@@ -24,7 +24,7 @@ export function SetupOpenClaw({ apiKey }: { apiKey: string }) {
         <button
           type="button"
           onClick={() => setShowManual(!showManual)}
-          className="text-muted-foreground hover:text-foreground font-mono text-[11px] tracking-wider"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
         >
           {showManual ? "\u25BE" : "\u25B8"} MANUAL SETUP
         </button>

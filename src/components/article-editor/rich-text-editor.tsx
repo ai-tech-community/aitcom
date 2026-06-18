@@ -306,7 +306,7 @@ export function RichTextEditor({
       theme: {
         paragraph: "mb-2 leading-relaxed",
         heading: {
-          h2: "mt-6 mb-3 text-2xl font-bold tracking-tight",
+          h2: "mt-6 mb-3 text-2xl font-semibold tracking-tight",
           h3: "mt-4 mb-2 text-xl font-semibold",
         },
         list: {
@@ -317,7 +317,7 @@ export function RichTextEditor({
         quote:
           "border-l-4 border-primary/40 pl-4 italic text-muted-foreground my-4",
         text: {
-          bold: "font-bold",
+          bold: "font-semibold",
           italic: "italic",
           code: "bg-muted rounded px-1 py-0.5 font-mono text-sm",
           underline: "underline",

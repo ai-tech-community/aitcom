@@ -42,7 +42,7 @@ function SignUpForm() {
       <div className="w-full max-w-sm space-y-8">
         {/* Header */}
         <div className="space-y-2 text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight">
             {t("signUp")}
           </h1>
           <p className="text-muted-foreground text-sm">

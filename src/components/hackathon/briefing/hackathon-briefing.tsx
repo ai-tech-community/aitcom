@@ -79,10 +79,10 @@ export async function HackathonBriefing({
                     <code className="font-mono text-xs font-semibold">
                       {cell.taskType}
                     </code>
-                    <span className="text-muted-foreground font-mono text-[10px] uppercase">
+                    <span className="text-muted-foreground font-mono text-xs uppercase">
                       {t("verifiedBy", { mode: cell.verificationMode })}
                     </span>
-                    <span className="text-muted-foreground font-mono text-[10px] uppercase">
+                    <span className="text-muted-foreground font-mono text-xs uppercase">
                       {t("deadline", { minutes: cell.deadlineMinutes })}
                     </span>
                   </div>

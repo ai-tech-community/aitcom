@@ -248,7 +248,7 @@ export function ChatWindow({
                   {dateLabel && (
                     <div className="flex items-center gap-3">
                       <div className="bg-border h-px flex-1" />
-                      <span className="text-muted-foreground shrink-0 text-[10px] font-medium uppercase">
+                      <span className="text-muted-foreground shrink-0 text-xs font-medium uppercase">
                         {dateLabel}
                       </span>
                       <div className="bg-border h-px flex-1" />
@@ -263,7 +263,7 @@ export function ChatWindow({
                       )}
                     </MessageContent>
                     <span
-                      className={`text-muted-foreground text-[10px] ${isUser ? "ml-auto" : ""}`}
+                      className={`text-muted-foreground text-xs ${isUser ? "ml-auto" : ""}`}
                     >
                       {formatTime(msg.createdAt)}
                     </span>

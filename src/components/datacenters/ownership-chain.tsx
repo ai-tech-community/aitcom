@@ -70,12 +70,12 @@ export function OwnershipChain({
             </span>
             <span className="flex-1 font-medium">{c.name}</span>
             {c.entityType && (
-              <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px]">
+              <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-xs">
                 {c.entityType}
               </span>
             )}
             {c.jurisdiction && (
-              <span className="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">
+              <span className="bg-muted rounded px-1.5 py-0.5 font-mono text-xs">
                 {c.jurisdiction}
               </span>
             )}
@@ -105,7 +105,7 @@ export function OwnershipChain({
         </p>
       )}
 
-      <p className="text-muted-foreground/70 mt-3 text-[10px]">
+      <p className="text-muted-foreground/70 mt-3 text-xs">
         Opacity score combines jurisdiction secrecy and chain depth (≥3 layers =
         +10, ≥4 = +20). Descriptive only — high opacity warrants review, not
         accusation.

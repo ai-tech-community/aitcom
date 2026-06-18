@@ -98,13 +98,13 @@ function CommentItem({
                 {getInitials(comment.authorName ?? "")}
               </AvatarFallback>
             </Avatar>
-            <span className="font-mono text-[9px] font-semibold tracking-wider text-muted-foreground">
+            <span className="font-mono text-xs font-semibold tracking-wider text-muted-foreground">
               {comment.authorName ?? "member"}
             </span>
-            <span className="font-mono text-[9px] text-muted-foreground">&middot;</span>
+            <span className="font-mono text-xs text-muted-foreground">&middot;</span>
             <RelativeTime
               date={comment.createdAt}
-              className="text-[9px] text-muted-foreground"
+              className="text-xs text-muted-foreground"
             />
 
           </div>
@@ -112,7 +112,7 @@ function CommentItem({
             {currentUserId && (
               <button
                 onClick={() => setShowReplyForm((v) => !v)}
-                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent hover:text-foreground"
+                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent hover:text-foreground"
               >
                 <CornerDownRight className="h-2.5 w-2.5" />
                 {t("reply")}
@@ -124,7 +124,7 @@ function CommentItem({
                   deleteCommentMutation.mutate({ commentId: comment.id })
                 }
                 disabled={deleteCommentMutation.isPending}
-                className="text-destructive hover:bg-destructive/15 flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase transition-colors disabled:opacity-50"
+                className="text-destructive hover:bg-destructive/15 flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase transition-colors disabled:opacity-50"
               >
                 <Trash2 className="h-2.5 w-2.5" />
                 {t("delete")}
@@ -169,14 +169,14 @@ function CommentItem({
                 setShowReplyForm(false);
                 setReplyContent("");
               }}
-              className="rounded border border-border px-2 py-1 font-mono text-[9px] font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent"
+              className="rounded border border-border px-2 py-1 font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={addCommentMutation.isPending || !replyContent.trim()}
-              className="rounded-md bg-foreground px-3 py-1 font-mono text-[9px] font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
+              className="rounded-md bg-foreground px-3 py-1 font-mono text-xs font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
             >
               {addCommentMutation.isPending ? "Posting..." : t("reply")}
             </button>
@@ -205,15 +205,15 @@ function CommentItem({
                       {getInitials(reply.authorName ?? "")}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="font-mono text-[9px] font-semibold tracking-wider text-muted-foreground">
+                  <span className="font-mono text-xs font-semibold tracking-wider text-muted-foreground">
                     {reply.authorName ?? "member"}
                   </span>
-                  <span className="font-mono text-[9px] text-muted-foreground">
+                  <span className="font-mono text-xs text-muted-foreground">
                     &middot;
                   </span>
                   <RelativeTime
                     date={reply.createdAt}
-                    className="text-[9px] text-muted-foreground"
+                    className="text-xs text-muted-foreground"
                   />
                 </div>
                 {currentUserId === reply.authorId && (
@@ -222,7 +222,7 @@ function CommentItem({
                       deleteCommentMutation.mutate({ commentId: reply.id })
                     }
                     disabled={deleteCommentMutation.isPending}
-                    className="text-destructive hover:bg-destructive/15 flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase transition-colors disabled:opacity-50"
+                    className="text-destructive hover:bg-destructive/15 flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase transition-colors disabled:opacity-50"
                   >
                     <Trash2 className="h-2.5 w-2.5" />
                     {t("delete")}
@@ -313,21 +313,21 @@ export function LaunchpadComments({
             <button
               type="submit"
               disabled={addCommentMutation.isPending || !newComment.trim()}
-              className="rounded-md bg-foreground px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
+              className="rounded-md bg-foreground px-4 py-1.5 font-mono text-xs font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
             >
               {addCommentMutation.isPending ? "Posting..." : t("submit")}
             </button>
           </div>
         </form>
       ) : (
-        <p className="font-mono text-[10px] text-muted-foreground">
+        <p className="font-mono text-xs text-muted-foreground">
           {t("signInToComment")}
         </p>
       )}
 
       {/* Comments list */}
       {topLevel.length === 0 ? (
-        <p className="py-4 text-center font-mono text-[10px] text-muted-foreground">
+        <p className="py-4 text-center font-mono text-xs text-muted-foreground">
           {t("noComments")}
         </p>
       ) : (

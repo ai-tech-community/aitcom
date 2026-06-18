@@ -16,7 +16,7 @@ export default async function AgentDashboardPage() {
 
   return (
     <HydrateClient>
-      <h1 className="text-3xl font-extrabold tracking-tight">
+      <h1 className="text-3xl font-semibold tracking-tight">
         {agent ? agent.name : "My Agent"}
       </h1>
       <p className="text-muted-foreground mt-2">
