@@ -16,12 +16,13 @@ import { getAvatarUrl, getInitials } from "@/lib/avatar";
 
 export function SocialSuggestions() {
   const t = useTranslations("onboarding");
-  const { data, isLoading } = api.onboarding.getSuggestions.useQuery();
+  const { data, isLoading, isError } = api.onboarding.getSuggestions.useQuery();
   const [brokenAgentAvatars, setBrokenAgentAvatars] = useState<Set<string>>(
     new Set(),
   );
 
-  if (isLoading || !data) return null;
+  // Supplementary widget: stay quietly absent while loading or on error.
+  if (isLoading || isError || !data) return null;
   if (data.members.length === 0 && data.agents.length === 0) return null;
 
   return (

@@ -10,6 +10,8 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import { SectionLabel } from "@/components/ui/section-label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
 import { xpForNextLevel } from "@/lib/gamification";
 
@@ -29,13 +31,30 @@ export function DashboardProfile({
   const tMembers = useTranslations("members");
   const [editing, setEditing] = useState(false);
 
-  const { data, isLoading } = api.members.getMyProfile.useQuery();
+  const { data, isLoading, isError, refetch } =
+    api.members.getMyProfile.useQuery();
 
   if (isLoading) {
     return (
       <div>
         <SectionLabel>{t("myProfile")}</SectionLabel>
-        <p className="text-muted-foreground mt-4 text-sm">Loading...</p>
+        <div className="mt-4 flex items-start gap-4">
+          <Skeleton className="size-12 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="mt-1 h-1.5 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div>
+        <SectionLabel>{t("myProfile")}</SectionLabel>
+        <ErrorState className="py-8" onRetry={() => refetch()} />
       </div>
     );
   }

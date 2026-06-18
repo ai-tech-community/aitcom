@@ -6,16 +6,31 @@ import { Link } from "@/i18n/navigation";
 import { TrophyIcon, GitBranchIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
+import { ErrorState } from "@/components/ui/error-state";
 import { ChallengeProgress } from "./challenge-progress";
 
 export function ActiveChallengesWidget() {
   const t = useTranslations("challenges");
   const { data: challenges } = api.challenges.list.useQuery();
-  const { data: enrollments } = api.challenges.getMyEnrollments.useQuery();
+  const {
+    data: enrollments,
+    isError,
+    refetch,
+  } = api.challenges.getMyEnrollments.useQuery();
 
   const activeEnrollments = (enrollments ?? []).filter(
     (e) => e.status === "active",
   );
+
+  // An errored fetch must not masquerade as "no active challenges".
+  if (isError) {
+    return (
+      <div>
+        <SectionLabel className="pb-4">Active Challenges</SectionLabel>
+        <ErrorState className="py-8" onRetry={() => refetch()} />
+      </div>
+    );
+  }
 
   if (activeEnrollments.length === 0) return null;
 

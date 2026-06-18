@@ -9,6 +9,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const verificationIcons: Record<
   string,
@@ -34,10 +35,34 @@ export function ChallengeProgress({
   challengeId,
   objectives,
 }: ChallengeProgressProps) {
-  const { data } = api.challenges.getProgress.useQuery({ challengeId });
+  const { data, isLoading, isError, refetch } =
+    api.challenges.getProgress.useQuery({ challengeId });
   const { data: testResults } = api.challenges.getTestResults.useQuery({
     challengeId,
   });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-1.5 w-full" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <p className="text-muted-foreground font-mono text-xs">
+        Couldn&apos;t load progress.{" "}
+        <button
+          onClick={() => refetch()}
+          className="text-foreground underline underline-offset-2"
+        >
+          Retry
+        </button>
+      </p>
+    );
+  }
 
   if (!data) return null;
 

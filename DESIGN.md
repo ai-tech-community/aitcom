@@ -250,6 +250,10 @@ The consistency debt was largely hand-rolled re-implementations. Reach for these
 - **`<RelativeTime date>`** (`ui/relative-time.tsx`) — localized "2 hours ago" via next-intl. Replaces hand-rolled `timeAgo()` (was English-only).
 - **`<Avatar>` + `getInitials()`** (`ui/avatar.tsx`, `lib/avatar.ts`) — never re-derive initials inline.
 - **`<Progress indicatorClassName>`** (`ui/progress.tsx`) — pass `bg-success` for a completed bar; never hand-roll a `<div>` bar.
+- **`<Skeleton>` / `<EmptyState>` / `<ErrorState>`** (`ui/skeleton.tsx`, `ui/empty-state.tsx`, `ui/error-state.tsx`) — the three data states. Skeletons (not spinners) for loading; an EmptyState that teaches a next action (not "nothing here"); an ErrorState with retry for failed fetches.
+
+### Named Rule (data states)
+**The No-Silent-Failure Rule.** Every data fetch handles three states explicitly: loading → `<Skeleton>`; error → `<ErrorState onRetry>` (or hide, for purely supplementary widgets); empty → `<EmptyState>` (or hide). **Never** `if (!data) return null` as the only branch — a failed load must be distinguishable from "nothing here." Errored core sections show the error + retry; only optional/supplementary widgets may stay quietly absent.
 
 ## 6. Do's and Don'ts
 
