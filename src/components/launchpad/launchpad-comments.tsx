@@ -7,29 +7,9 @@ import { authClient } from "@/server/better-auth/client";
 import { toast } from "sonner";
 import { Trash2, CornerDownRight } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function timeAgo(date: string | Date | null | undefined): string {
-  if (!date) return "";
-  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-}
-
-function getInitials(name: string | null | undefined): string {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+import { RelativeTime } from "@/components/ui/relative-time";
+import { SectionLabel } from "@/components/ui/section-label";
+import { getInitials } from "@/lib/avatar";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -103,7 +83,7 @@ function CommentItem({
 
   return (
     <div className="space-y-2">
-      <div className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3">
+      <div className="rounded-lg border border-border bg-muted p-3">
         {/* Author row */}
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -114,23 +94,25 @@ function CommentItem({
                   alt={comment.authorName ?? ""}
                 />
               )}
-              <AvatarFallback className="bg-zinc-200 font-mono text-[9px] text-zinc-600">
-                {getInitials(comment.authorName)}
+              <AvatarFallback className="font-mono text-xs">
+                {getInitials(comment.authorName ?? "")}
               </AvatarFallback>
             </Avatar>
-            <span className="font-mono text-[9px] font-semibold tracking-wider text-zinc-600">
+            <span className="font-mono text-[9px] font-semibold tracking-wider text-muted-foreground">
               {comment.authorName ?? "member"}
             </span>
-            <span className="font-mono text-[9px] text-zinc-400">&middot;</span>
-            <span className="font-mono text-[9px] text-zinc-400">
-              {timeAgo(comment.createdAt)}
-            </span>
+            <span className="font-mono text-[9px] text-muted-foreground">&middot;</span>
+            <RelativeTime
+              date={comment.createdAt}
+              className="text-[9px] text-muted-foreground"
+            />
+
           </div>
           <div className="flex items-center gap-1">
             {currentUserId && (
               <button
                 onClick={() => setShowReplyForm((v) => !v)}
-                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-zinc-400 uppercase transition-colors hover:bg-zinc-200 hover:text-zinc-600"
+                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent hover:text-foreground"
               >
                 <CornerDownRight className="h-2.5 w-2.5" />
                 {t("reply")}
@@ -142,7 +124,7 @@ function CommentItem({
                   deleteCommentMutation.mutate({ commentId: comment.id })
                 }
                 disabled={deleteCommentMutation.isPending}
-                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-red-400 uppercase transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                className="text-destructive hover:bg-destructive/15 flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase transition-colors disabled:opacity-50"
               >
                 <Trash2 className="h-2.5 w-2.5" />
                 {t("delete")}
@@ -152,7 +134,7 @@ function CommentItem({
         </div>
 
         {/* Content */}
-        <p className="text-sm leading-relaxed text-zinc-700">
+        <p className="text-sm leading-relaxed text-foreground">
           {comment.content}
         </p>
       </div>
@@ -169,7 +151,7 @@ function CommentItem({
               parentId: comment.id,
             });
           }}
-          className="ml-6 space-y-2 rounded-lg border border-zinc-200 bg-white p-3"
+          className="ml-6 space-y-2 rounded-lg border border-border bg-card p-3"
         >
           <textarea
             value={replyContent}
@@ -178,7 +160,7 @@ function CommentItem({
             maxLength={5000}
             rows={2}
             required
-            className="w-full resize-none rounded border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-300 focus:outline-none"
+            className="w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
           />
           <div className="flex justify-end gap-2">
             <button
@@ -187,14 +169,14 @@ function CommentItem({
                 setShowReplyForm(false);
                 setReplyContent("");
               }}
-              className="rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold tracking-wider text-zinc-500 uppercase transition-colors hover:bg-zinc-100"
+              className="rounded border border-border px-2 py-1 font-mono text-[9px] font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={addCommentMutation.isPending || !replyContent.trim()}
-              className="rounded-md bg-zinc-900 px-3 py-1 font-mono text-[9px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-md bg-foreground px-3 py-1 font-mono text-[9px] font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
             >
               {addCommentMutation.isPending ? "Posting..." : t("reply")}
             </button>
@@ -208,7 +190,7 @@ function CommentItem({
           {replies.map((reply) => (
             <div
               key={reply.id}
-              className="rounded-lg border border-zinc-100 bg-white p-3"
+              className="rounded-lg border border-border bg-card p-3"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -219,19 +201,20 @@ function CommentItem({
                         alt={reply.authorName ?? ""}
                       />
                     )}
-                    <AvatarFallback className="bg-zinc-200 font-mono text-[9px] text-zinc-600">
-                      {getInitials(reply.authorName)}
+                    <AvatarFallback className="font-mono text-xs">
+                      {getInitials(reply.authorName ?? "")}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="font-mono text-[9px] font-semibold tracking-wider text-zinc-600">
+                  <span className="font-mono text-[9px] font-semibold tracking-wider text-muted-foreground">
                     {reply.authorName ?? "member"}
                   </span>
-                  <span className="font-mono text-[9px] text-zinc-400">
+                  <span className="font-mono text-[9px] text-muted-foreground">
                     &middot;
                   </span>
-                  <span className="font-mono text-[9px] text-zinc-400">
-                    {timeAgo(reply.createdAt)}
-                  </span>
+                  <RelativeTime
+                    date={reply.createdAt}
+                    className="text-[9px] text-muted-foreground"
+                  />
                 </div>
                 {currentUserId === reply.authorId && (
                   <button
@@ -239,14 +222,14 @@ function CommentItem({
                       deleteCommentMutation.mutate({ commentId: reply.id })
                     }
                     disabled={deleteCommentMutation.isPending}
-                    className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-red-400 uppercase transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    className="text-destructive hover:bg-destructive/15 flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase transition-colors disabled:opacity-50"
                   >
                     <Trash2 className="h-2.5 w-2.5" />
                     {t("delete")}
                   </button>
                 )}
               </div>
-              <p className="text-sm leading-relaxed text-zinc-700">
+              <p className="text-sm leading-relaxed text-foreground">
                 {reply.content}
               </p>
             </div>
@@ -302,9 +285,7 @@ export function LaunchpadComments({
   return (
     <div className="space-y-4">
       {/* Section header */}
-      <h2 className="font-mono text-[10px] font-semibold tracking-widest text-zinc-400 uppercase">
-        {t("title")}
-      </h2>
+      <SectionLabel bordered={false}>{t("title")}</SectionLabel>
 
       {/* New comment form or signin prompt */}
       {isSignedIn ? (
@@ -326,27 +307,27 @@ export function LaunchpadComments({
             maxLength={5000}
             rows={3}
             required
-            className="w-full resize-none rounded-lg border border-zinc-200 bg-zinc-50/50 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-300 focus:outline-none"
+            className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
           />
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={addCommentMutation.isPending || !newComment.trim()}
-              className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 disabled:opacity-50"
+              className="rounded-md bg-foreground px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
             >
               {addCommentMutation.isPending ? "Posting..." : t("submit")}
             </button>
           </div>
         </form>
       ) : (
-        <p className="font-mono text-[10px] text-zinc-400">
+        <p className="font-mono text-[10px] text-muted-foreground">
           {t("signInToComment")}
         </p>
       )}
 
       {/* Comments list */}
       {topLevel.length === 0 ? (
-        <p className="py-4 text-center font-mono text-[10px] text-zinc-400">
+        <p className="py-4 text-center font-mono text-[10px] text-muted-foreground">
           {t("noComments")}
         </p>
       ) : (

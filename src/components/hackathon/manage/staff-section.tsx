@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
 import { StaffPicker } from "./staff-picker";
 
@@ -67,9 +68,7 @@ export function StaffSection({
               <span className="flex min-w-0 items-center gap-2">
                 <Avatar className="size-7">
                   <AvatarImage src={m.image ?? undefined} alt={name} />
-                  <AvatarFallback>
-                    {name.slice(0, 1).toUpperCase()}
-                  </AvatarFallback>
+                  <AvatarFallback>{getInitials(name)}</AvatarFallback>
                 </Avatar>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium">
@@ -83,7 +82,7 @@ export function StaffSection({
               <Button
                 size="sm"
                 variant="ghost"
-                className="text-red-600"
+                className="text-destructive"
                 aria-label={`Remove ${name} from ${title.toLowerCase()}`}
                 disabled={revoke.isPending}
                 onClick={() =>

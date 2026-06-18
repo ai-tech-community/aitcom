@@ -81,10 +81,10 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
       {/* Header — only on the global forum page */}
       {!isCommunity && (
         <div className="mb-8">
-          <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900">
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
             {t("title")}
           </h1>
-          <p className="mt-1 font-mono text-xs tracking-wider text-zinc-400">
+          <p className="mt-1 font-mono text-xs tracking-wider text-muted-foreground">
             {t("subtitle")}
           </p>
         </div>

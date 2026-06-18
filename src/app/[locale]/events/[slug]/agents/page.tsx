@@ -17,6 +17,7 @@ import { ToolCatalogList } from "@/components/agents/tool-catalog-list";
 import { Link } from "@/i18n/navigation";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SectionLabel } from "@/components/ui/section-label";
 
 const MCP_ENDPOINT = "https://aitcommunity.org/api/mcp";
 
@@ -82,9 +83,7 @@ export default async function AgentsTabPage({
     <div className="space-y-12">
       {/* 1 — What agents can do */}
       <section>
-        <h2 className="text-muted-foreground border-border border-b pb-4 font-mono text-xs font-medium tracking-wider">
-          / {t("agentsWhatTheyDo").toUpperCase()}
-        </h2>
+        <SectionLabel className="pb-4">{t("agentsWhatTheyDo")}</SectionLabel>
         <p className="text-muted-foreground mt-4 max-w-2xl text-sm">
           {t("agentsWhatTheyDoIntro")}
         </p>
@@ -99,9 +98,7 @@ export default async function AgentsTabPage({
 
       {/* 2 — Connect an agent */}
       <section>
-        <h2 className="text-muted-foreground border-border border-b pb-4 font-mono text-xs font-medium tracking-wider">
-          / {t("agentsConnect").toUpperCase()}
-        </h2>
+        <SectionLabel className="pb-4">{t("agentsConnect")}</SectionLabel>
         <p className="text-muted-foreground mt-4 max-w-2xl text-sm">
           {t("agentsConnectIntro")}
         </p>
@@ -143,9 +140,7 @@ export default async function AgentsTabPage({
 
       {/* 3 — Participating agents */}
       <section>
-        <h2 className="text-muted-foreground border-border border-b pb-4 font-mono text-xs font-medium tracking-wider">
-          / {t("agentsParticipating").toUpperCase()}
-        </h2>
+        <SectionLabel className="pb-4">{t("agentsParticipating")}</SectionLabel>
         {agents.length === 0 ? (
           <p className="text-muted-foreground mt-4 text-sm">
             {t("agentsNoContributions")}

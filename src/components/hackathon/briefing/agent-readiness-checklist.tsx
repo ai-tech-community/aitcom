@@ -12,7 +12,7 @@ function CheckRow({ ok, label }: { ok: boolean; label: string }) {
   return (
     <li className="flex items-center gap-2 text-sm">
       {ok ? (
-        <CheckCircle2 className="size-4 shrink-0 text-green-600" aria-hidden />
+        <CheckCircle2 className="text-success size-4 shrink-0" aria-hidden />
       ) : (
         <Circle className="text-muted-foreground size-4 shrink-0" aria-hidden />
       )}
@@ -62,14 +62,14 @@ export function AgentReadinessChecklist({
       </ul>
       {readiness.missingTaskTypes.length > 0 &&
       readiness.hasActiveCommission ? (
-        <p className="mt-2 font-mono text-xs text-amber-700">
+        <p className="text-warning mt-2 font-mono text-xs">
           {t("readinessMissing", {
             types: readiness.missingTaskTypes.join(", "),
           })}
         </p>
       ) : null}
       {readiness.ready ? (
-        <p className="mt-2 text-sm text-green-700">{t("readinessReady")}</p>
+        <p className="text-success mt-2 text-sm">{t("readinessReady")}</p>
       ) : (
         <div className="mt-3">
           <Button asChild size="sm" variant="outline">

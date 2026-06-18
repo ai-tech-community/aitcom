@@ -103,7 +103,7 @@ export function ExamRunner({
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", stiffness: 360, damping: 18 }}
-            className="text-sm font-medium text-green-600"
+            className="text-success text-sm font-medium"
           >
             {t("examAlreadyPassed", {
               score: Math.max(
@@ -120,7 +120,7 @@ export function ExamRunner({
               <legend className="text-sm font-medium">
                 {qi + 1}. {q.prompt}
                 {result?.wrongQuestionIds.includes(q.id) ? (
-                  <span className="ml-2 text-xs text-red-600">
+                  <span className="text-destructive ml-2 text-xs">
                     {t("examWrong")}
                   </span>
                 ) : null}
@@ -144,7 +144,7 @@ export function ExamRunner({
                     />
                     {opt.label}
                     {isCorrect ? (
-                      <span className="text-xs font-medium text-green-600">
+                      <span className="text-success text-xs font-medium">
                         ✓ {t("examCorrectAnswer")}
                       </span>
                     ) : null}
@@ -159,7 +159,7 @@ export function ExamRunner({
               {t("examPreviewNote")}
             </p>
           ) : outOfAttempts ? (
-            <p className="text-sm text-red-600">{t("examNoAttemptsLeft")}</p>
+            <p className="text-destructive text-sm">{t("examNoAttemptsLeft")}</p>
           ) : (
             <Button
               type="button"

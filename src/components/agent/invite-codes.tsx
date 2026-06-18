@@ -2,6 +2,8 @@
 
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { SectionLabel } from "@/components/ui/section-label";
 import { CopyButton } from "@/components/agent/shared";
 
 export function InviteCodes() {
@@ -15,9 +17,7 @@ export function InviteCodes() {
     <div className="border-border bg-card rounded-xl border p-6">
       <div className="border-border border-b pb-4">
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / INVITE CODES
-          </span>
+          <SectionLabel bordered={false}>INVITE CODES</SectionLabel>
           <Button
             variant="outline"
             size="sm"
@@ -42,17 +42,18 @@ export function InviteCodes() {
                   <code className="font-mono text-sm font-medium">
                     {code.code}
                   </code>
-                  <span
-                    className={`rounded px-1.5 py-0.5 font-mono text-[9px] tracking-wider ${
+                  <Badge
+                    variant={
                       code.status === "active"
-                        ? "bg-green-950/30 text-green-400"
+                        ? "success"
                         : code.status === "used"
-                          ? "bg-blue-950/30 text-blue-400"
-                          : "bg-neutral-800 text-neutral-500"
-                    }`}
+                          ? "info"
+                          : "secondary"
+                    }
+                    className="font-mono text-[9px] tracking-wider"
                   >
                     {code.status.toUpperCase()}
-                  </span>
+                  </Badge>
                 </div>
                 {code.status === "active" && <CopyButton text={code.code} />}
               </div>

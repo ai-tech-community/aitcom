@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback } from "react";
-import Image from "next/image";
 import { ArrowLeftIcon, BotIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Spinner } from "@/components/ui/spinner";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import {
   Conversation,
   ConversationContent,
@@ -148,19 +149,12 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
 
         {/* Avatar */}
         <div className="relative shrink-0">
-          {chatInfo.image ? (
-            <Image
-              src={chatInfo.image}
-              alt={chatInfo.displayName}
-              className="h-8 w-8 rounded-full object-cover"
-              width={32}
-              height={32}
-            />
-          ) : (
-            <div className="bg-secondary text-muted-foreground flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium">
-              {chatInfo.displayName.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <Avatar>
+            {chatInfo.image && (
+              <AvatarImage src={chatInfo.image} alt={chatInfo.displayName} />
+            )}
+            <AvatarFallback>{getInitials(chatInfo.displayName)}</AvatarFallback>
+          </Avatar>
           {chatInfo.isAgent && (
             <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full">
               <BotIcon className="text-muted-foreground h-3 w-3" />

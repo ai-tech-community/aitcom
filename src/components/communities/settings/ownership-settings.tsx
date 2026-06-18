@@ -71,9 +71,9 @@ export function OwnershipSettings({ slug }: OwnershipSettingsProps) {
         <p className="text-muted-foreground text-sm">{t("description")}</p>
       </div>
 
-      <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
-        <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
-        <p className="text-sm text-amber-800">{t("warning")}</p>
+      <div className="border-warning/30 bg-warning/15 flex items-start gap-3 rounded-lg border p-4">
+        <AlertTriangle className="text-warning mt-0.5 size-5 shrink-0" />
+        <p className="text-warning text-sm">{t("warning")}</p>
       </div>
 
       <div className="space-y-4">

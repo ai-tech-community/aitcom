@@ -13,6 +13,7 @@ import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
 import { hubTabStates } from "@/server/hackathon/hub-tabs";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
+import { SectionLabel } from "@/components/ui/section-label";
 import {
   ProjectGallery,
   type GalleryProject,
@@ -92,9 +93,7 @@ export default async function HackathonGalleryPage({
 
   return (
     <section>
-      <h2 className="text-muted-foreground border-border border-b pb-4 font-mono text-xs font-medium tracking-wider">
-        / {t("gallery").toUpperCase()}
-      </h2>
+      <SectionLabel className="pb-4">{t("gallery")}</SectionLabel>
       <p className="text-muted-foreground mt-4 text-sm">{t("galleryIntro")}</p>
 
       {!projectsState.available ? (

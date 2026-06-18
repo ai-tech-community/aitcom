@@ -31,22 +31,22 @@ export function ContributeModal({
     },
     {
       key: "write" as const,
-      border: "border-zinc-200 hover:border-zinc-300",
-      badge: "bg-zinc-100 text-zinc-600",
+      border: "border-border hover:border-border",
+      badge: "bg-muted text-foreground",
       href: "/dashboard" as string | null,
       disabled: false,
     },
     {
       key: "mentor" as const,
-      border: "border-zinc-200",
-      badge: "bg-zinc-100 text-zinc-400",
+      border: "border-border",
+      badge: "bg-muted text-muted-foreground",
       href: null as string | null,
       disabled: true,
     },
     {
       key: "partner" as const,
-      border: "border-zinc-200",
-      badge: "bg-zinc-100 text-zinc-400",
+      border: "border-border",
+      badge: "bg-muted text-muted-foreground",
       href: null as string | null,
       disabled: true,
     },
@@ -66,10 +66,10 @@ export function ContributeModal({
             key={key}
             className={`rounded-lg border p-4 transition-colors ${border} ${disabled ? "opacity-50" : ""}`}
           >
-            <h3 className="font-mono text-xs font-bold tracking-wider text-zinc-900 uppercase">
+            <h3 className="font-mono text-xs font-bold tracking-wider text-foreground uppercase">
               {t(`${key}.title`)}
             </h3>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-zinc-500">
+            <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
               {t(`${key}.description`)}
             </p>
             <div className="mt-3">

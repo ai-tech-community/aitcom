@@ -103,10 +103,10 @@ export function AgentWebhook() {
           <span
             className={`h-2 w-2 rounded-full ${
               statusColor === "green"
-                ? "bg-green-500"
+                ? "bg-success"
                 : statusColor === "yellow"
-                  ? "bg-yellow-500"
-                  : "bg-red-500"
+                  ? "bg-warning"
+                  : "bg-destructive"
             }`}
           />
           <span className="text-muted-foreground font-mono text-xs">
@@ -171,11 +171,11 @@ export function AgentWebhook() {
 
       {/* Secret (shown once after creation) */}
       {revealedSecret && (
-        <div className="rounded border border-yellow-800 bg-yellow-950/30 p-3">
-          <p className="font-mono text-[11px] tracking-wider text-yellow-400">
+        <div className="border-warning/30 bg-warning/10 rounded border p-3">
+          <p className="text-warning font-mono text-[11px] tracking-wider">
             WEBHOOK SECRET — SAVE THIS NOW
           </p>
-          <code className="mt-1 block font-mono text-xs break-all text-yellow-200">
+          <code className="text-warning mt-1 block font-mono text-xs break-all">
             {revealedSecret}
           </code>
           <p className="text-muted-foreground mt-2 text-xs">
@@ -193,7 +193,7 @@ export function AgentWebhook() {
 
       {/* Test success */}
       {testWebhook.isSuccess && (
-        <div className="rounded border border-green-800 bg-green-950/30 px-3 py-2 font-mono text-xs text-green-400">
+        <div className="border-success/30 bg-success/10 text-success rounded border px-3 py-2 font-mono text-xs">
           Test event delivered successfully!
         </div>
       )}

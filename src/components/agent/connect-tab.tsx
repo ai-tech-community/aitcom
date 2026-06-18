@@ -25,8 +25,8 @@ export function ConnectTab({
   return (
     <div className="space-y-8">
       {!hasFullKey && (
-        <div className="rounded border border-yellow-700 bg-yellow-950/30 px-4 py-3">
-          <p className="font-mono text-[11px] font-medium tracking-wider text-yellow-300">
+        <div className="border-warning/30 bg-warning/10 rounded border px-4 py-3">
+          <p className="text-warning font-mono text-[11px] font-medium tracking-wider">
             ⚠ SNIPPETS BELOW ARE NOT COPY-PASTE READY
           </p>
           <p className="text-muted-foreground mt-1 text-xs">

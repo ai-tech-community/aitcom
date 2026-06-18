@@ -33,6 +33,12 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -68,6 +74,14 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
+  /* Semantic status tokens — WCAG AA verified as text on white (>=4.5:1) and as
+     white-on-fill. Pair with a non-color cue (icon/label); never color alone. */
+  --success: oklch(0.52 0.14 150);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.54 0.13 85);
+  --warning-foreground: oklch(1 0 0);
+  --info: oklch(0.55 0.16 240);
+  --info-foreground: oklch(1 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.705 0.213 47.604);
@@ -102,6 +116,14 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
+  /* Brighter status tones for dark surfaces; dark foreground for solid fills.
+     Verified >=7:1 against the dark surface (oklch(0.205)). */
+  --success: oklch(0.72 0.16 150);
+  --success-foreground: oklch(0.205 0 0);
+  --warning: oklch(0.8 0.14 85);
+  --warning-foreground: oklch(0.205 0 0);
+  --info: oklch(0.72 0.15 240);
+  --info-foreground: oklch(0.205 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.646 0.222 41.116);

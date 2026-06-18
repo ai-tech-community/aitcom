@@ -41,7 +41,7 @@ const buttons = [
 
 export function MarkdownToolbar({ textareaRef, onUpdate }: Props) {
   return (
-    <div className="flex gap-0.5 rounded-t-md border border-b-0 border-zinc-200 bg-zinc-50 px-1 py-1">
+    <div className="flex gap-0.5 rounded-t-md border border-b-0 border-border bg-muted px-1 py-1">
       {buttons.map((btn) => (
         <button
           key={btn.title}
@@ -57,7 +57,7 @@ export function MarkdownToolbar({ textareaRef, onUpdate }: Props) {
               );
             }
           }}
-          className="rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-200 hover:text-zinc-700"
+          className="rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <btn.icon className="h-3.5 w-3.5" />
         </button>

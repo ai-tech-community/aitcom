@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -201,7 +202,7 @@ export function MembersSettings({
             </Button>
           </div>
           {roleLinkCode && (
-            <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-2">
+            <div className="border-success/30 bg-success/15 flex items-center gap-2 rounded-md border p-2">
               <Input
                 readOnly
                 value={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${roleLinkCode}`}
@@ -270,7 +271,7 @@ export function MembersSettings({
                           />
                         ) : null}
                         <AvatarFallback>
-                          {(member.displayName ?? "?")[0]?.toUpperCase()}
+                          {getInitials(member.displayName ?? "?")}
                         </AvatarFallback>
                       </Avatar>
                       <div>
@@ -372,7 +373,7 @@ export function MembersSettings({
                           />
                         ) : null}
                         <AvatarFallback>
-                          {(member.displayName ?? "?")[0]?.toUpperCase()}
+                          {getInitials(member.displayName ?? "?")}
                         </AvatarFallback>
                       </Avatar>
                       <p className="text-sm font-medium">
@@ -451,7 +452,7 @@ export function MembersSettings({
                         />
                       ) : null}
                       <AvatarFallback>
-                        {(member.displayName ?? "?")[0]?.toUpperCase()}
+                        {getInitials(member.displayName ?? "?")}
                       </AvatarFallback>
                     </Avatar>
                     <div>

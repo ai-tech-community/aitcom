@@ -4,6 +4,7 @@ import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
+import { SectionLabel } from "@/components/ui/section-label";
 import { TeamHeatmapPublic } from "@/components/hackathon/team-heatmap-public";
 import { prizeRecipients } from "@/server/hackathon/winners";
 
@@ -35,9 +36,9 @@ export function TeamLeaderboard({
   return (
     <div className="mt-4">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+        <SectionLabel as="span" bordered={false}>
           {t("leaderboard")}
-        </span>
+        </SectionLabel>
         <span className="flex items-center gap-4">
           {hasSubmissions && eventSlug ? (
             <Link
@@ -75,12 +76,7 @@ export function TeamLeaderboard({
                   {team.score} {t("score")}
                 </span>
                 {prizeTeamIds.has(team.teamId) ? (
-                  <Badge
-                    variant="secondary"
-                    className="bg-green-500/15 text-green-600 dark:text-green-400"
-                  >
-                    {t("winner")}
-                  </Badge>
+                  <Badge variant="success">{t("winner")}</Badge>
                 ) : null}
                 {team.submitted ? (
                   <Badge variant="secondary">{t("submitted")}</Badge>

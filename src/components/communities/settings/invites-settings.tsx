@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -126,7 +127,7 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
 
       {/* Last created link */}
       {lastCreatedCode && (
-        <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
+        <div className="border-success/30 bg-success/15 flex items-center gap-2 rounded-lg border p-3">
           <Input
             readOnly
             value={`${typeof window !== "undefined" ? window.location.origin : ""}/invite/${lastCreatedCode}`}
@@ -222,9 +223,9 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
                       </span>
                     )}
                     {invite.role && (
-                      <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
+                      <Badge variant="secondary" className="text-xs">
                         {tRoles(invite.role)}
-                      </span>
+                      </Badge>
                     )}
                     {invite.targetEmail && (
                       <span className="text-muted-foreground text-xs">

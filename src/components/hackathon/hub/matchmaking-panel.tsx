@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SectionLabel } from "@/components/ui/section-label";
 import { matchesSkillFilter } from "@/server/hackathon/looking-for-team";
 
 /**
@@ -47,9 +48,7 @@ export function MatchmakingPanel({ challengeId }: { challengeId: number }) {
 
   return (
     <section>
-      <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-        / {t("matchmaking").toUpperCase()}
-      </h2>
+      <SectionLabel bordered={false}>{t("matchmaking")}</SectionLabel>
 
       {/* "Looking for a team" opt-in (#164): solo-enrolled, forming phase only. */}
       {lookingList.viewer.solo ? (
@@ -63,7 +62,7 @@ export function MatchmakingPanel({ challengeId }: { challengeId: number }) {
               {/* Hidden profiles never surface in the candidate list — warn
                   instead of silently dropping the viewer (#164 review). */}
               {lookingList.viewer.profileHidden ? (
-                <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                <p className="text-warning mt-1 text-xs">
                   {t("lookingForTeamHiddenProfile")}
                 </p>
               ) : null}

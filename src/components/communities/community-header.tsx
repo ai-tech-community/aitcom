@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Users } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import { JoinButton } from "./join-button";
 import { MemberStack } from "./member-stack";
 import type { RouterOutputs } from "@/trpc/react";
@@ -23,12 +24,7 @@ export function CommunityHeader({
 }: CommunityHeaderProps) {
   const t = useTranslations("communities.profile");
 
-  const initials = community.name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = getInitials(community.name);
 
   return (
     <div className="bg-background/60 border-b backdrop-blur-sm">

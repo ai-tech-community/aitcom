@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-18T00:00:00.000Z",
+  "title": "Design System: AIT Community",
+  "extensions": {
+    "colorMeta": {
+      "signal-orange": {
+        "role": "primary",
+        "displayName": "Signal Orange",
+        "canonical": "oklch(0.705 0.213 47.604)",
+        "tonalRamp": [
+          "oklch(0.15 0.07 47.6)",
+          "oklch(0.27 0.11 47.6)",
+          "oklch(0.38 0.15 47.6)",
+          "oklch(0.50 0.19 47.6)",
+          "oklch(0.62 0.213 47.6)",
+          "oklch(0.705 0.213 47.604)",
+          "oklch(0.81 0.15 47.6)",
+          "oklch(0.93 0.06 47.6)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(0.145 0 0)",
+        "tonalRamp": [
+          "oklch(0.145 0 0)",
+          "oklch(0.205 0 0)",
+          "oklch(0.30 0 0)",
+          "oklch(0.45 0 0)",
+          "oklch(0.556 0 0)",
+          "oklch(0.708 0 0)",
+          "oklch(0.85 0 0)",
+          "oklch(0.97 0 0)"
+        ]
+      },
+      "destructive": {
+        "role": "tertiary",
+        "displayName": "Destructive Red",
+        "canonical": "oklch(0.577 0.245 27.325)",
+        "tonalRamp": [
+          "oklch(0.20 0.10 27.3)",
+          "oklch(0.30 0.15 27.3)",
+          "oklch(0.40 0.20 27.3)",
+          "oklch(0.50 0.24 27.3)",
+          "oklch(0.577 0.245 27.325)",
+          "oklch(0.70 0.19 27.3)",
+          "oklch(0.83 0.12 27.3)",
+          "oklch(0.93 0.05 27.3)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero and page-defining headlines on public surfaces only. Ceiling ~3.5rem." },
+      "headline": { "displayName": "Headline", "purpose": "Section and card-group headings." },
+      "title": { "displayName": "Title", "purpose": "Card titles and compact headings (leading-none, semibold)." },
+      "body": { "displayName": "Body", "purpose": "Default reading text. Cap measure at 65-75ch." },
+      "label": { "displayName": "Label / Mono", "purpose": "The signature / SECTION_NAME marker, stats, timestamps, IDs. Monospace, muted, often uppercase." }
+    },
+    "shadows": [
+      { "name": "hairline-lift", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "shadow-xs — outline buttons and inputs at rest." },
+      { "name": "resting-card", "value": "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)", "purpose": "shadow-sm — cards, paired always with a full border." },
+      { "name": "floating", "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)", "purpose": "Floating layers only: popovers, dropdowns, dialogs, toasts." }
+    ],
+    "motion": [
+      { "name": "transition-all", "value": "all 150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default state transition on buttons and interactive chrome." },
+      { "name": "transition-color-shadow", "value": "color, box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Inputs and badges — focus ring and color shifts only." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single highest-emphasis action on a screen. Signal Orange, used sparingly.",
+      "html": "<button class=\"ds-btn-primary\">Join the community</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: none; border-radius: 8px; background: oklch(0.705 0.213 47.604); color: oklch(1 0 0); font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-primary:hover { background: oklch(0.66 0.20 47.604); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.705 0.213 47.604 / 0.5); } .ds-btn-primary:active { transform: translateY(0.5px); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Medium-emphasis action. Muted gray fill, no color.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: none; border-radius: 8px; background: oklch(0.97 0 0); color: oklch(0.205 0 0); font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-secondary:hover { background: oklch(0.94 0 0); } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.705 0.213 47.604 / 0.5); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Low-emphasis bordered action with hairline lift.",
+      "html": "<button class=\"ds-btn-outline\">Learn more</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 8px 16px; border: 1px solid oklch(0.922 0 0); border-radius: 8px; background: oklch(1 0 0); color: oklch(0.145 0 0); box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-btn-outline:hover { background: oklch(0.97 0 0); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.705 0.213 47.604 / 0.5); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Single-line field. Hairline border at rest, Signal-Orange focus ring.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search communities\" />",
+      "css": ".ds-input { height: 36px; width: 100%; padding: 4px 12px; border: 1px solid oklch(0.922 0 0); border-radius: 8px; background: oklch(1 0 0); color: oklch(0.145 0 0); box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; outline: none; transition: color 150ms, box-shadow 150ms cubic-bezier(0.4,0,0.2,1); } .ds-input::placeholder { color: oklch(0.556 0 0); } .ds-input:focus-visible { border-color: oklch(0.705 0.213 47.604); box-shadow: 0 0 0 3px oklch(0.705 0.213 47.604 / 0.5); } .ds-input[aria-invalid='true'] { border-color: oklch(0.577 0.245 27.325); box-shadow: 0 0 0 3px oklch(0.577 0.245 27.325 / 0.2); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Flat, border-defined container with subtle resting shadow. Never nested, never side-striped.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Amsterdam AI Builders</div><div class=\"ds-card-desc\">A weekly gathering of engineers shipping with agents.</div></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 16px; padding: 24px; border: 1px solid oklch(0.922 0 0); border-radius: 14px; background: oklch(1 0 0); color: oklch(0.145 0 0); box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); } .ds-card-title { font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 1rem; font-weight: 600; line-height: 1; } .ds-card-desc { font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; color: oklch(0.556 0 0); line-height: 1.5; }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Pill status/label. Default carries Signal Orange; pair with a non-color cue for status.",
+      "html": "<span class=\"ds-badge\">LIVE</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 4px; width: fit-content; padding: 2px 8px; border: 1px solid transparent; border-radius: 9999px; background: oklch(0.705 0.213 47.604); color: oklch(1 0 0); font-family: 'Geist Mono', ui-monospace, monospace; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.05em; white-space: nowrap; }"
+    },
+    {
+      "name": "Section Label",
+      "kind": "custom",
+      "refersTo": "section-label",
+      "description": "The signature house kicker. Monospace, muted, ruled. The single most recognizable element of the system.",
+      "html": "<h2 class=\"ds-section-label\">/ COMMUNITIES</h2>",
+      "css": ".ds-section-label { margin: 0; padding-bottom: 8px; border-bottom: 1px solid oklch(0.922 0 0); font-family: 'Geist Mono', ui-monospace, monospace; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.05em; color: oklch(0.556 0 0); }"
+    },
+    {
+      "name": "Nav Link",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Quiet at rest, Signal Orange + non-color cue on active. Subtle hover bed, never aggressive.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link\" href=\"#\">Events</a><a class=\"ds-nav-link ds-nav-link--active\" href=\"#\">Communities</a><a class=\"ds-nav-link\" href=\"#\">Blog</a></nav>",
+      "css": ".ds-nav { display: inline-flex; gap: 4px; } .ds-nav-link { padding: 6px 10px; border-radius: 8px; font-family: 'Geist Sans', ui-sans-serif, system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; color: oklch(0.556 0 0); text-decoration: none; transition: all 150ms cubic-bezier(0.4,0,0.2,1); } .ds-nav-link:hover { background: oklch(0.97 0 0 / 0.5); color: oklch(0.145 0 0); } .ds-nav-link--active { color: oklch(0.705 0.213 47.604); text-decoration: underline; text-underline-offset: 4px; } .ds-nav-link:focus-visible { outline: none; box-shadow: 0 0 0 3px oklch(0.705 0.213 47.604 / 0.5); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Town Square",
+    "overview": "AIT Community is a town square where engineers and AI agents gather to build together. The square is built on a precise technical grid — monospace labels, OKLCH tokens, ruled borders, an orange-dot wordmark — but the grid is the pavement, not the point. Warmth comes from the people, the imagery, the language, and the disciplined use of a single warm accent. The system is balanced: one shared core of tokens, type, and components serves both the public square and the workshops behind it. Public surfaces get more expressive latitude; app surfaces are dense by necessity and earn warmth through clear hierarchy and human copy, not by stripping function. It explicitly rejects the generic-SaaS-template look, the cold sterile dashboard, crypto/Web3 hype, and corporate stuffiness.",
+    "keyCharacteristics": [
+      "Pure-white (or true-dark) canvas, never tinted warm-neutral cream.",
+      "One warm accent — Signal Orange — used sparingly and on purpose.",
+      "Geist Sans for everything human; Geist Mono reserved for the house / LABEL voice, stats, and timestamps.",
+      "Border-defined, flat-by-default surfaces with subtle lift on interaction.",
+      "WCAG 2.2 AA, bilingual-tolerant (EN/NL), color-blind-safe, reduced-motion-aware."
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Signal Orange appears on <=10% of any given screen. It marks the single most important action or the active state — nothing else. If two things on a screen are orange, one of them is wrong.", "section": "colors" },
+      { "name": "The No-Cream Rule", "body": "The body background is pure white (oklch(1 0 0)) or true dark (oklch(0.145 0 0)). Never a warm-tinted near-white. The instant a surface drifts toward cream/sand/parchment, it reads as a generic AI-generated landing page.", "section": "colors" },
+      { "name": "The Chart-Containment Rule", "body": "The five chart hues live inside data viz and nowhere else. UI chrome is neutral + Signal Orange, full stop.", "section": "colors" },
+      { "name": "The House Kicker Rule", "body": "The monospace / LABEL is the one sanctioned eyebrow and it is a system, not decoration. Do not stack uppercase tracked eyebrows or 01/02/03 numbered markers on top of it.", "section": "typography" },
+      { "name": "The Mono-Is-Machine Rule", "body": "Geist Mono is reserved for the machine voice: labels, code, stats, IDs, timestamps. Warm human copy is Geist Sans. Monospace everywhere is how the town square turns cold.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "A resting surface is border-defined and nearly flat. Reach for a heavier shadow only when an element is floating (overlay) or responding (hover/active).", "section": "elevation" },
+      { "name": "The Border-Carries-Depth Rule", "body": "Depth is communicated by borders and tonal steps first, shadow second. Removing every shadow should still leave the hierarchy legible.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep the body background pure white or true dark. Carry warmth through copy, imagery, and the accent — never a tinted cream surface.",
+      "Do ration Signal Orange to <=10% of a screen (the One Voice Rule).",
+      "Do use the monospace / LABEL as the one consistent section marker, and only there.",
+      "Do define surfaces with full hairline borders and tonal layering; reserve shadows for floating or responding elements.",
+      "Do pair every status color with a non-color cue (icon, label, pattern).",
+      "Do test headings and labels in both English and Dutch; layouts must absorb longer NL strings without overflow.",
+      "Do give every Framer Motion animation a prefers-reduced-motion fallback, and ensure reveals enhance already-visible content.",
+      "Do keep body text >=4.5:1 (large >=3:1); never push text-muted lighter than oklch(0.556 0 0) on white."
+    ],
+    "donts": [
+      "Don't ship a generic SaaS template look: no cream/sand backgrounds, gradient hero text, hero-metric blocks, or endless identical icon+heading+text card grids.",
+      "Don't let app surfaces become a cold, sterile dashboard — density is fine, all-gray soulless admin panels are not.",
+      "Don't drift toward crypto/Web3 hype: no neon-on-black, aggressive gradients, or 'to the moon' energy.",
+      "Don't go corporate/stuffy: no stock photography, navy-and-gray palettes, or jargon-heavy copy.",
+      "Don't use a colored border-left/border-right stripe (>1px) as an accent on cards, list items, or alerts.",
+      "Don't nest cards, and don't give resting cards heavy soft shadows.",
+      "Don't stack extra eyebrows or 01/02/03 numbered markers on top of the / LABEL system.",
+      "Don't spend Geist Mono on warm human copy (bios, community descriptions).",
+      "Don't borrow chart colors into UI chrome."
+    ]
+  }
+}

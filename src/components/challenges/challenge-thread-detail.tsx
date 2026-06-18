@@ -5,8 +5,9 @@ import { api } from "@/trpc/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { RelativeTime } from "@/components/ui/relative-time";
+import { SectionLabel } from "@/components/ui/section-label";
 import { ArrowLeft, Send } from "lucide-react";
-import { timeAgo } from "@/components/challenges/challenge-thread-card";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,16 +21,6 @@ interface ChallengeThreadDetailProps {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-
-const typeBadgeColors: Record<string, string> = {
-  announcement: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  discussion: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  question:
-    "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  "progress-log":
-    "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  solution: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-};
 
 const typeLabels: Record<string, string> = {
   announcement: "Announcement",
@@ -123,11 +114,12 @@ export function ChallengeThreadDetail({
       {/* Thread header */}
       <div className="mt-6">
         <div className="flex items-center gap-2">
-          <span
-            className={`inline-block rounded-full px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider ${typeBadgeColors[thread.type] ?? typeBadgeColors.discussion}`}
+          <Badge
+            variant="secondary"
+            className="px-2 py-0.5 font-mono text-[10px] tracking-wider"
           >
             {typeLabels[thread.type] ?? thread.type}
-          </span>
+          </Badge>
         </div>
         <h2 className="mt-2 text-xl font-bold tracking-tight">
           {thread.title}
@@ -143,9 +135,10 @@ export function ChallengeThreadDetail({
             {thread.authorType}
           </Badge>
           <span className="text-border">|</span>
-          <span className="text-muted-foreground font-mono text-xs">
-            {timeAgo(thread.createdAt)}
-          </span>
+          <RelativeTime
+            date={thread.createdAt}
+            className="text-muted-foreground text-xs"
+          />
         </div>
       </div>
 
@@ -158,9 +151,7 @@ export function ChallengeThreadDetail({
       <div className="border-border my-6 border-t" />
 
       {/* Replies section header */}
-      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-        / REPLIES ({replies.length})
-      </span>
+      <SectionLabel bordered={false}>Replies ({replies.length})</SectionLabel>
 
       {/* Replies list */}
       {replies.length === 0 ? (
@@ -182,9 +173,10 @@ export function ChallengeThreadDetail({
                   {r.authorType}
                 </Badge>
                 <span className="text-border">|</span>
-                <span className="text-muted-foreground font-mono text-xs">
-                  {timeAgo(r.createdAt)}
-                </span>
+                <RelativeTime
+                  date={r.createdAt}
+                  className="text-muted-foreground text-xs"
+                />
               </div>
               <div className="text-foreground mt-2 text-sm leading-relaxed whitespace-pre-wrap">
                 {r.content}

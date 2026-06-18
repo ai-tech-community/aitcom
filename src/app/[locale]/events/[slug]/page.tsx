@@ -26,6 +26,10 @@ import {
 } from "@/lib/event-time";
 import { EventTimeDisplay } from "@/components/event-time-display";
 import { getTranslations } from "next-intl/server";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { SectionLabel } from "@/components/ui/section-label";
+import { getInitials } from "@/lib/avatar";
 
 type MediaValue =
   | { url?: string | null; alt?: string | null }
@@ -307,21 +311,16 @@ export default async function EventDetailPage({
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="border-border text-muted-foreground rounded-full border px-3 py-1 text-xs"
-                >
+                <Badge key={tag} variant="outline" className="px-3 py-1">
                   #{tag}
-                </span>
+                </Badge>
               ))}
             </div>
           )}
 
           {prizeParts.length > 0 && (
             <div className="border-border bg-card space-y-3 rounded-lg border p-4">
-              <div className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
-                / PRIZES
-              </div>
+              <SectionLabel bordered={false}>Prizes</SectionLabel>
               <dl className="grid gap-3 sm:grid-cols-2">
                 {prizeParts.map((part) => (
                   <div key={part.label} className="flex flex-col gap-1">
@@ -385,11 +384,7 @@ export default async function EventDetailPage({
 
           {event.description && (
             <div className="border-border border-t pt-8">
-              <div className="border-border border-b pb-4">
-                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-                  / ABOUT
-                </h2>
-              </div>
+              <SectionLabel>About</SectionLabel>
               <div className="mt-4">
                 <LexicalRenderer content={event.description} />
               </div>
@@ -398,11 +393,7 @@ export default async function EventDetailPage({
 
           {speakers.length > 0 && (
             <div className="border-border border-t pt-8">
-              <div className="border-border border-b pb-4">
-                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-                  / SPEAKERS
-                </h2>
-              </div>
+              <SectionLabel>Speakers</SectionLabel>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {speakers.map((speaker) => {
                   const photoUrl =
@@ -414,24 +405,18 @@ export default async function EventDetailPage({
                       key={speaker.id}
                       className="border-border flex items-start gap-3 rounded-lg border p-4"
                     >
-                      {photoUrl ? (
-                        <Image
-                          src={photoUrl}
-                          alt={speaker.name}
-                          className="h-10 w-10 shrink-0 rounded-full object-cover"
-                          width={40}
-                          height={40}
-                        />
-                      ) : (
-                        <div className="bg-secondary text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-mono text-xs">
-                          {speaker.name
-                            .split(" ")
-                            .map((p) => p[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2)}
-                        </div>
-                      )}
+                      <Avatar size="lg" className="shrink-0">
+                        {photoUrl ? (
+                          <AvatarImage
+                            src={photoUrl}
+                            alt={speaker.name}
+                            className="object-cover"
+                          />
+                        ) : null}
+                        <AvatarFallback className="bg-secondary font-mono text-xs">
+                          {getInitials(speaker.name)}
+                        </AvatarFallback>
+                      </Avatar>
                       <div className="min-w-0">
                         <div className="truncate font-medium">
                           {speaker.name}
@@ -456,11 +441,7 @@ export default async function EventDetailPage({
 
           {gallery.length > 0 && (
             <div className="border-border border-t pt-8">
-              <div className="border-border border-b pb-4">
-                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-                  / GALLERY
-                </h2>
-              </div>
+              <SectionLabel>Gallery</SectionLabel>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {gallery.map((image, index) => (
                   <div
@@ -486,11 +467,7 @@ export default async function EventDetailPage({
           )}
 
           <div className="border-border border-t pt-8">
-            <div className="border-border border-b pb-4">
-              <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-                / ATTENDEES
-              </h2>
-            </div>
+            <SectionLabel>Attendees</SectionLabel>
             <div className="mt-4">
               <EventAttendees
                 eventId={eventId}
@@ -540,16 +517,22 @@ export default async function EventDetailPage({
             </div>
 
             {(event.format ?? priceLabel) && (
-              <div className="border-border flex flex-wrap gap-2 border-t pt-4 font-mono text-[11px] tracking-wider">
+              <div className="border-border flex flex-wrap gap-2 border-t pt-4">
                 {event.format && (
-                  <span className="border-border rounded border px-2 py-0.5">
+                  <Badge
+                    variant="outline"
+                    className="rounded-md font-mono text-[11px] tracking-wider"
+                  >
                     {EVENT_FORMAT_LABELS[event.format] ?? event.format}
-                  </span>
+                  </Badge>
                 )}
                 {priceLabel && (
-                  <span className="border-border rounded border px-2 py-0.5">
+                  <Badge
+                    variant="outline"
+                    className="rounded-md font-mono text-[11px] tracking-wider"
+                  >
                     {priceLabel}
-                  </span>
+                  </Badge>
                 )}
               </div>
             )}
@@ -703,12 +686,9 @@ export default async function EventDetailPage({
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="border-border text-muted-foreground rounded-full border px-3 py-1 text-xs"
-                >
+                <Badge key={tag} variant="outline" className="px-3 py-1">
                   #{tag}
-                </span>
+                </Badge>
               ))}
             </div>
           )}
@@ -763,11 +743,7 @@ export default async function EventDetailPage({
 
           {event.description && (
             <div className="border-border border-t pt-8">
-              <div className="border-border border-b pb-4">
-                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-                  / ABOUT
-                </h2>
-              </div>
+              <SectionLabel>About</SectionLabel>
               <div className="mt-4">
                 <LexicalRenderer content={event.description} />
               </div>
@@ -776,11 +752,7 @@ export default async function EventDetailPage({
 
           {speakers.length > 0 && (
             <div className="border-border border-t pt-8">
-              <div className="border-border border-b pb-4">
-                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-                  / SPEAKERS
-                </h2>
-              </div>
+              <SectionLabel>Speakers</SectionLabel>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {speakers.map((speaker) => {
                   const photoUrl =
@@ -792,24 +764,18 @@ export default async function EventDetailPage({
                       key={speaker.id}
                       className="border-border flex items-start gap-3 rounded-lg border p-4"
                     >
-                      {photoUrl ? (
-                        <Image
-                          src={photoUrl}
-                          alt={speaker.name}
-                          className="h-10 w-10 shrink-0 rounded-full object-cover"
-                          width={40}
-                          height={40}
-                        />
-                      ) : (
-                        <div className="bg-secondary text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-mono text-xs">
-                          {speaker.name
-                            .split(" ")
-                            .map((p) => p[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2)}
-                        </div>
-                      )}
+                      <Avatar size="lg" className="shrink-0">
+                        {photoUrl ? (
+                          <AvatarImage
+                            src={photoUrl}
+                            alt={speaker.name}
+                            className="object-cover"
+                          />
+                        ) : null}
+                        <AvatarFallback className="bg-secondary font-mono text-xs">
+                          {getInitials(speaker.name)}
+                        </AvatarFallback>
+                      </Avatar>
                       <div className="min-w-0">
                         <div className="truncate font-medium">
                           {speaker.name}
@@ -834,11 +800,7 @@ export default async function EventDetailPage({
 
           {gallery.length > 0 && (
             <div className="border-border border-t pt-8">
-              <div className="border-border border-b pb-4">
-                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-                  / GALLERY
-                </h2>
-              </div>
+              <SectionLabel>Gallery</SectionLabel>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {gallery.map((image, index) => (
                   <div
@@ -864,11 +826,7 @@ export default async function EventDetailPage({
           )}
 
           <div className="border-border border-t pt-8">
-            <div className="border-border border-b pb-4">
-              <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-                / ATTENDEES
-              </h2>
-            </div>
+            <SectionLabel>Attendees</SectionLabel>
             <div className="mt-4">
               <EventAttendees
                 eventId={eventId}
@@ -880,11 +838,7 @@ export default async function EventDetailPage({
 
           {relatedEvents.length > 0 && (
             <div className="border-border border-t pt-8">
-              <div className="border-border border-b pb-4">
-                <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-                  / RELATED EVENTS
-                </h2>
-              </div>
+              <SectionLabel>Related Events</SectionLabel>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {relatedEvents.map((related) => {
                   const relMedia = getMedia(
@@ -970,16 +924,22 @@ export default async function EventDetailPage({
             </div>
 
             {(event.format ?? priceLabel) && (
-              <div className="border-border flex flex-wrap gap-2 border-t pt-4 font-mono text-[11px] tracking-wider">
+              <div className="border-border flex flex-wrap gap-2 border-t pt-4">
                 {event.format && (
-                  <span className="border-border rounded border px-2 py-0.5">
+                  <Badge
+                    variant="outline"
+                    className="rounded-md font-mono text-[11px] tracking-wider"
+                  >
                     {EVENT_FORMAT_LABELS[event.format] ?? event.format}
-                  </span>
+                  </Badge>
                 )}
                 {priceLabel && (
-                  <span className="border-border rounded border px-2 py-0.5">
+                  <Badge
+                    variant="outline"
+                    className="rounded-md font-mono text-[11px] tracking-wider"
+                  >
                     {priceLabel}
-                  </span>
+                  </Badge>
                 )}
               </div>
             )}
@@ -1011,9 +971,9 @@ export default async function EventDetailPage({
           {showAitCallout && aitRationale && (
             <div className="border-border bg-secondary/30 mt-4 space-y-2 rounded-lg border p-4">
               <div className="flex items-center gap-2 font-mono text-[10px] tracking-wider">
-                <span className="bg-foreground text-background rounded px-1.5 py-0.5">
+                <Badge className="rounded-md font-mono text-[10px] tracking-wider">
                   AIT PICK
-                </span>
+                </Badge>
                 {aitFitScore !== null && (
                   <span className="text-muted-foreground">
                     FIT {aitFitScore}/10

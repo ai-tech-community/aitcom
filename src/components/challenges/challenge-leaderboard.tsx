@@ -2,25 +2,29 @@
 
 import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import Image from "next/image";
+import { SectionLabel } from "@/components/ui/section-label";
+import { getInitials } from "@/lib/avatar";
 
 interface ChallengeLeaderboardProps {
   challengeId: number;
 }
 
-const statusBadgeConfig: Record<string, { label: string; className: string }> =
-  {
-    active: { label: "Active", className: "" },
-    completed: {
-      label: "Completed",
-      className: "bg-green-500/15 text-green-600 dark:text-green-400",
-    },
-    submitted: {
-      label: "Submitted",
-      className: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-    },
-  };
+type BadgeVariant = "secondary" | "success" | "info";
+
+const statusBadgeConfig: Record<
+  string,
+  { label: string; variant: BadgeVariant }
+> = {
+  active: { label: "Active", variant: "secondary" },
+  completed: { label: "Completed", variant: "success" },
+  submitted: { label: "Submitted", variant: "info" },
+};
 
 export function ChallengeLeaderboard({
   challengeId,
@@ -35,9 +39,9 @@ export function ChallengeLeaderboard({
 
   return (
     <div className="mt-4">
-      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+      <SectionLabel bordered={false} marker={false}>
         {t("leaderboard")}
-      </span>
+      </SectionLabel>
       <div className="mt-2 space-y-1">
         {data.map((entry) => {
           const badgeConfig = statusBadgeConfig[entry.status];
@@ -50,19 +54,14 @@ export function ChallengeLeaderboard({
               <span className="text-muted-foreground w-6 font-mono text-xs">
                 #{entry.rank}
               </span>
-              {entry.image ? (
-                <Image
-                  src={entry.image}
-                  alt={entry.displayName}
-                  width={24}
-                  height={24}
-                  className="h-6 w-6 shrink-0 rounded-full object-cover"
-                />
-              ) : (
-                <div className="bg-secondary text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-mono text-[10px] font-medium">
-                  {entry.displayName.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <Avatar className="size-6">
+                {entry.image && (
+                  <AvatarImage src={entry.image} alt="" />
+                )}
+                <AvatarFallback className="font-mono text-xs">
+                  {getInitials(entry.displayName)}
+                </AvatarFallback>
+              </Avatar>
               <span className="flex-1 font-medium">{entry.displayName}</span>
               <span className="text-muted-foreground font-mono text-xs">
                 {entry.completedObjectives} obj
@@ -78,9 +77,7 @@ export function ChallengeLeaderboard({
                 </span>
               )}
               {badgeConfig && (
-                <Badge variant="secondary" className={badgeConfig.className}>
-                  {badgeConfig.label}
-                </Badge>
+                <Badge variant={badgeConfig.variant}>{badgeConfig.label}</Badge>
               )}
             </div>
           );

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/agent/shared";
+import { SectionLabel } from "@/components/ui/section-label";
 import { generateN8nWorkflow } from "@/lib/n8n-workflow-generator";
 
 const DEFAULT_COOLDOWN_MINUTES = 15;
@@ -43,9 +44,7 @@ export function SetupN8n({
   return (
     <div className="border-border bg-card rounded-xl border p-6">
       <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / N8N
-        </span>
+        <SectionLabel bordered={false}>N8N</SectionLabel>
       </div>
       <div className="mt-4 space-y-4">
         <div className="space-y-2">
@@ -99,10 +98,10 @@ export function SetupN8n({
               <span
                 className={`h-2 w-2 rounded-full ${
                   !webhook.isEnabled
-                    ? "bg-red-500"
+                    ? "bg-destructive"
                     : webhook.consecutiveFailures >= 3
-                      ? "bg-yellow-500"
-                      : "bg-green-500"
+                      ? "bg-warning"
+                      : "bg-success"
                 }`}
               />
               <span className="text-muted-foreground font-mono text-[11px] tracking-wider">

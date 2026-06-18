@@ -117,12 +117,7 @@ export function ProjectGallery({
                 <h2 className="text-lg font-bold">{project.name}</h2>
                 <div className="flex items-center gap-2">
                   {isPeoplesChoice ? (
-                    <Badge
-                      variant="secondary"
-                      className="bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                    >
-                      {t("peoplesChoice")}
-                    </Badge>
+                    <Badge variant="secondary">{t("peoplesChoice")}</Badge>
                   ) : null}
                   {project.finalRank !== null ? (
                     <span className="text-muted-foreground font-mono text-xs tracking-wider">

@@ -4,6 +4,8 @@ import { ArrowUpRight } from "lucide-react";
 import { AsciiLandscape } from "@/components/ascii-landscape";
 import { FeatureModals } from "@/components/feature-modals";
 import { HeroTitle } from "@/components/hero-title";
+import { SectionLabel as UiSectionLabel } from "@/components/ui/section-label";
+import { Badge } from "@/components/ui/badge";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
 import { communities, memberProfiles } from "@/server/db/schema";
@@ -202,15 +204,23 @@ export default async function Home() {
           <>
             {/* Table Header - desktop only */}
             <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
-              <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
-                / DATE
-              </span>
-              <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
-                / NAME
-              </span>
-              <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
-                / TYPE
-              </span>
+              <UiSectionLabel
+                as="span"
+                bordered={false}
+                className="w-32 text-[11px]"
+              >
+                DATE
+              </UiSectionLabel>
+              <UiSectionLabel
+                as="span"
+                bordered={false}
+                className="flex-1 text-[11px]"
+              >
+                NAME
+              </UiSectionLabel>
+              <UiSectionLabel as="span" bordered={false} className="text-[11px]">
+                TYPE
+              </UiSectionLabel>
             </div>
 
             {/* Event Rows */}
@@ -243,27 +253,29 @@ export default async function Home() {
                       {formatDate(event.date)}
                     </span>
                     {/* Type badge - inline on mobile */}
-                    <span
-                      className={`rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden ${
+                    <Badge
+                      variant="outline"
+                      className={`font-mono text-[10px] font-medium tracking-wider sm:hidden ${
                         isHackathon
-                          ? "border-primary-foreground"
-                          : "border-border text-muted-foreground"
+                          ? "border-primary-foreground text-primary-foreground"
+                          : ""
                       }`}
                     >
                       {typeLabels[event.type] ?? event.type}
-                    </span>
+                    </Badge>
                   </div>
 
                   {/* Type badge - desktop only */}
-                  <span
-                    className={`hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline ${
+                  <Badge
+                    variant="outline"
+                    className={`hidden font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline-flex ${
                       isHackathon
-                        ? "border-primary-foreground"
-                        : "border-border text-muted-foreground"
+                        ? "border-primary-foreground text-primary-foreground"
+                        : ""
                     }`}
                   >
                     {typeLabels[event.type] ?? event.type}
-                  </span>
+                  </Badge>
                   <span
                     className={`ml-4 hidden font-mono text-lg font-light sm:order-4 sm:inline ${
                       isHackathon

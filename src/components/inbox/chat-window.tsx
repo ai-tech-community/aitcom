@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Image from "next/image";
 import {
   BotIcon,
   ChevronDownIcon,
@@ -13,6 +12,8 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Spinner } from "@/components/ui/spinner";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import {
   Conversation,
   ConversationContent,
@@ -141,20 +142,10 @@ export function ChatWindow({
       <div className="border-border flex items-center gap-2 border-b px-3 py-2.5">
         {/* Avatar */}
         <div className="relative shrink-0">
-          {image ? (
-            <Image
-              src={image}
-              alt={displayName}
-              width={32}
-              height={32}
-              unoptimized
-              className="h-8 w-8 rounded-full object-cover"
-            />
-          ) : (
-            <div className="bg-secondary text-muted-foreground flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <Avatar>
+            {image && <AvatarImage src={image} alt={displayName} />}
+            <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+          </Avatar>
           {isAgent && (
             <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full">
               <BotIcon className="text-muted-foreground h-3 w-3" />

@@ -1,8 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { api } from "@/trpc/react";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "@/i18n/navigation";
 
 interface EventAttendeesProps {
@@ -75,19 +75,18 @@ export function EventAttendees({
                 className="group border-border hover:border-foreground/30 flex items-center gap-1.5 rounded-full border border-dashed px-2 py-1 transition-colors"
                 title={attendee.displayName}
               >
-                {avatarUrl ? (
-                  <Image
-                    src={avatarUrl}
-                    alt={attendee.displayName}
-                    className="h-5 w-5 rounded-full object-cover"
-                    width={20}
-                    height={20}
-                  />
-                ) : (
-                  <div className="bg-secondary text-muted-foreground flex h-5 w-5 items-center justify-center rounded-full font-mono text-[8px]">
+                <Avatar size="sm" className="size-5">
+                  {avatarUrl ? (
+                    <AvatarImage
+                      src={avatarUrl}
+                      alt={attendee.displayName}
+                      className="object-cover"
+                    />
+                  ) : null}
+                  <AvatarFallback className="bg-secondary font-mono text-[8px]">
                     {initials}
-                  </div>
-                )}
+                  </AvatarFallback>
+                </Avatar>
                 <span className="text-muted-foreground group-hover:text-foreground font-mono text-[10px] tracking-wider">
                   {attendee.displayName}
                 </span>

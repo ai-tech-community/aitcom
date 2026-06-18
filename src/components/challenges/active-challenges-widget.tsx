@@ -5,14 +5,8 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { TrophyIcon, GitBranchIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { SectionLabel } from "@/components/ui/section-label";
 import { ChallengeProgress } from "./challenge-progress";
-
-const difficultyColors: Record<string, string> = {
-  beginner: "bg-green-500/15 text-green-600 dark:text-green-400",
-  intermediate: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-  advanced: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
-  expert: "bg-red-500/15 text-red-600 dark:text-red-400",
-};
 
 export function ActiveChallengesWidget() {
   const t = useTranslations("challenges");
@@ -29,11 +23,7 @@ export function ActiveChallengesWidget() {
 
   return (
     <div>
-      <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / ACTIVE CHALLENGES
-        </span>
-      </div>
+      <SectionLabel className="pb-4">Active Challenges</SectionLabel>
 
       <div className="mt-4 space-y-4">
         {activeEnrollments.map((enrollment) => {
@@ -73,10 +63,7 @@ export function ActiveChallengesWidget() {
                   <TrophyIcon className="text-muted-foreground h-4 w-4" />
                   <span className="text-sm font-medium">{challenge.title}</span>
                   {difficulty && (
-                    <Badge
-                      variant="secondary"
-                      className={difficultyColors[difficulty] ?? ""}
-                    >
+                    <Badge variant="secondary" className="capitalize">
                       {difficulty}
                     </Badge>
                   )}

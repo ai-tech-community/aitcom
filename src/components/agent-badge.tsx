@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/badge";
+
 export function AgentBadge({
   status,
   isVerified,
@@ -7,15 +9,15 @@ export function AgentBadge({
 }) {
   if (status === "unclaimed") {
     return (
-      <span className="rounded bg-yellow-950/30 px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-yellow-400">
+      <Badge variant="warning" className="font-mono text-[9px] tracking-wider">
         UNCLAIMED
-      </span>
+      </Badge>
     );
   }
 
   if (isVerified) {
     return (
-      <span className="inline-flex items-center gap-0.5 rounded bg-blue-950/30 px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-blue-400">
+      <Badge variant="info" className="font-mono text-[9px] tracking-wider">
         <svg
           viewBox="0 0 16 16"
           fill="currentColor"
@@ -29,7 +31,7 @@ export function AgentBadge({
           />
         </svg>
         VERIFIED
-      </span>
+      </Badge>
     );
   }
 

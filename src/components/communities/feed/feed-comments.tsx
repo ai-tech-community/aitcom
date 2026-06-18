@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { RelativeTime } from "@/components/ui/relative-time";
+import { getInitials } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -14,17 +16,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-
-function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const diff = now - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
 
 interface FeedComment {
   id: number;
@@ -110,7 +101,7 @@ export function FeedComments({
       {(comments as FeedComment[]).map((comment) => {
         const isAuthor = !!currentUserId && comment.authorId === currentUserId;
         const canModify = isAuthor || isPrivileged;
-        const initials = (comment.authorName ?? "?")[0]?.toUpperCase() ?? "?";
+        const initials = getInitials(comment.authorName ?? "?");
 
         if (comment.isDeleted) {
           return (
@@ -137,7 +128,10 @@ export function FeedComments({
                     {comment.authorName ?? "Member"}
                   </span>
                   <span className="text-muted-foreground ml-1.5 text-[10px]">
-                    {timeAgo(comment.createdAt)}
+                    <RelativeTime
+                      date={comment.createdAt}
+                      className="text-[10px]"
+                    />
                     {comment.isEdited ? ` · (${t("edited")})` : ""}
                   </span>
                 </div>

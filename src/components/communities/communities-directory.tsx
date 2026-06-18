@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Input } from "@/components/ui/input";
+import { SectionLabel } from "@/components/ui/section-label";
 import { CommunityCard } from "./community-card";
 import { CreateCommunityDialog } from "./create-community-dialog";
 import { RecommendedCommunities } from "./discovery/recommended-communities";
@@ -42,9 +43,9 @@ export function CommunitiesDirectory() {
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       {/* Section Header */}
       <div className="border-border flex items-center justify-between border-b pb-4">
-        <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / {t("directory.title").toUpperCase()}
-        </h1>
+        <SectionLabel as="h1" bordered={false}>
+          {t("directory.title")}
+        </SectionLabel>
         <CreateCommunityDialog />
       </div>
 

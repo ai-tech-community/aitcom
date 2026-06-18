@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RelativeTime } from "@/components/ui/relative-time";
+import { getInitials } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -17,16 +19,6 @@ import { Heart, MessageSquare, MoreHorizontal, Pin } from "lucide-react";
 import { toast } from "sonner";
 import { FeedComments } from "./feed-comments";
 
-function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const diff = now - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
 
 interface FeedPost {
   id: number;
@@ -117,7 +109,7 @@ export function FeedPostCard({
     );
   }
 
-  const initials = (post.authorName ?? "?")[0]?.toUpperCase() ?? "?";
+  const initials = getInitials(post.authorName ?? "?");
 
   return (
     <div className="border-border space-y-3 rounded-lg border p-4">
@@ -141,7 +133,7 @@ export function FeedPostCard({
                 </span>
               ) : null}
               <span>
-                {timeAgo(post.createdAt)}
+                <RelativeTime date={post.createdAt} className="text-[11px]" />
                 {post.isEdited ? ` · (${t("edited")})` : ""}
               </span>
             </p>

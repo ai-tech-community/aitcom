@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -107,9 +108,9 @@ export function IntegrationsSettings({ slug }: IntegrationsSettingsProps) {
                 </span>
                 <span className="text-sm">{config.calendarName}</span>
               </div>
-              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-200">
+              <Badge variant={config.isEnabled ? "success" : "secondary"}>
                 {config.isEnabled ? t("enabled") : t("disabled")}
-              </span>
+              </Badge>
             </div>
 
             {config.lastSyncCheck && (

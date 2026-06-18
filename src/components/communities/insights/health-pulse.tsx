@@ -42,12 +42,12 @@ export function HealthPulse({ slug }: { slug: string }) {
       {cards.map((c) => (
         <article
           key={c.label}
-          className="rounded-lg border border-zinc-200 bg-white/80 p-4"
+          className="rounded-lg border border-border bg-card/80 p-4"
         >
-          <p className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase">
+          <p className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
             {c.label}
           </p>
-          <p className="mt-2 text-2xl font-bold tracking-tight text-zinc-900">
+          <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">
             {c.value}
           </p>
           {c.sub ? (

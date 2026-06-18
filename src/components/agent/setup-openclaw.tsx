@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CodeBlock } from "@/components/agent/shared";
+import { SectionLabel } from "@/components/ui/section-label";
 
 export function SetupOpenClaw({ apiKey }: { apiKey: string }) {
   const [showManual, setShowManual] = useState(false);
@@ -12,9 +13,7 @@ export function SetupOpenClaw({ apiKey }: { apiKey: string }) {
   return (
     <div className="border-border bg-card rounded-xl border p-6">
       <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / OPENCLAW
-        </span>
+        <SectionLabel bordered={false}>OPENCLAW</SectionLabel>
       </div>
       <div className="mt-4 space-y-4">
         <p className="text-muted-foreground text-sm">

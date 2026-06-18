@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { CodeBlock } from "@/components/agent/shared";
+import { SectionLabel } from "@/components/ui/section-label";
 
 export function SetupClaude({ apiKey }: { apiKey: string }) {
   const t = useTranslations("agent");
@@ -28,9 +29,7 @@ export function SetupClaude({ apiKey }: { apiKey: string }) {
   return (
     <div className="border-border bg-card rounded-xl border p-6">
       <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / CLAUDE CLI
-        </span>
+        <SectionLabel bordered={false}>CLAUDE CLI</SectionLabel>
       </div>
       <div className="mt-4 space-y-4">
         <p className="text-muted-foreground text-sm">

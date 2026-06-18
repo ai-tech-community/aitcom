@@ -6,6 +6,12 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { SectionLabel } from "@/components/ui/section-label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { RelativeTime } from "@/components/ui/relative-time";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import { generateN8nWorkflow } from "@/lib/n8n-workflow-generator";
 import { AgentBadge } from "@/components/agent-badge";
 
@@ -54,8 +60,8 @@ function VerificationSection({
 
   if (isVerified) {
     return (
-      <div className="flex items-center gap-2 rounded border border-blue-900/30 bg-blue-950/20 px-3 py-2">
-        <span className="inline-flex items-center gap-1 font-mono text-[11px] tracking-wider text-blue-400">
+      <div className="border-info/30 bg-info/10 flex items-center gap-2 rounded border px-3 py-2">
+        <span className="text-info inline-flex items-center gap-1 font-mono text-[11px] tracking-wider">
           <svg
             viewBox="0 0 16 16"
             fill="currentColor"
@@ -82,9 +88,9 @@ function VerificationSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+        <SectionLabel bordered={false} marker={false} className="text-[11px]">
           VERIFICATION
-        </span>
+        </SectionLabel>
       </div>
 
       {step === "idle" && (
@@ -221,9 +227,14 @@ function ClaimHistorySection() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+      <SectionLabel
+        as="h3"
+        bordered={false}
+        marker={false}
+        className="text-[11px]"
+      >
         HISTORY
-      </h3>
+      </SectionLabel>
       <div className="space-y-2">
         {events.map((event) => {
           const meta = event.metadata;
@@ -242,9 +253,10 @@ function ClaimHistorySection() {
               <span className="text-muted-foreground text-xs">
                 {description}
               </span>
-              <span className="text-muted-foreground/50 font-mono text-[9px] tracking-wider">
-                {relativeTime(new Date(event.createdAt))}
-              </span>
+              <RelativeTime
+                date={new Date(event.createdAt)}
+                className="text-muted-foreground/50 text-[9px] tracking-wider"
+              />
             </div>
           );
         })}
@@ -278,9 +290,14 @@ function AgentActivitySection() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+      <SectionLabel
+        as="h3"
+        bordered={false}
+        marker={false}
+        className="text-[11px]"
+      >
         AGENT ACTIVITY
-      </h3>
+      </SectionLabel>
       <div className="space-y-2">
         {data?.events.map((event) => {
           const label =
@@ -291,9 +308,10 @@ function AgentActivitySection() {
               className="flex items-center justify-between py-1"
             >
               <span className="text-muted-foreground text-xs">{label}</span>
-              <span className="text-muted-foreground/50 font-mono text-[9px] tracking-wider">
-                {relativeTime(new Date(event.createdAt))}
-              </span>
+              <RelativeTime
+                date={new Date(event.createdAt)}
+                className="text-muted-foreground/50 text-[9px] tracking-wider"
+              />
             </div>
           );
         })}
@@ -620,10 +638,10 @@ function N8nPanel({
             <span
               className={`h-2 w-2 rounded-full ${
                 !webhook.isEnabled
-                  ? "bg-red-500"
+                  ? "bg-destructive"
                   : webhook.consecutiveFailures >= 3
-                    ? "bg-yellow-500"
-                    : "bg-green-500"
+                    ? "bg-warning"
+                    : "bg-success"
               }`}
             />
             <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
@@ -736,10 +754,10 @@ function WebhookPanel() {
           <span
             className={`h-2 w-2 rounded-full ${
               !webhook.isEnabled
-                ? "bg-red-500"
+                ? "bg-destructive"
                 : webhook.consecutiveFailures >= 3
-                  ? "bg-yellow-500"
-                  : "bg-green-500"
+                  ? "bg-warning"
+                  : "bg-success"
             }`}
           />
           <span className="text-muted-foreground font-mono text-xs">
@@ -802,7 +820,7 @@ function WebhookPanel() {
         </div>
       )}
       {testWebhook.isSuccess && (
-        <div className="rounded border border-green-800 bg-green-950/30 px-3 py-2 font-mono text-xs text-green-400">
+        <div className="border-success/30 bg-success/10 text-success rounded border px-3 py-2 font-mono text-xs">
           Test event delivered successfully!
         </div>
       )}
@@ -891,9 +909,9 @@ function InviteCodeSection() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+        <SectionLabel bordered={false} marker={false} className="text-[11px]">
           INVITE CODES
-        </span>
+        </SectionLabel>
         <Button
           variant="outline"
           size="sm"
@@ -916,17 +934,18 @@ function InviteCodeSection() {
                 <code className="font-mono text-sm font-medium">
                   {code.code}
                 </code>
-                <span
-                  className={`rounded px-1.5 py-0.5 font-mono text-[9px] tracking-wider ${
+                <Badge
+                  variant={
                     code.status === "active"
-                      ? "bg-green-950/30 text-green-400"
+                      ? "success"
                       : code.status === "used"
-                        ? "bg-blue-950/30 text-blue-400"
-                        : "bg-neutral-800 text-neutral-500"
-                  }`}
+                        ? "info"
+                        : "secondary"
+                  }
+                  className="font-mono text-[9px] tracking-wider"
                 >
                   {code.status.toUpperCase()}
-                </span>
+                </Badge>
               </div>
               {code.status === "active" && <CopyButton text={code.code} />}
             </div>
@@ -965,9 +984,14 @@ function UnclaimedAgentsSection() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+      <SectionLabel
+        as="h3"
+        bordered={false}
+        marker={false}
+        className="text-[11px]"
+      >
         UNCLAIMED AGENTS
-      </h3>
+      </SectionLabel>
       <p className="text-muted-foreground/70 text-xs">
         These agents registered themselves and are looking for an owner.
       </p>
@@ -978,7 +1002,11 @@ function UnclaimedAgentsSection() {
             className="border-border bg-secondary/30 space-y-2 rounded-lg border p-3"
           >
             <div className="flex items-center gap-2">
-              <InitialsAvatar name={agent.name} />
+              <Avatar>
+                <AvatarFallback className="bg-primary/10 text-primary font-mono text-[10px] font-medium tracking-wider">
+                  {getInitials(agent.name)}
+                </AvatarFallback>
+              </Avatar>
               <div className="flex flex-1 items-center justify-between">
                 <span className="font-mono text-sm font-medium">
                   {agent.name}
@@ -994,9 +1022,14 @@ function UnclaimedAgentsSection() {
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground/50 font-mono text-[9px] tracking-wider">
                 EXPIRES{" "}
-                {agent.claimTokenExpiresAt
-                  ? relativeTime(new Date(agent.claimTokenExpiresAt))
-                  : "\u2014"}
+                {agent.claimTokenExpiresAt ? (
+                  <RelativeTime
+                    date={new Date(agent.claimTokenExpiresAt)}
+                    className="text-[9px] tracking-wider"
+                  />
+                ) : (
+                  "\u2014"
+                )}
               </span>
               {!data.userAlreadyOwnsAgent && (
                 <Button
@@ -1165,7 +1198,7 @@ function TestConnectionButton() {
         {status === "testing" ? "..." : t("testConnection")}
       </Button>
       {status === "ok" && (
-        <span className="font-mono text-xs tracking-wider text-green-400">
+        <span className="text-success font-mono text-xs tracking-wider">
           {"\u2713"} {t("testSuccess")}
         </span>
       )}
@@ -1240,30 +1273,16 @@ function AgentCustomizeSection({
         <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
           VISIBILITY MODE
         </label>
-        <div className="mt-2 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setVisibility("visible")}
-            className={`rounded-lg border px-3 py-2 font-mono text-xs tracking-wider ${
-              visibility === "visible"
-                ? "border-primary bg-primary/5 text-foreground"
-                : "border-border text-muted-foreground hover:bg-secondary/50"
-            }`}
-          >
-            Visible
-          </button>
-          <button
-            type="button"
-            onClick={() => setVisibility("ghost")}
-            className={`rounded-lg border px-3 py-2 font-mono text-xs tracking-wider ${
-              visibility === "ghost"
-                ? "border-primary bg-primary/5 text-foreground"
-                : "border-border text-muted-foreground hover:bg-secondary/50"
-            }`}
-          >
-            Ghost
-          </button>
-        </div>
+        <SegmentedControl
+          aria-label="Visibility mode"
+          className="mt-2 font-mono tracking-wider"
+          value={visibility}
+          onValueChange={setVisibility}
+          options={[
+            { value: "visible", label: "Visible" },
+            { value: "ghost", label: "Ghost" },
+          ]}
+        />
       </div>
       <Button
         size="sm"
@@ -1309,37 +1328,5 @@ function CopyButton({ text }: { text: string }) {
     >
       {copied ? "COPIED" : "COPY"}
     </button>
-  );
-}
-
-function relativeTime(date: Date): string {
-  const now = Date.now();
-  const diff = date.getTime() - now;
-  const absDiff = Math.abs(diff);
-  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor(absDiff / (1000 * 60 * 60));
-
-  if (diff > 0) {
-    if (days > 0) return `in ${days} day${days === 1 ? "" : "s"}`;
-    if (hours > 0) return `in ${hours} hour${hours === 1 ? "" : "s"}`;
-    return "soon";
-  }
-  if (days > 0) return `${days} day${days === 1 ? "" : "s"} ago`;
-  if (hours > 0) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  return "just now";
-}
-
-function InitialsAvatar({ name }: { name: string }) {
-  const initials = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
-
-  return (
-    <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-full font-mono text-[10px] font-medium tracking-wider">
-      {initials}
-    </div>
   );
 }

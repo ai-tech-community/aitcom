@@ -1,4 +1,5 @@
 import { Link } from "@/i18n/navigation";
+import { getInitials } from "@/lib/avatar";
 
 export type MemberFace = { userId: string; displayName: string };
 
@@ -24,12 +25,7 @@ export function MemberFaces({
           className="border-border hover:bg-secondary/40 flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition-colors"
         >
           <span className="bg-secondary text-muted-foreground flex h-5 w-5 items-center justify-center rounded-full font-mono text-[9px]">
-            {face.displayName
-              .split(" ")
-              .map((p) => p[0])
-              .join("")
-              .toUpperCase()
-              .slice(0, 2)}
+            {getInitials(face.displayName)}
           </span>
           {face.displayName}
         </Link>

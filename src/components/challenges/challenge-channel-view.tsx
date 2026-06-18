@@ -7,6 +7,8 @@ import { Plus } from "lucide-react";
 import { ChallengeThreadCard } from "@/components/challenges/challenge-thread-card";
 import { ChallengeThreadDetail } from "@/components/challenges/challenge-thread-detail";
 import { ChallengeCompose } from "@/components/challenges/challenge-compose";
+import { SectionLabel } from "@/components/ui/section-label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -18,24 +20,19 @@ interface ChallengeChannelViewProps {
 }
 
 type ThreadTypeFilter =
-  | undefined
+  | "all"
   | "announcement"
   | "discussion"
   | "question"
   | "progress-log"
   | "solution";
 
-interface FilterTab {
-  label: string;
-  value: ThreadTypeFilter;
-}
-
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const filterTabs: FilterTab[] = [
-  { label: "All", value: undefined },
+const filterTabs: { label: string; value: ThreadTypeFilter }[] = [
+  { label: "All", value: "all" },
   { label: "Announcements", value: "announcement" },
   { label: "Discussion", value: "discussion" },
   { label: "Q&A", value: "question" },
@@ -51,7 +48,7 @@ export function ChallengeChannelView({
   challengeId,
   isEnrolled,
 }: ChallengeChannelViewProps) {
-  const [typeFilter, setTypeFilter] = useState<ThreadTypeFilter>(undefined);
+  const [typeFilter, setTypeFilter] = useState<ThreadTypeFilter>("all");
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
 
@@ -67,7 +64,7 @@ export function ChallengeChannelView({
   } = api.challengeChannel.listThreads.useInfiniteQuery(
     {
       channelId: channel?.id ?? "",
-      type: typeFilter,
+      type: typeFilter === "all" ? undefined : typeFilter,
       limit: 50,
     },
     {
@@ -78,13 +75,6 @@ export function ChallengeChannelView({
   );
 
   const threads = threadsData?.pages.flatMap((p) => p.threads) ?? [];
-
-  const filterPillClass = (value: ThreadTypeFilter) =>
-    `rounded-full px-3 py-1 font-mono text-xs tracking-wider transition-colors ${
-      typeFilter === value
-        ? "bg-primary text-primary-foreground"
-        : "bg-secondary text-muted-foreground hover:text-foreground"
-    }`;
 
   // ---- Loading / no channel states ----
   if (channelLoading) {
@@ -135,9 +125,7 @@ export function ChallengeChannelView({
     <div className="mt-8">
       {/* Header + New Thread button */}
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / CHANNEL
-        </span>
+        <SectionLabel bordered={false}>Channel</SectionLabel>
         <Button
           size="sm"
           className="font-mono text-xs tracking-wider"
@@ -149,17 +137,13 @@ export function ChallengeChannelView({
       </div>
 
       {/* Type filter tabs */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {filterTabs.map((ft) => (
-          <button
-            key={ft.label}
-            type="button"
-            onClick={() => setTypeFilter(ft.value)}
-            className={filterPillClass(ft.value)}
-          >
-            {ft.label}
-          </button>
-        ))}
+      <div className="mt-4">
+        <SegmentedControl
+          aria-label="Filter threads by type"
+          options={filterTabs}
+          value={typeFilter}
+          onValueChange={setTypeFilter}
+        />
       </div>
 
       {/* Thread list */}

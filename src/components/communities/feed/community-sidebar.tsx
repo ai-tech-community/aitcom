@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { formatEventTimeRange } from "@/lib/event-time";
 import { Badge } from "@/components/ui/badge";
+import { RelativeTime } from "@/components/ui/relative-time";
+import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
 import { MessageSquare, Calendar, ChevronUp } from "lucide-react";
 
@@ -17,17 +19,6 @@ const typeLabels: Record<string, string> = {
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const diff = now - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d`;
 }
 
 interface CommunitySidebarProps {
@@ -63,7 +54,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
       {/* Stats */}
       {community ? (
         <section>
-          <SectionHeader title="/ STATS" />
+          <SectionHeader title="Stats" />
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
             <Stat value={community.memberCount} label={t("members")} />
             {"adminCount" in community ? (
@@ -83,7 +74,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
       {/* Links */}
       {links && links.length > 0 ? (
         <section>
-          <SectionHeader title={`/ ${t("links").toUpperCase()}`} />
+          <SectionHeader title={t("links")} />
           <div className="mt-3 space-y-1">
             {links.map((link) => (
               <a
@@ -110,7 +101,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
       {/* About */}
       {description ? (
         <section>
-          <SectionHeader title="/ ABOUT" />
+          <SectionHeader title="About" />
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed whitespace-pre-wrap">
             {description}
           </p>
@@ -120,7 +111,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
       {/* Upcoming Events */}
       <section>
         <SectionHeader
-          title={`/ ${t("upcomingEvents").toUpperCase()}`}
+          title={t("upcomingEvents")}
           linkHref={`/communities/${slug}/events`}
           linkLabel={t("viewAll")}
           show={events.length > 0}
@@ -167,7 +158,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
       {/* Recent Threads */}
       <section>
         <SectionHeader
-          title={`/ ${t("recentThreads").toUpperCase()}`}
+          title={t("recentThreads")}
           linkHref={`/communities/${slug}/forum`}
           linkLabel={t("viewAll")}
           show={threads.length > 0}
@@ -189,7 +180,10 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
                   <p className="truncate text-sm font-medium">{thread.title}</p>
                   <p className="text-muted-foreground text-[11px]">
                     {thread.authorName} ·{" "}
-                    {timeAgo(thread.lastActivityAt ?? thread.createdAt)}
+                    <RelativeTime
+                      date={thread.lastActivityAt ?? thread.createdAt}
+                      className="text-[11px]"
+                    />
                     {(thread.replyCount ?? 0) > 0 &&
                       ` · ${t("replies", { count: thread.replyCount ?? 0 })}`}
                   </p>
@@ -209,7 +203,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
       {/* Top Ideas */}
       <section>
         <SectionHeader
-          title={`/ ${t("topIdeas").toUpperCase()}`}
+          title={t("topIdeas")}
           linkHref={`/communities/${slug}/ideas`}
           linkLabel={t("viewAll")}
           show={ideas.length > 0}
@@ -267,9 +261,7 @@ function SectionHeader({
 }) {
   return (
     <div className="border-border flex items-center justify-between border-b pb-2">
-      <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-        {title}
-      </h2>
+      <SectionLabel bordered={false}>{title}</SectionLabel>
       {show && linkHref && linkLabel ? (
         <Link
           href={linkHref as never}

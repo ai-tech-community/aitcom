@@ -5,6 +5,7 @@ import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Check, Circle, ExternalLink, Sparkles, X } from "lucide-react";
+import { SectionLabel } from "@/components/ui/section-label";
 
 const DISMISS_KEY = "onboarding-dismissed";
 
@@ -84,9 +85,7 @@ export function OnboardingChecklist() {
     <div className="border-border bg-card rounded-lg border">
       <div className="border-border border-b px-4 py-3">
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / {t("checklistTitle")}
-          </span>
+          <SectionLabel bordered={false}>{t("checklistTitle")}</SectionLabel>
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
               {completedCount}/{totalCount}

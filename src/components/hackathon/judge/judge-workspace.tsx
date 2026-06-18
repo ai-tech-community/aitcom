@@ -89,7 +89,7 @@ export function JudgeWorkspace({ challengeId }: { challengeId: number }) {
           </div>
         </div>
       ))}
-      {ballotError && <p className="text-sm text-red-600">{ballotError}</p>}
+      {ballotError && <p className="text-destructive text-sm">{ballotError}</p>}
       <button
         disabled={submit.isPending || ballotError !== null}
         onClick={() =>

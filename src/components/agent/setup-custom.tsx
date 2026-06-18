@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { CopyButton } from "@/components/agent/shared";
+import { SectionLabel } from "@/components/ui/section-label";
 
 export function SetupCustom({ apiKey }: { apiKey: string }) {
   const t = useTranslations("agent");
@@ -9,9 +10,7 @@ export function SetupCustom({ apiKey }: { apiKey: string }) {
   return (
     <div className="border-border bg-card rounded-xl border p-6">
       <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / CUSTOM / API
-        </span>
+        <SectionLabel bordered={false}>CUSTOM / API</SectionLabel>
       </div>
       <div className="mt-4 space-y-3">
         <div className="space-y-2">

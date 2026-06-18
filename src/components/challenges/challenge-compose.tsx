@@ -5,6 +5,8 @@ import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { SectionLabel } from "@/components/ui/section-label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,13 +42,6 @@ export function ChallengeCompose({
     },
   });
 
-  const typePillClass = (value: ThreadType) =>
-    `rounded-full px-3 py-1 font-mono text-xs tracking-wider transition-colors ${
-      type === value
-        ? "bg-primary text-primary-foreground"
-        : "bg-secondary text-muted-foreground hover:text-foreground"
-    }`;
-
   const handleSubmit = () => {
     if (!title.trim() || !content.trim()) return;
     createThread.mutate({
@@ -59,33 +54,20 @@ export function ChallengeCompose({
 
   return (
     <div className="mt-8">
-      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-        / NEW THREAD
-      </span>
+      <SectionLabel bordered={false}>New Thread</SectionLabel>
 
       {/* Type selector */}
-      <div className="mt-4 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setType("discussion")}
-          className={typePillClass("discussion")}
-        >
-          Discussion
-        </button>
-        <button
-          type="button"
-          onClick={() => setType("question")}
-          className={typePillClass("question")}
-        >
-          Question
-        </button>
-        <button
-          type="button"
-          onClick={() => setType("solution")}
-          className={typePillClass("solution")}
-        >
-          Solution
-        </button>
+      <div className="mt-4">
+        <SegmentedControl
+          aria-label="Thread type"
+          value={type}
+          onValueChange={setType}
+          options={[
+            { value: "discussion", label: "Discussion" },
+            { value: "question", label: "Question" },
+            { value: "solution", label: "Solution" },
+          ]}
+        />
       </div>
 
       {/* Title */}

@@ -8,6 +8,7 @@ import {
   FileCheckIcon,
   UsersIcon,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 const verificationIcons: Record<
   string,
@@ -107,8 +108,8 @@ export function ChallengeProgress({
                     <span
                       className={`font-mono text-[10px] font-semibold ${
                         latestTestResult.passed
-                          ? "text-green-500"
-                          : "text-red-500"
+                          ? "text-success"
+                          : "text-destructive"
                       }`}
                     >
                       {latestTestResult.passed ? "PASS" : "FAIL"}
@@ -118,7 +119,7 @@ export function ChallengeProgress({
                     <span
                       className={`font-mono text-[10px] ${
                         isReviewed
-                          ? "font-semibold text-green-500"
+                          ? "font-semibold text-success"
                           : "text-muted-foreground"
                       }`}
                     >
@@ -128,15 +129,14 @@ export function ChallengeProgress({
                   {current}/{target}
                 </span>
               </div>
-              <div className="bg-secondary mt-1 h-1.5 overflow-hidden rounded-full">
-                <div
-                  className={`h-full rounded-full transition-all ${isComplete ? "bg-green-500" : "bg-primary"}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
+              <Progress
+                value={pct}
+                className="bg-secondary mt-1 h-1.5"
+                indicatorClassName={isComplete ? "bg-success" : undefined}
+              />
             </div>
             {isComplete && (
-              <CheckIcon className="h-4 w-4 shrink-0 text-green-500" />
+              <CheckIcon className="h-4 w-4 shrink-0 text-success" />
             )}
           </div>
         );

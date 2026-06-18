@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { api } from "@/trpc/react";
 import { Spinner } from "@/components/ui/spinner";
+import { SectionLabel } from "@/components/ui/section-label";
 import { Link } from "@/i18n/navigation";
 
 type NotificationMetadata = {
@@ -72,9 +73,7 @@ export function NotificationsPageContent() {
     <div>
       {/* Header */}
       <div className="border-border flex items-center justify-between border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / NOTIFICATIONS
-        </span>
+        <SectionLabel bordered={false}>NOTIFICATIONS</SectionLabel>
         <div className="flex gap-2">
           <button
             type="button"
