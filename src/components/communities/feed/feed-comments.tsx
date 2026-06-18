@@ -8,6 +8,8 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,7 +55,12 @@ export function FeedComments({
     memberRole === "admin" ||
     memberRole === "moderator";
 
-  const { data: comments = [], isLoading } = api.feed.getComments.useQuery({
+  const {
+    data: comments = [],
+    isLoading,
+    isError,
+    refetch,
+  } = api.feed.getComments.useQuery({
     postId,
   });
 
@@ -89,9 +96,21 @@ export function FeedComments({
     return (
       <div className="space-y-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="bg-muted h-10 animate-pulse rounded" />
+          <div key={i} className="flex items-start gap-2">
+            <Skeleton className="mt-0.5 size-6 shrink-0 rounded-full" />
+            <div className="flex-1 space-y-1.5">
+              <Skeleton className="h-2.5 w-24" />
+              <Skeleton className="h-3 w-full" />
+            </div>
+          </div>
         ))}
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ErrorState onRetry={() => void refetch()} className="px-0 py-6" />
     );
   }
 

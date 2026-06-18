@@ -6,6 +6,8 @@ import { formatEventTimeRange } from "@/lib/event-time";
 import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { SectionLabel } from "@/components/ui/section-label";
+import { Skeleton as UiSkeleton } from "@/components/ui/skeleton";
+import { EmptyState as UiEmptyState } from "@/components/ui/empty-state";
 import { Link } from "@/i18n/navigation";
 import { MessageSquare, Calendar, ChevronUp } from "lucide-react";
 
@@ -29,18 +31,27 @@ interface CommunitySidebarProps {
 export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
   const t = useTranslations("communities.profile");
 
-  const { data: threadsData, isLoading: threadsLoading } =
-    api.forum.getThreads.useQuery({
-      communitySlug: slug,
-      sort: "lastActive",
-      limit: 3,
-    });
+  const {
+    data: threadsData,
+    isLoading: threadsLoading,
+    isError: threadsError,
+  } = api.forum.getThreads.useQuery({
+    communitySlug: slug,
+    sort: "lastActive",
+    limit: 3,
+  });
 
-  const { data: eventsData, isLoading: eventsLoading } =
-    api.events.getCommunityEvents.useQuery({ communitySlug: slug });
+  const {
+    data: eventsData,
+    isLoading: eventsLoading,
+    isError: eventsError,
+  } = api.events.getCommunityEvents.useQuery({ communitySlug: slug });
 
-  const { data: ideasData, isLoading: ideasLoading } =
-    api.forum.getIdeas.useQuery({ communitySlug: slug, sort: "votes" });
+  const {
+    data: ideasData,
+    isLoading: ideasLoading,
+    isError: ideasError,
+  } = api.forum.getIdeas.useQuery({ communitySlug: slug, sort: "votes" });
 
   const { data: links } = api.links.list.useQuery({ communitySlug: slug });
   const { data: community } = api.communities.getBySlug.useQuery({ slug });
@@ -118,7 +129,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
         />
         {eventsLoading ? (
           <Skeleton count={2} />
-        ) : events.length === 0 ? (
+        ) : eventsError ? null : events.length === 0 ? (
           <EmptyState>{t("noEventsYet")}</EmptyState>
         ) : (
           <div className="mt-3 space-y-1">
@@ -165,7 +176,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
         />
         {threadsLoading ? (
           <Skeleton count={3} />
-        ) : threads.length === 0 ? (
+        ) : threadsError ? null : threads.length === 0 ? (
           <EmptyState>{t("noThreadsYet")}</EmptyState>
         ) : (
           <div className="mt-3 space-y-1">
@@ -210,7 +221,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
         />
         {ideasLoading ? (
           <Skeleton count={3} />
-        ) : ideas.length === 0 ? (
+        ) : ideasError ? null : ideas.length === 0 ? (
           <EmptyState>{t("noIdeasYet")}</EmptyState>
         ) : (
           <div className="mt-3 space-y-1">
@@ -289,16 +300,12 @@ function Skeleton({ count }: { count: number }) {
   return (
     <div className="mt-3 space-y-2">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="bg-muted h-14 animate-pulse rounded-lg" />
+        <UiSkeleton key={i} className="h-14 rounded-lg" />
       ))}
     </div>
   );
 }
 
 function EmptyState({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-muted-foreground mt-6 text-center font-mono text-xs tracking-wider">
-      {children}
-    </p>
-  );
+  return <UiEmptyState title={children} className="px-0 py-6" />;
 }
