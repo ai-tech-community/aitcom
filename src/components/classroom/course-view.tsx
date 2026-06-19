@@ -14,6 +14,7 @@ import { LexicalRenderer } from "@/lib/lexical";
 import { ExamRunner } from "./exam-runner";
 import { LazyMotion, domAnimation, m } from "framer-motion";
 import { fireConfetti } from "./celebrate";
+import { useConfirm } from "@/components/confirm-dialog";
 import {
   courseProgressPercent,
   groupLessonsByModule,
@@ -55,6 +56,7 @@ export function CourseView({
   courseSlug: string;
 }) {
   const t = useTranslations("classroom");
+  const confirm = useConfirm();
   const router = useRouter();
   const utils = api.useUtils();
   const { data: session } = authClient.useSession();
@@ -258,8 +260,13 @@ export function CourseView({
               variant="destructive"
               size="sm"
               disabled={archive.isPending}
-              onClick={() => {
-                if (confirm(t("removeCourseConfirm"))) {
+              onClick={async () => {
+                if (
+                  await confirm({
+                    description: t("removeCourseConfirm"),
+                    destructive: true,
+                  })
+                ) {
                   archive.mutate({ courseId: course.id });
                 }
               }}

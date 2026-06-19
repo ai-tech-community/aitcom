@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { SectionLabel } from "@/components/ui/section-label";
 import { ErrorState } from "@/components/ui/error-state";
+import { useConfirm } from "@/components/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +42,7 @@ export function ThreadDetail({
     communitySlug ? `/communities/${communitySlug}/forum` : "/forum"
   ) as never;
   const t = useTranslations("forum");
+  const confirm = useConfirm();
   const viewCountedRef = useRef(false);
   const utils = api.useUtils();
   const canModerate =
@@ -254,8 +256,13 @@ export function ThreadDetail({
                 {(isAuthor || canModerate) && (
                   <DropdownMenuItem
                     className="text-destructive"
-                    onClick={() => {
-                      if (window.confirm(t("deleteThreadConfirm")))
+                    onClick={async () => {
+                      if (
+                        await confirm({
+                          description: t("deleteThreadConfirm"),
+                          destructive: true,
+                        })
+                      )
                         deleteMutation.mutate({ threadId: thread.id });
                     }}
                   >

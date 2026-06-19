@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ export function IntegrationsSettings({ slug }: IntegrationsSettingsProps) {
   const t = useTranslations("communities.settings.integrations.luma");
   const tPage = useTranslations("communities.settings.integrations");
   const utils = api.useUtils();
+  const confirm = useConfirm();
 
   const { data: config, isLoading } = api.luma.getConfig.useQuery({
     communitySlug: slug,
@@ -145,8 +147,13 @@ export function IntegrationsSettings({ slug }: IntegrationsSettingsProps) {
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => {
-                  if (window.confirm(t("disconnectConfirm"))) {
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      description: t("disconnectConfirm"),
+                      destructive: true,
+                    })
+                  ) {
                     disconnectMutation.mutate({ communitySlug: slug });
                   }
                 }}

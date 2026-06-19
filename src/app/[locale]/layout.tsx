@@ -14,6 +14,7 @@ import { InboxProvider } from "@/components/inbox/inbox-provider";
 import { InboxRoot } from "@/components/inbox/inbox-root";
 import { RulesProvider } from "@/components/community/rules-provider";
 import { AuthRequiredProvider } from "@/components/auth/auth-required-dialog";
+import { ConfirmProvider } from "@/components/confirm-dialog";
 import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
@@ -73,15 +74,17 @@ export default async function LocaleLayout({
           <TRPCReactProvider>
             <RulesProvider>
               <AuthRequiredProvider>
-                <Navbar />
-                <InboxProvider>
-                  <main className="to-background flex-1 bg-linear-to-b from-orange-50/60 via-amber-50/30">
-                    {children}
-                  </main>
-                  <Footer />
-                  <InboxRoot />
-                </InboxProvider>
-                <Toaster position="bottom-right" offset={60} />
+                <ConfirmProvider>
+                  <Navbar />
+                  <InboxProvider>
+                    <main className="to-background flex-1 bg-linear-to-b from-orange-50/60 via-amber-50/30">
+                      {children}
+                    </main>
+                    <Footer />
+                    <InboxRoot />
+                  </InboxProvider>
+                  <Toaster position="bottom-right" offset={60} />
+                </ConfirmProvider>
               </AuthRequiredProvider>
             </RulesProvider>
           </TRPCReactProvider>

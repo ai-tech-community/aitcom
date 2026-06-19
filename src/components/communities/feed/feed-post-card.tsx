@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RelativeTime } from "@/components/ui/relative-time";
@@ -58,6 +59,7 @@ export function FeedPostCard({
   showComments,
 }: FeedPostCardProps) {
   const t = useTranslations("communities.feed");
+  const confirm = useConfirm();
   const { requireAuth } = useRequireAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
@@ -159,8 +161,13 @@ export function FeedPostCard({
               )}
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
-                onClick={() => {
-                  if (confirm(t("deletePostConfirm"))) {
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      description: t("deletePostConfirm"),
+                      destructive: true,
+                    })
+                  ) {
                     deletePost.mutate({ postId: post.id });
                   }
                 }}

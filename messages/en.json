@@ -2176,6 +2176,9 @@
     "linkCopyFailed": "Could not copy link.",
     "removed": "Removed",
     "uploadFailed": "Upload failed",
-    "imageUploadFailed": "Image upload failed"
+    "imageUploadFailed": "Image upload failed",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "confirmTitle": "Are you sure?"
   }
 }

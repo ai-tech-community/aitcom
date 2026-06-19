@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useConfirm } from "@/components/confirm-dialog";
 
 /**
  * Lifecycle tab: publish → lock rosters → finalize. Each owns its mutation and
@@ -26,6 +27,7 @@ export function ManageLifecycle({
   hasCells: boolean;
 }) {
   const t = useTranslations("hackathon");
+  const confirm = useConfirm();
   const utils = api.useUtils();
   const [phase, setPhase] = useState(initialPhase);
   const isDraft = phase === "draft";
@@ -122,8 +124,8 @@ export function ManageLifecycle({
           className="w-full"
           variant="destructive"
           disabled={finalize.isPending || isDraft || phase === "finalized"}
-          onClick={() => {
-            if (window.confirm(t("finalizeConfirm"))) {
+          onClick={async () => {
+            if (await confirm({ description: t("finalizeConfirm") })) {
               finalize.mutate({ challengeId });
             }
           }}

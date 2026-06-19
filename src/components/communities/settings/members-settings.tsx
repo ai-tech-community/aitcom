@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -37,6 +38,7 @@ export function MembersSettings({
   const tRoles = useTranslations("communities.roles");
   const tManage = useTranslations("communities.manage");
   const utils = api.useUtils();
+  const confirm = useConfirm();
   const { data: session } = authClient.useSession();
 
   const {
@@ -332,8 +334,13 @@ export function MembersSettings({
                           variant="outline"
                           size="sm"
                           disabled={removeMutation.isPending}
-                          onClick={() => {
-                            if (window.confirm(tManage("removeConfirm"))) {
+                          onClick={async () => {
+                            if (
+                              await confirm({
+                                description: tManage("removeConfirm"),
+                                destructive: true,
+                              })
+                            ) {
                               removeMutation.mutate({
                                 slug,
                                 userId: member.userId,
@@ -347,8 +354,13 @@ export function MembersSettings({
                           variant="destructive"
                           size="sm"
                           disabled={banMutation.isPending}
-                          onClick={() => {
-                            if (window.confirm(tManage("banConfirm"))) {
+                          onClick={async () => {
+                            if (
+                              await confirm({
+                                description: tManage("banConfirm"),
+                                destructive: true,
+                              })
+                            ) {
                               banMutation.mutate({
                                 slug,
                                 userId: member.userId,
@@ -406,8 +418,8 @@ export function MembersSettings({
                       <Button
                         size="sm"
                         disabled={approveMutation.isPending}
-                        onClick={() => {
-                          if (window.confirm(t("approveConfirm"))) {
+                        onClick={async () => {
+                          if (await confirm({ description: t("approveConfirm") })) {
                             approveMutation.mutate({
                               slug,
                               userId: member.userId,
@@ -425,8 +437,13 @@ export function MembersSettings({
                         variant="destructive"
                         size="sm"
                         disabled={rejectMutation.isPending}
-                        onClick={() => {
-                          if (window.confirm(t("rejectConfirm"))) {
+                        onClick={async () => {
+                          if (
+                            await confirm({
+                              description: t("rejectConfirm"),
+                              destructive: true,
+                            })
+                          ) {
                             rejectMutation.mutate({
                               slug,
                               userId: member.userId,
@@ -491,8 +508,8 @@ export function MembersSettings({
                     variant="outline"
                     size="sm"
                     disabled={unbanMutation.isPending}
-                    onClick={() => {
-                      if (window.confirm(t("unbanConfirm"))) {
+                    onClick={async () => {
+                      if (await confirm({ description: t("unbanConfirm") })) {
                         unbanMutation.mutate({ slug, userId: member.userId });
                       }
                     }}

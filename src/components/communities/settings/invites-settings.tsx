@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,7 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
   const t = useTranslations("communities.settings.invites");
   const tRoles = useTranslations("communities.roles");
   const utils = api.useUtils();
+  const confirm = useConfirm();
 
   const [showForm, setShowForm] = useState(false);
   const [maxUses, setMaxUses] = useState("");
@@ -266,8 +268,13 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
                     variant="ghost"
                     className="text-destructive hover:text-destructive"
                     disabled={revokeMutation.isPending}
-                    onClick={() => {
-                      if (window.confirm(t("revokeConfirm"))) {
+                    onClick={async () => {
+                      if (
+                        await confirm({
+                          description: t("revokeConfirm"),
+                          destructive: true,
+                        })
+                      ) {
                         revokeMutation.mutate({ slug, inviteId: invite.id });
                       }
                     }}

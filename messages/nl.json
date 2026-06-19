@@ -2176,6 +2176,9 @@
     "linkCopyFailed": "Kon de link niet kopiëren.",
     "removed": "Verwijderd",
     "uploadFailed": "Uploaden mislukt",
-    "imageUploadFailed": "Afbeelding uploaden mislukt"
+    "imageUploadFailed": "Afbeelding uploaden mislukt",
+    "confirm": "Bevestigen",
+    "cancel": "Annuleren",
+    "confirmTitle": "Weet je het zeker?"
   }
 }

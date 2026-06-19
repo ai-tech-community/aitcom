@@ -7,6 +7,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
+import { useConfirm } from "@/components/confirm-dialog";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -39,6 +40,7 @@ const statusKeys: Record<string, string> = {
 
 export function MyArticlesList() {
   const t = useTranslations("articleEditor");
+  const confirm = useConfirm();
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const {
@@ -57,8 +59,9 @@ export function MyArticlesList() {
     },
   });
 
-  const handleDelete = (id: number) => {
-    if (!window.confirm(t("confirmDelete"))) return;
+  const handleDelete = async (id: number) => {
+    if (!(await confirm({ description: t("confirmDelete"), destructive: true })))
+      return;
     setDeletingId(id);
     deleteMutation.mutate(
       { id },

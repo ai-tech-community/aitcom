@@ -9,6 +9,7 @@ import { LexicalRenderer } from "@/lib/lexical";
 import { RoleBadge } from "@/components/forum/role-badge";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { api } from "@/trpc/react";
+import { useConfirm } from "@/components/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +35,7 @@ export function ReplyList({
   threadSlug,
 }: ReplyListProps) {
   const t = useTranslations("forum");
+  const confirm = useConfirm();
   const utils = api.useUtils();
   const canModerate =
     memberRole === "owner" ||
@@ -112,8 +114,13 @@ export function ReplyList({
                     )}
                     <DropdownMenuItem
                       className="text-destructive"
-                      onClick={() => {
-                        if (window.confirm(t("deleteReplyConfirm")))
+                      onClick={async () => {
+                        if (
+                          await confirm({
+                            description: t("deleteReplyConfirm"),
+                            destructive: true,
+                          })
+                        )
                           deleteMutation.mutate({ replyId: reply.id });
                       }}
                     >

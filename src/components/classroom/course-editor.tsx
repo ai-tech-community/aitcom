@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LessonEditor } from "@/components/classroom/lesson-editor";
+import { useConfirm } from "@/components/confirm-dialog";
 
 type CourseStatus = "draft" | "published";
 
@@ -42,6 +43,7 @@ interface ModuleEditorProps {
  */
 function ModuleEditor({ courseId, modules, lessonCount }: ModuleEditorProps) {
   const t = useTranslations("classroom");
+  const confirm = useConfirm();
   const utils = api.useUtils();
   // Track per-module edited title (keyed by module id)
   const [editTitles, setEditTitles] = useState<Record<number, string>>({});
@@ -219,8 +221,13 @@ function ModuleEditor({ courseId, modules, lessonCount }: ModuleEditorProps) {
           size="sm"
           className="text-muted-foreground text-xs"
           disabled={dissolveModules.isPending}
-          onClick={() => {
-            if (confirm(t("dissolveModulesConfirm"))) {
+          onClick={async () => {
+            if (
+              await confirm({
+                description: t("dissolveModulesConfirm"),
+                destructive: true,
+              })
+            ) {
               dissolveModules.mutate({ courseId });
             }
           }}

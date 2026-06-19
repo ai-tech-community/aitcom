@@ -12,6 +12,7 @@ import {
   XOctagon,
 } from "lucide-react";
 import { api } from "@/trpc/react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { authClient } from "@/server/better-auth/client";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export default function CommunityEventsPage({
   const { slug } = use(params);
   const t = useTranslations("events");
   const tHackathon = useTranslations("hackathon");
+  const confirm = useConfirm();
   const router = useRouter();
   const { data: session } = authClient.useSession();
 
@@ -247,8 +249,13 @@ export default function CommunityEventsPage({
             </button>
             <button
               className="rounded p-1 hover:bg-zinc-100"
-              onClick={() => {
-                if (window.confirm(t("cancelEventConfirm"))) {
+              onClick={async () => {
+                if (
+                  await confirm({
+                    description: t("cancelEventConfirm"),
+                    destructive: true,
+                  })
+                ) {
                   cancelMutation.mutate({
                     eventId: event.id as number,
                     communitySlug: slug,
