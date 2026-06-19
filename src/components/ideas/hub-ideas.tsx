@@ -244,7 +244,7 @@ export function HubIdeas({
                 }
                 className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-xs font-semibold transition-colors ${
                   idea.hasVoted
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >

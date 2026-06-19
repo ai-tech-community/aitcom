@@ -3,6 +3,7 @@
 import { use } from "react";
 import { api } from "@/trpc/react";
 import { Spinner } from "@/components/ui/spinner";
+import { ErrorState } from "@/components/ui/error-state";
 import { MembersSettings } from "@/components/communities/settings/members-settings";
 
 export default function MembersSettingsPage({
@@ -12,8 +13,12 @@ export default function MembersSettingsPage({
 }) {
   const { slug } = use(params);
 
-  const { data: community, isLoading: communityLoading } =
-    api.communities.getBySlug.useQuery({ slug });
+  const {
+    data: community,
+    isLoading: communityLoading,
+    isError: communityError,
+    refetch: refetchCommunity,
+  } = api.communities.getBySlug.useQuery({ slug });
 
   const { data: myCommunities, isLoading: roleLoading } =
     api.communities.getMyCommunities.useQuery();
@@ -26,6 +31,7 @@ export default function MembersSettingsPage({
     );
   }
 
+  if (communityError) return <ErrorState onRetry={refetchCommunity} />;
   if (!community) return null;
 
   const myMembership = myCommunities?.find((c) => c.slug === slug);

@@ -172,6 +172,7 @@ export function EventFormDialog({
   isAdminOrOwner = false,
 }: EventFormDialogProps) {
   const t = useTranslations("events");
+  const tc = useTranslations("common");
   const utils = api.useUtils();
   const [form, setForm] = useState<EventFormData>(emptyForm);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -256,7 +257,7 @@ export function EventFormDialog({
 
   const submitMutation = api.events.submitEvent.useMutation({
     onSuccess: () => {
-      toast.success("Event submitted for approval");
+      toast.success(t("eventSubmitted"));
       onOpenChange(false);
       void utils.events.getCommunityEvents.invalidate();
       void utils.events.getMyEventSubmissions.invalidate();
@@ -267,7 +268,7 @@ export function EventFormDialog({
 
   const resubmitMutation = api.events.resubmitEvent.useMutation({
     onSuccess: () => {
-      toast.success("Event resubmitted for approval");
+      toast.success(t("eventResubmitted"));
       onOpenChange(false);
       void utils.events.getMyEventSubmissions.invalidate();
       void utils.events.getPendingCommunityEvents.invalidate();
@@ -358,7 +359,7 @@ export function EventFormDialog({
         coverImageUrl: data.url,
       }));
     } catch {
-      toast.error("Image upload failed");
+      toast.error(tc("imageUploadFailed"));
     } finally {
       setCoverUploading(false);
       if (coverInputRef.current) coverInputRef.current.value = "";
@@ -385,7 +386,7 @@ export function EventFormDialog({
         coverImageId: data.coverImageId ?? current.coverImageId,
         coverImageUrl: data.coverImageUrl ?? current.coverImageUrl,
       }));
-      toast.success("Imported — review the details and submit");
+      toast.success(t("eventImported"));
     },
     onError: (error) => toast.error(error.message),
   });

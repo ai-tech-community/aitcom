@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ export function ChallengeThreadDetail({
   threadId,
   onBack,
 }: ChallengeThreadDetailProps) {
+  const t = useTranslations("challenges");
   const [replyContent, setReplyContent] = useState("");
   const utils = api.useUtils();
 
@@ -151,7 +153,9 @@ export function ChallengeThreadDetail({
       <div className="border-border my-6 border-t" />
 
       {/* Replies section header */}
-      <SectionLabel bordered={false}>Replies ({replies.length})</SectionLabel>
+      <SectionLabel bordered={false}>
+        {t("channel.repliesCount", { count: replies.length })}
+      </SectionLabel>
 
       {/* Replies list */}
       {replies.length === 0 ? (

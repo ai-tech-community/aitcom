@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ export function ChallengeCompose({
   onCancel,
   onCreated,
 }: ChallengeComposeProps) {
+  const t = useTranslations("challenges");
   const [type, setType] = useState<ThreadType>("discussion");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -54,7 +56,7 @@ export function ChallengeCompose({
 
   return (
     <div className="mt-8">
-      <SectionLabel bordered={false}>New Thread</SectionLabel>
+      <SectionLabel bordered={false}>{t("channel.newThread")}</SectionLabel>
 
       {/* Type selector */}
       <div className="mt-4">

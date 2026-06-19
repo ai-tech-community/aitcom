@@ -5,6 +5,9 @@ import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { useConfirm } from "@/components/confirm-dialog";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -37,11 +40,13 @@ const statusKeys: Record<string, string> = {
 
 export function MyArticlesList() {
   const t = useTranslations("articleEditor");
+  const confirm = useConfirm();
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const {
     data: articles,
     isLoading,
+    isError,
     refetch,
   } = api.articles.myArticles.useQuery();
   const deleteMutation = api.articles.delete.useMutation({
@@ -54,8 +59,11 @@ export function MyArticlesList() {
     },
   });
 
-  const handleDelete = (id: number) => {
-    if (!window.confirm(t("confirmDelete"))) return;
+  const handleDelete = async (id: number) => {
+    if (
+      !(await confirm({ description: t("confirmDelete"), destructive: true }))
+    )
+      return;
     setDeletingId(id);
     deleteMutation.mutate(
       { id },
@@ -70,11 +78,41 @@ export function MyArticlesList() {
 
   if (isLoading) {
     return (
-      <div className="border-border border-b pb-4">
-        <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / {t("myArticles").toUpperCase()}
-        </h1>
-      </div>
+      <>
+        <div className="border-border border-b pb-4">
+          <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            / {t("myArticles").toUpperCase()}
+          </h1>
+        </div>
+        <div className="divide-border divide-y">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:gap-0 sm:py-3.5"
+            >
+              <div className="flex items-center gap-3 sm:w-28">
+                <Skeleton className="h-2 w-2 rounded-full" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+              <Skeleton className="h-4 w-2/3 sm:flex-1" />
+              <Skeleton className="h-4 w-20 sm:w-24" />
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  if (isError) {
+    return (
+      <>
+        <div className="border-border border-b pb-4">
+          <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
+            / {t("myArticles").toUpperCase()}
+          </h1>
+        </div>
+        <ErrorState onRetry={() => void refetch()} />
+      </>
     );
   }
 

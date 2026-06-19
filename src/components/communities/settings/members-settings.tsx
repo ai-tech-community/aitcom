@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Copy, Loader2 } from "lucide-react";
+import { ErrorState } from "@/components/ui/error-state";
 import { toast } from "sonner";
 
 interface MembersSettingsProps {
@@ -36,19 +38,38 @@ export function MembersSettings({
   const tRoles = useTranslations("communities.roles");
   const tManage = useTranslations("communities.manage");
   const utils = api.useUtils();
+  const confirm = useConfirm();
   const { data: session } = authClient.useSession();
 
-  const { data: activeData, isLoading: activeLoading } =
-    api.communities.getMembers.useQuery({ slug, limit: 50, status: "active" });
+  const {
+    data: activeData,
+    isLoading: activeLoading,
+    isError: activeError,
+    refetch: refetchActive,
+  } = api.communities.getMembers.useQuery({
+    slug,
+    limit: 50,
+    status: "active",
+  });
 
-  const { data: pendingData, isLoading: pendingLoading } =
-    api.communities.getMembers.useQuery(
-      { slug, limit: 50, status: "pending_approval" },
-      { enabled: joinPolicy === "approval_required" },
-    );
+  const {
+    data: pendingData,
+    isLoading: pendingLoading,
+    isError: pendingError,
+  } = api.communities.getMembers.useQuery(
+    { slug, limit: 50, status: "pending_approval" },
+    { enabled: joinPolicy === "approval_required" },
+  );
 
-  const { data: bannedData, isLoading: bannedLoading } =
-    api.communities.getMembers.useQuery({ slug, limit: 50, status: "banned" });
+  const {
+    data: bannedData,
+    isLoading: bannedLoading,
+    isError: bannedError,
+  } = api.communities.getMembers.useQuery({
+    slug,
+    limit: 50,
+    status: "banned",
+  });
 
   const setRoleMutation = api.communities.setMemberRole.useMutation({
     onSuccess: () => {
@@ -247,6 +268,8 @@ export function MembersSettings({
             <div className="flex justify-center py-8">
               <Loader2 className="text-muted-foreground size-5 animate-spin" />
             </div>
+          ) : activeError ? (
+            <ErrorState onRetry={refetchActive} />
           ) : activeMembers.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center text-sm">
               {tManage("noMembers")}
@@ -311,8 +334,13 @@ export function MembersSettings({
                           variant="outline"
                           size="sm"
                           disabled={removeMutation.isPending}
-                          onClick={() => {
-                            if (window.confirm(tManage("removeConfirm"))) {
+                          onClick={async () => {
+                            if (
+                              await confirm({
+                                description: tManage("removeConfirm"),
+                                destructive: true,
+                              })
+                            ) {
                               removeMutation.mutate({
                                 slug,
                                 userId: member.userId,
@@ -326,8 +354,13 @@ export function MembersSettings({
                           variant="destructive"
                           size="sm"
                           disabled={banMutation.isPending}
-                          onClick={() => {
-                            if (window.confirm(tManage("banConfirm"))) {
+                          onClick={async () => {
+                            if (
+                              await confirm({
+                                description: tManage("banConfirm"),
+                                destructive: true,
+                              })
+                            ) {
                               banMutation.mutate({
                                 slug,
                                 userId: member.userId,
@@ -349,7 +382,8 @@ export function MembersSettings({
         {/* Pending members */}
         {joinPolicy === "approval_required" && (
           <TabsContent value="pending">
-            {pendingLoading ? (
+            {/* supplementary tab — hide on error (No-Silent-Failure) */}
+            {pendingError ? null : pendingLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="text-muted-foreground size-5 animate-spin" />
               </div>
@@ -384,8 +418,10 @@ export function MembersSettings({
                       <Button
                         size="sm"
                         disabled={approveMutation.isPending}
-                        onClick={() => {
-                          if (window.confirm(t("approveConfirm"))) {
+                        onClick={async () => {
+                          if (
+                            await confirm({ description: t("approveConfirm") })
+                          ) {
                             approveMutation.mutate({
                               slug,
                               userId: member.userId,
@@ -403,8 +439,13 @@ export function MembersSettings({
                         variant="destructive"
                         size="sm"
                         disabled={rejectMutation.isPending}
-                        onClick={() => {
-                          if (window.confirm(t("rejectConfirm"))) {
+                        onClick={async () => {
+                          if (
+                            await confirm({
+                              description: t("rejectConfirm"),
+                              destructive: true,
+                            })
+                          ) {
                             rejectMutation.mutate({
                               slug,
                               userId: member.userId,
@@ -428,7 +469,8 @@ export function MembersSettings({
 
         {/* Banned members */}
         <TabsContent value="banned">
-          {bannedLoading ? (
+          {/* supplementary tab — hide on error (No-Silent-Failure) */}
+          {bannedError ? null : bannedLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="text-muted-foreground size-5 animate-spin" />
             </div>
@@ -468,8 +510,8 @@ export function MembersSettings({
                     variant="outline"
                     size="sm"
                     disabled={unbanMutation.isPending}
-                    onClick={() => {
-                      if (window.confirm(t("unbanConfirm"))) {
+                    onClick={async () => {
+                      if (await confirm({ description: t("unbanConfirm") })) {
                         unbanMutation.mutate({ slug, userId: member.userId });
                       }
                     }}

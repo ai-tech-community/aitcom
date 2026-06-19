@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { ErrorState } from "@/components/ui/error-state";
 
 /** 0..1 (or null) → whole-percent bar value. */
 function toPct(rate: number | null): number {
@@ -50,7 +51,7 @@ export function HackathonAnalytics({
 }) {
   const t = useTranslations("hackathon");
   const isDraft = phase === "draft";
-  const { data } = api.hackathon.analytics.useQuery(
+  const { data, isError, refetch } = api.hackathon.analytics.useQuery(
     { challengeId },
     { enabled: !isDraft },
   );
@@ -60,6 +61,8 @@ export function HackathonAnalytics({
     body = (
       <p className="text-muted-foreground text-xs">{t("analyticsDraft")}</p>
     );
+  } else if (isError) {
+    body = <ErrorState onRetry={() => refetch()} />;
   } else if (!data) {
     body = (
       <p className="text-muted-foreground text-xs">{t("analyticsLoading")}</p>

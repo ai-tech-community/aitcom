@@ -7,11 +7,12 @@ import {
 } from "@/components/hackathon/workspace/cell-heat";
 
 export function TeamHeatmapPublic({ teamId }: { teamId: string }) {
-  const { data } = api.hackathon.teamHeatmap.useQuery(
+  const { data, isError } = api.hackathon.teamHeatmap.useQuery(
     { teamId },
     { refetchInterval: 5_000 },
   );
 
+  if (isError) return null; // supplementary — may stay absent (No-Silent-Failure)
   if (!data || data.length === 0) return null;
 
   return (

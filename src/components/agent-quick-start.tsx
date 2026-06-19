@@ -7,6 +7,7 @@ import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { RelativeTime } from "@/components/ui/relative-time";
@@ -261,6 +262,7 @@ function ClaimHistorySection() {
 }
 
 function AgentActivitySection() {
+  const tc = useTranslations("common");
   const [cursor, setCursor] = useState<string | undefined>(undefined);
 
   const { data, isLoading } = api.agentManagement.getAgentActivity.useQuery({
@@ -313,7 +315,7 @@ function AgentActivitySection() {
           className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
           disabled={isLoading}
         >
-          {isLoading ? "..." : "LOAD MORE"}
+          {isLoading ? "..." : tc("loadMore")}
         </button>
       )}
     </div>
@@ -643,6 +645,9 @@ function N8nPanel({
           </code>
         </div>
       ) : (
+        // Supplementary — a webhook query error (no row) is deliberately
+        // treated as "not yet registered" rather than an error state
+        // (No-Silent-Failure: intentional fallback).
         <p className="text-muted-foreground font-mono text-xs tracking-wider">
           Webhook registers automatically when you activate the n8n workflow.
         </p>
@@ -913,6 +918,9 @@ function InviteCodeSection() {
         </Button>
       </div>
 
+      {/* Supplementary — a codes query error simply leaves this list absent
+          (No-Silent-Failure: intentional). The generate-code action remains
+          available above so the user always has a path forward. */}
       {codes && codes.length > 0 && (
         <div className="space-y-2">
           {codes.slice(0, 5).map((code) => (
@@ -952,7 +960,7 @@ function InviteCodeSection() {
 }
 
 function UnclaimedAgentsSection() {
-  const { data, isLoading } =
+  const { data, isLoading, isError } =
     api.agentManagement.listUnclaimedAgents.useQuery();
   const claimMutation = api.agentManagement.claimAgent.useMutation({
     onSuccess: () => {
@@ -964,7 +972,20 @@ function UnclaimedAgentsSection() {
     name: string;
   } | null>(null);
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-3 w-40" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-24 w-full rounded-lg" />
+          <Skeleton className="h-24 w-full rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+  // Supplementary — an error here leaves the unclaimed-agents list absent
+  // (No-Silent-Failure: intentional). This is a discovery aid, not core flow.
+  if (isError) return null;
   if (!data || data.agents.length === 0) return null;
 
   const handleClaim = (agentId: string) => {

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 export default function ForgotPasswordPage() {
   const t = useTranslations("auth");
+  const tc = useTranslations("common");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -31,7 +32,9 @@ export default function ForgotPasswordPage() {
       }
     } catch (err) {
       setLoading(false);
-      toast.error(err instanceof Error ? err.message : "Something went wrong");
+      toast.error(
+        err instanceof Error ? err.message : tc("somethingWentWrong"),
+      );
       return;
     }
     setLoading(false);

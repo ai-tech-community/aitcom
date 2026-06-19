@@ -1,6 +1,7 @@
 "use client";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { ErrorState } from "@/components/ui/error-state";
 
 function delta(now: number, prev: number) {
   if (prev === 0) return now === 0 ? "—" : "+∞";
@@ -10,7 +11,11 @@ function delta(now: number, prev: number) {
 
 export function HealthPulse({ slug }: { slug: string }) {
   const t = useTranslations("communities.insights");
-  const { data, isLoading } = api.insights.healthPulse.useQuery({ slug });
+  const { data, isLoading, isError, refetch } =
+    api.insights.healthPulse.useQuery({ slug });
+  if (isError) {
+    return <ErrorState onRetry={() => void refetch()} />;
+  }
   if (isLoading || !data) {
     return (
       <div

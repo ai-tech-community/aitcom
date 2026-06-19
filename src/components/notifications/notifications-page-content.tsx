@@ -3,6 +3,7 @@
 import { CheckCheckIcon, Trash2Icon, BellOffIcon } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Spinner } from "@/components/ui/spinner";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -21,6 +22,8 @@ function reviewPathFromMetadata(metadata: unknown) {
 }
 
 export function NotificationsPageContent() {
+  const t = useTranslations("notificationPrefs");
+  const tc = useTranslations("common");
   const utils = api.useUtils();
 
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
@@ -73,7 +76,7 @@ export function NotificationsPageContent() {
     <div>
       {/* Header */}
       <div className="border-border flex items-center justify-between border-b pb-4">
-        <SectionLabel bordered={false}>NOTIFICATIONS</SectionLabel>
+        <SectionLabel bordered={false}>{t("sectionTitle")}</SectionLabel>
         <div className="flex gap-2">
           <button
             type="button"
@@ -201,7 +204,7 @@ export function NotificationsPageContent() {
             disabled={isFetchingNextPage}
             className="border-border text-muted-foreground hover:bg-muted w-full rounded-lg border py-2.5 text-center text-xs disabled:opacity-50"
           >
-            {isFetchingNextPage ? "Loading..." : "Load more"}
+            {isFetchingNextPage ? tc("loading") : tc("loadMore")}
           </button>
         )}
       </div>

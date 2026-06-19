@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +49,7 @@ function slugify(text: string): string {
 export function RulesSettings({ slug }: RulesSettingsProps) {
   const t = useTranslations("communities.settings.rules");
   const utils = api.useUtils();
+  const confirm = useConfirm();
 
   const { data: rulesData, isLoading } = api.forum.getRules.useQuery({
     communitySlug: slug,
@@ -90,8 +92,13 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
     ]);
   };
 
-  const removeSection = (index: number) => {
-    if (window.confirm(t("removeSectionConfirm"))) {
+  const removeSection = async (index: number) => {
+    if (
+      await confirm({
+        description: t("removeSectionConfirm"),
+        destructive: true,
+      })
+    ) {
       setSections((prev) => prev.filter((_, i) => i !== index));
     }
   };
@@ -121,16 +128,16 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
     });
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (sections.length === 0) return;
     const hasEmpty = sections.some((s) => !s.title.trim());
     if (hasEmpty) {
-      toast.error("All sections must have a title");
+      toast.error(t("toastTitleRequired"));
       return;
     }
 
     if (rulesData?.rules) {
-      if (!window.confirm(t("publishConfirm"))) return;
+      if (!(await confirm({ description: t("publishConfirm") }))) return;
     }
 
     upsertMutation.mutate({

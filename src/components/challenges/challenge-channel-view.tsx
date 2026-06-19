@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -9,6 +10,7 @@ import { ChallengeThreadDetail } from "@/components/challenges/challenge-thread-
 import { ChallengeCompose } from "@/components/challenges/challenge-compose";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ErrorState } from "@/components/ui/error-state";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -48,16 +50,24 @@ export function ChallengeChannelView({
   challengeId,
   isEnrolled,
 }: ChallengeChannelViewProps) {
+  const t = useTranslations("challenges");
+  const tc = useTranslations("common");
   const [typeFilter, setTypeFilter] = useState<ThreadTypeFilter>("all");
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
 
-  const { data: channel, isLoading: channelLoading } =
-    api.challengeChannel.getChannel.useQuery({ challengeId });
+  const {
+    data: channel,
+    isLoading: channelLoading,
+    isError: channelError,
+    refetch: refetchChannel,
+  } = api.challengeChannel.getChannel.useQuery({ challengeId });
 
   const {
     data: threadsData,
     isLoading: threadsLoading,
+    isError: threadsError,
+    refetch: refetchThreads,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -81,6 +91,14 @@ export function ChallengeChannelView({
     return (
       <div className="mt-8">
         <div className="text-muted-foreground text-sm">Loading channel...</div>
+      </div>
+    );
+  }
+
+  if (channelError) {
+    return (
+      <div className="mt-8">
+        <ErrorState onRetry={() => void refetchChannel()} />
       </div>
     );
   }
@@ -125,7 +143,9 @@ export function ChallengeChannelView({
     <div className="mt-8">
       {/* Header + New Thread button */}
       <div className="flex items-center justify-between">
-        <SectionLabel bordered={false}>Channel</SectionLabel>
+        <SectionLabel bordered={false}>
+          {t("channel.sectionTitle")}
+        </SectionLabel>
         <Button
           size="sm"
           className="font-mono text-xs tracking-wider"
@@ -150,6 +170,8 @@ export function ChallengeChannelView({
       <div className="mt-4 space-y-2">
         {threadsLoading ? (
           <p className="text-muted-foreground text-sm">Loading threads...</p>
+        ) : threadsError ? (
+          <ErrorState onRetry={() => void refetchThreads()} />
         ) : threads.length === 0 ? (
           <div className="border-border rounded-lg border border-dashed px-6 py-12 text-center">
             <p className="text-muted-foreground text-sm">
@@ -177,7 +199,7 @@ export function ChallengeChannelView({
             onClick={() => fetchNextPage()}
             disabled={isFetchingNextPage}
           >
-            {isFetchingNextPage ? "Loading..." : "Load more"}
+            {isFetchingNextPage ? tc("loading") : tc("loadMore")}
           </Button>
         </div>
       )}

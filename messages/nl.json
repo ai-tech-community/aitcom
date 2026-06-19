@@ -152,7 +152,31 @@
     "cancelEventConfirm": "Dit evenement annuleren? Alle registraties worden geannuleerd.",
     "eventUpdated": "Evenement bijgewerkt",
     "eventCancelled": "Evenement geannuleerd",
-    "cancelled": "GEANNULEERD"
+    "cancelled": "GEANNULEERD",
+    "eventApproved": "Evenement goedgekeurd en gepubliceerd",
+    "eventApproveError": "Goedkeuren van evenement mislukt",
+    "eventRejected": "Evenement afgewezen — de indiener is op de hoogte gebracht",
+    "eventRejectError": "Afwijzen van evenement mislukt",
+    "eventSubmitted": "Evenement ingediend ter goedkeuring",
+    "eventResubmitted": "Evenement opnieuw ingediend ter goedkeuring",
+    "eventImported": "Geïmporteerd — controleer de gegevens en dien in",
+    "sectionPrizes": "Prijzen",
+    "sectionAbout": "Over",
+    "sectionSpeakers": "Sprekers",
+    "sectionGallery": "Galerij",
+    "sectionRelated": "Gerelateerde evenementen",
+    "location": {
+      "toastUnsupported": "Geolocatie wordt niet ondersteund in deze browser.",
+      "toastSet": "Locatie ingesteld. Dichtstbijzijnde evenementen worden getoond."
+    },
+    "registration": {
+      "toastAlready": "Je bent al ingeschreven voor dit evenement.",
+      "toastRedirecting": "Doorsturen naar betaling...",
+      "toastWaitlisted": "Je bent toegevoegd aan de wachtlijst.",
+      "toastRegistered": "Succesvol ingeschreven!",
+      "toastCancelled": "Inschrijving geannuleerd.",
+      "toastAlreadyGoing": "Al gemarkeerd als aanwezig."
+    }
   },
   "blog": {
     "title": "Blog",
@@ -246,7 +270,8 @@
       "markImplemented": "Markeer als geïmplementeerd",
       "markRejected": "Markeer als afgewezen",
       "reopen": "Heropenen",
-      "statusChanged": "Status bijgewerkt"
+      "statusChanged": "Status bijgewerkt",
+      "submitted": "Idee ingediend!"
     },
     "threads": {
       "title": "Discussie",
@@ -454,7 +479,8 @@
     "resetPassword": "Wachtwoord Resetten",
     "resettingPassword": "Resetten...",
     "passwordResetSuccess": "Wachtwoord succesvol gereset. Je kunt nu inloggen.",
-    "invalidResetToken": "Deze resetlink is ongeldig of verlopen."
+    "invalidResetToken": "Deze resetlink is ongeldig of verlopen.",
+    "accountCreated": "Account aangemaakt!"
   },
   "language": {
     "en": "English",
@@ -508,13 +534,15 @@
     "notifications": "Meldingen",
     "settings": "Instellingen",
     "impact": "Impact",
-    "qa": "QA"
+    "qa": "QA",
+    "settingsComingSoon": "Instellingen komen binnenkort."
   },
   "activity": {
     "scopeLabel": "Activiteitsbereik",
     "personal": "Mijn Activiteit",
     "community": "Community",
-    "empty": "Nog geen activiteit. Begin met deelnemen om je feed te zien!"
+    "empty": "Nog geen activiteit. Begin met deelnemen om je feed te zien!",
+    "sectionTitle": "Activiteit"
   },
   "inbox": {
     "title": "Inbox",
@@ -602,7 +630,14 @@
     "proposedBy": "Voorgesteld door {name}",
     "myChallenges": "Mijn Uitdagingen",
     "muteAdvice": "Agent advies dempen",
-    "unmuteAdvice": "Agent advies aanzetten"
+    "unmuteAdvice": "Agent advies aanzetten",
+    "activeChallenges": "Actieve uitdagingen",
+    "channel": {
+      "sectionTitle": "Kanaal",
+      "newThread": "Nieuw onderwerp",
+      "repliesCount": "Antwoorden ({count})"
+    },
+    "leaderboardEmpty": "Nog geen ranglijst. Dien als eerste in."
   },
   "badges": {
     "profile_complete": "Profiel Compleet",
@@ -811,7 +846,21 @@
     "protocol": "MCP via Streamable HTTP",
     "toolCatalogTitle": "Wat kan je agent doen?",
     "toolCatalogBody": "Bekijk alle capaciteiten die agents op het platform hebben — en stel voor wat er mist.",
-    "toolCatalogCta": "Bekijk de toolcatalogus"
+    "toolCatalogCta": "Bekijk de toolcatalogus",
+    "sectionPendingDrafts": "Concepten in behandeling",
+    "sectionSuggestions": "Suggesties",
+    "sectionActivity": "Agentactiviteit",
+    "sectionImpactQa": "Impact-QA",
+    "sectionHistory": "Geschiedenis",
+    "sectionInviteCodes": "Uitnodigingscodes",
+    "sectionWebhook": "Webhook",
+    "sectionProfile": "Agentprofiel",
+    "sectionVerification": "Verificatie",
+    "sectionDangerZone": "Gevarenzone",
+    "sectionCustomApi": "Aangepast / API",
+    "sectionOpenClaw": "OpenClaw",
+    "sectionClaudeCli": "Claude CLI",
+    "sectionN8n": "n8n"
   },
   "security": {
     "title": "SECURITY & TRANSPARANTIE",
@@ -1173,7 +1222,21 @@
     "dashboard": {
       "sectionHeader": "Merkaandeel in deze categorie",
       "metricHelp": "Aandeel = runs die het merk noemen ÷ totaal aantal runs in de periode. Het kleine getal onder elke rij toont die breuk (bijv. 1/2)."
-    }
+    },
+    "brand": {
+      "toastWatching": "Je volgt dit merk. Je krijgt meldingen bij grote verschuivingen.",
+      "toastUnwatched": "Niet meer gevolgd."
+    },
+    "prompts": {
+      "toastSubmitted": "Ingediend ter beoordeling."
+    },
+    "submitPrompt": {
+      "toastSubmitted": "Prompt ingediend ter beoordeling."
+    },
+    "run": {
+      "toastSubmitted": "Run ingediend. Extractie wordt binnenkort uitgevoerd."
+    },
+    "noRuns": "Nog geen runs."
   },
   "classroom": {
     "title": "Klaslokalen",
@@ -1312,7 +1375,11 @@
       "coverImage": "Omslagafbeelding",
       "saveDraft": "Opslaan als Concept",
       "publish": "Publiceren",
-      "saveChanges": "Wijzigingen Opslaan"
+      "saveChanges": "Wijzigingen Opslaan",
+      "toastCreated": "Project aangemaakt!",
+      "toastUpdated": "Project bijgewerkt!",
+      "toastRulesRequired": "Je moet de communityregels accepteren voordat je indient.",
+      "coverImageComingSoon": "Coverafbeelding uploaden komt binnenkort."
     },
     "update": {
       "title": "Update Titel",
@@ -1321,7 +1388,8 @@
       "contentPlaceholder": "Deel je voortgang...",
       "submit": "Update Plaatsen",
       "timeline": "Tijdlijn",
-      "noUpdates": "Nog geen updates."
+      "noUpdates": "Nog geen updates.",
+      "toastPosted": "Update geplaatst!"
     },
     "comments": {
       "title": "Reacties",
@@ -1330,7 +1398,11 @@
       "reply": "Reageren",
       "delete": "Verwijderen",
       "noComments": "Nog geen reacties. Wees de eerste om feedback te geven!",
-      "signInToComment": "Log in om feedback te geven"
+      "signInToComment": "Log in om feedback te geven",
+      "toastReplyPosted": "Antwoord geplaatst!",
+      "toastPosted": "Reactie geplaatst!",
+      "toastRulesRequired": "Je moet eerst de communityregels accepteren.",
+      "toastDeleted": "Reactie verwijderd."
     },
     "vote": {
       "signInToVote": "Log in om te stemmen"
@@ -1554,7 +1626,8 @@
         "currentVersion": "Versie {version}",
         "effectiveDate": "Van kracht sinds {date}",
         "saveDraft": "Concept opslaan",
-        "saved": "Regels opgeslagen"
+        "saved": "Regels opgeslagen",
+        "toastTitleRequired": "Alle secties moeten een titel hebben"
       },
       "ownership": {
         "title": "Eigenaarschap overdragen",
@@ -1634,7 +1707,18 @@
       "pinPost": "Vastmaken",
       "unpinPost": "Losmaken",
       "pinned": "Vastgemaakt",
-      "pinCapReached": "Je kunt maximaal 3 berichten vastmaken"
+      "pinCapReached": "Je kunt maximaal 3 berichten vastmaken",
+      "toastCreateError": "Bericht plaatsen mislukt",
+      "toastCommentAddError": "Reactie toevoegen mislukt",
+      "toastCommentUpdateError": "Reactie bijwerken mislukt",
+      "toastCommentDeleteError": "Reactie verwijderen mislukt",
+      "toastLikeError": "Like wijzigen mislukt",
+      "toastPostUpdateError": "Bericht bijwerken mislukt",
+      "toastPostDeleteError": "Bericht verwijderen mislukt",
+      "signInTitle": "Meld je aan om de communityfeed te zien",
+      "signInDescription": "Berichten in deze community zijn zichtbaar voor leden.",
+      "joinTitle": "Word lid van deze community om de feed te zien",
+      "joinDescription": "Berichten in deze community zijn alleen zichtbaar voor leden."
     },
     "dashboard": {
       "title": "Mijn Communities",
@@ -1678,7 +1762,8 @@
       "newcomersEmpty": "Iedereen is geactiveerd 🎉",
       "newcomersJoined": "Lid geworden op {date}",
       "healthSection": "Community gezondheidsstatistieken",
-      "loading": "Laden"
+      "loading": "Laden",
+      "unactivatedEmpty": "Alle nieuwe leden zijn geactiveerd."
     },
     "activation": {
       "loading": "Loading",
@@ -1727,7 +1812,9 @@
       "welcomeSubtitle": "A few steps to help you get started ({done}/{total} done).",
       "done": "Done",
       "markDone": "Mark done"
-    }
+    },
+    "directoryEmpty": "Nog geen community’s. Start als eerste er een.",
+    "membersEmpty": "Nog geen leden."
   },
   "notificationPrefs": {
     "title": "Meldingen",
@@ -1737,7 +1824,8 @@
     "perCommunity": "Per community",
     "digestColumn": "Samenvattingssectie",
     "broadcastColumn": "Aankondigingen",
-    "saved": "Opgeslagen"
+    "saved": "Opgeslagen",
+    "sectionTitle": "Meldingen"
   },
   "broadcast": {
     "title": "Stuur een aankondiging",
@@ -1773,7 +1861,8 @@
     "leaderboardTitle": "Beste verwijzers",
     "referralCount": "{count, plural, one {# verwijzing} other {# verwijzingen}}",
     "empty": "Nog geen verwijzingen",
-    "copyFailed": "Kopiëren mislukt — kopieer de link handmatig."
+    "copyFailed": "Kopiëren mislukt — kopieer de link handmatig.",
+    "leaderboardEmpty": "Nog geen verwijzingen. Nodig iemand uit om te beginnen."
   },
   "hackathon": {
     "title": "Hackathon",
@@ -2008,7 +2097,11 @@
       "helpChallenge": "Open de challenge",
       "helpEvent": "Terug naar het event"
     },
-    "tasksFrozen": "Taken liggen vast zodra de hackathon is gepubliceerd — elk team racet door hetzelfde rooster."
+    "tasksFrozen": "Taken liggen vast zodra de hackathon is gepubliceerd — elk team racet door hetzelfde rooster.",
+    "toastRankingsSubmitted": "Ranglijst ingediend",
+    "toastJudgingOpened": "Beoordeling geopend",
+    "staffEmpty": "Nog geen medewerkers toegewezen.",
+    "judgeEmpty": "Nog geen teams om te beoordelen."
   },
   "agentsCatalog": {
     "gates": {
@@ -2081,5 +2174,22 @@
     "master": "Meester",
     "grandMaster": "Grootmeester",
     "enlightened": "Verlicht"
+  },
+  "common": {
+    "loading": "Laden…",
+    "loadMore": "Meer laden",
+    "viewAll": "Alles bekijken",
+    "retry": "Opnieuw",
+    "somethingWentWrong": "Er ging iets mis",
+    "errorTitle": "Kon dit niet laden",
+    "errorDescription": "Er ging iets mis. Probeer het opnieuw.",
+    "linkCopied": "Link gekopieerd.",
+    "linkCopyFailed": "Kon de link niet kopiëren.",
+    "removed": "Verwijderd",
+    "uploadFailed": "Uploaden mislukt",
+    "imageUploadFailed": "Afbeelding uploaden mislukt",
+    "confirm": "Bevestigen",
+    "cancel": "Annuleren",
+    "confirmTitle": "Weet je het zeker?"
   }
 }

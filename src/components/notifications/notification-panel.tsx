@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { CheckCheckIcon, Trash2Icon, BellOffIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Spinner } from "@/components/ui/spinner";
 import { Link } from "@/i18n/navigation";
@@ -21,6 +22,7 @@ function reviewPathFromMetadata(metadata: unknown) {
 }
 
 export function NotificationPanel({ onClose }: Props) {
+  const tc = useTranslations("common");
   const utils = api.useUtils();
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -110,7 +112,7 @@ export function NotificationPanel({ onClose }: Props) {
             onClick={onClose}
             className="text-muted-foreground text-xs underline-offset-4 hover:underline"
           >
-            View all
+            {tc("viewAll")}
           </Link>
         </div>
         <div className="flex gap-1">
@@ -255,7 +257,7 @@ export function NotificationPanel({ onClose }: Props) {
             disabled={isFetchingNextPage}
             className="text-muted-foreground hover:bg-muted w-full py-2 text-center text-xs disabled:opacity-50"
           >
-            {isFetchingNextPage ? "Loading..." : "Load more"}
+            {isFetchingNextPage ? tc("loading") : tc("loadMore")}
           </button>
         )}
       </div>

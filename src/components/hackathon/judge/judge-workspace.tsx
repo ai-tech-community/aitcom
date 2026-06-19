@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export function JudgeWorkspace({ challengeId }: { challengeId: number }) {
+  const t = useTranslations("hackathon");
   const teams = api.hackathon.judgeableTeams.useQuery({ challengeId });
   const [ranks, setRanks] = useState<Record<string, string>>({});
   const [comments, setComments] = useState<Record<string, string>>({});
@@ -23,12 +28,22 @@ export function JudgeWorkspace({ challengeId }: { challengeId: number }) {
   }, [teams.data]);
 
   const submit = api.hackathon.submitRankings.useMutation({
-    onSuccess: () => toast.success("Rankings submitted"),
+    onSuccess: () => toast.success(t("toastRankingsSubmitted")),
     onError: (e) => toast.error(e.message),
   });
 
-  if (teams.isLoading || !teams.data) return null;
-  if (teams.data.length === 0) return <p>No submitted teams to judge yet.</p>;
+  if (teams.isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    );
+  }
+  if (teams.isError) return <ErrorState onRetry={() => teams.refetch()} />;
+  if (!teams.data || teams.data.length === 0)
+    return <EmptyState title={t("judgeEmpty")} />;
 
   // Mirror the server validation (submitRankings) client-side so the judge gets
   // a clear message instead of an opaque Zod error: every team needs a rank,

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RelativeTime } from "@/components/ui/relative-time";
@@ -58,6 +59,7 @@ export function FeedPostCard({
   showComments,
 }: FeedPostCardProps) {
   const t = useTranslations("communities.feed");
+  const confirm = useConfirm();
   const { requireAuth } = useRequireAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
@@ -70,7 +72,7 @@ export function FeedPostCard({
 
   const toggleLike = api.feed.toggleLike.useMutation({
     onSuccess: () => onRefresh(),
-    onError: () => toast.error("Failed to toggle like"),
+    onError: () => toast.error(t("toastLikeError")),
   });
 
   const editPost = api.feed.editPost.useMutation({
@@ -79,7 +81,7 @@ export function FeedPostCard({
       setIsEditing(false);
       onRefresh();
     },
-    onError: () => toast.error("Failed to update post"),
+    onError: () => toast.error(t("toastPostUpdateError")),
   });
 
   const deletePost = api.feed.deletePost.useMutation({
@@ -87,7 +89,7 @@ export function FeedPostCard({
       toast.success(t("postDeleted"));
       onRefresh();
     },
-    onError: () => toast.error("Failed to delete post"),
+    onError: () => toast.error(t("toastPostDeleteError")),
   });
 
   const pinPost = api.feed.pinPost.useMutation({
@@ -159,8 +161,13 @@ export function FeedPostCard({
               )}
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
-                onClick={() => {
-                  if (confirm(t("deletePostConfirm"))) {
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      description: t("deletePostConfirm"),
+                      destructive: true,
+                    })
+                  ) {
                     deletePost.mutate({ postId: post.id });
                   }
                 }}
@@ -247,7 +254,7 @@ export function FeedPostCard({
           disabled={toggleLike.isPending}
         >
           <Heart
-            className={`size-4 ${post.hasLiked ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}
+            className={`size-4 ${post.hasLiked ? "fill-foreground text-foreground" : "text-muted-foreground"}`}
           />
           <span className="text-muted-foreground font-mono text-xs">
             {post.likeCount ?? 0}

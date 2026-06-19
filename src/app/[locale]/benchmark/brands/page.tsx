@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Card } from "@/components/ui/card";
 
 export default function BrandsDirectoryPage() {
+  const tc = useTranslations("common");
   const [categorySlug, setCategorySlug] = useState<string | undefined>();
   const [sort, setSort] = useState<"visibility" | "alpha" | "recent">(
     "visibility",
@@ -100,7 +102,7 @@ export default function BrandsDirectoryPage() {
           className="self-center rounded border px-3 py-1 text-sm"
           onClick={() => setCursor(page.data.nextCursor)}
         >
-          Load more
+          {tc("loadMore")}
         </button>
       )}
 

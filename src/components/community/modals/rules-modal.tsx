@@ -4,6 +4,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { api } from "@/trpc/react";
 import { LexicalRenderer } from "@/lib/lexical";
 import { BuildingModal } from "../building-modal";
+import { ErrorState } from "@/components/ui/error-state";
 import { Shield, Users, Flag, Scale, Brain, Gavel, Check } from "lucide-react";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -34,7 +35,7 @@ export function RulesModal({
 }: RulesModalProps) {
   const t = useTranslations("community.rules");
   const locale = useLocale() as "en" | "nl";
-  const { data, isLoading } = api.forum.getRules.useQuery(
+  const { data, isLoading, isError, refetch } = api.forum.getRules.useQuery(
     { communitySlug: communitySlug ?? "ait", locale },
     { enabled: isOpen, staleTime: 5 * 60 * 1000 },
   );
@@ -65,6 +66,8 @@ export function RulesModal({
           ))}
         </div>
       )}
+
+      {isError && <ErrorState onRetry={refetch} className="py-8" />}
 
       {data && sections.length > 0 && (
         <div className="flex flex-col gap-4">
@@ -147,7 +150,7 @@ export function RulesModal({
         </div>
       )}
 
-      {!isLoading && (!data || sections.length === 0) && (
+      {!isLoading && !isError && (!data || sections.length === 0) && (
         <p className="text-muted-foreground py-4 font-mono text-xs">
           {t("empty")}
         </p>

@@ -16,9 +16,10 @@ export function TeamLeaderboard({
   eventSlug?: string;
 }) {
   const t = useTranslations("hackathon");
-  const { data, isLoading } = api.hackathon.teamLeaderboard.useQuery({
+  const { data, isLoading, isError } = api.hackathon.teamLeaderboard.useQuery({
     challengeId,
   });
+  if (isError) return null; // supplementary — may stay absent (No-Silent-Failure)
   if (isLoading || !data || data.length === 0) return null;
 
   // finalRank is only ever stamped by finalizeHackathon, so its presence is

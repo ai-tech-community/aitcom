@@ -6,7 +6,8 @@ import { Progress } from "@/components/ui/progress";
 
 export function TeamGridProgress({ teamId }: { teamId: string }) {
   const t = useTranslations("hackathon");
-  const { data } = api.hackathon.teamGridStatus.useQuery({ teamId });
+  const { data, isError } = api.hackathon.teamGridStatus.useQuery({ teamId });
+  if (isError) return null; // supplementary — may stay absent (No-Silent-Failure)
   if (!data || data.total === 0) return null;
 
   const done = data.byStatus.completed ?? 0;

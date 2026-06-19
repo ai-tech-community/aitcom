@@ -3,6 +3,7 @@
 import { use } from "react";
 import { api } from "@/trpc/react";
 import { Spinner } from "@/components/ui/spinner";
+import { ErrorState } from "@/components/ui/error-state";
 import { InvitesSettings } from "@/components/communities/settings/invites-settings";
 
 export default function InvitesSettingsPage({
@@ -11,7 +12,12 @@ export default function InvitesSettingsPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
-  const { data: community, isLoading } = api.communities.getBySlug.useQuery({
+  const {
+    data: community,
+    isLoading,
+    isError,
+    refetch,
+  } = api.communities.getBySlug.useQuery({
     slug,
   });
 
@@ -22,6 +28,7 @@ export default function InvitesSettingsPage({
       </div>
     );
   }
+  if (isError) return <ErrorState onRetry={refetch} />;
   if (!community) return null;
 
   return <InvitesSettings slug={slug} joinPolicy={community.joinPolicy} />;

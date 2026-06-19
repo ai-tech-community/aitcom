@@ -26,7 +26,7 @@ export function ActiveChallengesWidget() {
   if (isError) {
     return (
       <div>
-        <SectionLabel className="pb-4">Active Challenges</SectionLabel>
+        <SectionLabel className="pb-4">{t("activeChallenges")}</SectionLabel>
         <ErrorState className="py-8" onRetry={() => refetch()} />
       </div>
     );
@@ -38,7 +38,7 @@ export function ActiveChallengesWidget() {
 
   return (
     <div>
-      <SectionLabel className="pb-4">Active Challenges</SectionLabel>
+      <SectionLabel className="pb-4">{t("activeChallenges")}</SectionLabel>
 
       <div className="mt-4 space-y-4">
         {activeEnrollments.map((enrollment) => {

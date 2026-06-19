@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Trash2, CornerDownRight } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useRulesModal } from "@/components/community/rules-provider";
+import { useConfirm } from "@/components/confirm-dialog";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -153,6 +154,7 @@ function CommentItem({
   onRulesRequired: () => void;
 }) {
   const t = useTranslations("blog.comments");
+  const confirm = useConfirm();
   const [showReplyForm, setShowReplyForm] = useState(false);
   const utils = api.useUtils();
 
@@ -202,8 +204,13 @@ function CommentItem({
             )}
             {isOwn && (
               <button
-                onClick={() => {
-                  if (window.confirm(t("deleteConfirm"))) {
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      description: t("deleteConfirm"),
+                      destructive: true,
+                    })
+                  ) {
                     deleteMutation.mutate({ commentId: comment.id });
                   }
                 }}
@@ -263,8 +270,13 @@ function CommentItem({
                 </div>
                 {currentUserId === reply.authorId && (
                   <button
-                    onClick={() => {
-                      if (window.confirm(t("deleteConfirm"))) {
+                    onClick={async () => {
+                      if (
+                        await confirm({
+                          description: t("deleteConfirm"),
+                          destructive: true,
+                        })
+                      ) {
                         deleteMutation.mutate({ commentId: reply.id });
                       }
                     }}

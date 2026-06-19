@@ -10,7 +10,7 @@ export function SetupCustom({ apiKey }: { apiKey: string }) {
   return (
     <div className="border-border bg-card rounded-xl border p-6">
       <div className="border-border border-b pb-4">
-        <SectionLabel bordered={false}>CUSTOM / API</SectionLabel>
+        <SectionLabel bordered={false}>{t("sectionCustomApi")}</SectionLabel>
       </div>
       <div className="mt-4 space-y-3">
         <div className="space-y-2">

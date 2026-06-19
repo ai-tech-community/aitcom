@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,6 +35,7 @@ export function ManualRunForm({
   initialSurface?: BenchmarkModelSurface;
   onDone: () => void;
 }) {
+  const t = useTranslations("benchmark");
   const utils = api.useUtils();
   // If the contributor has a held assignment that covers this prompt
   // and pins a surface, the form starts pre-selected to that surface
@@ -55,7 +57,7 @@ export function ManualRunForm({
 
   const submit = api.benchmark.submitRun.useMutation({
     onSuccess: () => {
-      toast.success("Run submitted. Extraction will run shortly.");
+      toast.success(t("run.toastSubmitted"));
       void utils.benchmark.listMySubmissions.invalidate();
       onDone();
     },

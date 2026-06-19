@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function UseMyLocationButton() {
+  const t = useTranslations("events");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -17,7 +19,7 @@ export function UseMyLocationButton() {
 
   const requestLocation = () => {
     if (!navigator.geolocation) {
-      toast.error("Geolocation not supported in this browser.");
+      toast.error(t("location.toastUnsupported"));
       return;
     }
     setRequesting(true);
@@ -32,7 +34,7 @@ export function UseMyLocationButton() {
         startTransition(() => {
           router.replace(`${pathname}?${next.toString()}`, { scroll: false });
         });
-        toast.success("Location set. Showing nearest events.");
+        toast.success(t("location.toastSet"));
       },
       (err) => {
         setRequesting(false);

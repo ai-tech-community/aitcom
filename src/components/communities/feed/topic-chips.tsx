@@ -59,7 +59,10 @@ export function TopicChips({
   active: string;
   onSelect: (slug: string) => void;
 }) {
-  const { data: topics } = api.topics.list.useQuery({ communitySlug: slug });
+  const { data: topics, isError } = api.topics.list.useQuery({
+    communitySlug: slug,
+  });
+  if (isError) return null; // supplementary widget — may stay absent on error (No-Silent-Failure)
   if (!topics || topics.length === 0) return null;
   return (
     <TopicChipsView

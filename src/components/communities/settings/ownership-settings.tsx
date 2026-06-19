@@ -23,6 +23,8 @@ import {
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 interface OwnershipSettingsProps {
   slug: string;
@@ -37,7 +39,12 @@ export function OwnershipSettings({ slug }: OwnershipSettingsProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const { data: membersData } = api.communities.getMembers.useQuery({
+  const {
+    data: membersData,
+    isLoading: membersLoading,
+    isError: membersError,
+    refetch: refetchMembers,
+  } = api.communities.getMembers.useQuery({
     slug,
     limit: 50,
     status: "active",
@@ -76,28 +83,40 @@ export function OwnershipSettings({ slug }: OwnershipSettingsProps) {
         <p className="text-warning text-sm">{t("warning")}</p>
       </div>
 
-      <div className="space-y-4">
-        <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-          <SelectTrigger className="w-full max-w-sm">
-            <SelectValue placeholder={t("selectMember")} />
-          </SelectTrigger>
-          <SelectContent>
-            {members.map((member) => (
-              <SelectItem key={member.userId} value={member.userId}>
-                {member.displayName ?? "Member"} ({member.role})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {membersLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-full max-w-sm" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+      ) : membersError ? (
+        <ErrorState onRetry={refetchMembers} />
+      ) : (
+        // Empty (no transferable members) falls through to the Select's
+        // placeholder; the transfer button stays disabled (No-Silent-Failure:
+        // loading + error are distinct above).
+        <div className="space-y-4">
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <SelectTrigger className="w-full max-w-sm">
+              <SelectValue placeholder={t("selectMember")} />
+            </SelectTrigger>
+            <SelectContent>
+              {members.map((member) => (
+                <SelectItem key={member.userId} value={member.userId}>
+                  {member.displayName ?? "Member"} ({member.role})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Button
-          variant="destructive"
-          disabled={!selectedUserId || transferMutation.isPending}
-          onClick={() => setConfirmOpen(true)}
-        >
-          {t("transfer")}
-        </Button>
-      </div>
+          <Button
+            variant="destructive"
+            disabled={!selectedUserId || transferMutation.isPending}
+            onClick={() => setConfirmOpen(true)}
+          >
+            {t("transfer")}
+          </Button>
+        </div>
+      )}
 
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>

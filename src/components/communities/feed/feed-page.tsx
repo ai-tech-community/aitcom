@@ -116,9 +116,9 @@ export function FeedPage({
         {!isAuthenticated ? (
           <div className="bg-primary/5 border-primary/20 flex flex-col items-start gap-3 rounded-md border p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-col gap-1">
-              <h2 className="font-medium">Sign in to see the community feed</h2>
+              <h2 className="font-medium">{t("signInTitle")}</h2>
               <p className="text-muted-foreground text-sm">
-                Posts in this community are visible to members.
+                {t("signInDescription")}
               </p>
             </div>
             <Button
@@ -129,9 +129,9 @@ export function FeedPage({
           </div>
         ) : !isMember ? (
           <div className="bg-primary/5 border-primary/20 rounded-md border p-4">
-            <h2 className="font-medium">Join this community to see the feed</h2>
+            <h2 className="font-medium">{t("joinTitle")}</h2>
             <p className="text-muted-foreground text-sm">
-              Posts in this community are visible to members only.
+              {t("joinDescription")}
             </p>
           </div>
         ) : isFetching && posts.length === 0 ? (

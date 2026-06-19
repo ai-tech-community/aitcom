@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   BENCHMARK_DEFAULT_LOCALE,
@@ -71,6 +72,7 @@ export function BenchmarkAssignmentPanel(_props: {
   intentId?: string;
   onAssignmentCreated?: (assignment: LatestBenchmarkAssignment) => void;
 }) {
+  const tc = useTranslations("common");
   const utils = api.useUtils();
   const open = api.benchmark.listOpenAssignments.useQuery({});
   const mine = api.benchmark.listMyAssignments.useQuery();
@@ -144,7 +146,9 @@ export function BenchmarkAssignmentPanel(_props: {
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-medium">Open assignments</h3>
           {open.isFetching && (
-            <span className="text-muted-foreground text-xs">Loading…</span>
+            <span className="text-muted-foreground text-xs">
+              {tc("loading")}
+            </span>
           )}
         </div>
         {open.data?.bundles.length === 0 && (

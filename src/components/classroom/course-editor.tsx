@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Select,
   SelectContent,
@@ -18,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LessonEditor } from "@/components/classroom/lesson-editor";
+import { useConfirm } from "@/components/confirm-dialog";
 
 type CourseStatus = "draft" | "published";
 
@@ -40,6 +43,7 @@ interface ModuleEditorProps {
  */
 function ModuleEditor({ courseId, modules, lessonCount }: ModuleEditorProps) {
   const t = useTranslations("classroom");
+  const confirm = useConfirm();
   const utils = api.useUtils();
   // Track per-module edited title (keyed by module id)
   const [editTitles, setEditTitles] = useState<Record<number, string>>({});
@@ -217,8 +221,13 @@ function ModuleEditor({ courseId, modules, lessonCount }: ModuleEditorProps) {
           size="sm"
           className="text-muted-foreground text-xs"
           disabled={dissolveModules.isPending}
-          onClick={() => {
-            if (confirm(t("dissolveModulesConfirm"))) {
+          onClick={async () => {
+            if (
+              await confirm({
+                description: t("dissolveModulesConfirm"),
+                destructive: true,
+              })
+            ) {
               dissolveModules.mutate({ courseId });
             }
           }}
@@ -255,7 +264,7 @@ export function CourseEditor({
   const [initialized, setInitialized] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data, isLoading } = api.classrooms.get.useQuery(
+  const { data, isLoading, isError, refetch } = api.classrooms.get.useQuery(
     { slug: courseSlug ?? "" },
     { enabled: isEdit },
   );
@@ -340,6 +349,24 @@ export function CourseEditor({
       <p className="text-muted-foreground py-12 text-center text-sm">
         {t("loading")}
       </p>
+    );
+  }
+
+  if (isEdit && isError) {
+    return (
+      <div className="mx-auto max-w-2xl py-6">
+        <ErrorState onRetry={() => void refetch()} />
+      </div>
+    );
+  }
+
+  // Loaded in edit mode but the course is missing — surface a not-found state
+  // rather than rendering a blank "create" form (No-Silent-Failure).
+  if (isEdit && !data) {
+    return (
+      <div className="mx-auto max-w-2xl py-6">
+        <EmptyState title={t("notFound")} />
+      </div>
     );
   }
 

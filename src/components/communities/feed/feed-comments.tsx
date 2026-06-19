@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
@@ -46,6 +47,7 @@ export function FeedComments({
 }: FeedCommentsProps) {
   const t = useTranslations("communities.feed");
   const utils = api.useUtils();
+  const confirm = useConfirm();
   const [newComment, setNewComment] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState("");
@@ -71,7 +73,7 @@ export function FeedComments({
       void utils.feed.getComments.invalidate({ postId });
       void utils.feed.getFeed.invalidate({ communitySlug });
     },
-    onError: () => toast.error("Failed to add comment"),
+    onError: () => toast.error(t("toastCommentAddError")),
   });
 
   const editComment = api.feed.editComment.useMutation({
@@ -80,7 +82,7 @@ export function FeedComments({
       setEditingId(null);
       void utils.feed.getComments.invalidate({ postId });
     },
-    onError: () => toast.error("Failed to update comment"),
+    onError: () => toast.error(t("toastCommentUpdateError")),
   });
 
   const deleteComment = api.feed.deleteComment.useMutation({
@@ -89,7 +91,7 @@ export function FeedComments({
       void utils.feed.getComments.invalidate({ postId });
       void utils.feed.getFeed.invalidate({ communitySlug });
     },
-    onError: () => toast.error("Failed to delete comment"),
+    onError: () => toast.error(t("toastCommentDeleteError")),
   });
 
   if (isLoading) {
@@ -175,8 +177,13 @@ export function FeedComments({
                       )}
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
-                        onClick={() => {
-                          if (window.confirm(t("deleteCommentConfirm"))) {
+                        onClick={async () => {
+                          if (
+                            await confirm({
+                              description: t("deleteCommentConfirm"),
+                              destructive: true,
+                            })
+                          ) {
                             deleteComment.mutate({ commentId: comment.id });
                           }
                         }}

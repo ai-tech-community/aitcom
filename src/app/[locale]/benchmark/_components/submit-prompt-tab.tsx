@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,6 +15,7 @@ import {
 import { toast } from "sonner";
 
 export function SubmitPromptTab() {
+  const t = useTranslations("benchmark");
   const categories = api.benchmark.listCategories.useQuery();
   const intents = api.benchmark.listIntents.useQuery();
   const submissions = api.benchmark.listMySubmissions.useQuery();
@@ -26,7 +28,7 @@ export function SubmitPromptTab() {
 
   const submit = api.benchmark.submitPrompt.useMutation({
     onSuccess: () => {
-      toast.success("Prompt submitted for review.");
+      toast.success(t("submitPrompt.toastSubmitted"));
       setText("");
       setTagsInput("");
       void utils.benchmark.listMySubmissions.invalidate();

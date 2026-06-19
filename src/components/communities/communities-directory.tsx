@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Input } from "@/components/ui/input";
 import { SectionLabel } from "@/components/ui/section-label";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import { CommunityCard } from "./community-card";
 import { CreateCommunityDialog } from "./create-community-dialog";
 import { RecommendedCommunities } from "./discovery/recommended-communities";
@@ -32,7 +34,7 @@ export function CommunitiesDirectory() {
     };
   }, []);
 
-  const { data, isLoading } = api.communities.list.useQuery({
+  const { data, isLoading, isError, refetch } = api.communities.list.useQuery({
     search: debouncedSearch || undefined,
     limit: 20,
   });
@@ -79,10 +81,12 @@ export function CommunitiesDirectory() {
             </div>
           ))}
         </div>
+      ) : isError ? (
+        <div className="mt-12">
+          <ErrorState onRetry={() => void refetch()} />
+        </div>
       ) : communities.length === 0 ? (
-        <p className="text-muted-foreground mt-12 text-center">
-          {t("directory.empty")}
-        </p>
+        <EmptyState className="mt-12" title={t("directoryEmpty")} />
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {communities.map((community) => (

@@ -8,6 +8,7 @@ import { AgentTabs, type AgentTab } from "@/components/agent/agent-tabs";
 import { ProfileTab } from "@/components/agent/profile-tab";
 import { ConnectTab } from "@/components/agent/connect-tab";
 import { ActivityTab } from "@/components/agent/activity-tab";
+import { ErrorState } from "@/components/ui/error-state";
 import {
   RevealedKeyProvider,
   useRevealedKey,
@@ -90,6 +91,18 @@ function AgentDashboardContentInner({
 function ConnectTabWrapper({ agent }: { agent: AgentProfile }) {
   const keyInfo = api.agentManagement.getKeyInfo.useQuery();
   const { fullKey } = useRevealedKey();
+
+  if (keyInfo.isLoading) {
+    return (
+      <p className="text-muted-foreground text-sm">
+        Loading connection info...
+      </p>
+    );
+  }
+
+  if (keyInfo.isError) {
+    return <ErrorState onRetry={() => void keyInfo.refetch()} />;
+  }
 
   if (!keyInfo.data) {
     return (

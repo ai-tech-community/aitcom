@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ErrorState } from "@/components/ui/error-state";
 
 const statusStyles: Record<string, string> = {
   open: "text-zinc-500 border-zinc-200",
@@ -52,7 +53,12 @@ export default function CommunityIdeasPage({
   const isAdminOrOwner =
     membership?.role === "owner" || membership?.role === "admin";
 
-  const { data: ideas = [], isLoading } = api.forum.getIdeas.useQuery({
+  const {
+    data: ideas = [],
+    isLoading,
+    isError,
+    refetch,
+  } = api.forum.getIdeas.useQuery({
     sort,
     communitySlug: slug,
   });
@@ -63,7 +69,7 @@ export default function CommunityIdeasPage({
       setIdeaDesc("");
       setShowForm(false);
       void utils.forum.getIdeas.invalidate();
-      toast.success("Idea submitted!");
+      toast.success(t("submitted"));
     },
     onError: (err) => {
       if (err.message === "RULES_NOT_ACCEPTED") {
@@ -136,6 +142,8 @@ export default function CommunityIdeasPage({
             <div key={n} className="bg-muted h-14 animate-pulse rounded-lg" />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState onRetry={refetch} />
       ) : ideas.length === 0 ? (
         <p className="text-muted-foreground py-6 text-center font-mono text-xs">
           {t("noIdeas")}

@@ -1,6 +1,7 @@
 "use client";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { ErrorState } from "@/components/ui/error-state";
 
 function FunnelBar({
   label,
@@ -33,7 +34,8 @@ function FunnelBar({
 
 export function ActivationFunnel({ slug }: { slug: string }) {
   const t = useTranslations("communities.activation");
-  const { data, isLoading, error } = api.activation.funnel.useQuery({ slug });
+  const { data, isLoading, isError, error, refetch } =
+    api.activation.funnel.useQuery({ slug });
 
   if (isLoading) {
     return (
@@ -49,6 +51,10 @@ export function ActivationFunnel({ slug }: { slug: string }) {
     (error as { data?: { code?: string } } | null)?.data?.code === "FORBIDDEN"
   ) {
     return null;
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => void refetch()} />;
   }
 
   if (!data) return null;

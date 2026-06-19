@@ -44,7 +44,7 @@ export function SetupN8n({
   return (
     <div className="border-border bg-card rounded-xl border p-6">
       <div className="border-border border-b pb-4">
-        <SectionLabel bordered={false}>N8N</SectionLabel>
+        <SectionLabel bordered={false}>{t("sectionN8n")}</SectionLabel>
       </div>
       <div className="mt-4 space-y-4">
         <div className="space-y-2">
@@ -113,6 +113,10 @@ export function SetupN8n({
             </code>
           </div>
         ) : (
+          // Supplementary — a query error (no webhook row) is deliberately
+          // treated as "not yet registered" rather than surfaced as an error
+          // state (No-Silent-Failure: intentional). The webhook registers
+          // automatically on first n8n activation.
           <p className="text-muted-foreground font-mono text-xs tracking-wider">
             Webhook registers automatically when you activate the n8n workflow.
           </p>

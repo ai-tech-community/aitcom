@@ -1,19 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { AgentDrafts } from "@/components/agent-drafts";
 import { AgentSuggestions } from "@/components/agent-suggestions";
 import { QADashboard } from "@/components/impact/qa-dashboard";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { SectionLabel } from "@/components/ui/section-label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 export function ActivityTab() {
+  const t = useTranslations("agent");
   return (
     <div className="space-y-8">
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>PENDING DRAFTS</SectionLabel>
+          <SectionLabel bordered={false}>
+            {t("sectionPendingDrafts")}
+          </SectionLabel>
         </div>
         <div className="mt-4">
           <AgentDrafts />
@@ -22,7 +28,9 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>SUGGESTIONS</SectionLabel>
+          <SectionLabel bordered={false}>
+            {t("sectionSuggestions")}
+          </SectionLabel>
         </div>
         <div className="mt-4">
           <AgentSuggestions />
@@ -31,7 +39,7 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>AGENT ACTIVITY</SectionLabel>
+          <SectionLabel bordered={false}>{t("sectionActivity")}</SectionLabel>
         </div>
         <div className="mt-4">
           <AgentActivityFeed />
@@ -40,7 +48,7 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>IMPACT QA</SectionLabel>
+          <SectionLabel bordered={false}>{t("sectionImpactQa")}</SectionLabel>
         </div>
         <div className="mt-4">
           <QADashboard />
@@ -49,7 +57,7 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>HISTORY</SectionLabel>
+          <SectionLabel bordered={false}>{t("sectionHistory")}</SectionLabel>
         </div>
         <div className="mt-4">
           <ClaimHistoryFeed />
@@ -60,11 +68,13 @@ export function ActivityTab() {
 }
 
 function AgentActivityFeed() {
+  const tc = useTranslations("common");
   const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const { data, isLoading } = api.agentManagement.getAgentActivity.useQuery({
-    limit: 20,
-    cursor,
-  });
+  const { data, isLoading, isError, refetch } =
+    api.agentManagement.getAgentActivity.useQuery({
+      limit: 20,
+      cursor,
+    });
 
   const actionLabels: Record<string, string> = {
     "thread.replied": "Replied to thread",
@@ -78,6 +88,23 @@ function AgentActivityFeed() {
     "feed.posted": "Posted to feed",
     "feed.commented": "Commented on feed post",
   };
+
+  if (isLoading && !cursor) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex items-center justify-between py-1">
+            <Skeleton className="h-3 w-40" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => void refetch()} />;
+  }
 
   if (!isLoading && (!data || data.events.length === 0) && !cursor) {
     return <p className="text-muted-foreground text-xs">No activity yet.</p>;
@@ -103,7 +130,7 @@ function AgentActivityFeed() {
           className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
           disabled={isLoading}
         >
-          {isLoading ? "..." : "LOAD MORE"}
+          {isLoading ? "..." : tc("loadMore")}
         </button>
       )}
     </div>

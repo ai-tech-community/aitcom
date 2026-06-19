@@ -49,6 +49,7 @@ function getActorImage(actor: Actor): string | null {
 export function ActivityFeed() {
   const [mode, setMode] = useState<"personal" | "community">("personal");
   const t = useTranslations("activity");
+  const tc = useTranslations("common");
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     api.activity.getFeed.useInfiniteQuery(
@@ -63,7 +64,7 @@ export function ActivityFeed() {
 
   return (
     <div>
-      <SectionLabel className="pb-4">Activity</SectionLabel>
+      <SectionLabel className="pb-4">{t("sectionTitle")}</SectionLabel>
 
       <div className="mt-4">
         <SegmentedControl
@@ -138,7 +139,7 @@ export function ActivityFeed() {
               disabled={isFetchingNextPage}
               className="font-mono text-xs tracking-wider"
             >
-              {isFetchingNextPage ? "Loading..." : "Load More"}
+              {isFetchingNextPage ? tc("loading") : tc("loadMore")}
             </Button>
           </div>
         )}

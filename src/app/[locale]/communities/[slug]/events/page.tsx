@@ -12,11 +12,13 @@ import {
   XOctagon,
 } from "lucide-react";
 import { api } from "@/trpc/react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { authClient } from "@/server/better-auth/client";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { EventFormDialog } from "@/components/communities/event-form-dialog";
+import { ErrorState } from "@/components/ui/error-state";
 import { formatEventTimeRange } from "@/lib/event-time";
 import { CreateHackathonDialog } from "@/components/hackathon/create-hackathon-dialog";
 
@@ -42,6 +44,7 @@ export default function CommunityEventsPage({
   const { slug } = use(params);
   const t = useTranslations("events");
   const tHackathon = useTranslations("hackathon");
+  const confirm = useConfirm();
   const router = useRouter();
   const { data: session } = authClient.useSession();
 
@@ -70,21 +73,31 @@ export default function CommunityEventsPage({
     if (!isActiveMember && activeTab === "mine") setActiveTab("published");
   }, [canModerate, isActiveMember, activeTab]);
 
-  const { data: eventsData, isLoading } =
-    api.events.getCommunityEvents.useQuery({ communitySlug: slug });
+  const {
+    data: eventsData,
+    isLoading,
+    isError,
+    refetch,
+  } = api.events.getCommunityEvents.useQuery({ communitySlug: slug });
   const events = eventsData ?? [];
 
-  const { data: pendingEvents, isLoading: pendingLoading } =
-    api.events.getPendingCommunityEvents.useQuery(
-      { communitySlug: slug },
-      { enabled: canModerate },
-    );
+  const {
+    data: pendingEvents,
+    isLoading: pendingLoading,
+    isError: pendingError,
+  } = api.events.getPendingCommunityEvents.useQuery(
+    { communitySlug: slug },
+    { enabled: canModerate },
+  );
 
-  const { data: mySubmissions, isLoading: mySubmissionsLoading } =
-    api.events.getMyEventSubmissions.useQuery(
-      { communitySlug: slug },
-      { enabled: isActiveMember && !!session?.user },
-    );
+  const {
+    data: mySubmissions,
+    isLoading: mySubmissionsLoading,
+    isError: mySubmissionsError,
+  } = api.events.getMyEventSubmissions.useQuery(
+    { communitySlug: slug },
+    { enabled: isActiveMember && !!session?.user },
+  );
 
   const utils = api.useUtils();
 
@@ -97,19 +110,19 @@ export default function CommunityEventsPage({
 
   const approveMutation = api.events.approveEvent.useMutation({
     onSuccess: () => {
-      toast.success("Event approved and published");
+      toast.success(t("eventApproved"));
       void utils.events.getPendingCommunityEvents.invalidate();
       void utils.events.getCommunityEvents.invalidate();
     },
-    onError: () => toast.error("Failed to approve event"),
+    onError: () => toast.error(t("eventApproveError")),
   });
 
   const rejectMutation = api.events.rejectEvent.useMutation({
     onSuccess: () => {
-      toast.success("Event rejected — submitter has been notified");
+      toast.success(t("eventRejected"));
       void utils.events.getPendingCommunityEvents.invalidate();
     },
-    onError: () => toast.error("Failed to reject event"),
+    onError: () => toast.error(t("eventRejectError")),
   });
 
   const pendingCount = pendingEvents?.length ?? 0;
@@ -236,8 +249,13 @@ export default function CommunityEventsPage({
             </button>
             <button
               className="rounded p-1 hover:bg-zinc-100"
-              onClick={() => {
-                if (window.confirm(t("cancelEventConfirm"))) {
+              onClick={async () => {
+                if (
+                  await confirm({
+                    description: t("cancelEventConfirm"),
+                    destructive: true,
+                  })
+                ) {
                   cancelMutation.mutate({
                     eventId: event.id as number,
                     communitySlug: slug,
@@ -418,6 +436,8 @@ export default function CommunityEventsPage({
                 />
               ))}
             </div>
+          ) : isError ? (
+            <ErrorState onRetry={refetch} />
           ) : events.length === 0 ? (
             <p className="text-muted-foreground mt-8 text-center">
               {t("noEvents")}
@@ -433,8 +453,9 @@ export default function CommunityEventsPage({
         </>
       )}
 
-      {/* PENDING tab (admin/mod only) */}
-      {activeTab === "pending" && canModerate && (
+      {/* PENDING tab (admin/mod only) — supplementary: hide on error
+          (explicit !pendingError; No-Silent-Failure) */}
+      {activeTab === "pending" && canModerate && !pendingError && (
         <>
           {pendingLoading ? (
             <div className="space-y-2">
@@ -460,8 +481,9 @@ export default function CommunityEventsPage({
         </>
       )}
 
-      {/* MY SUBMISSIONS tab (active member, non-moderator) */}
-      {activeTab === "mine" && isActiveMember && (
+      {/* MY SUBMISSIONS tab (active member, non-moderator) — supplementary:
+          hide on error (explicit !mySubmissionsError; No-Silent-Failure) */}
+      {activeTab === "mine" && isActiveMember && !mySubmissionsError && (
         <>
           {mySubmissionsLoading ? (
             <div className="space-y-2">

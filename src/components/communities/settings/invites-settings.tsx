@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { useConfirm } from "@/components/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Copy, Loader2, Plus, Trash2 } from "lucide-react";
+import { ErrorState } from "@/components/ui/error-state";
 import { toast } from "sonner";
 
 interface InvitesSettingsProps {
@@ -33,14 +35,19 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
   const t = useTranslations("communities.settings.invites");
   const tRoles = useTranslations("communities.roles");
   const utils = api.useUtils();
+  const confirm = useConfirm();
 
   const [showForm, setShowForm] = useState(false);
   const [maxUses, setMaxUses] = useState("");
   const [expiresIn, setExpiresIn] = useState("never");
   const [lastCreatedCode, setLastCreatedCode] = useState<string | null>(null);
 
-  const { data: invites = [], isLoading } =
-    api.communities.getInviteLinks.useQuery({ slug });
+  const {
+    data: invites = [],
+    isLoading,
+    isError,
+    refetch,
+  } = api.communities.getInviteLinks.useQuery({ slug });
 
   const createMutation = api.communities.createInviteLink.useMutation({
     onSuccess: (data) => {
@@ -198,6 +205,8 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
         <div className="flex justify-center py-8">
           <Loader2 className="text-muted-foreground size-5 animate-spin" />
         </div>
+      ) : isError ? (
+        <ErrorState onRetry={refetch} />
       ) : invites.length === 0 ? (
         <p className="text-muted-foreground py-8 text-center text-sm">
           {t("noInvites")}
@@ -259,8 +268,13 @@ export function InvitesSettings({ slug, joinPolicy }: InvitesSettingsProps) {
                     variant="ghost"
                     className="text-destructive hover:text-destructive"
                     disabled={revokeMutation.isPending}
-                    onClick={() => {
-                      if (window.confirm(t("revokeConfirm"))) {
+                    onClick={async () => {
+                      if (
+                        await confirm({
+                          description: t("revokeConfirm"),
+                          destructive: true,
+                        })
+                      ) {
                         revokeMutation.mutate({ slug, inviteId: invite.id });
                       }
                     }}

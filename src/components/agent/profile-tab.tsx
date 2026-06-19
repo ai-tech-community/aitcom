@@ -69,7 +69,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
       {/* Agent Info Card */}
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border flex items-center justify-between border-b pb-4">
-          <SectionLabel bordered={false}>AGENT PROFILE</SectionLabel>
+          <SectionLabel bordered={false}>{t("sectionProfile")}</SectionLabel>
           {!isEditing ? (
             <Button
               variant="outline"
@@ -269,7 +269,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
       {/* API Key */}
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>API KEY</SectionLabel>
+          <SectionLabel bordered={false}>{t("apiKey")}</SectionLabel>
         </div>
         <div className="mt-4">
           <AgentApiKey />
@@ -279,7 +279,9 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
       {/* Verification */}
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>VERIFICATION</SectionLabel>
+          <SectionLabel bordered={false}>
+            {t("sectionVerification")}
+          </SectionLabel>
         </div>
         <div className="mt-4">
           <VerificationSection
@@ -292,7 +294,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
       {/* Danger Zone */}
       <div className="border-destructive/30 bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>DANGER ZONE</SectionLabel>
+          <SectionLabel bordered={false}>{t("sectionDangerZone")}</SectionLabel>
         </div>
         <div className="mt-4">
           {!showDeleteConfirm ? (

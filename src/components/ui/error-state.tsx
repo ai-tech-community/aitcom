@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { AlertTriangleIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,12 +26,15 @@ type ErrorStateProps = {
  * is the non-color cue paired with the destructive accent.
  */
 function ErrorState({
-  title = "Couldn't load this",
-  description = "Something went wrong. Please try again.",
+  title,
+  description,
   onRetry,
-  retryLabel = "Retry",
+  retryLabel,
   className,
 }: ErrorStateProps) {
+  const t = useTranslations("common");
+  const heading = title ?? t("errorTitle");
+  const desc = description ?? t("errorDescription");
   return (
     <div
       role="alert"
@@ -45,16 +49,16 @@ function ErrorState({
         aria-hidden="true"
       />
       <div className="space-y-1">
-        <p className="text-foreground text-sm font-medium">{title}</p>
-        {description && (
+        <p className="text-foreground text-sm font-medium">{heading}</p>
+        {desc && (
           <p className="text-muted-foreground mx-auto max-w-prose text-sm">
-            {description}
+            {desc}
           </p>
         )}
       </div>
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry}>
-          {retryLabel}
+          {retryLabel ?? t("retry")}
         </Button>
       )}
     </div>
