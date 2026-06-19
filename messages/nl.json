@@ -2191,5 +2191,18 @@
     "confirm": "Bevestigen",
     "cancel": "Annuleren",
     "confirmTitle": "Weet je het zeker?"
+  },
+  "streak": {
+    "title": "Reeks",
+    "viewDetails": "Details bekijken",
+    "days": "dagen",
+    "ariaSummary": "Samenvatting van je reeks",
+    "ariaStats": "Reeksstatistieken",
+    "longest": "Langste reeks",
+    "total": "Totaal",
+    "howTitle": "Hoe werken reeksen?",
+    "how1": "Voltooi elke dag minstens één activiteit om je reeks op te bouwen.",
+    "how2": "Elke dag dat je actief bent, groeit je reeks.",
+    "how3": "Een dag overslaan zet je reeks terug op 0."
   }
 }
