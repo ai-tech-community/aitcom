@@ -19,7 +19,9 @@ export function InviteCodes() {
     <div className="border-border bg-card rounded-xl border p-6">
       <div className="border-border border-b pb-4">
         <div className="flex items-center justify-between">
-          <SectionLabel bordered={false}>{t("sectionInviteCodes")}</SectionLabel>
+          <SectionLabel bordered={false}>
+            {t("sectionInviteCodes")}
+          </SectionLabel>
           <Button
             variant="outline"
             size="sm"

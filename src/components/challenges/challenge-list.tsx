@@ -162,9 +162,7 @@ export function ChallengeList() {
           </div>
         )}
 
-        {!isLoading && isError && (
-          <ErrorState onRetry={() => void refetch()} />
-        )}
+        {!isLoading && isError && <ErrorState onRetry={() => void refetch()} />}
 
         {!isLoading && !isError && displayedChallenges.length === 0 && (
           <p className="text-muted-foreground py-8 text-center text-sm">

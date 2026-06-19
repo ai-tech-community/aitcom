@@ -279,7 +279,9 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
       {/* Verification */}
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>{t("sectionVerification")}</SectionLabel>
+          <SectionLabel bordered={false}>
+            {t("sectionVerification")}
+          </SectionLabel>
         </div>
         <div className="mt-4">
           <VerificationSection

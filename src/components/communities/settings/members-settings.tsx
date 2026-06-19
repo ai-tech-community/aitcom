@@ -419,7 +419,9 @@ export function MembersSettings({
                         size="sm"
                         disabled={approveMutation.isPending}
                         onClick={async () => {
-                          if (await confirm({ description: t("approveConfirm") })) {
+                          if (
+                            await confirm({ description: t("approveConfirm") })
+                          ) {
                             approveMutation.mutate({
                               slug,
                               userId: member.userId,

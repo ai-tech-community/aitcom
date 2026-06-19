@@ -105,9 +105,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
             />
           </div>
         ) : (
-          <div
-            className={`h-2 w-full ${STAGE_STRIPE}`}
-          />
+          <div className={`h-2 w-full ${STAGE_STRIPE}`} />
         )}
 
         {/* Card body — wrapped in Link */}

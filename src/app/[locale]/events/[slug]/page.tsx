@@ -321,7 +321,9 @@ export default async function EventDetailPage({
 
           {prizeParts.length > 0 && (
             <div className="border-border bg-card space-y-3 rounded-lg border p-4">
-              <SectionLabel bordered={false}>{tEvents("sectionPrizes")}</SectionLabel>
+              <SectionLabel bordered={false}>
+                {tEvents("sectionPrizes")}
+              </SectionLabel>
               <dl className="grid gap-3 sm:grid-cols-2">
                 {prizeParts.map((part) => (
                   <div key={part.label} className="flex flex-col gap-1">

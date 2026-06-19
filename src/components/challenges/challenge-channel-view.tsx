@@ -143,7 +143,9 @@ export function ChallengeChannelView({
     <div className="mt-8">
       {/* Header + New Thread button */}
       <div className="flex items-center justify-between">
-        <SectionLabel bordered={false}>{t("channel.sectionTitle")}</SectionLabel>
+        <SectionLabel bordered={false}>
+          {t("channel.sectionTitle")}
+        </SectionLabel>
         <Button
           size="sm"
           className="font-mono text-xs tracking-wider"

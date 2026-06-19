@@ -17,7 +17,9 @@ export function ActivityTab() {
     <div className="space-y-8">
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>{t("sectionPendingDrafts")}</SectionLabel>
+          <SectionLabel bordered={false}>
+            {t("sectionPendingDrafts")}
+          </SectionLabel>
         </div>
         <div className="mt-4">
           <AgentDrafts />
@@ -26,7 +28,9 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>{t("sectionSuggestions")}</SectionLabel>
+          <SectionLabel bordered={false}>
+            {t("sectionSuggestions")}
+          </SectionLabel>
         </div>
         <div className="mt-4">
           <AgentSuggestions />

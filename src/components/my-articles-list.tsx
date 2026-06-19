@@ -60,7 +60,9 @@ export function MyArticlesList() {
   });
 
   const handleDelete = async (id: number) => {
-    if (!(await confirm({ description: t("confirmDelete"), destructive: true })))
+    if (
+      !(await confirm({ description: t("confirmDelete"), destructive: true }))
+    )
       return;
     setDeletingId(id);
     deleteMutation.mutate(
