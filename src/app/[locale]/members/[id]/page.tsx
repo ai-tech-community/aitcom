@@ -5,7 +5,8 @@ import { getTranslations } from "next-intl/server";
 import { api } from "@/trpc/server";
 import { notFound } from "next/navigation";
 import { getInitials } from "@/lib/avatar";
-import { xpForNextLevel } from "@/lib/gamification";
+import { xpForNextLevel, tierForXp } from "@/lib/gamification";
+import { AchievementBadge } from "@/components/gamification/achievement-badge";
 import { Linkedin, Github, Globe } from "lucide-react";
 import { db } from "@/server/db";
 import { agentProfiles } from "@/server/db/schema";
@@ -40,10 +41,11 @@ export default async function MemberProfilePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const [{ id }, t, tBadges] = await Promise.all([
+  const [{ id }, t, tBadges, tTiers] = await Promise.all([
     params,
     getTranslations("members"),
     getTranslations("badges"),
+    getTranslations("tiers"),
   ]);
 
   const [data, [agentProfile], session] = await Promise.all([
@@ -73,6 +75,7 @@ export default async function MemberProfilePage({
   const avatarUrl = memberUser?.avatarUrl ?? memberUser?.image ?? null;
   const initials = getInitials(profile.displayName);
   const xpProgress = xpForNextLevel(profile.xp);
+  const tier = tierForXp(profile.xp);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -96,7 +99,10 @@ export default async function MemberProfilePage({
             <h1 className="text-2xl font-semibold tracking-tight">
               {profile.displayName}
             </h1>
-            <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider">
+            <span className="border-border text-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider uppercase">
+              {tTiers(tier.key)}
+            </span>
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               {t("level")} {profile.level}
             </span>
             {session?.user && session.user.id !== id && (
@@ -204,21 +210,21 @@ export default async function MemberProfilePage({
               / {t("badges").toUpperCase()}
             </h2>
           </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="mt-6 flex flex-wrap gap-6">
             {validBadges.map((badge) => (
-              <div
+              <AchievementBadge
                 key={badge.slug}
-                className="border-border rounded border border-dashed px-3 py-2.5"
-              >
-                <p className="font-mono text-xs font-medium">
-                  {tBadges(badge.slug)}
-                </p>
-                <p className="text-muted-foreground mt-0.5 font-mono text-xs tracking-wider">
-                  {badge.earnedAt
-                    ? new Date(badge.earnedAt).toLocaleDateString()
-                    : ""}
-                </p>
-              </div>
+                badgeSize="default"
+                achievement={{
+                  id: badge.slug,
+                  name: tBadges(badge.slug),
+                  trigger: "metric",
+                  progress: 100,
+                  achievedAt: badge.earnedAt
+                    ? new Date(badge.earnedAt).toISOString()
+                    : null,
+                }}
+              />
             ))}
           </div>
         </div>
