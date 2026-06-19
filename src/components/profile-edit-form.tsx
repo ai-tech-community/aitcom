@@ -71,7 +71,7 @@ export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
   return (
     <form onSubmit={handleSubmit} className="mt-4 space-y-3">
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           {t("displayName")}
         </label>
         <Input
@@ -82,7 +82,7 @@ export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
         />
       </div>
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           {t("bio")}
         </label>
         <textarea
@@ -93,7 +93,7 @@ export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
         />
       </div>
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           {t("skills")}
         </label>
         <Input
@@ -104,7 +104,7 @@ export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
         />
       </div>
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           {t("company")}
         </label>
         <Input
@@ -115,7 +115,7 @@ export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+          <label className="text-muted-foreground font-mono text-xs tracking-wider">
             {t("linkedinUrl")}
           </label>
           <Input
@@ -126,7 +126,7 @@ export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
           />
         </div>
         <div>
-          <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+          <label className="text-muted-foreground font-mono text-xs tracking-wider">
             {t("githubUrl")}
           </label>
           <Input
@@ -137,7 +137,7 @@ export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
           />
         </div>
         <div>
-          <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+          <label className="text-muted-foreground font-mono text-xs tracking-wider">
             {t("websiteUrl")}
           </label>
           <Input
@@ -158,7 +158,7 @@ export function ProfileEditForm({ initialData }: ProfileEditFormProps) {
         />
         <label
           htmlFor="isPublic"
-          className="text-muted-foreground font-mono text-[11px] tracking-wider"
+          className="text-muted-foreground font-mono text-xs tracking-wider"
         >
           {t("publicProfile")}
         </label>

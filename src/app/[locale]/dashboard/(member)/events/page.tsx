@@ -179,7 +179,7 @@ export default async function DashboardEventsPage({
                 href={`/events/${event.slug}`}
                 className="border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0"
               >
-                <span className="text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
+                <span className="text-base leading-snug font-medium sm:order-2 sm:flex-1">
                   {event.title}
                 </span>
 
@@ -191,26 +191,26 @@ export default async function DashboardEventsPage({
                         : "bg-primary"
                     }`}
                   />
-                  <span className="font-mono text-[12px] sm:text-[13px]">
+                  <span className="font-mono text-xs sm:text-sm">
                     {formatDate(event.date)}
                   </span>
-                  <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden">
+                  <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider sm:hidden">
                     {EVENT_TYPE_LABELS[event.type as EventType] ?? event.type}
                   </span>
-                  <span className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-[10px] tracking-wider sm:hidden">
+                  <span className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-xs tracking-wider sm:hidden">
                     {statusLabel}
                   </span>
                 </div>
 
-                <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline">
+                <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-xs font-medium tracking-wider sm:order-3 sm:inline">
                   {EVENT_TYPE_LABELS[event.type as EventType] ?? event.type}
                 </span>
                 {isExternal && (
-                  <span className="border-border text-muted-foreground ml-3 hidden rounded border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wider sm:order-4 sm:inline">
+                  <span className="border-border text-muted-foreground ml-3 hidden rounded border border-dashed px-2 py-0.5 font-mono text-xs tracking-wider sm:order-4 sm:inline">
                     EXTERNAL
                   </span>
                 )}
-                <span className="border-border text-muted-foreground ml-3 hidden rounded border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wider sm:order-5 sm:inline">
+                <span className="border-border text-muted-foreground ml-3 hidden rounded border border-dashed px-2 py-0.5 font-mono text-xs tracking-wider sm:order-5 sm:inline">
                   {statusLabel}
                 </span>
               </Link>

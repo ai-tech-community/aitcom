@@ -136,7 +136,7 @@ export function BuildingModal({
         {isOpen && (
           <m.div
             ref={containerRef}
-            className={`fixed flex flex-col overflow-hidden border border-zinc-200 bg-white shadow-2xl ${
+            className={`border-border bg-card fixed flex flex-col overflow-hidden border shadow-2xl ${
               isMobile
                 ? "inset-0 z-40 rounded-none"
                 : windowState === "maximized"
@@ -171,7 +171,7 @@ export function BuildingModal({
           >
             {/* Title bar - drag handle on desktop, static on mobile */}
             <div
-              className={`flex h-9 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-3 select-none ${
+              className={`border-border bg-card flex h-9 shrink-0 items-center justify-between border-b px-3 select-none ${
                 isMobile ? "" : "cursor-grab touch-none active:cursor-grabbing"
               }`}
               onPointerDown={(e) => {
@@ -181,9 +181,9 @@ export function BuildingModal({
               onDoubleClick={isMobile ? undefined : toggleMaximize}
             >
               <div className="flex items-center gap-2">
-                <Terminal className="h-3.5 w-3.5 text-zinc-400" />
+                <Terminal className="text-muted-foreground h-3.5 w-3.5" />
               </div>
-              <span className="pointer-events-none font-mono text-[11px] font-medium tracking-wider text-zinc-400">
+              <span className="text-muted-foreground pointer-events-none font-mono text-xs font-medium tracking-wider">
                 {title.toUpperCase()}
               </span>
               <div className="flex items-center gap-0.5">
@@ -191,14 +191,14 @@ export function BuildingModal({
                   <>
                     <button
                       onClick={toggleMinimize}
-                      className="rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                      className="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
                       title="Minimize"
                     >
                       <Minus className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={toggleMaximize}
-                      className="rounded p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600"
+                      className="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
                       title={
                         windowState === "maximized" ? "Restore" : "Maximize"
                       }
@@ -213,7 +213,7 @@ export function BuildingModal({
                 )}
                 <button
                   onClick={onClose}
-                  className="rounded p-1 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1 transition-colors"
                   aria-label="Close"
                   title="Close"
                 >
@@ -227,18 +227,18 @@ export function BuildingModal({
               <div className="flex flex-1 flex-col overflow-hidden px-4 py-4 sm:px-8 sm:py-6">
                 {/* Top grid markers */}
                 <div className="-mx-4 -mt-4 flex justify-between px-4 pb-3 sm:-mx-8 sm:-mt-6 sm:pb-4">
-                  <span className="font-mono text-sm text-zinc-200">+</span>
-                  <span className="font-mono text-sm text-zinc-200">+</span>
-                  <span className="font-mono text-sm text-zinc-200">+</span>
+                  <span className="text-border font-mono text-sm">+</span>
+                  <span className="text-border font-mono text-sm">+</span>
+                  <span className="text-border font-mono text-sm">+</span>
                 </div>
 
                 {/* Title block */}
                 {subtitle && (
                   <div className="mb-3 shrink-0 sm:mb-4">
-                    <h2 className="text-lg font-extrabold tracking-tight text-zinc-900 sm:text-2xl">
+                    <h2 className="text-foreground text-lg font-semibold tracking-tight sm:text-2xl">
                       {title}
                     </h2>
-                    <p className="mt-0.5 text-xs leading-relaxed text-zinc-500 sm:mt-1 sm:text-[15px]">
+                    <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed sm:mt-1 sm:text-base">
                       {subtitle}
                     </p>
                   </div>
@@ -249,9 +249,9 @@ export function BuildingModal({
 
                 {/* Bottom grid markers */}
                 <div className="-mx-4 -mb-4 flex justify-between px-4 pt-3 sm:-mx-8 sm:-mb-6 sm:pt-4">
-                  <span className="font-mono text-sm text-zinc-200">+</span>
-                  <span className="font-mono text-sm text-zinc-200">+</span>
-                  <span className="font-mono text-sm text-zinc-200">+</span>
+                  <span className="text-border font-mono text-sm">+</span>
+                  <span className="text-border font-mono text-sm">+</span>
+                  <span className="text-border font-mono text-sm">+</span>
                 </div>
               </div>
             )}
@@ -263,7 +263,7 @@ export function BuildingModal({
                 onPointerDown={onResizePointerDown}
               >
                 <svg
-                  className="h-full w-full text-zinc-300"
+                  className="text-border h-full w-full"
                   viewBox="0 0 16 16"
                   fill="currentColor"
                 >

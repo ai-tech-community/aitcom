@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { CopyButton } from "@/components/agent/shared";
+import { SectionLabel } from "@/components/ui/section-label";
 
 export function SetupCustom({ apiKey }: { apiKey: string }) {
   const t = useTranslations("agent");
@@ -9,14 +10,12 @@ export function SetupCustom({ apiKey }: { apiKey: string }) {
   return (
     <div className="border-border bg-card rounded-xl border p-6">
       <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / CUSTOM / API
-        </span>
+        <SectionLabel bordered={false}>CUSTOM / API</SectionLabel>
       </div>
       <div className="mt-4 space-y-3">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               {t("endpoint")}
             </span>
             <CopyButton text="https://www.aitcommunity.org/api/mcp" />
@@ -27,7 +26,7 @@ export function SetupCustom({ apiKey }: { apiKey: string }) {
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               API KEY
             </span>
             <CopyButton text={apiKey} />
@@ -36,7 +35,7 @@ export function SetupCustom({ apiKey }: { apiKey: string }) {
             {apiKey}
           </code>
         </div>
-        <span className="text-muted-foreground block font-mono text-[11px] tracking-wider">
+        <span className="text-muted-foreground block font-mono text-xs tracking-wider">
           {t("protocol")}
         </span>
       </div>

@@ -59,7 +59,7 @@ export function PrePublishDialog({
         className="bg-background border-border mx-4 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-lg border p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold">{t("prePublishTitle")}</h2>
+        <h2 className="text-lg font-semibold">{t("prePublishTitle")}</h2>
         <p className="text-muted-foreground mt-1 text-sm">
           {t("prePublishSubtitle")}
         </p>

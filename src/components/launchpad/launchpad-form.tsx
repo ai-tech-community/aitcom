@@ -189,7 +189,7 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
 
   if (mode === "edit" && isLoadingProject) {
     return (
-      <div className="mx-auto max-w-2xl px-6 py-12 text-center text-sm text-zinc-500">
+      <div className="text-muted-foreground mx-auto max-w-2xl px-6 py-12 text-center text-sm">
         Loading project...
       </div>
     );
@@ -197,7 +197,7 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
-      <h1 className="mb-6 text-2xl font-bold text-zinc-900">
+      <h1 className="text-foreground mb-6 text-2xl font-semibold">
         {mode === "create" ? "Submit Project" : "Edit Project"}
       </h1>
 
@@ -264,7 +264,7 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
                 <button
                   type="button"
                   onClick={() => removeTag(i)}
-                  className="ml-0.5 rounded-full hover:bg-zinc-200"
+                  className="hover:bg-accent ml-0.5 rounded-full"
                   aria-label={`Remove tag ${tag}`}
                 >
                   <X className="h-3 w-3" />
@@ -280,7 +280,7 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
             placeholder={t("tagsPlaceholder")}
             disabled={isSubmitting || tags.length >= 10}
           />
-          <p className="text-xs text-zinc-400">
+          <p className="text-muted-foreground text-xs">
             Press Enter to add a tag. Max 10 tags.
           </p>
         </div>
@@ -307,7 +307,7 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
               <button
                 type="button"
                 onClick={() => removeLink(i)}
-                className="rounded p-1 text-zinc-400 hover:text-zinc-700"
+                className="text-muted-foreground hover:text-foreground rounded p-1"
                 aria-label="Remove link"
               >
                 <X className="h-4 w-4" />
@@ -330,7 +330,7 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
         {/* Cover Image — coming soon */}
         <div className="flex flex-col gap-1.5">
           <Label>{t("coverImage")}</Label>
-          <p className="rounded-md border border-dashed border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-400">
+          <p className="border-border bg-muted text-muted-foreground rounded-md border border-dashed px-4 py-3 text-sm">
             Cover image upload coming soon.
           </p>
         </div>

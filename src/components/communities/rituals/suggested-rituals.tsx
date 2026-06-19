@@ -45,7 +45,7 @@ export function SuggestedRituals({ slug }: { slug: string }) {
               <p className="text-sm font-medium">{s.title}</p>
               <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
                 <span>{weekdayLabel(s.weekday)}</span>
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className="text-xs">
                   {s.mode === "auto" ? "Auto" : "Review"}
                 </Badge>
               </div>

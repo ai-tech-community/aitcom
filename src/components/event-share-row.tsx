@@ -40,7 +40,7 @@ export function EventShareRow({ slug, title }: EventShareRowProps) {
   const icsUrl = `/api/events/${slug}/ics`;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-wider">
+    <div className="flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">
       <a
         href={icsUrl}
         className="border-border hover:bg-secondary/60 inline-flex items-center gap-1.5 rounded border px-2.5 py-1.5 transition-colors"
@@ -64,7 +64,7 @@ export function EventShareRow({ slug, title }: EventShareRowProps) {
         className="border-border hover:bg-secondary/60 inline-flex items-center gap-1.5 rounded border px-2.5 py-1.5 transition-colors"
         title="Share on X"
       >
-        <span className="font-bold">X</span>
+        <span className="font-semibold">X</span>
       </a>
       <a
         href={linkedInUrl}

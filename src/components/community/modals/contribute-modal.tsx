@@ -31,22 +31,22 @@ export function ContributeModal({
     },
     {
       key: "write" as const,
-      border: "border-zinc-200 hover:border-zinc-300",
-      badge: "bg-zinc-100 text-zinc-600",
+      border: "border-border hover:border-border",
+      badge: "bg-muted text-foreground",
       href: "/dashboard" as string | null,
       disabled: false,
     },
     {
       key: "mentor" as const,
-      border: "border-zinc-200",
-      badge: "bg-zinc-100 text-zinc-400",
+      border: "border-border",
+      badge: "bg-muted text-muted-foreground",
       href: null as string | null,
       disabled: true,
     },
     {
       key: "partner" as const,
-      border: "border-zinc-200",
-      badge: "bg-zinc-100 text-zinc-400",
+      border: "border-border",
+      badge: "bg-muted text-muted-foreground",
       href: null as string | null,
       disabled: true,
     },
@@ -66,16 +66,16 @@ export function ContributeModal({
             key={key}
             className={`rounded-lg border p-4 transition-colors ${border} ${disabled ? "opacity-50" : ""}`}
           >
-            <h3 className="font-mono text-xs font-bold tracking-wider text-zinc-900 uppercase">
+            <h3 className="text-foreground font-mono text-xs font-semibold tracking-wider uppercase">
               {t(`${key}.title`)}
             </h3>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-zinc-500">
+            <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
               {t(`${key}.description`)}
             </p>
             <div className="mt-3">
               {disabled ? (
                 <span
-                  className={`inline-block rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold tracking-widest uppercase ${badge}`}
+                  className={`inline-block rounded-md px-2.5 py-1 font-mono text-xs font-semibold tracking-widest uppercase ${badge}`}
                 >
                   {t(`${key}.cta`)}
                 </span>
@@ -83,13 +83,13 @@ export function ContributeModal({
                 <Link
                   href={href}
                   onClick={onClose}
-                  className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold tracking-widest uppercase transition-colors ${badge} hover:opacity-80`}
+                  className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors ${badge} hover:opacity-80`}
                 >
                   {t(`${key}.cta`)}
                 </Link>
               ) : (
                 <button
-                  className={`rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold tracking-widest uppercase transition-colors ${badge} hover:opacity-80`}
+                  className={`rounded-md px-2.5 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors ${badge} hover:opacity-80`}
                 >
                   {t(`${key}.cta`)}
                 </button>

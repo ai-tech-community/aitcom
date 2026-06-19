@@ -45,7 +45,7 @@ export function AsciiConnectScene() {
   return (
     <pre
       ref={preRef}
-      className="text-muted-foreground/50 group-hover:text-muted-foreground/70 pointer-events-none flex h-full w-full items-center justify-center overflow-hidden font-mono text-[10px] leading-[13px] transition-colors"
+      className="text-muted-foreground/50 group-hover:text-muted-foreground/70 pointer-events-none flex h-full w-full items-center justify-center overflow-hidden font-mono text-xs leading-[13px] transition-colors"
       aria-hidden="true"
     />
   );

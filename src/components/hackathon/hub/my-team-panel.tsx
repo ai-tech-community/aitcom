@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 import { TeamGridProgress } from "@/components/hackathon/team-grid-progress";
 
 /**
@@ -29,7 +31,12 @@ export function MyTeamPanel({
   const t = useTranslations("hackathon");
   const utils = api.useUtils();
 
-  const { data: myTeam } = api.hackathon.myTeam.useQuery({ challengeId });
+  const {
+    data: myTeam,
+    isLoading: myTeamLoading,
+    isError: myTeamError,
+    refetch: refetchMyTeam,
+  } = api.hackathon.myTeam.useQuery({ challengeId });
 
   const feedback = api.hackathon.teamJudgeFeedback.useQuery(
     { teamId: myTeam?.team.id ?? "" },
@@ -86,7 +93,23 @@ export function MyTeamPanel({
     <section>
       <h2 className="text-lg font-semibold">{t("tabTeam")}</h2>
 
-      {!myTeam ? (
+      {myTeamLoading ? (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Card key={i} className="p-4">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="mt-2 h-9 w-full" />
+              <Skeleton className="mt-2 h-9 w-full" />
+            </Card>
+          ))}
+        </div>
+      ) : myTeamError ? (
+        <div className="mt-4">
+          <ErrorState onRetry={() => void refetchMyTeam()} />
+        </div>
+      ) : null}
+
+      {!myTeamLoading && !myTeamError && !myTeam ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Card className="p-4">
             <h3 className="text-sm font-medium">{t("createTeam")}</h3>

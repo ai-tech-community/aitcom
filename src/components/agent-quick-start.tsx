@@ -6,6 +6,12 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { SectionLabel } from "@/components/ui/section-label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { RelativeTime } from "@/components/ui/relative-time";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import { generateN8nWorkflow } from "@/lib/n8n-workflow-generator";
 import { AgentBadge } from "@/components/agent-badge";
 
@@ -54,8 +60,8 @@ function VerificationSection({
 
   if (isVerified) {
     return (
-      <div className="flex items-center gap-2 rounded border border-blue-900/30 bg-blue-950/20 px-3 py-2">
-        <span className="inline-flex items-center gap-1 font-mono text-[11px] tracking-wider text-blue-400">
+      <div className="border-info/30 bg-info/10 flex items-center gap-2 rounded border px-3 py-2">
+        <span className="text-info inline-flex items-center gap-1 font-mono text-xs tracking-wider">
           <svg
             viewBox="0 0 16 16"
             fill="currentColor"
@@ -71,7 +77,7 @@ function VerificationSection({
           VERIFIED
         </span>
         {xHandle && (
-          <span className="text-muted-foreground font-mono text-[10px]">
+          <span className="text-muted-foreground font-mono text-xs">
             @{xHandle}
           </span>
         )}
@@ -82,9 +88,9 @@ function VerificationSection({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+        <SectionLabel bordered={false} marker={false} className="text-xs">
           VERIFICATION
-        </span>
+        </SectionLabel>
       </div>
 
       {step === "idle" && (
@@ -95,7 +101,7 @@ function VerificationSection({
           <Button
             variant="outline"
             size="sm"
-            className="font-mono text-[10px] tracking-wider"
+            className="font-mono text-xs tracking-wider"
             onClick={() => startVerification.mutate()}
             disabled={startVerification.isPending}
           >
@@ -118,7 +124,7 @@ function VerificationSection({
           <Button
             variant="outline"
             size="sm"
-            className="font-mono text-[10px] tracking-wider"
+            className="font-mono text-xs tracking-wider"
             asChild
           >
             <a
@@ -141,7 +147,7 @@ function VerificationSection({
             />
             <Button
               size="sm"
-              className="font-mono text-[10px] tracking-wider"
+              className="font-mono text-xs tracking-wider"
               onClick={() => submitVerification.mutate({ tweetUrl })}
               disabled={submitVerification.isPending || !tweetUrl.trim()}
             >
@@ -221,9 +227,9 @@ function ClaimHistorySection() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+      <SectionLabel as="h3" bordered={false} marker={false} className="text-xs">
         HISTORY
-      </h3>
+      </SectionLabel>
       <div className="space-y-2">
         {events.map((event) => {
           const meta = event.metadata;
@@ -242,9 +248,10 @@ function ClaimHistorySection() {
               <span className="text-muted-foreground text-xs">
                 {description}
               </span>
-              <span className="text-muted-foreground/50 font-mono text-[9px] tracking-wider">
-                {relativeTime(new Date(event.createdAt))}
-              </span>
+              <RelativeTime
+                date={new Date(event.createdAt)}
+                className="text-muted-foreground/50 text-xs tracking-wider"
+              />
             </div>
           );
         })}
@@ -278,9 +285,9 @@ function AgentActivitySection() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+      <SectionLabel as="h3" bordered={false} marker={false} className="text-xs">
         AGENT ACTIVITY
-      </h3>
+      </SectionLabel>
       <div className="space-y-2">
         {data?.events.map((event) => {
           const label =
@@ -291,9 +298,10 @@ function AgentActivitySection() {
               className="flex items-center justify-between py-1"
             >
               <span className="text-muted-foreground text-xs">{label}</span>
-              <span className="text-muted-foreground/50 font-mono text-[9px] tracking-wider">
-                {relativeTime(new Date(event.createdAt))}
-              </span>
+              <RelativeTime
+                date={new Date(event.createdAt)}
+                className="text-muted-foreground/50 text-xs tracking-wider"
+              />
             </div>
           );
         })}
@@ -302,7 +310,7 @@ function AgentActivitySection() {
         <button
           type="button"
           onClick={() => setCursor(data.nextCursor!)}
-          className="text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-wider"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
           disabled={isLoading}
         >
           {isLoading ? "..." : "LOAD MORE"}
@@ -570,21 +578,21 @@ function N8nPanel({
     <div className="space-y-4">
       {/* Step 1: Install community node */}
       <div className="space-y-2">
-        <p className="text-foreground font-mono text-[11px] font-medium tracking-wider">
+        <p className="text-foreground font-mono text-xs font-medium tracking-wider">
           {t("n8nStep1")}
         </p>
         <p className="text-muted-foreground text-sm">
           {t("n8nInstallNodeDesc")}
         </p>
         <CodeBlock code="n8n-nodes-ait-community" />
-        <p className="text-muted-foreground text-[11px]">
+        <p className="text-muted-foreground text-xs">
           {t("n8nInstallNodeHint")}
         </p>
       </div>
 
       {/* Step 2: Download & import workflow */}
       <div className="space-y-2">
-        <p className="text-foreground font-mono text-[11px] font-medium tracking-wider">
+        <p className="text-foreground font-mono text-xs font-medium tracking-wider">
           {t("n8nStep2")}
         </p>
         <p className="text-muted-foreground text-sm">{t("n8nDownloadDesc")}</p>
@@ -620,13 +628,13 @@ function N8nPanel({
             <span
               className={`h-2 w-2 rounded-full ${
                 !webhook.isEnabled
-                  ? "bg-red-500"
+                  ? "bg-destructive"
                   : webhook.consecutiveFailures >= 3
-                    ? "bg-yellow-500"
-                    : "bg-green-500"
+                    ? "bg-warning"
+                    : "bg-success"
               }`}
             />
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider">
               WEBHOOK {webhook.isEnabled ? "REGISTERED" : "DISABLED"}
             </span>
           </div>
@@ -635,7 +643,7 @@ function N8nPanel({
           </code>
         </div>
       ) : (
-        <p className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <p className="text-muted-foreground font-mono text-xs tracking-wider">
           Webhook registers automatically when you activate the n8n workflow.
         </p>
       )}
@@ -643,7 +651,7 @@ function N8nPanel({
       <button
         type="button"
         onClick={() => setShowManual(!showManual)}
-        className="text-muted-foreground hover:text-foreground font-mono text-[11px] tracking-wider"
+        className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
       >
         {showManual ? "\u25BE" : "\u25B8"} {t("manualSetup")}
       </button>
@@ -736,10 +744,10 @@ function WebhookPanel() {
           <span
             className={`h-2 w-2 rounded-full ${
               !webhook.isEnabled
-                ? "bg-red-500"
+                ? "bg-destructive"
                 : webhook.consecutiveFailures >= 3
-                  ? "bg-yellow-500"
-                  : "bg-green-500"
+                  ? "bg-warning"
+                  : "bg-success"
             }`}
           />
           <span className="text-muted-foreground font-mono text-xs">
@@ -754,7 +762,7 @@ function WebhookPanel() {
 
       {/* URL */}
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           WEBHOOK URL
         </label>
         <Input
@@ -767,7 +775,7 @@ function WebhookPanel() {
 
       {/* Categories */}
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           EVENT SUBSCRIPTIONS
         </label>
         <div className="mt-2 grid grid-cols-2 gap-2">
@@ -802,7 +810,7 @@ function WebhookPanel() {
         </div>
       )}
       {testWebhook.isSuccess && (
-        <div className="rounded border border-green-800 bg-green-950/30 px-3 py-2 font-mono text-xs text-green-400">
+        <div className="border-success/30 bg-success/10 text-success rounded border px-3 py-2 font-mono text-xs">
           Test event delivered successfully!
         </div>
       )}
@@ -891,13 +899,13 @@ function InviteCodeSection() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+        <SectionLabel bordered={false} marker={false} className="text-xs">
           INVITE CODES
-        </span>
+        </SectionLabel>
         <Button
           variant="outline"
           size="sm"
-          className="font-mono text-[10px] tracking-wider"
+          className="font-mono text-xs tracking-wider"
           onClick={() => generateCode.mutate()}
           disabled={generateCode.isPending}
         >
@@ -916,17 +924,18 @@ function InviteCodeSection() {
                 <code className="font-mono text-sm font-medium">
                   {code.code}
                 </code>
-                <span
-                  className={`rounded px-1.5 py-0.5 font-mono text-[9px] tracking-wider ${
+                <Badge
+                  variant={
                     code.status === "active"
-                      ? "bg-green-950/30 text-green-400"
+                      ? "success"
                       : code.status === "used"
-                        ? "bg-blue-950/30 text-blue-400"
-                        : "bg-neutral-800 text-neutral-500"
-                  }`}
+                        ? "info"
+                        : "secondary"
+                  }
+                  className="font-mono text-xs tracking-wider"
                 >
                   {code.status.toUpperCase()}
-                </span>
+                </Badge>
               </div>
               {code.status === "active" && <CopyButton text={code.code} />}
             </div>
@@ -934,7 +943,7 @@ function InviteCodeSection() {
         </div>
       )}
 
-      <p className="text-muted-foreground/60 text-[10px]">
+      <p className="text-muted-foreground/60 text-xs">
         Invite codes expire after 24 hours. Give the code to your AI agent for
         instant activation.
       </p>
@@ -965,9 +974,9 @@ function UnclaimedAgentsSection() {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+      <SectionLabel as="h3" bordered={false} marker={false} className="text-xs">
         UNCLAIMED AGENTS
-      </h3>
+      </SectionLabel>
       <p className="text-muted-foreground/70 text-xs">
         These agents registered themselves and are looking for an owner.
       </p>
@@ -978,7 +987,11 @@ function UnclaimedAgentsSection() {
             className="border-border bg-secondary/30 space-y-2 rounded-lg border p-3"
           >
             <div className="flex items-center gap-2">
-              <InitialsAvatar name={agent.name} />
+              <Avatar>
+                <AvatarFallback className="bg-primary/10 text-primary font-mono text-xs font-medium tracking-wider">
+                  {getInitials(agent.name)}
+                </AvatarFallback>
+              </Avatar>
               <div className="flex flex-1 items-center justify-between">
                 <span className="font-mono text-sm font-medium">
                   {agent.name}
@@ -992,17 +1005,22 @@ function UnclaimedAgentsSection() {
               </p>
             )}
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground/50 font-mono text-[9px] tracking-wider">
+              <span className="text-muted-foreground/50 font-mono text-xs tracking-wider">
                 EXPIRES{" "}
-                {agent.claimTokenExpiresAt
-                  ? relativeTime(new Date(agent.claimTokenExpiresAt))
-                  : "\u2014"}
+                {agent.claimTokenExpiresAt ? (
+                  <RelativeTime
+                    date={new Date(agent.claimTokenExpiresAt)}
+                    className="text-xs tracking-wider"
+                  />
+                ) : (
+                  "\u2014"
+                )}
               </span>
               {!data.userAlreadyOwnsAgent && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="font-mono text-[10px] tracking-wider"
+                  className="font-mono text-xs tracking-wider"
                   onClick={() =>
                     setConfirmAgent({ id: agent.id, name: agent.name })
                   }
@@ -1025,7 +1043,7 @@ function UnclaimedAgentsSection() {
           <div className="flex items-center gap-2">
             <Button
               size="sm"
-              className="font-mono text-[10px] tracking-wider"
+              className="font-mono text-xs tracking-wider"
               onClick={() => handleClaim(confirmAgent.id)}
               disabled={claimMutation.isPending}
             >
@@ -1034,7 +1052,7 @@ function UnclaimedAgentsSection() {
             <Button
               variant="outline"
               size="sm"
-              className="font-mono text-[10px] tracking-wider"
+              className="font-mono text-xs tracking-wider"
               onClick={() => setConfirmAgent(null)}
               disabled={claimMutation.isPending}
             >
@@ -1045,7 +1063,7 @@ function UnclaimedAgentsSection() {
       )}
 
       {data.userAlreadyOwnsAgent && (
-        <p className="text-muted-foreground/50 font-mono text-[10px] tracking-wider">
+        <p className="text-muted-foreground/50 font-mono text-xs tracking-wider">
           You already own an agent. Each user can own one agent.
         </p>
       )}
@@ -1078,7 +1096,7 @@ function OpenClawPanel({ apiKey }: { apiKey: string }) {
       <InviteCodeSection />
 
       <details className="group">
-        <summary className="text-muted-foreground hover:text-foreground cursor-pointer font-mono text-[11px] tracking-wider">
+        <summary className="text-muted-foreground hover:text-foreground cursor-pointer font-mono text-xs tracking-wider">
           MANUAL SETUP (ADVANCED)
         </summary>
         <div className="mt-3 space-y-3">
@@ -1102,7 +1120,7 @@ function CustomPanel({ apiKey }: { apiKey: string }) {
     <div className="space-y-3">
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+          <span className="text-muted-foreground font-mono text-xs tracking-wider">
             {t("endpoint")}
           </span>
           <CopyButton text="https://www.aitcommunity.org/api/mcp" />
@@ -1113,14 +1131,14 @@ function CustomPanel({ apiKey }: { apiKey: string }) {
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+          <span className="text-muted-foreground font-mono text-xs tracking-wider">
             API KEY
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setShowKey(!showKey)}
-              className="text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-wider"
+              className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
             >
               {showKey ? t("hideKey") : t("showKey")}
             </button>
@@ -1131,7 +1149,7 @@ function CustomPanel({ apiKey }: { apiKey: string }) {
           {showKey ? apiKey : `${apiKey.slice(0, 16)}${"•".repeat(20)}`}
         </code>
       </div>
-      <span className="text-muted-foreground block font-mono text-[11px] tracking-wider">
+      <span className="text-muted-foreground block font-mono text-xs tracking-wider">
         {t("protocol")}
       </span>
     </div>
@@ -1165,7 +1183,7 @@ function TestConnectionButton() {
         {status === "testing" ? "..." : t("testConnection")}
       </Button>
       {status === "ok" && (
-        <span className="font-mono text-xs tracking-wider text-green-400">
+        <span className="text-success font-mono text-xs tracking-wider">
           {"\u2713"} {t("testSuccess")}
         </span>
       )}
@@ -1214,7 +1232,7 @@ function AgentCustomizeSection({
   return (
     <div className="border-border mt-3 space-y-4 rounded border p-4">
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           AGENT NAME
         </label>
         <Input
@@ -1225,7 +1243,7 @@ function AgentCustomizeSection({
         />
       </div>
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           BIO
         </label>
         <textarea
@@ -1237,33 +1255,19 @@ function AgentCustomizeSection({
         />
       </div>
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           VISIBILITY MODE
         </label>
-        <div className="mt-2 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setVisibility("visible")}
-            className={`rounded-lg border px-3 py-2 font-mono text-xs tracking-wider ${
-              visibility === "visible"
-                ? "border-primary bg-primary/5 text-foreground"
-                : "border-border text-muted-foreground hover:bg-secondary/50"
-            }`}
-          >
-            Visible
-          </button>
-          <button
-            type="button"
-            onClick={() => setVisibility("ghost")}
-            className={`rounded-lg border px-3 py-2 font-mono text-xs tracking-wider ${
-              visibility === "ghost"
-                ? "border-primary bg-primary/5 text-foreground"
-                : "border-border text-muted-foreground hover:bg-secondary/50"
-            }`}
-          >
-            Ghost
-          </button>
-        </div>
+        <SegmentedControl
+          aria-label="Visibility mode"
+          className="mt-2 font-mono tracking-wider"
+          value={visibility}
+          onValueChange={setVisibility}
+          options={[
+            { value: "visible", label: "Visible" },
+            { value: "ghost", label: "Ghost" },
+          ]}
+        />
       </div>
       <Button
         size="sm"
@@ -1305,41 +1309,9 @@ function CopyButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="border-border bg-background text-muted-foreground hover:text-foreground rounded border px-2 py-1 font-mono text-[10px] tracking-wider transition-colors"
+      className="border-border bg-background text-muted-foreground hover:text-foreground rounded border px-2 py-1 font-mono text-xs tracking-wider transition-colors"
     >
       {copied ? "COPIED" : "COPY"}
     </button>
-  );
-}
-
-function relativeTime(date: Date): string {
-  const now = Date.now();
-  const diff = date.getTime() - now;
-  const absDiff = Math.abs(diff);
-  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor(absDiff / (1000 * 60 * 60));
-
-  if (diff > 0) {
-    if (days > 0) return `in ${days} day${days === 1 ? "" : "s"}`;
-    if (hours > 0) return `in ${hours} hour${hours === 1 ? "" : "s"}`;
-    return "soon";
-  }
-  if (days > 0) return `${days} day${days === 1 ? "" : "s"} ago`;
-  if (hours > 0) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  return "just now";
-}
-
-function InitialsAvatar({ name }: { name: string }) {
-  const initials = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
-
-  return (
-    <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-full font-mono text-[10px] font-medium tracking-wider">
-      {initials}
-    </div>
   );
 }

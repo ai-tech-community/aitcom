@@ -118,7 +118,7 @@ function CommentForm({
           <button
             type="button"
             onClick={onCancel}
-            className="text-muted-foreground hover:text-foreground rounded border border-transparent px-2 py-1 font-mono text-[10px] tracking-wider transition-colors"
+            className="text-muted-foreground hover:text-foreground rounded border border-transparent px-2 py-1 font-mono text-xs tracking-wider transition-colors"
           >
             {t("cancel")}
           </button>
@@ -126,7 +126,7 @@ function CommentForm({
         <button
           type="submit"
           disabled={createMutation.isPending || !content.trim()}
-          className="bg-foreground text-background hover:bg-foreground/90 rounded px-3 py-1 font-mono text-[10px] tracking-wider transition-colors disabled:opacity-50"
+          className="bg-foreground text-background hover:bg-foreground/90 rounded px-3 py-1 font-mono text-xs tracking-wider transition-colors disabled:opacity-50"
         >
           {createMutation.isPending ? "..." : t("submit")}
         </button>
@@ -176,17 +176,17 @@ function CommentItem({
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Avatar size="sm">
-              <AvatarFallback className="bg-muted text-muted-foreground font-mono text-[9px]">
+              <AvatarFallback className="bg-muted text-muted-foreground font-mono text-xs">
                 {getInitials(comment.authorName)}
               </AvatarFallback>
             </Avatar>
-            <span className="text-muted-foreground font-mono text-[10px] font-semibold tracking-wider">
+            <span className="text-muted-foreground font-mono text-xs font-semibold tracking-wider">
               {comment.authorName ?? "member"}
             </span>
-            <span className="text-muted-foreground/50 font-mono text-[10px]">
+            <span className="text-muted-foreground/50 font-mono text-xs">
               &middot;
             </span>
-            <span className="text-muted-foreground/50 font-mono text-[10px]">
+            <span className="text-muted-foreground/50 font-mono text-xs">
               {timeAgo(comment.createdAt)}
             </span>
           </div>
@@ -194,7 +194,7 @@ function CommentItem({
             {currentUserId && (
               <button
                 onClick={() => setShowReplyForm((v) => !v)}
-                className="text-muted-foreground hover:text-foreground flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] tracking-wider transition-colors"
+                className="text-muted-foreground hover:text-foreground flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs tracking-wider transition-colors"
               >
                 <CornerDownRight className="h-2.5 w-2.5" />
                 {t("reply")}
@@ -208,7 +208,7 @@ function CommentItem({
                   }
                 }}
                 disabled={deleteMutation.isPending}
-                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-red-400 transition-colors hover:text-red-600 disabled:opacity-50"
+                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs tracking-wider text-red-400 transition-colors hover:text-red-600 disabled:opacity-50"
               >
                 <Trash2 className="h-2.5 w-2.5" />
                 {t("delete")}
@@ -247,17 +247,17 @@ function CommentItem({
               <div className="mb-2 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Avatar size="sm">
-                    <AvatarFallback className="bg-muted text-muted-foreground font-mono text-[9px]">
+                    <AvatarFallback className="bg-muted text-muted-foreground font-mono text-xs">
                       {getInitials(reply.authorName)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-muted-foreground font-mono text-[10px] font-semibold tracking-wider">
+                  <span className="text-muted-foreground font-mono text-xs font-semibold tracking-wider">
                     {reply.authorName ?? "member"}
                   </span>
-                  <span className="text-muted-foreground/50 font-mono text-[10px]">
+                  <span className="text-muted-foreground/50 font-mono text-xs">
                     &middot;
                   </span>
-                  <span className="text-muted-foreground/50 font-mono text-[10px]">
+                  <span className="text-muted-foreground/50 font-mono text-xs">
                     {timeAgo(reply.createdAt)}
                   </span>
                 </div>
@@ -269,7 +269,7 @@ function CommentItem({
                       }
                     }}
                     disabled={deleteMutation.isPending}
-                    className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-[9px] tracking-wider text-red-400 transition-colors hover:text-red-600 disabled:opacity-50"
+                    className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs tracking-wider text-red-400 transition-colors hover:text-red-600 disabled:opacity-50"
                   >
                     <Trash2 className="h-2.5 w-2.5" />
                     {t("delete")}

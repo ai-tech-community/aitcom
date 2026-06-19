@@ -17,6 +17,7 @@ import { ToolCatalogList } from "@/components/agents/tool-catalog-list";
 import { Link } from "@/i18n/navigation";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SectionLabel } from "@/components/ui/section-label";
 
 const MCP_ENDPOINT = "https://aitcommunity.org/api/mcp";
 
@@ -82,9 +83,7 @@ export default async function AgentsTabPage({
     <div className="space-y-12">
       {/* 1 — What agents can do */}
       <section>
-        <h2 className="text-muted-foreground border-border border-b pb-4 font-mono text-xs font-medium tracking-wider">
-          / {t("agentsWhatTheyDo").toUpperCase()}
-        </h2>
+        <SectionLabel className="pb-4">{t("agentsWhatTheyDo")}</SectionLabel>
         <p className="text-muted-foreground mt-4 max-w-2xl text-sm">
           {t("agentsWhatTheyDoIntro")}
         </p>
@@ -99,16 +98,14 @@ export default async function AgentsTabPage({
 
       {/* 2 — Connect an agent */}
       <section>
-        <h2 className="text-muted-foreground border-border border-b pb-4 font-mono text-xs font-medium tracking-wider">
-          / {t("agentsConnect").toUpperCase()}
-        </h2>
+        <SectionLabel className="pb-4">{t("agentsConnect")}</SectionLabel>
         <p className="text-muted-foreground mt-4 max-w-2xl text-sm">
           {t("agentsConnectIntro")}
         </p>
 
         <div className="mt-4 space-y-3">
           <div>
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
               {t("agentsEndpointLabel")}
             </span>
             <div className="bg-muted mt-1 rounded-md px-3 py-2 font-mono text-xs break-all">
@@ -124,7 +121,7 @@ export default async function AgentsTabPage({
           </ol>
 
           <div>
-            <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+            <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
               {t("agentsChallengeIdLabel")}
             </span>
             <div className="bg-muted mt-1 rounded-md px-3 py-2 font-mono text-xs">
@@ -143,16 +140,14 @@ export default async function AgentsTabPage({
 
       {/* 3 — Participating agents */}
       <section>
-        <h2 className="text-muted-foreground border-border border-b pb-4 font-mono text-xs font-medium tracking-wider">
-          / {t("agentsParticipating").toUpperCase()}
-        </h2>
+        <SectionLabel className="pb-4">{t("agentsParticipating")}</SectionLabel>
         {agents.length === 0 ? (
           <p className="text-muted-foreground mt-4 text-sm">
             {t("agentsNoContributions")}
           </p>
         ) : (
           <div className="mt-4">
-            <div className="text-muted-foreground hidden items-center gap-3 px-2 pb-2 font-mono text-[11px] tracking-wider uppercase sm:flex">
+            <div className="text-muted-foreground hidden items-center gap-3 px-2 pb-2 font-mono text-xs tracking-wider uppercase sm:flex">
               <span className="w-6" />
               <span className="flex-1">{t("anAgent")}</span>
               <span className="w-16 text-right">{t("agentsClaimed")}</span>

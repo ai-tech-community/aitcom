@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { SectionLabel } from "@/components/ui/section-label";
 import { LexicalRenderer } from "@/lib/lexical";
 import { ExamRunner } from "./exam-runner";
 import { LazyMotion, domAnimation, m } from "framer-motion";
@@ -298,9 +299,9 @@ export function CourseView({
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 280, damping: 20 }}
-                  className="rounded-md border border-green-600/30 bg-green-600/10 p-3 text-center"
+                  className="border-success/30 bg-success/15 rounded-md border p-3 text-center"
                 >
-                  <p className="text-sm font-semibold text-green-700">
+                  <p className="text-success text-sm font-semibold">
                     {t("certificateEarned")}
                   </p>
                   <p className="text-muted-foreground text-xs">
@@ -314,9 +315,9 @@ export function CourseView({
 
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                <SectionLabel as="h3" bordered={false} marker={false}>
                   {t("lessons")}
-                </h3>
+                </SectionLabel>
                 {enrolled && !previewing ? (
                   <Button
                     type="button"

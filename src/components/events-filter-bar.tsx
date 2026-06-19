@@ -141,7 +141,7 @@ export function EventsFilterBar({
   return (
     <div className="border-border mt-4 space-y-3 rounded-lg border p-4">
       {visitorCountryName && (
-        <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-wider">
+        <div className="flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">
           <span className="text-muted-foreground">
             DETECTED · {visitorCountryName.toUpperCase()}
             {visitorCountryCode ? ` (${visitorCountryCode})` : ""}
@@ -241,7 +241,7 @@ export function EventsFilterBar({
         <button
           type="button"
           onClick={resetAll}
-          className="text-muted-foreground hover:text-foreground font-mono text-[11px] tracking-wider underline-offset-4 hover:underline"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider underline-offset-4 hover:underline"
         >
           Clear filters
         </button>

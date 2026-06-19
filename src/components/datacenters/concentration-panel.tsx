@@ -110,7 +110,7 @@ export function ConcentrationPanel({
           <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Operator concentration by country
           </h3>
-          <span className="text-muted-foreground text-[10px]">
+          <span className="text-muted-foreground text-xs">
             click a row to see operators + HHI explained
           </span>
         </div>
@@ -139,7 +139,7 @@ export function ConcentrationPanel({
                   <td className="text-right">{Math.round(r.hhi)}</td>
                   <td className="pl-3">
                     <span
-                      className={`inline-block rounded ${band.color} px-1.5 py-0.5 text-[10px] text-white`}
+                      className={`inline-block rounded ${band.color} px-1.5 py-0.5 text-xs text-white`}
                     >
                       {band.label}
                     </span>
@@ -149,7 +149,7 @@ export function ConcentrationPanel({
             })}
           </tbody>
         </table>
-        <p className="text-muted-foreground/70 mt-3 text-[10px]">
+        <p className="text-muted-foreground/70 mt-3 text-xs">
           HHI bands: &lt;1500 competitive, 1500–2500 moderate, ≥2500 high. US
           DOJ thresholds.
         </p>
@@ -160,7 +160,7 @@ export function ConcentrationPanel({
           <h3 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Single-supplier dependency
           </h3>
-          <span className="text-muted-foreground text-[10px]">
+          <span className="text-muted-foreground text-xs">
             click to see which categories
           </span>
         </div>
@@ -192,7 +192,7 @@ export function ConcentrationPanel({
             ))}
           </ul>
         )}
-        <p className="text-muted-foreground/70 mt-3 text-[10px]">
+        <p className="text-muted-foreground/70 mt-3 text-xs">
           Facilities where one supplier serves 3+ categories — potential
           single-point dependency.
         </p>
@@ -238,7 +238,7 @@ function ConcentrationDetail({
         <DialogTitle className="flex items-center gap-2">
           <span>{row.country}</span>
           <span
-            className={`inline-block rounded ${band.color} px-1.5 py-0.5 text-[10px] text-white`}
+            className={`inline-block rounded ${band.color} px-1.5 py-0.5 text-xs text-white`}
           >
             {band.label}
           </span>
@@ -297,7 +297,7 @@ function ConcentrationDetail({
             </li>
           ))}
         </ul>
-        <p className="text-muted-foreground/70 mt-3 text-[10px]">
+        <p className="text-muted-foreground/70 mt-3 text-xs">
           Click an operator to see their facilities in {row.country}.
         </p>
       </div>

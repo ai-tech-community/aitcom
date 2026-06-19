@@ -57,14 +57,14 @@ export function ImpactPage() {
           {t("subtitle")}
         </p>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-black tracking-tight text-zinc-900">
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">
             {t("title")}
           </h1>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setRange("30d")}
-              className={`rounded-md border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase ${
+              className={`rounded-md border px-3 py-1.5 font-mono text-xs tracking-widest uppercase ${
                 range === "30d"
                   ? "border-zinc-900 bg-zinc-900 text-white"
                   : "border-zinc-300 bg-white text-zinc-600"
@@ -75,7 +75,7 @@ export function ImpactPage() {
             <button
               type="button"
               onClick={() => setRange("all")}
-              className={`rounded-md border px-3 py-1.5 font-mono text-[10px] tracking-widest uppercase ${
+              className={`rounded-md border px-3 py-1.5 font-mono text-xs tracking-widest uppercase ${
                 range === "all"
                   ? "border-zinc-900 bg-zinc-900 text-white"
                   : "border-zinc-300 bg-white text-zinc-600"
@@ -87,7 +87,7 @@ export function ImpactPage() {
         </div>
         <a
           href="#methodology"
-          className="font-mono text-[10px] tracking-widest text-zinc-600 uppercase underline"
+          className="font-mono text-xs tracking-widest text-zinc-600 uppercase underline"
         >
           {t("methodology")}
         </a>
@@ -213,19 +213,19 @@ export function ImpactPage() {
       <section className="grid gap-3 md:grid-cols-3">
         <Link
           href="/auth/signup"
-          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-[10px] tracking-widest text-zinc-700 uppercase transition hover:border-zinc-900 hover:text-zinc-900"
+          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-xs tracking-widest text-zinc-700 uppercase transition hover:border-zinc-900 hover:text-zinc-900"
         >
           {t("cta.join")}
         </Link>
         <Link
           href="/challenges"
-          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-[10px] tracking-widest text-zinc-700 uppercase transition hover:border-zinc-900 hover:text-zinc-900"
+          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-xs tracking-widest text-zinc-700 uppercase transition hover:border-zinc-900 hover:text-zinc-900"
         >
           {t("cta.challenge")}
         </Link>
         <Link
           href="/sponsors"
-          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-[10px] tracking-widest text-zinc-700 uppercase transition hover:border-zinc-900 hover:text-zinc-900"
+          className="rounded-lg border border-zinc-300 bg-white px-4 py-3 text-center font-mono text-xs tracking-widest text-zinc-700 uppercase transition hover:border-zinc-900 hover:text-zinc-900"
         >
           {t("cta.partner")}
         </Link>

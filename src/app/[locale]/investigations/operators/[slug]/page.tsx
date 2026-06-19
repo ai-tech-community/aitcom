@@ -117,7 +117,7 @@ export default async function OperatorDetailPage({ params }: PageProps) {
             {brand.canonicalName}
           </h1>
           {brand.verified && (
-            <span className="rounded bg-green-600 px-1.5 py-0.5 text-[10px] text-white">
+            <span className="rounded bg-green-600 px-1.5 py-0.5 text-xs text-white">
               verified
             </span>
           )}
@@ -433,7 +433,7 @@ export default async function OperatorDetailPage({ params }: PageProps) {
                         {f.name}
                       </Link>
                       {f.aiDedicated && (
-                        <span className="ml-1.5 rounded bg-purple-600 px-1 py-0.5 text-[9px] text-white">
+                        <span className="ml-1.5 rounded bg-purple-600 px-1 py-0.5 text-xs text-white">
                           AI
                         </span>
                       )}
@@ -443,7 +443,7 @@ export default async function OperatorDetailPage({ params }: PageProps) {
                     </td>
                     <td className="px-3 py-1.5">
                       <span
-                        className={`inline-block rounded px-1.5 py-0.5 text-[10px] text-white ${STATUS_COLOR[f.status] ?? "bg-muted"}`}
+                        className={`inline-block rounded px-1.5 py-0.5 text-xs text-white ${STATUS_COLOR[f.status] ?? "bg-muted"}`}
                       >
                         {f.status}
                       </span>
@@ -580,7 +580,7 @@ function Panel({
           {title}
         </h3>
         {hint && (
-          <span className="text-muted-foreground/70 text-[10px]">{hint}</span>
+          <span className="text-muted-foreground/70 text-xs">{hint}</span>
         )}
       </div>
       {children}

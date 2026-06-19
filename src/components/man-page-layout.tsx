@@ -54,7 +54,7 @@ interface ManPageSectionProps {
 export function ManPageSection({ id, title, children }: ManPageSectionProps) {
   return (
     <section id={id} className="mb-8 scroll-mt-24">
-      <h2 className="font-mono text-sm font-bold tracking-wider uppercase">
+      <h2 className="font-mono text-sm font-semibold tracking-wider uppercase">
         {title}
       </h2>
       <div className="text-muted-foreground mt-3 pl-6 text-sm leading-relaxed">

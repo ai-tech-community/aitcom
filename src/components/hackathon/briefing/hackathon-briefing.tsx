@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SectionLabel } from "@/components/ui/section-label";
 import type { CatalogGroup } from "@/server/mcp/catalog-meta";
 import type { CellTemplate } from "@/server/hackathon/cell-template";
 import { ToolCatalogList } from "@/components/agents/tool-catalog-list";
@@ -78,10 +79,10 @@ export async function HackathonBriefing({
                     <code className="font-mono text-xs font-semibold">
                       {cell.taskType}
                     </code>
-                    <span className="text-muted-foreground font-mono text-[10px] uppercase">
+                    <span className="text-muted-foreground font-mono text-xs uppercase">
                       {t("verifiedBy", { mode: cell.verificationMode })}
                     </span>
-                    <span className="text-muted-foreground font-mono text-[10px] uppercase">
+                    <span className="text-muted-foreground font-mono text-xs uppercase">
                       {t("deadline", { minutes: cell.deadlineMinutes })}
                     </span>
                   </div>
@@ -93,9 +94,9 @@ export async function HackathonBriefing({
             </ul>
           )}
           <div className="mt-4">
-            <h4 className="text-muted-foreground font-mono text-[11px] font-semibold tracking-widest uppercase">
-              / {t("rosterTitle")} — {teamName}
-            </h4>
+            <SectionLabel as="h4" bordered={false}>
+              {t("rosterTitle")} — {teamName}
+            </SectionLabel>
             <p className="mt-1 text-sm">
               {members.map((m) => m.displayName).join(", ")}
             </p>

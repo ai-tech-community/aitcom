@@ -19,6 +19,8 @@ import {
   type EventType,
 } from "@/lib/event-metadata";
 import { EventsFilterBar } from "@/components/events-filter-bar";
+import { Badge } from "@/components/ui/badge";
+import { SectionLabel } from "@/components/ui/section-label";
 import { EventsMap, type MapEvent } from "@/components/events-map";
 import { UseMyLocationButton } from "@/components/use-my-location-button";
 import { getVisitorLocation } from "@/lib/visitor-location";
@@ -302,11 +304,7 @@ export default async function EventsPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
-      <div className="border-border border-b pb-4">
-        <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / {t("title").toUpperCase()}
-        </h1>
-      </div>
+      <SectionLabel as="h1">{t("title")}</SectionLabel>
 
       <div className="mt-6 flex gap-1 font-mono text-xs tracking-wider">
         <Link
@@ -336,7 +334,7 @@ export default async function EventsPage({
         visitorCountryName={visitor?.countryName ?? null}
       />
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-wider">
+      <div className="mt-4 flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">
         <UseMyLocationButton />
         <Link
           href={buildViewHref("grid")}
@@ -398,7 +396,7 @@ export default async function EventsPage({
                   </div>
                 )}
                 <div className="space-y-4 p-5">
-                  <div className="text-muted-foreground flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-wider">
+                  <div className="text-muted-foreground flex flex-wrap items-center gap-2 font-mono text-xs tracking-wider">
                     <span>{formatDate(event.date)}</span>
                     {event.startTime && (
                       <>
@@ -472,14 +470,14 @@ export default async function EventsPage({
                   )}
                   <div className="flex flex-wrap items-center gap-2">
                     {event.focus && (
-                      <span className="border-border text-muted-foreground rounded-full border px-2.5 py-1 text-[11px]">
+                      <Badge variant="outline" className="px-2.5 py-1">
                         {String(event.focus)}
-                      </span>
+                      </Badge>
                     )}
                     {typeof event.aitFitScore === "number" && (
-                      <span className="bg-foreground text-background rounded-full px-2.5 py-1 text-[11px]">
+                      <Badge className="px-2.5 py-1">
                         AIT {event.aitFitScore}/10
-                      </span>
+                      </Badge>
                     )}
                   </div>
                 </div>
@@ -526,7 +524,7 @@ function Pagination({
   }
 
   const linkBase =
-    "font-mono text-[11px] tracking-wider rounded border px-3 py-1.5 transition-colors";
+    "font-mono text-xs tracking-wider rounded border px-3 py-1.5 transition-colors";
   const inactive = "border-border text-muted-foreground hover:bg-secondary/40";
   const active = "border-foreground bg-foreground text-background";
   const disabled =
@@ -549,7 +547,7 @@ function Pagination({
         p === "gap" ? (
           <span
             key={`gap-${idx}`}
-            className="text-muted-foreground font-mono text-[11px] tracking-wider"
+            className="text-muted-foreground font-mono text-xs tracking-wider"
           >
             …
           </span>

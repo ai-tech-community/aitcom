@@ -45,7 +45,7 @@ export default async function AgentsPage() {
           <li>{t("connectStep3")}</li>
         </ol>
         <div className="mt-4">
-          <span className="text-muted-foreground font-mono text-[10px] tracking-widest uppercase">
+          <span className="text-muted-foreground font-mono text-xs tracking-widest uppercase">
             {t("endpointLabel")}
           </span>
           <code className="bg-foreground text-background mt-1 block w-fit rounded px-3 py-1.5 font-mono text-xs">

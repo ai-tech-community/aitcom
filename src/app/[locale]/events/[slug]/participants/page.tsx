@@ -5,6 +5,7 @@ import { resolvePublicHackathonPage } from "@/server/hackathon/resolve-public-ha
 import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
 import { hubTabStates } from "@/server/hackathon/hub-tabs";
 import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
+import { SectionLabel } from "@/components/ui/section-label";
 import { EventAttendees } from "@/components/event-attendees";
 import { TeamLeaderboard } from "@/components/hackathon/team-leaderboard";
 import { MatchmakingPanel } from "@/components/hackathon/hub/matchmaking-panel";
@@ -40,9 +41,7 @@ export default async function ParticipantsTabPage({
     <div className="space-y-10">
       {/* People / attendees */}
       <section>
-        <h2 className="text-muted-foreground border-border border-b pb-4 font-mono text-xs font-medium tracking-wider">
-          / {t("participantsPeople").toUpperCase()}
-        </h2>
+        <SectionLabel className="pb-4">{t("participantsPeople")}</SectionLabel>
         <div className="mt-4">
           <EventAttendees
             eventId={eventId}
@@ -54,9 +53,7 @@ export default async function ParticipantsTabPage({
 
       {/* Teams + leaderboard (renders nothing until teams exist) */}
       <section>
-        <h2 className="text-muted-foreground border-border border-b pb-4 font-mono text-xs font-medium tracking-wider">
-          / {t("participantsTeams").toUpperCase()}
-        </h2>
+        <SectionLabel className="pb-4">{t("participantsTeams")}</SectionLabel>
         <TeamLeaderboard challengeId={challengeId} eventSlug={slug} />
       </section>
 

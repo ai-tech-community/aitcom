@@ -6,6 +6,7 @@ import { ChevronUp, Lightbulb } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { BuildingModal } from "../building-modal";
 import { toast } from "sonner";
 
@@ -18,9 +19,9 @@ type IdeasModalProps = {
 };
 
 const statusStyles: Record<string, string> = {
-  open: "text-zinc-500 border-zinc-200",
-  implemented: "text-green-600 border-green-200 bg-green-50",
-  rejected: "text-zinc-400 border-zinc-200 bg-zinc-50",
+  open: "text-muted-foreground border-border",
+  implemented: "text-success border-success/30 bg-success/15",
+  rejected: "text-muted-foreground border-border bg-muted",
 };
 
 export function IdeasModal({
@@ -99,34 +100,27 @@ export function IdeasModal({
       windowIndex={windowIndex}
     >
       {/* Sort tabs */}
-      <div className="mb-4 flex gap-1 border-b border-zinc-200 pb-3">
-        {(["votes", "recent"] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => setSort(s)}
-            className={`rounded px-3 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
-              sort === s
-                ? "bg-orange-50 text-orange-600"
-                : "text-zinc-400 hover:text-zinc-600"
-            }`}
-          >
-            {s === "votes" ? t("mostVoted") : t("recent")}
-          </button>
-        ))}
+      <div className="border-border mb-4 border-b pb-3">
+        <SegmentedControl
+          aria-label={t("sortLabel")}
+          value={sort}
+          onValueChange={setSort}
+          options={[
+            { value: "votes", label: t("mostVoted") },
+            { value: "recent", label: t("recent") },
+          ]}
+        />
       </div>
 
       {/* Ideas list */}
       {isLoading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((n) => (
-            <div
-              key={n}
-              className="h-14 animate-pulse rounded-lg bg-zinc-100"
-            />
+            <div key={n} className="bg-muted h-14 animate-pulse rounded-lg" />
           ))}
         </div>
       ) : ideas.length === 0 ? (
-        <p className="py-6 text-center font-mono text-xs text-zinc-400">
+        <p className="text-muted-foreground py-6 text-center font-mono text-xs">
           {t("noIdeas")}
         </p>
       ) : (
@@ -134,7 +128,7 @@ export function IdeasModal({
           {ideas.map((idea) => (
             <m.div
               key={idea.id}
-              className="flex items-start gap-3 rounded-lg border border-zinc-200 bg-zinc-50/50 p-3"
+              className="border-border bg-muted/50 flex items-start gap-3 rounded-lg border p-3"
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
             >
@@ -147,10 +141,10 @@ export function IdeasModal({
                   }
                   voteMutation.mutate({ ideaId: idea.id });
                 }}
-                className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-[10px] font-bold transition-colors ${
+                className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-xs font-semibold transition-colors ${
                   idea.hasVoted
                     ? "bg-orange-50 text-orange-600"
-                    : "text-zinc-400 hover:text-zinc-600"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <ChevronUp className="h-3 w-3" />
@@ -159,17 +153,17 @@ export function IdeasModal({
 
               {/* Content */}
               <div className="min-w-0 flex-1">
-                <p className="text-sm leading-snug font-medium text-zinc-900">
+                <p className="text-foreground text-sm leading-snug font-medium">
                   {idea.title}
                 </p>
                 {idea.description && (
-                  <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-zinc-500">
+                  <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed">
                     {idea.description}
                   </p>
                 )}
                 <div className="mt-1 flex items-center gap-2">
                   <span
-                    className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${statusStyles[idea.status]}`}
+                    className={`rounded border px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase ${statusStyles[idea.status]}`}
                   >
                     {idea.status === "open"
                       ? t("statusOpen")
@@ -185,15 +179,15 @@ export function IdeasModal({
       )}
 
       {/* Submit idea section */}
-      <div className="mt-4 border-t border-zinc-200 pt-4">
+      <div className="border-border mt-4 border-t pt-4">
         {!session?.user ? (
-          <p className="font-mono text-[10px] text-zinc-400">
+          <p className="text-muted-foreground font-mono text-xs">
             {t("loginToSubmit")}
           </p>
         ) : !showForm ? (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-widest text-orange-600 uppercase transition-colors hover:text-orange-500"
+            className="flex items-center gap-1.5 font-mono text-xs font-semibold tracking-widest text-orange-600 uppercase transition-colors hover:text-orange-500"
           >
             <Lightbulb className="h-3 w-3" />
             {t("submit")}
@@ -210,7 +204,7 @@ export function IdeasModal({
             className="space-y-3"
           >
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
+              <label className="text-muted-foreground mb-1 block font-mono text-xs font-semibold tracking-wider uppercase">
                 {t("titleLabel")}
               </label>
               <input
@@ -219,11 +213,11 @@ export function IdeasModal({
                 placeholder={t("titlePlaceholder")}
                 maxLength={100}
                 required
-                className="w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
+                className="border-border bg-card text-foreground placeholder:text-muted-foreground w-full rounded-md border px-3 py-2 text-sm focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block font-mono text-[10px] font-semibold tracking-wider text-zinc-500 uppercase">
+              <label className="text-muted-foreground mb-1 block font-mono text-xs font-semibold tracking-wider uppercase">
                 {t("descriptionLabel")}
               </label>
               <textarea
@@ -232,21 +226,21 @@ export function IdeasModal({
                 placeholder={t("descriptionPlaceholder")}
                 maxLength={500}
                 rows={3}
-                className="w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
+                className="border-border bg-card text-foreground placeholder:text-muted-foreground w-full resize-none rounded-md border px-3 py-2 text-sm focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
               />
             </div>
             <div className="flex gap-2">
               <button
                 type="submit"
                 disabled={submitMutation.isPending}
-                className="rounded-md bg-zinc-900 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 disabled:opacity-50"
+                className="bg-foreground text-background hover:bg-foreground/90 rounded-md px-4 py-1.5 font-mono text-xs font-semibold tracking-widest uppercase transition-colors disabled:opacity-50"
               >
                 {submitMutation.isPending ? t("submitting") : t("submit")}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="rounded-md border border-zinc-200 px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase transition-colors hover:bg-zinc-50"
+                className="border-border text-muted-foreground hover:bg-muted rounded-md border px-4 py-1.5 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
               >
                 Cancel
               </button>

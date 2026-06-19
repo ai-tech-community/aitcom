@@ -66,7 +66,7 @@ export default async function TimelineTabPage({
                   {t(LABEL_KEY[milestone.key])}
                 </span>
                 {isCurrent ? (
-                  <span className="bg-primary/15 text-primary rounded-full px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider uppercase">
+                  <span className="bg-primary/15 text-primary rounded-full px-2 py-0.5 font-mono text-xs font-medium tracking-wider uppercase">
                     {t("timelineCurrent")}
                   </span>
                 ) : null}

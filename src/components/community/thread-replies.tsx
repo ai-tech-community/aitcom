@@ -20,21 +20,21 @@ export function ThreadReplies({
 
   return (
     <div className="mt-8">
-      <h2 className="mb-4 font-mono text-[10px] font-semibold tracking-widest text-zinc-400 uppercase">
+      <h2 className="text-muted-foreground mb-4 font-mono text-xs font-semibold tracking-widest uppercase">
         {replies.length} {replies.length === 1 ? "Reply" : "Replies"}
       </h2>
       <div className="space-y-3">
         {replies.map((reply) => (
           <div
             key={reply.id}
-            className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-4"
+            className="border-border bg-muted/50 rounded-lg border p-4"
           >
-            <div className="mb-2 flex items-center gap-2 font-mono text-[9px] tracking-wider text-zinc-400">
+            <div className="text-muted-foreground mb-2 flex items-center gap-2 font-mono text-xs tracking-wider">
               <span>{reply.authorName ?? "member"}</span>
               <span>&middot;</span>
               <span>{new Date(reply.createdAt).toLocaleDateString()}</span>
             </div>
-            <div className="text-sm leading-relaxed text-zinc-600">
+            <div className="text-foreground text-sm leading-relaxed">
               <LexicalRenderer content={reply.content} />
             </div>
           </div>

@@ -1,7 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import { BotIcon, XIcon } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import { useInbox } from "./inbox-provider";
 
 // ---------------------------------------------------------------------------
@@ -36,20 +37,10 @@ export function ChatWindowMinimized({
       >
         {/* Avatar */}
         <div className="relative shrink-0">
-          {image ? (
-            <Image
-              src={image}
-              alt={displayName}
-              width={24}
-              height={24}
-              unoptimized
-              className="h-6 w-6 rounded-full object-cover"
-            />
-          ) : (
-            <div className="bg-secondary text-muted-foreground flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-          )}
+          <Avatar size="sm">
+            {image && <AvatarImage src={image} alt={displayName} />}
+            <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+          </Avatar>
           {isAgent && (
             <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full">
               <BotIcon className="text-muted-foreground h-2.5 w-2.5" />

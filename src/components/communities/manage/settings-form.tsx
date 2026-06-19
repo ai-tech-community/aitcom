@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import {
   Select,
   SelectContent,
@@ -102,12 +103,7 @@ export function SettingsForm({ slug, initialData }: SettingsFormProps) {
     });
   };
 
-  const initials = name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = getInitials(name);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

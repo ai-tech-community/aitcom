@@ -80,7 +80,7 @@ export default async function MembersPage({
                       height={28}
                     />
                   ) : (
-                    <div className="bg-secondary text-muted-foreground mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-[9px]">
+                    <div className="bg-secondary text-muted-foreground mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-mono text-xs">
                       {initials}
                     </div>
                   )}
@@ -95,23 +95,23 @@ export default async function MembersPage({
                           aria-label="Has AI Agent"
                         />
                       )}
-                      <span className="border-border text-muted-foreground shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] tracking-wider">
+                      <span className="border-border text-muted-foreground shrink-0 rounded border px-1.5 py-0.5 font-mono text-xs tracking-wider">
                         {t("level")} {member.profile.level}
                       </span>
                     </div>
                     {member.profile.company && (
-                      <span className="text-muted-foreground block truncate font-mono text-[11px]">
+                      <span className="text-muted-foreground block truncate font-mono text-xs">
                         @ {member.profile.company}
                       </span>
                     )}
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       <span
-                        className={`font-mono text-[11px] ${isTopThree ? "text-foreground font-medium" : "text-muted-foreground"}`}
+                        className={`font-mono text-xs ${isTopThree ? "text-foreground font-medium" : "text-muted-foreground"}`}
                       >
                         {member.profile.xp} XP
                       </span>
                       {member.badgeCount > 0 && (
-                        <span className="text-muted-foreground font-mono text-[11px]">
+                        <span className="text-muted-foreground font-mono text-xs">
                           {member.badgeCount}{" "}
                           {member.badgeCount === 1 ? "badge" : "badges"}
                         </span>
@@ -119,7 +119,7 @@ export default async function MembersPage({
                       {skills.map((skill) => (
                         <span
                           key={skill}
-                          className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-[9px] tracking-wider"
+                          className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-xs tracking-wider"
                         >
                           {skill}
                         </span>
@@ -194,7 +194,7 @@ export default async function MembersPage({
                               height={24}
                             />
                           ) : (
-                            <div className="bg-secondary text-muted-foreground mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px]">
+                            <div className="bg-secondary text-muted-foreground mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs">
                               {initials}
                             </div>
                           )}
@@ -219,7 +219,7 @@ export default async function MembersPage({
                         </Link>
                       </td>
                       <td className="py-3 pr-6 align-top">
-                        <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 text-[10px] tracking-wider">
+                        <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 text-xs tracking-wider">
                           {t("level")} {member.profile.level}
                         </span>
                       </td>
@@ -245,7 +245,7 @@ export default async function MembersPage({
                             skills.map((skill) => (
                               <span
                                 key={skill}
-                                className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 text-[10px] tracking-wider"
+                                className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 text-xs tracking-wider"
                               >
                                 {skill}
                               </span>

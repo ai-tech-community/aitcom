@@ -79,7 +79,7 @@ export function ClassroomListing({ slug }: { slug: string }) {
                   <div className="flex items-center gap-2">
                     <h3 className="font-medium">{c.title}</h3>
                     {c.status !== "published" ? (
-                      <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 text-[10px] tracking-wider uppercase">
+                      <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 text-xs tracking-wider uppercase">
                         {c.status === "draft" ? t("draft") : t("archivedBadge")}
                       </span>
                     ) : null}
@@ -89,7 +89,7 @@ export function ClassroomListing({ slug }: { slug: string }) {
                       {c.summary}
                     </p>
                   ) : null}
-                  <div className="text-muted-foreground mt-3 flex items-center gap-3 text-[11px]">
+                  <div className="text-muted-foreground mt-3 flex items-center gap-3 text-xs">
                     <span>{c.authorName}</span>
                     <span className="inline-flex items-center gap-1">
                       <Users className="size-3" /> {c.enrollmentCount ?? 0}
@@ -103,7 +103,7 @@ export function ClassroomListing({ slug }: { slug: string }) {
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <span className="text-muted-foreground font-mono text-[10px]">
+                    <span className="text-muted-foreground font-mono text-xs">
                       {progress}%
                     </span>
                   </div>

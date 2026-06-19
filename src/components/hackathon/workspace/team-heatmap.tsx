@@ -4,7 +4,9 @@ import { useTranslations } from "next-intl";
 
 import type { RouterOutputs } from "@/trpc/react";
 import { api } from "@/trpc/react";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { cn } from "@/lib/utils";
 
 import { CellHeatBox } from "./cell-heat-box";
@@ -27,6 +29,7 @@ export function TeamHeatmap({
     data: cells,
     isLoading,
     error,
+    refetch,
   } = api.teamWorkspace.cells.useQuery(
     { teamId },
     {
@@ -39,6 +42,8 @@ export function TeamHeatmap({
     },
   );
 
+  // Pre-lock the grid genuinely doesn't exist yet — keep this as the intentional
+  // "waiting for rosters to lock" copy, not a fetch error.
   if (error?.data?.code === "NOT_FOUND") {
     return (
       <p className="text-muted-foreground text-sm">{t("workspaceLocked")}</p>
@@ -47,14 +52,35 @@ export function TeamHeatmap({
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-6">
-        <Spinner />
+      <div className="space-y-4">
+        <div>
+          <Skeleton className="mb-1 h-3 w-24" />
+          <div className="flex flex-wrap gap-1">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-6 w-6 rounded" />
+            ))}
+          </div>
+        </div>
+        <div>
+          <Skeleton className="mb-1 h-3 w-20" />
+          <div className="flex flex-wrap gap-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-6 w-6 rounded" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
+  // Any non-NOT_FOUND error is a real failure to load the grid (core content):
+  // show the recoverable error instead of falling through to a silent empty.
+  if (error) {
+    return <ErrorState onRetry={() => void refetch()} />;
+  }
+
   if (!cells || cells.length === 0) {
-    return <p className="text-muted-foreground text-sm">{t("tasks")}</p>;
+    return <EmptyState title={t("tasks")} />;
   }
 
   const groups = new Map<string, Cell[]>();

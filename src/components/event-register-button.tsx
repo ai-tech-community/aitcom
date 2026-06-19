@@ -194,7 +194,7 @@ export function EventRegisterButton({
         >
           {markIntentMutation.isPending ? "Saving..." : "I'm going"}
         </Button>
-        <p className="text-muted-foreground text-center font-mono text-[11px] tracking-wider">
+        <p className="text-muted-foreground text-center font-mono text-xs tracking-wider">
           Registration handled on external site
         </p>
       </div>

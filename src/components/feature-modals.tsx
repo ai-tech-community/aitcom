@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { BuildingModal } from "@/components/community/building-modal";
 import { AsciiBuildScene } from "@/components/ascii-build-scene";
 import { AsciiCompeteScene } from "@/components/ascii-compete-scene";
@@ -50,7 +51,7 @@ export function FeatureModals() {
             className="group border-border hover:border-foreground/30 overflow-hidden rounded-lg border border-dashed text-left transition-colors"
           >
             <div className="flex items-center justify-between px-4 py-3">
-              <span className="text-muted-foreground font-mono text-[10px] font-medium tracking-wider">
+              <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
                 [ FIG. {feat.fig} ]
               </span>
               <ArrowUpRight className="text-muted-foreground group-hover:text-foreground h-3.5 w-3.5 transition-colors" />
@@ -61,7 +62,9 @@ export function FeatureModals() {
               {feat.fig === 3 && <AsciiConnectScene />}
             </div>
             <div className="space-y-2 p-4 pb-5">
-              <h3 className="text-lg font-bold">{t(`${feat.key}.title`)}</h3>
+              <h3 className="text-lg font-semibold">
+                {t(`${feat.key}.title`)}
+              </h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {t(`${feat.key}.description`)}
               </p>
@@ -121,27 +124,28 @@ function FeatureModal({
         {items.map((item) => (
           <div
             key={item.label}
-            className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-700 dark:bg-zinc-800/50"
+            className="border-border bg-muted/50 rounded-lg border p-3"
           >
-            <span className="font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase dark:text-zinc-400">
+            <span className="text-muted-foreground font-mono text-xs font-semibold tracking-widest uppercase">
               {item.label}
             </span>
-            <p className="mt-1 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+            <p className="text-foreground mt-1 text-sm leading-relaxed">
               {item.text}
             </p>
           </div>
         ))}
       </div>
 
-      <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-700">
-        <Link
-          href={href}
-          onClick={onClose}
-          className="inline-flex items-center gap-2 rounded-md bg-zinc-900 px-5 py-2 font-mono text-[11px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      <div className="border-border mt-6 border-t pt-4">
+        <Button
+          asChild
+          className="font-mono text-xs font-semibold tracking-widest uppercase"
         >
-          {cta}
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+          <Link href={href} onClick={onClose}>
+            {cta}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </Button>
       </div>
     </BuildingModal>
   );

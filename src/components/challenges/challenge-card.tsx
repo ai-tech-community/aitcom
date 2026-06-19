@@ -8,13 +8,6 @@ import { Link } from "@/i18n/navigation";
 import { GitBranch } from "lucide-react";
 import { ChallengeProgress } from "./challenge-progress";
 
-const difficultyColors: Record<string, string> = {
-  beginner: "text-green-600",
-  intermediate: "text-blue-600",
-  advanced: "text-orange-600",
-  expert: "text-red-600",
-};
-
 interface ChallengeCardProps {
   challenge: {
     id: number;
@@ -88,12 +81,7 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
               </Link>
             </h3>
             {challenge.difficulty && (
-              <Badge
-                variant="secondary"
-                className={difficultyColors[challenge.difficulty] ?? ""}
-              >
-                {challenge.difficulty}
-              </Badge>
+              <Badge variant="secondary">{challenge.difficulty}</Badge>
             )}
             {challenge.publishedBy === "sponsor" && (
               <Badge variant="outline">Sponsor</Badge>
@@ -103,7 +91,7 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
             )}
             {challenge.collaborationModel &&
               challenge.collaborationModel !== "solo-ai" && (
-                <Badge variant="secondary" className="text-purple-600">
+                <Badge variant="secondary">
                   {challenge.collaborationModel === "relay" && "Relay"}
                   {challenge.collaborationModel === "swarm" && "Swarm"}
                   {challenge.collaborationModel === "adversarial" &&
@@ -114,12 +102,10 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
                 </Badge>
               )}
             {challenge.generatedBy === "ai" && (
-              <Badge variant="outline" className="text-blue-500">
-                AI
-              </Badge>
+              <Badge variant="outline">AI</Badge>
             )}
           </div>
-          <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+          <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
             {challenge.type} &middot;{" "}
             {daysLeft === null
               ? t("openEnded")
@@ -151,7 +137,7 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
           {(challenge.tags as string[]).map((tag) => (
             <span
               key={tag}
-              className="bg-secondary text-muted-foreground rounded-full px-2 py-0.5 font-mono text-[11px] tracking-wider"
+              className="bg-secondary text-muted-foreground rounded-full px-2 py-0.5 font-mono text-xs tracking-wider"
             >
               {tag}
             </span>

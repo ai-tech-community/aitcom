@@ -170,7 +170,7 @@ function ModuleEditor({ courseId, modules, lessonCount }: ModuleEditorProps) {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 text-xs text-red-500 hover:text-red-600"
+                    className="text-destructive hover:text-destructive h-7 text-xs"
                     disabled={deleteModule.isPending}
                     onClick={() => {
                       setDeleteError((prev) => {

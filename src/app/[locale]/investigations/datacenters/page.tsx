@@ -166,7 +166,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
           <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Anomalies that warrant review
           </h2>
-          <span className="text-muted-foreground text-[10px]">
+          <span className="text-muted-foreground text-xs">
             descriptive flags · not editorial claims
           </span>
         </div>
@@ -178,7 +178,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
           <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Greenwash gap
           </h2>
-          <span className="text-muted-foreground text-[10px]">
+          <span className="text-muted-foreground text-xs">
             commitment vs. actual carbon-free MW
           </span>
         </div>
@@ -203,7 +203,7 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
           <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Operator ↔ supplier relationships
           </h2>
-          <span className="text-muted-foreground text-[10px]">
+          <span className="text-muted-foreground text-xs">
             Bipartite graph · click nodes to focus
           </span>
         </div>
@@ -500,7 +500,7 @@ function ChartCard({
           {title}
         </h2>
         {hint && (
-          <span className="text-muted-foreground/70 text-[10px]">{hint}</span>
+          <span className="text-muted-foreground/70 text-xs">{hint}</span>
         )}
       </div>
       {children}

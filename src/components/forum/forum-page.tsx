@@ -81,10 +81,10 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
       {/* Header — only on the global forum page */}
       {!isCommunity && (
         <div className="mb-8">
-          <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900">
+          <h1 className="text-foreground text-2xl font-semibold tracking-tight">
             {t("title")}
           </h1>
-          <p className="mt-1 font-mono text-xs tracking-wider text-zinc-400">
+          <p className="text-muted-foreground mt-1 font-mono text-xs tracking-wider">
             {t("subtitle")}
           </p>
         </div>
@@ -109,7 +109,7 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
                 ? (`/forum/new?community=${communitySlug}` as never)
                 : "/forum/new"
             }
-            className="bg-primary text-primary-foreground hover:bg-primary/90 flex shrink-0 items-center gap-1.5 rounded-md px-4 py-2 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 flex shrink-0 items-center gap-1.5 rounded-md px-4 py-2 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
           >
             <Plus className="h-3 w-3" />
             {t("newThread")}
@@ -118,7 +118,7 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
           <button
             type="button"
             onClick={() => promptAuth("Sign in to post a thread")}
-            className="text-muted-foreground hover:text-foreground shrink-0 font-mono text-[10px] underline underline-offset-4 transition-colors"
+            className="text-muted-foreground hover:text-foreground shrink-0 font-mono text-xs underline underline-offset-4 transition-colors"
           >
             {t("loginToPost")}
           </button>
@@ -129,13 +129,13 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
       <div className="border-border mb-5 flex items-center justify-between gap-4 border-b pb-3">
         <CategoryTabs active={category} onChange={handleCategoryChange} />
         <div className="flex shrink-0 items-center gap-2">
-          <span className="text-muted-foreground font-mono text-[9px] tracking-widest uppercase">
+          <span className="text-muted-foreground font-mono text-xs tracking-widest uppercase">
             {t("sort")}:
           </span>
           <select
             value={sort}
             onChange={(e) => handleSortChange(e.target.value as Sort)}
-            className="border-border bg-background text-foreground focus:border-ring focus:ring-ring/30 w-full rounded border px-2 py-1 font-mono text-[10px] focus:ring-1 focus:outline-none sm:w-auto"
+            className="border-border bg-background text-foreground focus:border-ring focus:ring-ring/30 w-full rounded border px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none sm:w-auto"
           >
             <option value="newest">{t("sortNewest")}</option>
             <option value="mostReplied">{t("sortMostReplied")}</option>
@@ -179,7 +179,7 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
         <div className="mt-6 text-center">
           <button
             onClick={() => setPage((p) => p + 1)}
-            className="border-border text-muted-foreground hover:border-ring hover:bg-secondary rounded-md border px-6 py-2 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors"
+            className="border-border text-muted-foreground hover:border-ring hover:bg-secondary rounded-md border px-6 py-2 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
           >
             {t("loadMore")}
           </button>

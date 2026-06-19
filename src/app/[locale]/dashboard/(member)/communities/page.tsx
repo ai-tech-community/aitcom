@@ -63,7 +63,7 @@ export default function MyCommunities() {
                 href={`/communities/${m.slug}` as never}
                 className="border-border hover:bg-secondary/50 flex flex-col gap-1.5 border-b px-4 py-3.5 transition-colors sm:flex-row sm:items-center sm:gap-0"
               >
-                <span className="text-[15px] leading-snug font-medium sm:flex-1">
+                <span className="text-base leading-snug font-medium sm:flex-1">
                   {m.name}
                 </span>
 
@@ -73,7 +73,7 @@ export default function MyCommunities() {
                   </span>
                 ) : null}
 
-                <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:ml-3">
+                <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider sm:ml-3">
                   {tRoles(m.role).toUpperCase()}
                 </span>
 
@@ -81,7 +81,7 @@ export default function MyCommunities() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-1.5 w-fit font-mono text-[10px] tracking-wider sm:mt-0 sm:ml-3"
+                    className="mt-1.5 w-fit font-mono text-xs tracking-wider sm:mt-0 sm:ml-3"
                     asChild
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -109,7 +109,7 @@ export default function MyCommunities() {
                 key={m.communityId}
                 className="border-border flex flex-col gap-1.5 border-b px-4 py-3.5 opacity-75 sm:flex-row sm:items-center sm:gap-0"
               >
-                <span className="text-[15px] leading-snug font-medium sm:flex-1">
+                <span className="text-base leading-snug font-medium sm:flex-1">
                   {m.name}
                 </span>
 
@@ -119,7 +119,7 @@ export default function MyCommunities() {
                   </span>
                 ) : null}
 
-                <span className="border-border text-muted-foreground rounded border border-dashed px-2 py-0.5 font-mono text-[10px] tracking-wider sm:ml-3">
+                <span className="border-border text-muted-foreground rounded border border-dashed px-2 py-0.5 font-mono text-xs tracking-wider sm:ml-3">
                   {t("pending").toUpperCase()}
                 </span>
               </div>

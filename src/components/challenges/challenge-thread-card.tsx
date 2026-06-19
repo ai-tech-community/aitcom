@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { RelativeTime } from "@/components/ui/relative-time";
 import { Pin } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -26,29 +27,8 @@ interface ChallengeThreadCardProps {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Constants
 // ---------------------------------------------------------------------------
-
-export function timeAgo(date: Date | string): string {
-  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
-
-const typeBadgeColors: Record<string, string> = {
-  announcement: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  discussion: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  question:
-    "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  "progress-log":
-    "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-  solution: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-};
 
 const typeLabels: Record<string, string> = {
   announcement: "Announcement",
@@ -85,11 +65,12 @@ export function ChallengeThreadCard({
         <div className="min-w-0 flex-1">
           {/* Type badge + pinned */}
           <div className="flex items-center gap-2">
-            <span
-              className={`inline-block rounded-full px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider ${typeBadgeColors[thread.type] ?? typeBadgeColors.discussion}`}
+            <Badge
+              variant="secondary"
+              className="px-2 py-0.5 font-mono text-xs tracking-wider"
             >
               {typeLabels[thread.type] ?? thread.type}
-            </span>
+            </Badge>
             {thread.isPinned && (
               <Pin className="text-muted-foreground h-3 w-3" />
             )}
@@ -107,14 +88,15 @@ export function ChallengeThreadCard({
             </span>
             <Badge
               variant={authorTypeBadgeVariant[thread.authorType] ?? "secondary"}
-              className="px-1.5 py-0 font-mono text-[10px]"
+              className="px-1.5 py-0 font-mono text-xs"
             >
               {thread.authorType}
             </Badge>
             <span className="text-border">|</span>
-            <span className="text-muted-foreground font-mono text-xs">
-              {timeAgo(thread.createdAt)}
-            </span>
+            <RelativeTime
+              date={thread.createdAt}
+              className="text-muted-foreground text-xs"
+            />
           </div>
         </div>
       </div>

@@ -188,8 +188,8 @@ function renderNode(
     case "heading": {
       const Tag = (node.tag ?? "h2") as "h2" | "h3" | "h4" | "h5" | "h6";
       const headingClass: Record<string, string> = {
-        h1: "mt-8 mb-4 text-3xl font-bold tracking-tight",
-        h2: "mt-8 mb-3 text-2xl font-bold tracking-tight",
+        h1: "mt-8 mb-4 text-3xl font-semibold tracking-tight",
+        h2: "mt-8 mb-3 text-2xl font-semibold tracking-tight",
         h3: "mt-6 mb-2 text-xl font-semibold",
         h4: "mt-4 mb-2 text-lg font-semibold",
         h5: "mt-4 mb-2 font-semibold",

@@ -112,19 +112,19 @@ export function MyArticlesList() {
         <>
           {/* Table Header - desktop */}
           <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
-            <span className="text-muted-foreground w-28 font-mono text-[11px] font-medium tracking-wider">
+            <span className="text-muted-foreground w-28 font-mono text-xs font-medium tracking-wider">
               / {t("date").toUpperCase()}
             </span>
-            <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
+            <span className="text-muted-foreground flex-1 font-mono text-xs font-medium tracking-wider">
               / {t("title").toUpperCase()}
             </span>
-            <span className="text-muted-foreground w-24 font-mono text-[11px] font-medium tracking-wider">
+            <span className="text-muted-foreground w-24 font-mono text-xs font-medium tracking-wider">
               / {t("status").toUpperCase()}
             </span>
-            <span className="text-muted-foreground w-36 font-mono text-[11px] font-medium tracking-wider">
+            <span className="text-muted-foreground w-36 font-mono text-xs font-medium tracking-wider">
               / {t("review").toUpperCase()}
             </span>
-            <span className="text-muted-foreground w-24 font-mono text-[11px] font-medium tracking-wider">
+            <span className="text-muted-foreground w-24 font-mono text-xs font-medium tracking-wider">
               / {t("actions").toUpperCase()}
             </span>
           </div>
@@ -136,21 +136,21 @@ export function MyArticlesList() {
               className="border-border flex flex-col gap-2 border-b px-4 py-4 sm:flex-row sm:items-center sm:gap-0 sm:py-3.5"
             >
               {/* Title */}
-              <span className="text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
+              <span className="text-base leading-snug font-medium sm:order-2 sm:flex-1">
                 {article.title}
               </span>
 
               {/* Date */}
               <div className="flex items-center gap-3 sm:order-1 sm:w-28">
                 <div className="bg-foreground h-2 w-2 rounded-full" />
-                <span className="font-mono text-[12px]">
+                <span className="font-mono text-xs">
                   {article.updatedAt ? formatDate(article.updatedAt) : "-"}
                 </span>
               </div>
 
               {/* Status badge */}
               <span
-                className={`w-fit rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:order-3 sm:w-24 ${
+                className={`w-fit rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider sm:order-3 sm:w-24 ${
                   statusColors[article.status] ??
                   "border-zinc-500/40 text-zinc-400"
                 }`}
@@ -162,7 +162,7 @@ export function MyArticlesList() {
               <span className="sm:order-4 sm:w-36">
                 {article.reviewStatus ? (
                   <span
-                    className={`rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider ${
+                    className={`rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider ${
                       reviewColors[article.reviewStatus] ?? ""
                     }`}
                   >
@@ -174,7 +174,7 @@ export function MyArticlesList() {
                     })()}
                   </span>
                 ) : (
-                  <span className="text-muted-foreground font-mono text-[10px]">
+                  <span className="text-muted-foreground font-mono text-xs">
                     -
                   </span>
                 )}
@@ -184,7 +184,7 @@ export function MyArticlesList() {
               <div className="flex gap-2 sm:order-5 sm:w-24">
                 <Link
                   href={`/blog/edit/${article.slug}`}
-                  className="text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-wider transition-colors"
+                  className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
                 >
                   {t("edit").toUpperCase()}
                 </Link>
@@ -193,7 +193,7 @@ export function MyArticlesList() {
                     type="button"
                     onClick={() => handleDelete(article.id)}
                     disabled={deletingId === article.id}
-                    className="font-mono text-[10px] tracking-wider text-red-400 transition-colors hover:text-red-300 disabled:opacity-50"
+                    className="font-mono text-xs tracking-wider text-red-400 transition-colors hover:text-red-300 disabled:opacity-50"
                   >
                     {t("delete").toUpperCase()}
                   </button>

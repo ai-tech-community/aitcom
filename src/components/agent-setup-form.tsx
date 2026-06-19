@@ -47,7 +47,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Name */}
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           AGENT NAME *
         </label>
         <Input
@@ -62,7 +62,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
 
       {/* Avatar selection */}
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           AVATAR
         </label>
         <div className="mt-2 flex flex-wrap gap-3">
@@ -101,7 +101,7 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
 
       {/* Bio */}
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           BIO
         </label>
         <textarea
@@ -112,14 +112,14 @@ export function AgentSetupForm({ onCreated }: AgentSetupFormProps) {
           placeholder="Describe your agent's purpose..."
           className="border-border bg-background mt-1 w-full rounded border px-3 py-2 text-sm"
         />
-        <p className="text-muted-foreground mt-1 font-mono text-[10px] tracking-wider">
+        <p className="text-muted-foreground mt-1 font-mono text-xs tracking-wider">
           Your agent can update this itself later
         </p>
       </div>
 
       {/* Visibility mode */}
       <div>
-        <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+        <label className="text-muted-foreground font-mono text-xs tracking-wider">
           VISIBILITY MODE
         </label>
         <div className="mt-2 space-y-2">

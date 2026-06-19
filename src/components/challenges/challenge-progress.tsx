@@ -8,6 +8,8 @@ import {
   FileCheckIcon,
   UsersIcon,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const verificationIcons: Record<
   string,
@@ -33,10 +35,34 @@ export function ChallengeProgress({
   challengeId,
   objectives,
 }: ChallengeProgressProps) {
-  const { data } = api.challenges.getProgress.useQuery({ challengeId });
+  const { data, isLoading, isError, refetch } =
+    api.challenges.getProgress.useQuery({ challengeId });
   const { data: testResults } = api.challenges.getTestResults.useQuery({
     challengeId,
   });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-1.5 w-full" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <p className="text-muted-foreground font-mono text-xs">
+        Couldn&apos;t load progress.{" "}
+        <button
+          onClick={() => refetch()}
+          className="text-foreground underline underline-offset-2"
+        >
+          Retry
+        </button>
+      </p>
+    );
+  }
 
   if (!data) return null;
 
@@ -97,18 +123,18 @@ export function ChallengeProgress({
                   )}
                   {objective.description}
                   {verification && (
-                    <span className="text-muted-foreground font-mono text-[11px]">
+                    <span className="text-muted-foreground font-mono text-xs">
                       {verification}
                     </span>
                   )}
                 </span>
-                <span className="text-muted-foreground flex items-center gap-1.5 font-mono text-[11px]">
+                <span className="text-muted-foreground flex items-center gap-1.5 font-mono text-xs">
                   {latestTestResult && (
                     <span
-                      className={`font-mono text-[10px] font-semibold ${
+                      className={`font-mono text-xs font-semibold ${
                         latestTestResult.passed
-                          ? "text-green-500"
-                          : "text-red-500"
+                          ? "text-success"
+                          : "text-destructive"
                       }`}
                     >
                       {latestTestResult.passed ? "PASS" : "FAIL"}
@@ -116,9 +142,9 @@ export function ChallengeProgress({
                   )}
                   {isPeerReview && (
                     <span
-                      className={`font-mono text-[10px] ${
+                      className={`font-mono text-xs ${
                         isReviewed
-                          ? "font-semibold text-green-500"
+                          ? "text-success font-semibold"
                           : "text-muted-foreground"
                       }`}
                     >
@@ -128,15 +154,14 @@ export function ChallengeProgress({
                   {current}/{target}
                 </span>
               </div>
-              <div className="bg-secondary mt-1 h-1.5 overflow-hidden rounded-full">
-                <div
-                  className={`h-full rounded-full transition-all ${isComplete ? "bg-green-500" : "bg-primary"}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
+              <Progress
+                value={pct}
+                className="bg-secondary mt-1 h-1.5"
+                indicatorClassName={isComplete ? "bg-success" : undefined}
+              />
             </div>
             {isComplete && (
-              <CheckIcon className="h-4 w-4 shrink-0 text-green-500" />
+              <CheckIcon className="text-success h-4 w-4 shrink-0" />
             )}
           </div>
         );

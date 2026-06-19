@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { ChevronUp, ExternalLink, Edit, Archive } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { SectionLabel } from "@/components/ui/section-label";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { LexicalRenderer } from "@/lib/lexical";
@@ -15,13 +16,6 @@ import { LaunchpadComments } from "@/components/launchpad/launchpad-comments";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const stageStyles: Record<string, string> = {
-  idea: "bg-zinc-100 text-zinc-600 border-zinc-200",
-  prototype: "bg-blue-50 text-blue-600 border-blue-200",
-  mvp: "bg-amber-50 text-amber-600 border-amber-200",
-  launched: "bg-green-50 text-green-600 border-green-200",
-};
 
 function getCoverUrl(
   coverImage: { url?: string | null } | number | null | undefined,
@@ -38,17 +32,17 @@ function getCoverUrl(
 function DetailSkeleton() {
   return (
     <div className="mx-auto max-w-3xl animate-pulse space-y-6 px-4 py-10 sm:px-6">
-      <div className="h-4 w-24 rounded bg-zinc-200" />
-      <div className="h-8 w-2/3 rounded bg-zinc-200" />
+      <div className="bg-muted h-4 w-24 rounded" />
+      <div className="bg-muted h-8 w-2/3 rounded" />
       <div className="flex gap-3">
-        <div className="h-6 w-20 rounded bg-zinc-200" />
-        <div className="h-6 w-32 rounded bg-zinc-200" />
+        <div className="bg-muted h-6 w-20 rounded" />
+        <div className="bg-muted h-6 w-32 rounded" />
       </div>
-      <div className="h-48 w-full rounded bg-zinc-100" />
+      <div className="bg-muted h-48 w-full rounded" />
       <div className="space-y-2">
-        <div className="h-4 rounded bg-zinc-100" />
-        <div className="h-4 w-5/6 rounded bg-zinc-100" />
-        <div className="h-4 w-4/6 rounded bg-zinc-100" />
+        <div className="bg-muted h-4 rounded" />
+        <div className="bg-muted h-4 w-5/6 rounded" />
+        <div className="bg-muted h-4 w-4/6 rounded" />
       </div>
     </div>
   );
@@ -99,10 +93,12 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
   if (isError || !project) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
-        <p className="font-mono text-sm text-zinc-400">{tDetail("notFound")}</p>
+        <p className="text-muted-foreground font-mono text-sm">
+          {tDetail("notFound")}
+        </p>
         <Link
           href="/launchpad"
-          className="mt-4 inline-block font-mono text-xs tracking-wider text-zinc-500 underline underline-offset-4 hover:text-zinc-700"
+          className="text-muted-foreground hover:text-foreground mt-4 inline-block font-mono text-xs tracking-wider underline underline-offset-4"
         >
           {tDetail("backToLaunchpad")}
         </Link>
@@ -129,16 +125,16 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
       {/* Back link */}
       <Link
         href="/launchpad"
-        className="font-mono text-xs tracking-wider text-zinc-400 transition-colors hover:text-zinc-600"
+        className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
       >
         &larr; {tDetail("backToLaunchpad")}
       </Link>
 
       {/* Archived banner */}
       {project.status === "archived" && (
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
-          <Archive className="h-4 w-4 shrink-0 text-zinc-400" />
-          <p className="font-mono text-xs text-zinc-500">
+        <div className="border-border bg-muted mt-4 flex items-center gap-2 rounded-lg border px-4 py-3">
+          <Archive className="text-muted-foreground h-4 w-4 shrink-0" />
+          <p className="text-muted-foreground font-mono text-xs">
             {tDetail("archived")}
           </p>
         </div>
@@ -150,16 +146,17 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
       <div className="mt-6 space-y-3">
         {/* Stage badge + edit link */}
         <div className="flex items-center justify-between gap-3">
+          {/* Stage is a categorical attribute, not a status → neutral Badge. */}
           <Badge
-            className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${stageStyles[project.stage] ?? stageStyles.idea}`}
-            variant="outline"
+            className="rounded px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase"
+            variant="secondary"
           >
             {t(`stage.${project.stage}`)}
           </Badge>
           {isAuthor && (
             <Link
               href={`/launchpad/${slug}/edit`}
-              className="flex items-center gap-1 rounded border border-zinc-200 px-2 py-1 font-mono text-[9px] font-semibold tracking-wider text-zinc-500 uppercase transition-colors hover:bg-zinc-100"
+              className="border-border text-muted-foreground hover:bg-accent flex items-center gap-1 rounded border px-2 py-1 font-mono text-xs font-semibold tracking-wider uppercase transition-colors"
             >
               <Edit className="h-3 w-3" />
               {tDetail("editProject")}
@@ -168,7 +165,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl leading-snug font-bold tracking-tight text-zinc-900 sm:text-3xl">
+        <h1 className="text-foreground text-2xl leading-snug font-semibold tracking-tight sm:text-3xl">
           {project.title}
         </h1>
 
@@ -177,11 +174,11 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
           {/* Author */}
           {authorDisplayName && (
             <div className="flex items-center gap-1.5">
-              <span className="font-mono text-[10px] text-zinc-500">
+              <span className="text-muted-foreground font-mono text-xs">
                 {authorDisplayName}
               </span>
               {authorLevel !== null && (
-                <span className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-zinc-500">
+                <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-xs font-semibold">
                   Lv {authorLevel}
                 </span>
               )}
@@ -195,10 +192,10 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
               voteMutation.mutate({ projectId: project.id });
             }}
             disabled={voteMutation.isPending}
-            className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-[11px] font-bold transition-colors disabled:opacity-60 ${
+            className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-xs font-semibold transition-colors disabled:opacity-60 ${
               project.hasVoted
                 ? "bg-orange-50 text-orange-600"
-                : "border border-zinc-200 text-zinc-400 hover:bg-zinc-50 hover:text-zinc-700"
+                : "border-border text-muted-foreground hover:bg-accent hover:text-foreground border"
             }`}
           >
             <ChevronUp className="h-3.5 w-3.5" />
@@ -215,7 +212,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 font-mono text-[10px] text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-white"
+                className="border-border bg-muted text-muted-foreground hover:border-border hover:bg-card flex items-center gap-1 rounded-full border px-3 py-1 font-mono text-xs transition-colors"
               >
                 <ExternalLink className="h-2.5 w-2.5" />
                 {link.label}
@@ -229,7 +226,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
       {/* Cover image                                                         */}
       {/* ------------------------------------------------------------------ */}
       {coverUrl && (
-        <div className="relative mt-8 h-56 w-full overflow-hidden rounded-lg bg-zinc-100 sm:h-72">
+        <div className="bg-muted relative mt-8 h-56 w-full overflow-hidden rounded-lg sm:h-72">
           <Image
             src={coverUrl}
             alt={project.title}
@@ -246,9 +243,9 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
       {/* ------------------------------------------------------------------ */}
       {project.pitch && (
         <div className="mt-8">
-          <h2 className="mb-4 font-mono text-[10px] font-semibold tracking-widest text-zinc-400 uppercase">
+          <SectionLabel bordered={false} className="mb-4">
             {tDetail("pitch")}
-          </h2>
+          </SectionLabel>
           <LexicalRenderer content={project.pitch} />
         </div>
       )}

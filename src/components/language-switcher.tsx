@@ -20,7 +20,7 @@ export function LanguageSwitcher() {
   return (
     <button
       onClick={switchLocale}
-      className="border-border text-muted-foreground hover:border-foreground hover:text-foreground flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-[11px] transition-colors"
+      className="border-border text-muted-foreground hover:border-foreground hover:text-foreground flex items-center gap-1.5 rounded border px-2 py-1 font-mono text-xs transition-colors"
     >
       <Globe className="h-3.5 w-3.5" />
       {otherLocale.toUpperCase()}

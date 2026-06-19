@@ -23,7 +23,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="flex min-h-[80vh] items-center justify-center px-4">
         <div className="w-full max-w-sm space-y-6 text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight">
             {t("resetPasswordTitle")}
           </h1>
           <p className="text-muted-foreground text-sm">
@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="space-y-2 text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight">
             {t("resetPasswordTitle")}
           </h1>
         </div>

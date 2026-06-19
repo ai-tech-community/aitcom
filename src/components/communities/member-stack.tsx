@@ -59,7 +59,7 @@ export function MemberStackView({
                 {face.image ? (
                   <AvatarImage src={face.image} alt={face.displayName ?? ""} />
                 ) : null}
-                <AvatarFallback className="text-[10px]">
+                <AvatarFallback className="text-xs">
                   {initial(face.displayName)}
                 </AvatarFallback>
               </Avatar>
@@ -72,7 +72,7 @@ export function MemberStackView({
         {overflow > 0 ? (
           <Tooltip>
             <TooltipTrigger asChild>
-              <AvatarGroupCount className="cursor-default text-[10px]">
+              <AvatarGroupCount className="cursor-default text-xs">
                 +{overflow}
               </AvatarGroupCount>
             </TooltipTrigger>

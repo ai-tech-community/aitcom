@@ -91,14 +91,14 @@ export function CommunityBoard() {
         />
 
         {/* Title overlay - compact on mobile so it doesn't cover hotspots */}
-        <div className="absolute top-3 left-3 z-20 rounded-lg bg-white/85 px-3 py-2 shadow-lg backdrop-blur-sm sm:top-8 sm:left-8 sm:px-5 sm:py-4">
-          <span className="hidden font-mono text-[10px] font-medium tracking-wider text-zinc-400 sm:block">
+        <div className="bg-card/85 absolute top-3 left-3 z-20 rounded-lg px-3 py-2 shadow-lg backdrop-blur-sm sm:top-8 sm:left-8 sm:px-5 sm:py-4">
+          <span className="text-muted-foreground hidden font-mono text-xs font-medium tracking-wider sm:block">
             / {t("title").toUpperCase()}
           </span>
-          <h1 className="text-sm font-extrabold tracking-tight text-zinc-900 sm:text-2xl">
+          <h1 className="text-foreground text-sm font-semibold tracking-tight sm:text-2xl">
             {t("title")}
           </h1>
-          <p className="mt-0.5 hidden max-w-xs text-xs text-zinc-500 sm:block">
+          <p className="text-muted-foreground mt-0.5 hidden max-w-xs text-xs sm:block">
             {t("subtitle")}
           </p>
         </div>
@@ -107,27 +107,27 @@ export function CommunityBoard() {
           <button
             type="button"
             onClick={() => openModal("rules")}
-            className="rounded-full bg-white/90 px-3 py-1.5 font-mono text-[10px] font-semibold tracking-wider text-zinc-900 shadow backdrop-blur-sm transition-colors hover:bg-white"
+            className="bg-card/90 text-foreground hover:bg-card rounded-full px-3 py-1.5 font-mono text-xs font-semibold tracking-wider shadow backdrop-blur-sm transition-colors"
           >
             {t("rules.building")}
           </button>
           <button
             type="button"
             onClick={() => openModal("ideas")}
-            className="rounded-full bg-white/90 px-3 py-1.5 font-mono text-[10px] font-semibold tracking-wider text-zinc-900 shadow backdrop-blur-sm transition-colors hover:bg-white"
+            className="bg-card/90 text-foreground hover:bg-card rounded-full px-3 py-1.5 font-mono text-xs font-semibold tracking-wider shadow backdrop-blur-sm transition-colors"
           >
             {t("ideas.building")}
           </button>
           <Link
             href="/forum"
-            className="rounded-full bg-white/90 px-3 py-1.5 font-mono text-[10px] font-semibold tracking-wider text-zinc-900 shadow backdrop-blur-sm transition-colors hover:bg-white"
+            className="bg-card/90 text-foreground hover:bg-card rounded-full px-3 py-1.5 font-mono text-xs font-semibold tracking-wider shadow backdrop-blur-sm transition-colors"
           >
             {t("threads.building")}
           </Link>
           <button
             type="button"
             onClick={() => openModal("contribute")}
-            className="rounded-full bg-white/90 px-3 py-1.5 font-mono text-[10px] font-semibold tracking-wider text-zinc-900 shadow backdrop-blur-sm transition-colors hover:bg-white"
+            className="bg-card/90 text-foreground hover:bg-card rounded-full px-3 py-1.5 font-mono text-xs font-semibold tracking-wider shadow backdrop-blur-sm transition-colors"
           >
             {t("contribute.building")}
           </button>
@@ -160,7 +160,7 @@ export function CommunityBoard() {
               {/* Dot */}
               <span className="relative block h-4 w-4 rounded-full border-2 border-white bg-orange-500 shadow-lg transition-colors group-hover:bg-orange-600 sm:h-5 sm:w-5 sm:border-[2.5px]" />
               {/* Label - always visible on mobile, hover-only on desktop */}
-              <span className="pointer-events-none absolute top-full left-1/2 mt-1 -translate-x-1/2 rounded bg-white/90 px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap text-zinc-900 shadow backdrop-blur-sm sm:mt-2 sm:rounded-md sm:px-3 sm:py-1.5 sm:text-xs sm:opacity-0 sm:shadow-lg sm:transition-opacity sm:group-hover:opacity-100">
+              <span className="bg-card/90 text-foreground pointer-events-none absolute top-full left-1/2 mt-1 -translate-x-1/2 rounded px-2 py-0.5 text-xs font-semibold whitespace-nowrap shadow backdrop-blur-sm sm:mt-2 sm:rounded-md sm:px-3 sm:py-1.5 sm:text-xs sm:opacity-0 sm:shadow-lg sm:transition-opacity sm:group-hover:opacity-100">
                 {spot.label}
               </span>
             </m.button>

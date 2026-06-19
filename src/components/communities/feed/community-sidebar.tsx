@@ -4,6 +4,10 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { formatEventTimeRange } from "@/lib/event-time";
 import { Badge } from "@/components/ui/badge";
+import { RelativeTime } from "@/components/ui/relative-time";
+import { SectionLabel } from "@/components/ui/section-label";
+import { Skeleton as UiSkeleton } from "@/components/ui/skeleton";
+import { EmptyState as UiEmptyState } from "@/components/ui/empty-state";
 import { Link } from "@/i18n/navigation";
 import { MessageSquare, Calendar, ChevronUp } from "lucide-react";
 
@@ -19,17 +23,6 @@ function formatDate(dateStr: string): string {
   return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const diff = now - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d`;
-}
-
 interface CommunitySidebarProps {
   slug: string;
   description?: string | null;
@@ -38,18 +31,27 @@ interface CommunitySidebarProps {
 export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
   const t = useTranslations("communities.profile");
 
-  const { data: threadsData, isLoading: threadsLoading } =
-    api.forum.getThreads.useQuery({
-      communitySlug: slug,
-      sort: "lastActive",
-      limit: 3,
-    });
+  const {
+    data: threadsData,
+    isLoading: threadsLoading,
+    isError: threadsError,
+  } = api.forum.getThreads.useQuery({
+    communitySlug: slug,
+    sort: "lastActive",
+    limit: 3,
+  });
 
-  const { data: eventsData, isLoading: eventsLoading } =
-    api.events.getCommunityEvents.useQuery({ communitySlug: slug });
+  const {
+    data: eventsData,
+    isLoading: eventsLoading,
+    isError: eventsError,
+  } = api.events.getCommunityEvents.useQuery({ communitySlug: slug });
 
-  const { data: ideasData, isLoading: ideasLoading } =
-    api.forum.getIdeas.useQuery({ communitySlug: slug, sort: "votes" });
+  const {
+    data: ideasData,
+    isLoading: ideasLoading,
+    isError: ideasError,
+  } = api.forum.getIdeas.useQuery({ communitySlug: slug, sort: "votes" });
 
   const { data: links } = api.links.list.useQuery({ communitySlug: slug });
   const { data: community } = api.communities.getBySlug.useQuery({ slug });
@@ -63,7 +65,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
       {/* Stats */}
       {community ? (
         <section>
-          <SectionHeader title="/ STATS" />
+          <SectionHeader title="Stats" />
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
             <Stat value={community.memberCount} label={t("members")} />
             {"adminCount" in community ? (
@@ -83,7 +85,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
       {/* Links */}
       {links && links.length > 0 ? (
         <section>
-          <SectionHeader title={`/ ${t("links").toUpperCase()}`} />
+          <SectionHeader title={t("links")} />
           <div className="mt-3 space-y-1">
             {links.map((link) => (
               <a
@@ -110,7 +112,7 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
       {/* About */}
       {description ? (
         <section>
-          <SectionHeader title="/ ABOUT" />
+          <SectionHeader title="About" />
           <p className="text-muted-foreground mt-4 text-sm leading-relaxed whitespace-pre-wrap">
             {description}
           </p>
@@ -118,138 +120,151 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
       ) : null}
 
       {/* Upcoming Events */}
-      <section>
-        <SectionHeader
-          title={`/ ${t("upcomingEvents").toUpperCase()}`}
-          linkHref={`/communities/${slug}/events`}
-          linkLabel={t("viewAll")}
-          show={events.length > 0}
-        />
-        {eventsLoading ? (
-          <Skeleton count={2} />
-        ) : events.length === 0 ? (
-          <EmptyState>{t("noEventsYet")}</EmptyState>
-        ) : (
-          <div className="mt-3 space-y-1">
-            {events.map((event) => (
-              <Link
-                key={event.id}
-                href={`/events/${event.slug}` as never}
-                className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
-              >
-                <Calendar className="text-muted-foreground size-4 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{event.title}</p>
-                  <p className="text-muted-foreground text-[11px]">
-                    {formatDate(event.date)}
-                    {event.startTime &&
-                      ` · ${formatEventTimeRange({
-                        date: event.date,
-                        startTime: event.startTime,
-                        endTime: event.endTime,
-                        timezone: event.timezone,
-                      })}`}
-                    {event.location && ` · ${event.location}`}
-                  </p>
-                </div>
-                <Badge
-                  variant="outline"
-                  className="shrink-0 text-[9px] uppercase"
+      {eventsError ? null : (
+        <section>
+          <SectionHeader
+            title={t("upcomingEvents")}
+            linkHref={`/communities/${slug}/events`}
+            linkLabel={t("viewAll")}
+            show={events.length > 0}
+          />
+          {eventsLoading ? (
+            <Skeleton count={2} />
+          ) : events.length === 0 ? (
+            <EmptyState>{t("noEventsYet")}</EmptyState>
+          ) : (
+            <div className="mt-3 space-y-1">
+              {events.map((event) => (
+                <Link
+                  key={event.id}
+                  href={`/events/${event.slug}` as never}
+                  className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
                 >
-                  {typeLabels[event.type] ?? event.type}
-                </Badge>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
+                  <Calendar className="text-muted-foreground size-4 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {event.title}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      {formatDate(event.date)}
+                      {event.startTime &&
+                        ` · ${formatEventTimeRange({
+                          date: event.date,
+                          startTime: event.startTime,
+                          endTime: event.endTime,
+                          timezone: event.timezone,
+                        })}`}
+                      {event.location && ` · ${event.location}`}
+                    </p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="shrink-0 text-xs uppercase"
+                  >
+                    {typeLabels[event.type] ?? event.type}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Recent Threads */}
-      <section>
-        <SectionHeader
-          title={`/ ${t("recentThreads").toUpperCase()}`}
-          linkHref={`/communities/${slug}/forum`}
-          linkLabel={t("viewAll")}
-          show={threads.length > 0}
-        />
-        {threadsLoading ? (
-          <Skeleton count={3} />
-        ) : threads.length === 0 ? (
-          <EmptyState>{t("noThreadsYet")}</EmptyState>
-        ) : (
-          <div className="mt-3 space-y-1">
-            {threads.map((thread) => (
-              <Link
-                key={thread.id}
-                href={`/communities/${slug}/forum/${thread.slug}` as never}
-                className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
-              >
-                <MessageSquare className="text-muted-foreground size-4 shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{thread.title}</p>
-                  <p className="text-muted-foreground text-[11px]">
-                    {thread.authorName} ·{" "}
-                    {timeAgo(thread.lastActivityAt ?? thread.createdAt)}
-                    {(thread.replyCount ?? 0) > 0 &&
-                      ` · ${t("replies", { count: thread.replyCount ?? 0 })}`}
-                  </p>
-                </div>
-                <Badge
-                  variant="secondary"
-                  className="shrink-0 text-[9px] uppercase"
+      {threadsError ? null : (
+        <section>
+          <SectionHeader
+            title={t("recentThreads")}
+            linkHref={`/communities/${slug}/forum`}
+            linkLabel={t("viewAll")}
+            show={threads.length > 0}
+          />
+          {threadsLoading ? (
+            <Skeleton count={3} />
+          ) : threads.length === 0 ? (
+            <EmptyState>{t("noThreadsYet")}</EmptyState>
+          ) : (
+            <div className="mt-3 space-y-1">
+              {threads.map((thread) => (
+                <Link
+                  key={thread.id}
+                  href={`/communities/${slug}/forum/${thread.slug}` as never}
+                  className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
                 >
-                  {thread.category}
-                </Badge>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
+                  <MessageSquare className="text-muted-foreground size-4 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {thread.title}
+                    </p>
+                    <p className="text-muted-foreground text-xs">
+                      {thread.authorName} ·{" "}
+                      <RelativeTime
+                        date={thread.lastActivityAt ?? thread.createdAt}
+                        className="text-xs"
+                      />
+                      {(thread.replyCount ?? 0) > 0 &&
+                        ` · ${t("replies", { count: thread.replyCount ?? 0 })}`}
+                    </p>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className="shrink-0 text-xs uppercase"
+                  >
+                    {thread.category}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Top Ideas */}
-      <section>
-        <SectionHeader
-          title={`/ ${t("topIdeas").toUpperCase()}`}
-          linkHref={`/communities/${slug}/ideas`}
-          linkLabel={t("viewAll")}
-          show={ideas.length > 0}
-        />
-        {ideasLoading ? (
-          <Skeleton count={3} />
-        ) : ideas.length === 0 ? (
-          <EmptyState>{t("noIdeasYet")}</EmptyState>
-        ) : (
-          <div className="mt-3 space-y-1">
-            {ideas.map((idea) => (
-              <div
-                key={idea.id}
-                className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
-              >
-                <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
-                  <ChevronUp className="text-muted-foreground size-3" />
-                  <span className="font-mono text-[10px] font-bold">
-                    {idea.voteCount ?? 0}
-                  </span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{idea.title}</p>
-                  <p className="text-muted-foreground text-[11px]">
-                    {idea.authorName}
-                  </p>
-                </div>
-                <Badge
-                  variant={
-                    idea.status === "implemented" ? "default" : "secondary"
-                  }
-                  className="shrink-0 text-[9px] uppercase"
+      {ideasError ? null : (
+        <section>
+          <SectionHeader
+            title={t("topIdeas")}
+            linkHref={`/communities/${slug}/ideas`}
+            linkLabel={t("viewAll")}
+            show={ideas.length > 0}
+          />
+          {ideasLoading ? (
+            <Skeleton count={3} />
+          ) : ideas.length === 0 ? (
+            <EmptyState>{t("noIdeasYet")}</EmptyState>
+          ) : (
+            <div className="mt-3 space-y-1">
+              {ideas.map((idea) => (
+                <div
+                  key={idea.id}
+                  className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
                 >
-                  {idea.status}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+                  <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
+                    <ChevronUp className="text-muted-foreground size-3" />
+                    <span className="font-mono text-xs font-semibold">
+                      {idea.voteCount ?? 0}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{idea.title}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {idea.authorName}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={
+                      idea.status === "implemented" ? "default" : "secondary"
+                    }
+                    className="shrink-0 text-xs uppercase"
+                  >
+                    {idea.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
@@ -267,13 +282,11 @@ function SectionHeader({
 }) {
   return (
     <div className="border-border flex items-center justify-between border-b pb-2">
-      <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-        {title}
-      </h2>
+      <SectionLabel bordered={false}>{title}</SectionLabel>
       {show && linkHref && linkLabel ? (
         <Link
           href={linkHref as never}
-          className="text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-wider transition-colors"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
         >
           {linkLabel}
         </Link>
@@ -285,8 +298,8 @@ function SectionHeader({
 function Stat({ value, label }: { value: number; label: string }) {
   return (
     <div className="border-border rounded-lg border px-2 py-3">
-      <div className="text-lg font-bold">{value}</div>
-      <div className="text-muted-foreground text-[10px] tracking-wider uppercase">
+      <div className="text-lg font-semibold">{value}</div>
+      <div className="text-muted-foreground text-xs tracking-wider uppercase">
         {label}
       </div>
     </div>
@@ -297,16 +310,12 @@ function Skeleton({ count }: { count: number }) {
   return (
     <div className="mt-3 space-y-2">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="bg-muted h-14 animate-pulse rounded-lg" />
+        <UiSkeleton key={i} className="h-14 rounded-lg" />
       ))}
     </div>
   );
 }
 
 function EmptyState({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-muted-foreground mt-6 text-center font-mono text-xs tracking-wider">
-      {children}
-    </p>
-  );
+  return <UiEmptyState title={children} className="px-0 py-6" />;
 }

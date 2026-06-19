@@ -24,7 +24,7 @@ export function Footer() {
           <div className="flex flex-wrap gap-16">
             {/* Navigate */}
             <div className="space-y-3">
-              <h4 className="text-muted-foreground font-mono text-[11px] font-semibold tracking-wider">
+              <h4 className="text-muted-foreground font-mono text-xs font-semibold tracking-wider">
                 / {t("navigation").toUpperCase()}
               </h4>
               <nav className="flex flex-col gap-2">
@@ -57,7 +57,7 @@ export function Footer() {
 
             {/* Connect */}
             <div className="space-y-3">
-              <h4 className="text-muted-foreground font-mono text-[11px] font-semibold tracking-wider">
+              <h4 className="text-muted-foreground font-mono text-xs font-semibold tracking-wider">
                 / {t("connect").toUpperCase()}
               </h4>
               <nav className="flex flex-col gap-2">
@@ -98,7 +98,7 @@ export function Footer() {
 
             {/* Legal */}
             <div className="space-y-3">
-              <h4 className="text-muted-foreground font-mono text-[11px] font-semibold tracking-wider">
+              <h4 className="text-muted-foreground font-mono text-xs font-semibold tracking-wider">
                 / {t("legal").toUpperCase()}
               </h4>
               <nav className="flex flex-col gap-2">
@@ -127,10 +127,10 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 sm:flex-row">
-          <p className="text-muted-foreground font-mono text-[11px] tracking-wider">
+          <p className="text-muted-foreground font-mono text-xs tracking-wider">
             {t("copyright", { year: new Date().getFullYear() })}
           </p>
-          <div className="text-muted-foreground flex font-mono text-[11px] tracking-wider">
+          <div className="text-muted-foreground flex font-mono text-xs tracking-wider">
             <p>BUILT WITH &#9829; BY &#29;</p>
             <p> </p>
             <a

@@ -68,10 +68,10 @@ export function LaunchpadListing() {
     <div className="mx-auto max-w-6xl px-6 py-12 sm:px-12">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900">
+        <h1 className="text-foreground text-2xl font-semibold tracking-tight">
           {t("title")}
         </h1>
-        <p className="mt-1 font-mono text-xs tracking-wider text-zinc-400">
+        <p className="text-muted-foreground mt-1 font-mono text-xs tracking-wider">
           {t("subtitle")}
         </p>
       </div>
@@ -79,19 +79,19 @@ export function LaunchpadListing() {
       {/* Search + Submit */}
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1">
-          <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder={t("form.titlePlaceholder")}
-            className="w-full rounded-md border border-zinc-200 bg-white py-2 pr-3 pl-9 font-mono text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-300 focus:outline-none"
+            className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring w-full rounded-md border py-2 pr-3 pl-9 font-mono text-xs focus:ring-1 focus:outline-none"
           />
         </div>
         {session?.user && (
           <Link
             href="/launchpad/new"
-            className="flex shrink-0 items-center gap-1.5 rounded-md bg-zinc-900 px-4 py-2 font-mono text-[10px] font-semibold tracking-widest text-white uppercase transition-colors hover:bg-zinc-800"
+            className="bg-foreground text-background hover:bg-foreground/90 flex shrink-0 items-center gap-1.5 rounded-md px-4 py-2 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
           >
             <Plus className="h-3 w-3" />
             {t("submitProject")}
@@ -100,15 +100,15 @@ export function LaunchpadListing() {
       </div>
 
       {/* Sort + Stage filters */}
-      <div className="mb-5 flex flex-wrap items-center gap-3 border-b border-zinc-200 pb-3">
+      <div className="border-border mb-5 flex flex-wrap items-center gap-3 border-b pb-3">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] tracking-widest text-zinc-400 uppercase">
+          <span className="text-muted-foreground font-mono text-xs tracking-widest uppercase">
             Sort:
           </span>
           <select
             value={sort}
             onChange={(e) => handleSortChange(e.target.value as Sort)}
-            className="rounded border border-zinc-200 bg-white px-2 py-1 font-mono text-[10px] text-zinc-600 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-300 focus:outline-none"
+            className="border-border bg-background text-muted-foreground focus:border-ring focus:ring-ring rounded border px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none"
           >
             <option value="newest">{t("sort.newest")}</option>
             <option value="mostVoted">{t("sort.mostVoted")}</option>
@@ -120,7 +120,7 @@ export function LaunchpadListing() {
           <select
             value={stage}
             onChange={(e) => handleStageChange(e.target.value as Stage)}
-            className="rounded border border-zinc-200 bg-white px-2 py-1 font-mono text-[10px] text-zinc-600 focus:border-zinc-300 focus:ring-1 focus:ring-zinc-300 focus:outline-none"
+            className="border-border bg-background text-muted-foreground focus:border-ring focus:ring-ring rounded border px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none"
           >
             <option value="all">{t("filter.allStages")}</option>
             <option value="idea">{t("stage.idea")}</option>
@@ -135,14 +135,11 @@ export function LaunchpadListing() {
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-48 animate-pulse rounded-lg bg-zinc-100"
-            />
+            <div key={i} className="bg-muted h-48 animate-pulse rounded-lg" />
           ))}
         </div>
       ) : isEmpty ? (
-        <p className="py-12 text-center font-mono text-xs text-zinc-400">
+        <p className="text-muted-foreground py-12 text-center font-mono text-xs">
           {t("noProjects")}
         </p>
       ) : (
@@ -159,7 +156,7 @@ export function LaunchpadListing() {
           {page > 1 && (
             <button
               onClick={() => setPage((p) => p - 1)}
-              className="rounded-md border border-zinc-200 px-6 py-2 font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+              className="border-border text-muted-foreground hover:border-border hover:bg-accent rounded-md border px-6 py-2 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
             >
               Prev
             </button>
@@ -167,7 +164,7 @@ export function LaunchpadListing() {
           {hasNextPage && (
             <button
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-md border border-zinc-200 px-6 py-2 font-mono text-[10px] font-semibold tracking-widest text-zinc-500 uppercase transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+              className="border-border text-muted-foreground hover:border-border hover:bg-accent rounded-md border px-6 py-2 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
             >
               Next
             </button>

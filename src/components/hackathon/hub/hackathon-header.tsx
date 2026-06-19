@@ -59,7 +59,7 @@ export async function HackathonHeader({
         <Badge variant={phase === "draft" ? "outline" : "secondary"}>
           {statusLabel}
         </Badge>
-        <h1 className="text-2xl leading-tight font-extrabold tracking-tight text-white sm:text-4xl">
+        <h1 className="text-2xl leading-tight font-semibold tracking-tight text-white sm:text-4xl">
           {event.title}
         </h1>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-white/80">
@@ -70,7 +70,7 @@ export async function HackathonHeader({
             timezone={event.timezone ?? null}
           />
           {event.location && (
-            <div className="font-mono text-[11px] tracking-wider sm:text-xs">
+            <div className="font-mono text-xs tracking-wider sm:text-xs">
               {event.location}
             </div>
           )}

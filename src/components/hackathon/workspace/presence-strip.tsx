@@ -5,19 +5,13 @@ import { useTranslations } from "next-intl";
 
 import { api } from "@/trpc/react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
-}
 
 export function PresenceStrip({ teamId }: { teamId: string }) {
   const t = useTranslations("hackathon");
@@ -56,7 +50,7 @@ export function PresenceStrip({ teamId }: { teamId: string }) {
               <Tooltip key={row.userId}>
                 <TooltipTrigger asChild>
                   <Avatar size="sm" className="ring-background ring-2">
-                    <AvatarFallback>{initials(name)}</AvatarFallback>
+                    <AvatarFallback>{getInitials(name)}</AvatarFallback>
                   </Avatar>
                 </TooltipTrigger>
                 <TooltipContent>{name}</TooltipContent>

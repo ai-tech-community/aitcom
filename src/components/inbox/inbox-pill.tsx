@@ -34,7 +34,7 @@ export function InboxPill() {
       </span>
       {unreadCount > 0 && (
         <span
-          className="bg-primary text-primary-foreground flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold"
+          className="bg-primary text-primary-foreground flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-xs font-semibold"
           aria-label={`${unreadCount} ${t("unreadBadge")}`}
         >
           {unreadCount > 99 ? "99+" : unreadCount}

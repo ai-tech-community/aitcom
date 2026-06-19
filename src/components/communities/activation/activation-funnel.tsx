@@ -15,8 +15,8 @@ function FunnelBar({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-zinc-700">{label}</span>
-        <span className="font-mono text-zinc-900">
+        <span className="text-foreground font-medium">{label}</span>
+        <span className="text-foreground font-mono">
           {count}{" "}
           <span className="text-muted-foreground text-xs">({pct}%)</span>
         </span>

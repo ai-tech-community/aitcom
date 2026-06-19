@@ -28,41 +28,9 @@ export function CopyButton({ text }: { text: string }) {
     <button
       type="button"
       onClick={handleCopy}
-      className="border-border bg-background text-muted-foreground hover:text-foreground rounded border px-2 py-1 font-mono text-[10px] tracking-wider transition-colors"
+      className="border-border bg-background text-muted-foreground hover:text-foreground rounded border px-2 py-1 font-mono text-xs tracking-wider transition-colors"
     >
       {copied ? "COPIED" : "COPY"}
     </button>
-  );
-}
-
-export function relativeTime(date: Date): string {
-  const now = Date.now();
-  const diff = date.getTime() - now;
-  const absDiff = Math.abs(diff);
-  const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor(absDiff / (1000 * 60 * 60));
-
-  if (diff > 0) {
-    if (days > 0) return `in ${days} day${days === 1 ? "" : "s"}`;
-    if (hours > 0) return `in ${hours} hour${hours === 1 ? "" : "s"}`;
-    return "soon";
-  }
-  if (days > 0) return `${days} day${days === 1 ? "" : "s"} ago`;
-  if (hours > 0) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  return "just now";
-}
-
-export function InitialsAvatar({ name }: { name: string }) {
-  const initials = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase();
-
-  return (
-    <div className="bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-full font-mono text-[10px] font-medium tracking-wider">
-      {initials}
-    </div>
   );
 }

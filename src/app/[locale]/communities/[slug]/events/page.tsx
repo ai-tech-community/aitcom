@@ -145,7 +145,7 @@ export default function CommunityEventsPage({
 
     const innerContent = (
       <>
-        <span className="flex items-center gap-1.5 text-[15px] leading-snug font-medium sm:order-2 sm:flex-1">
+        <span className="flex items-center gap-1.5 text-base leading-snug font-medium sm:order-2 sm:flex-1">
           {event.title}
           {isLuma && (
             <ExternalLink className="text-muted-foreground inline size-3" />
@@ -153,7 +153,7 @@ export default function CommunityEventsPage({
         </span>
         <div className="flex items-center gap-3 sm:order-1 sm:w-32">
           <div className="bg-foreground h-2 w-2 rounded-full" />
-          <span className="font-mono text-[12px] sm:text-[13px]">
+          <span className="font-mono text-xs sm:text-sm">
             {formatDate(event.date)}
             {event.startTime
               ? ` · ${formatEventTimeRange({
@@ -164,20 +164,20 @@ export default function CommunityEventsPage({
                 })}`
               : ""}
           </span>
-          <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-[10px] font-medium tracking-wider sm:hidden">
+          <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider sm:hidden">
             {typeLabels[event.type] ?? event.type}
           </span>
         </div>
-        <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-[11px] font-medium tracking-wider sm:order-3 sm:inline">
+        <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-xs font-medium tracking-wider sm:order-3 sm:inline">
           {typeLabels[event.type] ?? event.type}
         </span>
         {opts.showStatus && event.status === "rejected" && (
-          <span className="text-destructive flex items-center gap-1 font-mono text-[10px] font-medium sm:order-4 sm:ml-2">
+          <span className="text-destructive flex items-center gap-1 font-mono text-xs font-medium sm:order-4 sm:ml-2">
             <XOctagon className="size-3" /> REJECTED — edit and resubmit
           </span>
         )}
         {opts.showStatus && event.status === "draft" && (
-          <span className="text-muted-foreground flex items-center gap-1 font-mono text-[10px] font-medium sm:order-4 sm:ml-2">
+          <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs font-medium sm:order-4 sm:ml-2">
             <Clock className="size-3" /> PENDING APPROVAL
           </span>
         )}
@@ -199,7 +199,7 @@ export default function CommunityEventsPage({
           </div>
         )}
         {event.status === "cancelled" && (
-          <span className="text-destructive font-mono text-[10px] font-medium sm:order-4 sm:ml-2">
+          <span className="text-destructive font-mono text-xs font-medium sm:order-4 sm:ml-2">
             {t("cancelled")}
           </span>
         )}
@@ -215,7 +215,7 @@ export default function CommunityEventsPage({
               event.status !== "draft" &&
               event.slug && (
                 <button
-                  className="border-border text-muted-foreground hover:bg-secondary/40 rounded border px-2 py-0.5 font-mono text-[11px]"
+                  className="border-border text-muted-foreground hover:bg-secondary/40 rounded border px-2 py-0.5 font-mono text-xs"
                   onClick={() =>
                     router.push(
                       `/communities/${slug}/events/${event.slug}/manage` as never,
@@ -255,7 +255,7 @@ export default function CommunityEventsPage({
             onClick={(e) => e.preventDefault()}
           >
             <button
-              className="flex items-center gap-1 rounded border border-green-600 px-2 py-0.5 font-mono text-[11px] text-green-600 hover:bg-green-50 disabled:opacity-50"
+              className="flex items-center gap-1 rounded border border-green-600 px-2 py-0.5 font-mono text-xs text-green-600 hover:bg-green-50 disabled:opacity-50"
               disabled={approveMutation.isPending || rejectMutation.isPending}
               onClick={() =>
                 approveMutation.mutate({
@@ -267,7 +267,7 @@ export default function CommunityEventsPage({
               <CheckCircle className="size-3" /> Approve
             </button>
             <button
-              className="flex items-center gap-1 rounded border border-red-500 px-2 py-0.5 font-mono text-[11px] text-red-500 hover:bg-red-50 disabled:opacity-50"
+              className="flex items-center gap-1 rounded border border-red-500 px-2 py-0.5 font-mono text-xs text-red-500 hover:bg-red-50 disabled:opacity-50"
               disabled={approveMutation.isPending || rejectMutation.isPending}
               onClick={() =>
                 rejectMutation.mutate({
@@ -331,13 +331,13 @@ export default function CommunityEventsPage({
 
   const tableHeader = (
     <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
-      <span className="text-muted-foreground w-32 font-mono text-[11px] font-medium tracking-wider">
+      <span className="text-muted-foreground w-32 font-mono text-xs font-medium tracking-wider">
         / DATE
       </span>
-      <span className="text-muted-foreground flex-1 font-mono text-[11px] font-medium tracking-wider">
+      <span className="text-muted-foreground flex-1 font-mono text-xs font-medium tracking-wider">
         / NAME
       </span>
-      <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-wider">
+      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
         / TYPE
       </span>
     </div>
@@ -347,7 +347,7 @@ export default function CommunityEventsPage({
     <div>
       {/* Header row: tab switcher + action button */}
       <div className="mb-4 flex items-center justify-between gap-2">
-        <div className="flex gap-1 font-mono text-[11px] tracking-wider">
+        <div className="flex gap-1 font-mono text-xs tracking-wider">
           <button
             onClick={() => setActiveTab("published")}
             className={`rounded border px-3 py-1.5 transition-colors ${
@@ -369,7 +369,7 @@ export default function CommunityEventsPage({
             >
               PENDING
               {pendingCount > 0 && (
-                <span className="flex size-4 items-center justify-center rounded-full bg-orange-500 text-[9px] text-white">
+                <span className="flex size-4 items-center justify-center rounded-full bg-orange-500 text-xs text-white">
                   {pendingCount}
                 </span>
               )}

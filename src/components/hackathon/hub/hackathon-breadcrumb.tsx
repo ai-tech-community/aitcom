@@ -40,7 +40,7 @@ export function HackathonBreadcrumb({
   const leaf = activeKey && activeKey !== "overview" ? labels[activeKey] : null;
 
   return (
-    <nav className="mb-6 flex items-center gap-2 font-mono text-[11px] tracking-wider">
+    <nav className="mb-6 flex items-center gap-2 font-mono text-xs tracking-wider">
       <Link
         href="/events"
         className="text-muted-foreground hover:text-foreground transition-colors"

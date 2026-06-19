@@ -14,6 +14,7 @@ import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { Link } from "@/i18n/navigation";
 import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
 import { Badge } from "@/components/ui/badge";
+import { SectionLabel } from "@/components/ui/section-label";
 import { MemberFaces } from "@/components/hackathon/member-faces";
 import type { MemberFace } from "@/components/hackathon/member-faces";
 
@@ -106,9 +107,7 @@ export default async function HackathonWinnersPage({
   return (
     <div>
       <div className="border-border flex flex-wrap items-center gap-3 border-b pb-4">
-        <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / {t("winners").toUpperCase()}
-        </h2>
+        <SectionLabel bordered={false}>{t("winners")}</SectionLabel>
         <Badge variant="secondary">{t("statusFinalized")}</Badge>
       </div>
       <p className="text-muted-foreground mt-4 text-sm">{t("winnersIntro")}</p>
@@ -127,15 +126,10 @@ export default async function HackathonWinnersPage({
                 {t("rank")} #{team.finalRank}
               </span>
               {prizeTeamIds.has(team.teamId) ? (
-                <Badge
-                  variant="secondary"
-                  className="bg-green-500/15 text-green-600 dark:text-green-400"
-                >
-                  {t("winner")}
-                </Badge>
+                <Badge variant="success">{t("winner")}</Badge>
               ) : null}
             </div>
-            <h2 className="mt-2 text-xl font-bold">{team.name}</h2>
+            <h2 className="mt-2 text-xl font-semibold">{team.name}</h2>
             <div className="text-muted-foreground mt-1 font-mono text-xs tracking-wider">
               {team.score} {t("score")}
             </div>
@@ -147,7 +141,7 @@ export default async function HackathonWinnersPage({
 
             {prizeTeamIds.has(team.teamId) && prizeParts.length > 0 ? (
               <div className="border-border mt-4 border-t pt-3">
-                <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+                <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
                   {t("prize")}
                 </span>
                 <ul className="mt-1 space-y-0.5 text-sm">
@@ -165,17 +159,14 @@ export default async function HackathonWinnersPage({
       {peoplesChoiceTeam ? (
         <div className="border-border bg-card mt-6 rounded-lg border p-5">
           <div className="flex items-center justify-between gap-2">
-            <Badge
-              variant="secondary"
-              className="bg-amber-500/15 text-amber-600 dark:text-amber-400"
-            >
-              {t("peoplesChoice")}
-            </Badge>
+            <Badge variant="secondary">{t("peoplesChoice")}</Badge>
             <span className="text-muted-foreground font-mono text-xs tracking-wider">
               {t("voteCount", { count: peoplesChoiceVotes })}
             </span>
           </div>
-          <h2 className="mt-2 text-xl font-bold">{peoplesChoiceTeam.name}</h2>
+          <h2 className="mt-2 text-xl font-semibold">
+            {peoplesChoiceTeam.name}
+          </h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {t("peoplesChoiceIntro")}
           </p>
@@ -192,11 +183,7 @@ export default async function HackathonWinnersPage({
       {/* All participating teams */}
       {field.length > 0 ? (
         <div className="border-border mt-10 border-t pt-8">
-          <div className="border-border border-b pb-4">
-            <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-              / {t("allTeams").toUpperCase()}
-            </h2>
-          </div>
+          <SectionLabel>{t("allTeams")}</SectionLabel>
           <div className="mt-4 space-y-1">
             {field.map((team) => (
               <div

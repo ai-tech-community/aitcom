@@ -9,6 +9,8 @@ import { ChallengeCard } from "./challenge-card";
 import { SponsorChallengeForm } from "./sponsor-challenge-form";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SectionLabel } from "@/components/ui/section-label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
 const DIFFICULTIES = [
   "all",
@@ -64,13 +66,9 @@ export function ChallengeList() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-8 sm:px-12 sm:py-16">
       {/* Hero */}
-      <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / {t("title").toUpperCase()}
-        </span>
-      </div>
+      <SectionLabel>{t("title")}</SectionLabel>
       <div className="mt-8 max-w-2xl space-y-4">
-        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
+        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           {tLanding("headline")}
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
@@ -80,22 +78,17 @@ export function ChallengeList() {
 
       {/* Tabs + Create (authenticated only) */}
       <div className="mt-10 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setTab("active")}
-            className={pillClass(tab === "active")}
-          >
-            {t("active")}
-          </button>
-          {isAuthenticated && (
-            <button
-              onClick={() => setTab("my")}
-              className={pillClass(tab === "my")}
-            >
-              {t("myChallenges")}
-            </button>
-          )}
-        </div>
+        <SegmentedControl
+          aria-label="Filter challenges"
+          value={tab}
+          onValueChange={setTab}
+          options={[
+            { value: "active", label: t("active") },
+            ...(isAuthenticated
+              ? [{ value: "my" as const, label: t("myChallenges") }]
+              : []),
+          ]}
+        />
         {isAuthenticated && !showForm && (
           <Button
             onClick={() => setShowForm(true)}
@@ -120,7 +113,7 @@ export function ChallengeList() {
 
       {/* Filters */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+        <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
           Difficulty:
         </span>
         {DIFFICULTIES.map((d) => (
@@ -134,7 +127,7 @@ export function ChallengeList() {
         ))}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+        <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
           Type:
         </span>
         {TYPES.map((tp) => (

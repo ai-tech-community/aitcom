@@ -7,6 +7,7 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
+import { RelativeTime } from "@/components/ui/relative-time";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 
@@ -27,28 +28,12 @@ type LaunchpadCardProps = {
   index: number;
 };
 
-const stageStyles: Record<string, string> = {
-  idea: "bg-zinc-100 text-zinc-600 border-zinc-200",
-  prototype: "bg-blue-50 text-blue-600 border-blue-200",
-  mvp: "bg-amber-50 text-amber-600 border-amber-200",
-  launched: "bg-green-50 text-green-600 border-green-200",
-};
-
 const stageStripeColors: Record<string, string> = {
   idea: "bg-zinc-200",
   prototype: "bg-blue-200",
   mvp: "bg-amber-200",
   launched: "bg-green-200",
 };
-
-function timeAgo(date: string | null | undefined): string {
-  if (!date) return "";
-  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-}
 
 function getCoverUrl(
   coverImage: LaunchpadCardProps["project"]["coverImage"],
@@ -105,14 +90,14 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
   return (
     <LazyMotion features={domAnimation}>
       <m.div
-        className="flex flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white transition-colors hover:border-zinc-300 hover:shadow-sm"
+        className="border-border bg-card hover:border-border flex flex-col overflow-hidden rounded-lg border transition-colors hover:shadow-sm"
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.03 }}
       >
         {/* Cover image or colored stripe */}
         {coverUrl ? (
-          <div className="relative h-36 w-full overflow-hidden bg-zinc-100">
+          <div className="bg-muted relative h-36 w-full overflow-hidden">
             <Image
               src={coverUrl}
               alt={project.title}
@@ -134,23 +119,24 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
         >
           {/* Stage badge + author */}
           <div className="flex items-center justify-between gap-2">
+            {/* Stage is a categorical attribute, not a status → neutral Badge. */}
             <Badge
-              className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${stageStyles[project.stage] ?? stageStyles.idea}`}
-              variant="outline"
+              className="rounded px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase"
+              variant="secondary"
             >
               {t(
                 `stage.${project.stage as "idea" | "prototype" | "mvp" | "launched"}`,
               )}
             </Badge>
             {project.authorName && (
-              <span className="truncate font-mono text-[10px] text-zinc-400">
+              <span className="text-muted-foreground truncate font-mono text-xs">
                 {project.authorName}
               </span>
             )}
           </div>
 
           {/* Title */}
-          <p className="line-clamp-2 text-sm leading-snug font-semibold text-zinc-900">
+          <p className="text-foreground line-clamp-2 text-sm leading-snug font-semibold">
             {project.title}
           </p>
 
@@ -160,7 +146,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
               {project.tags.slice(0, 4).map((t, i) => (
                 <span
                   key={t.id ?? i}
-                  className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 font-mono text-[9px] text-zinc-500"
+                  className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 font-mono text-xs"
                 >
                   {t.tag}
                 </span>
@@ -170,7 +156,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
         </Link>
 
         {/* Footer row — vote button + stats */}
-        <div className="flex items-center gap-3 border-t border-zinc-100 px-4 py-2">
+        <div className="border-border flex items-center gap-3 border-t px-4 py-2">
           {/* Vote button — outside the Link to prevent nested anchors */}
           <button
             onClick={(e) => {
@@ -181,24 +167,29 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
               }
               voteMutation.mutate({ projectId: project.id });
             }}
-            className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-[10px] font-bold transition-colors ${
+            className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-xs font-semibold transition-colors ${
               project.hasVoted
                 ? "bg-orange-50 text-orange-600"
-                : "text-zinc-400 hover:text-zinc-600"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <ChevronUp className="h-3 w-3" />
             {project.voteCount ?? 0}
           </button>
 
-          <span className="flex items-center gap-1 font-mono text-[10px] text-zinc-400">
+          <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
             <MessageSquare className="h-2.5 w-2.5" />
             {project.commentCount ?? 0}
           </span>
 
-          <span className="ml-auto flex items-center gap-1 font-mono text-[10px] text-zinc-400">
+          <span className="text-muted-foreground ml-auto flex items-center gap-1 font-mono text-xs">
             <Clock className="h-2.5 w-2.5" />
-            {timeAgo(project.createdAt)}
+            {project.createdAt && (
+              <RelativeTime
+                date={project.createdAt}
+                className="text-muted-foreground text-xs"
+              />
+            )}
           </span>
         </div>
       </m.div>

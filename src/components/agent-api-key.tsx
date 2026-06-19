@@ -67,8 +67,8 @@ export function AgentApiKey() {
           </div>
 
           {fullKey ? (
-            <div className="rounded border border-yellow-700 bg-yellow-950/40 px-3 py-3">
-              <p className="font-mono text-[11px] font-medium tracking-wider text-yellow-300">
+            <div className="border-warning/30 bg-warning/10 rounded border px-3 py-3">
+              <p className="text-warning font-mono text-xs font-medium tracking-wider">
                 ⚠ COPY NOW — KEY WILL NOT BE SHOWN AGAIN
               </p>
               <p className="text-muted-foreground mt-1 text-xs">
@@ -91,7 +91,7 @@ export function AgentApiKey() {
               size="xs"
               onClick={() => revokeKey.mutate()}
               disabled={revokeKey.isPending}
-              className="font-mono text-[11px] tracking-wider"
+              className="font-mono text-xs tracking-wider"
             >
               {revokeKey.isPending ? "..." : t("revokeKey")}
             </Button>

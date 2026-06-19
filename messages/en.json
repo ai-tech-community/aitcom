@@ -228,6 +228,7 @@
       "title": "Ideas & Voting",
       "building": "Town Hall",
       "subtitle": "Shape the community",
+      "sortLabel": "Sort ideas",
       "mostVoted": "Most Voted",
       "recent": "Recent",
       "submit": "Submit Idea",
@@ -510,6 +511,7 @@
     "qa": "QA"
   },
   "activity": {
+    "scopeLabel": "Activity scope",
     "personal": "My Activity",
     "community": "Community",
     "empty": "No activity yet. Start participating to see your feed!"

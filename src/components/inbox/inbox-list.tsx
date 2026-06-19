@@ -9,11 +9,13 @@ import {
   BotIcon,
   XIcon,
 } from "lucide-react";
-import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Spinner } from "@/components/ui/spinner";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { SectionLabel } from "@/components/ui/section-label";
+import { getInitials } from "@/lib/avatar";
 import { InboxConversationItem } from "./inbox-conversation-item";
 import { useInbox } from "./inbox-provider";
 
@@ -98,9 +100,7 @@ export function InboxList() {
       <div className="border-border flex items-center justify-between border-b px-4 py-3">
         {mode === "list" ? (
           <>
-            <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider uppercase">
-              / {t("title")}
-            </span>
+            <SectionLabel bordered={false}>{t("title")}</SectionLabel>
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -132,9 +132,9 @@ export function InboxList() {
               >
                 <ArrowLeftIcon className="h-4 w-4" />
               </button>
-              <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider uppercase">
+              <SectionLabel bordered={false} marker={false}>
                 {t("newMessage")}
-              </span>
+              </SectionLabel>
             </div>
           </>
         )}
@@ -244,20 +244,17 @@ export function InboxList() {
                     }
                     className="hover:bg-secondary/50 flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors"
                   >
-                    {member.image ? (
-                      <Image
-                        src={member.image}
-                        alt={member.displayName || "Member avatar"}
-                        width={40}
-                        height={40}
-                        unoptimized
-                        className="h-10 w-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="bg-secondary text-muted-foreground flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium">
-                        {member.displayName.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                    <Avatar size="lg">
+                      {member.image && (
+                        <AvatarImage
+                          src={member.image}
+                          alt={member.displayName || "Member avatar"}
+                        />
+                      )}
+                      <AvatarFallback>
+                        {getInitials(member.displayName)}
+                      </AvatarFallback>
+                    </Avatar>
                     <span className="text-foreground truncate text-sm font-medium">
                       {member.displayName}
                     </span>

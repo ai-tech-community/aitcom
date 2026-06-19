@@ -6,16 +6,19 @@ import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { BotIcon, Users } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SectionLabel } from "@/components/ui/section-label";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
 
 export function SocialSuggestions() {
   const t = useTranslations("onboarding");
-  const { data, isLoading } = api.onboarding.getSuggestions.useQuery();
+  const { data, isLoading, isError } = api.onboarding.getSuggestions.useQuery();
   const [brokenAgentAvatars, setBrokenAgentAvatars] = useState<Set<string>>(
     new Set(),
   );
 
-  if (isLoading || !data) return null;
+  // Supplementary widget: stay quietly absent while loading or on error.
+  if (isLoading || isError || !data) return null;
   if (data.members.length === 0 && data.agents.length === 0) return null;
 
   return (
@@ -24,10 +27,14 @@ export function SocialSuggestions() {
       {data.members.length > 0 && (
         <div className="border-border bg-card rounded-lg border">
           <div className="border-border border-b px-4 py-3">
-            <span className="text-muted-foreground flex items-center gap-2 font-mono text-xs font-medium tracking-wider">
+            <SectionLabel
+              bordered={false}
+              marker={false}
+              className="flex items-center gap-2"
+            >
               <Users className="h-3.5 w-3.5" />
               {t("suggestedMembers")}
-            </span>
+            </SectionLabel>
           </div>
           <ul className="divide-border divide-y">
             {data.members.map((member) => (
@@ -36,26 +43,23 @@ export function SocialSuggestions() {
                   href={`/members/${member.userId}`}
                   className="hover:text-primary flex items-center gap-3 transition-colors"
                 >
-                  {member.image ? (
-                    <Image
-                      src={getAvatarUrl(null, member.image) ?? ""}
-                      alt={member.displayName}
-                      width={32}
-                      height={32}
-                      unoptimized
-                      className="h-8 w-8 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="bg-secondary text-muted-foreground flex h-8 w-8 items-center justify-center rounded-full font-mono text-xs font-medium">
+                  <Avatar className="size-8">
+                    {member.image && (
+                      <AvatarImage
+                        src={getAvatarUrl(null, member.image) ?? ""}
+                        alt=""
+                      />
+                    )}
+                    <AvatarFallback className="font-mono text-xs">
                       {getInitials(member.displayName)}
-                    </div>
-                  )}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="flex-1 overflow-hidden">
                     <div className="flex items-center gap-2">
                       <span className="truncate text-sm font-medium">
                         {member.displayName}
                       </span>
-                      <span className="text-muted-foreground font-mono text-[10px]">
+                      <span className="text-muted-foreground font-mono text-xs">
                         {member.xp} XP
                       </span>
                     </div>
@@ -64,7 +68,7 @@ export function SocialSuggestions() {
                         {member.skills.slice(0, 3).map((skill) => (
                           <span
                             key={skill}
-                            className="bg-secondary text-muted-foreground truncate rounded px-1.5 py-0.5 font-mono text-[10px]"
+                            className="bg-secondary text-muted-foreground truncate rounded px-1.5 py-0.5 font-mono text-xs"
                           >
                             {skill}
                           </span>
@@ -83,10 +87,14 @@ export function SocialSuggestions() {
       {data.agents.length > 0 && (
         <div className="border-border bg-card rounded-lg border">
           <div className="border-border border-b px-4 py-3">
-            <span className="text-muted-foreground flex items-center gap-2 font-mono text-xs font-medium tracking-wider">
+            <SectionLabel
+              bordered={false}
+              marker={false}
+              className="flex items-center gap-2"
+            >
               <BotIcon className="h-3.5 w-3.5" />
               {t("activeAgents")}
-            </span>
+            </SectionLabel>
           </div>
           <ul className="divide-border divide-y">
             {data.agents.map((agent) => (
@@ -124,7 +132,7 @@ export function SocialSuggestions() {
                       </p>
                     )}
                   </div>
-                  <span className="text-muted-foreground font-mono text-[10px]">
+                  <span className="text-muted-foreground font-mono text-xs">
                     {agent.totalContributions} {t("contributions")}
                   </span>
                 </Link>

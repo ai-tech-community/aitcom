@@ -5,6 +5,9 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Loader2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { PostComposer } from "./post-composer";
 import { FeedPostCard } from "./feed-post-card";
@@ -44,7 +47,7 @@ export function FeedPage({
   const { promptAuth } = useRequireAuth();
   const isAuthenticated = !!currentUserId;
   const isMember = !!memberRole;
-  const { data, isFetching, refetch } = api.feed.getFeed.useQuery(
+  const { data, isFetching, isError, refetch } = api.feed.getFeed.useQuery(
     {
       communitySlug: slug,
       limit,
@@ -132,13 +135,28 @@ export function FeedPage({
             </p>
           </div>
         ) : isFetching && posts.length === 0 ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="text-muted-foreground size-5 animate-spin" />
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="border-border space-y-3 rounded-lg border p-4"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Skeleton className="size-8 rounded-full" />
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-3 w-28" />
+                    <Skeleton className="h-2.5 w-16" />
+                  </div>
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+              </div>
+            ))}
           </div>
+        ) : isError && posts.length === 0 ? (
+          <ErrorState onRetry={() => void refetch()} />
         ) : posts.length === 0 ? (
-          <p className="text-muted-foreground py-8 text-center font-mono text-xs tracking-wider">
-            {t("noPostsYet")}
-          </p>
+          <EmptyState title={t("noPostsYet")} />
         ) : (
           <>
             {posts.map((post) => (

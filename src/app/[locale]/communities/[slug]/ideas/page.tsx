@@ -118,7 +118,7 @@ export default function CommunityIdeasPage({
           <button
             key={s}
             onClick={() => setSort(s)}
-            className={`rounded px-3 py-1 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors ${
+            className={`rounded px-3 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors ${
               sort === s
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:text-foreground"
@@ -154,7 +154,7 @@ export default function CommunityIdeasPage({
                     "Sign in to vote on ideas",
                   )
                 }
-                className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-[10px] font-bold transition-colors ${
+                className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-xs font-semibold transition-colors ${
                   idea.hasVoted
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground"
@@ -167,13 +167,13 @@ export default function CommunityIdeasPage({
               <div className="min-w-0 flex-1">
                 <p className="text-sm leading-snug font-medium">{idea.title}</p>
                 {idea.description && (
-                  <p className="text-muted-foreground mt-0.5 line-clamp-2 text-[11px] leading-relaxed">
+                  <p className="text-muted-foreground mt-0.5 line-clamp-2 text-xs leading-relaxed">
                     {idea.description}
                   </p>
                 )}
                 <div className="mt-1 flex items-center gap-2">
                   <span
-                    className={`rounded border px-1.5 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase ${statusStyles[idea.status]}`}
+                    className={`rounded border px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase ${statusStyles[idea.status]}`}
                   >
                     {idea.status === "open"
                       ? t("statusOpen")
@@ -242,14 +242,14 @@ export default function CommunityIdeasPage({
           <button
             type="button"
             onClick={() => promptAuth("Sign in to submit an idea")}
-            className="text-muted-foreground hover:text-foreground font-mono text-[10px] underline underline-offset-4"
+            className="text-muted-foreground hover:text-foreground font-mono text-xs underline underline-offset-4"
           >
             {t("loginToSubmit")}
           </button>
         ) : !showForm ? (
           <button
             onClick={() => setShowForm(true)}
-            className="text-primary hover:text-primary/80 flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors"
+            className="text-primary hover:text-primary/80 flex items-center gap-1.5 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
           >
             <Lightbulb className="h-3 w-3" />
             {t("submit")}
@@ -267,7 +267,7 @@ export default function CommunityIdeasPage({
             className="space-y-3"
           >
             <div>
-              <label className="text-muted-foreground mb-1 block font-mono text-[10px] font-semibold tracking-wider uppercase">
+              <label className="text-muted-foreground mb-1 block font-mono text-xs font-semibold tracking-wider uppercase">
                 {t("titleLabel")}
               </label>
               <input
@@ -280,7 +280,7 @@ export default function CommunityIdeasPage({
               />
             </div>
             <div>
-              <label className="text-muted-foreground mb-1 block font-mono text-[10px] font-semibold tracking-wider uppercase">
+              <label className="text-muted-foreground mb-1 block font-mono text-xs font-semibold tracking-wider uppercase">
                 {t("descriptionLabel")}
               </label>
               <textarea
@@ -296,14 +296,14 @@ export default function CommunityIdeasPage({
               <button
                 type="submit"
                 disabled={submitMutation.isPending}
-                className="bg-primary text-primary-foreground rounded-md px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors disabled:opacity-50"
+                className="bg-primary text-primary-foreground rounded-md px-4 py-1.5 font-mono text-xs font-semibold tracking-widest uppercase transition-colors disabled:opacity-50"
               >
                 {submitMutation.isPending ? t("submitting") : t("submit")}
               </button>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="border-border text-muted-foreground hover:bg-secondary rounded-md border px-4 py-1.5 font-mono text-[10px] font-semibold tracking-widest uppercase transition-colors"
+                className="border-border text-muted-foreground hover:bg-secondary rounded-md border px-4 py-1.5 font-mono text-xs font-semibold tracking-widest uppercase transition-colors"
               >
                 Cancel
               </button>

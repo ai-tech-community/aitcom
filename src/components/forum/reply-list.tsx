@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import type { ForumReply } from "@/payload-types";
 import { LexicalRenderer } from "@/lib/lexical";
 import { RoleBadge } from "@/components/forum/role-badge";
+import { RelativeTime } from "@/components/ui/relative-time";
 import { api } from "@/trpc/react";
 import {
   DropdownMenu,
@@ -14,19 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function timeAgo(date: string | null | undefined): string {
-  if (!date) return "";
-  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -72,7 +60,7 @@ export function ReplyList({
 
   if (replies.length === 0) {
     return (
-      <p className="py-6 text-center font-mono text-[10px] text-zinc-400">
+      <p className="text-muted-foreground py-6 text-center font-mono text-xs">
         No replies yet. Be the first to respond.
       </p>
     );
@@ -84,31 +72,31 @@ export function ReplyList({
         reply.isDeleted ? (
           <div
             key={reply.id}
-            className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3"
+            className="border-border bg-muted rounded-lg border p-3"
           >
-            <p className="text-sm text-zinc-400 italic">
+            <p className="text-muted-foreground text-sm italic">
               {t("replyDeletedMessage")}
             </p>
           </div>
         ) : (
           <div
             key={reply.id}
-            className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3"
+            className="border-border bg-muted rounded-lg border p-3"
           >
             <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-[9px] tracking-wider text-zinc-400">
+              <div className="text-muted-foreground flex items-center gap-2 font-mono text-xs tracking-wider">
                 <span>{reply.authorName ?? "member"}</span>
                 <RoleBadge role={reply.authorRole} />
                 <span>&middot;</span>
-                <span>{timeAgo(reply.createdAt)}</span>
+                {reply.createdAt && <RelativeTime date={reply.createdAt} />}
                 {reply.isEdited && (
                   <span className="italic">({t("edited")})</span>
                 )}
               </div>
               {(currentUserId === reply.authorId || canModerate) && (
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="rounded p-1 hover:bg-zinc-100">
-                    <MoreHorizontal className="h-3.5 w-3.5 text-zinc-400" />
+                  <DropdownMenuTrigger className="hover:bg-accent rounded p-1">
+                    <MoreHorizontal className="text-muted-foreground h-3.5 w-3.5" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {currentUserId === reply.authorId && (
@@ -142,7 +130,7 @@ export function ReplyList({
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   rows={3}
-                  className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+                  className="border-border w-full rounded-md border px-3 py-2 text-sm"
                 />
                 <div className="flex gap-2">
                   <button
@@ -166,7 +154,7 @@ export function ReplyList({
                 </div>
               </div>
             ) : (
-              <div className="text-sm leading-relaxed text-zinc-700">
+              <div className="text-foreground text-sm leading-relaxed">
                 <LexicalRenderer content={reply.content} />
               </div>
             )}

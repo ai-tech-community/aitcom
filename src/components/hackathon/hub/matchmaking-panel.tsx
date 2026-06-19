@@ -9,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { SectionLabel } from "@/components/ui/section-label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { matchesSkillFilter } from "@/server/hackathon/looking-for-team";
 
 /**
@@ -22,7 +26,12 @@ export function MatchmakingPanel({ challengeId }: { challengeId: number }) {
   const t = useTranslations("hackathon");
   const utils = api.useUtils();
 
-  const { data: lookingList } = api.hackathon.lookingForTeamList.useQuery(
+  const {
+    data: lookingList,
+    isLoading,
+    isError,
+    refetch,
+  } = api.hackathon.lookingForTeamList.useQuery(
     { challengeId },
     // staleTime: the list is a 5-round-trip query; don't refetch it on every
     // window focus. Mutations invalidate it explicitly.
@@ -37,6 +46,33 @@ export function MatchmakingPanel({ challengeId }: { challengeId: number }) {
     onError: (e) => toast.error(e.message),
   });
 
+  // While the gating data is still resolving, show a content-shaped skeleton
+  // rather than flashing nothing then popping in.
+  if (isLoading) {
+    return (
+      <section>
+        <SectionLabel bordered={false}>{t("matchmaking")}</SectionLabel>
+        <Card className="mt-4 p-4">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="mt-2 h-9 w-full" />
+          <div className="mt-3 space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-6 w-full" />
+            ))}
+          </div>
+        </Card>
+      </section>
+    );
+  }
+
+  // On an actual fetch error we cannot know whether the viewer is enrolled (the
+  // gating flags live in the response we failed to load). This panel is
+  // supplementary and self-gates to nothing for outsiders / a closed window, so
+  // staying hidden on error preserves that gating — surfacing an error here
+  // would leak the panel to outsiders. Hide quietly; the core panels on the
+  // page own the visible error surface.
+  if (isError) return null;
+
   // Nothing to show until the window is open and the viewer is enrolled —
   // matches the old panel's gating; renders nothing at lock+ / for outsiders.
   if (!lookingList?.open || !lookingList.viewer.enrolled) return null;
@@ -47,9 +83,7 @@ export function MatchmakingPanel({ challengeId }: { challengeId: number }) {
 
   return (
     <section>
-      <h2 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-        / {t("matchmaking").toUpperCase()}
-      </h2>
+      <SectionLabel bordered={false}>{t("matchmaking")}</SectionLabel>
 
       {/* "Looking for a team" opt-in (#164): solo-enrolled, forming phase only. */}
       {lookingList.viewer.solo ? (
@@ -63,7 +97,7 @@ export function MatchmakingPanel({ challengeId }: { challengeId: number }) {
               {/* Hidden profiles never surface in the candidate list — warn
                   instead of silently dropping the viewer (#164 review). */}
               {lookingList.viewer.profileHidden ? (
-                <p className="mt-1 text-xs text-amber-600 dark:text-amber-500">
+                <p className="text-warning mt-1 text-xs">
                   {t("lookingForTeamHiddenProfile")}
                 </p>
               ) : null}
@@ -99,9 +133,12 @@ export function MatchmakingPanel({ challengeId }: { challengeId: number }) {
           onChange={(e) => setSkillFilter(e.target.value)}
         />
         {candidates.length === 0 ? (
-          <p className="text-muted-foreground mt-3 text-xs">
-            {skillFilter.trim() ? t("noCandidatesForSkill") : t("noCandidates")}
-          </p>
+          <EmptyState
+            className="px-0 py-6"
+            title={
+              skillFilter.trim() ? t("noCandidatesForSkill") : t("noCandidates")
+            }
+          />
         ) : (
           <ul className="mt-3 space-y-2">
             {candidates.map((c) => (

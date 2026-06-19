@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { ProfileEditForm } from "./profile-edit-form";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SectionLabel } from "@/components/ui/section-label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
 import { xpForNextLevel } from "@/lib/gamification";
 
@@ -23,17 +26,31 @@ export function DashboardProfile({
   const tBadges = useTranslations("badges");
   const tMembers = useTranslations("members");
   const [editing, setEditing] = useState(false);
-  const [imgError, setImgError] = useState(false);
 
-  const { data, isLoading } = api.members.getMyProfile.useQuery();
+  const { data, isLoading, isError, refetch } =
+    api.members.getMyProfile.useQuery();
 
   if (isLoading) {
     return (
-      <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / {t("myProfile")}
-        </span>
-        <p className="text-muted-foreground mt-4 text-sm">Loading...</p>
+      <div>
+        <SectionLabel>{t("myProfile")}</SectionLabel>
+        <div className="mt-4 flex items-start gap-4">
+          <Skeleton className="size-12 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="mt-1 h-1.5 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div>
+        <SectionLabel>{t("myProfile")}</SectionLabel>
+        <ErrorState className="py-8" onRetry={() => refetch()} />
       </div>
     );
   }
@@ -48,11 +65,7 @@ export function DashboardProfile({
   if (!profile) {
     return (
       <div>
-        <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / {t("myProfile")}
-          </span>
-        </div>
+        <SectionLabel>{t("myProfile")}</SectionLabel>
         {!editing ? (
           <div className="border-primary/30 mt-4 rounded border border-dashed px-4 py-6 text-center">
             <p className="text-muted-foreground text-sm">
@@ -80,12 +93,10 @@ export function DashboardProfile({
   return (
     <div>
       <div className="border-border flex items-center justify-between border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / {t("myProfile")}
-        </span>
+        <SectionLabel bordered={false}>{t("myProfile")}</SectionLabel>
         <button
           onClick={() => setEditing(!editing)}
-          className="text-muted-foreground hover:text-foreground font-mono text-[11px] tracking-wider transition-colors"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
         >
           [{editing ? "CLOSE" : t("editProfile")}]
         </button>
@@ -96,26 +107,18 @@ export function DashboardProfile({
       ) : (
         <div className="mt-4 flex items-start gap-4">
           {/* Avatar */}
-          {avatarUrl && !imgError ? (
-            <Image
-              src={avatarUrl}
-              alt={profile.displayName}
-              className="h-12 w-12 rounded-full"
-              width={48}
-              height={48}
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <div className="bg-secondary text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full font-mono text-sm font-medium">
+          <Avatar className="size-12">
+            {avatarUrl && <AvatarImage src={avatarUrl} alt="" />}
+            <AvatarFallback className="font-mono text-xs">
               {initials}
-            </div>
-          )}
+            </AvatarFallback>
+          </Avatar>
 
           {/* Info */}
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className="font-medium">{profile.displayName}</span>
-              <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider">
+              <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-xs font-medium tracking-wider">
                 {tMembers("level")} {profile.level}
               </span>
             </div>
@@ -134,7 +137,7 @@ export function DashboardProfile({
                   }}
                 />
               </div>
-              <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+              <span className="text-muted-foreground font-mono text-xs tracking-wider">
                 {profile.xp} {tMembers("xp")}
               </span>
             </div>
@@ -144,7 +147,7 @@ export function DashboardProfile({
                 {badges.map((badge) => (
                   <span
                     key={badge.slug}
-                    className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-[10px] tracking-wider"
+                    className="border-border text-muted-foreground rounded border border-dashed px-1.5 py-0.5 font-mono text-xs tracking-wider"
                     title={badge.description}
                   >
                     {tBadges(badge.slug)}

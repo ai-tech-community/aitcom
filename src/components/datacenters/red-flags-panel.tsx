@@ -140,7 +140,7 @@ export function RedFlagsPanel({
               <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
                 {f.description}
               </p>
-              <p className="text-muted-foreground/70 mt-1 text-[10px] tracking-wider uppercase">
+              <p className="text-muted-foreground/70 mt-1 text-xs tracking-wider uppercase">
                 → {f.warrants}
               </p>
               {bucket.samples.length > 0 && (
@@ -202,11 +202,11 @@ function Phase5Card({
       <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
         {description}
       </p>
-      <p className="text-muted-foreground/70 mt-1 text-[10px] tracking-wider uppercase">
+      <p className="text-muted-foreground/70 mt-1 text-xs tracking-wider uppercase">
         → {warrants}
       </p>
       {empty && (
-        <p className="text-muted-foreground/60 mt-1 text-[10px]">
+        <p className="text-muted-foreground/60 mt-1 text-xs">
           (awaiting Phase 6 seed)
         </p>
       )}

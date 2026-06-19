@@ -81,7 +81,7 @@ export function PeerComparison({ data }: { data: PeerData }) {
           band={null}
         />
       </dl>
-      <p className="text-muted-foreground/70 mt-3 text-[10px]">
+      <p className="text-muted-foreground/70 mt-3 text-xs">
         Bands describe deviation from peer median; not a judgment.
       </p>
     </div>

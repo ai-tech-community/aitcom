@@ -5,16 +5,15 @@ import { api } from "@/trpc/react";
 import { AgentDrafts } from "@/components/agent-drafts";
 import { AgentSuggestions } from "@/components/agent-suggestions";
 import { QADashboard } from "@/components/impact/qa-dashboard";
-import { relativeTime } from "@/components/agent/shared";
+import { RelativeTime } from "@/components/ui/relative-time";
+import { SectionLabel } from "@/components/ui/section-label";
 
 export function ActivityTab() {
   return (
     <div className="space-y-8">
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / PENDING DRAFTS
-          </span>
+          <SectionLabel bordered={false}>PENDING DRAFTS</SectionLabel>
         </div>
         <div className="mt-4">
           <AgentDrafts />
@@ -23,9 +22,7 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / SUGGESTIONS
-          </span>
+          <SectionLabel bordered={false}>SUGGESTIONS</SectionLabel>
         </div>
         <div className="mt-4">
           <AgentSuggestions />
@@ -34,9 +31,7 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / AGENT ACTIVITY
-          </span>
+          <SectionLabel bordered={false}>AGENT ACTIVITY</SectionLabel>
         </div>
         <div className="mt-4">
           <AgentActivityFeed />
@@ -45,9 +40,7 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / IMPACT QA
-          </span>
+          <SectionLabel bordered={false}>IMPACT QA</SectionLabel>
         </div>
         <div className="mt-4">
           <QADashboard />
@@ -56,9 +49,7 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / HISTORY
-          </span>
+          <SectionLabel bordered={false}>HISTORY</SectionLabel>
         </div>
         <div className="mt-4">
           <ClaimHistoryFeed />
@@ -99,16 +90,17 @@ function AgentActivityFeed() {
           <span className="text-muted-foreground text-xs">
             {actionLabels[event.action] ?? event.action.replace(/\./g, " ")}
           </span>
-          <span className="text-muted-foreground/50 font-mono text-[9px] tracking-wider">
-            {relativeTime(new Date(event.createdAt))}
-          </span>
+          <RelativeTime
+            date={new Date(event.createdAt)}
+            className="text-muted-foreground/50 text-xs tracking-wider"
+          />
         </div>
       ))}
       {data?.nextCursor && (
         <button
           type="button"
           onClick={() => setCursor(data.nextCursor!)}
-          className="text-muted-foreground hover:text-foreground font-mono text-[10px] tracking-wider"
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
           disabled={isLoading}
         >
           {isLoading ? "..." : "LOAD MORE"}
@@ -148,9 +140,10 @@ function ClaimHistoryFeed() {
             className="flex items-center justify-between py-1"
           >
             <span className="text-muted-foreground text-xs">{description}</span>
-            <span className="text-muted-foreground/50 font-mono text-[9px] tracking-wider">
-              {relativeTime(new Date(event.createdAt))}
-            </span>
+            <RelativeTime
+              date={new Date(event.createdAt)}
+              className="text-muted-foreground/50 text-xs tracking-wider"
+            />
           </div>
         );
       })}

@@ -141,7 +141,7 @@ function CodeBlockComponent({
   return (
     <div className="bg-muted/50 border-border my-4 overflow-hidden rounded border">
       <div className="border-border flex items-center justify-between border-b px-3 py-1.5">
-        <span className="text-muted-foreground font-mono text-[10px] tracking-wider">
+        <span className="text-muted-foreground font-mono text-xs tracking-wider">
           CODE
         </span>
         <div className="flex items-center gap-2">

@@ -7,7 +7,10 @@ import { api } from "@/trpc/react";
 import { AgentApiKey } from "@/components/agent-api-key";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AGENT_AVATAR_PRESETS } from "@/lib/avatar";
+import { Badge } from "@/components/ui/badge";
+import { SectionLabel } from "@/components/ui/section-label";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { AGENT_AVATAR_PRESETS, getInitials } from "@/lib/avatar";
 import { CopyButton } from "@/components/agent/shared";
 
 interface AgentProfile {
@@ -25,7 +28,6 @@ interface AgentProfile {
 
 export function ProfileTab({ agent }: { agent: AgentProfile }) {
   const t = useTranslations("agent");
-  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(agent.name);
   const [editAvatar, setEditAvatar] = useState(
@@ -67,9 +69,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
       {/* Agent Info Card */}
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border flex items-center justify-between border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / AGENT PROFILE
-          </span>
+          <SectionLabel bordered={false}>AGENT PROFILE</SectionLabel>
           {!isEditing ? (
             <Button
               variant="outline"
@@ -116,7 +116,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
         {isEditing ? (
           <div className="mt-4 space-y-5">
             <div>
-              <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              <label className="text-muted-foreground font-mono text-xs tracking-wider">
                 AGENT NAME
               </label>
               <Input
@@ -128,7 +128,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
               />
             </div>
             <div>
-              <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              <label className="text-muted-foreground font-mono text-xs tracking-wider">
                 AVATAR
               </label>
               <div className="mt-2 flex flex-wrap gap-3">
@@ -165,7 +165,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
               </div>
             </div>
             <div>
-              <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              <label className="text-muted-foreground font-mono text-xs tracking-wider">
                 BIO
               </label>
               <textarea
@@ -177,7 +177,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
               />
             </div>
             <div>
-              <label className="text-muted-foreground font-mono text-[11px] tracking-wider">
+              <label className="text-muted-foreground font-mono text-xs tracking-wider">
                 VISIBILITY MODE
               </label>
               <div className="mt-2 space-y-2">
@@ -216,34 +216,31 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
           </div>
         ) : (
           <div className="mt-4 flex items-start gap-4">
-            {agent.avatar && !avatarLoadFailed ? (
-              <Image
-                src={agent.avatar}
-                alt={agent.name}
-                width={48}
-                height={48}
-                unoptimized
-                className="border-border h-12 w-12 rounded-full border"
-                onError={() => setAvatarLoadFailed(true)}
-              />
-            ) : (
-              <div className="bg-secondary text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full font-mono text-sm font-medium">
-                {agent.name.charAt(0).toUpperCase()}
-              </div>
-            )}
+            <Avatar className="border-border size-12 border">
+              {agent.avatar && (
+                <AvatarImage src={agent.avatar} alt={agent.name} />
+              )}
+              <AvatarFallback className="font-mono text-sm font-medium">
+                {getInitials(agent.name)}
+              </AvatarFallback>
+            </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className="text-foreground font-medium">
                   {agent.name}
                 </span>
-                <span className="border-border text-muted-foreground rounded border px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider">
+                <Badge
+                  variant="outline"
+                  className="font-mono text-xs tracking-wider"
+                >
                   {agent.visibilityMode.toUpperCase()}
-                </span>
-                <span
-                  className={`rounded border px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-wider ${agent.status === "active" ? "border-green-800 text-green-400" : "border-border text-muted-foreground"}`}
+                </Badge>
+                <Badge
+                  variant={agent.status === "active" ? "success" : "outline"}
+                  className="font-mono text-xs tracking-wider"
                 >
                   {agent.status.toUpperCase()}
-                </span>
+                </Badge>
               </div>
               {agent.bio && (
                 <p className="text-muted-foreground mt-1 text-sm">
@@ -251,11 +248,11 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
                 </p>
               )}
               <div className="mt-2 flex items-center gap-4">
-                <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+                <span className="text-muted-foreground font-mono text-xs tracking-wider">
                   {agent.totalContributions} contribution
                   {agent.totalContributions !== 1 ? "s" : ""}
                 </span>
-                <span className="text-muted-foreground font-mono text-[11px] tracking-wider">
+                <span className="text-muted-foreground font-mono text-xs tracking-wider">
                   Created{" "}
                   {new Date(agent.createdAt).toLocaleDateString("en-US", {
                     year: "numeric",
@@ -272,9 +269,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
       {/* API Key */}
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / API KEY
-          </span>
+          <SectionLabel bordered={false}>API KEY</SectionLabel>
         </div>
         <div className="mt-4">
           <AgentApiKey />
@@ -284,9 +279,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
       {/* Verification */}
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / VERIFICATION
-          </span>
+          <SectionLabel bordered={false}>VERIFICATION</SectionLabel>
         </div>
         <div className="mt-4">
           <VerificationSection
@@ -299,9 +292,7 @@ export function ProfileTab({ agent }: { agent: AgentProfile }) {
       {/* Danger Zone */}
       <div className="border-destructive/30 bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-            / DANGER ZONE
-          </span>
+          <SectionLabel bordered={false}>DANGER ZONE</SectionLabel>
         </div>
         <div className="mt-4">
           {!showDeleteConfirm ? (
@@ -390,8 +381,8 @@ function VerificationSection({
 
   if (isVerified) {
     return (
-      <div className="flex items-center gap-2 rounded border border-blue-900/30 bg-blue-950/20 px-3 py-2">
-        <span className="inline-flex items-center gap-1 font-mono text-[11px] tracking-wider text-blue-400">
+      <div className="border-info/30 bg-info/10 flex items-center gap-2 rounded border px-3 py-2">
+        <span className="text-info inline-flex items-center gap-1 font-mono text-xs tracking-wider">
           <svg
             viewBox="0 0 16 16"
             fill="currentColor"
@@ -407,7 +398,7 @@ function VerificationSection({
           VERIFIED
         </span>
         {xHandle && (
-          <span className="text-muted-foreground font-mono text-[10px]">
+          <span className="text-muted-foreground font-mono text-xs">
             @{xHandle}
           </span>
         )}
@@ -425,7 +416,7 @@ function VerificationSection({
         <Button
           variant="outline"
           size="sm"
-          className="font-mono text-[10px] tracking-wider"
+          className="font-mono text-xs tracking-wider"
           onClick={() => startVerification.mutate()}
           disabled={startVerification.isPending}
         >
@@ -447,7 +438,7 @@ function VerificationSection({
           <Button
             variant="outline"
             size="sm"
-            className="font-mono text-[10px] tracking-wider"
+            className="font-mono text-xs tracking-wider"
             asChild
           >
             <a
@@ -470,7 +461,7 @@ function VerificationSection({
             />
             <Button
               size="sm"
-              className="font-mono text-[10px] tracking-wider"
+              className="font-mono text-xs tracking-wider"
               onClick={() => submitVerification.mutate({ tweetUrl })}
               disabled={submitVerification.isPending || !tweetUrl.trim()}
             >

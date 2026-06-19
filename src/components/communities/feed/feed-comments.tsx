@@ -4,8 +4,12 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { RelativeTime } from "@/components/ui/relative-time";
+import { getInitials } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,17 +18,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Loader2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-
-function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const diff = now - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
 
 interface FeedComment {
   id: number;
@@ -62,7 +55,12 @@ export function FeedComments({
     memberRole === "admin" ||
     memberRole === "moderator";
 
-  const { data: comments = [], isLoading } = api.feed.getComments.useQuery({
+  const {
+    data: comments = [],
+    isLoading,
+    isError,
+    refetch,
+  } = api.feed.getComments.useQuery({
     postId,
   });
 
@@ -98,10 +96,20 @@ export function FeedComments({
     return (
       <div className="space-y-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="bg-muted h-10 animate-pulse rounded" />
+          <div key={i} className="flex items-start gap-2">
+            <Skeleton className="mt-0.5 size-6 shrink-0 rounded-full" />
+            <div className="flex-1 space-y-1.5">
+              <Skeleton className="h-2.5 w-24" />
+              <Skeleton className="h-3 w-full" />
+            </div>
+          </div>
         ))}
       </div>
     );
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => void refetch()} className="px-0 py-6" />;
   }
 
   return (
@@ -110,13 +118,13 @@ export function FeedComments({
       {(comments as FeedComment[]).map((comment) => {
         const isAuthor = !!currentUserId && comment.authorId === currentUserId;
         const canModify = isAuthor || isPrivileged;
-        const initials = (comment.authorName ?? "?")[0]?.toUpperCase() ?? "?";
+        const initials = getInitials(comment.authorName ?? "?");
 
         if (comment.isDeleted) {
           return (
             <p
               key={comment.id}
-              className="text-muted-foreground font-mono text-[11px]"
+              className="text-muted-foreground font-mono text-xs"
             >
               {t("commentDeletedMessage")}
             </p>
@@ -126,9 +134,7 @@ export function FeedComments({
         return (
           <div key={comment.id} className="flex items-start gap-2">
             <Avatar className="mt-0.5 size-6 shrink-0">
-              <AvatarFallback className="text-[10px]">
-                {initials}
-              </AvatarFallback>
+              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-1">
@@ -136,8 +142,11 @@ export function FeedComments({
                   <span className="text-xs font-medium">
                     {comment.authorName ?? "Member"}
                   </span>
-                  <span className="text-muted-foreground ml-1.5 text-[10px]">
-                    {timeAgo(comment.createdAt)}
+                  <span className="text-muted-foreground ml-1.5 text-xs">
+                    <RelativeTime
+                      date={comment.createdAt}
+                      className="text-xs"
+                    />
                     {comment.isEdited ? ` · (${t("edited")})` : ""}
                   </span>
                 </div>
@@ -228,7 +237,7 @@ export function FeedComments({
       {currentUserId ? (
         <div className="flex items-start gap-2 pt-1">
           <Avatar className="mt-0.5 size-6 shrink-0">
-            <AvatarFallback className="text-[10px]">Y</AvatarFallback>
+            <AvatarFallback className="text-xs">Y</AvatarFallback>
           </Avatar>
           <div className="flex-1 space-y-1.5">
             <Textarea

@@ -120,7 +120,7 @@ export function ClaimAgentClient({
           {agent.bio && (
             <p className="text-muted-foreground text-sm">{agent.bio}</p>
           )}
-          <p className="text-muted-foreground/60 font-mono text-[10px] tracking-wider">
+          <p className="text-muted-foreground/60 font-mono text-xs tracking-wider">
             REGISTERED {new Date(agent.createdAt).toLocaleDateString()}
           </p>
         </div>

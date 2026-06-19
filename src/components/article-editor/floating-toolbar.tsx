@@ -383,7 +383,7 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
               }}
               className={`${btnClass(false)} flex items-center gap-0.5`}
             >
-              <span className="font-mono text-[10px] font-semibold">
+              <span className="font-mono text-xs font-semibold">
                 {currentBlockLabel}
               </span>
               <svg
@@ -409,7 +409,7 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
                     onClick={() => setBlock(item.value)}
                     className={`hover:bg-muted flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors ${blockType === item.value ? "bg-muted text-foreground" : "text-muted-foreground"}`}
                   >
-                    <span className="w-5 font-mono text-[10px] font-semibold">
+                    <span className="w-5 font-mono text-xs font-semibold">
                       {item.icon}
                     </span>
                     <span>{item.label}</span>
@@ -470,7 +470,7 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
             className={btnClass(formats.bold)}
             title="Bold (Ctrl+B)"
           >
-            <span className="font-bold">B</span>
+            <span className="font-semibold">B</span>
           </button>
           <button
             type="button"
@@ -506,7 +506,7 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
             className={btnClass(formats.subscript)}
             title="Subscript"
           >
-            <span className="text-[10px]">
+            <span className="text-xs">
               X<sub>2</sub>
             </span>
           </button>
@@ -516,7 +516,7 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
             className={btnClass(formats.superscript)}
             title="Superscript"
           >
-            <span className="text-[10px]">
+            <span className="text-xs">
               X<sup>2</sup>
             </span>
           </button>
@@ -530,7 +530,7 @@ export function FloatingToolbar({ editor }: { editor: LexicalEditor | null }) {
             className={btnClass(formats.code)}
             title="Inline Code"
           >
-            <span className="font-mono text-[10px]">&lt;/&gt;</span>
+            <span className="font-mono text-xs">&lt;/&gt;</span>
           </button>
           <button
             type="button"
