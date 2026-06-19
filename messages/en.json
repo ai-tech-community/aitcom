@@ -2191,5 +2191,18 @@
     "confirm": "Confirm",
     "cancel": "Cancel",
     "confirmTitle": "Are you sure?"
+  },
+  "streak": {
+    "title": "Streak",
+    "viewDetails": "View Details",
+    "days": "days",
+    "ariaSummary": "Streak summary card",
+    "ariaStats": "Streak stats",
+    "longest": "Longest Streak",
+    "total": "Total",
+    "howTitle": "How do streaks work?",
+    "how1": "Complete at least one activity each day to build your streak.",
+    "how2": "Each day you do an activity, your streak increases.",
+    "how3": "Missing a day will reset your streak to 0."
   }
 }

@@ -247,6 +247,55 @@ export function tierForXp(xp: number): (typeof LEVEL_TIERS)[number] {
   return tier;
 }
 
+// --- Streaks (derived from activity, no dedicated table) ---
+
+export type StreakPeriod = { periodStart: string; periodEnd: string };
+
+export interface StreakData {
+  currentStreak: number;
+  longestStreak: number;
+  total: number;
+  streak: StreakPeriod[];
+}
+
+/**
+ * Collapse a sorted-ascending list of unique active days (YYYY-MM-DD) into
+ * consecutive-day periods plus streak stats. An "active day" is any day with
+ * at least one activity event. `today` (YYYY-MM-DD) is passed in so the result
+ * is deterministic and unit-testable. The current streak counts only if the
+ * most recent active day is today or yesterday (a one-day grace for "today
+ * not done yet").
+ */
+export function computeStreakData(days: string[], today: string): StreakData {
+  const DAY_MS = 86_400_000;
+  const toUtc = (s: string) => Date.parse(`${s}T00:00:00Z`);
+  const periods: StreakPeriod[] = [];
+
+  for (const day of days) {
+    const last = periods[periods.length - 1];
+    if (last && toUtc(day) - toUtc(last.periodEnd) === DAY_MS) {
+      last.periodEnd = day;
+    } else {
+      periods.push({ periodStart: day, periodEnd: day });
+    }
+  }
+
+  if (periods.length === 0) {
+    return { currentStreak: 0, longestStreak: 0, total: 0, streak: [] };
+  }
+
+  const lengthOf = (p: StreakPeriod) =>
+    Math.round((toUtc(p.periodEnd) - toUtc(p.periodStart)) / DAY_MS) + 1;
+  const longestStreak = Math.max(...periods.map(lengthOf));
+  const last = periods[periods.length - 1]!;
+  const gapToToday = Math.round(
+    (toUtc(today) - toUtc(last.periodEnd)) / DAY_MS,
+  );
+  const currentStreak = gapToToday <= 1 ? lengthOf(last) : 0;
+
+  return { currentStreak, longestStreak, total: days.length, streak: periods };
+}
+
 // --- DB Helpers ---
 
 // Accept either the root db or a transaction handle so XP/badge writes can be

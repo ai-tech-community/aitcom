@@ -13,7 +13,9 @@ import {
   eventRegistrations,
   agentProfiles,
   hackathonCertificates,
+  activityEvents,
 } from "@/server/db/schema";
+import { computeStreakData } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
 import {
   awardXp,
@@ -58,6 +60,35 @@ export const membersRouter = createTRPCRouter({
         earnedAt: b.earnedAt,
       })),
     };
+  }),
+
+  /**
+   * The current user's activity streak, derived from activityEvents (no
+   * dedicated streak table) — an "active day" is any day with >=1 event.
+   */
+  getMyStreak: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const rows = await ctx.db
+      .selectDistinct({
+        day: sql<string>`to_char(${activityEvents.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+      })
+      .from(activityEvents)
+      .where(
+        and(
+          eq(activityEvents.actorId, userId),
+          eq(activityEvents.actorType, "member"),
+        ),
+      )
+      .orderBy(
+        sql`to_char(${activityEvents.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`,
+      );
+
+    const today = new Date().toISOString().slice(0, 10);
+    return computeStreakData(
+      rows.map((r) => r.day),
+      today,
+    );
   }),
 
   /** Create or update the current user's profile. */
