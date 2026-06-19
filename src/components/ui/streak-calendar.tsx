@@ -1,0 +1,491 @@
+"use client";
+
+import * as React from "react";
+import { Check, Snowflake } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+/**
+ * StreakCalendar — adapted from Trophy's open-source Gamification UI Kit
+ * (https://ui.trophy.so) and re-tokenized onto the Town Square design system
+ * as a proof-of-fit (see DESIGN.md). Changes from the upstream component:
+ *
+ * - Active streak days use the SUCCESS token (consistency = a healthy/positive
+ *   state per the Semantic-Status Rule), not the brand accent. A year of active
+ *   cells in Signal Orange would shatter the One Voice ≤10% budget.
+ * - "Today" keeps Signal Orange — it's the single wayfinding focus, the
+ *   sanctioned One Voice use. (Green = your streak history, orange = you-are-here.)
+ * - Freezes use the INFO token (an informational state).
+ * - Labels (weekdays, month markers) adopt the Geist Mono machine voice.
+ * - Reuses the in-house <Tooltip> (the upstream imported @radix-ui/react-tooltip
+ *   directly, which this project doesn't install — it uses the unified radix-ui).
+ * - Token radii (rounded-md / rounded-sm) instead of arbitrary values.
+ *
+ * Wire `streak` to existing XP/activity data via tRPC; do not use Trophy's API.
+ */
+
+// Types (inlined — only the fields this component reads)
+interface StreakPeriod {
+  periodStart: string;
+  periodEnd: string;
+  usedFreeze?: boolean;
+}
+
+function formatDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isDateInPeriod(date: Date, period: StreakPeriod): boolean {
+  const d = formatDateKey(date);
+  return d >= period.periodStart && d <= period.periodEnd;
+}
+
+function didUseFreezeOnDate(date: Date, periods: StreakPeriod[]): boolean {
+  for (const period of periods) {
+    if (isDateInPeriod(date, period) && period.usedFreeze) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function wasDateActive(date: Date, periods: StreakPeriod[]): boolean {
+  for (const period of periods) {
+    if (isDateInPeriod(date, period)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfMonth(year: number, month: number): number {
+  return new Date(year, month, 1).getDay();
+}
+
+interface StreakCalendarProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Streak periods (wire to existing activity/XP data). */
+  streak: StreakPeriod[];
+  /** Calendar layout variant. */
+  view?: "week" | "month" | "year";
+  /** Month to display (default: current month). */
+  month?: Date;
+  /** Date used for week view (default: today). */
+  referenceDate?: Date;
+  /** Show freeze indicators. */
+  showFreezes?: boolean;
+  /** Start of week: 0 = Sunday, 1 = Monday. */
+  startOfWeek?: 0 | 1;
+  /** Callback when a day is clicked. */
+  onDayClick?: (date: Date, wasActive: boolean) => void;
+}
+
+const WEEKDAYS_SUNDAY = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const WEEKDAYS_MONDAY = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+
+function getDateKey(date: Date): string {
+  return formatDateKey(date);
+}
+
+function getWeekStart(date: Date, startOfWeek: 0 | 1): Date {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  const day = next.getDay();
+  const offset = startOfWeek === 1 ? (day + 6) % 7 : day;
+  next.setDate(next.getDate() - offset);
+  return next;
+}
+
+function getWeekDates(reference: Date, startOfWeek: 0 | 1): Date[] {
+  const start = getWeekStart(reference, startOfWeek);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return date;
+  });
+}
+
+function getWeekdayIndex(date: Date, startOfWeek: 0 | 1): number {
+  const day = date.getDay();
+  return startOfWeek === 1 ? (day + 6) % 7 : day;
+}
+
+function getGitDates(endDate: Date): Date[] {
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+  return Array.from({ length: 365 }, (_, index) => {
+    const date = new Date(end);
+    date.setDate(end.getDate() - (364 - index));
+    return date;
+  });
+}
+
+function getGitCells(
+  endDate: Date,
+  startOfWeek: 0 | 1,
+): {
+  cells: (Date | null)[];
+  dates: Date[];
+} {
+  const dates = getGitDates(endDate);
+  const firstDate = dates[0];
+  if (!firstDate) return { cells: [], dates: [] };
+
+  const leadingEmptyCells = getWeekdayIndex(firstDate, startOfWeek);
+  const cells: (Date | null)[] = [
+    ...Array.from({ length: leadingEmptyCells }, () => null),
+    ...dates,
+  ];
+
+  return { cells, dates };
+}
+
+const StreakCalendar = React.forwardRef<HTMLDivElement, StreakCalendarProps>(
+  (
+    {
+      className,
+      streak,
+      view = "week",
+      month = new Date(),
+      referenceDate = new Date(),
+      showFreezes = true,
+      startOfWeek = 0,
+      onDayClick,
+      ...props
+    },
+    ref,
+  ) => {
+    const year = month.getFullYear();
+    const monthIndex = month.getMonth();
+    const daysInMonth = getDaysInMonth(year, monthIndex);
+    const firstDayOfMonth = getFirstDayOfMonth(year, monthIndex);
+
+    const adjustedFirstDay =
+      startOfWeek === 1 ? (firstDayOfMonth + 6) % 7 : firstDayOfMonth;
+
+    const weekdays = startOfWeek === 1 ? WEEKDAYS_MONDAY : WEEKDAYS_SUNDAY;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const periods = streak ?? [];
+    const weekDates = getWeekDates(referenceDate, startOfWeek);
+    const { cells: gitCells, dates: gitDates } = getGitCells(today, startOfWeek);
+    const gitColumnCount = Math.ceil(gitCells.length / 7);
+    const gitGridTemplateColumns = `repeat(${gitColumnCount}, 1rem)`;
+    const gitMonthLabels: Array<{ column: number; label: string }> = [];
+    const seenGitMonths = new Set<string>();
+
+    gitCells.forEach((date, cellIndex) => {
+      if (!date) return;
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+      if (!seenGitMonths.has(monthKey) && date.getDate() === 1) {
+        seenGitMonths.add(monthKey);
+        gitMonthLabels.push({
+          column: Math.floor(cellIndex / 7),
+          label: date.toLocaleDateString("en-US", { month: "short" }),
+        });
+      }
+    });
+
+    const firstDate = gitDates[0];
+    if (firstDate) {
+      const firstMonthKey = `${firstDate.getFullYear()}-${firstDate.getMonth()}`;
+      if (!seenGitMonths.has(firstMonthKey)) {
+        gitMonthLabels.unshift({
+          column: 0,
+          label: firstDate.toLocaleDateString("en-US", { month: "short" }),
+        });
+      }
+    }
+
+    const days: (number | null)[] = [];
+    for (let i = 0; i < adjustedFirstDay; i++) {
+      days.push(null);
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(day);
+    }
+
+    const monthName = month.toLocaleDateString("en-US", { month: "long" });
+    const gitEndMonthName = today.toLocaleDateString("en-US", {
+      month: "long",
+    });
+
+    // Freeze = informational state → INFO token.
+    const freezeColorStyles = {
+      "--freeze-color": "var(--info)",
+      "--freeze-foreground-color": "var(--info-foreground)",
+    } as React.CSSProperties;
+
+    const getCellState = (date: Date) => {
+      const isToday = date.getTime() === today.getTime();
+      const isFuture = date > today;
+      const isActive = wasDateActive(date, periods);
+      const usedFreeze = showFreezes && didUseFreezeOnDate(date, periods);
+      return { isToday, isFuture, isActive, usedFreeze };
+    };
+
+    return (
+      <div
+        ref={ref}
+        role="grid"
+        aria-label={`Streak calendar ${view} view`}
+        className={cn(
+          "w-full",
+          view === "month" ? "max-w-sm" : "max-w-3xl",
+          className,
+        )}
+        {...props}
+      >
+        {view === "month" && (
+          <>
+            <div className="mb-4 text-center">
+              <h3 className="text-lg font-semibold" id="streak-calendar-title">
+                {monthName} {year}
+              </h3>
+            </div>
+            <div role="row" className="mb-2 grid grid-cols-7 gap-1">
+              {weekdays.map((day) => (
+                <div
+                  key={day}
+                  role="columnheader"
+                  className="text-muted-foreground text-center font-mono text-xs font-medium tracking-wider uppercase"
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+            <div role="rowgroup" className="grid grid-cols-7 gap-1">
+              {days.map((day, index) => {
+                if (day === null) {
+                  return (
+                    <div key={`empty-${index}`} className="aspect-square" />
+                  );
+                }
+                const date = new Date(year, monthIndex, day);
+                const { isToday, isFuture, isActive, usedFreeze } =
+                  getCellState(date);
+                const dateLabel = date.toLocaleDateString("en-US", {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                });
+                const statusLabel = usedFreeze
+                  ? "freeze used"
+                  : isActive
+                    ? "streak active"
+                    : isFuture
+                      ? "future"
+                      : "no activity";
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    role="gridcell"
+                    aria-label={`${dateLabel}${isToday ? ", today" : ""}, ${statusLabel}`}
+                    aria-current={isToday ? "date" : undefined}
+                    onClick={() => onDayClick?.(date, isActive)}
+                    disabled={isFuture}
+                    className={cn(
+                      "relative flex aspect-square items-center justify-center rounded-md p-1 text-sm transition-colors",
+                      "hover:bg-muted focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+                      // Today = the one wayfinding focus → Signal Orange.
+                      isToday &&
+                        "ring-primary !text-primary !bg-primary-foreground ring-2 ring-inset",
+                      isFuture && "text-muted-foreground/50 cursor-not-allowed",
+                      // Active streak = success (healthy/consistent), not the accent.
+                      isActive &&
+                        !usedFreeze &&
+                        "bg-success text-success-foreground hover:bg-success/90",
+                      usedFreeze &&
+                        "bg-[var(--freeze-color)] text-[var(--freeze-foreground-color)] hover:opacity-90",
+                    )}
+                    style={usedFreeze ? freezeColorStyles : undefined}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {view === "week" && (
+          <div role="rowgroup" className="grid grid-cols-7 gap-2">
+            {weekDates.map((date) => {
+              const { isToday, isFuture, isActive, usedFreeze } =
+                getCellState(date);
+              const dayLabel = date.toLocaleDateString("en-US", {
+                weekday: "short",
+              });
+              return (
+                <div
+                  key={getDateKey(date)}
+                  className="flex flex-col items-center gap-2"
+                >
+                  <button
+                    type="button"
+                    role="gridcell"
+                    aria-current={isToday ? "date" : undefined}
+                    aria-label={`${date.toLocaleDateString("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                    })}, ${usedFreeze ? "freeze used" : isActive ? "streak active" : isFuture ? "future" : "no activity"}`}
+                    onClick={() => onDayClick?.(date, isActive)}
+                    disabled={isFuture}
+                    className={cn(
+                      "relative flex h-12 w-12 items-center justify-center rounded-full border-2 transition-colors",
+                      "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+                      !isFuture && "hover:opacity-90",
+                      isToday && "border-primary !text-primary !bg-primary-foreground",
+                      isFuture &&
+                        "border-border/40 bg-muted/20 text-muted-foreground/40 cursor-not-allowed",
+                      isActive &&
+                        !usedFreeze &&
+                        "border-success bg-success text-success-foreground",
+                      usedFreeze &&
+                        "border-[var(--freeze-color)] bg-[var(--freeze-color)] text-[var(--freeze-foreground-color)]",
+                      !isActive &&
+                        !usedFreeze &&
+                        !isFuture &&
+                        "border-border/60 bg-muted/30",
+                    )}
+                    style={usedFreeze ? freezeColorStyles : undefined}
+                  >
+                    {usedFreeze ? (
+                      <Snowflake
+                        className={cn(
+                          "h-5 w-5",
+                          isToday && "!text-muted-foreground/20",
+                        )}
+                      />
+                    ) : (
+                      isActive && (
+                        <Check
+                          className={cn(
+                            "h-5 w-5",
+                            isToday && "!text-muted-foreground/20",
+                          )}
+                        />
+                      )
+                    )}
+                  </button>
+                  <span
+                    className={cn(
+                      "font-mono text-xs tracking-wider uppercase",
+                      isFuture
+                        ? "text-muted-foreground/50"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {dayLabel}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {view === "year" && (
+          <>
+            <div className="mb-4 text-center">
+              <h3 className="text-lg font-semibold" id="streak-calendar-title">
+                Last 365 days
+              </h3>
+              <p className="text-muted-foreground font-mono text-xs">
+                Ending {gitEndMonthName} {today.getDate()}
+              </p>
+            </div>
+            <div className="overflow-x-auto">
+              <div className="inline-block pr-16">
+                <div
+                  aria-hidden="true"
+                  className="mb-2 grid gap-1"
+                  style={{ gridTemplateColumns: gitGridTemplateColumns }}
+                >
+                  {gitMonthLabels.map((month) => (
+                    <span
+                      key={`${month.column}-${month.label}`}
+                      className="text-muted-foreground font-mono text-xs tracking-wider whitespace-nowrap uppercase"
+                      style={{ gridColumnStart: month.column + 1 }}
+                    >
+                      {month.label}
+                    </span>
+                  ))}
+                </div>
+                <TooltipProvider>
+                  <div
+                    role="rowgroup"
+                    className="grid grid-flow-col grid-rows-7 gap-1"
+                    style={{ gridTemplateColumns: gitGridTemplateColumns }}
+                  >
+                    {gitCells.map((date, index) => {
+                      if (!date) {
+                        return (
+                          <div key={`git-empty-${index}`} className="h-4 w-4" />
+                        );
+                      }
+                      const { isToday, isActive, usedFreeze } =
+                        getCellState(date);
+                      const dateLabel = date.toLocaleDateString("en-US", {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      });
+                      return (
+                        <Tooltip key={getDateKey(date)}>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              role="gridcell"
+                              aria-current={isToday ? "date" : undefined}
+                              aria-label={`${dateLabel}, ${usedFreeze ? "freeze used" : isActive ? "streak active" : "no activity"}`}
+                              onClick={() => onDayClick?.(date, isActive)}
+                              className={cn(
+                                "border-border/40 h-4 w-4 rounded-sm border transition-colors",
+                                "hover:ring-ring hover:ring-1",
+                                isToday && "border-primary ring-primary ring-1",
+                                isActive &&
+                                  !usedFreeze &&
+                                  "bg-success border-success/80",
+                                usedFreeze &&
+                                  "border-[var(--freeze-color)] bg-[var(--freeze-color)]",
+                                !isActive && !usedFreeze && "bg-muted/40",
+                              )}
+                              style={usedFreeze ? freezeColorStyles : undefined}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            {dateLabel}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                </TooltipProvider>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  },
+);
+StreakCalendar.displayName = "StreakCalendar";
+
+export { StreakCalendar };
+export type { StreakCalendarProps, StreakPeriod };
