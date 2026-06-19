@@ -646,7 +646,8 @@
     "veteran": "Veteraan",
     "early_adopter": "Vroege Gebruiker",
     "speaker": "Spreker",
-    "onboarding_complete": "Onboarding Compleet"
+    "onboarding_complete": "Onboarding Compleet",
+    "course_complete": "Cursus afgerond"
   },
   "sponsors": {
     "title": "Sponsors",
@@ -2163,6 +2164,16 @@
     "signInToSuggest": "Log in om een idee voor te stellen",
     "submitted": "Idee verstuurd!",
     "mustAcceptRules": "Accepteer eerst de communityregels."
+  },
+  "tiers": {
+    "beginner": "Beginner",
+    "novice": "Leerling",
+    "intermediate": "Gevorderd",
+    "professional": "Professional",
+    "expert": "Expert",
+    "master": "Meester",
+    "grandMaster": "Grootmeester",
+    "enlightened": "Verlicht"
   },
   "common": {
     "loading": "Laden…",

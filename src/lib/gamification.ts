@@ -157,6 +157,12 @@ export const BADGES: Record<string, BadgeDefinition> = {
     description: "Published your first project on Launchpad",
     icon: "🚀",
   },
+  course_complete: {
+    slug: "course_complete",
+    name: "Course Graduate",
+    description: "Completed every lesson in a classroom course",
+    icon: "🎓",
+  },
 };
 
 // --- XP Amounts ---
@@ -191,6 +197,7 @@ export const XP_AMOUNTS = {
   FEED_RECEIVE_LIKE: 2,
   FEED_RECEIVE_COMMENT: 3,
   REFERRAL_ACTIVATED: 50,
+  COURSE_COMPLETE: 50,
 } as const;
 
 // --- Leveling ---
@@ -209,6 +216,35 @@ export function xpForNextLevel(currentXp: number): {
     current: currentXp - levelStart,
     needed: 200,
   };
+}
+
+// --- Tiers (presentation only) ---
+//
+// A named-tier overlay on top of the linear XP/level model — purely for
+// display (badges, profile labels). It does NOT change how XP or `level`
+// are computed (still floor(xp/200)+1); it maps an XP total to a tier label.
+// Translate the returned `key` via the `tiers` i18n namespace.
+
+export const LEVEL_TIERS = [
+  { key: "beginner", minXp: 0 },
+  { key: "novice", minXp: 500 },
+  { key: "intermediate", minXp: 1000 },
+  { key: "professional", minXp: 1500 },
+  { key: "expert", minXp: 2000 },
+  { key: "master", minXp: 2500 },
+  { key: "grandMaster", minXp: 3000 },
+  { key: "enlightened", minXp: 3500 },
+] as const;
+
+export type LevelTierKey = (typeof LEVEL_TIERS)[number]["key"];
+
+/** Returns the highest tier whose `minXp` the given XP total has reached. */
+export function tierForXp(xp: number): (typeof LEVEL_TIERS)[number] {
+  let tier: (typeof LEVEL_TIERS)[number] = LEVEL_TIERS[0];
+  for (const candidate of LEVEL_TIERS) {
+    if (xp >= candidate.minXp) tier = candidate;
+  }
+  return tier;
 }
 
 // --- DB Helpers ---

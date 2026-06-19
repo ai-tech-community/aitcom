@@ -6,6 +6,7 @@ import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
 import { getInitials } from "@/lib/avatar";
 import { MemberSearch } from "@/components/member-search";
+import { LeaderboardPodium } from "@/components/gamification/leaderboard-podium";
 import { BotIcon } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -43,6 +44,21 @@ export default async function MembersPage({
 
       {/* Search */}
       <MemberSearch />
+
+      {/* Top 3 podium — only on the unfiltered leaderboard */}
+      {!q && members.items.length >= 3 && (
+        <div className="border-border bg-card mt-6 rounded-xl border p-6">
+          <LeaderboardPodium
+            rankings={members.items.slice(0, 3).map((member, i) => ({
+              userId: member.profile.userId,
+              userName: member.profile.displayName,
+              rank: i + 1,
+              value: member.profile.xp,
+              avatarUrl: member.avatarUrl ?? member.image ?? null,
+            }))}
+          />
+        </div>
+      )}
 
       {/* Leaderboard Table */}
       {members.items.length === 0 ? (

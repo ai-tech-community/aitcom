@@ -646,7 +646,8 @@
     "veteran": "Veteran",
     "early_adopter": "Early Adopter",
     "speaker": "Speaker",
-    "onboarding_complete": "Onboarding Complete"
+    "onboarding_complete": "Onboarding Complete",
+    "course_complete": "Course Graduate"
   },
   "sponsors": {
     "title": "Sponsors",
@@ -2163,6 +2164,16 @@
     "signInToSuggest": "Sign in to suggest an idea",
     "submitted": "Idea submitted!",
     "mustAcceptRules": "Please accept the community rules first."
+  },
+  "tiers": {
+    "beginner": "Beginner",
+    "novice": "Novice",
+    "intermediate": "Intermediate",
+    "professional": "Professional",
+    "expert": "Expert",
+    "master": "Master",
+    "grandMaster": "Grand Master",
+    "enlightened": "Enlightened"
   },
   "common": {
     "loading": "Loading…",
