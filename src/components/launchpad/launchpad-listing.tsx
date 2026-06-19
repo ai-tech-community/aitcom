@@ -6,6 +6,8 @@ import { Search, Plus } from "lucide-react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Link } from "@/i18n/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 import { LaunchpadCard } from "./launchpad-card";
 
 type Sort = "newest" | "mostVoted" | "recentlyUpdated" | "trending";
@@ -52,7 +54,7 @@ export function LaunchpadListing() {
     setPage(1);
   }, []);
 
-  const { data, isLoading } = api.launchpad.list.useQuery({
+  const { data, isLoading, isError, refetch } = api.launchpad.list.useQuery({
     sort,
     stage,
     search: debouncedSearch || undefined,
@@ -131,13 +133,15 @@ export function LaunchpadListing() {
         </div>
       </div>
 
-      {/* Grid / Loading / Empty */}
+      {/* Grid / Loading / Error / Empty */}
       {isLoading ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-muted h-48 animate-pulse rounded-lg" />
+            <Skeleton key={i} className="h-48 rounded-lg" />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState onRetry={() => void refetch()} />
       ) : isEmpty ? (
         <p className="text-muted-foreground py-12 text-center font-mono text-xs">
           {t("noProjects")}

@@ -11,6 +11,8 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 
 const DIFFICULTIES = [
   "all",
@@ -35,7 +37,12 @@ export function ChallengeList() {
   const [type, setType] = useState<TypeFilter>("all");
   const [showForm, setShowForm] = useState(false);
 
-  const { data: challenges, isLoading } = api.challenges.list.useQuery({
+  const {
+    data: challenges,
+    isLoading,
+    isError,
+    refetch,
+  } = api.challenges.list.useQuery({
     ...(difficulty !== "all" && { difficulty }),
     ...(type !== "all" && { type }),
   });
@@ -148,24 +155,32 @@ export function ChallengeList() {
       {/* Challenge Cards */}
       <div className="mt-6 space-y-4">
         {isLoading && (
-          <p className="text-muted-foreground py-8 text-center text-sm">
-            Loading...
-          </p>
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full rounded-lg" />
+            ))}
+          </div>
         )}
 
-        {!isLoading && displayedChallenges.length === 0 && (
+        {!isLoading && isError && (
+          <ErrorState onRetry={() => void refetch()} />
+        )}
+
+        {!isLoading && !isError && displayedChallenges.length === 0 && (
           <p className="text-muted-foreground py-8 text-center text-sm">
             {t("empty")}
           </p>
         )}
 
-        {displayedChallenges.map((challenge) => (
-          <ChallengeCard
-            key={challenge.id}
-            challenge={challenge}
-            isEnrolled={enrolledIds.has(challenge.id)}
-          />
-        ))}
+        {!isLoading &&
+          !isError &&
+          displayedChallenges.map((challenge) => (
+            <ChallengeCard
+              key={challenge.id}
+              challenge={challenge}
+              isEnrolled={enrolledIds.has(challenge.id)}
+            />
+          ))}
       </div>
 
       {/* Sign up CTA for visitors */}

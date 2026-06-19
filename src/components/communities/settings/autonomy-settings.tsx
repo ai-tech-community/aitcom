@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Switch } from "@/components/ui/switch";
+import { ErrorState } from "@/components/ui/error-state";
 
 export function AutonomySettings({ slug }: { slug: string }) {
   const t = useTranslations("autonomy");
@@ -12,6 +13,9 @@ export function AutonomySettings({ slug }: { slug: string }) {
     onSuccess: () => utils.communities.getMyCommunities.invalidate(),
   });
   const community = communities.data?.find((c) => c.slug === slug);
+  if (communities.isError) {
+    return <ErrorState onRetry={() => void communities.refetch()} />;
+  }
   if (communities.isLoading || !community) {
     return <div className="h-24 animate-pulse rounded-lg border" />;
   }

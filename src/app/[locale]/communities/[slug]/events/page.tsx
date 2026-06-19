@@ -17,6 +17,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { EventFormDialog } from "@/components/communities/event-form-dialog";
+import { ErrorState } from "@/components/ui/error-state";
 import { formatEventTimeRange } from "@/lib/event-time";
 import { CreateHackathonDialog } from "@/components/hackathon/create-hackathon-dialog";
 
@@ -70,21 +71,31 @@ export default function CommunityEventsPage({
     if (!isActiveMember && activeTab === "mine") setActiveTab("published");
   }, [canModerate, isActiveMember, activeTab]);
 
-  const { data: eventsData, isLoading } =
-    api.events.getCommunityEvents.useQuery({ communitySlug: slug });
+  const {
+    data: eventsData,
+    isLoading,
+    isError,
+    refetch,
+  } = api.events.getCommunityEvents.useQuery({ communitySlug: slug });
   const events = eventsData ?? [];
 
-  const { data: pendingEvents, isLoading: pendingLoading } =
-    api.events.getPendingCommunityEvents.useQuery(
-      { communitySlug: slug },
-      { enabled: canModerate },
-    );
+  const {
+    data: pendingEvents,
+    isLoading: pendingLoading,
+    isError: pendingError,
+  } = api.events.getPendingCommunityEvents.useQuery(
+    { communitySlug: slug },
+    { enabled: canModerate },
+  );
 
-  const { data: mySubmissions, isLoading: mySubmissionsLoading } =
-    api.events.getMyEventSubmissions.useQuery(
-      { communitySlug: slug },
-      { enabled: isActiveMember && !!session?.user },
-    );
+  const {
+    data: mySubmissions,
+    isLoading: mySubmissionsLoading,
+    isError: mySubmissionsError,
+  } = api.events.getMyEventSubmissions.useQuery(
+    { communitySlug: slug },
+    { enabled: isActiveMember && !!session?.user },
+  );
 
   const utils = api.useUtils();
 
@@ -418,6 +429,8 @@ export default function CommunityEventsPage({
                 />
               ))}
             </div>
+          ) : isError ? (
+            <ErrorState onRetry={refetch} />
           ) : events.length === 0 ? (
             <p className="text-muted-foreground mt-8 text-center">
               {t("noEvents")}
@@ -433,8 +446,9 @@ export default function CommunityEventsPage({
         </>
       )}
 
-      {/* PENDING tab (admin/mod only) */}
-      {activeTab === "pending" && canModerate && (
+      {/* PENDING tab (admin/mod only) — supplementary: hide on error
+          (explicit !pendingError; No-Silent-Failure) */}
+      {activeTab === "pending" && canModerate && !pendingError && (
         <>
           {pendingLoading ? (
             <div className="space-y-2">
@@ -460,8 +474,9 @@ export default function CommunityEventsPage({
         </>
       )}
 
-      {/* MY SUBMISSIONS tab (active member, non-moderator) */}
-      {activeTab === "mine" && isActiveMember && (
+      {/* MY SUBMISSIONS tab (active member, non-moderator) — supplementary:
+          hide on error (explicit !mySubmissionsError; No-Silent-Failure) */}
+      {activeTab === "mine" && isActiveMember && !mySubmissionsError && (
         <>
           {mySubmissionsLoading ? (
             <div className="space-y-2">

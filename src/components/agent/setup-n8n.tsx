@@ -113,6 +113,10 @@ export function SetupN8n({
             </code>
           </div>
         ) : (
+          // Supplementary — a query error (no webhook row) is deliberately
+          // treated as "not yet registered" rather than surfaced as an error
+          // state (No-Silent-Failure: intentional). The webhook registers
+          // automatically on first n8n activation.
           <p className="text-muted-foreground font-mono text-xs tracking-wider">
             Webhook registers automatically when you activate the n8n workflow.
           </p>

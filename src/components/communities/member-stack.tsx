@@ -20,6 +20,7 @@ import {
   type StackFace,
 } from "@/server/communities/member-stack";
 import { api } from "@/trpc/react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function initial(displayName: string | null): string {
   return (displayName ?? "?").trim()[0]?.toUpperCase() ?? "?";
@@ -94,7 +95,21 @@ export interface MemberStackProps {
 /** Self-fetching member stack for the community header. Renders nothing while
  *  loading or when policy/access hides it. */
 export function MemberStack({ slug, className }: MemberStackProps) {
-  const { data } = api.communities.getMemberStack.useQuery({ slug });
+  const { data, isLoading, isError } = api.communities.getMemberStack.useQuery({
+    slug,
+  });
+  if (isError) return null; // supplementary widget — may stay absent on error (No-Silent-Failure)
+  if (isLoading) {
+    return (
+      <div className={className} aria-hidden="true">
+        <div className="flex -space-x-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="size-7 rounded-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
   if (!data) return null;
   return (
     <MemberStackView

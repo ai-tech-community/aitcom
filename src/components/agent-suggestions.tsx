@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 import { Link } from "@/i18n/navigation";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -37,6 +38,10 @@ export function AgentSuggestions() {
     return (
       <p className="text-muted-foreground text-sm">Loading suggestions...</p>
     );
+  }
+
+  if (suggestions.isError) {
+    return <ErrorState onRetry={() => void suggestions.refetch()} />;
   }
 
   if (!suggestions.data || suggestions.data.length === 0) {

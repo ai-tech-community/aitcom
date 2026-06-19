@@ -5,6 +5,8 @@ import { api } from "@/trpc/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const WELCOME_TEMPLATE =
   "Hi! Welcome to the community — glad you joined. Anything I can help you get started with?";
@@ -82,9 +84,10 @@ function WelcomeComposer({
 export function UnactivatedList({ slug }: { slug: string }) {
   const t = useTranslations("communities.insights");
   const format = useFormatter();
-  const { data, isLoading } = api.insights.unactivatedNewcomers.useQuery({
-    slug,
-  });
+  const { data, isLoading, isError, refetch } =
+    api.insights.unactivatedNewcomers.useQuery({
+      slug,
+    });
   return (
     <div className="rounded-lg border">
       <div className="border-b p-4">
@@ -99,10 +102,10 @@ export function UnactivatedList({ slug }: { slug: string }) {
           aria-label={t("loading")}
           className="h-24 animate-pulse"
         />
+      ) : isError ? (
+        <ErrorState onRetry={() => void refetch()} />
       ) : !data || data.length === 0 ? (
-        <p className="text-muted-foreground p-6 text-center text-sm">
-          {t("newcomersEmpty")}
-        </p>
+        <EmptyState title={t("unactivatedEmpty")} />
       ) : (
         <div className="divide-y">
           {data.map((m) => (

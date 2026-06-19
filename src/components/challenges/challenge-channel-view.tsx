@@ -10,6 +10,7 @@ import { ChallengeThreadDetail } from "@/components/challenges/challenge-thread-
 import { ChallengeCompose } from "@/components/challenges/challenge-compose";
 import { SectionLabel } from "@/components/ui/section-label";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ErrorState } from "@/components/ui/error-state";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,12 +56,18 @@ export function ChallengeChannelView({
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
 
-  const { data: channel, isLoading: channelLoading } =
-    api.challengeChannel.getChannel.useQuery({ challengeId });
+  const {
+    data: channel,
+    isLoading: channelLoading,
+    isError: channelError,
+    refetch: refetchChannel,
+  } = api.challengeChannel.getChannel.useQuery({ challengeId });
 
   const {
     data: threadsData,
     isLoading: threadsLoading,
+    isError: threadsError,
+    refetch: refetchThreads,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -84,6 +91,14 @@ export function ChallengeChannelView({
     return (
       <div className="mt-8">
         <div className="text-muted-foreground text-sm">Loading channel...</div>
+      </div>
+    );
+  }
+
+  if (channelError) {
+    return (
+      <div className="mt-8">
+        <ErrorState onRetry={() => void refetchChannel()} />
       </div>
     );
   }
@@ -153,6 +168,8 @@ export function ChallengeChannelView({
       <div className="mt-4 space-y-2">
         {threadsLoading ? (
           <p className="text-muted-foreground text-sm">Loading threads...</p>
+        ) : threadsError ? (
+          <ErrorState onRetry={() => void refetchThreads()} />
         ) : threads.length === 0 ? (
           <div className="border-border rounded-lg border border-dashed px-6 py-12 text-center">
             <p className="text-muted-foreground text-sm">

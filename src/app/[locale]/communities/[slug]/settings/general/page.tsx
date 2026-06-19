@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { SettingsForm } from "@/components/communities/manage/settings-form";
 import { Spinner } from "@/components/ui/spinner";
+import { ErrorState } from "@/components/ui/error-state";
 
 export default function GeneralSettingsPage({
   params,
@@ -14,7 +15,12 @@ export default function GeneralSettingsPage({
   const { slug } = use(params);
   const t = useTranslations("communities.manage");
 
-  const { data: community, isLoading } = api.communities.getBySlug.useQuery({
+  const {
+    data: community,
+    isLoading,
+    isError,
+    refetch,
+  } = api.communities.getBySlug.useQuery({
     slug,
   });
 
@@ -26,6 +32,7 @@ export default function GeneralSettingsPage({
     );
   }
 
+  if (isError) return <ErrorState onRetry={refetch} />;
   if (!community) return null;
 
   return (

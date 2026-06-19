@@ -4,10 +4,26 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { api } from "@/trpc/react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function RecommendedCommunities() {
   const t = useTranslations("discovery");
-  const { data } = api.discovery.recommendedForMe.useQuery({ limit: 6 });
+  const { data, isLoading, isError } = api.discovery.recommendedForMe.useQuery({
+    limit: 6,
+  });
+  if (isError) return null; // supplementary widget — may stay absent on error (No-Silent-Failure)
+  if (isLoading) {
+    return (
+      <section className="mb-8">
+        <Skeleton className="mb-3 h-6 w-48" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-lg" />
+          ))}
+        </div>
+      </section>
+    );
+  }
   if (!data || data.length === 0) return null;
 
   return (

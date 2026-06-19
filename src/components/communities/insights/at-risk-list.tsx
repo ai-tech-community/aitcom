@@ -3,11 +3,14 @@ import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export function AtRiskList({ slug }: { slug: string }) {
   const t = useTranslations("communities.insights");
   const tRoles = useTranslations("communities.roles");
-  const { data, isLoading } = api.insights.atRiskMembers.useQuery({ slug });
+  const { data, isLoading, isError, refetch } =
+    api.insights.atRiskMembers.useQuery({ slug });
   return (
     <div className="rounded-lg border">
       <div className="border-b p-4">
@@ -20,10 +23,10 @@ export function AtRiskList({ slug }: { slug: string }) {
           aria-label={t("loading")}
           className="h-24 animate-pulse"
         />
+      ) : isError ? (
+        <ErrorState onRetry={() => void refetch()} />
       ) : !data || data.length === 0 ? (
-        <p className="text-muted-foreground p-6 text-center text-sm">
-          {t("atRiskEmpty")}
-        </p>
+        <EmptyState title={t("atRiskEmpty")} />
       ) : (
         <div className="divide-y">
           {data.map((m) => (

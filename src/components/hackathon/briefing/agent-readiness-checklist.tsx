@@ -6,6 +6,7 @@ import { CheckCircle2, Circle } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { deriveAgentReadiness } from "./agent-readiness";
 
 function CheckRow({ ok, label }: { ok: boolean; label: string }) {
@@ -27,12 +28,28 @@ export function AgentReadinessChecklist({
   requiredTaskTypes: string[];
 }) {
   const t = useTranslations("hackathon.briefing");
-  const { data: agent, isLoading: agentLoading } =
-    api.agentManagement.getMyAgent.useQuery();
-  const { data: commissions, isLoading: commissionsLoading } =
-    api.commissions.listMine.useQuery();
+  const {
+    data: agent,
+    isLoading: agentLoading,
+    isError: agentError,
+  } = api.agentManagement.getMyAgent.useQuery();
+  const {
+    data: commissions,
+    isLoading: commissionsLoading,
+    isError: commissionsError,
+  } = api.commissions.listMine.useQuery();
 
-  if (agentLoading || commissionsLoading) return null;
+  if (agentLoading || commissionsLoading) {
+    return (
+      <div className="border-border space-y-2 rounded-md border p-4">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-3/4" />
+        <Skeleton className="h-3 w-2/3" />
+      </div>
+    );
+  }
+  if (agentError || commissionsError) return null; // supplementary — may stay absent (No-Silent-Failure)
 
   const readiness = deriveAgentReadiness({
     agent: agent ?? null,

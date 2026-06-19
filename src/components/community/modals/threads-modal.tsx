@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { RelativeTime } from "@/components/ui/relative-time";
+import { ErrorState } from "@/components/ui/error-state";
 import { BuildingModal } from "../building-modal";
 import { toast } from "sonner";
 
@@ -51,7 +52,7 @@ export function ThreadsModal({
   const { data: session } = authClient.useSession();
   const utils = api.useUtils();
 
-  const { data, isLoading } = api.forum.getThreads.useQuery(
+  const { data, isLoading, isError, refetch } = api.forum.getThreads.useQuery(
     { category },
     { enabled: isOpen },
   );
@@ -114,6 +115,8 @@ export function ThreadsModal({
             <div key={n} className="bg-muted h-16 animate-pulse rounded-lg" />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState onRetry={refetch} className="py-8" />
       ) : threads.length === 0 ? (
         <p className="text-muted-foreground py-6 text-center font-mono text-xs">
           {t("noThreads")}

@@ -636,7 +636,8 @@
       "sectionTitle": "Kanaal",
       "newThread": "Nieuw onderwerp",
       "repliesCount": "Antwoorden ({count})"
-    }
+    },
+    "leaderboardEmpty": "Nog geen ranglijst. Dien als eerste in."
   },
   "badges": {
     "profile_complete": "Profiel Compleet",
@@ -1233,7 +1234,8 @@
     },
     "run": {
       "toastSubmitted": "Run ingediend. Extractie wordt binnenkort uitgevoerd."
-    }
+    },
+    "noRuns": "Nog geen runs."
   },
   "classroom": {
     "title": "Klaslokalen",
@@ -1759,7 +1761,8 @@
       "newcomersEmpty": "Iedereen is geactiveerd 🎉",
       "newcomersJoined": "Lid geworden op {date}",
       "healthSection": "Community gezondheidsstatistieken",
-      "loading": "Laden"
+      "loading": "Laden",
+      "unactivatedEmpty": "Alle nieuwe leden zijn geactiveerd."
     },
     "activation": {
       "loading": "Loading",
@@ -1808,7 +1811,9 @@
       "welcomeSubtitle": "A few steps to help you get started ({done}/{total} done).",
       "done": "Done",
       "markDone": "Mark done"
-    }
+    },
+    "directoryEmpty": "Nog geen community’s. Start als eerste er een.",
+    "membersEmpty": "Nog geen leden."
   },
   "notificationPrefs": {
     "title": "Meldingen",
@@ -1855,7 +1860,8 @@
     "leaderboardTitle": "Beste verwijzers",
     "referralCount": "{count, plural, one {# verwijzing} other {# verwijzingen}}",
     "empty": "Nog geen verwijzingen",
-    "copyFailed": "Kopiëren mislukt — kopieer de link handmatig."
+    "copyFailed": "Kopiëren mislukt — kopieer de link handmatig.",
+    "leaderboardEmpty": "Nog geen verwijzingen. Nodig iemand uit om te beginnen."
   },
   "hackathon": {
     "title": "Hackathon",
@@ -2092,7 +2098,9 @@
     },
     "tasksFrozen": "Taken liggen vast zodra de hackathon is gepubliceerd — elk team racet door hetzelfde rooster.",
     "toastRankingsSubmitted": "Ranglijst ingediend",
-    "toastJudgingOpened": "Beoordeling geopend"
+    "toastJudgingOpened": "Beoordeling geopend",
+    "staffEmpty": "Nog geen medewerkers toegewezen.",
+    "judgeEmpty": "Nog geen teams om te beoordelen."
   },
   "agentsCatalog": {
     "gates": {

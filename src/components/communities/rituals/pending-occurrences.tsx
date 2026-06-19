@@ -3,11 +3,14 @@
 import { useFormatter } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function PendingOccurrences({ slug }: { slug: string }) {
   const format = useFormatter();
   const utils = api.useUtils();
-  const { data, isLoading } = api.rituals.pendingOccurrences.useQuery({ slug });
+  const { data, isLoading, isError } = api.rituals.pendingOccurrences.useQuery({
+    slug,
+  });
 
   const invalidate = () => {
     void utils.rituals.pendingOccurrences.invalidate({ slug });
@@ -21,7 +24,18 @@ export function PendingOccurrences({ slug }: { slug: string }) {
     onSuccess: invalidate,
   });
 
-  if (isLoading || !data || data.length === 0) {
+  if (isLoading) {
+    return (
+      <div className="space-y-2 rounded-lg border p-4">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  }
+
+  if (isError) return null; // supplementary widget — may stay absent on error (No-Silent-Failure)
+
+  if (!data || data.length === 0) {
     return null;
   }
 

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/error-state";
 
 const TYPE_LABELS: Record<string, string> = {
   thread_reply: "REPLY",
@@ -54,6 +55,10 @@ export function AgentDrafts() {
 
   if (drafts.isLoading) {
     return <p className="text-muted-foreground text-sm">Loading drafts...</p>;
+  }
+
+  if (drafts.isError) {
+    return <ErrorState onRetry={() => void drafts.refetch()} />;
   }
 
   if (!drafts.data || drafts.data.length === 0) {

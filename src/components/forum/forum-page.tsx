@@ -7,6 +7,8 @@ import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Link } from "@/i18n/navigation";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 import { CategoryTabs, type Category } from "./category-tabs";
 import { ThreadCard } from "./thread-card";
 
@@ -60,7 +62,7 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
     setPage(1);
   }, []);
 
-  const { data, isLoading } = api.forum.getThreads.useQuery({
+  const { data, isLoading, isError, refetch } = api.forum.getThreads.useQuery({
     category,
     sort,
     search: debouncedSearch || undefined,
@@ -149,9 +151,11 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="bg-muted h-16 animate-pulse rounded-lg" />
+            <Skeleton key={i} className="h-16 rounded-lg" />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState onRetry={() => void refetch()} />
       ) : noResults ? (
         <p className="text-muted-foreground py-12 text-center font-mono text-xs">
           {t("noResults")}

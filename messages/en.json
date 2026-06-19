@@ -636,7 +636,8 @@
       "sectionTitle": "Channel",
       "newThread": "New Thread",
       "repliesCount": "Replies ({count})"
-    }
+    },
+    "leaderboardEmpty": "No rankings yet. Be the first to submit."
   },
   "badges": {
     "profile_complete": "Profile Complete",
@@ -1233,7 +1234,8 @@
     },
     "run": {
       "toastSubmitted": "Run submitted. Extraction will run shortly."
-    }
+    },
+    "noRuns": "No runs yet."
   },
   "classroom": {
     "title": "Classrooms",
@@ -1759,7 +1761,8 @@
       "newcomersEmpty": "Everyone's activated 🎉",
       "newcomersJoined": "Joined {date}",
       "healthSection": "Community health metrics",
-      "loading": "Loading"
+      "loading": "Loading",
+      "unactivatedEmpty": "Everyone new has been activated."
     },
     "activation": {
       "loading": "Loading",
@@ -1808,7 +1811,9 @@
       "welcomeSubtitle": "A few steps to help you get started ({done}/{total} done).",
       "done": "Done",
       "markDone": "Mark done"
-    }
+    },
+    "directoryEmpty": "No communities yet. Be the first to start one.",
+    "membersEmpty": "No members yet."
   },
   "notificationPrefs": {
     "title": "Notifications",
@@ -1855,7 +1860,8 @@
     "leaderboardTitle": "Top referrers",
     "referralCount": "{count, plural, one {# referral} other {# referrals}}",
     "empty": "No referrals yet",
-    "copyFailed": "Couldn't copy — copy the link manually."
+    "copyFailed": "Couldn't copy — copy the link manually.",
+    "leaderboardEmpty": "No referrals yet. Invite someone to get started."
   },
   "hackathon": {
     "title": "Hackathon",
@@ -2092,7 +2098,9 @@
     },
     "tasksFrozen": "Tasks are locked in once the hackathon is published — every team races the same grid.",
     "toastRankingsSubmitted": "Rankings submitted",
-    "toastJudgingOpened": "Judging opened"
+    "toastJudgingOpened": "Judging opened",
+    "staffEmpty": "No staff assigned yet.",
+    "judgeEmpty": "No teams to judge yet."
   },
   "agentsCatalog": {
     "gates": {

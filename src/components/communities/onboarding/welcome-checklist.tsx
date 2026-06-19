@@ -10,7 +10,11 @@ export function WelcomeChecklist({ slug }: { slug: string }) {
   const t = useTranslations("communities.onboarding");
   const utils = api.useUtils();
   const { data: stage } = api.activation.myStage.useQuery({ slug });
-  const { data: steps, isLoading } = api.onboardingSteps.listForMe.useQuery({
+  const {
+    data: steps,
+    isLoading,
+    isError,
+  } = api.onboardingSteps.listForMe.useQuery({
     slug,
   });
 
@@ -21,6 +25,7 @@ export function WelcomeChecklist({ slug }: { slug: string }) {
   // Wait for stage; suppress (don't flash) until we know the member isn't activated.
   if (stage === undefined) return null;
   if (stage.stage === "activated") return null;
+  if (isError) return null; // supplementary widget — may stay absent on error (No-Silent-Failure)
   // Loading or no steps configured → render nothing.
   if (isLoading || !steps || steps.length === 0) return null;
 

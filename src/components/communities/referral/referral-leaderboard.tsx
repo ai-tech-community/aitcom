@@ -2,10 +2,15 @@
 
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export function ReferralLeaderboard() {
   const t = useTranslations("referral");
-  const { data, isLoading } = api.referral.leaderboard.useQuery({ limit: 20 });
+  const { data, isLoading, isError } = api.referral.leaderboard.useQuery({
+    limit: 20,
+  });
+
+  if (isError) return null; // supplementary widget — may stay absent on error (No-Silent-Failure)
 
   return (
     <div className="space-y-4 rounded-lg border p-6">
@@ -18,7 +23,7 @@ export function ReferralLeaderboard() {
           ))}
         </div>
       ) : !data || data.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{t("empty")}</p>
+        <EmptyState title={t("leaderboardEmpty")} />
       ) : (
         <ol className="space-y-2">
           {data.map((row, index) => (

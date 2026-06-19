@@ -5,13 +5,20 @@ import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
 import { Users, Plus, BookOpen } from "lucide-react";
 import { canCreateCourse, type CommunityRole } from "@/lib/classroom";
 
 export function ClassroomListing({ slug }: { slug: string }) {
   const t = useTranslations("classroom");
   const { data: session } = authClient.useSession();
-  const { data: courses } = api.classrooms.list.useQuery({
+  const {
+    data: courses,
+    isLoading,
+    isError,
+    refetch,
+  } = api.classrooms.list.useQuery({
     communitySlug: slug,
   });
   const { data: community } = api.communities.getBySlug.useQuery({ slug });
@@ -48,7 +55,15 @@ export function ClassroomListing({ slug }: { slug: string }) {
         ) : null}
       </div>
 
-      {!courses || courses.length === 0 ? (
+      {isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-64 rounded-xl" />
+          ))}
+        </div>
+      ) : isError ? (
+        <ErrorState onRetry={() => void refetch()} />
+      ) : !courses || courses.length === 0 ? (
         <p className="text-muted-foreground py-8 text-center font-mono text-xs tracking-wider">
           {t("noCourses")}
         </p>

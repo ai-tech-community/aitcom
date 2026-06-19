@@ -5,6 +5,9 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export function JudgeWorkspace({ challengeId }: { challengeId: number }) {
   const t = useTranslations("hackathon");
@@ -29,8 +32,18 @@ export function JudgeWorkspace({ challengeId }: { challengeId: number }) {
     onError: (e) => toast.error(e.message),
   });
 
-  if (teams.isLoading || !teams.data) return null;
-  if (teams.data.length === 0) return <p>No submitted teams to judge yet.</p>;
+  if (teams.isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    );
+  }
+  if (teams.isError) return <ErrorState onRetry={() => teams.refetch()} />;
+  if (!teams.data || teams.data.length === 0)
+    return <EmptyState title={t("judgeEmpty")} />;
 
   // Mirror the server validation (submitRankings) client-side so the judge gets
   // a clear message instead of an opaque Zod error: every team needs a rank,

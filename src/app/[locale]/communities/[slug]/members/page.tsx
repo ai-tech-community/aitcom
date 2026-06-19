@@ -5,6 +5,8 @@ import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function CommunityMembersPage({
   params,
@@ -13,10 +15,11 @@ export default function CommunityMembersPage({
 }) {
   const { slug } = use(params);
   const t = useTranslations("communities");
-  const { data, isLoading } = api.communities.getMembers.useQuery({
-    slug,
-    limit: 50,
-  });
+  const { data, isLoading, isError, refetch } =
+    api.communities.getMembers.useQuery({
+      slug,
+      limit: 50,
+    });
 
   return (
     <div>
@@ -26,6 +29,10 @@ export default function CommunityMembersPage({
             <div key={i} className="bg-muted h-14 animate-pulse rounded-lg" />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState onRetry={refetch} />
+      ) : (data?.items.length ?? 0) === 0 ? (
+        <EmptyState title={t("membersEmpty")} />
       ) : (
         <div className="space-y-2">
           {data?.items.map((member) => (

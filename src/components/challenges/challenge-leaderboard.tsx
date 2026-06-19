@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getInitials } from "@/lib/avatar";
 
 interface ChallengeLeaderboardProps {
@@ -26,12 +28,39 @@ export function ChallengeLeaderboard({
   challengeId,
 }: ChallengeLeaderboardProps) {
   const t = useTranslations("challenges");
-  const { data, isLoading } = api.challenges.getLeaderboard.useQuery({
+  const { data, isLoading, isError } = api.challenges.getLeaderboard.useQuery({
     challengeId,
     limit: 10,
   });
 
-  if (isLoading || !data || data.length === 0) return null;
+  // Loading — show row skeletons rather than hiding the section during load.
+  if (isLoading) {
+    return (
+      <div className="mt-4">
+        <SectionLabel bordered={false} marker={false}>
+          {t("leaderboard")}
+        </SectionLabel>
+        <div className="mt-2 space-y-1">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full rounded" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) return null; // supplementary — may stay absent (No-Silent-Failure)
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="mt-4">
+        <SectionLabel bordered={false} marker={false}>
+          {t("leaderboard")}
+        </SectionLabel>
+        <EmptyState title={t("leaderboardEmpty")} />
+      </div>
+    );
+  }
 
   return (
     <div className="mt-4">

@@ -15,7 +15,7 @@ import {
 
 export function PresenceStrip({ teamId }: { teamId: string }) {
   const t = useTranslations("hackathon");
-  const { data } = api.teamWorkspace.presence.useQuery(
+  const { data, isError } = api.teamWorkspace.presence.useQuery(
     { teamId },
     { refetchInterval: 5_000 },
   );
@@ -34,6 +34,7 @@ export function PresenceStrip({ teamId }: { teamId: string }) {
     return () => clearInterval(id);
   }, [teamId]);
 
+  if (isError) return null; // supplementary — may stay absent (No-Silent-Failure)
   const rows = data ?? [];
   if (rows.length === 0) return null;
 

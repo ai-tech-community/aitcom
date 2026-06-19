@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Copy, Loader2 } from "lucide-react";
+import { ErrorState } from "@/components/ui/error-state";
 import { toast } from "sonner";
 
 interface MembersSettingsProps {
@@ -38,17 +39,35 @@ export function MembersSettings({
   const utils = api.useUtils();
   const { data: session } = authClient.useSession();
 
-  const { data: activeData, isLoading: activeLoading } =
-    api.communities.getMembers.useQuery({ slug, limit: 50, status: "active" });
+  const {
+    data: activeData,
+    isLoading: activeLoading,
+    isError: activeError,
+    refetch: refetchActive,
+  } = api.communities.getMembers.useQuery({
+    slug,
+    limit: 50,
+    status: "active",
+  });
 
-  const { data: pendingData, isLoading: pendingLoading } =
-    api.communities.getMembers.useQuery(
-      { slug, limit: 50, status: "pending_approval" },
-      { enabled: joinPolicy === "approval_required" },
-    );
+  const {
+    data: pendingData,
+    isLoading: pendingLoading,
+    isError: pendingError,
+  } = api.communities.getMembers.useQuery(
+    { slug, limit: 50, status: "pending_approval" },
+    { enabled: joinPolicy === "approval_required" },
+  );
 
-  const { data: bannedData, isLoading: bannedLoading } =
-    api.communities.getMembers.useQuery({ slug, limit: 50, status: "banned" });
+  const {
+    data: bannedData,
+    isLoading: bannedLoading,
+    isError: bannedError,
+  } = api.communities.getMembers.useQuery({
+    slug,
+    limit: 50,
+    status: "banned",
+  });
 
   const setRoleMutation = api.communities.setMemberRole.useMutation({
     onSuccess: () => {
@@ -247,6 +266,8 @@ export function MembersSettings({
             <div className="flex justify-center py-8">
               <Loader2 className="text-muted-foreground size-5 animate-spin" />
             </div>
+          ) : activeError ? (
+            <ErrorState onRetry={refetchActive} />
           ) : activeMembers.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center text-sm">
               {tManage("noMembers")}
@@ -349,7 +370,8 @@ export function MembersSettings({
         {/* Pending members */}
         {joinPolicy === "approval_required" && (
           <TabsContent value="pending">
-            {pendingLoading ? (
+            {/* supplementary tab — hide on error (No-Silent-Failure) */}
+            {pendingError ? null : pendingLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="text-muted-foreground size-5 animate-spin" />
               </div>
@@ -428,7 +450,8 @@ export function MembersSettings({
 
         {/* Banned members */}
         <TabsContent value="banned">
-          {bannedLoading ? (
+          {/* supplementary tab — hide on error (No-Silent-Failure) */}
+          {bannedError ? null : bannedLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="text-muted-foreground size-5 animate-spin" />
             </div>

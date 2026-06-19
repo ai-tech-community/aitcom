@@ -14,6 +14,7 @@ import { authClient } from "@/server/better-auth/client";
 import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { SectionLabel } from "@/components/ui/section-label";
+import { ErrorState } from "@/components/ui/error-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,14 +54,21 @@ export function ThreadDetail({
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
 
-  const { data: thread, isLoading: threadLoading } =
-    api.forum.getThread.useQuery({ slug });
+  const {
+    data: thread,
+    isLoading: threadLoading,
+    isError: threadError,
+    refetch: refetchThread,
+  } = api.forum.getThread.useQuery({ slug });
 
-  const { data: replies = [], isLoading: repliesLoading } =
-    api.forum.getReplies.useQuery(
-      { threadId: thread?.id ?? 0 },
-      { enabled: !!thread },
-    );
+  const {
+    data: replies = [],
+    isLoading: repliesLoading,
+    isError: repliesError,
+  } = api.forum.getReplies.useQuery(
+    { threadId: thread?.id ?? 0 },
+    { enabled: !!thread },
+  );
 
   const incrementView = api.forum.incrementViewCount.useMutation();
 
@@ -118,6 +126,22 @@ export function ThreadDetail({
           <div className="bg-muted h-4 w-1/3 animate-pulse rounded" />
           <div className="bg-muted mt-4 h-32 animate-pulse rounded-lg" />
         </div>
+      </div>
+    );
+  }
+
+  // Thread fetch failed — distinguish from "not found" with a retryable error.
+  if (threadError) {
+    return (
+      <div className="mx-auto max-w-6xl px-6 py-6 sm:px-12 sm:py-8">
+        <Link
+          href={backHref}
+          className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
+        >
+          <ArrowLeft className="mr-1 inline h-3 w-3" />
+          {t("backToForum")}
+        </Link>
+        <ErrorState onRetry={() => void refetchThread()} />
       </div>
     );
   }
@@ -311,6 +335,11 @@ export function ThreadDetail({
             <div key={i} className="bg-muted h-20 animate-pulse rounded-lg" />
           ))}
         </div>
+      ) : repliesError ? (
+        // Replies are supplementary to the thread — surface an inline error
+        // rather than letting a failed fetch read as "no replies"
+        // (No-Silent-Failure). ErrorState carries bilingual common defaults.
+        <ErrorState />
       ) : (
         <ReplyList
           replies={replies}

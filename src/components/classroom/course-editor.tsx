@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { ErrorState } from "@/components/ui/error-state";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Select,
   SelectContent,
@@ -255,7 +257,7 @@ export function CourseEditor({
   const [initialized, setInitialized] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data, isLoading } = api.classrooms.get.useQuery(
+  const { data, isLoading, isError, refetch } = api.classrooms.get.useQuery(
     { slug: courseSlug ?? "" },
     { enabled: isEdit },
   );
@@ -340,6 +342,24 @@ export function CourseEditor({
       <p className="text-muted-foreground py-12 text-center text-sm">
         {t("loading")}
       </p>
+    );
+  }
+
+  if (isEdit && isError) {
+    return (
+      <div className="mx-auto max-w-2xl py-6">
+        <ErrorState onRetry={() => void refetch()} />
+      </div>
+    );
+  }
+
+  // Loaded in edit mode but the course is missing — surface a not-found state
+  // rather than rendering a blank "create" form (No-Silent-Failure).
+  if (isEdit && !data) {
+    return (
+      <div className="mx-auto max-w-2xl py-6">
+        <EmptyState title={t("notFound")} />
+      </div>
     );
   }
 
