@@ -58,11 +58,11 @@ function CommentItem({
       setReplyContent("");
       setShowReplyForm(false);
       void utils.launchpad.getBySlug.invalidate();
-      toast.success("Reply posted!");
+      toast.success(t("toastReplyPosted"));
     },
     onError: (err) => {
       if (err.message === "RULES_NOT_ACCEPTED") {
-        toast.error("You must accept the community rules first.");
+        toast.error(t("toastRulesRequired"));
         return;
       }
       toast.error(err.message);
@@ -72,7 +72,7 @@ function CommentItem({
   const deleteCommentMutation = api.launchpad.deleteComment.useMutation({
     onSuccess: () => {
       void utils.launchpad.getBySlug.invalidate();
-      toast.success("Comment deleted.");
+      toast.success(t("toastDeleted"));
     },
     onError: (err) => {
       toast.error(err.message);
@@ -259,11 +259,11 @@ export function LaunchpadComments({
     onSuccess: () => {
       setNewComment("");
       void utils.launchpad.getBySlug.invalidate();
-      toast.success("Comment posted!");
+      toast.success(t("toastPosted"));
     },
     onError: (err) => {
       if (err.message === "RULES_NOT_ACCEPTED") {
-        toast.error("You must accept the community rules first.");
+        toast.error(t("toastRulesRequired"));
         return;
       }
       toast.error(err.message);

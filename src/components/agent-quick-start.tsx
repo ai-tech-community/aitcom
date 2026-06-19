@@ -261,6 +261,7 @@ function ClaimHistorySection() {
 }
 
 function AgentActivitySection() {
+  const tc = useTranslations("common");
   const [cursor, setCursor] = useState<string | undefined>(undefined);
 
   const { data, isLoading } = api.agentManagement.getAgentActivity.useQuery({
@@ -313,7 +314,7 @@ function AgentActivitySection() {
           className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
           disabled={isLoading}
         >
-          {isLoading ? "..." : "LOAD MORE"}
+          {isLoading ? "..." : tc("loadMore")}
         </button>
       )}
     </div>

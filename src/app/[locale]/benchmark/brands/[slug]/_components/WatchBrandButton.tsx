@@ -1,5 +1,6 @@
 "use client";
 import { Star } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function WatchBrandButton({ brandSlug, isAuthenticated }: Props) {
+  const t = useTranslations("benchmark");
   const utils = api.useUtils();
   const { promptAuth } = useRequireAuth();
   const isWatched = api.benchmark.brands.isWatched.useQuery(
@@ -20,7 +22,7 @@ export function WatchBrandButton({ brandSlug, isAuthenticated }: Props) {
 
   const watch = api.benchmark.brands.watch.useMutation({
     onSuccess: () => {
-      toast.success("Watching this brand. You'll get alerts on big shifts.");
+      toast.success(t("brand.toastWatching"));
       void utils.benchmark.brands.isWatched.invalidate({ brandSlug });
       void utils.benchmark.brands.listMyWatches.invalidate();
     },
@@ -28,7 +30,7 @@ export function WatchBrandButton({ brandSlug, isAuthenticated }: Props) {
   });
   const unwatch = api.benchmark.brands.unwatch.useMutation({
     onSuccess: () => {
-      toast.success("Unwatched.");
+      toast.success(t("brand.toastUnwatched"));
       void utils.benchmark.brands.isWatched.invalidate({ brandSlug });
       void utils.benchmark.brands.listMyWatches.invalidate();
     },

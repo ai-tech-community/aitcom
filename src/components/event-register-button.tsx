@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { authClient } from "@/server/better-auth/client";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,8 @@ export function EventRegisterButton({
   isExternal = false,
   sourceUrl = null,
 }: EventRegisterButtonProps) {
+  const t = useTranslations("events");
+  const tc = useTranslations("common");
   const { promptAuth } = useRequireAuth();
   const session = authClient.useSession();
 
@@ -35,15 +38,15 @@ export function EventRegisterButton({
   const registerMutation = api.events.register.useMutation({
     onSuccess: (data) => {
       if (data.alreadyRegistered) {
-        toast.info("You are already registered for this event.");
+        toast.info(t("registration.toastAlready"));
       } else if (data.checkoutUrl) {
-        toast.info("Redirecting to payment...");
+        toast.info(t("registration.toastRedirecting"));
         window.location.href = data.checkoutUrl;
         return;
       } else if (data.registration?.status === "waitlisted") {
-        toast.success("You have been added to the waitlist.");
+        toast.success(t("registration.toastWaitlisted"));
       } else {
-        toast.success("Successfully registered!");
+        toast.success(t("registration.toastRegistered"));
       }
       void utils.events.registrationStatus.invalidate({ eventId });
       void utils.events.myRegistrations.invalidate();
@@ -55,7 +58,7 @@ export function EventRegisterButton({
 
   const cancelMutation = api.events.cancelRegistration.useMutation({
     onSuccess: () => {
-      toast.success("Registration cancelled.");
+      toast.success(t("registration.toastCancelled"));
       void utils.events.registrationStatus.invalidate({ eventId });
       void utils.events.myRegistrations.invalidate();
     },
@@ -67,7 +70,7 @@ export function EventRegisterButton({
   const markIntentMutation = api.events.markIntent.useMutation({
     onSuccess: (data) => {
       if (data.alreadyMarked) {
-        toast.info("Already marked as going.");
+        toast.info(t("registration.toastAlreadyGoing"));
       } else {
         toast.success(
           "Marked as going. Don't forget to register on the event site.",
@@ -83,7 +86,7 @@ export function EventRegisterButton({
 
   const removeIntentMutation = api.events.removeIntent.useMutation({
     onSuccess: () => {
-      toast.success("Removed.");
+      toast.success(tc("removed"));
       void utils.events.registrationStatus.invalidate({ eventId });
       void utils.events.myRegistrations.invalidate();
     },

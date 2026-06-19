@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Calendar, Copy, Check, Linkedin } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,6 +11,7 @@ interface EventShareRowProps {
 }
 
 export function EventShareRow({ slug, title }: EventShareRowProps) {
+  const t = useTranslations("common");
   const [copied, setCopied] = useState(false);
 
   const copyLink = useCallback(async () => {
@@ -18,10 +20,10 @@ export function EventShareRow({ slug, title }: EventShareRowProps) {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
-      toast.success("Link copied.");
+      toast.success(t("linkCopied"));
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Could not copy link.");
+      toast.error(t("linkCopyFailed"));
     }
   }, [slug]);
 

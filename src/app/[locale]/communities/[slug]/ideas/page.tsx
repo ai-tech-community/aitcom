@@ -63,7 +63,7 @@ export default function CommunityIdeasPage({
       setIdeaDesc("");
       setShowForm(false);
       void utils.forum.getIdeas.invalidate();
-      toast.success("Idea submitted!");
+      toast.success(t("submitted"));
     },
     onError: (err) => {
       if (err.message === "RULES_NOT_ACCEPTED") {

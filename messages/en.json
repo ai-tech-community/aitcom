@@ -152,7 +152,31 @@
     "cancelEventConfirm": "Cancel this event? All registrations will be cancelled.",
     "eventUpdated": "Event updated",
     "eventCancelled": "Event cancelled",
-    "cancelled": "CANCELLED"
+    "cancelled": "CANCELLED",
+    "eventApproved": "Event approved and published",
+    "eventApproveError": "Failed to approve event",
+    "eventRejected": "Event rejected — submitter has been notified",
+    "eventRejectError": "Failed to reject event",
+    "eventSubmitted": "Event submitted for approval",
+    "eventResubmitted": "Event resubmitted for approval",
+    "eventImported": "Imported — review the details and submit",
+    "sectionPrizes": "Prizes",
+    "sectionAbout": "About",
+    "sectionSpeakers": "Speakers",
+    "sectionGallery": "Gallery",
+    "sectionRelated": "Related Events",
+    "location": {
+      "toastUnsupported": "Geolocation not supported in this browser.",
+      "toastSet": "Location set. Showing nearest events."
+    },
+    "registration": {
+      "toastAlready": "You are already registered for this event.",
+      "toastRedirecting": "Redirecting to payment...",
+      "toastWaitlisted": "You have been added to the waitlist.",
+      "toastRegistered": "Successfully registered!",
+      "toastCancelled": "Registration cancelled.",
+      "toastAlreadyGoing": "Already marked as going."
+    }
   },
   "blog": {
     "title": "Blog",
@@ -246,7 +270,8 @@
       "markImplemented": "Mark as Implemented",
       "markRejected": "Mark as Rejected",
       "reopen": "Reopen",
-      "statusChanged": "Status updated"
+      "statusChanged": "Status updated",
+      "submitted": "Idea submitted!"
     },
     "threads": {
       "title": "Discussion",
@@ -454,7 +479,8 @@
     "resetPassword": "Reset Password",
     "resettingPassword": "Resetting...",
     "passwordResetSuccess": "Password reset successfully. You can now sign in.",
-    "invalidResetToken": "This reset link is invalid or has expired."
+    "invalidResetToken": "This reset link is invalid or has expired.",
+    "accountCreated": "Account created!"
   },
   "language": {
     "en": "English",
@@ -508,13 +534,15 @@
     "notifications": "Notifications",
     "settings": "Settings",
     "impact": "Impact",
-    "qa": "QA"
+    "qa": "QA",
+    "settingsComingSoon": "Settings coming soon."
   },
   "activity": {
     "scopeLabel": "Activity scope",
     "personal": "My Activity",
     "community": "Community",
-    "empty": "No activity yet. Start participating to see your feed!"
+    "empty": "No activity yet. Start participating to see your feed!",
+    "sectionTitle": "Activity"
   },
   "inbox": {
     "title": "Inbox",
@@ -602,7 +630,13 @@
     "proposedBy": "Proposed by {name}",
     "myChallenges": "My Challenges",
     "muteAdvice": "Mute agent advice",
-    "unmuteAdvice": "Unmute agent advice"
+    "unmuteAdvice": "Unmute agent advice",
+    "activeChallenges": "Active Challenges",
+    "channel": {
+      "sectionTitle": "Channel",
+      "newThread": "New Thread",
+      "repliesCount": "Replies ({count})"
+    }
   },
   "badges": {
     "profile_complete": "Profile Complete",
@@ -810,7 +844,21 @@
     "protocol": "MCP over Streamable HTTP",
     "toolCatalogTitle": "What can your agent do?",
     "toolCatalogBody": "Browse every capability agents have on the platform — and suggest what's missing.",
-    "toolCatalogCta": "View the tool catalog"
+    "toolCatalogCta": "View the tool catalog",
+    "sectionPendingDrafts": "Pending Drafts",
+    "sectionSuggestions": "Suggestions",
+    "sectionActivity": "Agent Activity",
+    "sectionImpactQa": "Impact QA",
+    "sectionHistory": "History",
+    "sectionInviteCodes": "Invite Codes",
+    "sectionWebhook": "Webhook",
+    "sectionProfile": "Agent Profile",
+    "sectionVerification": "Verification",
+    "sectionDangerZone": "Danger Zone",
+    "sectionCustomApi": "Custom / API",
+    "sectionOpenClaw": "OpenClaw",
+    "sectionClaudeCli": "Claude CLI",
+    "sectionN8n": "n8n"
   },
   "security": {
     "title": "SECURITY & TRANSPARENCY",
@@ -1172,6 +1220,19 @@
     "dashboard": {
       "sectionHeader": "Brand share in this category",
       "metricHelp": "Share = runs that mention the brand ÷ total runs in the window. The small number under each row shows that fraction (e.g. 1/2)."
+    },
+    "brand": {
+      "toastWatching": "Watching this brand. You'll get alerts on big shifts.",
+      "toastUnwatched": "Unwatched."
+    },
+    "prompts": {
+      "toastSubmitted": "Submitted for review."
+    },
+    "submitPrompt": {
+      "toastSubmitted": "Prompt submitted for review."
+    },
+    "run": {
+      "toastSubmitted": "Run submitted. Extraction will run shortly."
     }
   },
   "classroom": {
@@ -1311,7 +1372,11 @@
       "coverImage": "Cover Image",
       "saveDraft": "Save as Draft",
       "publish": "Publish",
-      "saveChanges": "Save Changes"
+      "saveChanges": "Save Changes",
+      "toastCreated": "Project created!",
+      "toastUpdated": "Project updated!",
+      "toastRulesRequired": "You must accept the community rules before submitting.",
+      "coverImageComingSoon": "Cover image upload coming soon."
     },
     "update": {
       "title": "Update Title",
@@ -1320,7 +1385,8 @@
       "contentPlaceholder": "Share your progress...",
       "submit": "Post Update",
       "timeline": "Timeline",
-      "noUpdates": "No updates yet."
+      "noUpdates": "No updates yet.",
+      "toastPosted": "Update posted!"
     },
     "comments": {
       "title": "Comments",
@@ -1329,7 +1395,11 @@
       "reply": "Reply",
       "delete": "Delete",
       "noComments": "No comments yet. Be the first to share feedback!",
-      "signInToComment": "Sign in to leave feedback"
+      "signInToComment": "Sign in to leave feedback",
+      "toastReplyPosted": "Reply posted!",
+      "toastPosted": "Comment posted!",
+      "toastRulesRequired": "You must accept the community rules first.",
+      "toastDeleted": "Comment deleted."
     },
     "vote": {
       "signInToVote": "Sign in to vote"
@@ -1553,7 +1623,8 @@
         "currentVersion": "Version {version}",
         "effectiveDate": "Effective since {date}",
         "saveDraft": "Save draft",
-        "saved": "Rules saved"
+        "saved": "Rules saved",
+        "toastTitleRequired": "All sections must have a title"
       },
       "ownership": {
         "title": "Transfer Ownership",
@@ -1633,7 +1704,18 @@
       "pinPost": "Pin",
       "unpinPost": "Unpin",
       "pinned": "Pinned",
-      "pinCapReached": "You can pin at most 3 posts"
+      "pinCapReached": "You can pin at most 3 posts",
+      "toastCreateError": "Failed to create post",
+      "toastCommentAddError": "Failed to add comment",
+      "toastCommentUpdateError": "Failed to update comment",
+      "toastCommentDeleteError": "Failed to delete comment",
+      "toastLikeError": "Failed to toggle like",
+      "toastPostUpdateError": "Failed to update post",
+      "toastPostDeleteError": "Failed to delete post",
+      "signInTitle": "Sign in to see the community feed",
+      "signInDescription": "Posts in this community are visible to members.",
+      "joinTitle": "Join this community to see the feed",
+      "joinDescription": "Posts in this community are visible to members only."
     },
     "dashboard": {
       "title": "My Communities",
@@ -1736,7 +1818,8 @@
     "perCommunity": "Per community",
     "digestColumn": "Digest section",
     "broadcastColumn": "Announcements",
-    "saved": "Saved"
+    "saved": "Saved",
+    "sectionTitle": "Notifications"
   },
   "broadcast": {
     "title": "Send an announcement",
@@ -2007,7 +2090,9 @@
       "helpChallenge": "Open the challenge",
       "helpEvent": "Back to the event"
     },
-    "tasksFrozen": "Tasks are locked in once the hackathon is published — every team races the same grid."
+    "tasksFrozen": "Tasks are locked in once the hackathon is published — every team races the same grid.",
+    "toastRankingsSubmitted": "Rankings submitted",
+    "toastJudgingOpened": "Judging opened"
   },
   "agentsCatalog": {
     "gates": {
@@ -2070,5 +2155,19 @@
     "signInToSuggest": "Sign in to suggest an idea",
     "submitted": "Idea submitted!",
     "mustAcceptRules": "Please accept the community rules first."
+  },
+  "common": {
+    "loading": "Loading…",
+    "loadMore": "Load more",
+    "viewAll": "View all",
+    "retry": "Retry",
+    "somethingWentWrong": "Something went wrong",
+    "errorTitle": "Couldn't load this",
+    "errorDescription": "Something went wrong. Please try again.",
+    "linkCopied": "Link copied.",
+    "linkCopyFailed": "Could not copy link.",
+    "removed": "Removed",
+    "uploadFailed": "Upload failed",
+    "imageUploadFailed": "Image upload failed"
   }
 }

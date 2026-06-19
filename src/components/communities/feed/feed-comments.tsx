@@ -71,7 +71,7 @@ export function FeedComments({
       void utils.feed.getComments.invalidate({ postId });
       void utils.feed.getFeed.invalidate({ communitySlug });
     },
-    onError: () => toast.error("Failed to add comment"),
+    onError: () => toast.error(t("toastCommentAddError")),
   });
 
   const editComment = api.feed.editComment.useMutation({
@@ -80,7 +80,7 @@ export function FeedComments({
       setEditingId(null);
       void utils.feed.getComments.invalidate({ postId });
     },
-    onError: () => toast.error("Failed to update comment"),
+    onError: () => toast.error(t("toastCommentUpdateError")),
   });
 
   const deleteComment = api.feed.deleteComment.useMutation({
@@ -89,7 +89,7 @@ export function FeedComments({
       void utils.feed.getComments.invalidate({ postId });
       void utils.feed.getFeed.invalidate({ communitySlug });
     },
-    onError: () => toast.error("Failed to delete comment"),
+    onError: () => toast.error(t("toastCommentDeleteError")),
   });
 
   if (isLoading) {

@@ -70,7 +70,7 @@ export function FeedPostCard({
 
   const toggleLike = api.feed.toggleLike.useMutation({
     onSuccess: () => onRefresh(),
-    onError: () => toast.error("Failed to toggle like"),
+    onError: () => toast.error(t("toastLikeError")),
   });
 
   const editPost = api.feed.editPost.useMutation({
@@ -79,7 +79,7 @@ export function FeedPostCard({
       setIsEditing(false);
       onRefresh();
     },
-    onError: () => toast.error("Failed to update post"),
+    onError: () => toast.error(t("toastPostUpdateError")),
   });
 
   const deletePost = api.feed.deletePost.useMutation({
@@ -87,7 +87,7 @@ export function FeedPostCard({
       toast.success(t("postDeleted"));
       onRefresh();
     },
-    onError: () => toast.error("Failed to delete post"),
+    onError: () => toast.error(t("toastPostDeleteError")),
   });
 
   const pinPost = api.feed.pinPost.useMutation({

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 import { api } from "@/trpc/react";
 
 export function JudgeWorkspace({ challengeId }: { challengeId: number }) {
+  const t = useTranslations("hackathon");
   const teams = api.hackathon.judgeableTeams.useQuery({ challengeId });
   const [ranks, setRanks] = useState<Record<string, string>>({});
   const [comments, setComments] = useState<Record<string, string>>({});
@@ -23,7 +25,7 @@ export function JudgeWorkspace({ challengeId }: { challengeId: number }) {
   }, [teams.data]);
 
   const submit = api.hackathon.submitRankings.useMutation({
-    onSuccess: () => toast.success("Rankings submitted"),
+    onSuccess: () => toast.success(t("toastRankingsSubmitted")),
     onError: (e) => toast.error(e.message),
   });
 

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 
 export default function ResetPasswordPage() {
   const t = useTranslations("auth");
+  const tc = useTranslations("common");
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -49,7 +50,7 @@ export default function ResetPasswordPage() {
     });
     setLoading(false);
     if (resetError) {
-      toast.error(resetError.message ?? "Something went wrong");
+      toast.error(resetError.message ?? tc("somethingWentWrong"));
       return;
     }
     toast.success(t("passwordResetSuccess"));

@@ -43,7 +43,7 @@ export function LaunchpadTimeline({
       setContent("");
       setShowForm(false);
       void utils.launchpad.getBySlug.invalidate();
-      toast.success("Update posted!");
+      toast.success(t("toastPosted"));
     },
     onError: (err) => {
       toast.error(err.message);

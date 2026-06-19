@@ -125,7 +125,7 @@ export function RulesSettings({ slug }: RulesSettingsProps) {
     if (sections.length === 0) return;
     const hasEmpty = sections.some((s) => !s.title.trim());
     if (hasEmpty) {
-      toast.error("All sections must have a title");
+      toast.error(t("toastTitleRequired"));
       return;
     }
 

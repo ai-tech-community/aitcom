@@ -16,6 +16,7 @@ interface PostComposerProps {
 
 export function PostComposer({ slug, canPost }: PostComposerProps) {
   const t = useTranslations("communities.feed");
+  const tc = useTranslations("common");
   const utils = api.useUtils();
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -33,7 +34,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
       void utils.feed.getFeed.invalidate();
     },
     onError: () => {
-      toast.error("Failed to create post");
+      toast.error(t("toastCreateError"));
     },
   });
 
@@ -56,7 +57,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
       const data = (await res.json()) as { url: string };
       setImageUrl(data.url);
     } catch {
-      toast.error("Upload failed");
+      toast.error(tc("uploadFailed"));
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

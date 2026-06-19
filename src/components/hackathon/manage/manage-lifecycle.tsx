@@ -55,7 +55,7 @@ export function ManageLifecycle({
   const openJudging = api.hackathon.openJudging.useMutation({
     onSuccess: () => {
       setPhase("judging");
-      toast.success("Judging opened");
+      toast.success(t("toastJudgingOpened"));
     },
     onError: (e) => toast.error(e.message),
   });

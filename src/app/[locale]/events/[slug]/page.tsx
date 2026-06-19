@@ -142,6 +142,7 @@ export default async function EventDetailPage({
 }) {
   const { slug } = await params;
   const locale = await getLocale();
+  const tEvents = await getTranslations("events");
 
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
@@ -320,7 +321,7 @@ export default async function EventDetailPage({
 
           {prizeParts.length > 0 && (
             <div className="border-border bg-card space-y-3 rounded-lg border p-4">
-              <SectionLabel bordered={false}>Prizes</SectionLabel>
+              <SectionLabel bordered={false}>{tEvents("sectionPrizes")}</SectionLabel>
               <dl className="grid gap-3 sm:grid-cols-2">
                 {prizeParts.map((part) => (
                   <div key={part.label} className="flex flex-col gap-1">
@@ -384,7 +385,7 @@ export default async function EventDetailPage({
 
           {event.description && (
             <div className="border-border border-t pt-8">
-              <SectionLabel>About</SectionLabel>
+              <SectionLabel>{tEvents("sectionAbout")}</SectionLabel>
               <div className="mt-4">
                 <LexicalRenderer content={event.description} />
               </div>
@@ -393,7 +394,7 @@ export default async function EventDetailPage({
 
           {speakers.length > 0 && (
             <div className="border-border border-t pt-8">
-              <SectionLabel>Speakers</SectionLabel>
+              <SectionLabel>{tEvents("sectionSpeakers")}</SectionLabel>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {speakers.map((speaker) => {
                   const photoUrl =
@@ -441,7 +442,7 @@ export default async function EventDetailPage({
 
           {gallery.length > 0 && (
             <div className="border-border border-t pt-8">
-              <SectionLabel>Gallery</SectionLabel>
+              <SectionLabel>{tEvents("sectionGallery")}</SectionLabel>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {gallery.map((image, index) => (
                   <div
@@ -467,7 +468,7 @@ export default async function EventDetailPage({
           )}
 
           <div className="border-border border-t pt-8">
-            <SectionLabel>Attendees</SectionLabel>
+            <SectionLabel>{tEvents("attendees")}</SectionLabel>
             <div className="mt-4">
               <EventAttendees
                 eventId={eventId}
@@ -743,7 +744,7 @@ export default async function EventDetailPage({
 
           {event.description && (
             <div className="border-border border-t pt-8">
-              <SectionLabel>About</SectionLabel>
+              <SectionLabel>{tEvents("sectionAbout")}</SectionLabel>
               <div className="mt-4">
                 <LexicalRenderer content={event.description} />
               </div>
@@ -752,7 +753,7 @@ export default async function EventDetailPage({
 
           {speakers.length > 0 && (
             <div className="border-border border-t pt-8">
-              <SectionLabel>Speakers</SectionLabel>
+              <SectionLabel>{tEvents("sectionSpeakers")}</SectionLabel>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {speakers.map((speaker) => {
                   const photoUrl =
@@ -800,7 +801,7 @@ export default async function EventDetailPage({
 
           {gallery.length > 0 && (
             <div className="border-border border-t pt-8">
-              <SectionLabel>Gallery</SectionLabel>
+              <SectionLabel>{tEvents("sectionGallery")}</SectionLabel>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {gallery.map((image, index) => (
                   <div
@@ -826,7 +827,7 @@ export default async function EventDetailPage({
           )}
 
           <div className="border-border border-t pt-8">
-            <SectionLabel>Attendees</SectionLabel>
+            <SectionLabel>{tEvents("attendees")}</SectionLabel>
             <div className="mt-4">
               <EventAttendees
                 eventId={eventId}
@@ -838,7 +839,7 @@ export default async function EventDetailPage({
 
           {relatedEvents.length > 0 && (
             <div className="border-border border-t pt-8">
-              <SectionLabel>Related Events</SectionLabel>
+              <SectionLabel>{tEvents("sectionRelated")}</SectionLabel>
               <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {relatedEvents.map((related) => {
                   const relMedia = getMedia(

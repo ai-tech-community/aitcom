@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function SuggestPromptsModal({ brandSlug, brandName, trigger }: Props) {
+  const t = useTranslations("benchmark");
   const [open, setOpen] = useState(false);
   const [submittedIdx, setSubmittedIdx] = useState<Set<number>>(new Set());
 
@@ -34,7 +36,7 @@ export function SuggestPromptsModal({ brandSlug, brandName, trigger }: Props) {
 
   const submit = api.benchmark.submitPrompt.useMutation({
     onSuccess: () => {
-      toast.success("Submitted for review.");
+      toast.success(t("prompts.toastSubmitted"));
       void utils.benchmark.listMySubmissions.invalidate();
       void utils.benchmark.listApprovedPrompts.invalidate();
     },

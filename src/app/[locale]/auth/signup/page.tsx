@@ -33,7 +33,7 @@ function SignUpForm() {
       toast.error(error.message ?? "Sign up failed");
       return;
     }
-    toast.success("Account created!");
+    toast.success(t("accountCreated"));
     router.push("/");
   }
 

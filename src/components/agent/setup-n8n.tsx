@@ -44,7 +44,7 @@ export function SetupN8n({
   return (
     <div className="border-border bg-card rounded-xl border p-6">
       <div className="border-border border-b pb-4">
-        <SectionLabel bordered={false}>N8N</SectionLabel>
+        <SectionLabel bordered={false}>{t("sectionN8n")}</SectionLabel>
       </div>
       <div className="mt-4 space-y-4">
         <div className="space-y-2">

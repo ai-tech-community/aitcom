@@ -106,12 +106,12 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
 
   const createMutation = api.launchpad.create.useMutation({
     onSuccess: ({ slug: newSlug }) => {
-      toast.success("Project created!");
+      toast.success(t("toastCreated"));
       router.push(`/launchpad/${newSlug}`);
     },
     onError: (err) => {
       if (err.message === "RULES_NOT_ACCEPTED") {
-        toast.error("You must accept the community rules before submitting.");
+        toast.error(t("toastRulesRequired"));
       } else {
         toast.error(err.message ?? "Failed to create project.");
       }
@@ -120,12 +120,12 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
 
   const updateMutation = api.launchpad.update.useMutation({
     onSuccess: () => {
-      toast.success("Project updated!");
+      toast.success(t("toastUpdated"));
       router.push(`/launchpad/${slug}`);
     },
     onError: (err) => {
       if (err.message === "RULES_NOT_ACCEPTED") {
-        toast.error("You must accept the community rules before submitting.");
+        toast.error(t("toastRulesRequired"));
       } else {
         toast.error(err.message ?? "Failed to update project.");
       }
@@ -331,7 +331,7 @@ export function LaunchpadForm({ mode, slug }: LaunchpadFormProps) {
         <div className="flex flex-col gap-1.5">
           <Label>{t("coverImage")}</Label>
           <p className="border-border bg-muted text-muted-foreground rounded-md border border-dashed px-4 py-3 text-sm">
-            Cover image upload coming soon.
+            {t("coverImageComingSoon")}
           </p>
         </div>
 

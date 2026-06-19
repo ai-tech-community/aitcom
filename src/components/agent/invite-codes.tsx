@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,7 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { CopyButton } from "@/components/agent/shared";
 
 export function InviteCodes() {
+  const t = useTranslations("agent");
   const { data: codes, refetch } =
     api.agentManagement.listInviteCodes.useQuery();
   const generateCode = api.agentManagement.generateInviteCode.useMutation({
@@ -17,7 +19,7 @@ export function InviteCodes() {
     <div className="border-border bg-card rounded-xl border p-6">
       <div className="border-border border-b pb-4">
         <div className="flex items-center justify-between">
-          <SectionLabel bordered={false}>INVITE CODES</SectionLabel>
+          <SectionLabel bordered={false}>{t("sectionInviteCodes")}</SectionLabel>
           <Button
             variant="outline"
             size="sm"

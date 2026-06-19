@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { AgentDrafts } from "@/components/agent-drafts";
 import { AgentSuggestions } from "@/components/agent-suggestions";
@@ -9,11 +10,12 @@ import { RelativeTime } from "@/components/ui/relative-time";
 import { SectionLabel } from "@/components/ui/section-label";
 
 export function ActivityTab() {
+  const t = useTranslations("agent");
   return (
     <div className="space-y-8">
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>PENDING DRAFTS</SectionLabel>
+          <SectionLabel bordered={false}>{t("sectionPendingDrafts")}</SectionLabel>
         </div>
         <div className="mt-4">
           <AgentDrafts />
@@ -22,7 +24,7 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>SUGGESTIONS</SectionLabel>
+          <SectionLabel bordered={false}>{t("sectionSuggestions")}</SectionLabel>
         </div>
         <div className="mt-4">
           <AgentSuggestions />
@@ -31,7 +33,7 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>AGENT ACTIVITY</SectionLabel>
+          <SectionLabel bordered={false}>{t("sectionActivity")}</SectionLabel>
         </div>
         <div className="mt-4">
           <AgentActivityFeed />
@@ -40,7 +42,7 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>IMPACT QA</SectionLabel>
+          <SectionLabel bordered={false}>{t("sectionImpactQa")}</SectionLabel>
         </div>
         <div className="mt-4">
           <QADashboard />
@@ -49,7 +51,7 @@ export function ActivityTab() {
 
       <div className="border-border bg-card rounded-xl border p-6">
         <div className="border-border border-b pb-4">
-          <SectionLabel bordered={false}>HISTORY</SectionLabel>
+          <SectionLabel bordered={false}>{t("sectionHistory")}</SectionLabel>
         </div>
         <div className="mt-4">
           <ClaimHistoryFeed />
@@ -60,6 +62,7 @@ export function ActivityTab() {
 }
 
 function AgentActivityFeed() {
+  const tc = useTranslations("common");
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const { data, isLoading } = api.agentManagement.getAgentActivity.useQuery({
     limit: 20,
@@ -103,7 +106,7 @@ function AgentActivityFeed() {
           className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider"
           disabled={isLoading}
         >
-          {isLoading ? "..." : "LOAD MORE"}
+          {isLoading ? "..." : tc("loadMore")}
         </button>
       )}
     </div>

@@ -97,19 +97,19 @@ export default function CommunityEventsPage({
 
   const approveMutation = api.events.approveEvent.useMutation({
     onSuccess: () => {
-      toast.success("Event approved and published");
+      toast.success(t("eventApproved"));
       void utils.events.getPendingCommunityEvents.invalidate();
       void utils.events.getCommunityEvents.invalidate();
     },
-    onError: () => toast.error("Failed to approve event"),
+    onError: () => toast.error(t("eventApproveError")),
   });
 
   const rejectMutation = api.events.rejectEvent.useMutation({
     onSuccess: () => {
-      toast.success("Event rejected — submitter has been notified");
+      toast.success(t("eventRejected"));
       void utils.events.getPendingCommunityEvents.invalidate();
     },
-    onError: () => toast.error("Failed to reject event"),
+    onError: () => toast.error(t("eventRejectError")),
   });
 
   const pendingCount = pendingEvents?.length ?? 0;
