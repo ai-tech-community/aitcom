@@ -30,7 +30,7 @@ import {
   type CommunityRole,
   type ExamQuestion,
 } from "@/lib/classroom";
-import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
+import { awardXp, awardBadge, XP_AMOUNTS } from "@/lib/gamification";
 
 /** Resolve community id + the caller's active role (null if not an active member). */
 async function resolveCommunityAndRole(
@@ -90,10 +90,19 @@ async function issueCertificateIfComplete(
     );
   if (completedRows.length < totalLessons) return;
 
-  await database
+  const [certificate] = await database
     .insert(courseCertificates)
     .values({ courseId, userId })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning();
+
+  // Only on first completion (certificate newly issued): award the graduate
+  // badge + XP. awardBadge is idempotent; awardXp is not, so it must be gated
+  // on the newly-issued certificate to avoid double-awarding on re-checks.
+  if (certificate) {
+    await awardBadge(database, userId, "course_complete");
+    await awardXp(database, userId, XP_AMOUNTS.COURSE_COMPLETE);
+  }
 }
 
 export const classroomsRouter = createTRPCRouter({
