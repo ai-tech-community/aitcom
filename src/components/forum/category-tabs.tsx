@@ -21,15 +21,15 @@ export function CategoryTabs({ active, onChange }: CategoryTabsProps) {
   const t = useTranslations("forum");
 
   return (
-    <div className="flex gap-1 overflow-x-auto border-b border-zinc-200 pb-3 [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden">
+    <div className="border-border flex gap-1 overflow-x-auto border-b pb-3 [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden">
       {categories.map((cat) => (
         <button
           key={cat}
           onClick={() => onChange(cat)}
           className={`shrink-0 rounded px-2.5 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors ${
             active === cat
-              ? "bg-zinc-100 text-zinc-900"
-              : "text-zinc-400 hover:text-zinc-600"
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:text-foreground"
           }`}
         >
           {t(cat)}

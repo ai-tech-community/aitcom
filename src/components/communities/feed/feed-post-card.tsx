@@ -247,7 +247,7 @@ export function FeedPostCard({
           disabled={toggleLike.isPending}
         >
           <Heart
-            className={`size-4 ${post.hasLiked ? "fill-red-500 text-red-500" : "text-muted-foreground"}`}
+            className={`size-4 ${post.hasLiked ? "fill-foreground text-foreground" : "text-muted-foreground"}`}
           />
           <span className="text-muted-foreground font-mono text-xs">
             {post.likeCount ?? 0}

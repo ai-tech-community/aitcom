@@ -5,14 +5,13 @@ export type HeatState =
 
 export const HEAT_CLASS: Record<HeatState, string> = {
   pending: "bg-muted",
-  // NOTE: claimed/completed/verified form a deliberate green-intensity ramp
-  // (light → mid → dark) that encodes status-as-data-intensity. A single
-  // `success` token can't express the three distinct steps without collapsing
-  // the distinction, so this ramp is intentionally left on the raw palette
-  // pending a design decision on dedicated heatmap tokens (see DESIGN.md).
-  claimed: "bg-green-200 dark:bg-green-900",
-  completed: "bg-green-400 dark:bg-green-700",
-  verified: "bg-green-600 dark:bg-green-500",
+  // claimed → completed → verified form a contained success-green intensity
+  // ramp (light → mid → dark) tokenized as --heat-1/2/3 in globals.css. These
+  // are a documented data-viz exception to the Chart-Containment Rule and the
+  // only place the heat tokens are used. See DESIGN.md §Colors.
+  claimed: "bg-heat-1",
+  completed: "bg-heat-2",
+  verified: "bg-heat-3",
   failed: "bg-destructive/30",
 };
 

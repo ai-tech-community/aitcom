@@ -28,12 +28,10 @@ type LaunchpadCardProps = {
   index: number;
 };
 
-const stageStripeColors: Record<string, string> = {
-  idea: "bg-zinc-200",
-  prototype: "bg-blue-200",
-  mvp: "bg-amber-200",
-  launched: "bg-green-200",
-};
+// Stage is a categorical attribute, not a status — the stage Badge below
+// carries the meaning, so the cover-fallback stripe stays neutral rather than
+// color-coding the category (DESIGN.md Semantic-Status Rule).
+const STAGE_STRIPE = "bg-muted";
 
 function getCoverUrl(
   coverImage: LaunchpadCardProps["project"]["coverImage"],
@@ -108,7 +106,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
           </div>
         ) : (
           <div
-            className={`h-2 w-full ${stageStripeColors[project.stage] ?? "bg-zinc-200"}`}
+            className={`h-2 w-full ${STAGE_STRIPE}`}
           />
         )}
 
@@ -169,7 +167,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
             }}
             className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-xs font-semibold transition-colors ${
               project.hasVoted
-                ? "bg-orange-50 text-orange-600"
+                ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >

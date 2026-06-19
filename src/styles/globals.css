@@ -39,6 +39,9 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -82,6 +85,12 @@
   --warning-foreground: oklch(1 0 0);
   --info: oklch(0.55 0.16 240);
   --info-foreground: oklch(1 0 0);
+  /* Heatmap intensity ramp — data-viz only (Chart-Containment exception).
+     A contained success-green progression encoding claimed → completed →
+     verified as light → mid → dark. See DESIGN.md §Colors. */
+  --heat-1: oklch(0.9 0.05 150);
+  --heat-2: oklch(0.78 0.11 150);
+  --heat-3: oklch(0.6 0.15 150);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.705 0.213 47.604);
@@ -124,6 +133,10 @@
   --warning-foreground: oklch(0.205 0 0);
   --info: oklch(0.72 0.15 240);
   --info-foreground: oklch(0.205 0 0);
+  /* Dark-mode heat ramp: claimed (dim) → verified (bright) on a dark field. */
+  --heat-1: oklch(0.37 0.08 150);
+  --heat-2: oklch(0.52 0.13 150);
+  --heat-3: oklch(0.72 0.16 150);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.646 0.222 41.116);

@@ -194,7 +194,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
             disabled={voteMutation.isPending}
             className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-xs font-semibold transition-colors disabled:opacity-60 ${
               project.hasVoted
-                ? "bg-orange-50 text-orange-600"
+                ? "bg-secondary text-foreground"
                 : "border-border text-muted-foreground hover:bg-accent hover:text-foreground border"
             }`}
           >
