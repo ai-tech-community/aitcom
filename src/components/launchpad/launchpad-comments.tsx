@@ -83,7 +83,7 @@ function CommentItem({
 
   return (
     <div className="space-y-2">
-      <div className="rounded-lg border border-border bg-muted p-3">
+      <div className="border-border bg-muted rounded-lg border p-3">
         {/* Author row */}
         <div className="mb-2 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -95,24 +95,25 @@ function CommentItem({
                 />
               )}
               <AvatarFallback className="font-mono text-xs">
-                {getInitials(comment.authorName ?? "")}
+                {getInitials(comment.authorName ?? "?")}
               </AvatarFallback>
             </Avatar>
-            <span className="font-mono text-xs font-semibold tracking-wider text-muted-foreground">
+            <span className="text-muted-foreground font-mono text-xs font-semibold tracking-wider">
               {comment.authorName ?? "member"}
             </span>
-            <span className="font-mono text-xs text-muted-foreground">&middot;</span>
+            <span className="text-muted-foreground font-mono text-xs">
+              &middot;
+            </span>
             <RelativeTime
               date={comment.createdAt}
-              className="text-xs text-muted-foreground"
+              className="text-muted-foreground text-xs"
             />
-
           </div>
           <div className="flex items-center gap-1">
             {currentUserId && (
               <button
                 onClick={() => setShowReplyForm((v) => !v)}
-                className="flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent hover:text-foreground"
+                className="text-muted-foreground hover:bg-accent hover:text-foreground flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs font-semibold tracking-wider uppercase transition-colors"
               >
                 <CornerDownRight className="h-2.5 w-2.5" />
                 {t("reply")}
@@ -134,7 +135,7 @@ function CommentItem({
         </div>
 
         {/* Content */}
-        <p className="text-sm leading-relaxed text-foreground">
+        <p className="text-foreground text-sm leading-relaxed">
           {comment.content}
         </p>
       </div>
@@ -151,7 +152,7 @@ function CommentItem({
               parentId: comment.id,
             });
           }}
-          className="ml-6 space-y-2 rounded-lg border border-border bg-card p-3"
+          className="border-border bg-card ml-6 space-y-2 rounded-lg border p-3"
         >
           <textarea
             value={replyContent}
@@ -160,7 +161,7 @@ function CommentItem({
             maxLength={5000}
             rows={2}
             required
-            className="w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
+            className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring w-full resize-none rounded border px-2 py-1.5 text-sm focus:ring-1 focus:outline-none"
           />
           <div className="flex justify-end gap-2">
             <button
@@ -169,14 +170,14 @@ function CommentItem({
                 setShowReplyForm(false);
                 setReplyContent("");
               }}
-              className="rounded border border-border px-2 py-1 font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent"
+              className="border-border text-muted-foreground hover:bg-accent rounded border px-2 py-1 font-mono text-xs font-semibold tracking-wider uppercase transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={addCommentMutation.isPending || !replyContent.trim()}
-              className="rounded-md bg-foreground px-3 py-1 font-mono text-xs font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
+              className="bg-foreground text-background hover:bg-foreground/90 rounded-md px-3 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors disabled:opacity-50"
             >
               {addCommentMutation.isPending ? "Posting..." : t("reply")}
             </button>
@@ -190,7 +191,7 @@ function CommentItem({
           {replies.map((reply) => (
             <div
               key={reply.id}
-              className="rounded-lg border border-border bg-card p-3"
+              className="border-border bg-card rounded-lg border p-3"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
@@ -202,18 +203,18 @@ function CommentItem({
                       />
                     )}
                     <AvatarFallback className="font-mono text-xs">
-                      {getInitials(reply.authorName ?? "")}
+                      {getInitials(reply.authorName ?? "?")}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="font-mono text-xs font-semibold tracking-wider text-muted-foreground">
+                  <span className="text-muted-foreground font-mono text-xs font-semibold tracking-wider">
                     {reply.authorName ?? "member"}
                   </span>
-                  <span className="font-mono text-xs text-muted-foreground">
+                  <span className="text-muted-foreground font-mono text-xs">
                     &middot;
                   </span>
                   <RelativeTime
                     date={reply.createdAt}
-                    className="text-xs text-muted-foreground"
+                    className="text-muted-foreground text-xs"
                   />
                 </div>
                 {currentUserId === reply.authorId && (
@@ -229,7 +230,7 @@ function CommentItem({
                   </button>
                 )}
               </div>
-              <p className="text-sm leading-relaxed text-foreground">
+              <p className="text-foreground text-sm leading-relaxed">
                 {reply.content}
               </p>
             </div>
@@ -307,27 +308,27 @@ export function LaunchpadComments({
             maxLength={5000}
             rows={3}
             required
-            className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
+            className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-1 focus:outline-none"
           />
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={addCommentMutation.isPending || !newComment.trim()}
-              className="rounded-md bg-foreground px-4 py-1.5 font-mono text-xs font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
+              className="bg-foreground text-background hover:bg-foreground/90 rounded-md px-4 py-1.5 font-mono text-xs font-semibold tracking-widest uppercase transition-colors disabled:opacity-50"
             >
               {addCommentMutation.isPending ? "Posting..." : t("submit")}
             </button>
           </div>
         </form>
       ) : (
-        <p className="font-mono text-xs text-muted-foreground">
+        <p className="text-muted-foreground font-mono text-xs">
           {t("signInToComment")}
         </p>
       )}
 
       {/* Comments list */}
       {topLevel.length === 0 ? (
-        <p className="py-4 text-center font-mono text-xs text-muted-foreground">
+        <p className="text-muted-foreground py-4 text-center font-mono text-xs">
           {t("noComments")}
         </p>
       ) : (

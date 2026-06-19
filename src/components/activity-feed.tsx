@@ -67,7 +67,7 @@ export function ActivityFeed() {
 
       <div className="mt-4">
         <SegmentedControl
-          aria-label={t("personal")}
+          aria-label={t("scopeLabel")}
           size="sm"
           value={mode}
           onValueChange={setMode}

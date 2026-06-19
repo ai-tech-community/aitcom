@@ -80,7 +80,7 @@ export function TeamHeatmap({
   }
 
   if (!cells || cells.length === 0) {
-    return <EmptyState title={t("tasks")} description={t("workspaceLocked")} />;
+    return <EmptyState title={t("tasks")} />;
   }
 
   const groups = new Map<string, Cell[]>();

@@ -228,6 +228,7 @@
       "title": "Ideeën & Stemmen",
       "building": "Gemeentehuis",
       "subtitle": "Vorm de community",
+      "sortLabel": "Ideeën sorteren",
       "mostVoted": "Meest gestemd",
       "recent": "Recent",
       "submit": "Idee indienen",
@@ -510,6 +511,7 @@
     "qa": "QA"
   },
   "activity": {
+    "scopeLabel": "Activiteitsbereik",
     "personal": "Mijn Activiteit",
     "community": "Community",
     "empty": "Nog geen activiteit. Begin met deelnemen om je feed te zien!"
