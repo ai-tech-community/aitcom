@@ -1,6 +1,6 @@
 "use client";
 
-import { useFormatter } from "next-intl";
+import { useFormatter, useNow } from "next-intl";
 
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,7 @@ type RelativeTimeProps = {
  */
 function RelativeTime({ date, className }: RelativeTimeProps) {
   const format = useFormatter();
+  const now = useNow();
   const d = date instanceof Date ? date : new Date(date);
   return (
     <time
@@ -24,7 +25,7 @@ function RelativeTime({ date, className }: RelativeTimeProps) {
       className={cn("font-mono", className)}
       suppressHydrationWarning
     >
-      {format.relativeTime(d)}
+      {format.relativeTime(d, now)}
     </time>
   );
 }
