@@ -6,11 +6,7 @@ import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { BotIcon, Users } from "lucide-react";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SectionLabel } from "@/components/ui/section-label";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
 

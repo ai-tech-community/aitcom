@@ -41,7 +41,9 @@ export default async function PrivacyPage() {
 
       {/* SYNOPSIS */}
       <section className="mt-8">
-        <h2 className="font-mono text-sm font-semibold tracking-wider">SYNOPSIS</h2>
+        <h2 className="font-mono text-sm font-semibold tracking-wider">
+          SYNOPSIS
+        </h2>
         <p className="text-muted-foreground mt-2 pl-6 text-sm leading-relaxed">
           {t("synopsis")}
         </p>
@@ -90,7 +92,9 @@ export default async function PrivacyPage() {
 
       {/* SEE ALSO */}
       <section className="mt-10">
-        <h2 className="font-mono text-sm font-semibold tracking-wider">SEE ALSO</h2>
+        <h2 className="font-mono text-sm font-semibold tracking-wider">
+          SEE ALSO
+        </h2>
         <p className="mt-2 pl-6 font-mono text-sm">
           <Link href="/terms" className="text-primary hover:underline">
             {t("seeAlso")}

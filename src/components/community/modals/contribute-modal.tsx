@@ -66,10 +66,10 @@ export function ContributeModal({
             key={key}
             className={`rounded-lg border p-4 transition-colors ${border} ${disabled ? "opacity-50" : ""}`}
           >
-            <h3 className="font-mono text-xs font-semibold tracking-wider text-foreground uppercase">
+            <h3 className="text-foreground font-mono text-xs font-semibold tracking-wider uppercase">
               {t(`${key}.title`)}
             </h3>
-            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            <p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
               {t(`${key}.description`)}
             </p>
             <div className="mt-3">

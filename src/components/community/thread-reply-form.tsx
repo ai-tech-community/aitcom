@@ -36,7 +36,7 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
 
   if (isLocked) {
     return (
-      <p className="mt-6 rounded-lg border border-border bg-muted px-4 py-3 font-mono text-xs text-muted-foreground">
+      <p className="border-border bg-muted text-muted-foreground mt-6 rounded-lg border px-4 py-3 font-mono text-xs">
         {t("threadLocked")}
       </p>
     );
@@ -44,7 +44,7 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
 
   if (!session?.user) {
     return (
-      <p className="mt-6 font-mono text-xs text-muted-foreground">
+      <p className="text-muted-foreground mt-6 font-mono text-xs">
         {t("loginToReply")}
       </p>
     );
@@ -58,7 +58,7 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
       }}
       className="mt-6 space-y-3"
     >
-      <label className="block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+      <label className="text-muted-foreground block font-mono text-xs font-semibold tracking-wider uppercase">
         {t("replyLabel")}
       </label>
       <textarea
@@ -68,13 +68,13 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
         maxLength={10000}
         rows={3}
         required
-        className="w-full resize-none rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
+        className="border-border bg-card text-foreground placeholder:text-muted-foreground w-full resize-none rounded-md border px-3 py-2 text-sm focus:border-orange-300 focus:ring-1 focus:ring-orange-300 focus:outline-none"
       />
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={replyMutation.isPending}
-          className="rounded-md bg-foreground px-4 py-1.5 font-mono text-xs font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
+          className="bg-foreground text-background hover:bg-foreground/90 rounded-md px-4 py-1.5 font-mono text-xs font-semibold tracking-widest uppercase transition-colors disabled:opacity-50"
         >
           {replyMutation.isPending ? t("replying") : t("reply")}
         </button>

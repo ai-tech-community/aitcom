@@ -159,7 +159,9 @@ export function ExamRunner({
               {t("examPreviewNote")}
             </p>
           ) : outOfAttempts ? (
-            <p className="text-destructive text-sm">{t("examNoAttemptsLeft")}</p>
+            <p className="text-destructive text-sm">
+              {t("examNoAttemptsLeft")}
+            </p>
           ) : (
             <Button
               type="button"

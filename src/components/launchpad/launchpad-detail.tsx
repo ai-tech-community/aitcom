@@ -32,17 +32,17 @@ function getCoverUrl(
 function DetailSkeleton() {
   return (
     <div className="mx-auto max-w-3xl animate-pulse space-y-6 px-4 py-10 sm:px-6">
-      <div className="h-4 w-24 rounded bg-muted" />
-      <div className="h-8 w-2/3 rounded bg-muted" />
+      <div className="bg-muted h-4 w-24 rounded" />
+      <div className="bg-muted h-8 w-2/3 rounded" />
       <div className="flex gap-3">
-        <div className="h-6 w-20 rounded bg-muted" />
-        <div className="h-6 w-32 rounded bg-muted" />
+        <div className="bg-muted h-6 w-20 rounded" />
+        <div className="bg-muted h-6 w-32 rounded" />
       </div>
-      <div className="h-48 w-full rounded bg-muted" />
+      <div className="bg-muted h-48 w-full rounded" />
       <div className="space-y-2">
-        <div className="h-4 rounded bg-muted" />
-        <div className="h-4 w-5/6 rounded bg-muted" />
-        <div className="h-4 w-4/6 rounded bg-muted" />
+        <div className="bg-muted h-4 rounded" />
+        <div className="bg-muted h-4 w-5/6 rounded" />
+        <div className="bg-muted h-4 w-4/6 rounded" />
       </div>
     </div>
   );
@@ -93,10 +93,12 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
   if (isError || !project) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6">
-        <p className="font-mono text-sm text-muted-foreground">{tDetail("notFound")}</p>
+        <p className="text-muted-foreground font-mono text-sm">
+          {tDetail("notFound")}
+        </p>
         <Link
           href="/launchpad"
-          className="mt-4 inline-block font-mono text-xs tracking-wider text-muted-foreground underline underline-offset-4 hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground mt-4 inline-block font-mono text-xs tracking-wider underline underline-offset-4"
         >
           {tDetail("backToLaunchpad")}
         </Link>
@@ -123,16 +125,16 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
       {/* Back link */}
       <Link
         href="/launchpad"
-        className="font-mono text-xs tracking-wider text-muted-foreground transition-colors hover:text-foreground"
+        className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
       >
         &larr; {tDetail("backToLaunchpad")}
       </Link>
 
       {/* Archived banner */}
       {project.status === "archived" && (
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted px-4 py-3">
-          <Archive className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <p className="font-mono text-xs text-muted-foreground">
+        <div className="border-border bg-muted mt-4 flex items-center gap-2 rounded-lg border px-4 py-3">
+          <Archive className="text-muted-foreground h-4 w-4 shrink-0" />
+          <p className="text-muted-foreground font-mono text-xs">
             {tDetail("archived")}
           </p>
         </div>
@@ -154,7 +156,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
           {isAuthor && (
             <Link
               href={`/launchpad/${slug}/edit`}
-              className="flex items-center gap-1 rounded border border-border px-2 py-1 font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent"
+              className="border-border text-muted-foreground hover:bg-accent flex items-center gap-1 rounded border px-2 py-1 font-mono text-xs font-semibold tracking-wider uppercase transition-colors"
             >
               <Edit className="h-3 w-3" />
               {tDetail("editProject")}
@@ -163,7 +165,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl leading-snug font-semibold tracking-tight text-foreground sm:text-3xl">
+        <h1 className="text-foreground text-2xl leading-snug font-semibold tracking-tight sm:text-3xl">
           {project.title}
         </h1>
 
@@ -172,11 +174,11 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
           {/* Author */}
           {authorDisplayName && (
             <div className="flex items-center gap-1.5">
-              <span className="font-mono text-xs text-muted-foreground">
+              <span className="text-muted-foreground font-mono text-xs">
                 {authorDisplayName}
               </span>
               {authorLevel !== null && (
-                <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs font-semibold text-muted-foreground">
+                <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-xs font-semibold">
                   Lv {authorLevel}
                 </span>
               )}
@@ -193,7 +195,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
             className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-xs font-semibold transition-colors disabled:opacity-60 ${
               project.hasVoted
                 ? "bg-orange-50 text-orange-600"
-                : "border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+                : "border-border text-muted-foreground hover:bg-accent hover:text-foreground border"
             }`}
           >
             <ChevronUp className="h-3.5 w-3.5" />
@@ -210,7 +212,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 rounded-full border border-border bg-muted px-3 py-1 font-mono text-xs text-muted-foreground transition-colors hover:border-border hover:bg-card"
+                className="border-border bg-muted text-muted-foreground hover:border-border hover:bg-card flex items-center gap-1 rounded-full border px-3 py-1 font-mono text-xs transition-colors"
               >
                 <ExternalLink className="h-2.5 w-2.5" />
                 {link.label}
@@ -224,7 +226,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
       {/* Cover image                                                         */}
       {/* ------------------------------------------------------------------ */}
       {coverUrl && (
-        <div className="relative mt-8 h-56 w-full overflow-hidden rounded-lg bg-muted sm:h-72">
+        <div className="bg-muted relative mt-8 h-56 w-full overflow-hidden rounded-lg sm:h-72">
           <Image
             src={coverUrl}
             alt={project.title}

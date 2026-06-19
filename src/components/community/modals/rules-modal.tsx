@@ -61,7 +61,7 @@ export function RulesModal({
       {isLoading && (
         <div className="space-y-3 py-4">
           {[1, 2, 3, 4].map((n) => (
-            <div key={n} className="h-4 animate-pulse rounded bg-muted" />
+            <div key={n} className="bg-muted h-4 animate-pulse rounded" />
           ))}
         </div>
       )}
@@ -69,8 +69,8 @@ export function RulesModal({
       {data && sections.length > 0 && (
         <div className="flex flex-col gap-4">
           {/* Table of Contents */}
-          <nav className="rounded-md border border-border bg-muted p-3">
-            <p className="mb-2 font-mono text-xs font-medium tracking-wider text-muted-foreground uppercase">
+          <nav className="border-border bg-muted rounded-md border p-3">
+            <p className="text-muted-foreground mb-2 font-mono text-xs font-medium tracking-wider uppercase">
               {t("toc")}
             </p>
             <ul className="space-y-1">
@@ -86,7 +86,7 @@ export function RulesModal({
                           .getElementById(`rule-${section.slug}`)
                           ?.scrollIntoView({ behavior: "smooth" });
                       }}
-                      className="flex items-center gap-2 rounded px-2 py-1 text-sm text-foreground transition-colors hover:bg-accent"
+                      className="text-foreground hover:bg-accent flex items-center gap-2 rounded px-2 py-1 text-sm transition-colors"
                     >
                       {Icon && <Icon className="h-3.5 w-3.5 shrink-0" />}
                       {section.title}
@@ -103,7 +103,7 @@ export function RulesModal({
               const Icon = section.icon ? iconMap[section.icon] : null;
               return (
                 <section key={section.slug} id={`rule-${section.slug}`}>
-                  <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <h2 className="text-foreground flex items-center gap-2 text-lg font-semibold">
                     {Icon && <Icon className="h-4.5 w-4.5 text-orange-500" />}
                     {section.title}
                   </h2>
@@ -116,9 +116,9 @@ export function RulesModal({
           </div>
 
           {/* Version & Acceptance Footer */}
-          <div className="mt-4 border-t border-border pt-4">
+          <div className="border-border mt-4 border-t pt-4">
             {rules?.version && (
-              <p className="mb-2 font-mono text-xs text-muted-foreground">
+              <p className="text-muted-foreground mb-2 font-mono text-xs">
                 {t("versionLabel", { version: rules.version })}
               </p>
             )}
@@ -138,7 +138,7 @@ export function RulesModal({
                   })
                 }
                 disabled={acceptMutation.isPending}
-                className="w-full rounded-md bg-foreground px-4 py-2.5 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
+                className="bg-foreground text-background hover:bg-foreground/90 w-full rounded-md px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
               >
                 {acceptMutation.isPending ? "..." : t("accept")}
               </button>
@@ -148,7 +148,9 @@ export function RulesModal({
       )}
 
       {!isLoading && (!data || sections.length === 0) && (
-        <p className="py-4 font-mono text-xs text-muted-foreground">{t("empty")}</p>
+        <p className="text-muted-foreground py-4 font-mono text-xs">
+          {t("empty")}
+        </p>
       )}
     </BuildingModal>
   );

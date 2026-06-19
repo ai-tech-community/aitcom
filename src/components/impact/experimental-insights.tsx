@@ -96,7 +96,9 @@ function renderPercentage(value: unknown) {
   const clamped = Math.min(100, Math.max(0, value));
   return (
     <div className="mt-2">
-      <p className="text-2xl font-semibold text-zinc-900">{formatValue(value)}%</p>
+      <p className="text-2xl font-semibold text-zinc-900">
+        {formatValue(value)}%
+      </p>
       <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
         <div
           className="h-full rounded-full bg-zinc-900"

@@ -53,13 +53,13 @@ export function ThreadCard({
         }
       >
         <m.div
-          className="mb-3 w-full rounded-lg border border-border bg-muted p-3 text-left transition-colors hover:border-border hover:bg-accent"
+          className="border-border bg-muted hover:border-border hover:bg-accent mb-3 w-full rounded-lg border p-3 text-left transition-colors"
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: index * 0.03 }}
         >
           <div className="flex items-start justify-between gap-2">
-            <p className="text-sm leading-snug font-medium text-foreground">
+            <p className="text-foreground text-sm leading-snug font-medium">
               {thread.isPinned && (
                 <span className="mr-1 font-mono text-xs text-orange-600">
                   PIN
@@ -68,7 +68,9 @@ export function ThreadCard({
               {thread.title}
             </p>
             <div className="flex shrink-0 items-center gap-1.5">
-              {thread.isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+              {thread.isLocked && (
+                <Lock className="text-muted-foreground h-3 w-3" />
+              )}
               {/* Post type is categorical, not a status → neutral Badge. */}
               <Badge
                 variant="secondary"
@@ -79,10 +81,10 @@ export function ThreadCard({
               {canModerate && (
                 <DropdownMenu>
                   <DropdownMenuTrigger
-                    className="rounded p-1 hover:bg-accent"
+                    className="hover:bg-accent rounded p-1"
                     onClick={(e) => e.preventDefault()}
                   >
-                    <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                    <MoreHorizontal className="text-muted-foreground h-3.5 w-3.5" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
@@ -115,12 +117,12 @@ export function ThreadCard({
             </div>
           </div>
           <div className="mt-1.5 flex items-center gap-3">
-            <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
+            <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
               <MessageSquare className="h-2.5 w-2.5" />
               {t("replies", { count: thread.replyCount ?? 0 })}
             </span>
             {(thread.viewCount ?? 0) > 0 && (
-              <span className="hidden items-center gap-1 font-mono text-xs text-muted-foreground sm:flex">
+              <span className="text-muted-foreground hidden items-center gap-1 font-mono text-xs sm:flex">
                 <Eye className="h-2.5 w-2.5" />
                 {t("views", { count: thread.viewCount ?? 0 })}
               </span>
@@ -128,11 +130,11 @@ export function ThreadCard({
             {thread.lastActivityAt && (
               <RelativeTime
                 date={thread.lastActivityAt}
-                className="text-xs text-muted-foreground"
+                className="text-muted-foreground text-xs"
               />
             )}
             {thread.authorName && (
-              <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+              <span className="text-muted-foreground flex items-center gap-1.5 font-mono text-xs">
                 {thread.authorName}
                 <RoleBadge role={thread.authorRole} />
               </span>

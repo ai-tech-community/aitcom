@@ -60,7 +60,7 @@ export function ReplyList({
 
   if (replies.length === 0) {
     return (
-      <p className="py-6 text-center font-mono text-xs text-muted-foreground">
+      <p className="text-muted-foreground py-6 text-center font-mono text-xs">
         No replies yet. Be the first to respond.
       </p>
     );
@@ -72,19 +72,19 @@ export function ReplyList({
         reply.isDeleted ? (
           <div
             key={reply.id}
-            className="rounded-lg border border-border bg-muted p-3"
+            className="border-border bg-muted rounded-lg border p-3"
           >
-            <p className="text-sm text-muted-foreground italic">
+            <p className="text-muted-foreground text-sm italic">
               {t("replyDeletedMessage")}
             </p>
           </div>
         ) : (
           <div
             key={reply.id}
-            className="rounded-lg border border-border bg-muted p-3"
+            className="border-border bg-muted rounded-lg border p-3"
           >
             <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2 font-mono text-xs tracking-wider text-muted-foreground">
+              <div className="text-muted-foreground flex items-center gap-2 font-mono text-xs tracking-wider">
                 <span>{reply.authorName ?? "member"}</span>
                 <RoleBadge role={reply.authorRole} />
                 <span>&middot;</span>
@@ -95,8 +95,8 @@ export function ReplyList({
               </div>
               {(currentUserId === reply.authorId || canModerate) && (
                 <DropdownMenu>
-                  <DropdownMenuTrigger className="rounded p-1 hover:bg-accent">
-                    <MoreHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+                  <DropdownMenuTrigger className="hover:bg-accent rounded p-1">
+                    <MoreHorizontal className="text-muted-foreground h-3.5 w-3.5" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     {currentUserId === reply.authorId && (
@@ -130,7 +130,7 @@ export function ReplyList({
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
                   rows={3}
-                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
+                  className="border-border w-full rounded-md border px-3 py-2 text-sm"
                 />
                 <div className="flex gap-2">
                   <button
@@ -154,7 +154,7 @@ export function ReplyList({
                 </div>
               </div>
             ) : (
-              <div className="text-sm leading-relaxed text-foreground">
+              <div className="text-foreground text-sm leading-relaxed">
                 <LexicalRenderer content={reply.content} />
               </div>
             )}

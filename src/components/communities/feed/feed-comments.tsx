@@ -109,9 +109,7 @@ export function FeedComments({
   }
 
   if (isError) {
-    return (
-      <ErrorState onRetry={() => void refetch()} className="px-0 py-6" />
-    );
+    return <ErrorState onRetry={() => void refetch()} className="px-0 py-6" />;
   }
 
   return (
@@ -136,9 +134,7 @@ export function FeedComments({
         return (
           <div key={comment.id} className="flex items-start gap-2">
             <Avatar className="mt-0.5 size-6 shrink-0">
-              <AvatarFallback className="text-xs">
-                {initials}
-              </AvatarFallback>
+              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-1">

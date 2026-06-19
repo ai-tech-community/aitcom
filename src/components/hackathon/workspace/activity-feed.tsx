@@ -21,10 +21,7 @@ export function ActivityFeed({
 }) {
   const t = useTranslations("hackathon");
   const { data, isLoading, isError, refetch } =
-    api.teamWorkspace.activity.useQuery(
-      { teamId },
-      { refetchInterval: 5_000 },
-    );
+    api.teamWorkspace.activity.useQuery({ teamId }, { refetchInterval: 5_000 });
 
   const memberMap = new Map(members.map((m) => [m.userId, m.displayName]));
 

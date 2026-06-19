@@ -62,7 +62,9 @@ export function FeatureModals() {
               {feat.fig === 3 && <AsciiConnectScene />}
             </div>
             <div className="space-y-2 p-4 pb-5">
-              <h3 className="text-lg font-semibold">{t(`${feat.key}.title`)}</h3>
+              <h3 className="text-lg font-semibold">
+                {t(`${feat.key}.title`)}
+              </h3>
               <p className="text-muted-foreground text-sm leading-relaxed">
                 {t(`${feat.key}.description`)}
               </p>

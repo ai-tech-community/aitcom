@@ -144,7 +144,7 @@ export function ChallengeProgress({
                     <span
                       className={`font-mono text-xs ${
                         isReviewed
-                          ? "font-semibold text-success"
+                          ? "text-success font-semibold"
                           : "text-muted-foreground"
                       }`}
                     >
@@ -161,7 +161,7 @@ export function ChallengeProgress({
               />
             </div>
             {isComplete && (
-              <CheckIcon className="h-4 w-4 shrink-0 text-success" />
+              <CheckIcon className="text-success h-4 w-4 shrink-0" />
             )}
           </div>
         );

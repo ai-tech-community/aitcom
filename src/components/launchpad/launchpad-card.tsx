@@ -90,14 +90,14 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
   return (
     <LazyMotion features={domAnimation}>
       <m.div
-        className="flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors hover:border-border hover:shadow-sm"
+        className="border-border bg-card hover:border-border flex flex-col overflow-hidden rounded-lg border transition-colors hover:shadow-sm"
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: index * 0.03 }}
       >
         {/* Cover image or colored stripe */}
         {coverUrl ? (
-          <div className="relative h-36 w-full overflow-hidden bg-muted">
+          <div className="bg-muted relative h-36 w-full overflow-hidden">
             <Image
               src={coverUrl}
               alt={project.title}
@@ -129,14 +129,14 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
               )}
             </Badge>
             {project.authorName && (
-              <span className="truncate font-mono text-xs text-muted-foreground">
+              <span className="text-muted-foreground truncate font-mono text-xs">
                 {project.authorName}
               </span>
             )}
           </div>
 
           {/* Title */}
-          <p className="line-clamp-2 text-sm leading-snug font-semibold text-foreground">
+          <p className="text-foreground line-clamp-2 text-sm leading-snug font-semibold">
             {project.title}
           </p>
 
@@ -146,7 +146,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
               {project.tags.slice(0, 4).map((t, i) => (
                 <span
                   key={t.id ?? i}
-                  className="rounded-full border border-border bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground"
+                  className="border-border bg-muted text-muted-foreground rounded-full border px-2 py-0.5 font-mono text-xs"
                 >
                   {t.tag}
                 </span>
@@ -156,7 +156,7 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
         </Link>
 
         {/* Footer row — vote button + stats */}
-        <div className="flex items-center gap-3 border-t border-border px-4 py-2">
+        <div className="border-border flex items-center gap-3 border-t px-4 py-2">
           {/* Vote button — outside the Link to prevent nested anchors */}
           <button
             onClick={(e) => {
@@ -177,17 +177,17 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
             {project.voteCount ?? 0}
           </button>
 
-          <span className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
+          <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
             <MessageSquare className="h-2.5 w-2.5" />
             {project.commentCount ?? 0}
           </span>
 
-          <span className="ml-auto flex items-center gap-1 font-mono text-xs text-muted-foreground">
+          <span className="text-muted-foreground ml-auto flex items-center gap-1 font-mono text-xs">
             <Clock className="h-2.5 w-2.5" />
             {project.createdAt && (
               <RelativeTime
                 date={project.createdAt}
-                className="text-xs text-muted-foreground"
+                className="text-muted-foreground text-xs"
               />
             )}
           </span>

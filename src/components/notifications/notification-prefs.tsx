@@ -51,7 +51,7 @@ export function NotificationPrefs() {
       </div>
 
       <div className="rounded-lg border">
-        <div className="grid grid-cols-[1fr_auto_auto] gap-4 border-b p-4 text-xs font-medium text-muted-foreground">
+        <div className="text-muted-foreground grid grid-cols-[1fr_auto_auto] gap-4 border-b p-4 text-xs font-medium">
           <span>{t("perCommunity")}</span>
           <span>{t("digestColumn")}</span>
           <span>{t("broadcastColumn")}</span>

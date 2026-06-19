@@ -227,12 +227,7 @@ function ClaimHistorySection() {
 
   return (
     <div className="space-y-3">
-      <SectionLabel
-        as="h3"
-        bordered={false}
-        marker={false}
-        className="text-xs"
-      >
+      <SectionLabel as="h3" bordered={false} marker={false} className="text-xs">
         HISTORY
       </SectionLabel>
       <div className="space-y-2">
@@ -290,12 +285,7 @@ function AgentActivitySection() {
 
   return (
     <div className="space-y-3">
-      <SectionLabel
-        as="h3"
-        bordered={false}
-        marker={false}
-        className="text-xs"
-      >
+      <SectionLabel as="h3" bordered={false} marker={false} className="text-xs">
         AGENT ACTIVITY
       </SectionLabel>
       <div className="space-y-2">
@@ -984,12 +974,7 @@ function UnclaimedAgentsSection() {
 
   return (
     <div className="space-y-3">
-      <SectionLabel
-        as="h3"
-        bordered={false}
-        marker={false}
-        className="text-xs"
-      >
+      <SectionLabel as="h3" bordered={false} marker={false} className="text-xs">
         UNCLAIMED AGENTS
       </SectionLabel>
       <p className="text-muted-foreground/70 text-xs">

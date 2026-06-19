@@ -100,9 +100,7 @@ export function BrandModelHeatmap({
                 className="text-muted-foreground px-2 py-1 text-center text-xs font-medium whitespace-nowrap"
                 title={`${m.modelProvider} • ${t("runsSuffix", { n: m.totalRuns })}`}
               >
-                <div className="font-mono text-xs normal-case">
-                  {m.modelId}
-                </div>
+                <div className="font-mono text-xs normal-case">{m.modelId}</div>
                 <div className="text-xs opacity-70">
                   {t("runsSuffix", { n: m.totalRuns })}
                 </div>

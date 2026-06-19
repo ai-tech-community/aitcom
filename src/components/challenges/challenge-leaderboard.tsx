@@ -2,11 +2,7 @@
 
 import { api } from "@/trpc/react";
 import { useTranslations } from "next-intl";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
 import { getInitials } from "@/lib/avatar";
@@ -55,9 +51,7 @@ export function ChallengeLeaderboard({
                 #{entry.rank}
               </span>
               <Avatar className="size-6">
-                {entry.image && (
-                  <AvatarImage src={entry.image} alt="" />
-                )}
+                {entry.image && <AvatarImage src={entry.image} alt="" />}
                 <AvatarFallback className="font-mono text-xs">
                   {getInitials(entry.displayName)}
                 </AvatarFallback>

@@ -34,7 +34,10 @@ function EmptyState({
       )}
     >
       {icon && (
-        <div className="text-muted-foreground [&_svg]:size-8" aria-hidden="true">
+        <div
+          className="text-muted-foreground [&_svg]:size-8"
+          aria-hidden="true"
+        >
           {icon}
         </div>
       )}

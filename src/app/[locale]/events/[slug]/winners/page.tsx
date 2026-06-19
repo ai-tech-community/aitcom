@@ -164,7 +164,9 @@ export default async function HackathonWinnersPage({
               {t("voteCount", { count: peoplesChoiceVotes })}
             </span>
           </div>
-          <h2 className="mt-2 text-xl font-semibold">{peoplesChoiceTeam.name}</h2>
+          <h2 className="mt-2 text-xl font-semibold">
+            {peoplesChoiceTeam.name}
+          </h2>
           <p className="text-muted-foreground mt-1 text-sm">
             {t("peoplesChoiceIntro")}
           </p>

@@ -19,7 +19,6 @@ import { Heart, MessageSquare, MoreHorizontal, Pin } from "lucide-react";
 import { toast } from "sonner";
 import { FeedComments } from "./feed-comments";
 
-
 interface FeedPost {
   id: number;
   content: string;

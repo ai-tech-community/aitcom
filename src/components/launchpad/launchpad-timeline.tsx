@@ -58,7 +58,7 @@ export function LaunchpadTimeline({
         {isAuthor && !showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="rounded border border-border px-2 py-1 font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent"
+            className="border-border text-muted-foreground hover:bg-accent rounded border px-2 py-1 font-mono text-xs font-semibold tracking-wider uppercase transition-colors"
           >
             {t("submit")}
           </button>
@@ -77,10 +77,10 @@ export function LaunchpadTimeline({
               content: content.trim(),
             });
           }}
-          className="space-y-2 rounded-lg border border-border bg-muted p-3"
+          className="border-border bg-muted space-y-2 rounded-lg border p-3"
         >
           <div>
-            <label className="mb-1 block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            <label className="text-muted-foreground mb-1 block font-mono text-xs font-semibold tracking-wider uppercase">
               {t("title")}
             </label>
             <input
@@ -90,11 +90,11 @@ export function LaunchpadTimeline({
               placeholder={t("titlePlaceholder")}
               maxLength={500}
               required
-              className="w-full rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
+              className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring w-full rounded border px-2 py-1.5 text-sm focus:ring-1 focus:outline-none"
             />
           </div>
           <div>
-            <label className="mb-1 block font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+            <label className="text-muted-foreground mb-1 block font-mono text-xs font-semibold tracking-wider uppercase">
               {t("content")}
             </label>
             <textarea
@@ -104,7 +104,7 @@ export function LaunchpadTimeline({
               maxLength={10000}
               rows={3}
               required
-              className="w-full resize-none rounded border border-border bg-background px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
+              className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring w-full resize-none rounded border px-2 py-1.5 text-sm focus:ring-1 focus:outline-none"
             />
           </div>
           <div className="flex justify-end gap-2">
@@ -115,7 +115,7 @@ export function LaunchpadTimeline({
                 setTitle("");
                 setContent("");
               }}
-              className="rounded border border-border px-3 py-1 font-mono text-xs font-semibold tracking-wider text-muted-foreground uppercase transition-colors hover:bg-accent"
+              className="border-border text-muted-foreground hover:bg-accent rounded border px-3 py-1 font-mono text-xs font-semibold tracking-wider uppercase transition-colors"
             >
               Cancel
             </button>
@@ -124,7 +124,7 @@ export function LaunchpadTimeline({
               disabled={
                 postUpdateMutation.isPending || !title.trim() || !content.trim()
               }
-              className="rounded-md bg-foreground px-3 py-1 font-mono text-xs font-semibold tracking-widest text-background uppercase transition-colors hover:bg-foreground/90 disabled:opacity-50"
+              className="bg-foreground text-background hover:bg-foreground/90 rounded-md px-3 py-1 font-mono text-xs font-semibold tracking-widest uppercase transition-colors disabled:opacity-50"
             >
               {postUpdateMutation.isPending ? "Posting..." : t("submit")}
             </button>
@@ -134,7 +134,7 @@ export function LaunchpadTimeline({
 
       {/* Updates list (reverse chronological order) */}
       {updates.length === 0 ? (
-        <p className="py-4 text-center font-mono text-xs text-muted-foreground">
+        <p className="text-muted-foreground py-4 text-center font-mono text-xs">
           {t("noUpdates")}
         </p>
       ) : (
@@ -148,18 +148,18 @@ export function LaunchpadTimeline({
             .map((update) => (
               <div
                 key={update.id}
-                className="rounded-lg border border-border bg-muted p-3"
+                className="border-border bg-muted rounded-lg border p-3"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm leading-snug font-semibold text-foreground">
+                  <p className="text-foreground text-sm leading-snug font-semibold">
                     {update.title}
                   </p>
                   <RelativeTime
                     date={update.createdAt}
-                    className="shrink-0 text-xs text-muted-foreground"
+                    className="text-muted-foreground shrink-0 text-xs"
                   />
                 </div>
-                <p className="mt-1.5 text-sm leading-relaxed text-foreground">
+                <p className="text-foreground mt-1.5 text-sm leading-relaxed">
                   {update.content}
                 </p>
               </div>
