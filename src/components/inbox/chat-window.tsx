@@ -32,7 +32,8 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { Link } from "@/i18n/navigation";
 import { useInbox } from "./inbox-provider";
-import { LIVE_MESSAGES_REFETCH_MS } from "./live-refetch";
+import { LIVE_MESSAGES_FALLBACK_MS } from "./live-refetch";
+import { useInboxStream } from "./use-inbox-stream";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,13 +74,15 @@ export function ChatWindow({
   const utils = api.useUtils();
   const [expanded, setExpanded] = useState(false);
 
+  useInboxStream();
+
   // ── Data fetching ───────────────────────────────────────────────────────
 
   const currentUserId = session?.user?.id;
 
   const messagesQuery = api.inbox.getMessages.useQuery(
     { conversationId, limit: 50 },
-    { refetchInterval: LIVE_MESSAGES_REFETCH_MS },
+    { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
   );
 
   const sendMessage = api.inbox.sendMessage.useMutation({

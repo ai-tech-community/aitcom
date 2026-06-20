@@ -10,4 +10,6 @@
  * SSE stream backed by a pub/sub fabric, at which point these constants go away.
  */
 export const LIVE_MESSAGES_REFETCH_MS = 3_000;
+/** Fallback poll interval when SSE stream is primary (ADR-0025 Tier 1). */
+export const LIVE_MESSAGES_FALLBACK_MS = 15_000;
 export const LIVE_BADGE_REFETCH_MS = 10_000;
