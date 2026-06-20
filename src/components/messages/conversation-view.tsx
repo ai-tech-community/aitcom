@@ -32,6 +32,8 @@ import {
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
 import { LIVE_MESSAGES_FALLBACK_MS } from "@/components/inbox/live-refetch";
+import { UiMessage } from "@/components/inbox/ui-message";
+import { isChatUiEnabled } from "@/lib/chat/flags";
 
 type ConversationViewProps = {
   conversationId: string;
@@ -257,6 +259,11 @@ export function ConversationView({
                     <MessageContent>
                       {isUser ? (
                         <p>{msg.content}</p>
+                      ) : msg.uiResource && isChatUiEnabled() ? (
+                        <UiMessage
+                          conversationId={conversationId}
+                          resource={msg.uiResource}
+                        />
                       ) : (
                         <MessageResponse>{msg.content}</MessageResponse>
                       )}

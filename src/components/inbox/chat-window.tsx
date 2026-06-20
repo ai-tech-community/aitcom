@@ -35,6 +35,8 @@ import { Link } from "@/i18n/navigation";
 import { useInbox } from "./inbox-provider";
 import { LIVE_MESSAGES_FALLBACK_MS } from "./live-refetch";
 import { useInboxStream } from "./use-inbox-stream";
+import { UiMessage } from "./ui-message";
+import { isChatUiEnabled } from "@/lib/chat/flags";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -270,6 +272,11 @@ export function ChatWindow({
                     <MessageContent>
                       {isUser ? (
                         <p>{msg.content}</p>
+                      ) : msg.uiResource && isChatUiEnabled() ? (
+                        <UiMessage
+                          conversationId={conversationId}
+                          resource={msg.uiResource}
+                        />
                       ) : (
                         <MessageResponse>{msg.content}</MessageResponse>
                       )}
