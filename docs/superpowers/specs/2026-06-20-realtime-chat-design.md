@@ -1,205 +1,136 @@
-# Slice 1 — Agent-Native Real-Time Chat & DMs (with Interactive UI Messages)
+# Slice 1 — Realtime Upgrade + Interactive (MCP-Apps) Messages for the Inbox
 
-**Date:** 2026-06-20
-**Status:** Design approved — ready for implementation plan
+**Date:** 2026-06-20 (revised after discovering the existing inbox system)
+**Status:** Design approved (revised) — ready for implementation
 **Branch:** `feat/realtime-chat`
 **Parent roadmap:** [2026-06-20-circle-gap-roadmap.md](./2026-06-20-circle-gap-roadmap.md)
+**Builds on / honors:** [ADR-0025](../../adr/0025-real-time-delivery-is-asymmetric.md)
 
-## Summary
+## Why this revision
 
-Add real-time chat to the platform — DMs, group DMs, and community channels — with
-**agents as first-class conversation members** and **interactive UI messages** based
-on the MCP Apps standard (`io.modelcontextprotocol/ui`, spec `2026-01-26`). A member
-can ask a question and an agent (or the platform) replies with a live, interactive
-component rendered in a sandboxed iframe; interacting with it posts actions back into
-the conversation. This closes Circle.so's single biggest staple gap while doing it in
-a way Circle can't easily copy: chat that is agentic and app-capable from day one.
+The original spec assumed chat was greenfield. It is not. The codebase already
+has a working **inbox/DM system**: `conversations` (`type: "agent" | "dm"`),
+`conversationParticipants` (with `lastReadAt`, `isPinned`), `messages`
+(`senderType: "human" | "agent"`, `content`, `metadata` jsonb), the
+`inbox.ts` tRPC router (incl. agent procedures), `inbox/dm.ts`, and a full
+`components/inbox/*` UI. It delivers near-real-time via **3s polling** and
+**ADR-0025** already specifies the upgrade path (SSE + Upstash Redis) and
+**explicitly rejects WebSockets**.
 
-## Goals
+So Slice 1 **extends the existing system** rather than building a parallel one,
+and uses **SSE + Upstash Redis**, not Ably. Channels, group DMs, and
+third-party agents as members are deferred to **Slice 1b** (they require a
+larger change to the live participant/message model).
 
-- Synchronous messaging across DM / group DM / community channel surfaces.
-- Agents participate natively (answer, summarize, moderate), reusing existing agent
-  webhook + API-key infrastructure.
-- Messages can carry interactive UI (MCP Apps HTML profile) rendered in isolated
-  sandboxed iframes, with a trust model that lets all producers emit UI in MVP and
-  tightens later via policy, not rework.
-- No regression to existing async surfaces (forum, notifications).
+## Scope
 
-## Non-goals (this slice)
+**In:**
+1. **Realtime upgrade (ADR-0025 Tier-1):** publish-on-write to Upstash Redis +
+   an SSE stream to the browser, replacing the 3s poll as the primary delivery
+   (poll retained as automatic fallback). Sub-second human-side latency.
+2. **Interactive (MCP-Apps) messages:** a message may carry a `UIResource`
+   (`text/html;profile=mcp-app`) rendered in a separate-origin sandboxed iframe
+   via `@mcp-ui/client`, with a producer-trust → CSP policy. Actions from the
+   iframe (`ui/message`, allow-listed `tools/call`, `ui/open-link`) are
+   re-authorized server-side as the acting human.
 
-- Automated AI moderation (deferred to Workflows slice #4).
-- Message full-text search (separate slice).
-- Live audio/video (Circle Live equivalent) — explicitly deferred per roadmap.
-- Member-authored `externalUrl` UI resources (trusted producers only in MVP).
+**Out (→ Slice 1b or later):** channels, group DMs, third-party agents as
+conversation members, agent trigger policies (`always`/`mention`/`off`), DM
+blocks. The existing owner↔agent delivery (via `logActivity` →
+`webhook-dispatch` cron, ADR-0025 "reactive-when-awake") is unchanged in Slice 1;
+faster agent wake (Vercel Queues) stays deferred per ADR-0025 Tier-2.
 
 ## Architecture
 
-### Transport & persistence
-- **Realtime fanout:** Ably. One channel per conversation (`conversation:{id}`) carries
-  message events, presence, and typing. Ably is **fanout only, never source of truth**.
-- **Source of truth:** Postgres. Chat tables are defined Drizzle-style in `schema.ts`
-  but applied via a **hand-written `src/migrations/*.ts` + `db:apply`** (never
-  `db:push`), consistent with the project's migration rule.
-- **Writes go through tRPC only.** The server validates membership/permission, inserts
-  the row, then publishes to Ably. Clients hold a **subscribe-only Ably token** whose
-  capability is minted from actual membership rows — a client can only subscribe to
-  conversations it belongs to.
-- **Catch-up/history:** on connect/reconnect, clients fetch missed messages via a tRPC
-  `history` query (Postgres) keyed off `lastReadAt`. Ably carries only the live tail.
+### Realtime (SSE + Upstash Redis)
+- **Publish on write.** The three message-write paths — `inbox.sendMessage`,
+  `inbox.agentSendMessage`, and `inbox/dm.ts:sendDirectMessage` — after
+  persisting, publish the new message to a Redis pub/sub channel keyed per
+  recipient participant: `inbox:user:{userId}`. Publishing is best-effort
+  (persistence already succeeded; a publish failure only degrades to polling).
+- **SSE endpoint.** `GET /api/inbox/stream` (Node runtime / Vercel Fluid
+  Compute) authenticates via Better Auth, subscribes to `inbox:user:{me}` on
+  Upstash, and streams `message` events to the browser. One-way server→browser,
+  matching ADR-0025's SSE-over-WebSockets decision.
+- **Client.** A small SSE hook updates the React Query cache for
+  `inbox.getMessages` / `inbox.totalUnreadCount` on incoming events (and triggers
+  a light invalidate). The existing `refetchInterval` polling stays as a
+  fallback for when SSE is unavailable, but its cadence can be relaxed.
+- **No new persistence.** Postgres remains the source of truth; Redis is
+  transport only.
 
-### Data model (new tables)
+### Interactive messages (MCP Apps `2026-01-26`)
+- **Storage.** Add two columns to the existing `messages` table:
+  - `uiResource` (jsonb, nullable) — the MCP-Apps resource
+    (`{ uri, mimeType, encoding, content, csp? }`).
+  - `uiProducerTrust` (varchar(20), nullable) — `platform | verified_agent |
+    agent | member`, set at write time from the author. Drives the CSP policy.
+  (`messages.metadata` jsonb already exists but is reused for other data; a
+  dedicated column keeps the UI contract explicit and queryable.)
+- **Producer.** In Slice 1's surface the producers are the user's **agent**
+  (via `agentSendMessage`, carrying a resource) and the **platform**; the trust
+  model is general so member/verified tiers apply unchanged when channels arrive.
+- **Host rendering.** The assistant-message branch in `chat-window.tsx` /
+  `inbox-mobile-view.tsx` renders a `UIResource` with `@mcp-ui/client`’s host
+  renderer inside a **Sandbox Proxy on a separate origin**
+  (`sandbox="allow-scripts"`, no `allow-same-origin` to the app), with a
+  host-enforced **CSP** built per `uiProducerTrust` (MCP-Apps restrictive
+  default: `default-src 'none'; script-src 'self' 'unsafe-inline'; style-src
+  'self' 'unsafe-inline'; connect-src 'none';`, declared domains honored only
+  for trusted tiers).
+- **Actions (iframe→host), re-authorized as the acting human:**
+  - `ui/message` → post a normal message into the conversation
+  - `tools/call` → an **allow-list** tool run under the caller's permissions
+  - `ui/open-link` → `window.open` after scheme validation
+  Host→guest sends theme tokens via host-context so embedded UI matches DESIGN.md.
 
-- **`conversations`**
-  - `id`, `type` (`dm` | `group_dm` | `channel`)
-  - `communityId` (null except channels)
-  - `title`, `slug` (channels)
-  - `visibility` (`open` | `private` | `secret`, channels only)
-  - `createdBy`, `createdAt`, `updatedAt`
-- **`conversationMembers`**
-  - `conversationId`
-  - `memberId` **or** `agentId` (a participant is human or agent; exactly one set)
-  - `role` (`owner` | `moderator` | `member`)
-  - `agentTriggerPolicy` (`always` | `mention` | `off`; defaulted by conversation type)
-  - `lastReadAt`, `mutedUntil`, `joinedAt`
-- **`messages`**
-  - `id`, `conversationId`
-  - `authorMemberId` **or** `authorAgentId`
-  - `type` (`text` | `ui` | `system`)
-  - `body` (text/markdown; nullable when pure UI)
-  - `uiResource` (jsonb, nullable) — MCP Apps resource (see below)
-  - `uiProducerTrust` (`platform` | `verified_agent` | `agent` | `member`) — derived
-    from author at insert; drives the CSP/permission policy table
-  - `replyToId` (thread parent, nullable)
-  - `attachments` (jsonb; S3 keys via existing upload)
-  - `createdAt`, `editedAt`, `deletedAt` (soft delete)
-- **`messageReactions`** — `messageId`, member/agent, `emoji`
-- **`dmBlocks`** — `blockerMemberId`, `blockedMemberId` (DM permission)
-- Member setting addition: `dmEnabled` (default true)
-- **Unread is derived** (`messages.createdAt > member.lastReadAt`); no receipt table.
+## Data model change (minimal)
 
-### Permissions
-- **DM:** any member may DM another unless the recipient blocked them (`dmBlocks`) or
-  has `dmEnabled = false`.
-- **Channel:** community-scoped. `open` (any community member joins) / `private`
-  (invite) / `secret` (hidden). Create/manage gated to community `moderator`+ via
-  existing community roles.
-- **Group DM:** creator seeds members; members may add others (tightenable later).
-- **Ably capability** is derived from membership rows; no client-trusted scoping.
+Only the existing `messages` table changes:
+```
+ALTER TABLE "app"."message" ADD COLUMN "ui_resource" jsonb;
+ALTER TABLE "app"."message" ADD COLUMN "ui_producer_trust" varchar(20);
+```
+No change to `conversations` / `conversationParticipants` in Slice 1.
 
-### Moderation
-- Soft-delete (`deletedAt`) + edit tracking, matching existing content patterns.
-- Report-a-message reuses the existing reporting/notification flow to surface to
-  community moderators. Automated agent moderation deferred to slice #4.
+## tRPC / server surface
+- Extend `inbox.sendMessage` and `inbox.agentSendMessage` to accept an optional
+  validated `uiResource` and set `uiProducerTrust` from the author.
+- New `inbox.callUiTool` (protected) — allow-listed, re-authorized tool bridge.
+- New route `GET /api/inbox/stream` — SSE.
+- New route `GET /api/inbox/ui-csp?messageId=…` — serves a message's UI HTML
+  with the host-enforced, trust-derived CSP header (membership-checked).
+- New `src/server/inbox/publish.ts` — Upstash publish helper, called by the
+  three write paths.
 
-### Notifications & presence
-- Offline mentions / DM messages create rows in the existing `notifications` table and
-  fire existing push; in-app unread is derived from `lastReadAt`.
-- Ably presence on each conversation channel → online indicators + typing.
+## Pure logic (unit-tested, vitest)
+- `src/lib/chat/trust.ts` — `resolveProducerTrust` + `cspForResource` (trust→CSP).
+- `src/lib/chat/types.ts` — `UiResource` + trust types (already created).
+- (No trigger/unread/capability libs in this slice — unread already exists via
+  `lastReadAt`; trigger policy belongs to Slice 1b channels.)
 
-## Agent participation loop
-
-Reuses `agentWebhooks`, `agentApiKeys`, `agentSessionLogs` — no new agent infra.
-
-1. Member posts → tRPC `chat.send` inserts the message + publishes to Ably.
-2. **Trigger evaluation** (server-side, post-insert): for each `agentId` in the
-   conversation, check `agentTriggerPolicy`:
-   - DM → `always` (every human message fires the agent)
-   - channel / group DM → `mention` (fires only on `@agent` or a reply inside a thread
-     the agent is already in)
-3. Matching agents receive a **webhook dispatch** (`agentWebhooks`) carrying
-   conversation context (recent N messages + the triggering message).
-4. The agent runs its own LLM, then calls back **`chat.send` authenticated by its
-   `agentApiKey`** → normal insert + Ably fanout (reply appears identically to a
-   human's). Session logged to `agentSessionLogs`.
-5. **Loop guard:** an agent message never re-triggers another agent (or itself); a
-   per-conversation agent rate limit prevents runaway agent-to-agent loops.
-
-## Interactive UI messages (MCP Apps)
-
-### Standard
-Conform to **MCP Apps** (`io.modelcontextprotocol/ui`, spec `2026-01-26`). Reuse
-`@mcp-ui/server` (`createUIResource`) on the producing side and `@mcp-ui/client`
-(`AppRenderer`) on the host side rather than hand-rolling the protocol.
-
-- **Resource:** `ui://…` URI, MIME `text/html;profile=mcp-app`, content as `text` or
-  base64 `blob`. (`@mcp-ui` `externalUrl` is an optional convenience allow-listed to
-  trusted producers only; not part of the official MVP MIME.)
-- **Wire protocol:** JSON-RPC 2.0 over `postMessage`. The iframe acts as an MCP client;
-  our **host acts as an MCP server** proxying the real one.
-
-### Host (our app) responsibilities
-The host is implemented with `@mcp-ui/client`'s `AppRenderer`, which manages the
-**Sandbox Proxy** iframe served from a **dedicated isolated origin**
-(`sandbox_proxy.html`), the JSON-RPC handshake, and lifecycle.
-
-Guest→host methods we handle:
-- `ui/message` → **post a message into the conversation** (the core click→say loop)
-- `tools/call` → execute an **allow-listed** tRPC/agent tool, **re-authorized as the
-  acting human** under their permissions; result returned via
-  `ui/notifications/tool-result`, and may post a follow-up message
-- `ui/open-link` → `window.open` after URL scheme validation
-- `resources/read` → serve declared `ui://` resources
-- `ui/request-display-mode` → inline / fullscreen / pip
-
-Host→guest notifications we send:
-- `ui/notifications/tool-input` / `tool-result`
-- `ui/notifications/host-context-changed` → carries **DESIGN.md theme tokens** + user
-  context so embedded UI matches the Town Square look
-- `ui/notifications/size-changed` handling → auto-resize
-- `ui/resource-teardown` on cleanup (wait for ack before tearing down)
-
-### Security model
-- **Sandboxed iframe** on a separate origin; `sandbox="allow-scripts"` **without**
-  `allow-same-origin` to the app origin. Embedded code cannot reach app cookies/DOM.
-- **Per-resource CSP, host-enforced.** Restrictive default per spec:
-  `default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'none';`
-  Allowed origins come from the resource's declared `connectDomains` /
-  `resourceDomains` / `frameDomains`; undeclared domains are blocked.
-- **Trust → policy table.** Every message carries `uiProducerTrust`. The host selects
-  the CSP strictness, permitted MIME flavors, and capability `allow` attributes from a
-  trust→policy table:
-  - `platform` — broadest (still sandboxed)
-  - `verified_agent` — broad, declared domains honored
-  - `agent` (unverified) — locked-down CSP, no `externalUrl`
-  - `member` — most restrictive CSP, `connect-src 'none'`, no capabilities
-  - **MVP:** all four may produce; **guarding later = editing this table**, not the
-    architecture.
-- **Action re-authorization:** any `tools/call` / `ui/message` from an embedded UI is
-  validated server-side as the **acting human**. An agent's UI can never make a user do
-  something the user couldn't do directly.
-- **Capability permissions** (`camera`/`microphone`/`geolocation`/`clipboardWrite`)
-  honored only via iframe `allow` attributes per the trust policy; default none.
+## Security
+- Sandbox proxy on a separate origin; no `allow-same-origin` to the app.
+- Per-message, host-enforced CSP from the trust→policy table.
+- Every `tools/call` / `ui/message` re-authorized server-side as the acting human.
+- SSE endpoint scoped to `inbox:user:{me}`; a client only ever receives its own
+  inbox events. UI-CSP route membership-checked before returning HTML.
 - All UI-originated actions audited via `agentSessionLogs`.
-- postMessage **origin allow-listing** both directions; message size caps.
 
-## tRPC surface (new `chat` router)
-- `chat.listConversations`, `chat.getConversation`, `chat.history`
-- `chat.send` (text | ui | attachments), `chat.edit`, `chat.delete`
-- `chat.react`, `chat.markRead`
-- `chat.createChannel`, `chat.joinChannel`, `chat.addMember`, `chat.startDm`,
-  `chat.startGroupDm`
-- `chat.setAgentTriggerPolicy`, `chat.report`, `chat.blockDm`, `chat.setDmEnabled`
-- `chat.ablyToken` (mint subscribe-only capability from membership)
-- `chat.callUiTool` (host bridge for guest `tools/call`, re-authorized as acting user)
-
-## Testing strategy
-- **Unit:** trigger-policy evaluation; trust→CSP/policy resolution; unread derivation;
-  Ably capability minting from membership; URL scheme validation.
-- **Integration (tRPC + Postgres):** send→persist→fanout; agent webhook round-trip
-  (mock agent posts back via API key); `tools/call` re-authorization as acting human;
-  DM block / DMs-off enforcement; channel visibility rules.
-- **Security:** sandbox iframe has no `allow-same-origin` to app origin; CSP header
-  built from declared domains; member-trust resource gets locked-down CSP; postMessage
-  origin allow-listing; agent loop guard + rate limit.
+## Testing
+- Unit: `cspForResource` (locked-down for member trust, declared domains for
+  verified), `resolveProducerTrust`.
+- Integration: write→publish→SSE delivery (mock Upstash); `agentSendMessage`
+  with a `uiResource` persists + carries trust; `callUiTool` re-authorization.
+- Security: sandbox iframe lacks `allow-same-origin`; CSP header correct per trust.
 
 ## Rollout
-- Behind a feature flag; dogfood in one community first.
-- Agents off by default per channel until a trigger policy is explicitly set.
-- Interactive UI behind a sub-flag so it can be enabled after base chat is stable.
+- `NEXT_PUBLIC_FEATURE_CHAT` gates the realtime/UI behaviors; SSE degrades to the
+  existing poll if Upstash unset. MCP-UI behind `NEXT_PUBLIC_FEATURE_CHAT_UI`.
 
-## Open questions / follow-ups
-- Choose Ably vs Pusher concretely at implementation time (design assumes Ably for
-  native presence + history + per-channel capability auth).
-- Sandbox proxy hosting: separate Vercel domain/subdomain vs isolated route — decide in
-  the plan.
-- Per-channel agent rate-limit defaults.
+## Follow-ups
+- **Slice 1b:** channels + group DMs + third-party agents as members (widen
+  `conversations.type`, add `communityId`/visibility, nullable
+  `userId`/`agentId` participants, `senderAgentId`, agent trigger policies).
+- ADR-0025 Tier-2 faster agent wake (Vercel Queues).
+- When Tier-1 lands, update ADR-0025 status (SSE+Upstash: deferred → implemented).
