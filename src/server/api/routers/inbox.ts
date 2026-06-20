@@ -21,6 +21,7 @@ import { logActivity } from "@/server/agent/activity";
 import { publishInboxEvent } from "@/server/inbox/publish";
 import { resolveProducerTrust } from "@/lib/chat/trust";
 import type { UiResource } from "@/lib/chat/types";
+import { runUiTool } from "@/server/inbox/ui-tools";
 
 const uiResourceSchema = z.object({
   uri: z.string().startsWith("ui://"),
@@ -527,6 +528,27 @@ export const inboxRouter = createTRPCRouter({
         .limit(input.limit);
 
       return { members: rows };
+    }),
+
+  /**
+   * callUiTool - invoke an allow-listed UI tool on behalf of the acting human.
+   * Verifies the caller is a participant of the conversation before delegating.
+   */
+  callUiTool: protectedProcedure
+    .input(z.object({ conversationId: z.string(), name: z.string(), args: z.unknown() }))
+    .mutation(async ({ ctx, input }) => {
+      const [participant] = await ctx.db
+        .select()
+        .from(conversationParticipants)
+        .where(
+          and(
+            eq(conversationParticipants.conversationId, input.conversationId),
+            eq(conversationParticipants.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+      if (!participant) throw new TRPCError({ code: "FORBIDDEN", message: "Not a participant" });
+      return runUiTool(ctx.db, ctx.session.user.id, input.name, input.args);
     }),
 
   // ═══════════════════════════════════════════════════════════════════════════
