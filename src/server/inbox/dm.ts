@@ -6,6 +6,7 @@ import {
   conversationParticipants,
   messages,
 } from "@/server/db/schema";
+import { publishInboxEvent } from "@/server/inbox/publish";
 
 type DB = typeof _db;
 
@@ -48,11 +49,19 @@ export async function sendDirectMessage(
     ]);
     conversationId = conv!.id;
   }
-  await db.insert(messages).values({
+  const [message] = await db
+    .insert(messages)
+    .values({
+      conversationId,
+      senderId: fromUserId,
+      senderType: "human",
+      content,
+    })
+    .returning();
+  await publishInboxEvent(toUserId, {
+    kind: "message",
     conversationId,
-    senderId: fromUserId,
-    senderType: "human",
-    content,
+    message,
   });
   return conversationId;
 }

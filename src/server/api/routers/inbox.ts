@@ -18,6 +18,24 @@ import {
   user,
 } from "@/server/db/schema";
 import { logActivity } from "@/server/agent/activity";
+import { publishInboxEvent } from "@/server/inbox/publish";
+import { resolveProducerTrust } from "@/lib/chat/trust";
+import type { UiResource } from "@/lib/chat/types";
+
+const uiResourceSchema = z.object({
+  uri: z.string().startsWith("ui://"),
+  mimeType: z.literal("text/html;profile=mcp-app"),
+  encoding: z.enum(["text", "blob"]),
+  content: z.string().max(200_000),
+  csp: z
+    .object({
+      connectDomains: z.array(z.string()).optional(),
+      resourceDomains: z.array(z.string()).optional(),
+      frameDomains: z.array(z.string()).optional(),
+      baseUriDomains: z.array(z.string()).optional(),
+    })
+    .optional(),
+});
 
 // ── Router ───────────────────────────────────────────────────────────────────
 
@@ -278,6 +296,7 @@ export const inboxRouter = createTRPCRouter({
       z.object({
         conversationId: z.string(),
         content: z.string().min(1).max(10000),
+        uiResource: uiResourceSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -322,6 +341,10 @@ export const inboxRouter = createTRPCRouter({
           senderId: userId,
           senderType: "human",
           content: input.content,
+          uiResource: input.uiResource as UiResource | undefined,
+          uiProducerTrust: input.uiResource
+            ? resolveProducerTrust({ kind: "member" })
+            : undefined,
         })
         .returning();
 
@@ -339,6 +362,20 @@ export const inboxRouter = createTRPCRouter({
         targetType: "conversations",
         targetId: input.conversationId,
         recipientId: recipient?.userId,
+      });
+
+      // Publish real-time event to recipient and sender (other tabs)
+      if (recipient?.userId) {
+        void publishInboxEvent(recipient.userId, {
+          kind: "message",
+          conversationId: input.conversationId,
+          message,
+        });
+      }
+      void publishInboxEvent(userId, {
+        kind: "message",
+        conversationId: input.conversationId,
+        message,
       });
 
       // Fire-and-forget: update sender's lastReadAt
@@ -554,11 +591,20 @@ export const inboxRouter = createTRPCRouter({
       z.object({
         content: z.string().min(1).max(10000),
         metadata: z.record(z.string(), z.unknown()).optional(),
+        uiResource: uiResourceSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+
+      // Read agent profile to determine trust level
+      const [agentProfile] = await ctx.db
+        .select({ status: agentProfiles.status })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.id, ctx.agent.agentId))
+        .limit(1);
+      const agentIsVerified = agentProfile?.status === "active";
 
       // Find existing agent conversation
       const [existingConv] = await ctx.db
@@ -604,6 +650,10 @@ export const inboxRouter = createTRPCRouter({
           senderType: "agent",
           content: input.content,
           metadata: input.metadata,
+          uiResource: input.uiResource as UiResource | undefined,
+          uiProducerTrust: input.uiResource
+            ? resolveProducerTrust({ kind: "agent", verified: agentIsVerified })
+            : undefined,
         })
         .returning();
 
@@ -621,6 +671,13 @@ export const inboxRouter = createTRPCRouter({
         targetType: "conversations",
         targetId: convId,
         recipientId: ownerId,
+      });
+
+      // Publish real-time event to owner
+      void publishInboxEvent(ownerId, {
+        kind: "message",
+        conversationId: convId,
+        message,
       });
 
       return { messageId: message!.id };
