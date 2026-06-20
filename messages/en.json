@@ -2204,5 +2204,13 @@
     "how1": "Complete at least one activity each day to build your streak.",
     "how2": "Each day you do an activity, your streak increases.",
     "how3": "Missing a day will reset your streak to 0."
+  },
+  "points": {
+    "historyTitle": "Points history",
+    "chartTitle": "Your XP over time",
+    "ariaHistory": "Points awards history",
+    "empty": "No XP yet — join in to start earning.",
+    "activity": "Activity",
+    "course_complete": "Course completed"
   }
 }

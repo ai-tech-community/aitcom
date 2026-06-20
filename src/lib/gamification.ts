@@ -6,6 +6,7 @@ import {
   memberBadges,
   eventRegistrations,
   activityEvents,
+  pointsEvents,
 } from "@/server/db/schema";
 
 // --- Badge Definitions ---
@@ -296,6 +297,26 @@ export function computeStreakData(days: string[], today: string): StreakData {
   return { currentStreak, longestStreak, total: days.length, streak: periods };
 }
 
+/**
+ * Map a points-event `reason` code to one of the four trigger types the
+ * PointsAwards UI knows how to icon (this drives the icon only — not visible
+ * text, so it needs no i18n).
+ */
+export function pointsTriggerType(
+  reason: string,
+): "metric" | "achievement" | "streak" | "time" {
+  if (reason.includes("streak")) return "streak";
+  if (
+    reason.includes("complete") ||
+    reason.includes("badge") ||
+    reason.includes("achievement") ||
+    reason.includes("published")
+  ) {
+    return "achievement";
+  }
+  return "metric";
+}
+
 // --- DB Helpers ---
 
 // Accept either the root db or a transaction handle so XP/badge writes can be
@@ -307,17 +328,35 @@ type Tx = Parameters<
 type DB = NeonDatabase<typeof schema> | Tx;
 
 /**
- * Award XP to a user and recalculate their level.
- * No-op if the user has no profile yet.
+ * Award XP to a user, recalculate their level, and append a points_event row
+ * (for points history + the XP-over-time chart). No-op if the user has no
+ * profile yet. `reason` is a short machine code (e.g. "course.complete",
+ * "event.attend") shown in the history; defaults to a generic "activity".
  */
-export async function awardXp(db: DB, userId: string, amount: number) {
-  await db
+export async function awardXp(
+  db: DB,
+  userId: string,
+  amount: number,
+  reason = "activity",
+) {
+  const [updated] = await db
     .update(memberProfiles)
     .set({
       xp: sql`${memberProfiles.xp} + ${amount}`,
       level: sql`floor((${memberProfiles.xp} + ${amount}) / 200) + 1`,
     })
-    .where(eq(memberProfiles.userId, userId));
+    .where(eq(memberProfiles.userId, userId))
+    .returning({ xp: memberProfiles.xp });
+
+  // Only log when a profile actually got updated (preserves the no-op contract).
+  if (updated) {
+    await db.insert(pointsEvents).values({
+      userId,
+      amount,
+      reason,
+      totalAfter: updated.xp,
+    });
+  }
 }
 
 /**

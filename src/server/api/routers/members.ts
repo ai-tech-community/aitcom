@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, sql, and, or, ilike, inArray, desc } from "drizzle-orm";
+import { eq, sql, and, or, ilike, inArray, desc, gte } from "drizzle-orm";
 
 import {
   createTRPCRouter,
@@ -14,8 +14,9 @@ import {
   agentProfiles,
   hackathonCertificates,
   activityEvents,
+  pointsEvents,
 } from "@/server/db/schema";
-import { computeStreakData } from "@/lib/gamification";
+import { computeStreakData, pointsTriggerType } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
 import {
   awardXp,
@@ -89,6 +90,60 @@ export const membersRouter = createTRPCRouter({
       rows.map((r) => r.day),
       today,
     );
+  }),
+
+  /** Recent XP awards for the current user (points history). */
+  getMyPointsHistory: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const rows = await ctx.db
+      .select()
+      .from(pointsEvents)
+      .where(eq(pointsEvents.userId, userId))
+      .orderBy(desc(pointsEvents.createdAt))
+      .limit(25);
+
+    return rows.map((e) => ({
+      id: e.id,
+      awarded: e.amount,
+      date: e.createdAt.toISOString(),
+      total: e.totalAfter ?? 0,
+      reason: e.reason,
+      type: pointsTriggerType(e.reason),
+    }));
+  }),
+
+  /**
+   * Daily XP totals for the current user over the last 30 days (for the
+   * XP-over-time chart). `total` is the cumulative XP at end of day (max
+   * totalAfter — XP only increases), `change` is that day's gain.
+   */
+  getMyPointsChart: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const since = new Date();
+    since.setDate(since.getDate() - 30);
+    const dayExpr = sql<string>`to_char(${pointsEvents.createdAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`;
+
+    const rows = await ctx.db
+      .select({
+        day: dayExpr,
+        change: sql<number>`sum(${pointsEvents.amount})`,
+        total: sql<number>`max(${pointsEvents.totalAfter})`,
+      })
+      .from(pointsEvents)
+      .where(
+        and(
+          eq(pointsEvents.userId, userId),
+          gte(pointsEvents.createdAt, since),
+        ),
+      )
+      .groupBy(dayExpr)
+      .orderBy(dayExpr);
+
+    return rows.map((r) => ({
+      date: r.day,
+      total: Number(r.total ?? 0),
+      change: Number(r.change ?? 0),
+    }));
   }),
 
   /** Create or update the current user's profile. */

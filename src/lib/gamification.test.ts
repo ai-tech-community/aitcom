@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { computeStreakData, tierForXp } from "@/lib/gamification";
+import {
+  computeStreakData,
+  tierForXp,
+  pointsTriggerType,
+} from "@/lib/gamification";
 
 describe("computeStreakData", () => {
   it("returns zeros for no activity", () => {
@@ -66,5 +70,15 @@ describe("tierForXp", () => {
     expect(tierForXp(500).key).toBe("novice");
     expect(tierForXp(2100).key).toBe("expert");
     expect(tierForXp(99999).key).toBe("enlightened");
+  });
+});
+
+describe("pointsTriggerType", () => {
+  it("maps reason codes to icon types", () => {
+    expect(pointsTriggerType("challenge.streak")).toBe("streak");
+    expect(pointsTriggerType("course.complete")).toBe("achievement");
+    expect(pointsTriggerType("article.published")).toBe("achievement");
+    expect(pointsTriggerType("activity")).toBe("metric");
+    expect(pointsTriggerType("event.attend")).toBe("metric");
   });
 });

@@ -101,7 +101,12 @@ async function issueCertificateIfComplete(
   // on the newly-issued certificate to avoid double-awarding on re-checks.
   if (certificate) {
     await awardBadge(database, userId, "course_complete");
-    await awardXp(database, userId, XP_AMOUNTS.COURSE_COMPLETE);
+    await awardXp(
+      database,
+      userId,
+      XP_AMOUNTS.COURSE_COMPLETE,
+      "course.complete",
+    );
   }
 }
 

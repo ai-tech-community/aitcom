@@ -1102,6 +1102,35 @@ export const activityEvents = appSchema.table(
   ],
 );
 
+/**
+ * Append-only log of XP awards (one row per awardXp), for a member's points
+ * history + XP-over-time chart. `totalAfter` is the member's XP total right
+ * after this award, so the chart needs no running sum.
+ */
+export const pointsEvents = appSchema.table(
+  "points_event",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d.varchar("user_id", { length: 255 }).notNull(),
+    amount: d.integer().notNull(),
+    reason: d.varchar({ length: 50 }).notNull(),
+    totalAfter: d.integer("total_after"),
+    metadata: d.json().$type<Record<string, unknown>>(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    index("points_event_user_idx").on(t.userId),
+    index("points_event_user_created_idx").on(t.userId, t.createdAt),
+  ],
+);
+
 // Aggregate tables for impact analytics
 export const dailyCoreMetrics = appSchema.table("daily_core_metrics", (d) => ({
   date: d.date().notNull().primaryKey(),

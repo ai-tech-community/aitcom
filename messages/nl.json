@@ -2204,5 +2204,13 @@
     "how1": "Voltooi elke dag minstens één activiteit om je reeks op te bouwen.",
     "how2": "Elke dag dat je actief bent, groeit je reeks.",
     "how3": "Een dag overslaan zet je reeks terug op 0."
+  },
+  "points": {
+    "historyTitle": "Puntengeschiedenis",
+    "chartTitle": "Je XP in de tijd",
+    "ariaHistory": "Geschiedenis van puntentoekenningen",
+    "empty": "Nog geen XP — doe mee om te beginnen met verdienen.",
+    "activity": "Activiteit",
+    "course_complete": "Cursus afgerond"
   }
 }
