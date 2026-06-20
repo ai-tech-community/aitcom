@@ -146,6 +146,35 @@ export const membersRouter = createTRPCRouter({
     }));
   }),
 
+  /** The currently-active XP boost campaign (for the dashboard banner), or null. */
+  getActiveBoost: publicProcedure.query(async () => {
+    const payload = await getPayloadClient();
+    const now = new Date().toISOString();
+    const res = await payload.find({
+      collection: "points-boosts",
+      where: {
+        and: [
+          { enabled: { equals: true } },
+          { startsAt: { less_than_equal: now } },
+          { endsAt: { greater_than_equal: now } },
+        ],
+      },
+      sort: "-multiplier",
+      limit: 1,
+      depth: 0,
+    });
+    const boost = res.docs[0];
+    if (!boost) return null;
+    return {
+      name: boost.name,
+      multiplier: boost.multiplier,
+      description: boost.description ?? null,
+      ctaText: boost.ctaText ?? null,
+      ctaLink: boost.ctaLink ?? null,
+      endsAt: boost.endsAt,
+    };
+  }),
+
   /** Create or update the current user's profile. */
   upsertProfile: protectedProcedure
     .input(upsertProfileInput)

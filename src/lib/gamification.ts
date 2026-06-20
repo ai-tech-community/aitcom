@@ -328,10 +328,31 @@ type Tx = Parameters<
 type DB = NeonDatabase<typeof schema> | Tx;
 
 /**
+ * Resolve the multiplier of the currently-active XP boost (admin-managed
+ * campaign), or 1 if none. Guarded so a missing table / failed read never
+ * breaks XP awarding.
+ */
+async function activeBoostMultiplier(db: DB): Promise<number> {
+  try {
+    const res = await db.execute(sql`
+      SELECT "multiplier" FROM "public"."points_boosts"
+      WHERE "enabled" = true AND now() >= "starts_at" AND now() <= "ends_at"
+      ORDER BY "multiplier" DESC
+      LIMIT 1
+    `);
+    const raw = res.rows[0]?.multiplier;
+    const m = raw == null ? 1 : Number(raw);
+    return Number.isFinite(m) && m >= 1 ? m : 1;
+  } catch {
+    return 1;
+  }
+}
+
+/**
  * Award XP to a user, recalculate their level, and append a points_event row
- * (for points history + the XP-over-time chart). No-op if the user has no
- * profile yet. `reason` is a short machine code (e.g. "course.complete",
- * "event.attend") shown in the history; defaults to a generic "activity".
+ * (for points history + the XP-over-time chart). An active boost multiplies the
+ * base amount. No-op if the user has no profile yet. `reason` is a short machine
+ * code (e.g. "course.complete") shown in the history; defaults to "activity".
  */
 export async function awardXp(
   db: DB,
@@ -339,11 +360,14 @@ export async function awardXp(
   amount: number,
   reason = "activity",
 ) {
+  const multiplier = await activeBoostMultiplier(db);
+  const effective = Math.round(amount * multiplier);
+
   const [updated] = await db
     .update(memberProfiles)
     .set({
-      xp: sql`${memberProfiles.xp} + ${amount}`,
-      level: sql`floor((${memberProfiles.xp} + ${amount}) / 200) + 1`,
+      xp: sql`${memberProfiles.xp} + ${effective}`,
+      level: sql`floor((${memberProfiles.xp} + ${effective}) / 200) + 1`,
     })
     .where(eq(memberProfiles.userId, userId))
     .returning({ xp: memberProfiles.xp });
@@ -352,9 +376,11 @@ export async function awardXp(
   if (updated) {
     await db.insert(pointsEvents).values({
       userId,
-      amount,
+      amount: effective,
       reason,
       totalAfter: updated.xp,
+      metadata:
+        multiplier !== 1 ? { boost: multiplier, base: amount } : undefined,
     });
   }
 }
