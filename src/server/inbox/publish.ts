@@ -14,6 +14,11 @@ function getRedis(): Redis | null {
 
 export const inboxUserChannel = (userId: string) => `inbox:user:${userId}`;
 
+/** Same lazy client, exposed for the SSE route's subscribe(). Null if unconfigured. */
+export function getInboxRedis(): Redis | null {
+  return getRedis();
+}
+
 /** Best-effort fanout. Persistence already succeeded; failure degrades to poll. */
 export async function publishInboxEvent(
   recipientUserId: string,
