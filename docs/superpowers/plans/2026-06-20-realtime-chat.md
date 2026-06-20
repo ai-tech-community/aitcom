@@ -449,6 +449,15 @@ git commit -m "feat(chat): re-authorized UI tool bridge (allow-list)"
 ## Phase 5 — MCP-Apps interactive rendering (needs sandbox origin)
 
 > **Doc-verify:** confirm `@mcp-ui/client` v7 host component name + props (`AppRenderer`/`UIResourceRenderer`, action callbacks) against https://mcpui.dev for the installed version before coding.
+>
+> **MUST-FIX before Phase 5 ships (from Phase 0–3 final review):** the verified-agent
+> trust mapping in `inbox.ts` `agentSendMessage` currently uses `agentProfiles.status === "active"`,
+> which defaults to true for essentially every agent — so all agents would get the
+> top `verified_agent` CSP tier. This is inert in Phases 0–3 (trust only drives the
+> not-yet-built CSP header), but **before Phase 5 consumes `cspForResource`, redefine
+> "verified"** to a real signal (e.g. a dedicated `agentProfiles.isVerified`/manifest
+> flag), or default agents to the stricter `agent` tier. Otherwise the trust→CSP gating
+> is effectively bypassed for all agent-produced UI.
 
 - **Task 5.1:** `GET /api/inbox/ui-csp?messageId=…` — membership-checked; returns the message's `uiResource.content` with the host-enforced CSP header from `cspForResource(trust, csp)`.
 - **Task 5.2:** Sandbox proxy on a separate origin (separate Vercel project/subdomain). Set `NEXT_PUBLIC_CHAT_SANDBOX_URL`. Use the SDK's official proxy; do not hand-roll. Same-origin path is NOT acceptable.
