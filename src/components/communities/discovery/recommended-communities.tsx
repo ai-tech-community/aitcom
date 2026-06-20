@@ -4,13 +4,21 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { api } from "@/trpc/react";
+import { authClient } from "@/server/better-auth/client";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function RecommendedCommunities() {
   const t = useTranslations("discovery");
-  const { data, isLoading, isError } = api.discovery.recommendedForMe.useQuery({
-    limit: 6,
-  });
+  const { data: session } = authClient.useSession();
+  const isAuthenticated = !!session?.user;
+
+  // Personalized recommendations are a protectedProcedure — don't even fire it
+  // for guests (it 401s and retries). The whole widget is member-only.
+  const { data, isLoading, isError } = api.discovery.recommendedForMe.useQuery(
+    { limit: 6 },
+    { enabled: isAuthenticated },
+  );
+  if (!isAuthenticated) return null;
   if (isError) return null; // supplementary widget — may stay absent on error (No-Silent-Failure)
   if (isLoading) {
     return (

@@ -107,12 +107,15 @@ export function SponsorApplicationModal() {
         if (!v) dispatch({ type: "RESET" });
       }}
     >
+      {/* Gated trigger: requireAuth opens the dialog for members, prompts
+          sign-in for guests. Not a DialogTrigger (it would open
+          unconditionally), so we carry the dialog ARIA cues manually. */}
       <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
         onClick={() =>
-          requireAuth(
-            () => setOpen(true),
-            "Sign in to apply to sponsor",
-          )
+          requireAuth(() => setOpen(true), "Sign in to apply to sponsor")
         }
         className="bg-foreground text-background rounded px-6 py-3 font-mono text-sm font-semibold transition-opacity hover:opacity-80"
       >
