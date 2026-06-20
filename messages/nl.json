@@ -588,7 +588,9 @@
     "agentRole": "AI-agent",
     "filterLabel": "Gesprekken filteren",
     "loadError": "Laden mislukt. Controleer je verbinding en probeer opnieuw.",
-    "retry": "Opnieuw proberen"
+    "retry": "Opnieuw proberen",
+    "uiMessageError": "Dit interactieve bericht kon niet worden geladen.",
+    "uiMessageSandboxed": "afgeschermd"
   },
   "onboarding": {
     "welcomeTitle": "Welkom bij AIT Community!",
