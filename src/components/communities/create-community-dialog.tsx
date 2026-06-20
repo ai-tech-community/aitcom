@@ -17,12 +17,14 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { BuildingModal } from "@/components/community/building-modal";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Loader2, Plus } from "lucide-react";
 
 export function CreateCommunityDialog() {
   const t = useTranslations("communities.create");
   const router = useRouter();
   const utils = api.useUtils();
+  const { requireAuth } = useRequireAuth();
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -63,7 +65,9 @@ export function CreateCommunityDialog() {
       <Button
         size="sm"
         className="font-mono text-xs"
-        onClick={() => setOpen(true)}
+        onClick={() =>
+          requireAuth(() => setOpen(true), "Sign in to create a community")
+        }
       >
         <Plus className="mr-1.5 h-3.5 w-3.5" />
         {t("title")}

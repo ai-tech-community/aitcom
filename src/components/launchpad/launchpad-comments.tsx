@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 import { Trash2, CornerDownRight } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -252,6 +253,7 @@ export function LaunchpadComments({
 }: LaunchpadCommentsProps) {
   const t = useTranslations("launchpad.comments");
   const { data: session } = authClient.useSession();
+  const { promptAuth } = useRequireAuth();
   const [newComment, setNewComment] = useState("");
   const utils = api.useUtils();
 
@@ -322,7 +324,13 @@ export function LaunchpadComments({
         </form>
       ) : (
         <p className="text-muted-foreground font-mono text-xs">
-          {t("signInToComment")}
+          <button
+            type="button"
+            onClick={() => promptAuth("Sign in to comment")}
+            className="hover:text-foreground underline transition-colors"
+          >
+            {t("signInToComment")}
+          </button>
         </p>
       )}
 

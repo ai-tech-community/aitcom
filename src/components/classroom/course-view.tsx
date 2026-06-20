@@ -15,6 +15,7 @@ import { ExamRunner } from "./exam-runner";
 import { LazyMotion, domAnimation, m } from "framer-motion";
 import { fireConfetti } from "./celebrate";
 import { useConfirm } from "@/components/confirm-dialog";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import {
   courseProgressPercent,
   groupLessonsByModule,
@@ -60,6 +61,7 @@ export function CourseView({
   const router = useRouter();
   const utils = api.useUtils();
   const { data: session } = authClient.useSession();
+  const { requireAuth } = useRequireAuth();
 
   const { data, isLoading, isError } = api.classrooms.get.useQuery({
     slug: courseSlug,
@@ -428,7 +430,12 @@ export function CourseView({
                 type="button"
                 className="w-full"
                 disabled={enroll.isPending}
-                onClick={() => enroll.mutate({ courseId: course.id })}
+                onClick={() =>
+                  requireAuth(
+                    () => enroll.mutate({ courseId: course.id }),
+                    "Sign in to enroll in this course",
+                  )
+                }
               >
                 {t("enroll")}
               </Button>
@@ -445,7 +452,12 @@ export function CourseView({
               <Button
                 type="button"
                 disabled={enroll.isPending}
-                onClick={() => enroll.mutate({ courseId: course.id })}
+                onClick={() =>
+                  requireAuth(
+                    () => enroll.mutate({ courseId: course.id }),
+                    "Sign in to enroll in this course",
+                  )
+                }
               >
                 {t("enroll")}
               </Button>

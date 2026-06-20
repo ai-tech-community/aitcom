@@ -1,24 +1,35 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
-import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Github } from "lucide-react";
 import { authClient } from "@/server/better-auth/client";
+import { getPostAuthRedirect } from "@/lib/auth-redirect";
 import { toast } from "sonner";
 
 function SignUpForm() {
   const t = useTranslations("auth");
   const router = useRouter();
   const params = useSearchParams();
+  const session = authClient.useSession();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
+
+  // Target is a full, locale-prefixed path — push with the plain router so the
+  // locale isn't prefixed twice. See lib/auth-redirect.
+  const target = getPostAuthRedirect(params);
+
+  // Already signed in (e.g. landed here via a stale link) → skip the form.
+  useEffect(() => {
+    if (session.data?.user) router.replace(target);
+  }, [session.data?.user, target, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,8 +45,12 @@ function SignUpForm() {
       return;
     }
     toast.success(t("accountCreated"));
-    router.push("/");
+    router.push(target);
   }
+
+  const signInHref = params.toString()
+    ? `/auth/signin?${params.toString()}`
+    : "/auth/signin";
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
@@ -115,7 +130,12 @@ function SignUpForm() {
         <Button
           variant="outline"
           className="w-full gap-2"
-          onClick={() => authClient.signIn.social({ provider: "github" })}
+          onClick={() =>
+            authClient.signIn.social({
+              provider: "github",
+              callbackURL: target,
+            })
+          }
         >
           <Github className="h-4 w-4" />
           {t("github")}
@@ -125,7 +145,7 @@ function SignUpForm() {
         <p className="text-muted-foreground text-center text-sm">
           {t("hasAccount")}{" "}
           <Link
-            href="/auth/signin"
+            href={signInHref}
             className="text-foreground font-medium underline-offset-4 hover:underline"
           >
             {t("signIn")}

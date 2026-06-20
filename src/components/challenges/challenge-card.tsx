@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@/i18n/navigation";
 import { GitBranch } from "lucide-react";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { ChallengeProgress } from "./challenge-progress";
 
 interface ChallengeCardProps {
@@ -47,6 +48,7 @@ interface ChallengeCardProps {
 export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
   const t = useTranslations("challenges");
   const utils = api.useUtils();
+  const { requireAuth } = useRequireAuth();
 
   const enroll = api.challenges.enroll.useMutation({
     onSuccess: () => {
@@ -119,7 +121,12 @@ export function ChallengeCard({ challenge, isEnrolled }: ChallengeCardProps) {
             <Button
               size="sm"
               className="font-mono text-xs tracking-wider"
-              onClick={() => enroll.mutate({ challengeId: challenge.id })}
+              onClick={() =>
+                requireAuth(
+                  () => enroll.mutate({ challengeId: challenge.id }),
+                  "Sign in to join this challenge",
+                )
+              }
               disabled={enroll.isPending || daysLeft === 0}
             >
               {t("join")}

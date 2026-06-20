@@ -6,6 +6,7 @@ import { ChevronUp, Lightbulb } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { ErrorState } from "@/components/ui/error-state";
 import { BuildingModal } from "../building-modal";
@@ -40,6 +41,7 @@ export function IdeasModal({
   const [ideaDesc, setIdeaDesc] = useState("");
 
   const { data: session } = authClient.useSession();
+  const { requireAuth, promptAuth } = useRequireAuth();
   const utils = api.useUtils();
 
   const {
@@ -139,13 +141,12 @@ export function IdeasModal({
             >
               {/* Vote button */}
               <button
-                onClick={() => {
-                  if (!session?.user) {
-                    toast.info(t("loginToVote"));
-                    return;
-                  }
-                  voteMutation.mutate({ ideaId: idea.id });
-                }}
+                onClick={() =>
+                  requireAuth(
+                    () => voteMutation.mutate({ ideaId: idea.id }),
+                    t("loginToVote"),
+                  )
+                }
                 className={`flex shrink-0 flex-col items-center gap-0.5 rounded px-2 py-1.5 font-mono text-xs font-semibold transition-colors ${
                   idea.hasVoted
                     ? "bg-secondary text-foreground"
@@ -187,7 +188,13 @@ export function IdeasModal({
       <div className="border-border mt-4 border-t pt-4">
         {!session?.user ? (
           <p className="text-muted-foreground font-mono text-xs">
-            {t("loginToSubmit")}
+            <button
+              type="button"
+              onClick={() => promptAuth(t("loginToSubmit"))}
+              className="hover:text-foreground underline transition-colors"
+            >
+              {t("loginToSubmit")}
+            </button>
           </p>
         ) : !showForm ? (
           <button

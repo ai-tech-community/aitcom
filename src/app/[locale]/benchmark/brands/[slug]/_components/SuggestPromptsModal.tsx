@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 
 interface Props {
@@ -23,6 +24,7 @@ interface Props {
 
 export function SuggestPromptsModal({ brandSlug, brandName, trigger }: Props) {
   const t = useTranslations("benchmark");
+  const { requireAuth } = useRequireAuth();
   const [open, setOpen] = useState(false);
   const [submittedIdx, setSubmittedIdx] = useState<Set<number>>(new Set());
 
@@ -49,8 +51,10 @@ export function SuggestPromptsModal({ brandSlug, brandName, trigger }: Props) {
   const intentsBySlug = new Map((intents.data ?? []).map((i) => [i.slug, i]));
 
   const fetch = () => {
-    setSubmittedIdx(new Set());
-    suggest.mutate({ brandSlug, limit: 12 });
+    requireAuth(() => {
+      setSubmittedIdx(new Set());
+      suggest.mutate({ brandSlug, limit: 12 });
+    }, "Sign in to suggest prompts");
   };
 
   return (

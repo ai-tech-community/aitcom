@@ -6,6 +6,7 @@ import { useRouter, Link } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { MarkdownToolbar } from "./markdown-toolbar";
@@ -19,6 +20,7 @@ export function CreateThreadForm() {
   const searchParams = useSearchParams();
   const communitySlug = searchParams.get("community") ?? undefined;
   const { data: session } = authClient.useSession();
+  const { promptAuth } = useRequireAuth();
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [form, setForm] = useState({
@@ -53,7 +55,13 @@ export function CreateThreadForm() {
     return (
       <div className="py-12 text-center">
         <p className="text-muted-foreground font-mono text-sm">
-          {t("loginToPost")}
+          <button
+            type="button"
+            onClick={() => promptAuth("Sign in to post")}
+            className="hover:text-foreground underline transition-colors"
+          >
+            {t("loginToPost")}
+          </button>
         </p>
       </div>
     );

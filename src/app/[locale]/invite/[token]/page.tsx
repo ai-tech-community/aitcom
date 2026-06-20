@@ -1,77 +1,21 @@
-"use client";
+import { redirect } from "next/navigation";
+import { getSession } from "@/server/better-auth/server";
+import { RedeemInviteClient } from "./redeem-client";
 
-import { use, useEffect, useRef } from "react";
-import { useTranslations } from "next-intl";
-import { api } from "@/trpc/react";
-import { useRouter } from "@/i18n/navigation";
-import { Loader2 } from "lucide-react";
-
-export default function RedeemInvitePage({
+export default async function RedeemInvitePage({
   params,
 }: {
-  params: Promise<{ token: string }>;
+  params: Promise<{ token: string; locale: string }>;
 }) {
-  const { token } = use(params);
-  const router = useRouter();
-  const hasFired = useRef(false);
-  const t = useTranslations("communities.invite");
+  const { token, locale } = await params;
 
-  const mutation = api.communities.redeemInvite.useMutation({
-    onSuccess: (data) => {
-      if (data.status === "active") {
-        router.replace(`/communities/${data.communitySlug}`);
-      }
-      // pending_approval falls through to the pending message below
-    },
-  });
-
-  useEffect(() => {
-    if (hasFired.current) return;
-    hasFired.current = true;
-    mutation.mutate({ token });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
-  if (mutation.data?.status === "pending_approval") {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="text-center">
-          <p className="text-lg font-medium">{t("pendingTitle")}</p>
-          <p className="text-muted-foreground mt-2 text-sm">
-            {t("pendingBody")}
-          </p>
-          <button
-            onClick={() => router.replace("/communities")}
-            className="text-muted-foreground mt-4 underline"
-          >
-            {t("browse")}
-          </button>
-        </div>
-      </div>
-    );
+  // Redeeming an invite requires an account. Send guests to sign-in with the
+  // invite preserved so they land back here and the invite redeems — instead
+  // of a raw "Unauthorized" dead-end. Mirrors the agent-claim flow.
+  const session = await getSession();
+  if (!session?.user) {
+    redirect(`/${locale}/auth/signin?redirect=/${locale}/invite/${token}`);
   }
 
-  if (mutation.error) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="text-center">
-          <p className="text-destructive text-lg font-medium">
-            {mutation.error.message}
-          </p>
-          <button
-            onClick={() => router.replace("/communities")}
-            className="text-muted-foreground mt-4 underline"
-          >
-            {t("browse")}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex min-h-[50vh] items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin" />
-    </div>
-  );
+  return <RedeemInviteClient token={token} />;
 }
