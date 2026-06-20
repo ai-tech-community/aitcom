@@ -9,6 +9,7 @@ import { LexicalRenderer } from "@/lib/lexical";
 import { ChallengeProgress } from "@/components/challenges/challenge-progress";
 import { ChallengeLeaderboard } from "@/components/challenges/challenge-leaderboard";
 import { ChallengeChannelView } from "@/components/challenges/challenge-channel-view";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { GitBranch, Trophy, Award, Gift, Clock, Target } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -98,6 +99,7 @@ export function ChallengeDetailContent({
   const [tab, setTab] = useState<Tab>("overview");
 
   const utils = api.useUtils();
+  const { requireAuth } = useRequireAuth();
 
   const { data: myEnrollments } = api.challenges.getMyEnrollments.useQuery(
     undefined,
@@ -298,7 +300,12 @@ export function ChallengeDetailContent({
             {!isEnrolled ? (
               <Button
                 className="font-mono text-xs tracking-wider"
-                onClick={() => enroll.mutate({ challengeId: challenge.id })}
+                onClick={() =>
+                  requireAuth(
+                    () => enroll.mutate({ challengeId: challenge.id }),
+                    "Sign in to join this challenge",
+                  )
+                }
                 disabled={enroll.isPending || hasEnded}
               >
                 {enroll.isPending ? "Enrolling..." : "Enroll in Challenge"}

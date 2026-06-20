@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 import { MarkdownToolbar } from "./markdown-toolbar";
 
@@ -22,6 +23,7 @@ export function ReplyForm({ threadId, isLocked }: ReplyFormProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [content, setContent] = useState("");
   const { data: session } = authClient.useSession();
+  const { promptAuth } = useRequireAuth();
   const utils = api.useUtils();
 
   const replyMutation = api.forum.addReply.useMutation({
@@ -51,7 +53,13 @@ export function ReplyForm({ threadId, isLocked }: ReplyFormProps) {
   if (!session?.user) {
     return (
       <p className="text-muted-foreground mt-6 font-mono text-xs">
-        {t("loginToReply")}
+        <button
+          type="button"
+          onClick={() => promptAuth("Sign in to reply")}
+          className="hover:text-foreground underline transition-colors"
+        >
+          {t("loginToReply")}
+        </button>
       </p>
     );
   }

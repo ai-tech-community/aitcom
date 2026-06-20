@@ -7,8 +7,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { api } from "@/trpc/react";
 
 type Tier = "gold" | "silver" | "bronze";
@@ -59,6 +59,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
 
 export function SponsorApplicationModal() {
   const t = useTranslations("sponsors");
+  const { requireAuth } = useRequireAuth();
   const [open, setOpen] = useState(false);
   const [state, dispatch] = useReducer(formReducer, initialState);
   const {
@@ -106,11 +107,17 @@ export function SponsorApplicationModal() {
         if (!v) dispatch({ type: "RESET" });
       }}
     >
-      <DialogTrigger asChild>
-        <button className="bg-foreground text-background rounded px-6 py-3 font-mono text-sm font-semibold transition-opacity hover:opacity-80">
-          {t("becomeSponsor")}
-        </button>
-      </DialogTrigger>
+      <button
+        onClick={() =>
+          requireAuth(
+            () => setOpen(true),
+            "Sign in to apply to sponsor",
+          )
+        }
+        className="bg-foreground text-background rounded px-6 py-3 font-mono text-sm font-semibold transition-opacity hover:opacity-80"
+      >
+        {t("becomeSponsor")}
+      </button>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-mono text-sm tracking-wider">

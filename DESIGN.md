@@ -252,6 +252,15 @@ The consistency debt was largely hand-rolled re-implementations. Reach for these
 - **`<Avatar>` + `getInitials()`** (`ui/avatar.tsx`, `lib/avatar.ts`) — never re-derive initials inline.
 - **`<Progress indicatorClassName>`** (`ui/progress.tsx`) — pass `bg-success` for a completed bar; never hand-roll a `<div>` bar.
 - **`<Skeleton>` / `<EmptyState>` / `<ErrorState>`** (`ui/skeleton.tsx`, `ui/empty-state.tsx`, `ui/error-state.tsx`) — the three data states. Skeletons (not spinners) for loading; an EmptyState that teaches a next action (not "nothing here"); an ErrorState with retry for failed fetches.
+- **`useRequireAuth()`** (`auth/auth-required-dialog.tsx`) — the one guest-gate for actions. `requireAuth(action, intent)` runs the action if signed in, else opens the branded sign-in/sign-up dialog; `promptAuth(intent)` opens it imperatively. The dialog preserves the current page so sign-in returns the user where they were (see `lib/auth-redirect.ts`).
+
+### Named Rule (auth gating)
+**The Gate-Before-Fail Rule.** A guest must never click an enabled control that then fails. Pick the gate by surface:
+- **Member-only *pages*** → hard gate: server `getSession()` → `redirect("/auth/signin?redirect=<path>")` (mirror `dashboard/layout.tsx`, `blog/write`). Never render a member-only form and let it fail on submit.
+- **Primary *actions*** (enroll, register, post, submit, vote-as-button, create) → soft gate: wrap in `requireAuth(() => mutate(...), "Sign in to …")`. Never call `.mutate()` directly from a guest-reachable handler.
+- **Inline icon actions** (vote arrows, single-glyph toggles) → the one sanctioned exception: render `disabled` with a `title="Sign in to …"` tooltip. Use only here, not for primary actions.
+
+`protectedProcedure` is the server backstop, not the UX — relying on it alone produces a raw `UNAUTHORIZED` toast, a silent no-op, or a doomed half-filled form. Banned guest treatments: silent `onClick` early-return, static non-clickable "log in to…" text, raw `error.message` rendered to the user, and ungated `.mutate()`.
 
 ### Named Rule (data states)
 **The No-Silent-Failure Rule.** Every data fetch handles three states explicitly: loading → `<Skeleton>`; error → `<ErrorState onRetry>` (or hide, for purely supplementary widgets); empty → `<EmptyState>` (or hide). **Never** `if (!data) return null` as the only branch — a failed load must be distinguishable from "nothing here." Errored core sections show the error + retry; only optional/supplementary widgets may stay quietly absent.

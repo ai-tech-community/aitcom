@@ -9,7 +9,7 @@ import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { api } from "@/trpc/react";
-import { authClient } from "@/server/better-auth/client";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 
 type LaunchpadCardProps = {
   project: {
@@ -43,7 +43,7 @@ function getCoverUrl(
 
 export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
   const t = useTranslations("launchpad");
-  const { data: session } = authClient.useSession();
+  const { requireAuth } = useRequireAuth();
   const utils = api.useUtils();
 
   const listInput = {
@@ -157,11 +157,10 @@ export function LaunchpadCard({ project, index }: LaunchpadCardProps) {
           <button
             onClick={(e) => {
               e.preventDefault();
-              if (!session?.user) {
-                toast.info(t("vote.signInToVote"));
-                return;
-              }
-              voteMutation.mutate({ projectId: project.id });
+              requireAuth(
+                () => voteMutation.mutate({ projectId: project.id }),
+                "Sign in to upvote projects",
+              );
             }}
             className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-xs font-semibold transition-colors ${
               project.hasVoted

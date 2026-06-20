@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { SectionLabel } from "@/components/ui/section-label";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { LexicalRenderer } from "@/lib/lexical";
 import { LaunchpadTimeline } from "@/components/launchpad/launchpad-timeline";
 import { LaunchpadComments } from "@/components/launchpad/launchpad-comments";
@@ -56,6 +57,7 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
   const t = useTranslations("launchpad");
   const tDetail = useTranslations("launchpad.detail");
   const { data: session } = authClient.useSession();
+  const { requireAuth } = useRequireAuth();
 
   const {
     data: project,
@@ -187,10 +189,12 @@ export function LaunchpadDetail({ slug }: { slug: string }) {
 
           {/* Vote button */}
           <button
-            onClick={() => {
-              if (!session?.user) return;
-              voteMutation.mutate({ projectId: project.id });
-            }}
+            onClick={() =>
+              requireAuth(
+                () => voteMutation.mutate({ projectId: project.id }),
+                "Sign in to upvote projects",
+              )
+            }
             disabled={voteMutation.isPending}
             className={`flex items-center gap-1 rounded px-2 py-1 font-mono text-xs font-semibold transition-colors disabled:opacity-60 ${
               project.hasVoted
