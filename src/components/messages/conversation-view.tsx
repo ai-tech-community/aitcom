@@ -275,6 +275,7 @@ export function ConversationView({
                         <UiMessage
                           conversationId={conversationId}
                           resource={msg.uiResource}
+                          trust={msg.uiProducerTrust ?? "member"}
                         />
                       ) : (
                         <MessageResponse>{msg.content}</MessageResponse>

@@ -2,16 +2,5 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "buildCommand": null,
-  "installCommand": null,
-  "outputDirectory": ".",
-  "cleanUrls": false,
-  "headers": [
-    {
-      "source": "/sandbox_proxy.html",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" }
-      ]
-    }
-  ]
+  "installCommand": null
 }

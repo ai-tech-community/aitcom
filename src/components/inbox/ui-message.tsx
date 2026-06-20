@@ -8,7 +8,8 @@ import { AppWindowIcon } from "lucide-react";
 import { env } from "@/env.js";
 import { api } from "@/trpc/react";
 import { isChatUiEnabled } from "@/lib/chat/flags";
-import type { UiResource } from "@/lib/chat/types";
+import { honorsDeclaredDomains } from "@/lib/chat/trust";
+import type { UiProducerTrust, UiResource } from "@/lib/chat/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,8 @@ import { cn } from "@/lib/utils";
 type UiMessageProps = {
   conversationId: string;
   resource: UiResource;
+  /** Persisted producer trust tier; gates whether declared CSP domains apply. */
+  trust: UiProducerTrust;
 };
 
 // The guest reports its own height via `ui/notifications/size-changed`; the host
@@ -46,7 +49,7 @@ const REVEAL_FALLBACK_MS = 1200;
  * `allow-scripts allow-same-origin allow-forms`. Because the proxy lives on a
  * different origin than the app, the guest still cannot reach host cookies.
  */
-export function UiMessage({ conversationId, resource }: UiMessageProps) {
+export function UiMessage({ conversationId, resource, trust }: UiMessageProps) {
   const locale = useLocale();
   const t = useTranslations("inbox");
   const { resolvedTheme } = useTheme();
@@ -157,6 +160,11 @@ export function UiMessage({ conversationId, resource }: UiMessageProps) {
 
   if (!isChatUiEnabled()) return null;
 
+  // Only forward declared CSP domains for trust tiers that earn them; AppFrame
+  // appends them as `?csp=` so the sandbox host can set a tamper-proof CSP
+  // header. Untrusted tiers send nothing → host applies the restrictive default.
+  const effectiveCsp = honorsDeclaredDomains(trust) ? resource.csp : undefined;
+
   if (errored) {
     return (
       <div className="border-border text-muted-foreground flex w-[min(100%,30rem)] items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-sm">
@@ -199,6 +207,7 @@ export function UiMessage({ conversationId, resource }: UiMessageProps) {
             sandbox={{
               url: sandboxUrl,
               permissions: "allow-scripts allow-same-origin allow-forms",
+              csp: effectiveCsp,
             }}
             hostContext={{ theme, locale }}
             onMessage={handleMessage}
