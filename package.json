@@ -34,6 +34,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
     "@auth/drizzle-adapter": "^1.7.2",
+    "@mcp-ui/client": "^7.1.1",
+    "@mcp-ui/server": "^6.1.0",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@mollie/api-client": "^4.4.0",
     "@neondatabase/serverless": "^1.0.2",
@@ -55,6 +57,7 @@
     "@trpc/server": "^11.8.0",
     "@vercel/analytics": "^1.6.1",
     "@xyflow/react": "^12.10.1",
+    "ably": "^2.23.0",
     "ai": "^6.0.97",
     "ansi-to-react": "^6.2.6",
     "better-auth": "^1.4.5",
