@@ -12,7 +12,9 @@ export default async function EditLaunchpadProjectPage({
 
   const session = await getSession();
   if (!session?.user) {
-    redirect(`/${locale}/auth/signin?redirect=/${locale}/launchpad/${slug}/edit`);
+    redirect(
+      `/${locale}/auth/signin?redirect=/${locale}/launchpad/${slug}/edit`,
+    );
   }
 
   // Only the author may edit. Verify ownership server-side so non-owners get a

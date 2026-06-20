@@ -32,7 +32,9 @@ export function RedeemInviteClient({ token }: { token: string }) {
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="text-center">
           <p className="text-lg font-medium">{t("pendingTitle")}</p>
-          <p className="text-muted-foreground mt-2 text-sm">{t("pendingBody")}</p>
+          <p className="text-muted-foreground mt-2 text-sm">
+            {t("pendingBody")}
+          </p>
           <button
             onClick={() => router.replace("/communities")}
             className="text-muted-foreground mt-4 underline"
