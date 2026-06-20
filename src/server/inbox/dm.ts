@@ -58,7 +58,9 @@ export async function sendDirectMessage(
       content,
     })
     .returning();
-  await publishInboxEvent(toUserId, {
+  // Best-effort, fire-and-forget (consistent with the inbox router paths);
+  // publishInboxEvent swallows errors internally so it never blocks/breaks send.
+  void publishInboxEvent(toUserId, {
     kind: "message",
     conversationId,
     message,
