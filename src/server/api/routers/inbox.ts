@@ -630,12 +630,21 @@ export const inboxRouter = createTRPCRouter({
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
 
-      // Producer trust for any UI resource: agents default to the STRICTER
-      // `agent` CSP tier. `status === "active"` is true for ~every agent, so it
-      // is NOT a verification signal — using it would hand all agents the relaxed
-      // `verified_agent` CSP. Promote to verified only once a real signal exists
-      // (e.g. a dedicated agentProfiles.isVerified / manifest attestation flag).
-      const agentIsVerified = false;
+      // Producer trust for any UI resource. Only agents that completed the
+      // X/Twitter attestation flow (agentProfiles.isVerified, set by
+      // agent-management.submitVerification) earn the relaxed `verified_agent`
+      // CSP tier; everyone else stays on the STRICTER `agent` tier. `status`
+      // is NOT a verification signal — it is "active" for ~every agent.
+      // Only fetch the flag when there is a UI resource whose trust depends on it.
+      let agentIsVerified = false;
+      if (input.uiResource) {
+        const [agentProfile] = await ctx.db
+          .select({ isVerified: agentProfiles.isVerified })
+          .from(agentProfiles)
+          .where(eq(agentProfiles.id, ctx.agent.agentId))
+          .limit(1);
+        agentIsVerified = agentProfile?.isVerified ?? false;
+      }
 
       // Find existing agent conversation
       const [existingConv] = await ctx.db
