@@ -436,36 +436,158 @@ git commit -m "feat(chat): re-authorized UI tool bridge (allow-list)"
 
 ---
 
-> **PAUSE POINT — Phases 4–6 require Upstash credentials + a separate-origin sandbox host to verify. Outlined below; detail them just before execution.**
+> **API-verified (research 2026-06-20):** `@upstash/redis@1.38.0` HAS `subscribe()` over HTTP/SSE — **no `ioredis`/TCP needed**. `@mcp-ui/client@7.1.1` host component is **`AppRenderer`** (NOT `UIResourceRenderer`); callbacks are separate named props **`onMessage`/`onCallTool`/`onOpenLink`** (NOT `onUIAction`); `sandbox.url` must be a `URL` to a **self-hosted `sandbox_proxy.html`**. E2E verification of Phases 4–5 still needs Upstash creds + a separate-origin sandbox host.
 
-## Phase 4 — SSE delivery (needs Upstash creds)
+## Phase 4 — SSE delivery (code now; E2E needs Upstash creds)
 
-> **Decision/doc-verify:** `@upstash/redis` REST supports `PUBLISH` but NOT `SUBSCRIBE`. The SSE route must subscribe via a TCP Redis client — add `ioredis` here and connect to the Upstash Redis TCP endpoint on the Node runtime (Vercel Fluid Compute allows long-lived streams). Verify the current Upstash TCP/`ioredis` subscribe recipe at https://upstash.com/docs/redis before implementing.
+### Task 4.1: Inbox subscribe client + SSE route
 
-- **Task 4.1:** Add `ioredis`; create `GET /api/inbox/stream` (Node runtime) — auth via Better Auth, `SUBSCRIBE inbox:user:{me}`, stream `message` events as SSE; clean up on disconnect.
-- **Task 4.2:** Client SSE hook `src/components/inbox/use-inbox-stream.ts` — opens `EventSource('/api/inbox/stream')`, on `message` updates the React Query cache for `inbox.getMessages`/`totalUnreadCount` (or invalidates); wire into `chat-window.tsx` + `inbox-mobile-view.tsx`; relax the `refetchInterval` fallback.
-- **Task 4.3:** Manual two-browser verification: message appears <1s via SSE; with Upstash unset, the poll fallback still delivers.
+**Files:** `src/server/inbox/publish.ts` (add export), `src/app/api/inbox/stream/route.ts`
 
-## Phase 5 — MCP-Apps interactive rendering (needs sandbox origin)
+- [ ] **Step 1: Export a subscribe-capable client from publish.ts**
 
-> **Doc-verify:** confirm `@mcp-ui/client` v7 host component name + props (`AppRenderer`/`UIResourceRenderer`, action callbacks) against https://mcpui.dev for the installed version before coding.
->
-> **MUST-FIX before Phase 5 ships (from Phase 0–3 final review):** the verified-agent
-> trust mapping in `inbox.ts` `agentSendMessage` currently uses `agentProfiles.status === "active"`,
-> which defaults to true for essentially every agent — so all agents would get the
-> top `verified_agent` CSP tier. This is inert in Phases 0–3 (trust only drives the
-> not-yet-built CSP header), but **before Phase 5 consumes `cspForResource`, redefine
-> "verified"** to a real signal (e.g. a dedicated `agentProfiles.isVerified`/manifest
-> flag), or default agents to the stricter `agent` tier. Otherwise the trust→CSP gating
-> is effectively bypassed for all agent-produced UI.
+Add to `src/server/inbox/publish.ts`:
+```ts
+/** Same lazy client, exposed for the SSE route's subscribe(). Null if unconfigured. */
+export function getInboxRedis(): Redis | null {
+  return getRedis();
+}
+```
 
-- **Task 5.1:** `GET /api/inbox/ui-csp?messageId=…` — membership-checked; returns the message's `uiResource.content` with the host-enforced CSP header from `cspForResource(trust, csp)`.
-- **Task 5.2:** Sandbox proxy on a separate origin (separate Vercel project/subdomain). Set `NEXT_PUBLIC_CHAT_SANDBOX_URL`. Use the SDK's official proxy; do not hand-roll. Same-origin path is NOT acceptable.
-- **Task 5.3:** `src/components/inbox/ui-message.tsx` — render an agent message's `uiResource` via the host renderer; handlers: `ui/message` → `inbox.sendMessage`, `tools/call` → `inbox.callUiTool`, `ui/open-link` → validated `window.open`. Hook into the assistant-message branch in `chat-window.tsx`/`inbox-mobile-view.tsx` behind `isChatUiEnabled()`.
-- **Task 5.4:** Security spot-checks: iframe lacks `allow-same-origin` to app origin; CSP header correct per trust; `callUiTool` runs as acting human.
+- [ ] **Step 2: SSE route using `@upstash/redis` `subscribe()`**
+
+Create `src/app/api/inbox/stream/route.ts`:
+```ts
+import { auth } from "@/server/better-auth";
+import { getInboxRedis, inboxUserChannel } from "@/server/inbox/publish";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session?.user) return new Response("unauthorized", { status: 401 });
+  const redis = getInboxRedis();
+  if (!redis) return new Response("realtime unconfigured", { status: 503 });
+
+  const channel = inboxUserChannel(session.user.id);
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    start(controller) {
+      const subscription = redis.subscribe([channel]);
+      subscription.on("message", (data: { channel: string; message: unknown }) => {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data.message)}\n\n`));
+      });
+      subscription.on("error", (err: Error) => console.error("[inbox-sse] subscribe error", err));
+      // keep-alive comment every 25s so proxies don't drop idle connections
+      const ping = setInterval(() => controller.enqueue(encoder.encode(`: ping\n\n`)), 25_000);
+      request.signal.addEventListener("abort", () => {
+        clearInterval(ping);
+        void subscription.unsubscribe();
+        try { controller.close(); } catch { /* already closed */ }
+      });
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
+}
+```
+> Confirm `auth` import path matches `src/server/api/trpc.ts`. `pnpm check` → PASS. Commit `feat(chat): SSE inbox stream via upstash subscribe`.
+
+### Task 4.2: Client SSE hook + wire into chat windows
+
+**Files:** `src/components/inbox/use-inbox-stream.ts`, `chat-window.tsx`, `inbox-mobile-view.tsx`
+
+- [ ] **Step 1:** Create `use-inbox-stream.ts` — `useEffect` opens `new EventSource("/api/inbox/stream")`; `onmessage` parses the payload (`{ kind:"message", conversationId, message }`) and calls `api.useUtils().inbox.getMessages.invalidate({ conversationId })` + `inbox.totalUnreadCount.invalidate()`; closes on unmount; gate on `isChatEnabled()`.
+- [ ] **Step 2:** Call the hook in `chat-window.tsx` + `inbox-mobile-view.tsx`. Keep the existing `refetchInterval` poll as fallback but relax it (e.g. 15s) — SSE is primary.
+- [ ] **Step 3:** `pnpm check` → PASS. Commit `feat(chat): client SSE hook + wire into inbox windows`.
+
+### Task 4.3 (deferred — needs Upstash creds): two-browser verification
+Message appears <1s via SSE; with Upstash unset, `/api/inbox/stream` 503s and the poll fallback still delivers.
+
+## Phase 5 — MCP-Apps interactive rendering (code now; E2E needs sandbox origin)
+
+> **MUST-FIX before this ships (from Phase 0–3 final review):** the verified-agent
+> trust mapping in `inbox.ts` `agentSendMessage` uses `agentProfiles.status === "active"`,
+> which is true for ~every agent — so all agents would get the top `verified_agent` CSP
+> tier. Before the CSP header is consumed here, redefine "verified" to a real signal
+> (dedicated `isVerified`/manifest flag) or default agents to the stricter `agent` tier.
+
+### Task 5.1: CSP-enforced UI-HTML route
+
+**Files:** `src/app/api/inbox/ui-csp/route.ts`
+
+- [ ] Membership-checked route returning a message's `uiResource.content` with the trust-derived CSP header:
+```ts
+import { and, eq } from "drizzle-orm";
+import { auth } from "@/server/better-auth";
+import { db } from "@/server/db";
+import { messages, conversationParticipants } from "@/server/db/schema";
+import { cspForResource } from "@/lib/chat/trust";
+
+export const runtime = "nodejs";
+
+export async function GET(request: Request) {
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session?.user) return new Response("unauthorized", { status: 401 });
+  const id = new URL(request.url).searchParams.get("messageId");
+  if (!id) return new Response("missing messageId", { status: 400 });
+
+  const [m] = await db
+    .select({ conversationId: messages.conversationId, uiResource: messages.uiResource, trust: messages.uiProducerTrust })
+    .from(messages).where(eq(messages.id, id)).limit(1);
+  if (!m?.uiResource) return new Response("not found", { status: 404 });
+
+  const [member] = await db
+    .select({ id: conversationParticipants.id })
+    .from(conversationParticipants)
+    .where(and(eq(conversationParticipants.conversationId, m.conversationId), eq(conversationParticipants.userId, session.user.id)))
+    .limit(1);
+  if (!member) return new Response("forbidden", { status: 403 });
+
+  return new Response(m.uiResource.content, {
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Security-Policy": cspForResource(m.trust ?? "member", m.uiResource.csp),
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+```
+
+### Task 5.2: Self-host the sandbox proxy + origin config
+
+**Files:** `public/sandbox_proxy.html`
+
+- [ ] Copy the official proxy verbatim from the `@mcp-ui/client` monorepo (`sdks/typescript/client/scripts/proxy/index.html`) into `public/sandbox_proxy.html` — do NOT hand-roll. (The research captured its full contents if the path moved.)
+- [ ] **Separate-origin (production security):** for untrusted producers the proxy MUST be served from a **different origin** than the app. The component (Task 5.3) reads `NEXT_PUBLIC_CHAT_SANDBOX_URL`; set it to a separate-origin proxy URL in prod. The `public/` copy is the **dev-only same-origin fallback** — document that prod must point at the separate origin and override `sandbox.permissions` to drop `allow-same-origin`.
+
+### Task 5.3: `AppRenderer` UI-message component
+
+**Files:** `src/components/inbox/ui-message.tsx`
+
+- [ ] Render an agent message's `uiResource` via `@mcp-ui/client`'s **`AppRenderer`** (NOT `UIResourceRenderer`). Use `html={resource.content}` (pre-fetched), `sandbox={{ url: new URL(env.NEXT_PUBLIC_CHAT_SANDBOX_URL ?? "/sandbox_proxy.html", window.location.origin), permissions: "allow-scripts" }}`, and the v7 named callbacks:
+  - `onMessage(params)` → post to chat via `inbox.sendMessage` (text from `params` by convention)
+  - `onCallTool(params)` → `inbox.callUiTool.mutateAsync({ conversationId, name: params.name, args: params.arguments })`
+  - `onOpenLink({ url })` → validate scheme then `window.open(url, "_blank", "noopener,noreferrer")`
+  - `hostContext={{ theme, locale }}` carrying DESIGN.md theme
+- [ ] Hook into the assistant-message branch of `chat-window.tsx` / `inbox-mobile-view.tsx` behind `isChatUiEnabled()` (render `<UiMessage>` when `msg.uiResource` present, else the text branch).
+- [ ] `pnpm check` → PASS. Commit.
+
+### Task 5.4 (deferred — needs sandbox origin): security spot-checks
+Inner guest iframe lacks `allow-same-origin` to the app origin; CSP header correct per trust on `/api/inbox/ui-csp`; `callUiTool` runs as the acting human.
 
 ## Phase 6 — Flags + end-to-end verification
-- **Task 6.1:** Gate behaviors behind `isChatEnabled()`/`isChatUiEnabled()`; confirm graceful degradation (SSE off → poll; Upstash unset → poll; sandbox unset → text only).
+- **Task 6.1:** Confirm graceful degradation: SSE 503 → poll; Upstash unset → poll; sandbox unset → text-only.
 - **Task 6.2:** When Tier-1 ships, update ADR-0025 status (SSE+Upstash: deferred → implemented).
 
 ## Follow-ups (Slice 1b+)
