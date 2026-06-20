@@ -8,6 +8,7 @@ import { SocialSuggestions } from "@/components/social-suggestions";
 import { ActiveChallengesWidget } from "@/components/challenges/active-challenges-widget";
 import { StreakWidget } from "@/components/gamification/streak-widget";
 import { PointsWidget } from "@/components/gamification/points-widget";
+import { BoostWidget } from "@/components/gamification/boost-widget";
 import { HydrateClient } from "@/trpc/server";
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default async function DashboardPage() {
   return (
     <HydrateClient>
       <div className="space-y-8">
+        <BoostWidget />
         <DashboardProfile
           userEmail={session.user.email}
           userImage={session.user.image}

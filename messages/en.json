@@ -2211,6 +2211,9 @@
     "ariaHistory": "Points awards history",
     "empty": "No XP yet — join in to start earning.",
     "activity": "Activity",
-    "course_complete": "Course completed"
+    "course_complete": "Course completed",
+    "boostEndsIn": "Ends in {h}h {m}m {s}s",
+    "boostEnded": "Ended",
+    "boostCta": "Earn XP"
   }
 }

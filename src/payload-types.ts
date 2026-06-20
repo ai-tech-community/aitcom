@@ -85,6 +85,7 @@ export interface Config {
     pages: Page;
     media: Media;
     sponsors: Sponsor;
+    'points-boosts': PointsBoost;
     'sponsor-applications': SponsorApplication;
     jobs: Job;
     'rules-acceptance': RulesAcceptance;
@@ -124,6 +125,7 @@ export interface Config {
     pages: PagesSelect<false> | PagesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     sponsors: SponsorsSelect<false> | SponsorsSelect<true>;
+    'points-boosts': PointsBoostsSelect<false> | PointsBoostsSelect<true>;
     'sponsor-applications': SponsorApplicationsSelect<false> | SponsorApplicationsSelect<true>;
     jobs: JobsSelect<false> | JobsSelect<true>;
     'rules-acceptance': RulesAcceptanceSelect<false> | RulesAcceptanceSelect<true>;
@@ -939,6 +941,32 @@ export interface Sponsor {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "points-boosts".
+ */
+export interface PointsBoost {
+  id: number;
+  name: string;
+  /**
+   * XP is multiplied by this while the boost is live.
+   */
+  multiplier: number;
+  startsAt: string;
+  endsAt: string;
+  description?: string | null;
+  /**
+   * Optional call-to-action label on the banner.
+   */
+  ctaText?: string | null;
+  ctaLink?: string | null;
+  /**
+   * Turn the boost off without changing its dates.
+   */
+  enabled?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "sponsor-applications".
  */
 export interface SponsorApplication {
@@ -1431,6 +1459,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'sponsors';
         value: number | Sponsor;
+      } | null)
+    | ({
+        relationTo: 'points-boosts';
+        value: number | PointsBoost;
       } | null)
     | ({
         relationTo: 'sponsor-applications';
@@ -1969,6 +2001,22 @@ export interface SponsorsSelect<T extends boolean = true> {
   tagline?: T;
   featured?: T;
   status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "points-boosts_select".
+ */
+export interface PointsBoostsSelect<T extends boolean = true> {
+  name?: T;
+  multiplier?: T;
+  startsAt?: T;
+  endsAt?: T;
+  description?: T;
+  ctaText?: T;
+  ctaLink?: T;
+  enabled?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -19,6 +19,7 @@ import { CommunityRules } from "./collections/CommunityRules";
 import { Pages } from "./collections/Pages";
 import { Media } from "./collections/Media";
 import { Sponsors } from "./collections/Sponsors";
+import { PointsBoosts } from "./collections/PointsBoosts";
 import { SponsorApplications } from "./collections/SponsorApplications";
 import { Jobs } from "./collections/Jobs";
 import { RulesAcceptance } from "./collections/RulesAcceptance";
@@ -92,6 +93,7 @@ export default buildConfig({
     Pages,
     Media,
     Sponsors,
+    PointsBoosts,
     SponsorApplications,
     Jobs,
     RulesAcceptance,

@@ -2211,6 +2211,9 @@
     "ariaHistory": "Geschiedenis van puntentoekenningen",
     "empty": "Nog geen XP — doe mee om te beginnen met verdienen.",
     "activity": "Activiteit",
-    "course_complete": "Cursus afgerond"
+    "course_complete": "Cursus afgerond",
+    "boostEndsIn": "Eindigt over {h}u {m}m {s}s",
+    "boostEnded": "Afgelopen",
+    "boostCta": "Verdien XP"
   }
 }
