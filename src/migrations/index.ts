@@ -68,6 +68,7 @@ import * as migration_20260613c_challenge_judging_opened from "./20260613c_chall
 import * as migration_20260614a_event_deadlines from "./20260614a_event_deadlines";
 import * as migration_20260614b_hackathon_staff_invite from "./20260614b_hackathon_staff_invite";
 import * as migration_20260620_points_events from "./20260620_points_events";
+import * as migration_20260620a_chat from "./20260620a_chat";
 import * as migration_20260620b_points_boosts from "./20260620b_points_boosts";
 
 export const migrations = [
@@ -420,6 +421,11 @@ export const migrations = [
     up: migration_20260620_points_events.up,
     down: migration_20260620_points_events.down,
     name: "20260620_points_events",
+  },
+  {
+    up: migration_20260620a_chat.up,
+    down: migration_20260620a_chat.down,
+    name: "20260620a_chat",
   },
   {
     up: migration_20260620b_points_boosts.up,

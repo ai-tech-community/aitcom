@@ -6,6 +6,7 @@ import {
   conversationParticipants,
   messages,
 } from "@/server/db/schema";
+import { publishInboxEvent } from "@/server/inbox/publish";
 
 type DB = typeof _db;
 
@@ -48,11 +49,21 @@ export async function sendDirectMessage(
     ]);
     conversationId = conv!.id;
   }
-  await db.insert(messages).values({
-    conversationId,
-    senderId: fromUserId,
-    senderType: "human",
-    content,
-  });
+  const [message] = await db
+    .insert(messages)
+    .values({
+      conversationId,
+      senderId: fromUserId,
+      senderType: "human",
+      content,
+    })
+    .returning();
+  // Best-effort, fire-and-forget (consistent with the inbox router paths);
+  // publishInboxEvent swallows errors internally so it never blocks/breaks send.
+  // Notify the recipient AND the sender's other tabs, mirroring
+  // inbox.sendMessage's two-publish pattern.
+  const event = { kind: "message", conversationId, message } as const;
+  void publishInboxEvent(toUserId, event);
+  void publishInboxEvent(fromUserId, event);
   return conversationId;
 }

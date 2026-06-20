@@ -1,19 +1,19 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo } from "react";
 import {
+  ArrowLeftIcon,
   BotIcon,
-  ChevronDownIcon,
-  ExternalLinkIcon,
-  Maximize2Icon,
-  Minimize2Icon,
-  XIcon,
+  MessageSquareIcon,
+  PanelRightIcon,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
-import { Spinner } from "@/components/ui/spinner";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Link } from "@/i18n/navigation";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
 import {
   Conversation,
@@ -27,31 +27,23 @@ import {
 } from "@/components/ai-elements/message";
 import {
   PromptInput,
-  PromptInputTextarea,
   PromptInputFooter,
   PromptInputSubmit,
+  PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
-import { Link } from "@/i18n/navigation";
-import { useInbox } from "./inbox-provider";
-import { LIVE_MESSAGES_FALLBACK_MS } from "./live-refetch";
-import { useInboxStream } from "./use-inbox-stream";
-import { UiMessage } from "./ui-message";
+import { LIVE_MESSAGES_FALLBACK_MS } from "@/components/inbox/live-refetch";
+import { UiMessage } from "@/components/inbox/ui-message";
 import { isChatUiEnabled } from "@/lib/chat/flags";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type ChatWindowProps = {
+type ConversationViewProps = {
   conversationId: string;
-  displayName: string;
-  image: string | null;
-  isAgent: boolean;
+  /** Display info resolved from the conversation list (header). */
+  peer: { name: string; image: string | null; isAgent: boolean } | null;
+  agentLastActiveAt?: Date | string | null;
+  onToggleProfile: () => void;
+  /** Mobile only: back to the list pane. */
+  onBack?: () => void;
 };
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -61,26 +53,16 @@ function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
-export function ChatWindow({
+export function ConversationView({
   conversationId,
-  displayName,
-  image,
-  isAgent,
-}: ChatWindowProps) {
-  const { closeChat, minimizeChat } = useInbox();
-  const { data: session } = authClient.useSession();
+  peer,
+  agentLastActiveAt,
+  onToggleProfile,
+  onBack,
+}: ConversationViewProps) {
   const t = useTranslations("inbox");
+  const { data: session } = authClient.useSession();
   const utils = api.useUtils();
-  const [expanded, setExpanded] = useState(false);
-
-  useInboxStream();
-
-  // ── Data fetching ───────────────────────────────────────────────────────
-
   const currentUserId = session?.user?.id;
 
   const messagesQuery = api.inbox.getMessages.useQuery(
@@ -89,7 +71,7 @@ export function ChatWindow({
   );
 
   const sendMessage = api.inbox.sendMessage.useMutation({
-    // Optimistic send: the human's own message renders instantly (ADR-0025 Tier 0).
+    // Optimistic send — verbatim from chat-window.tsx (ADR-0025 Tier 0).
     onMutate: async ({ content }) => {
       if (!currentUserId) return;
       const key = { conversationId, limit: 50 };
@@ -123,8 +105,6 @@ export function ChatWindow({
     },
   });
 
-  // ── Handlers ────────────────────────────────────────────────────────────
-
   const handleSubmit = useCallback(
     async (message: { text: string }) => {
       const text = message.text.trim();
@@ -134,23 +114,31 @@ export function ChatWindow({
     [conversationId, sendMessage],
   );
 
-  // ── Derived data ────────────────────────────────────────────────────────
+  const messages = useMemo(
+    () => messagesQuery.data?.messages ?? [],
+    [messagesQuery.data],
+  );
 
-  const messages = messagesQuery.data?.messages ?? [];
-
-  // ── Render ──────────────────────────────────────────────────────────────
+  const isAgent = peer?.isAgent ?? false;
 
   return (
-    <div
-      className={`border-border bg-background flex flex-col overflow-hidden rounded-lg border shadow-lg transition-all duration-200 ${expanded ? "h-150 w-120" : "h-112.5 w-80"}`}
-    >
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="border-border flex items-center gap-2 border-b px-3 py-2.5">
-        {/* Avatar */}
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Header */}
+      <div className="border-border flex items-center gap-2 border-b px-4 py-3">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring -ml-1 rounded-md p-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none lg:hidden"
+            aria-label={t("back")}
+          >
+            <ArrowLeftIcon className="h-4 w-4" />
+          </button>
+        )}
         <div className="relative shrink-0">
           <Avatar>
-            {image && <AvatarImage src={image} alt={displayName} />}
-            <AvatarFallback>{getInitials(displayName)}</AvatarFallback>
+            {peer?.image && <AvatarImage src={peer.image} alt={peer.name} />}
+            <AvatarFallback>{getInitials(peer?.name ?? "?")}</AvatarFallback>
           </Avatar>
           {isAgent && (
             <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full">
@@ -158,88 +146,99 @@ export function ChatWindow({
             </span>
           )}
         </div>
-
-        {/* Name */}
-        <span className="text-foreground min-w-0 flex-1 truncate text-sm font-medium">
-          {displayName}
-        </span>
-
-        {/* Actions */}
-        <Link
-          href={`/messages/${conversationId}`}
-          className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
-          aria-label={t("openInMessages")}
-          title={t("openInMessages")}
-        >
-          <ExternalLinkIcon className="h-4 w-4" />
-        </Link>
+        <div className="min-w-0 flex-1">
+          <p className="text-foreground truncate text-sm font-semibold">
+            {peer?.name ?? "—"}
+          </p>
+          {isAgent && agentLastActiveAt ? (
+            <p className="text-muted-foreground truncate text-xs">
+              {t("lastActive")}{" "}
+              <RelativeTime
+                date={agentLastActiveAt}
+                className="text-muted-foreground text-xs"
+              />
+            </p>
+          ) : null}
+        </div>
         <button
           type="button"
-          onClick={() => setExpanded((prev) => !prev)}
-          className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
-          aria-label={expanded ? t("collapse") : t("expand")}
+          onClick={onToggleProfile}
+          className="text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring rounded-md p-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          aria-label={t("showProfile")}
+          title={t("showProfile")}
         >
-          {expanded ? (
-            <Minimize2Icon className="h-4 w-4" />
-          ) : (
-            <Maximize2Icon className="h-4 w-4" />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => minimizeChat(conversationId)}
-          className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
-          aria-label={t("minimize")}
-        >
-          <ChevronDownIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => closeChat(conversationId)}
-          className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
-          aria-label={t("close")}
-        >
-          <XIcon className="h-4 w-4" />
+          <PanelRightIcon className="h-4 w-4" />
         </button>
       </div>
 
-      {/* ── Messages area ─────────────────────────────────────────────── */}
-      {messagesQuery.isLoading ? (
-        <div className="flex flex-1 items-center justify-center">
-          <Spinner className="text-muted-foreground h-5 w-5" />
+      {/* Messages */}
+      {messagesQuery.isError ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+          <MessageSquareIcon className="text-muted-foreground h-8 w-8" />
+          <p className="text-muted-foreground text-sm">{t("loadError")}</p>
+          <button
+            type="button"
+            onClick={() => void messagesQuery.refetch()}
+            className="text-primary focus-visible:ring-ring rounded text-xs font-medium underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+          >
+            {t("retry")}
+          </button>
+        </div>
+      ) : messagesQuery.isLoading ? (
+        <div className="flex flex-1 flex-col gap-6 p-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className={i % 2 === 0 ? "mr-auto w-3/5" : "ml-auto w-2/5"}
+            >
+              <Skeleton className="h-12 w-full rounded-lg" />
+            </div>
+          ))}
         </div>
       ) : (
         <Conversation className="flex-1">
-          <ConversationContent className="gap-4 p-3">
-            {isAgent && messages.length === 0 && !messagesQuery.isLoading && (
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          <ConversationContent className="gap-4 p-4 sm:px-6">
+            {isAgent && messages.length === 0 && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
                 <BotIcon className="text-muted-foreground h-8 w-8" />
-                <p className="text-muted-foreground text-sm">
-                  Connect your bot to start chatting.
+                <p className="text-foreground text-sm font-medium">
+                  {t("agentEmptyTitle")}
+                </p>
+                <p className="text-muted-foreground max-w-xs text-sm">
+                  {t("agentEmptyDescription")}
                 </p>
                 <Link
                   href="/dashboard/agent"
-                  className="text-primary text-xs underline-offset-4 hover:underline"
+                  className="text-primary focus-visible:ring-ring rounded text-xs font-medium underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
                 >
-                  Generate an API key to get started
+                  {t("agentEmptyCta")}
                 </Link>
+              </div>
+            )}
+            {!isAgent && messages.length === 0 && (
+              <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+                <MessageSquareIcon className="text-muted-foreground h-8 w-8" />
+                <p className="text-foreground text-sm font-medium">
+                  {t("sayHello")}
+                </p>
+                <p className="text-muted-foreground max-w-xs text-sm">
+                  {t("sayHelloDescription")}
+                </p>
               </div>
             )}
             {messages.map((msg, idx) => {
               const isUser =
                 msg.senderId === currentUserId && msg.senderType === "human";
-
               const prevMsg = messages[idx - 1];
               const showDateSeparator =
                 !prevMsg ||
                 toDateKey(msg.createdAt) !== toDateKey(prevMsg.createdAt);
 
-              const today = new Date();
-              const yesterday = new Date(today);
-              yesterday.setDate(yesterday.getDate() - 1);
-
               let dateLabel: string | undefined;
               if (showDateSeparator) {
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
                 const key = toDateKey(msg.createdAt);
                 if (key === toDateKey(today)) {
                   dateLabel = t("today");
@@ -262,7 +261,7 @@ export function ChatWindow({
                   {dateLabel && (
                     <div className="flex items-center gap-3">
                       <div className="bg-border h-px flex-1" />
-                      <span className="text-muted-foreground shrink-0 text-xs font-medium uppercase">
+                      <span className="text-muted-foreground shrink-0 font-mono text-xs font-medium tracking-wider uppercase">
                         {dateLabel}
                       </span>
                       <div className="bg-border h-px flex-1" />
@@ -282,7 +281,7 @@ export function ChatWindow({
                       )}
                     </MessageContent>
                     <span
-                      className={`text-muted-foreground text-xs ${isUser ? "ml-auto" : ""}`}
+                      className={`text-muted-foreground font-mono text-xs ${isUser ? "ml-auto" : ""}`}
                     >
                       {formatTime(msg.createdAt)}
                     </span>
@@ -295,8 +294,8 @@ export function ChatWindow({
         </Conversation>
       )}
 
-      {/* ── Input area ────────────────────────────────────────────────── */}
-      <div className="border-border border-t **:data-[slot=input-group]:rounded-none **:data-[slot=input-group]:border-0 **:data-[slot=input-group]:shadow-none">
+      {/* Composer */}
+      <div className="border-border border-t p-3 **:data-[slot=input-group]:rounded-lg">
         <PromptInput onSubmit={handleSubmit}>
           <PromptInputTextarea
             placeholder={t("placeholder")}

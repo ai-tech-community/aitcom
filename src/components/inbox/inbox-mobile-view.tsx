@@ -25,7 +25,8 @@ import {
   PromptInputSubmit,
 } from "@/components/ai-elements/prompt-input";
 import { useInbox } from "./inbox-provider";
-import { LIVE_MESSAGES_REFETCH_MS } from "./live-refetch";
+import { LIVE_MESSAGES_FALLBACK_MS } from "./live-refetch";
+import { useInboxStream } from "./use-inbox-stream";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,11 +61,13 @@ export function InboxMobileView({ chatInfo }: { chatInfo: MobileChatInfo }) {
   const t = useTranslations("inbox");
   const utils = api.useUtils();
 
+  useInboxStream();
+
   // ── Data fetching ─────────────────────────────────────────────────────
 
   const messagesQuery = api.inbox.getMessages.useQuery(
     { conversationId: chatInfo.conversationId, limit: 50 },
-    { refetchInterval: LIVE_MESSAGES_REFETCH_MS },
+    { refetchInterval: LIVE_MESSAGES_FALLBACK_MS },
   );
 
   const sendMessage = api.inbox.sendMessage.useMutation({

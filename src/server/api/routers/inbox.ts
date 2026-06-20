@@ -18,6 +18,25 @@ import {
   user,
 } from "@/server/db/schema";
 import { logActivity } from "@/server/agent/activity";
+import { publishInboxEvent } from "@/server/inbox/publish";
+import { resolveProducerTrust } from "@/lib/chat/trust";
+import type { UiResource } from "@/lib/chat/types";
+import { runUiTool } from "@/server/inbox/ui-tools";
+
+const uiResourceSchema = z.object({
+  uri: z.string().startsWith("ui://"),
+  mimeType: z.literal("text/html;profile=mcp-app"),
+  encoding: z.enum(["text", "blob"]),
+  content: z.string().max(200_000),
+  csp: z
+    .object({
+      connectDomains: z.array(z.string()).optional(),
+      resourceDomains: z.array(z.string()).optional(),
+      frameDomains: z.array(z.string()).optional(),
+      baseUriDomains: z.array(z.string()).optional(),
+    })
+    .optional(),
+});
 
 // ── Router ───────────────────────────────────────────────────────────────────
 
@@ -278,6 +297,7 @@ export const inboxRouter = createTRPCRouter({
       z.object({
         conversationId: z.string(),
         content: z.string().min(1).max(10000),
+        uiResource: uiResourceSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -322,6 +342,10 @@ export const inboxRouter = createTRPCRouter({
           senderId: userId,
           senderType: "human",
           content: input.content,
+          uiResource: input.uiResource as UiResource | undefined,
+          uiProducerTrust: input.uiResource
+            ? resolveProducerTrust({ kind: "member" })
+            : undefined,
         })
         .returning();
 
@@ -339,6 +363,20 @@ export const inboxRouter = createTRPCRouter({
         targetType: "conversations",
         targetId: input.conversationId,
         recipientId: recipient?.userId,
+      });
+
+      // Publish real-time event to recipient and sender (other tabs)
+      if (recipient?.userId) {
+        void publishInboxEvent(recipient.userId, {
+          kind: "message",
+          conversationId: input.conversationId,
+          message,
+        });
+      }
+      void publishInboxEvent(userId, {
+        kind: "message",
+        conversationId: input.conversationId,
+        message,
       });
 
       // Fire-and-forget: update sender's lastReadAt
@@ -492,6 +530,37 @@ export const inboxRouter = createTRPCRouter({
       return { members: rows };
     }),
 
+  /**
+   * callUiTool - invoke an allow-listed UI tool on behalf of the acting human.
+   * Verifies the caller is a participant of the conversation before delegating.
+   */
+  callUiTool: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.string(),
+        name: z.string(),
+        args: z.unknown(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [participant] = await ctx.db
+        .select()
+        .from(conversationParticipants)
+        .where(
+          and(
+            eq(conversationParticipants.conversationId, input.conversationId),
+            eq(conversationParticipants.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+      if (!participant)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Not a participant",
+        });
+      return runUiTool(ctx.db, ctx.session.user.id, input.name, input.args);
+    }),
+
   // ═══════════════════════════════════════════════════════════════════════════
   // AGENT-FACING PROCEDURES (agentProcedure)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -554,11 +623,19 @@ export const inboxRouter = createTRPCRouter({
       z.object({
         content: z.string().min(1).max(10000),
         metadata: z.record(z.string(), z.unknown()).optional(),
+        uiResource: uiResourceSchema.optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
+
+      // Producer trust for any UI resource: agents default to the STRICTER
+      // `agent` CSP tier. `status === "active"` is true for ~every agent, so it
+      // is NOT a verification signal — using it would hand all agents the relaxed
+      // `verified_agent` CSP. Promote to verified only once a real signal exists
+      // (e.g. a dedicated agentProfiles.isVerified / manifest attestation flag).
+      const agentIsVerified = false;
 
       // Find existing agent conversation
       const [existingConv] = await ctx.db
@@ -604,6 +681,10 @@ export const inboxRouter = createTRPCRouter({
           senderType: "agent",
           content: input.content,
           metadata: input.metadata,
+          uiResource: input.uiResource as UiResource | undefined,
+          uiProducerTrust: input.uiResource
+            ? resolveProducerTrust({ kind: "agent", verified: agentIsVerified })
+            : undefined,
         })
         .returning();
 
@@ -621,6 +702,13 @@ export const inboxRouter = createTRPCRouter({
         targetType: "conversations",
         targetId: convId,
         recipientId: ownerId,
+      });
+
+      // Publish real-time event to owner
+      void publishInboxEvent(ownerId, {
+        kind: "message",
+        conversationId: convId,
+        message,
       });
 
       return { messageId: message!.id };
