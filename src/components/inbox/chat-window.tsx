@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import {
   BotIcon,
   ChevronDownIcon,
+  ExternalLinkIcon,
   Maximize2Icon,
   Minimize2Icon,
   XIcon,
@@ -162,6 +163,14 @@ export function ChatWindow({
         </span>
 
         {/* Actions */}
+        <Link
+          href={`/messages/${conversationId}`}
+          className="text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md p-1.5 transition-colors"
+          aria-label={t("openInMessages")}
+          title={t("openInMessages")}
+        >
+          <ExternalLinkIcon className="h-4 w-4" />
+        </Link>
         <button
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
