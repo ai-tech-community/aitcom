@@ -27,6 +27,7 @@ export const env = createEnv({
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    ABLY_API_KEY: z.string().optional(),
   },
 
   /**
@@ -36,6 +37,9 @@ export const env = createEnv({
    */
   client: {
     NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    NEXT_PUBLIC_FEATURE_CHAT: z.enum(["true", "false"]).default("false"),
+    NEXT_PUBLIC_FEATURE_CHAT_UI: z.enum(["true", "false"]).default("false"),
+    NEXT_PUBLIC_ABLY_SANDBOX_URL: z.string().url().optional(),
   },
 
   /**
@@ -61,6 +65,10 @@ export const env = createEnv({
     S3_REGION: process.env.S3_REGION,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    ABLY_API_KEY: process.env.ABLY_API_KEY,
+    NEXT_PUBLIC_FEATURE_CHAT: process.env.NEXT_PUBLIC_FEATURE_CHAT,
+    NEXT_PUBLIC_FEATURE_CHAT_UI: process.env.NEXT_PUBLIC_FEATURE_CHAT_UI,
+    NEXT_PUBLIC_ABLY_SANDBOX_URL: process.env.NEXT_PUBLIC_ABLY_SANDBOX_URL,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
