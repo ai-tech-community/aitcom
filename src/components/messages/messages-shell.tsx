@@ -74,10 +74,11 @@ export function MessagesShell({ activeConversationId }: MessagesShellProps) {
         }
     : null;
 
-  const peerUserId = active && !isAgent ? (active.participants[0]?.userId ?? null) : null;
+  const peerUserId =
+    active && !isAgent ? (active.participants[0]?.userId ?? null) : null;
 
   return (
-    <div className="bg-background mx-auto h-[calc(100dvh-3rem)] max-w-7xl border-x border-border">
+    <div className="bg-background border-border mx-auto h-[calc(100dvh-3rem)] max-w-7xl border-x">
       <div className="flex h-full min-h-0">
         {/* ── Left: conversation list / new-message ───────────────────── */}
         <aside
@@ -120,7 +121,9 @@ export function MessagesShell({ activeConversationId }: MessagesShellProps) {
               key={activeConversationId}
               conversationId={activeConversationId}
               peer={peer}
-              agentLastActiveAt={isAgent ? active?.agentInfo?.lastActiveAt : null}
+              agentLastActiveAt={
+                isAgent ? active?.agentInfo?.lastActiveAt : null
+              }
               onToggleProfile={toggleProfile}
               onBack={() => setMobileView("list")}
             />
@@ -179,7 +182,7 @@ export function MessagesShell({ activeConversationId }: MessagesShellProps) {
               onClick={() => setOverlayProfile(false)}
               className="bg-foreground/20 absolute inset-0 motion-safe:transition-opacity"
             />
-            <aside className="border-border bg-background absolute inset-y-0 right-0 flex w-80 max-w-[85vw] flex-col border-l shadow-lg motion-safe:animate-in motion-safe:slide-in-from-right motion-safe:duration-200">
+            <aside className="border-border bg-background motion-safe:animate-in motion-safe:slide-in-from-right absolute inset-y-0 right-0 flex w-80 max-w-[85vw] flex-col border-l shadow-lg motion-safe:duration-200">
               <ProfilePane
                 peerUserId={peerUserId}
                 fallbackName={peer?.name ?? "?"}

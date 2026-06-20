@@ -585,7 +585,10 @@
     "bioLabel": "Bio",
     "noResults": "No members found",
     "online": "Online",
-    "agentRole": "AI Agent"
+    "agentRole": "AI Agent",
+    "filterLabel": "Filter conversations",
+    "loadError": "Couldn't load. Check your connection and try again.",
+    "retry": "Retry"
   },
   "onboarding": {
     "welcomeTitle": "Welcome to AIT Community!",

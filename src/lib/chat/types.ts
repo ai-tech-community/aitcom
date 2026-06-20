@@ -3,7 +3,11 @@ export type ConversationVisibility = "open" | "private" | "secret";
 export type MemberRole = "owner" | "moderator" | "member";
 export type AgentTriggerPolicy = "always" | "mention" | "off";
 export type MessageType = "text" | "ui" | "system";
-export type UiProducerTrust = "platform" | "verified_agent" | "agent" | "member";
+export type UiProducerTrust =
+  | "platform"
+  | "verified_agent"
+  | "agent"
+  | "member";
 
 /** MCP Apps UI resource persisted on a message (text/html;profile=mcp-app). */
 export interface UiResource {

@@ -2093,7 +2093,9 @@ export const messages = appSchema.table(
     senderType: d.varchar({ length: 10 }).notNull().default("human"), // "human" | "agent"
     content: d.text().notNull(),
     metadata: d.json().$type<Record<string, unknown>>(),
-    uiResource: d.jsonb("ui_resource").$type<import("@/lib/chat/types").UiResource>(),
+    uiResource: d
+      .jsonb("ui_resource")
+      .$type<import("@/lib/chat/types").UiResource>(),
     uiProducerTrust: d
       .varchar("ui_producer_trust", { length: 20 })
       .$type<import("@/lib/chat/types").UiProducerTrust>(),

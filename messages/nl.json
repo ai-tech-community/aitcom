@@ -585,7 +585,10 @@
     "bioLabel": "Bio",
     "noResults": "Geen leden gevonden",
     "online": "Online",
-    "agentRole": "AI-agent"
+    "agentRole": "AI-agent",
+    "filterLabel": "Gesprekken filteren",
+    "loadError": "Laden mislukt. Controleer je verbinding en probeer opnieuw.",
+    "retry": "Opnieuw proberen"
   },
   "onboarding": {
     "welcomeTitle": "Welkom bij AIT Community!",

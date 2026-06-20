@@ -535,7 +535,13 @@ export const inboxRouter = createTRPCRouter({
    * Verifies the caller is a participant of the conversation before delegating.
    */
   callUiTool: protectedProcedure
-    .input(z.object({ conversationId: z.string(), name: z.string(), args: z.unknown() }))
+    .input(
+      z.object({
+        conversationId: z.string(),
+        name: z.string(),
+        args: z.unknown(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       const [participant] = await ctx.db
         .select()
@@ -547,7 +553,11 @@ export const inboxRouter = createTRPCRouter({
           ),
         )
         .limit(1);
-      if (!participant) throw new TRPCError({ code: "FORBIDDEN", message: "Not a participant" });
+      if (!participant)
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Not a participant",
+        });
       return runUiTool(ctx.db, ctx.session.user.id, input.name, input.args);
     }),
 

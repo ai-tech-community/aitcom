@@ -133,7 +133,11 @@ export function ConversationList({
           value={tab}
           onValueChange={(v) => setTab(v as "inbox" | "unread")}
         >
-          <TabsList variant="line" className="w-full justify-start">
+          <TabsList
+            variant="line"
+            className="w-full justify-start"
+            aria-label={t("filterLabel")}
+          >
             <TabsTrigger value="inbox" className="font-mono text-xs">
               {t("inboxTab")}
             </TabsTrigger>
@@ -157,7 +161,18 @@ export function ConversationList({
 
       {/* List */}
       <div className="min-h-0 flex-1 overflow-y-auto py-1">
-        {conversationsQuery.isLoading ? (
+        {conversationsQuery.isError ? (
+          <div className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
+            <p className="text-muted-foreground text-sm">{t("loadError")}</p>
+            <button
+              type="button"
+              onClick={() => void conversationsQuery.refetch()}
+              className="text-primary focus-visible:ring-ring rounded text-xs font-medium underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+            >
+              {t("retry")}
+            </button>
+          </div>
+        ) : conversationsQuery.isLoading ? (
           <ul className="flex flex-col">
             {Array.from({ length: 6 }).map((_, i) => (
               <li
@@ -209,9 +224,7 @@ export function ConversationList({
                     aria-current={isActive ? "true" : undefined}
                     className={cn(
                       "group focus-visible:ring-ring relative flex items-center gap-3 rounded-md px-2.5 py-2.5 transition-colors focus-visible:ring-2 focus-visible:outline-none",
-                      isActive
-                        ? "bg-secondary"
-                        : "hover:bg-secondary/60",
+                      isActive ? "bg-secondary" : "hover:bg-secondary/60",
                     )}
                   >
                     {/* Active marker — Signal Orange rounded indicator (not a side-stripe). */}

@@ -74,7 +74,9 @@ export function NewMessage({ onCancel, onStarted }: NewMessageProps) {
       <div className="min-h-0 flex-1 overflow-y-auto py-1">
         {query.trim().length === 0 ? (
           <div className="flex items-center justify-center px-6 py-12 text-center">
-            <p className="text-muted-foreground text-sm">{t("searchMembers")}</p>
+            <p className="text-muted-foreground text-sm">
+              {t("searchMembers")}
+            </p>
           </div>
         ) : membersQuery.isLoading ? (
           <ul className="flex flex-col px-1.5">

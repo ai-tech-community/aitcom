@@ -60,10 +60,10 @@ export async function sendDirectMessage(
     .returning();
   // Best-effort, fire-and-forget (consistent with the inbox router paths);
   // publishInboxEvent swallows errors internally so it never blocks/breaks send.
-  void publishInboxEvent(toUserId, {
-    kind: "message",
-    conversationId,
-    message,
-  });
+  // Notify the recipient AND the sender's other tabs, mirroring
+  // inbox.sendMessage's two-publish pattern.
+  const event = { kind: "message", conversationId, message } as const;
+  void publishInboxEvent(toUserId, event);
+  void publishInboxEvent(fromUserId, event);
   return conversationId;
 }

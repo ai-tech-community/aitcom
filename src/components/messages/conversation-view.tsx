@@ -172,7 +172,19 @@ export function ConversationView({
       </div>
 
       {/* Messages */}
-      {messagesQuery.isLoading ? (
+      {messagesQuery.isError ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+          <MessageSquareIcon className="text-muted-foreground h-8 w-8" />
+          <p className="text-muted-foreground text-sm">{t("loadError")}</p>
+          <button
+            type="button"
+            onClick={() => void messagesQuery.refetch()}
+            className="text-primary focus-visible:ring-ring rounded text-xs font-medium underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+          >
+            {t("retry")}
+          </button>
+        </div>
+      ) : messagesQuery.isLoading ? (
         <div className="flex flex-1 flex-col gap-6 p-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <div

@@ -23,8 +23,8 @@ type UiMessageProps = {
 
 /**
  * Renders an MCP-Apps UI resource inside a sandboxed AppRenderer iframe.
- * Only mounted when isChatUiEnabled() is true — the parent is responsible
- * for the flag check; this component does not re-check it at runtime.
+ * Parents should only mount this when isChatUiEnabled() is true; the component
+ * also re-checks the flag at runtime (returns null) as a defensive guard.
  *
  * Sandbox isolation: allow-scripts only (no allow-same-origin) so the
  * guest iframe cannot access host cookies / localStorage.
@@ -55,7 +55,9 @@ export function UiMessage({ conversationId, resource }: UiMessageProps) {
     React.ComponentProps<typeof AppRenderer>["onMessage"]
   > = async (params) => {
     const text = params.content
-      .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
+      .filter(
+        (b): b is Extract<typeof b, { type: "text" }> => b.type === "text",
+      )
       .map((b) => b.text)
       .join("\n")
       .trim();
@@ -92,7 +94,7 @@ export function UiMessage({ conversationId, resource }: UiMessageProps) {
   const handleOpenLink: NonNullable<
     React.ComponentProps<typeof AppRenderer>["onOpenLink"]
   > = async ({ url }) => {
-    if (typeof url === "string" && /^https?:\/\//.test(url)) {
+    if (typeof url === "string" && url.startsWith("https://")) {
       window.open(url, "_blank", "noopener,noreferrer");
       return {};
     }
@@ -109,7 +111,10 @@ export function UiMessage({ conversationId, resource }: UiMessageProps) {
   if (!isChatUiEnabled()) return null;
 
   return (
-    <div className="border-border overflow-hidden rounded-md border" style={{ minHeight: "240px" }}>
+    <div
+      className="border-border overflow-hidden rounded-md border"
+      style={{ minHeight: "240px" }}
+    >
       <AppRenderer
         toolName="inbox.uiMessage"
         html={resource.content}

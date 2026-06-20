@@ -7,10 +7,14 @@ describe("resolveProducerTrust", () => {
     expect(resolveProducerTrust({ kind: "platform" })).toBe("platform");
   });
   it("maps a verified agent to verified_agent", () => {
-    expect(resolveProducerTrust({ kind: "agent", verified: true })).toBe("verified_agent");
+    expect(resolveProducerTrust({ kind: "agent", verified: true })).toBe(
+      "verified_agent",
+    );
   });
   it("maps an unverified agent to agent", () => {
-    expect(resolveProducerTrust({ kind: "agent", verified: false })).toBe("agent");
+    expect(resolveProducerTrust({ kind: "agent", verified: false })).toBe(
+      "agent",
+    );
   });
   it("maps a human member to member", () => {
     expect(resolveProducerTrust({ kind: "member" })).toBe("member");
@@ -25,7 +29,9 @@ describe("cspForResource", () => {
     expect(csp).not.toContain("evil.example");
   });
   it("honors declared connect domains for verified_agent", () => {
-    const csp = cspForResource("verified_agent", { connectDomains: ["api.example.com"] });
+    const csp = cspForResource("verified_agent", {
+      connectDomains: ["api.example.com"],
+    });
     expect(csp).toContain("connect-src 'self' https://api.example.com");
   });
 });

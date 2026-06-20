@@ -24,7 +24,13 @@ type ProfilePaneProps = {
   } | null;
 };
 
-function MonoFact({ label, children }: { label: string; children: React.ReactNode }) {
+function MonoFact({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between gap-3 py-0.5">
       <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
@@ -153,7 +159,7 @@ export function ProfilePane({
             {profile.displayName}
           </p>
           {profile.company && (
-            <p className="text-muted-foreground mt-0.5 font-mono text-xs">
+            <p className="text-muted-foreground mt-0.5 text-xs">
               @ {profile.company}
             </p>
           )}
@@ -212,9 +218,9 @@ export function ProfilePane({
       {/* Bio */}
       {profile.bio && (
         <div className="border-border border-t px-5 py-4">
-          <p className="text-muted-foreground mb-2 font-mono text-xs tracking-wider uppercase">
+          <SectionLabel as="h3" bordered={false} className="mb-2">
             {t("bioLabel")}
-          </p>
+          </SectionLabel>
           <p className="text-muted-foreground text-sm leading-relaxed">
             {profile.bio}
           </p>
@@ -224,9 +230,9 @@ export function ProfilePane({
       {/* Skills */}
       {profile.skills.length > 0 && (
         <div className="border-border border-t px-5 py-4">
-          <p className="text-muted-foreground mb-2 font-mono text-xs tracking-wider uppercase">
+          <SectionLabel as="h3" bordered={false} className="mb-2">
             {t("skillsLabel")}
-          </p>
+          </SectionLabel>
           <div className="flex flex-wrap gap-1.5">
             {profile.skills.map((skill) => (
               <span
@@ -244,7 +250,7 @@ export function ProfilePane({
       <div className="border-border mt-auto border-t px-5 py-4">
         <Link
           href={`/members/${profile.userId}`}
-          className="border-border hover:bg-secondary focus-visible:ring-ring flex items-center justify-center rounded-md border px-3 py-2 font-mono text-xs tracking-wider transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          className="border-border hover:bg-secondary focus-visible:ring-ring flex items-center justify-center rounded-md border px-3 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
         >
           {t("viewFullProfile")}
         </Link>
