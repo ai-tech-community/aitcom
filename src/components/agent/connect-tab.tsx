@@ -6,6 +6,7 @@ import { SetupN8n } from "@/components/agent/setup-n8n";
 import { SetupWebhook } from "@/components/agent/setup-webhook";
 import { SetupCustom } from "@/components/agent/setup-custom";
 import { InviteCodes } from "@/components/agent/invite-codes";
+import { ManifestCard } from "@/components/agent/manifest-card";
 
 import Link from "next/link";
 
@@ -24,6 +25,7 @@ export function ConnectTab({
 }: ConnectTabProps) {
   return (
     <div className="space-y-8">
+      <ManifestCard />
       {!hasFullKey && (
         <div className="border-warning/30 bg-warning/10 rounded border px-4 py-3">
           <p className="text-warning font-mono text-xs font-medium tracking-wider">
