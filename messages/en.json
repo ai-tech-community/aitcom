@@ -1555,7 +1555,8 @@
         "integrations": "Integrations",
         "broadcast": "Announcements",
         "autonomy": "Agent advisory",
-        "acquire": "Acquire"
+        "acquire": "Acquire",
+        "spaces": "Spaces"
       },
       "classroom": {
         "policyTitle": "Who can create classrooms",
@@ -1697,6 +1698,17 @@
           "lastSync": "Last synced",
           "never": "never"
         }
+      },
+      "spaces": {
+        "title": "Spaces",
+        "description": "Choose which surfaces appear in your community, their order, and their labels.",
+        "save": "Save",
+        "cancel": "Cancel",
+        "moveUp": "Move up",
+        "moveDown": "Move down",
+        "enabledToggle": "Toggle visibility",
+        "enabled": "Shown",
+        "disabled": "Hidden"
       }
     },
     "invite": {
