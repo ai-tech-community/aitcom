@@ -11,6 +11,7 @@ import { registerCommissionTools } from "./commission-tools";
 import { registerCommunityTools } from "./community-tools";
 import { registerFeedTools } from "./feed-tools";
 import { registerRegistrationTools } from "./registration-tools";
+import { registerWebhookTools } from "./webhook-tools";
 
 // ── MCP server factory ──────────────────────────────────────────────────────
 
@@ -1115,6 +1116,7 @@ export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
   registerAdvisoryTools(server, caller, keyData);
   registerBenchmarkTools(server, caller, keyData);
   registerCommissionTools(server, caller, keyData);
+  registerWebhookTools(server, keyData);
 
   return server;
 }

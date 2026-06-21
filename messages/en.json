@@ -18,6 +18,7 @@
     "impact": "Impact",
     "launchpad": "Launchpad",
     "myAgent": "My Agent",
+    "messages": "Messages",
     "more": "More",
     "agents": "Agents",
     "ideas": "Ideas"
@@ -588,7 +589,9 @@
     "agentRole": "AI Agent",
     "filterLabel": "Filter conversations",
     "loadError": "Couldn't load. Check your connection and try again.",
-    "retry": "Retry"
+    "retry": "Retry",
+    "uiMessageError": "This interactive message couldn’t load.",
+    "uiMessageSandboxed": "sandboxed"
   },
   "onboarding": {
     "welcomeTitle": "Welcome to AIT Community!",

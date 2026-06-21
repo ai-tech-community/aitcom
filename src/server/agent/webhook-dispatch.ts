@@ -1,34 +1,15 @@
-import { createHmac } from "crypto";
-import { gt, eq, asc } from "drizzle-orm";
+import { and, gt, eq, asc } from "drizzle-orm";
+
 import type { db as _db } from "@/server/db";
-import {
-  agentWebhooks,
-  activityEvents,
-  agentProfiles,
-  memberProfiles,
-} from "@/server/db/schema";
-import { RESPONSE_ACTIONS } from "@/server/communities/activation";
+import { agentWebhooks, activityEvents } from "@/server/db/schema";
 import { validateWebhookUrl } from "./validate-webhook-url";
+import {
+  deliverEvent,
+  resolveActorName,
+  webhookMatchesEvent,
+} from "./deliver-event";
 
 type DB = typeof _db;
-
-/**
- * Reciprocity actions carry a `recipientId` (the contribution author) for the
- * activation funnel, but they are still PUBLIC events that must fan out to
- * forum-subscribed webhooks regardless of who the named recipient is.
- */
-const RECIPROCITY_ACTIONS: string[] = [...RESPONSE_ACTIONS];
-
-/** Map category names to activity_event action prefixes. */
-const CATEGORY_PREFIXES: Record<string, string[]> = {
-  forum: ["thread."],
-  challenges: ["challenge."],
-  inbox: ["message."],
-  content: ["article.", "knowledge."],
-  events: ["event."],
-  community: ["idea."],
-  benchmark: ["benchmark."],
-};
 
 const MAX_EVENTS_PER_RUN = 20;
 const MAX_FAILURES = 10;
@@ -52,19 +33,23 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
   const webhooks = await db
     .select()
     .from(agentWebhooks)
-    .where(eq(agentWebhooks.isEnabled, true));
+    .where(
+      and(
+        eq(agentWebhooks.isEnabled, true),
+        eq(agentWebhooks.status, "active"),
+      ),
+    );
 
   for (const webhook of webhooks) {
     try {
       result.webhooksProcessed++;
 
-      // SSRF protection: skip webhooks with private/internal URLs
+      // SSRF protection: skip (and disable) webhooks with private/internal URLs.
       const urlCheck = await validateWebhookUrl(webhook.url);
       if (!urlCheck.ok) {
         console.warn(
           `[webhook-dispatch] Skipping webhook ${webhook.id}: ${urlCheck.reason}`,
         );
-        // Auto-disable the unsafe webhook
         await db
           .update(agentWebhooks)
           .set({ isEnabled: false })
@@ -73,12 +58,7 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
         continue;
       }
 
-      const prefixes = webhook.categories.flatMap(
-        (cat) => CATEGORY_PREFIXES[cat] ?? [],
-      );
-      if (prefixes.length === 0) continue;
-
-      // Query events newer than cursor
+      // Query events newer than cursor.
       const events = webhook.cursor
         ? await db
             .select()
@@ -92,31 +72,10 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
             .orderBy(asc(activityEvents.createdAt))
             .limit(MAX_EVENTS_PER_RUN);
 
-      // Filter: match category prefixes + exclude agent's own actions + dampen agent chains
       let consecutiveAgentEvents = webhook.consecutiveAgentEvents;
-
-      const matchingEvents = events.filter((evt) => {
-        // Skip private events not meant for this webhook's owner.
-        // Reciprocity actions are public despite carrying a recipientId, so the
-        // recipient filter must not apply to them.
-        if (
-          evt.recipientId &&
-          !RECIPROCITY_ACTIONS.includes(evt.action) &&
-          evt.recipientId !== webhook.ownerId
-        ) {
-          return false;
-        }
-        if (evt.actorId === webhook.agentId) return false;
-        if (!prefixes.some((prefix) => evt.action.startsWith(prefix)))
-          return false;
-
-        // Dampen cross-agent ping-pong: skip agent events after 2 consecutive agent-only events
-        if (evt.actorType === "agent" && consecutiveAgentEvents >= 2) {
-          return false;
-        }
-
-        return true;
-      });
+      const matchingEvents = events.filter((evt) =>
+        webhookMatchesEvent(webhook, evt, consecutiveAgentEvents),
+      );
 
       let consecutiveFailures = webhook.consecutiveFailures;
 
@@ -126,56 +85,31 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
           evt.actorId,
           evt.actorType,
         );
-
-        const payload = JSON.stringify({
-          type: evt.action,
-          data: {
-            actorId: evt.actorId,
-            actorType: evt.actorType,
-            actorName,
-            targetType: evt.targetType,
-            targetId: evt.targetId,
-            metadata: evt.metadata,
-          },
+        const t0 = Date.now();
+        const outcome = await deliverEvent(webhook, evt, actorName);
+        const latencyMs = Date.now() - t0;
+        console.log("[webhook-delivery]", {
+          path: "cron",
+          webhookId: webhook.id,
           eventId: evt.id,
-          timestamp: evt.createdAt.toISOString(),
+          ok: outcome.ok,
+          latencyMs,
         });
 
-        const signature = createHmac("sha256", webhook.secret)
-          .update(payload)
-          .digest("hex");
-
-        try {
-          const res = await fetch(webhook.url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-AIT-Signature": `sha256=${signature}`,
-              "X-AIT-Event": evt.action,
-            },
-            body: payload,
-            signal: AbortSignal.timeout(5000),
-          });
-
-          if (res.ok) {
-            consecutiveFailures = 0;
-            result.eventsDispatched++;
-            // Track consecutive agent events for dampening
-            if (evt.actorType === "agent") {
-              consecutiveAgentEvents++;
-            } else {
-              consecutiveAgentEvents = 0; // Reset on human event
-            }
+        if (outcome.ok) {
+          consecutiveFailures = 0;
+          result.eventsDispatched++;
+          if (evt.actorType === "agent") {
+            consecutiveAgentEvents++;
           } else {
-            consecutiveFailures++;
-            result.failures++;
+            consecutiveAgentEvents = 0;
           }
-        } catch {
+        } else {
           consecutiveFailures++;
           result.failures++;
         }
 
-        // Auto-disable after MAX_FAILURES
+        // Auto-disable after MAX_FAILURES consecutive failures.
         if (consecutiveFailures >= MAX_FAILURES) {
           await db
             .update(agentWebhooks)
@@ -189,17 +123,17 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
           break;
         }
 
-        // Skip this poison event after too many retries
+        // Skip a poison event after too many retries.
         if (
           consecutiveFailures >= SKIP_AFTER_RETRIES &&
           consecutiveFailures < MAX_FAILURES
         ) {
-          // Skip — advance cursor past this event, reset for next event
           consecutiveFailures = 0;
         }
       }
 
-      // Advance cursor to last event we saw (even if no matches, so we don't re-scan)
+      // Advance cursor past everything we saw (even with no matches) so we don't
+      // re-scan the same events next run.
       if (consecutiveFailures < MAX_FAILURES) {
         const finalCursor =
           events.length > 0
@@ -225,26 +159,4 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
   }
 
   return result;
-}
-
-async function resolveActorName(
-  db: DB,
-  actorId: string,
-  actorType: string,
-): Promise<string> {
-  if (actorType === "agent") {
-    const [agent] = await db
-      .select({ name: agentProfiles.name })
-      .from(agentProfiles)
-      .where(eq(agentProfiles.id, actorId))
-      .limit(1);
-    return agent?.name ?? "Unknown Agent";
-  }
-
-  const [member] = await db
-    .select({ displayName: memberProfiles.displayName })
-    .from(memberProfiles)
-    .where(eq(memberProfiles.userId, actorId))
-    .limit(1);
-  return member?.displayName ?? "Unknown Member";
 }

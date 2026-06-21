@@ -661,6 +661,56 @@ export const agentManagementRouter = createTRPCRouter({
     return { success: true };
   }),
 
+  /** Approve an agent-proposed (pending) webhook: activate it and reveal the secret once. */
+  approveWebhook: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+
+    const [webhook] = await ctx.db
+      .select()
+      .from(agentWebhooks)
+      .where(
+        and(
+          eq(agentWebhooks.ownerId, userId),
+          eq(agentWebhooks.status, "pending"),
+        ),
+      )
+      .limit(1);
+
+    if (!webhook) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No pending webhook proposal to approve",
+      });
+    }
+
+    // SSRF protection: re-validate the proposed URL at approval time.
+    const urlCheck = await validateWebhookUrl(webhook.url);
+    if (!urlCheck.ok) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: urlCheck.reason });
+    }
+
+    await ctx.db
+      .update(agentWebhooks)
+      .set({ status: "active", isEnabled: true, consecutiveFailures: 0 })
+      .where(eq(agentWebhooks.id, webhook.id));
+
+    return { secret: webhook.secret };
+  }),
+
+  /** Reject (discard) an agent-proposed (pending) webhook. */
+  rejectWebhook: protectedProcedure.mutation(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    await ctx.db
+      .delete(agentWebhooks)
+      .where(
+        and(
+          eq(agentWebhooks.ownerId, userId),
+          eq(agentWebhooks.status, "pending"),
+        ),
+      );
+    return { success: true };
+  }),
+
   // ── Drafts ────────────────────────────────────────────────────────────────
 
   /** Get drafts for the current user, filtered by status. */

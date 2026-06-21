@@ -1,12 +1,17 @@
 "use client";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
+import { useEffect, useRef, useState } from "react";
 import { AppRenderer } from "@mcp-ui/client";
+import { AppWindowIcon } from "lucide-react";
 import { env } from "@/env.js";
 import { api } from "@/trpc/react";
 import { isChatUiEnabled } from "@/lib/chat/flags";
-import type { UiResource } from "@/lib/chat/types";
+import { honorsDeclaredDomains } from "@/lib/chat/trust";
+import type { UiProducerTrust, UiResource } from "@/lib/chat/types";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -15,23 +20,55 @@ import type { UiResource } from "@/lib/chat/types";
 type UiMessageProps = {
   conversationId: string;
   resource: UiResource;
+  /** Persisted producer trust tier; gates whether declared CSP domains apply. */
+  trust: UiProducerTrust;
 };
+
+// The guest reports its own height via `ui/notifications/size-changed`; the host
+// clamps it so a misbehaving (or non-reporting → AppFrame's 600px default) app
+// can never blow out the message column. MAX is a hair under the typical pane.
+const MIN_FRAME_HEIGHT = 88;
+const MAX_FRAME_HEIGHT = 420;
+// If a guest never reports a size, stop showing the skeleton after this long.
+const REVEAL_FALLBACK_MS = 1200;
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 /**
- * Renders an MCP-Apps UI resource inside a sandboxed AppRenderer iframe.
- * Parents should only mount this when isChatUiEnabled() is true; the component
- * also re-checks the flag at runtime (returns null) as a defensive guard.
+ * Renders an MCP-Apps UI resource inside a sandboxed AppRenderer iframe, framed
+ * as a labelled "app" surface in the conversation. Parents should only mount
+ * this when isChatUiEnabled() is true; the component also re-checks the flag at
+ * runtime (returns null) as a defensive guard.
  *
- * Sandbox isolation: allow-scripts only (no allow-same-origin) so the
- * guest iframe cannot access host cookies / localStorage.
+ * Sandbox isolation comes from the SEPARATE ORIGIN of the proxy
+ * (NEXT_PUBLIC_CHAT_SANDBOX_URL), not from the sandbox attribute: the MCP Apps
+ * proxy protocol requires `allow-same-origin` (it reads document.referrer and
+ * writes into the inner iframe), so the outer iframe uses the SDK default
+ * `allow-scripts allow-same-origin allow-forms`. Because the proxy lives on a
+ * different origin than the app, the guest still cannot reach host cookies.
  */
-export function UiMessage({ conversationId, resource }: UiMessageProps) {
+export function UiMessage({ conversationId, resource, trust }: UiMessageProps) {
   const locale = useLocale();
+  const t = useTranslations("inbox");
   const { resolvedTheme } = useTheme();
+
+  // ── Frame lifecycle state ─────────────────────────────────────────────────
+
+  const [ready, setReady] = useState(false);
+  const [errored, setErrored] = useState(false);
+  const [height, setHeight] = useState<number | null>(null);
+
+  // Reveal the frame once the guest reports a size; fall back on a timer so a
+  // guest that never reports doesn't sit under a skeleton forever.
+  const readyRef = useRef(false);
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (!readyRef.current) setReady(true);
+    }, REVEAL_FALLBACK_MS);
+    return () => clearTimeout(id);
+  }, []);
 
   // ── tRPC mutations ───────────────────────────────────────────────────────
 
@@ -101,6 +138,19 @@ export function UiMessage({ conversationId, resource }: UiMessageProps) {
     return { isError: true };
   };
 
+  /** onSizeChanged: guest reports its content size → fit (clamped) + reveal. */
+  const handleSizeChanged: NonNullable<
+    React.ComponentProps<typeof AppRenderer>["onSizeChanged"]
+  > = ({ height: h }) => {
+    readyRef.current = true;
+    setReady(true);
+    if (typeof h === "number" && h > 0) {
+      setHeight(
+        Math.min(MAX_FRAME_HEIGHT, Math.max(MIN_FRAME_HEIGHT, Math.round(h))),
+      );
+    }
+  };
+
   // ── hostContext ───────────────────────────────────────────────────────────
 
   const theme =
@@ -110,23 +160,70 @@ export function UiMessage({ conversationId, resource }: UiMessageProps) {
 
   if (!isChatUiEnabled()) return null;
 
+  // Only forward declared CSP domains for trust tiers that earn them; AppFrame
+  // appends them as `?csp=` so the sandbox host can set a tamper-proof CSP
+  // header. Untrusted tiers send nothing → host applies the restrictive default.
+  const effectiveCsp = honorsDeclaredDomains(trust) ? resource.csp : undefined;
+
+  if (errored) {
+    return (
+      <div className="border-border text-muted-foreground flex w-[min(100%,30rem)] items-center gap-2 rounded-lg border border-dashed px-3 py-2.5 text-sm">
+        <AppWindowIcon className="size-4 shrink-0" aria-hidden />
+        <span>{t("uiMessageError")}</span>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className="border-border overflow-hidden rounded-md border"
-      style={{ minHeight: "240px" }}
-    >
-      <AppRenderer
-        toolName="inbox.uiMessage"
-        html={resource.content}
-        sandbox={{
-          url: sandboxUrl,
-          permissions: "allow-scripts",
+    <figure className="border-border bg-card w-[min(100%,30rem)] overflow-hidden rounded-lg border">
+      <figcaption className="border-border bg-muted/50 flex items-center gap-1.5 border-b px-3 py-1.5">
+        <AppWindowIcon
+          className="text-muted-foreground size-3.5 shrink-0"
+          aria-hidden
+        />
+        <span className="text-muted-foreground font-mono text-[11px] tracking-wider uppercase">
+          / app
+        </span>
+        <span className="sr-only">{t("uiMessageSandboxed")}</span>
+      </figcaption>
+
+      <div
+        className="relative"
+        style={{
+          height: height != null ? `${height}px` : undefined,
+          maxHeight: `${MAX_FRAME_HEIGHT}px`,
+          minHeight: ready ? undefined : `${MIN_FRAME_HEIGHT}px`,
         }}
-        hostContext={{ theme, locale }}
-        onMessage={handleMessage}
-        onCallTool={handleCallTool}
-        onOpenLink={handleOpenLink}
-      />
-    </div>
+      >
+        <div
+          className={cn(
+            "h-full overflow-auto transition-opacity duration-200 ease-out motion-reduce:transition-none",
+            ready ? "opacity-100" : "opacity-0",
+          )}
+        >
+          <AppRenderer
+            toolName="inbox.uiMessage"
+            html={resource.content}
+            sandbox={{
+              url: sandboxUrl,
+              permissions: "allow-scripts allow-same-origin allow-forms",
+              csp: effectiveCsp,
+            }}
+            hostContext={{ theme, locale }}
+            onMessage={handleMessage}
+            onCallTool={handleCallTool}
+            onOpenLink={handleOpenLink}
+            onSizeChanged={handleSizeChanged}
+            onError={() => setErrored(true)}
+          />
+        </div>
+
+        {!ready && (
+          <div className="absolute inset-0 p-3" aria-hidden>
+            <Skeleton className="h-full w-full rounded-md" />
+          </div>
+        )}
+      </div>
+    </figure>
   );
 }

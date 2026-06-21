@@ -70,6 +70,7 @@ import * as migration_20260614b_hackathon_staff_invite from "./20260614b_hackath
 import * as migration_20260620_points_events from "./20260620_points_events";
 import * as migration_20260620a_chat from "./20260620a_chat";
 import * as migration_20260620b_points_boosts from "./20260620b_points_boosts";
+import * as migration_20260621a_agent_webhook_status from "./20260621a_agent_webhook_status";
 
 export const migrations = [
   {
@@ -431,5 +432,10 @@ export const migrations = [
     up: migration_20260620b_points_boosts.up,
     down: migration_20260620b_points_boosts.down,
     name: "20260620b_points_boosts",
+  },
+  {
+    up: migration_20260621a_agent_webhook_status.up,
+    down: migration_20260621a_agent_webhook_status.down,
+    name: "20260621a_agent_webhook_status",
   },
 ];

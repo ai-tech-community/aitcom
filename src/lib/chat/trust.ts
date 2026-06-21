@@ -23,6 +23,15 @@ const HONORS_DECLARED_DOMAINS: Record<UiProducerTrust, boolean> = {
   member: false,
 };
 
+/**
+ * Whether a producer at this trust tier may have its declared CSP domains
+ * honored. The host uses this to decide what (if anything) to forward to the
+ * sandbox proxy as `?csp=`; untrusted tiers get the restrictive default.
+ */
+export function honorsDeclaredDomains(trust: UiProducerTrust): boolean {
+  return HONORS_DECLARED_DOMAINS[trust];
+}
+
 function domainList(domains: string[] | undefined): string {
   if (!domains || domains.length === 0) return "";
   return " " + domains.map((d) => `https://${d}`).join(" ");

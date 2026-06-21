@@ -19,6 +19,8 @@ import {
 } from "@/server/db/schema";
 import { logActivity } from "@/server/agent/activity";
 import { publishInboxEvent } from "@/server/inbox/publish";
+import { after } from "next/server";
+import { dispatchEventImmediately } from "@/server/agent/dispatch-immediate";
 import { resolveProducerTrust } from "@/lib/chat/trust";
 import type { UiResource } from "@/lib/chat/types";
 import { runUiTool } from "@/server/inbox/ui-tools";
@@ -322,6 +324,14 @@ export const inboxRouter = createTRPCRouter({
         });
       }
 
+      // Determine conversation type so agent conversations route to the owner
+      const [convRow] = await ctx.db
+        .select({ type: conversations.type })
+        .from(conversations)
+        .where(eq(conversations.id, input.conversationId))
+        .limit(1);
+      const conversationType = convRow?.type;
+
       // Find the other participant (recipient) for event isolation
       const [recipient] = await ctx.db
         .select({ userId: conversationParticipants.userId })
@@ -355,15 +365,31 @@ export const inboxRouter = createTRPCRouter({
         .set({ updatedAt: new Date() })
         .where(eq(conversations.id, input.conversationId));
 
-      // Log activity for webhook dispatch
-      void logActivity(ctx.db, {
+      // Log activity for webhook dispatch, then wake the recipient agent in
+      // realtime (ADR-0025 Tier-2). The cron remains the durable backstop.
+      // For agent-type conversations the sole participant is the owner (sender),
+      // so use userId as the recipientId to prevent cross-tenant fan-out.
+      const webhookRecipientId =
+        conversationType === "agent" ? userId : recipient?.userId;
+      const activityEvent = await logActivity(ctx.db, {
         actorId: userId,
         actorType: "member",
         action: "message.sent",
         targetType: "conversations",
         targetId: input.conversationId,
-        recipientId: recipient?.userId,
+        recipientId: webhookRecipientId,
       });
+      try {
+        after(async () => {
+          try {
+            await dispatchEventImmediately(ctx.db, activityEvent);
+          } catch (err) {
+            console.error("[inbox] immediate dispatch failed:", err);
+          }
+        });
+      } catch {
+        // No request scope (e.g. tests/scripts) — the cron backstop will deliver.
+      }
 
       // Publish real-time event to recipient and sender (other tabs)
       if (recipient?.userId) {
@@ -630,12 +656,21 @@ export const inboxRouter = createTRPCRouter({
       requireScope(ctx.agent.scopes, "contribute");
       const ownerId = requireOwner(ctx.agent.ownerId);
 
-      // Producer trust for any UI resource: agents default to the STRICTER
-      // `agent` CSP tier. `status === "active"` is true for ~every agent, so it
-      // is NOT a verification signal — using it would hand all agents the relaxed
-      // `verified_agent` CSP. Promote to verified only once a real signal exists
-      // (e.g. a dedicated agentProfiles.isVerified / manifest attestation flag).
-      const agentIsVerified = false;
+      // Producer trust for any UI resource. Only agents that completed the
+      // X/Twitter attestation flow (agentProfiles.isVerified, set by
+      // agent-management.submitVerification) earn the relaxed `verified_agent`
+      // CSP tier; everyone else stays on the STRICTER `agent` tier. `status`
+      // is NOT a verification signal — it is "active" for ~every agent.
+      // Only fetch the flag when there is a UI resource whose trust depends on it.
+      let agentIsVerified = false;
+      if (input.uiResource) {
+        const [agentProfile] = await ctx.db
+          .select({ isVerified: agentProfiles.isVerified })
+          .from(agentProfiles)
+          .where(eq(agentProfiles.id, ctx.agent.agentId))
+          .limit(1);
+        agentIsVerified = agentProfile?.isVerified ?? false;
+      }
 
       // Find existing agent conversation
       const [existingConv] = await ctx.db
