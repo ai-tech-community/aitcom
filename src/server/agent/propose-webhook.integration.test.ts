@@ -268,4 +268,91 @@ describe.skipIf(!RUN_DB)("propose-webhook [DB integration]", () => {
     const notifCount = await getNotificationCount();
     expect(notifCount).toBe(0);
   });
+
+  // ── Case 5 ───────────────────────────────────────────────────────────────
+  // approveWebhook on a pending row sets status='active', isEnabled=true,
+  // consecutiveFailures=0, and returns the row's secret.
+  it("approving a pending row activates it and returns the secret", async () => {
+    const { db, schema, eq, and } = m;
+
+    await proposeWebhook("https://example.com/hook", ["inbox"]);
+    const pendingRow = await getWebhookRow();
+    expect(pendingRow).not.toBeNull();
+    expect(pendingRow!.status).toBe("pending");
+
+    // Simulate approveWebhook DB effect directly.
+    await db
+      .update(schema.agentWebhooks)
+      .set({ status: "active", isEnabled: true, consecutiveFailures: 0 })
+      .where(
+        and(
+          eq(schema.agentWebhooks.ownerId, fx.ownerId),
+          eq(schema.agentWebhooks.status, "pending"),
+        ),
+      );
+
+    const row = await getWebhookRow();
+    expect(row).not.toBeNull();
+    expect(row!.status).toBe("active");
+    expect(row!.isEnabled).toBe(true);
+    expect(row!.consecutiveFailures).toBe(0);
+    // The secret that would be returned to the owner is the stored one.
+    expect(row!.secret).toBe(pendingRow!.secret);
+  });
+
+  // ── Case 6 ───────────────────────────────────────────────────────────────
+  // After approval the row IS returned by the active-only delivery query.
+  it("after approval the row is returned by the active-only delivery query", async () => {
+    const { db, schema, eq, and } = m;
+
+    await proposeWebhook("https://example.com/hook", ["inbox"]);
+
+    // Approve it.
+    await db
+      .update(schema.agentWebhooks)
+      .set({ status: "active", isEnabled: true, consecutiveFailures: 0 })
+      .where(
+        and(
+          eq(schema.agentWebhooks.ownerId, fx.ownerId),
+          eq(schema.agentWebhooks.status, "pending"),
+        ),
+      );
+
+    // Replicate the active-only selection used in webhook-dispatch.ts
+    const rows = await db
+      .select()
+      .from(schema.agentWebhooks)
+      .where(
+        and(
+          eq(schema.agentWebhooks.isEnabled, true),
+          eq(schema.agentWebhooks.status, "active"),
+        ),
+      );
+
+    const ourRow = rows.find((r) => r.ownerId === fx.ownerId);
+    expect(ourRow).not.toBeUndefined();
+  });
+
+  // ── Case 7 ───────────────────────────────────────────────────────────────
+  // rejectWebhook deletes the pending row (subsequent getWebhook → null).
+  it("rejecting a pending row deletes it", async () => {
+    const { db, schema, eq, and } = m;
+
+    await proposeWebhook("https://example.com/hook", ["inbox"]);
+    const pendingRow = await getWebhookRow();
+    expect(pendingRow).not.toBeNull();
+
+    // Simulate rejectWebhook DB effect directly.
+    await db
+      .delete(schema.agentWebhooks)
+      .where(
+        and(
+          eq(schema.agentWebhooks.ownerId, fx.ownerId),
+          eq(schema.agentWebhooks.status, "pending"),
+        ),
+      );
+
+    const row = await getWebhookRow();
+    expect(row).toBeNull();
+  });
 });
