@@ -76,7 +76,16 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
 
       for (const evt of matchingEvents) {
         const actorName = await resolveActorName(db, evt.actorId, evt.actorType);
+        const t0 = Date.now();
         const outcome = await deliverEvent(webhook, evt, actorName);
+        const latencyMs = Date.now() - t0;
+        console.log("[webhook-delivery]", {
+          path: "cron",
+          webhookId: webhook.id,
+          eventId: evt.id,
+          ok: outcome.ok,
+          latencyMs,
+        });
 
         if (outcome.ok) {
           consecutiveFailures = 0;

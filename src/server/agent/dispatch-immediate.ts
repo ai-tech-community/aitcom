@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import type { db as _db } from "@/server/db";
 import { agentWebhooks } from "@/server/db/schema";
@@ -35,7 +35,14 @@ export async function dispatchEventImmediately(
     webhooks = await db
       .select()
       .from(agentWebhooks)
-      .where(eq(agentWebhooks.isEnabled, true));
+      .where(
+        and(
+          eq(agentWebhooks.isEnabled, true),
+          event.recipientId
+            ? eq(agentWebhooks.ownerId, event.recipientId)
+            : undefined,
+        ),
+      );
   } catch (err) {
     console.error("[webhook-immediate] failed to load webhooks:", err);
     return;
@@ -51,10 +58,16 @@ export async function dispatchEventImmediately(
       if (!urlCheck.ok) continue; // the cron owns auto-disable for bad URLs
 
       const actorName = await resolveActorName(db, event.actorId, event.actorType);
+      const t0 = Date.now();
       const outcome = await deliverEvent(webhook, event, actorName);
-      console.log(
-        `[webhook-immediate] webhook=${webhook.id} event=${event.id} ok=${outcome.ok}`,
-      );
+      const latencyMs = Date.now() - t0;
+      console.log("[webhook-delivery]", {
+        path: "immediate",
+        webhookId: webhook.id,
+        eventId: event.id,
+        ok: outcome.ok,
+        latencyMs,
+      });
     } catch (err) {
       console.error(`[webhook-immediate] error for webhook ${webhook.id}:`, err);
     }

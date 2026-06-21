@@ -100,8 +100,11 @@ describe.skipIf(!RUN_DB)("dispatchEventImmediately [DB integration]", () => {
 
   async function insertMessageEvent(
     createdAt: Date,
-    recipientId: string | null = null,
+    recipientId: string | null | undefined = undefined,
   ) {
+    if (recipientId === undefined) {
+      recipientId = fx.ownerId;
+    }
     const { db, schema } = m;
     const [row] = await db
       .insert(schema.activityEvents)

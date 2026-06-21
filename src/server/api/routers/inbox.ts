@@ -324,6 +324,14 @@ export const inboxRouter = createTRPCRouter({
         });
       }
 
+      // Determine conversation type so agent conversations route to the owner
+      const [convRow] = await ctx.db
+        .select({ type: conversations.type })
+        .from(conversations)
+        .where(eq(conversations.id, input.conversationId))
+        .limit(1);
+      const conversationType = convRow?.type;
+
       // Find the other participant (recipient) for event isolation
       const [recipient] = await ctx.db
         .select({ userId: conversationParticipants.userId })
@@ -359,13 +367,17 @@ export const inboxRouter = createTRPCRouter({
 
       // Log activity for webhook dispatch, then wake the recipient agent in
       // realtime (ADR-0025 Tier-2). The cron remains the durable backstop.
+      // For agent-type conversations the sole participant is the owner (sender),
+      // so use userId as the recipientId to prevent cross-tenant fan-out.
+      const webhookRecipientId =
+        conversationType === "agent" ? userId : recipient?.userId;
       const activityEvent = await logActivity(ctx.db, {
         actorId: userId,
         actorType: "member",
         action: "message.sent",
         targetType: "conversations",
         targetId: input.conversationId,
-        recipientId: recipient?.userId,
+        recipientId: webhookRecipientId,
       });
       try {
         after(async () => {

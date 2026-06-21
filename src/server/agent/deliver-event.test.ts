@@ -48,7 +48,7 @@ describe("webhookMatchesEvent", () => {
   it("matches an inbox message destined for the webhook owner", () => {
     expect(webhookMatchesEvent(webhook(), event(), 0)).toBe(true);
   });
-  it("matches an inbox message with no recipient (agent conversation)", () => {
+  it("treats a null-recipient event as public (matches any subscriber)", () => {
     expect(webhookMatchesEvent(webhook(), event({ recipientId: null }), 0)).toBe(true);
   });
   it("rejects events addressed to a different recipient", () => {
