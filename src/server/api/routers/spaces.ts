@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -161,7 +161,7 @@ export const spacesRouter = createTRPCRouter({
         .select({ position: spaces.position })
         .from(spaces)
         .where(eq(spaces.communityId, ctx.community.id))
-        .orderBy(asc(spaces.position))
+        .orderBy(desc(spaces.position))
         .limit(1);
       const room = await ctx.db.transaction(async (tx) => {
         const id = crypto.randomUUID();
@@ -355,7 +355,11 @@ export const spacesRouter = createTRPCRouter({
         .select({ id: spaces.id })
         .from(spaces)
         .where(
-          and(eq(spaces.id, input.spaceId), eq(spaces.communityId, ctx.community.id)),
+          and(
+            eq(spaces.id, input.spaceId),
+            eq(spaces.communityId, ctx.community.id),
+            eq(spaces.kind, "room"),
+          ),
         )
         .limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
@@ -378,6 +382,19 @@ export const spacesRouter = createTRPCRouter({
       if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
+      // Confirm the room belongs to this community before reading memberships.
+      const [room] = await ctx.db
+        .select({ id: spaces.id })
+        .from(spaces)
+        .where(
+          and(
+            eq(spaces.id, input.spaceId),
+            eq(spaces.communityId, ctx.community.id),
+            eq(spaces.kind, "room"),
+          ),
+        )
+        .limit(1);
+      if (!room) throw new TRPCError({ code: "NOT_FOUND" });
       return ctx.db
         .select({
           userId: spaceMemberships.userId,
