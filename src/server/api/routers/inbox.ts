@@ -15,8 +15,10 @@ import {
   messages,
   agentProfiles,
   memberProfiles,
+  spaceMemberships,
   user,
 } from "@/server/db/schema";
+import { isActiveMember } from "@/server/communities/room-access";
 import { logActivity } from "@/server/agent/activity";
 import { publishInboxEvent } from "@/server/inbox/publish";
 import { after } from "next/server";
@@ -39,6 +41,36 @@ const uiResourceSchema = z.object({
     })
     .optional(),
 });
+
+type ConversationDb = typeof import("@/server/db").db;
+
+/**
+ * For a space conversation, the caller must be an active member of the room.
+ * Returns the active member user-ids (for realtime fan-out) or throws FORBIDDEN.
+ */
+async function requireSpaceConversationAccess(
+  db: ConversationDb,
+  conversationSpaceId: string,
+  userId: string,
+): Promise<string[]> {
+  const members = await db
+    .select({
+      userId: spaceMemberships.userId,
+      status: spaceMemberships.status,
+    })
+    .from(spaceMemberships)
+    .where(
+      and(
+        eq(spaceMemberships.spaceId, conversationSpaceId),
+        eq(spaceMemberships.status, "active"),
+      ),
+    );
+  const mine = members.find((m) => m.userId === userId);
+  if (!isActiveMember(mine ? { status: "active" } : null)) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  return members.map((m) => m.userId);
+}
 
 // ── Router ───────────────────────────────────────────────────────────────────
 
@@ -77,7 +109,12 @@ export const inboxRouter = createTRPCRouter({
           conversations,
           eq(conversationParticipants.conversationId, conversations.id),
         )
-        .where(eq(conversationParticipants.userId, userId));
+        .where(
+          and(
+            eq(conversationParticipants.userId, userId),
+            ne(conversations.type, "space"),
+          ),
+        );
 
       if (participantRows.length === 0) {
         return { conversations: [], nextCursor: null };
@@ -230,23 +267,39 @@ export const inboxRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Verify user is a participant
-      const [participant] = await ctx.db
-        .select()
-        .from(conversationParticipants)
-        .where(
-          and(
-            eq(conversationParticipants.conversationId, input.conversationId),
-            eq(conversationParticipants.userId, userId),
-          ),
-        )
+      // Load the conversation to branch on its type. Space conversations have
+      // no participant rows — they authorize via active space membership.
+      const [conv] = await ctx.db
+        .select({
+          id: conversations.id,
+          type: conversations.type,
+          spaceId: conversations.spaceId,
+        })
+        .from(conversations)
+        .where(eq(conversations.id, input.conversationId))
         .limit(1);
+      if (!conv) throw new TRPCError({ code: "NOT_FOUND" });
+      if (conv.type === "space") {
+        await requireSpaceConversationAccess(ctx.db, conv.spaceId!, userId);
+      } else {
+        // Verify user is a participant
+        const [participant] = await ctx.db
+          .select()
+          .from(conversationParticipants)
+          .where(
+            and(
+              eq(conversationParticipants.conversationId, input.conversationId),
+              eq(conversationParticipants.userId, userId),
+            ),
+          )
+          .limit(1);
 
-      if (!participant) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You are not a participant in this conversation",
-        });
+        if (!participant) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You are not a participant in this conversation",
+          });
+        }
       }
 
       const conditions = [eq(messages.conversationId, input.conversationId)];
@@ -305,6 +358,68 @@ export const inboxRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
+      // Load the conversation up front so we can branch on its type. Space
+      // conversations have no participant rows — they authorize via active
+      // space membership and fan out to every active member.
+      const [convRow] = await ctx.db
+        .select({
+          type: conversations.type,
+          spaceId: conversations.spaceId,
+        })
+        .from(conversations)
+        .where(eq(conversations.id, input.conversationId))
+        .limit(1);
+      const conversationType = convRow?.type;
+
+      // ── Space (room) conversations ──────────────────────────────────────
+      if (convRow?.type === "space") {
+        const memberIds = await requireSpaceConversationAccess(
+          ctx.db,
+          convRow.spaceId!,
+          userId,
+        );
+
+        // Insert message (same shape as the dm/agent path below)
+        const [message] = await ctx.db
+          .insert(messages)
+          .values({
+            conversationId: input.conversationId,
+            senderId: userId,
+            senderType: "human",
+            content: input.content,
+            uiResource: input.uiResource as UiResource | undefined,
+            uiProducerTrust: input.uiResource
+              ? resolveProducerTrust({ kind: "member" })
+              : undefined,
+          })
+          .returning();
+
+        // Update conversation.updatedAt
+        await ctx.db
+          .update(conversations)
+          .set({ updatedAt: new Date() })
+          .where(eq(conversations.id, input.conversationId));
+
+        // Fan out realtime to every active member except the sender, plus the
+        // sender's own other tabs.
+        for (const memberId of memberIds) {
+          if (memberId === userId) continue;
+          void publishInboxEvent(memberId, {
+            kind: "message",
+            conversationId: input.conversationId,
+            message,
+          });
+        }
+        void publishInboxEvent(userId, {
+          kind: "message",
+          conversationId: input.conversationId,
+          message,
+        });
+
+        return message!;
+      }
+
+      // ── DM / agent conversations (unchanged) ────────────────────────────
       // Verify user is a participant
       const [participant] = await ctx.db
         .select()
@@ -323,14 +438,6 @@ export const inboxRouter = createTRPCRouter({
           message: "You are not a participant in this conversation",
         });
       }
-
-      // Determine conversation type so agent conversations route to the owner
-      const [convRow] = await ctx.db
-        .select({ type: conversations.type })
-        .from(conversations)
-        .where(eq(conversations.id, input.conversationId))
-        .limit(1);
-      const conversationType = convRow?.type;
 
       // Find the other participant (recipient) for event isolation
       const [recipient] = await ctx.db
