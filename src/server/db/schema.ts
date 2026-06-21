@@ -2038,7 +2038,8 @@ export const conversations = appSchema.table("conversation", (d) => ({
     .notNull()
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  type: d.varchar({ length: 10 }).notNull(), // "agent" | "dm"
+  type: d.varchar({ length: 10 }).notNull(), // "agent" | "dm" | "space"
+  spaceId: d.varchar("space_id", { length: 255 }).references(() => spaces.id),
   createdAt: d
     .timestamp({ withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
@@ -3271,6 +3272,9 @@ export const spaces = appSchema.table(
     builtinSurface: d
       .varchar("builtin_surface", { length: 20 })
       .$type<"forum" | "events" | "classroom" | "ideas" | "members">(),
+    visibility: d
+      .varchar({ length: 10 })
+      .$type<"public" | "private">(),
     name: d.text(),
     purpose: d.text(),
     slug: d.text().notNull(),
@@ -3295,6 +3299,62 @@ export const spacesRelations = relations(spaces, ({ one }) => ({
     references: [communities.id],
   }),
 }));
+
+// Room membership — the single source of truth for who is in a kind='room'
+// space. status='active' members can read/post the room chat; 'pending_request'
+// is a private-room join awaiting owner/admin approval (Plan 2b surfaces it).
+export const spaceMemberships = appSchema.table(
+  "space_membership",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    spaceId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => spaces.id),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    role: d
+      .varchar({ length: 20 })
+      .notNull()
+      .default("member")
+      .$type<"moderator" | "member">(),
+    status: d
+      .varchar({ length: 30 })
+      .notNull()
+      .default("active")
+      .$type<"active" | "pending_request">(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("space_membership_space_user_uidx").on(t.spaceId, t.userId),
+    index("space_membership_user_idx").on(t.userId),
+    index("space_membership_space_status_idx").on(t.spaceId, t.status),
+  ],
+);
+
+export const spaceMembershipsRelations = relations(
+  spaceMemberships,
+  ({ one }) => ({
+    space: one(spaces, {
+      fields: [spaceMemberships.spaceId],
+      references: [spaces.id],
+    }),
+    user: one(user, {
+      fields: [spaceMemberships.userId],
+      references: [user.id],
+    }),
+  }),
+);
 
 export const communityInvites = appSchema.table(
   "community_invite",
