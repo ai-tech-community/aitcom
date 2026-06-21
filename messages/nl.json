@@ -1857,7 +1857,21 @@
       "enabledToggle": "Zichtbaarheid wisselen",
       "enabled": "Zichtbaar",
       "disabled": "Verborgen",
-      "rename": "Ruimtenaam wijzigen"
+      "rename": "Ruimtenaam wijzigen",
+      "edit": "Bewerken",
+      "archive": "Archiveren"
+    },
+    "rooms": {
+      "join": "Deelnemen",
+      "requestAccess": "Toegang aanvragen",
+      "pending": "Je verzoek wacht op goedkeuring.",
+      "untitled": "Ruimte",
+      "create": "Ruimte aanmaken",
+      "name": "Ruimtenaam",
+      "purpose": "Doel",
+      "public": "Openbaar",
+      "private": "Privé",
+      "visibility": "Wie kan deelnemen?"
     }
   },
   "notificationPrefs": {

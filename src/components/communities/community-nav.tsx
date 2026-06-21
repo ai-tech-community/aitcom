@@ -19,9 +19,11 @@ interface NavItem {
   key: string;
   href: string;
   label: string;
+  suffix?: string;
 }
 
 export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
+  const tRooms = useTranslations("communities.rooms");
   const t = useTranslations("communities.profile");
   const pathname = usePathname();
 
@@ -31,6 +33,8 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   const { data: spaceTabs, isError: spaceTabsError } = api.spaces.list.useQuery(
     { slug },
   );
+
+  const { data: roomTabs } = api.spaces.listRooms.useQuery({ slug });
 
   const surfaceItems: NavItem[] = spaceTabsError
     ? BUILTIN_SURFACES.map((s) => ({
@@ -49,9 +53,20 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
           ),
         }));
 
+  const roomItems: NavItem[] = (roomTabs ?? []).map((room) => ({
+    key: `room-${room.id}`,
+    href: `${basePath}/spaces/${room.slug}`,
+    label: room.name ?? tRooms("untitled"),
+    suffix:
+      room.visibility === "private" && room.membership !== "active"
+        ? "🔒"
+        : undefined,
+  }));
+
   const navItems: NavItem[] = [
     { key: "overview", href: basePath, label: t("overview") },
     ...surfaceItems,
+    ...roomItems,
     ...(memberRole
       ? [
           {
@@ -107,6 +122,11 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
                 )}
               >
                 {item.label}
+                {item.suffix && (
+                  <span className="ml-1 text-xs" aria-label="private room">
+                    {item.suffix}
+                  </span>
+                )}
               </Link>
             );
           })}

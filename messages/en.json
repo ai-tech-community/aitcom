@@ -1857,7 +1857,21 @@
       "enabledToggle": "Toggle visibility",
       "enabled": "Shown",
       "disabled": "Hidden",
-      "rename": "Rename space name"
+      "rename": "Rename space name",
+      "edit": "Edit",
+      "archive": "Archive"
+    },
+    "rooms": {
+      "join": "Join",
+      "requestAccess": "Request access",
+      "pending": "Your request is pending approval.",
+      "untitled": "Room",
+      "create": "Create room",
+      "name": "Room name",
+      "purpose": "Purpose",
+      "public": "Public",
+      "private": "Private",
+      "visibility": "Who can join?"
     }
   },
   "notificationPrefs": {
