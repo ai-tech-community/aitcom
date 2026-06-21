@@ -5,6 +5,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
 import {
+  BUILTIN_SURFACES,
   resolveSpaceLabel,
   type BuiltinSurface,
 } from "@/server/communities/space-defaults";
@@ -27,18 +28,25 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   const basePath = `/communities/${slug}`;
   const isAdminOrOwner = memberRole === "owner" || memberRole === "admin";
 
-  const { data: spaceTabs } = api.spaces.list.useQuery({ slug });
+  const { data: spaceTabs, isError: spaceTabsError } =
+    api.spaces.list.useQuery({ slug });
 
-  const surfaceItems: NavItem[] = (spaceTabs ?? [])
-    .filter((s) => s.kind === "builtin" && s.builtinSurface)
-    .map((s) => ({
-      key: `space-${s.id}`,
-      href: `${basePath}/${s.slug}`,
-      label: resolveSpaceLabel(
-        { kind: s.kind, builtinSurface: s.builtinSurface, name: s.name },
-        (k: BuiltinSurface) => t(k),
-      ),
-    }));
+  const surfaceItems: NavItem[] = spaceTabsError
+    ? BUILTIN_SURFACES.map((s) => ({
+        key: `space-${s}`,
+        href: `${basePath}/${s}`,
+        label: t(s),
+      }))
+    : (spaceTabs ?? [])
+        .filter((s) => s.kind === "builtin" && s.builtinSurface)
+        .map((s) => ({
+          key: `space-${s.id}`,
+          href: `${basePath}/${s.slug}`,
+          label: resolveSpaceLabel(
+            { kind: s.kind, builtinSurface: s.builtinSurface, name: s.name },
+            (k: BuiltinSurface) => t(k),
+          ),
+        }));
 
   const navItems: NavItem[] = [
     { key: "overview", href: basePath, label: t("overview") },

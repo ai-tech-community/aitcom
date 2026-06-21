@@ -6,7 +6,7 @@ import { sql } from "@payloadcms/db-postgres";
  * community navigation. v1 rows are all kind='builtin' (configurable pointers to
  * existing surfaces). Room-only columns (visibility, resident agent) arrive in a
  * later plan. DDL mirrors the Drizzle definition in src/server/db/schema.ts.
- * Idempotent so `payload migrate` is a safe no-op where already applied.
+ * Idempotent so `pnpm db:apply` is a safe no-op where already applied.
  */
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`

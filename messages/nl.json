@@ -1856,7 +1856,8 @@
       "moveDown": "Omlaag",
       "enabledToggle": "Zichtbaarheid wisselen",
       "enabled": "Zichtbaar",
-      "disabled": "Verborgen"
+      "disabled": "Verborgen",
+      "rename": "Ruimtenaam wijzigen"
     }
   },
   "notificationPrefs": {

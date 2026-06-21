@@ -1856,7 +1856,8 @@
       "moveDown": "Move down",
       "enabledToggle": "Toggle visibility",
       "enabled": "Shown",
-      "disabled": "Hidden"
+      "disabled": "Hidden",
+      "rename": "Rename space name"
     }
   },
   "notificationPrefs": {

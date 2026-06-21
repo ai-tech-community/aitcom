@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { api } from "@/trpc/react";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { ErrorState } from "@/components/ui/error-state";
 import {
   resolveSpaceLabel,
   type BuiltinSurface,
@@ -17,9 +19,12 @@ export function ComposeSpaces({ slug }: { slug: string }) {
   const tProfile = useTranslations("communities.profile");
   const utils = api.useUtils();
 
-  const { data: spaces, isLoading } = api.spaces.listForAdmin.useQuery({
-    slug,
-  });
+  const {
+    data: spaces,
+    isLoading,
+    isError,
+    refetch,
+  } = api.spaces.listForAdmin.useQuery({ slug });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
 
@@ -32,13 +37,18 @@ export function ComposeSpaces({ slug }: { slug: string }) {
 
   const setEnabled = api.spaces.setEnabled.useMutation({
     onSuccess: invalidate,
+    onError: (e) => toast.error(e.message),
   });
-  const reorder = api.spaces.reorder.useMutation({ onSuccess: invalidate });
+  const reorder = api.spaces.reorder.useMutation({
+    onSuccess: invalidate,
+    onError: (e) => toast.error(e.message),
+  });
   const rename = api.spaces.rename.useMutation({
     onSuccess: async () => {
       setEditingId(null);
       await invalidate();
     },
+    onError: (e) => toast.error(e.message),
   });
 
   if (isLoading) {
@@ -48,6 +58,8 @@ export function ComposeSpaces({ slug }: { slug: string }) {
       </div>
     );
   }
+
+  if (isError) return <ErrorState onRetry={refetch} />;
 
   const ordered = spaces ?? [];
 
@@ -108,6 +120,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
                       placeholder={label}
                       maxLength={60}
                       className="h-8"
+                      aria-label={t("rename")}
                     />
                     <Button
                       size="sm"

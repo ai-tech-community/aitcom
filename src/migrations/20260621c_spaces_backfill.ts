@@ -32,6 +32,6 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 }
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
-  // Remove only backfilled builtin rows; leave any admin-created rows intact.
+  // Reverts builtin seeding entirely: deletes ALL kind='builtin' spaces (backfilled AND create-seeded — they are indistinguishable). kind='room' rows are untouched.
   await db.execute(sql`DELETE FROM "app"."space" WHERE "kind" = 'builtin';`);
 }

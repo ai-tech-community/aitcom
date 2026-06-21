@@ -68,16 +68,21 @@ export const spacesRouter = createTRPCRouter({
       if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN" });
       }
-      await Promise.all(
-        input.orderedIds.map((id, position) =>
-          ctx.db
-            .update(spaces)
-            .set({ position })
-            .where(
-              and(eq(spaces.id, id), eq(spaces.communityId, ctx.community.id)),
-            ),
-        ),
-      );
+      await ctx.db.transaction(async (tx) => {
+        await Promise.all(
+          input.orderedIds.map((id, position) =>
+            tx
+              .update(spaces)
+              .set({ position })
+              .where(
+                and(
+                  eq(spaces.id, id),
+                  eq(spaces.communityId, ctx.community.id),
+                ),
+              ),
+          ),
+        );
+      });
       return { success: true };
     }),
 
