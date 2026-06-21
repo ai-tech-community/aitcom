@@ -19,6 +19,8 @@ import {
 } from "@/server/db/schema";
 import { logActivity } from "@/server/agent/activity";
 import { publishInboxEvent } from "@/server/inbox/publish";
+import { after } from "next/server";
+import { dispatchEventImmediately } from "@/server/agent/dispatch-immediate";
 import { resolveProducerTrust } from "@/lib/chat/trust";
 import type { UiResource } from "@/lib/chat/types";
 import { runUiTool } from "@/server/inbox/ui-tools";
@@ -355,8 +357,9 @@ export const inboxRouter = createTRPCRouter({
         .set({ updatedAt: new Date() })
         .where(eq(conversations.id, input.conversationId));
 
-      // Log activity for webhook dispatch
-      void logActivity(ctx.db, {
+      // Log activity for webhook dispatch, then wake the recipient agent in
+      // realtime (ADR-0025 Tier-2). The cron remains the durable backstop.
+      const activityEvent = await logActivity(ctx.db, {
         actorId: userId,
         actorType: "member",
         action: "message.sent",
@@ -364,6 +367,17 @@ export const inboxRouter = createTRPCRouter({
         targetId: input.conversationId,
         recipientId: recipient?.userId,
       });
+      try {
+        after(async () => {
+          try {
+            await dispatchEventImmediately(ctx.db, activityEvent);
+          } catch (err) {
+            console.error("[inbox] immediate dispatch failed:", err);
+          }
+        });
+      } catch {
+        // No request scope (e.g. tests/scripts) — the cron backstop will deliver.
+      }
 
       // Publish real-time event to recipient and sender (other tabs)
       if (recipient?.userId) {
