@@ -17,6 +17,7 @@ import {
   memberProfiles,
   spaceMemberships,
   spaces,
+  communities,
   user,
 } from "@/server/db/schema";
 import { isActiveMember } from "@/server/communities/room-access";
@@ -110,6 +111,10 @@ export const inboxRouter = createTRPCRouter({
         roomName: string | null;
         roomSlug: string | null;
         roomVisibility: "public" | "private" | null;
+        communitySlug: string | null;
+        communityName: string | null;
+        communityLogoUrl: string | null;
+        memberCount: number;
       };
 
       // ── DM / agent conversations (caller is a participant) ──────────────
@@ -139,6 +144,10 @@ export const inboxRouter = createTRPCRouter({
         roomName: null,
         roomSlug: null,
         roomVisibility: null,
+        communitySlug: null,
+        communityName: null,
+        communityLogoUrl: null,
+        memberCount: 0,
       }));
 
       // ── Space (room) conversations the caller is an ACTIVE member of ────
@@ -154,9 +163,14 @@ export const inboxRouter = createTRPCRouter({
             roomName: spaces.name,
             roomSlug: spaces.slug,
             roomVisibility: spaces.visibility,
+            communitySlug: communities.slug,
+            communityName: communities.name,
+            communityLogoUrl: communities.logoUrl,
+            memberCount: sql<number>`(SELECT COUNT(*)::int FROM app.space_membership WHERE space_id = ${conversations.spaceId} AND status = 'active')`,
           })
           .from(conversations)
           .innerJoin(spaces, eq(spaces.id, conversations.spaceId))
+          .innerJoin(communities, eq(communities.id, spaces.communityId))
           .innerJoin(
             spaceMemberships,
             eq(spaceMemberships.spaceId, conversations.spaceId),
@@ -178,6 +192,10 @@ export const inboxRouter = createTRPCRouter({
         roomName: r.roomName,
         roomSlug: r.roomSlug,
         roomVisibility: r.roomVisibility,
+        communitySlug: r.communitySlug,
+        communityName: r.communityName,
+        communityLogoUrl: r.communityLogoUrl,
+        memberCount: r.memberCount ?? 0,
       }));
 
       const participantRows: ConvRow[] = [...dmRows, ...roomRows];
@@ -325,6 +343,10 @@ export const inboxRouter = createTRPCRouter({
             roomSlug: isRoom ? row.roomSlug : null,
             spaceId: isRoom ? row.spaceId : null,
             roomVisibility: isRoom ? row.roomVisibility : null,
+            communitySlug: isRoom ? row.communitySlug : null,
+            communityName: isRoom ? row.communityName : null,
+            communityLogoUrl: isRoom ? row.communityLogoUrl : null,
+            memberCount: isRoom ? row.memberCount : 0,
           };
         }),
       );

@@ -1888,7 +1888,10 @@
       "pendingRequests": "Pending requests",
       "searchMembers": "Search members…",
       "noMembers": "No members yet.",
-      "memberCount": "{count} members"
+      "memberCount": "{count} members",
+      "openInCommunity": "Open in community",
+      "community": "Community",
+      "inCommunity": "in {community}"
     }
   },
   "notificationPrefs": {

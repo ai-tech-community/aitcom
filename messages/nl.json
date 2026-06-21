@@ -1888,7 +1888,10 @@
       "pendingRequests": "Openstaande verzoeken",
       "searchMembers": "Leden zoeken…",
       "noMembers": "Nog geen leden.",
-      "memberCount": "{count} leden"
+      "memberCount": "{count} leden",
+      "openInCommunity": "Openen in community",
+      "community": "Community",
+      "inCommunity": "in {community}"
     }
   },
   "notificationPrefs": {

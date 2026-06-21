@@ -9,7 +9,7 @@ import { LIVE_MESSAGES_FALLBACK_MS } from "@/components/inbox/live-refetch";
 import { cn } from "@/lib/utils";
 import { ConversationList } from "./conversation-list";
 import { ConversationView } from "./conversation-view";
-import { ProfilePane } from "./profile-pane";
+import { ProfilePane, RoomInfoPane } from "./profile-pane";
 import { NewMessage } from "./new-message";
 
 type MessagesShellProps = {
@@ -160,21 +160,33 @@ export function MessagesShell({ activeConversationId }: MessagesShellProps) {
               "hidden xl:flex",
             )}
           >
-            <ProfilePane
-              peerUserId={peerUserId}
-              fallbackName={peer?.name ?? "?"}
-              fallbackImage={peer?.image ?? null}
-              isAgent={isAgent}
-              agentInfo={
-                isAgent && active?.agentInfo
-                  ? {
-                      name: active.agentInfo.name,
-                      avatar: active.agentInfo.avatar,
-                      lastActiveAt: active.agentInfo.lastActiveAt,
-                    }
-                  : null
-              }
-            />
+            {isRoom ? (
+              <RoomInfoPane
+                roomName={active?.title ?? "Room"}
+                roomVisibility={active?.roomVisibility ?? null}
+                memberCount={active?.memberCount ?? 0}
+                communityName={active?.communityName ?? null}
+                communityLogoUrl={active?.communityLogoUrl ?? null}
+                communitySlug={active?.communitySlug ?? null}
+                roomSlug={active?.roomSlug ?? null}
+              />
+            ) : (
+              <ProfilePane
+                peerUserId={peerUserId}
+                fallbackName={peer?.name ?? "?"}
+                fallbackImage={peer?.image ?? null}
+                isAgent={isAgent}
+                agentInfo={
+                  isAgent && active?.agentInfo
+                    ? {
+                        name: active.agentInfo.name,
+                        avatar: active.agentInfo.avatar,
+                        lastActiveAt: active.agentInfo.lastActiveAt,
+                      }
+                    : null
+                }
+              />
+            )}
           </aside>
         )}
 
@@ -193,21 +205,33 @@ export function MessagesShell({ activeConversationId }: MessagesShellProps) {
               className="bg-foreground/20 absolute inset-0 motion-safe:transition-opacity"
             />
             <aside className="border-border bg-background motion-safe:animate-in motion-safe:slide-in-from-right absolute inset-y-0 right-0 flex w-80 max-w-[85vw] flex-col border-l shadow-lg motion-safe:duration-200">
-              <ProfilePane
-                peerUserId={peerUserId}
-                fallbackName={peer?.name ?? "?"}
-                fallbackImage={peer?.image ?? null}
-                isAgent={isAgent}
-                agentInfo={
-                  isAgent && active?.agentInfo
-                    ? {
-                        name: active.agentInfo.name,
-                        avatar: active.agentInfo.avatar,
-                        lastActiveAt: active.agentInfo.lastActiveAt,
-                      }
-                    : null
-                }
-              />
+              {isRoom ? (
+                <RoomInfoPane
+                  roomName={active?.title ?? "Room"}
+                  roomVisibility={active?.roomVisibility ?? null}
+                  memberCount={active?.memberCount ?? 0}
+                  communityName={active?.communityName ?? null}
+                  communityLogoUrl={active?.communityLogoUrl ?? null}
+                  communitySlug={active?.communitySlug ?? null}
+                  roomSlug={active?.roomSlug ?? null}
+                />
+              ) : (
+                <ProfilePane
+                  peerUserId={peerUserId}
+                  fallbackName={peer?.name ?? "?"}
+                  fallbackImage={peer?.image ?? null}
+                  isAgent={isAgent}
+                  agentInfo={
+                    isAgent && active?.agentInfo
+                      ? {
+                          name: active.agentInfo.name,
+                          avatar: active.agentInfo.avatar,
+                          lastActiveAt: active.agentInfo.lastActiveAt,
+                        }
+                      : null
+                  }
+                />
+              )}
             </aside>
           </div>
         )}
