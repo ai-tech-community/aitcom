@@ -1,4 +1,4 @@
-import { gt, eq, asc } from "drizzle-orm";
+import { and, gt, eq, asc } from "drizzle-orm";
 
 import type { db as _db } from "@/server/db";
 import { agentWebhooks, activityEvents } from "@/server/db/schema";
@@ -33,7 +33,7 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
   const webhooks = await db
     .select()
     .from(agentWebhooks)
-    .where(eq(agentWebhooks.isEnabled, true));
+    .where(and(eq(agentWebhooks.isEnabled, true), eq(agentWebhooks.status, "active")));
 
   for (const webhook of webhooks) {
     try {

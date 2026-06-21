@@ -48,6 +48,7 @@ export function webhookMatchesEvent(
   event: ActivityEvent,
   consecutiveAgentEvents: number,
 ): boolean {
+  if (webhook.status !== "active") return false;
   const prefixes = categoryPrefixes(webhook);
   if (prefixes.length === 0) return false;
 

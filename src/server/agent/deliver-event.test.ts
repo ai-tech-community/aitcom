@@ -20,6 +20,7 @@ function webhook(p: Partial<AgentWebhook> = {}): AgentWebhook {
     consecutiveFailures: 0,
     consecutiveAgentEvents: 0,
     isEnabled: true,
+    status: "active",
     createdAt: new Date("2026-06-21T00:00:00Z"),
     updatedAt: null,
     ...p,
@@ -66,6 +67,16 @@ describe("webhookMatchesEvent", () => {
     expect(
       webhookMatchesEvent(webhook(), event({ actorType: "agent", actorId: "agent2", recipientId: null }), 2),
     ).toBe(false);
+  });
+  it("rejects a pending webhook even when category and recipient match", () => {
+    expect(
+      webhookMatchesEvent(webhook({ status: "pending", categories: ["inbox"] }), event({ action: "message.created", recipientId: "owner1" }), 0),
+    ).toBe(false);
+  });
+  it("accepts an active webhook on the same event", () => {
+    expect(
+      webhookMatchesEvent(webhook({ status: "active", categories: ["inbox"] }), event({ action: "message.created", recipientId: "owner1" }), 0),
+    ).toBe(true);
   });
 });
 

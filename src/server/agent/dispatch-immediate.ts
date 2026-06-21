@@ -38,6 +38,7 @@ export async function dispatchEventImmediately(
       .where(
         and(
           eq(agentWebhooks.isEnabled, true),
+          eq(agentWebhooks.status, "active"),
           event.recipientId
             ? eq(agentWebhooks.ownerId, event.recipientId)
             : undefined,
