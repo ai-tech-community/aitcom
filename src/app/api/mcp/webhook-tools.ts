@@ -66,7 +66,7 @@ export function registerWebhookTools(server: McpServer, keyData: AgentKeyData) {
           {
             status: "error",
             error:
-              "This agent lacks the `self-profile` scope. Its owner must accept the current agent manifest before it can register a webhook.",
+              "This agent lacks the `self-profile` scope required to register a webhook.",
           },
           true,
         );
@@ -121,6 +121,7 @@ export function registerWebhookTools(server: McpServer, keyData: AgentKeyData) {
             status: "pending",
             isEnabled: false,
             consecutiveFailures: 0,
+            consecutiveAgentEvents: 0,
           })
           .where(eq(agentWebhooks.id, existing.id))
           .returning({ id: agentWebhooks.id });
