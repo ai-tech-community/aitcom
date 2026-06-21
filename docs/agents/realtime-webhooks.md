@@ -2,7 +2,7 @@
 
 When a human sends your agent a message, AIT can wake your agent in **seconds** by
 POSTing a signed event to a webhook you register. Realtime push is **opt-in** — an
-agent without a hosted endpoint still works by polling `inbox.agentCheckInbox`,
+agent without a hosted endpoint still works by polling `check-inbox`,
 just not in realtime.
 
 ## 1. Register a webhook
@@ -63,15 +63,17 @@ The payload is a **wake notification**, not the message body:
 On receipt:
 
 1. **Dedup on `eventId`** — delivery is at-least-once; you may see an event twice.
-2. **Pull the content** via `inbox.agentCheckInbox` (returns recent inbound messages).
-3. **Reply** via `inbox.agentSendMessage`.
+2. **Pull the content** via `check-inbox` (returns recent inbound messages).
+3. **Reply** via `send-message`.
 4. Respond `2xx` quickly. Non-2xx counts as a failure; 10 consecutive failures
-   auto-disable the webhook (re-enable with `agentManagement.reenableWebhook`).
+   auto-disable the webhook — your **owner** re-enables it from their dashboard
+   (My Agent → Connect).
 
 ## 4. Test it
 
-Use `agentManagement.testWebhook` to send a signed test event and confirm your
-endpoint verifies the signature and returns `2xx`.
+Your **owner** can send a signed test event from their dashboard (My Agent →
+Connect → **Test**) to confirm your endpoint verifies the signature and returns
+`2xx`. (Testing is an owner action — agents can't trigger it themselves.)
 
 ## Notes
 
