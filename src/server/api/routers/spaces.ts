@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -7,9 +7,10 @@ import {
   publicProcedure,
   communityProcedure,
 } from "@/server/api/trpc";
-import { communities, spaces, spaceMemberships } from "@/server/db/schema";
+import { communities, spaces, spaceMemberships, memberProfiles, user } from "@/server/db/schema";
 import { canJoinDirectly, roomSlugFromName } from "@/server/communities/room-access";
 import { getOrCreateRoomConversation } from "@/server/communities/room-conversation";
+import { getAvatarUrl } from "@/lib/avatar";
 
 /** Enabled spaces for the public nav, position-ordered. */
 export const spacesRouter = createTRPCRouter({
@@ -412,7 +413,53 @@ export const spacesRouter = createTRPCRouter({
       if (mine?.status === "active") {
         conversationId = await getOrCreateRoomConversation(ctx.db, room.id);
       }
-      return { ...room, membership: mine?.status ?? null, conversationId };
+
+      // Header enrichments: member count, viewer admin flag, avatar stack.
+      const [countRow] = await ctx.db
+        .select({ count: sql<number>`count(*)` })
+        .from(spaceMemberships)
+        .where(
+          and(
+            eq(spaceMemberships.spaceId, room.id),
+            eq(spaceMemberships.status, "active"),
+          ),
+        );
+      const memberCount = Number(countRow?.count ?? 0);
+
+      const viewerIsAdmin =
+        ctx.communityRole === "owner" || ctx.communityRole === "admin";
+
+      const avatarRows = await ctx.db
+        .select({
+          userId: spaceMemberships.userId,
+          displayName: memberProfiles.displayName,
+          email: user.email,
+          image: user.image,
+        })
+        .from(spaceMemberships)
+        .leftJoin(memberProfiles, eq(memberProfiles.userId, spaceMemberships.userId))
+        .leftJoin(user, eq(user.id, spaceMemberships.userId))
+        .where(
+          and(
+            eq(spaceMemberships.spaceId, room.id),
+            eq(spaceMemberships.status, "active"),
+          ),
+        )
+        .limit(5);
+      const memberAvatars = avatarRows.map((r) => ({
+        userId: r.userId,
+        displayName: r.displayName ?? null,
+        avatarUrl: getAvatarUrl(r.email, r.image),
+      }));
+
+      return {
+        ...room,
+        membership: mine?.status ?? null,
+        conversationId,
+        memberCount,
+        viewerIsAdmin,
+        memberAvatars,
+      };
     }),
 
   /** List a room's members (owner/admin) — for Plan 2b approval UI. */
@@ -435,13 +482,60 @@ export const spacesRouter = createTRPCRouter({
         )
         .limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
-      return ctx.db
+      const rows = await ctx.db
         .select({
           userId: spaceMemberships.userId,
           role: spaceMemberships.role,
           status: spaceMemberships.status,
+          displayName: memberProfiles.displayName,
+          email: user.email,
+          image: user.image,
         })
         .from(spaceMemberships)
-        .where(eq(spaceMemberships.spaceId, input.spaceId));
+        .leftJoin(memberProfiles, eq(memberProfiles.userId, spaceMemberships.userId))
+        .leftJoin(user, eq(user.id, spaceMemberships.userId))
+        .where(eq(spaceMemberships.spaceId, input.spaceId))
+        // pending_request first, then active — approval queue visible at top.
+        .orderBy(
+          sql`CASE WHEN ${spaceMemberships.status} = 'pending_request' THEN 0 ELSE 1 END`,
+          asc(spaceMemberships.userId),
+        );
+      return rows.map((r) => ({
+        userId: r.userId,
+        role: r.role,
+        status: r.status,
+        displayName: r.displayName ?? null,
+        avatarUrl: getAvatarUrl(r.email, r.image),
+      }));
+    }),
+
+  /** Add a community member to a room (owner/admin). Upserts to active status. */
+  addMember: communityProcedure
+    .input(z.object({ slug: z.string(), spaceId: z.string(), userId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      // Confirm the room belongs to this community before mutating membership.
+      const [room] = await ctx.db
+        .select({ id: spaces.id })
+        .from(spaces)
+        .where(
+          and(
+            eq(spaces.id, input.spaceId),
+            eq(spaces.communityId, ctx.community.id),
+            eq(spaces.kind, "room"),
+          ),
+        )
+        .limit(1);
+      if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+      await ctx.db
+        .insert(spaceMemberships)
+        .values({ spaceId: room.id, userId: input.userId, status: "active" })
+        .onConflictDoUpdate({
+          target: [spaceMemberships.spaceId, spaceMemberships.userId],
+          set: { status: "active" },
+        });
+      return { success: true };
     }),
 });

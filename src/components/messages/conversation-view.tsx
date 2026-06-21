@@ -40,9 +40,13 @@ type ConversationViewProps = {
   /** Display info resolved from the conversation list (header). */
   peer: { name: string; image: string | null; isAgent: boolean } | null;
   agentLastActiveAt?: Date | string | null;
-  onToggleProfile: () => void;
+  /** Optional: when omitted the profile-toggle button is not rendered. */
+  onToggleProfile?: () => void;
   /** Mobile only: back to the list pane. */
   onBack?: () => void;
+  /** When true, the built-in header (avatar / peer name / profile toggle) is hidden.
+   *  Use this when the parent supplies its own room header. */
+  hideHeader?: boolean;
 };
 
 function formatTime(date: Date): string {
@@ -59,6 +63,7 @@ export function ConversationView({
   agentLastActiveAt,
   onToggleProfile,
   onBack,
+  hideHeader = false,
 }: ConversationViewProps) {
   const t = useTranslations("inbox");
   const { data: session } = authClient.useSession();
@@ -123,53 +128,57 @@ export function ConversationView({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Header */}
-      <div className="border-border flex items-center gap-2 border-b px-4 py-3">
-        {onBack && (
-          <button
-            type="button"
-            onClick={onBack}
-            className="text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring -ml-1 rounded-md p-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none lg:hidden"
-            aria-label={t("back")}
-          >
-            <ArrowLeftIcon className="h-4 w-4" />
-          </button>
-        )}
-        <div className="relative shrink-0">
-          <Avatar>
-            {peer?.image && <AvatarImage src={peer.image} alt={peer.name} />}
-            <AvatarFallback>{getInitials(peer?.name ?? "?")}</AvatarFallback>
-          </Avatar>
-          {isAgent && (
-            <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full">
-              <BotIcon className="text-muted-foreground h-3 w-3" />
-            </span>
+      {/* Header — hidden when the parent supplies its own (e.g. room header). */}
+      {!hideHeader && (
+        <div className="border-border flex items-center gap-2 border-b px-4 py-3">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring -ml-1 rounded-md p-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none lg:hidden"
+              aria-label={t("back")}
+            >
+              <ArrowLeftIcon className="h-4 w-4" />
+            </button>
+          )}
+          <div className="relative shrink-0">
+            <Avatar>
+              {peer?.image && <AvatarImage src={peer.image} alt={peer.name} />}
+              <AvatarFallback>{getInitials(peer?.name ?? "?")}</AvatarFallback>
+            </Avatar>
+            {isAgent && (
+              <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full">
+                <BotIcon className="text-muted-foreground h-3 w-3" />
+              </span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-foreground truncate text-sm font-semibold">
+              {peer?.name ?? "—"}
+            </p>
+            {isAgent && agentLastActiveAt ? (
+              <p className="text-muted-foreground truncate text-xs">
+                {t("lastActive")}{" "}
+                <RelativeTime
+                  date={agentLastActiveAt}
+                  className="text-muted-foreground text-xs"
+                />
+              </p>
+            ) : null}
+          </div>
+          {onToggleProfile && (
+            <button
+              type="button"
+              onClick={onToggleProfile}
+              className="text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring rounded-md p-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              aria-label={t("showProfile")}
+              title={t("showProfile")}
+            >
+              <PanelRightIcon className="h-4 w-4" />
+            </button>
           )}
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-foreground truncate text-sm font-semibold">
-            {peer?.name ?? "—"}
-          </p>
-          {isAgent && agentLastActiveAt ? (
-            <p className="text-muted-foreground truncate text-xs">
-              {t("lastActive")}{" "}
-              <RelativeTime
-                date={agentLastActiveAt}
-                className="text-muted-foreground text-xs"
-              />
-            </p>
-          ) : null}
-        </div>
-        <button
-          type="button"
-          onClick={onToggleProfile}
-          className="text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:ring-ring rounded-md p-1.5 transition-colors focus-visible:ring-2 focus-visible:outline-none"
-          aria-label={t("showProfile")}
-          title={t("showProfile")}
-        >
-          <PanelRightIcon className="h-4 w-4" />
-        </button>
-      </div>
+      )}
 
       {/* Messages */}
       {messagesQuery.isError ? (
