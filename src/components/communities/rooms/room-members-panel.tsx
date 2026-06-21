@@ -23,13 +23,11 @@ export function RoomMembersPanel({
   spaceId,
   spaceSlug,
   viewerIsAdmin,
-  pendingCount,
 }: {
   slug: string;
   spaceId: string;
   spaceSlug: string;
   viewerIsAdmin: boolean;
-  pendingCount: number;
 }) {
   const t = useTranslations("communities.rooms");
   const [open, setOpen] = useState(false);
@@ -38,7 +36,7 @@ export function RoomMembersPanel({
 
   const membersQuery = api.spaces.listRoomMembers.useQuery(
     { slug, spaceId },
-    { enabled: open && viewerIsAdmin },
+    { enabled: open },
   );
 
   const communityMembersQuery = api.members.listMembers.useQuery(
@@ -47,7 +45,7 @@ export function RoomMembersPanel({
   );
 
   const approveMutation = api.spaces.approveMember.useMutation({
-    onSuccess: () => utils.spaces.listRoomMembers.invalidate({ slug, spaceId }),
+    onSuccess: () => { void utils.spaces.listRoomMembers.invalidate({ slug, spaceId }); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -68,9 +66,6 @@ export function RoomMembersPanel({
       <SheetTrigger asChild>
         <Button variant="outline" aria-label={t("members")}>
           {t("members")}
-          {pendingCount > 0 && viewerIsAdmin ? (
-            <span className="ml-1.5 font-mono text-xs">{pendingCount}</span>
-          ) : null}
         </Button>
       </SheetTrigger>
       <SheetContent side="right">
@@ -106,7 +101,7 @@ export function RoomMembersPanel({
                 {/* Pending requests */}
                 {pendingMembers.length > 0 ? (
                   <div className="mt-4 border-t pt-4">
-                    <p className="text-muted-foreground mb-2 font-mono text-xs">
+                    <p className="text-muted-foreground mb-2 text-xs">
                       {t("pendingRequests")}
                     </p>
                     {pendingMembers.map((m) => (
@@ -139,7 +134,7 @@ export function RoomMembersPanel({
 
                 {/* Add members */}
                 <div className="mt-4 border-t pt-4">
-                  <p className="text-muted-foreground mb-2 font-mono text-xs">
+                  <p className="text-muted-foreground mb-2 text-xs">
                     {t("addMembers")}
                   </p>
                   <Input

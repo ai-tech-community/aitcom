@@ -33,7 +33,6 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
 
   if (room.membership === "active" && room.conversationId) {
     const MAX_SHOWN_AVATARS = 3;
-    const pendingCount = 0; // panel fetches this; 0 here since getRoom doesn't return pending separately
 
     return (
       <div className="flex h-[calc(100vh-16rem)] min-h-96 flex-col">
@@ -85,7 +84,6 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
               spaceId={room.id}
               spaceSlug={spaceSlug}
               viewerIsAdmin={room.viewerIsAdmin}
-              pendingCount={pendingCount}
             />
           </div>
         </div>
