@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import {
   BotIcon,
   CheckCheckIcon,
+  HashIcon,
+  LockIcon,
   PenSquareIcon,
   SearchIcon,
 } from "lucide-react";
@@ -33,6 +35,13 @@ function conversationName(
   conv: Conversation,
   agentFallback: string,
 ): { name: string; image: string | null; isAgent: boolean } {
+  if (conv.isRoom) {
+    return {
+      name: conv.title ?? "Room",
+      image: null,
+      isAgent: false,
+    };
+  }
   const isAgent = conv.type === "agent";
   if (isAgent) {
     return {
@@ -212,6 +221,9 @@ export function ConversationList({
                 conv,
                 t("agentLabel"),
               );
+              const isRoom = conv.isRoom;
+              const isPrivateRoom =
+                isRoom && conv.roomVisibility === "private";
               const isActive = conv.id === activeConversationId;
               const unread = conv.unreadCount > 0;
               const previewSender =
@@ -235,13 +247,24 @@ export function ConversationList({
                       />
                     )}
                     <div className="relative shrink-0">
-                      <Avatar size="lg">
-                        {image && <AvatarImage src={image} alt={name} />}
-                        <AvatarFallback>{getInitials(name)}</AvatarFallback>
-                      </Avatar>
+                      {isRoom ? (
+                        <span className="bg-secondary border-border text-muted-foreground flex size-10 items-center justify-center rounded-full border">
+                          <HashIcon className="h-4 w-4" />
+                        </span>
+                      ) : (
+                        <Avatar size="lg">
+                          {image && <AvatarImage src={image} alt={name} />}
+                          <AvatarFallback>{getInitials(name)}</AvatarFallback>
+                        </Avatar>
+                      )}
                       {isAgent && (
                         <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full">
                           <BotIcon className="text-muted-foreground h-3 w-3" />
+                        </span>
+                      )}
+                      {isPrivateRoom && (
+                        <span className="bg-background absolute -right-0.5 -bottom-0.5 flex h-4 w-4 items-center justify-center rounded-full">
+                          <LockIcon className="text-muted-foreground h-2.5 w-2.5" />
                         </span>
                       )}
                     </div>

@@ -16,6 +16,7 @@ import {
   agentProfiles,
   memberProfiles,
   spaceMemberships,
+  spaces,
   user,
 } from "@/server/db/schema";
 import { isActiveMember } from "@/server/communities/room-access";
@@ -94,10 +95,26 @@ export const inboxRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
 
-      // Get user's participant rows with conversation data
-      const participantRows = await ctx.db
+      // Each row carries enough to sort/paginate + resolve display. DM/agent rows
+      // come from conversationParticipants (the user IS a participant). Space
+      // (room) rows have NO participant rows — they're authorized via an ACTIVE
+      // spaceMembership, so we fetch them in a parallel query and merge.
+      type ConvRow = {
+        conversationId: string;
+        lastReadAt: Date | null;
+        isPinned: boolean;
+        convType: string;
+        convUpdatedAt: Date;
+        // Space-only metadata (null for DM/agent rows).
+        spaceId: string | null;
+        roomName: string | null;
+        roomSlug: string | null;
+        roomVisibility: "public" | "private" | null;
+      };
+
+      // ── DM / agent conversations (caller is a participant) ──────────────
+      const participantRowsRaw = await ctx.db
         .select({
-          participantId: conversationParticipants.id,
           conversationId: conversationParticipants.conversationId,
           lastReadAt: conversationParticipants.lastReadAt,
           isPinned: conversationParticipants.isPinned,
@@ -115,6 +132,55 @@ export const inboxRouter = createTRPCRouter({
             ne(conversations.type, "space"),
           ),
         );
+
+      const dmRows: ConvRow[] = participantRowsRaw.map((r) => ({
+        ...r,
+        spaceId: null,
+        roomName: null,
+        roomSlug: null,
+        roomVisibility: null,
+      }));
+
+      // ── Space (room) conversations the caller is an ACTIVE member of ────
+      // Gate on spaceMemberships.status === "active". No participant rows exist,
+      // so there is no lastReadAt — unread is computed from all messages below.
+      const roomRows: ConvRow[] = (
+        await ctx.db
+          .select({
+            conversationId: conversations.id,
+            convType: conversations.type,
+            convUpdatedAt: conversations.updatedAt,
+            spaceId: conversations.spaceId,
+            roomName: spaces.name,
+            roomSlug: spaces.slug,
+            roomVisibility: spaces.visibility,
+          })
+          .from(conversations)
+          .innerJoin(spaces, eq(spaces.id, conversations.spaceId))
+          .innerJoin(
+            spaceMemberships,
+            eq(spaceMemberships.spaceId, conversations.spaceId),
+          )
+          .where(
+            and(
+              eq(conversations.type, "space"),
+              eq(spaceMemberships.userId, userId),
+              eq(spaceMemberships.status, "active"),
+            ),
+          )
+      ).map((r) => ({
+        conversationId: r.conversationId,
+        lastReadAt: null,
+        isPinned: false,
+        convType: r.convType,
+        convUpdatedAt: r.convUpdatedAt,
+        spaceId: r.spaceId,
+        roomName: r.roomName,
+        roomSlug: r.roomSlug,
+        roomVisibility: r.roomVisibility,
+      }));
+
+      const participantRows: ConvRow[] = [...dmRows, ...roomRows];
 
       if (participantRows.length === 0) {
         return { conversations: [], nextCursor: null };
@@ -158,26 +224,34 @@ export const inboxRouter = createTRPCRouter({
             .orderBy(desc(messages.createdAt))
             .limit(1);
 
-          // Other participants
-          const otherParticipantsRaw = await ctx.db
-            .select({
-              userId: conversationParticipants.userId,
-              displayName: memberProfiles.displayName,
-              name: user.name,
-              image: user.image,
-            })
-            .from(conversationParticipants)
-            .leftJoin(
-              memberProfiles,
-              eq(memberProfiles.userId, conversationParticipants.userId),
-            )
-            .leftJoin(user, eq(user.id, conversationParticipants.userId))
-            .where(
-              and(
-                eq(conversationParticipants.conversationId, row.conversationId),
-                ne(conversationParticipants.userId, userId),
-              ),
-            );
+          const isRoom = row.convType === "space";
+
+          // Other participants — DM/agent only. Space (room) conversations have
+          // no participant rows; their display comes from the room itself.
+          const otherParticipantsRaw = isRoom
+            ? []
+            : await ctx.db
+                .select({
+                  userId: conversationParticipants.userId,
+                  displayName: memberProfiles.displayName,
+                  name: user.name,
+                  image: user.image,
+                })
+                .from(conversationParticipants)
+                .leftJoin(
+                  memberProfiles,
+                  eq(memberProfiles.userId, conversationParticipants.userId),
+                )
+                .leftJoin(user, eq(user.id, conversationParticipants.userId))
+                .where(
+                  and(
+                    eq(
+                      conversationParticipants.conversationId,
+                      row.conversationId,
+                    ),
+                    ne(conversationParticipants.userId, userId),
+                  ),
+                );
 
           const otherParticipants = otherParticipantsRaw.map((p) => ({
             userId: p.userId,
@@ -244,6 +318,13 @@ export const inboxRouter = createTRPCRouter({
             participants: otherParticipants,
             agentInfo,
             unreadCount,
+            // Room (space) fields — defaulted for DM/agent rows so the return
+            // type is uniform. The UI keys off `isRoom`.
+            isRoom,
+            title: isRoom ? (row.roomName ?? "Room") : null,
+            roomSlug: isRoom ? row.roomSlug : null,
+            spaceId: isRoom ? row.spaceId : null,
+            roomVisibility: isRoom ? row.roomVisibility : null,
           };
         }),
       );

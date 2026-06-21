@@ -60,22 +60,32 @@ export function MessagesShell({ activeConversationId }: MessagesShellProps) {
   );
 
   const isAgent = active?.type === "agent";
+  const isRoom = active?.isRoom ?? false;
   const peer = active
-    ? isAgent
+    ? isRoom
       ? {
-          name: active.agentInfo?.name ?? t("agentLabel"),
-          image: active.agentInfo?.avatar ?? null,
-          isAgent: true,
-        }
-      : {
-          name: active.participants[0]?.displayName ?? "Unknown",
-          image: active.participants[0]?.image ?? null,
+          name: active.title ?? "Room",
+          image: null,
           isAgent: false,
         }
+      : isAgent
+        ? {
+            name: active.agentInfo?.name ?? t("agentLabel"),
+            image: active.agentInfo?.avatar ?? null,
+            isAgent: true,
+          }
+        : {
+            name: active.participants[0]?.displayName ?? "Unknown",
+            image: active.participants[0]?.image ?? null,
+            isAgent: false,
+          }
     : null;
 
+  // Rooms have no single peer profile to show in the docked profile pane.
   const peerUserId =
-    active && !isAgent ? (active.participants[0]?.userId ?? null) : null;
+    active && !isAgent && !isRoom
+      ? (active.participants[0]?.userId ?? null)
+      : null;
 
   return (
     <div className="bg-background border-border mx-auto h-[calc(100dvh-3rem)] max-w-7xl border-x">
