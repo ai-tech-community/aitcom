@@ -1555,7 +1555,8 @@
         "integrations": "Integraties",
         "broadcast": "Aankondigingen",
         "autonomy": "Agent-advies",
-        "acquire": "Werving"
+        "acquire": "Werving",
+        "spaces": "Ruimtes"
       },
       "classroom": {
         "policyTitle": "Wie kan klaslokalen aanmaken",
@@ -1845,7 +1846,19 @@
       "markDone": "Mark done"
     },
     "directoryEmpty": "Nog geen community’s. Start als eerste er een.",
-    "membersEmpty": "Nog geen leden."
+    "membersEmpty": "Nog geen leden.",
+    "spaces": {
+      "title": "Ruimtes",
+      "description": "Kies welke onderdelen in je community verschijnen, hun volgorde en hun labels.",
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "moveUp": "Omhoog",
+      "moveDown": "Omlaag",
+      "enabledToggle": "Zichtbaarheid wisselen",
+      "enabled": "Zichtbaar",
+      "disabled": "Verborgen",
+      "rename": "Ruimtenaam wijzigen"
+    }
   },
   "notificationPrefs": {
     "title": "Meldingen",

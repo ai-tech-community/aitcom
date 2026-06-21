@@ -3245,6 +3245,57 @@ export const communityMemberships = appSchema.table(
   ],
 );
 
+// Community Spaces — composable navigation surfaces + rooms (Slice 3, Plan 1).
+// kind="builtin": a configurable pointer to an existing community surface
+// (forum/events/classroom/ideas/members); the surface's data stays community-level.
+// kind="room": (Plan 2) a real container with its own membership + chat/posts.
+// `name` is an optional display override — for builtins, null means "use the
+// default i18n label"; rooms set it at creation (enforced in the app layer).
+export const spaces = appSchema.table(
+  "space",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id),
+    kind: d
+      .varchar({ length: 10 })
+      .notNull()
+      .default("builtin")
+      .$type<"builtin" | "room">(),
+    builtinSurface: d
+      .varchar("builtin_surface", { length: 20 })
+      .$type<"forum" | "events" | "classroom" | "ideas" | "members">(),
+    name: d.text(),
+    purpose: d.text(),
+    slug: d.text().notNull(),
+    position: d.integer().notNull().default(0),
+    createdBy: d.varchar({ length: 255 }).references(() => user.id),
+    archivedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("space_community_slug_uidx").on(t.communityId, t.slug),
+    index("space_community_position_idx").on(t.communityId, t.position),
+  ],
+);
+
+export const spacesRelations = relations(spaces, ({ one }) => ({
+  community: one(communities, {
+    fields: [spaces.communityId],
+    references: [communities.id],
+  }),
+}));
+
 export const communityInvites = appSchema.table(
   "community_invite",
   (d) => ({

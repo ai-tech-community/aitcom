@@ -14,7 +14,9 @@ import {
   communityInvites,
   memberProfiles,
   user,
+  spaces,
 } from "@/server/db/schema";
+import { buildDefaultSpaceRows } from "@/server/communities/space-defaults";
 import { generateSlug } from "@/server/communities/slug-utils";
 import {
   canManageRole,
@@ -333,24 +335,31 @@ export const communitiesRouter = createTRPCRouter({
         });
       }
 
-      const [community] = await ctx.db
-        .insert(communities)
-        .values({
-          name: input.name,
-          slug,
-          description: input.description,
-          joinPolicy: input.joinPolicy,
-          isListedInDirectory: input.isListedInDirectory,
-          createdBy: ctx.session.user.id,
-        })
-        .returning();
+      const community = await ctx.db.transaction(async (tx) => {
+        const [c] = await tx
+          .insert(communities)
+          .values({
+            name: input.name,
+            slug,
+            description: input.description,
+            joinPolicy: input.joinPolicy,
+            isListedInDirectory: input.isListedInDirectory,
+            createdBy: ctx.session.user.id,
+          })
+          .returning();
 
-      // Creator becomes owner
-      await ctx.db.insert(communityMemberships).values({
-        communityId: community!.id,
-        userId: ctx.session.user.id,
-        role: "owner",
-        status: "active",
+        // Creator becomes owner
+        await tx.insert(communityMemberships).values({
+          communityId: c!.id,
+          userId: ctx.session.user.id,
+          role: "owner",
+          status: "active",
+        });
+
+        // Seed the default builtin spaces so the new community's nav is populated.
+        await tx.insert(spaces).values(buildDefaultSpaceRows(c!.id));
+
+        return c!;
       });
 
       await logActivity(ctx.db, {
@@ -358,11 +367,11 @@ export const communitiesRouter = createTRPCRouter({
         actorType: "member",
         action: "community.created",
         targetType: "community",
-        targetId: community!.id,
+        targetId: community.id,
         metadata: { name: input.name, slug },
       });
 
-      return community!;
+      return community;
     }),
 
   /** Join an open community */

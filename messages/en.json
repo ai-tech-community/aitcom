@@ -1555,7 +1555,8 @@
         "integrations": "Integrations",
         "broadcast": "Announcements",
         "autonomy": "Agent advisory",
-        "acquire": "Acquire"
+        "acquire": "Acquire",
+        "spaces": "Spaces"
       },
       "classroom": {
         "policyTitle": "Who can create classrooms",
@@ -1845,7 +1846,19 @@
       "markDone": "Mark done"
     },
     "directoryEmpty": "No communities yet. Be the first to start one.",
-    "membersEmpty": "No members yet."
+    "membersEmpty": "No members yet.",
+    "spaces": {
+      "title": "Spaces",
+      "description": "Choose which surfaces appear in your community, their order, and their labels.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "enabledToggle": "Toggle visibility",
+      "enabled": "Shown",
+      "disabled": "Hidden",
+      "rename": "Rename space name"
+    }
   },
   "notificationPrefs": {
     "title": "Notifications",
