@@ -56,8 +56,12 @@ describe.skipIf(!RUN_DB)("spaces router [DB integration]", () => {
   afterEach(async () => {
     const { db, schema } = m;
     const { eq } = await import("drizzle-orm");
-    await db.delete(schema.spaces).where(eq(schema.spaces.communityId, communityId));
-    await db.delete(schema.communities).where(eq(schema.communities.id, communityId));
+    await db
+      .delete(schema.spaces)
+      .where(eq(schema.spaces.communityId, communityId));
+    await db
+      .delete(schema.communities)
+      .where(eq(schema.communities.id, communityId));
     await db.delete(schema.user).where(eq(schema.user.id, userId));
   });
 

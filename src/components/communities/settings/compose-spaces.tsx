@@ -17,7 +17,9 @@ export function ComposeSpaces({ slug }: { slug: string }) {
   const tProfile = useTranslations("communities.profile");
   const utils = api.useUtils();
 
-  const { data: spaces, isLoading } = api.spaces.listForAdmin.useQuery({ slug });
+  const { data: spaces, isLoading } = api.spaces.listForAdmin.useQuery({
+    slug,
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
 
@@ -28,7 +30,9 @@ export function ComposeSpaces({ slug }: { slug: string }) {
     ]);
   };
 
-  const setEnabled = api.spaces.setEnabled.useMutation({ onSuccess: invalidate });
+  const setEnabled = api.spaces.setEnabled.useMutation({
+    onSuccess: invalidate,
+  });
   const reorder = api.spaces.reorder.useMutation({ onSuccess: invalidate });
   const rename = api.spaces.rename.useMutation({
     onSuccess: async () => {

@@ -44,16 +44,32 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
     { key: "overview", href: basePath, label: t("overview") },
     ...surfaceItems,
     ...(memberRole
-      ? [{ key: "referrals", href: `${basePath}/referrals`, label: t("referrals") }]
+      ? [
+          {
+            key: "referrals",
+            href: `${basePath}/referrals`,
+            label: t("referrals"),
+          },
+        ]
       : []),
     ...(isAdminOrOwner || memberRole === "moderator"
       ? [
-          { key: "insights", href: `${basePath}/insights`, label: t("insights") },
+          {
+            key: "insights",
+            href: `${basePath}/insights`,
+            label: t("insights"),
+          },
           { key: "rituals", href: `${basePath}/rituals`, label: t("rituals") },
         ]
       : []),
     ...(isAdminOrOwner
-      ? [{ key: "settings", href: `${basePath}/settings`, label: t("settings") }]
+      ? [
+          {
+            key: "settings",
+            href: `${basePath}/settings`,
+            label: t("settings"),
+          },
+        ]
       : []),
   ];
 

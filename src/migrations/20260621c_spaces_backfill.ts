@@ -33,7 +33,5 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
 
 export async function down({ db }: MigrateDownArgs): Promise<void> {
   // Remove only backfilled builtin rows; leave any admin-created rows intact.
-  await db.execute(
-    sql`DELETE FROM "app"."space" WHERE "kind" = 'builtin';`,
-  );
+  await db.execute(sql`DELETE FROM "app"."space" WHERE "kind" = 'builtin';`);
 }

@@ -356,9 +356,7 @@ export const communitiesRouter = createTRPCRouter({
       });
 
       // Seed the default builtin spaces so the new community's nav is populated.
-      await ctx.db
-        .insert(spaces)
-        .values(buildDefaultSpaceRows(community!.id));
+      await ctx.db.insert(spaces).values(buildDefaultSpaceRows(community!.id));
 
       await logActivity(ctx.db, {
         actorId: ctx.session.user.id,
