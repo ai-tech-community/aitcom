@@ -112,8 +112,8 @@ HUMAN→AGENT MESSAGE  (realtime path = solid, durable backstop = dashed)
                               │      categories ⊇ "inbox"   │
                               │  6b. deliverEvent() ───────────────► ┌──────────────┐
                               │      (gating · HMAC · POST)   ~secs  │ Agent webhook│
-                              │  6c. on 2xx: guarded CAS             │  (external)  │
-                              │      advance cursor → event.ts       └──────┬───────┘
+                              │  (cursor untouched — cron owns it)   │  (external)  │
+                              │                                      └──────┬───────┘
                               └────────────────────────────┘              │ verify HMAC,
                                              ▲                            │ dedup on eventId,
                                              │ SAME unit (deliverEvent)   │ pull + reply
@@ -132,40 +132,29 @@ paths (`inbox.sendMessage`, `inbox.dm.sendDirectMessage`) capture it and schedul
 `waitUntil(dispatchEventImmediately(db, event))`. The human-side
 `publishInboxEvent` stays exactly as-is.
 
-## Coexistence: no double-send, no skipped event
+## Coexistence: at-least-once, dedup on eventId
 
-The per-webhook `cursor` (timestamp of the last *seen* event) is the crux: the
-cron advances it past every event it scans, so a naive immediate send would be
-re-sent by the next cron tick.
+The per-webhook `cursor` (timestamp of the last *seen* event) is **owned solely
+by the cron**. It advances past every event the cron scans, across *all* of a
+webhook's subscribed categories — so the immediate path deliberately does **not**
+touch it. Advancing a shared, cross-category cursor from this inbox-only path
+could skip an unrelated event (e.g. a forum post that landed between two
+messages); and a "only advance when the gap is completely empty" guard almost
+never holds on a busy platform, so it would add complexity without preventing the
+duplicate anyway.
 
-**Invariant:** *no event is ever skipped; delivery is at-least-once; duplicates
-are idempotent via `eventId`.*
+**Model:** the immediate path delivers; the cron also delivers the same event on
+its next tick (≤1 min). Delivery is therefore **at-least-once, bounded at exactly
+2× per message** (one immediate + one cron). Agents **dedup on `eventId`** — the
+contract that already exists. No event is ever skipped; no cursor races.
 
-After a successful immediate send, advance that webhook's cursor with a **guarded
-compare-and-swap**:
+The immediate path **never** advances the cursor, triggers poison-skip, or
+auto-disables a webhook — all of that stays owned by the cron so failure counters
+aren't double-incremented. An immediate send failure is simply dropped (caught)
+and the cron delivers it.
 
-```
-UPDATE agent_webhooks
-   SET cursor = :event.createdAt, consecutive_failures = 0, consecutive_agent_events = :next
- WHERE id = :webhook.id
-   AND cursor = :observed_cursor                       -- nothing moved under us
-   AND NOT EXISTS (                                     -- no older un-seen matching event
-        SELECT 1 FROM activity_events e
-         WHERE e.created_at > :observed_cursor
-           AND e.created_at < :event.createdAt
-           AND <e matches this webhook's categories/recipient>
-   )
-```
-
-- **Common case** (ordered messages in an agent conversation): the guard holds →
-  cursor advances → the cron finds nothing → **no duplicate**.
-- **Guard fails** (concurrent write, an older un-delivered event, lost race): the
-  cursor is left untouched → the cron re-delivers → the agent dedups on
-  `eventId`. Worst case degrades to exactly today's behavior.
-
-The immediate path **never** triggers poison-skip or auto-disable; those remain
-owned by the cron so failure counters aren't double-incremented. An immediate
-send failure is simply dropped (caught) and the cron picks it up.
+If 2× message webhook volume ever matters, a per-event delivery ledger (track
+delivered `eventId`s per webhook so the cron skips them) is the follow-up.
 
 ## Components
 
@@ -173,7 +162,7 @@ send failure is simply dropped (caught) and the cron picks it up.
 |---|---|---|
 | `deliverEvent(db, webhook, event)` | Gate → sign → POST → outcome | `validateWebhookUrl`, `resolveActorName` |
 | `webhookMatchesEvent(webhook, event)` | Shared gating predicate | category prefixes, damping state |
-| `dispatchEventImmediately(db, event)` | Find recipient webhooks, deliver, guarded cursor advance | `deliverEvent` |
+| `dispatchEventImmediately(db, event)` | Find matching webhooks, deliver (cursor untouched) | `deliverEvent`, `webhookMatchesEvent` |
 | `dispatchWebhooks(db)` (cron, refactored) | Durable reconciler; cursor/retry/disable | `deliverEvent` |
 | write paths (`inbox.ts`) | Capture event, schedule `waitUntil` | `logActivity` (now returns the event) |
 
@@ -204,9 +193,10 @@ No schema change. No new dependency. No new infra.
   success/failure outcomes. (Extracted, mostly pure → easy to test.)
 - **Integration:** a human→agent `sendMessage` schedules an immediate delivery to
   the recipient's enabled inbox webhook; payload + signature match the contract.
-- **Cursor guard:** ordered messages → no duplicate; an older un-seen event
-  present → guard declines to advance, cron re-delivers (no skip).
-- **Backstop:** a failed/absent immediate send is still delivered by the cron.
+- **No cursor mutation:** the immediate path delivers without changing the
+  webhook cursor (the cron owns it).
+- **Backstop / idempotency:** a failed or skipped immediate send is still
+  delivered by the cron; agents dedup on `eventId` (bounded 2× per message).
 
 ## Agent setup docs (deliverable)
 
