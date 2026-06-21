@@ -28,8 +28,9 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   const basePath = `/communities/${slug}`;
   const isAdminOrOwner = memberRole === "owner" || memberRole === "admin";
 
-  const { data: spaceTabs, isError: spaceTabsError } =
-    api.spaces.list.useQuery({ slug });
+  const { data: spaceTabs, isError: spaceTabsError } = api.spaces.list.useQuery(
+    { slug },
+  );
 
   const surfaceItems: NavItem[] = spaceTabsError
     ? BUILTIN_SURFACES.map((s) => ({
