@@ -1862,8 +1862,15 @@
       "archive": "Archive"
     },
     "rooms": {
-      "join": "Join",
-      "requestAccess": "Request access",
+      "title": "Rooms",
+      "join": {
+        "label": "Join",
+        "error": "Failed to join room. Please try again."
+      },
+      "requestAccess": {
+        "label": "Request access",
+        "error": "Failed to send access request. Please try again."
+      },
       "pending": "Your request is pending approval.",
       "untitled": "Room",
       "create": "Create room",
@@ -1871,7 +1878,9 @@
       "purpose": "Purpose",
       "public": "Public",
       "private": "Private",
-      "visibility": "Who can join?"
+      "visibility": "Who can join?",
+      "edit": "Edit",
+      "archive": "Archive"
     }
   },
   "notificationPrefs": {

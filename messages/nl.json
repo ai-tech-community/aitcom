@@ -1862,8 +1862,15 @@
       "archive": "Archiveren"
     },
     "rooms": {
-      "join": "Deelnemen",
-      "requestAccess": "Toegang aanvragen",
+      "title": "Ruimtes",
+      "join": {
+        "label": "Deelnemen",
+        "error": "Deelnemen aan ruimte mislukt. Probeer het opnieuw."
+      },
+      "requestAccess": {
+        "label": "Toegang aanvragen",
+        "error": "Toegangsverzoek versturen mislukt. Probeer het opnieuw."
+      },
       "pending": "Je verzoek wacht op goedkeuring.",
       "untitled": "Ruimte",
       "create": "Ruimte aanmaken",
@@ -1871,7 +1878,9 @@
       "purpose": "Doel",
       "public": "Openbaar",
       "private": "Privé",
-      "visibility": "Wie kan deelnemen?"
+      "visibility": "Wie kan deelnemen?",
+      "edit": "Bewerken",
+      "archive": "Archiveren"
     }
   },
   "notificationPrefs": {

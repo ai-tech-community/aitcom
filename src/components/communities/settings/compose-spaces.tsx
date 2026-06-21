@@ -230,7 +230,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
       <div className="space-y-6">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">
-            {tRooms("create")}
+            {tRooms("title")}
           </h2>
         </div>
 
@@ -408,7 +408,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
                           setDraftRoomPublic(room.visibility === "public");
                         }}
                       >
-                        {t("edit")}
+                        {tRooms("edit")}
                       </Button>
                       <Button
                         size="sm"
@@ -418,7 +418,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
                         }
                         disabled={archiveRoom.isPending}
                       >
-                        {t("archive")}
+                        {tRooms("archive")}
                       </Button>
                     </div>
                   </div>

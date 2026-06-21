@@ -29,7 +29,9 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
 
   if (room.membership === "active" && room.conversationId) {
     return (
-      <div className="h-[70vh]">
+      // Height: fills the community content area (below ~16rem of nav + header) while
+      // keeping a 24rem floor so the composer stays visible on short viewports.
+      <div className="flex h-[calc(100vh-16rem)] min-h-96 flex-col">
         <ConversationView
           conversationId={room.conversationId}
           peer={{ name: room.name ?? t("untitled"), image: null, isAgent: false }}
@@ -39,6 +41,10 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
     );
   }
 
+  // Defensive: getRoom guarantees conversationId for active members (via
+  // getOrCreateRoomConversation), so an active member reaching here is impossible
+  // in production. Fall through to the join gate as a safe no-op.
+
   return (
     <div className="mx-auto max-w-md rounded-lg border p-8 text-center">
       <h2 className="text-lg font-semibold">{room.name}</h2>
@@ -47,11 +53,11 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
         <p className="text-muted-foreground mt-6 text-sm">{t("pending")}</p>
       ) : room.visibility === "public" ? (
         <Button className="mt-6" onClick={() => join.mutate({ slug, spaceId: room.id })} disabled={join.isPending}>
-          {t("join")}
+          {t("join.label")}
         </Button>
       ) : (
         <Button className="mt-6" variant="outline" onClick={() => request.mutate({ slug, spaceId: room.id })} disabled={request.isPending}>
-          {t("requestAccess")}
+          {t("requestAccess.label")}
         </Button>
       )}
     </div>

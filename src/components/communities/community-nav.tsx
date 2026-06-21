@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Lock } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,7 @@ interface NavItem {
   key: string;
   href: string;
   label: string;
-  suffix?: string;
+  isPrivate?: boolean;
 }
 
 export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
@@ -57,10 +58,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
     key: `room-${room.id}`,
     href: `${basePath}/spaces/${room.slug}`,
     label: room.name ?? tRooms("untitled"),
-    suffix:
-      room.visibility === "private" && room.membership !== "active"
-        ? "🔒"
-        : undefined,
+    isPrivate: room.visibility === "private" && room.membership !== "active",
   }));
 
   const navItems: NavItem[] = [
@@ -122,10 +120,14 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
                 )}
               >
                 {item.label}
-                {item.suffix && (
-                  <span className="ml-1 text-xs" aria-label="private room">
-                    {item.suffix}
-                  </span>
+                {item.isPrivate && (
+                  <>
+                    <Lock
+                      className="ml-1 inline-block size-3 text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                    <span className="sr-only">private room</span>
+                  </>
                 )}
               </Link>
             );
