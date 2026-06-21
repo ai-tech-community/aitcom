@@ -2,7 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
+import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
+import {
+  resolveSpaceLabel,
+  type BuiltinSurface,
+} from "@/server/communities/space-defaults";
 
 interface CommunityNavProps {
   slug: string;
@@ -12,6 +17,7 @@ interface CommunityNavProps {
 interface NavItem {
   key: string;
   href: string;
+  label: string;
 }
 
 export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
@@ -21,24 +27,33 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   const basePath = `/communities/${slug}`;
   const isAdminOrOwner = memberRole === "owner" || memberRole === "admin";
 
+  const { data: spaceTabs } = api.spaces.list.useQuery({ slug });
+
+  const surfaceItems: NavItem[] = (spaceTabs ?? [])
+    .filter((s) => s.kind === "builtin" && s.builtinSurface)
+    .map((s) => ({
+      key: `space-${s.id}`,
+      href: `${basePath}/${s.slug}`,
+      label: resolveSpaceLabel(
+        { kind: s.kind, builtinSurface: s.builtinSurface, name: s.name },
+        (k: BuiltinSurface) => t(k),
+      ),
+    }));
+
   const navItems: NavItem[] = [
-    { key: "overview", href: basePath },
-    { key: "forum", href: `${basePath}/forum` },
-    { key: "events", href: `${basePath}/events` },
-    { key: "classroom", href: `${basePath}/classroom` },
-    { key: "ideas", href: `${basePath}/ideas` },
-    { key: "members", href: `${basePath}/members` },
+    { key: "overview", href: basePath, label: t("overview") },
+    ...surfaceItems,
     ...(memberRole
-      ? [{ key: "referrals", href: `${basePath}/referrals` }]
+      ? [{ key: "referrals", href: `${basePath}/referrals`, label: t("referrals") }]
       : []),
     ...(isAdminOrOwner || memberRole === "moderator"
       ? [
-          { key: "insights", href: `${basePath}/insights` },
-          { key: "rituals", href: `${basePath}/rituals` },
+          { key: "insights", href: `${basePath}/insights`, label: t("insights") },
+          { key: "rituals", href: `${basePath}/rituals`, label: t("rituals") },
         ]
       : []),
     ...(isAdminOrOwner
-      ? [{ key: "settings", href: `${basePath}/settings` }]
+      ? [{ key: "settings", href: `${basePath}/settings`, label: t("settings") }]
       : []),
   ];
 
@@ -66,19 +81,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
                     : "text-muted-foreground hover:text-foreground hover:border-border border-transparent",
                 )}
               >
-                {t(
-                  item.key as
-                    | "overview"
-                    | "forum"
-                    | "events"
-                    | "classroom"
-                    | "ideas"
-                    | "members"
-                    | "referrals"
-                    | "insights"
-                    | "rituals"
-                    | "settings",
-                )}
+                {item.label}
               </Link>
             );
           })}
