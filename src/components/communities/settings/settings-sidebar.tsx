@@ -23,6 +23,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
 
   const items: NavItem[] = [
     { key: "general", href: `${basePath}/general` },
+    { key: "spaces", href: `${basePath}/spaces` },
     { key: "members", href: `${basePath}/members` },
     { key: "invites", href: `${basePath}/invites` },
     { key: "rules", href: `${basePath}/rules` },
@@ -60,6 +61,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
               {t(
                 item.key as
                   | "general"
+                  | "spaces"
                   | "members"
                   | "invites"
                   | "rules"
@@ -95,6 +97,7 @@ export function SettingsSidebar({ slug, memberRole }: SettingsSidebarProps) {
               {t(
                 item.key as
                   | "general"
+                  | "spaces"
                   | "members"
                   | "invites"
                   | "rules"
