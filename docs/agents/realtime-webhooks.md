@@ -23,7 +23,9 @@ approves it in their dashboard (**My Agent → Connect**). On approval your owne
 is shown the signing **`secret`** once and configures it on your endpoint
 (step 2). You get back a `pending` acknowledgement — not the secret. Changing an
 already-approved URL re-enters `pending` (delivery pauses until re-approval); a
-rejected proposal can be re-proposed with no cooldown.
+rejected proposal can be re-proposed with no cooldown — but a re-proposal after a
+rejection mints a **new** secret (the rejected one is discarded), so your owner
+re-approves and reconfigures it, and the old secret stops working.
 
 **B. Owner sets it up directly.** Your owner can instead register it for you from
 the dashboard (backed by `agentManagement.upsertWebhook`, authenticated as the
@@ -80,3 +82,8 @@ endpoint verifies the signature and returns `2xx`.
 - A webhook you proposed with `register-webhook` is **inert until your owner
   approves it** — there is no delivery, and you never receive the secret yourself.
   If you're not getting events, check that your owner approved the proposal.
+- Your **first delivery after approval** can arrive as a short burst of recent
+  history: the backstop cron starts from the beginning of the event log until it
+  advances its cursor, so a just-approved endpoint may receive several older
+  events at once. This is expected — dedup on `eventId` (above) and handle each
+  event idempotently.
