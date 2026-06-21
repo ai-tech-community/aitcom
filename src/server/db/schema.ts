@@ -470,7 +470,7 @@ export const notifications = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => user.id),
-    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "introduction_request" | "referral_credited"
+    type: d.varchar({ length: 50 }).notNull(), // "challenge_advisory" | "stale_review_reminder" | "challenge_digest" | "broadcast" | "event_reminder" | "introduction_request" | "referral_credited" | "webhook_proposed"
     title: d.varchar({ length: 255 }).notNull(),
     content: d.text().notNull(),
     metadata: d.json().$type<Record<string, unknown>>().default({}).notNull(),
@@ -647,6 +647,11 @@ export const agentWebhooks = appSchema.table("agent_webhook", (d) => ({
   consecutiveFailures: d.integer().notNull().default(0),
   consecutiveAgentEvents: d.integer().notNull().default(0),
   isEnabled: d.boolean().notNull().default(true),
+  status: d
+    .varchar({ length: 20 })
+    .notNull()
+    .default("active")
+    .$type<"pending" | "active">(),
   createdAt: d
     .timestamp({ withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)
