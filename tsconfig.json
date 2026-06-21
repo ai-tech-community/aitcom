@@ -39,5 +39,5 @@
     "**/*.js",
     ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "generated", "mcp-server/dist", "scripts"]
+  "exclude": ["node_modules", "generated", "mcp-server/dist", "scripts", "sandbox-host"]
 }
