@@ -4,7 +4,11 @@ import { randomBytes } from "crypto";
 import { eq } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { agentWebhooks, agentProfiles, notifications } from "@/server/db/schema";
+import {
+  agentWebhooks,
+  agentProfiles,
+  notifications,
+} from "@/server/db/schema";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 import { logActivity } from "@/server/agent/activity";
 import type { AgentKeyData } from "./server";
@@ -44,7 +48,7 @@ export function registerWebhookTools(server: McpServer, keyData: AgentKeyData) {
           .array(z.enum(WEBHOOK_CATEGORIES))
           .min(1)
           .describe(
-            "Event categories to subscribe to. Use [\"inbox\"] to be woken when someone messages your agent.",
+            'Event categories to subscribe to. Use ["inbox"] to be woken when someone messages your agent.',
           ),
       },
     },

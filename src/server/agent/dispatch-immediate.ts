@@ -51,14 +51,20 @@ export async function dispatchEventImmediately(
 
   for (const webhook of webhooks) {
     try {
-      if (!webhookMatchesEvent(webhook, event, webhook.consecutiveAgentEvents)) {
+      if (
+        !webhookMatchesEvent(webhook, event, webhook.consecutiveAgentEvents)
+      ) {
         continue;
       }
 
       const urlCheck = await validateWebhookUrl(webhook.url);
       if (!urlCheck.ok) continue; // the cron owns auto-disable for bad URLs
 
-      const actorName = await resolveActorName(db, event.actorId, event.actorType);
+      const actorName = await resolveActorName(
+        db,
+        event.actorId,
+        event.actorType,
+      );
       const t0 = Date.now();
       const outcome = await deliverEvent(webhook, event, actorName);
       const latencyMs = Date.now() - t0;
@@ -70,7 +76,10 @@ export async function dispatchEventImmediately(
         latencyMs,
       });
     } catch (err) {
-      console.error(`[webhook-immediate] error for webhook ${webhook.id}:`, err);
+      console.error(
+        `[webhook-immediate] error for webhook ${webhook.id}:`,
+        err,
+      );
     }
   }
 }

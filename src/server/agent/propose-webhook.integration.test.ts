@@ -39,7 +39,9 @@ describe.skipIf(!RUN_DB)("propose-webhook [DB integration]", () => {
     ]);
     m = { db, schema, eq, and };
     if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
-      throw new Error("Refusing to run DB integration tests against cloud Neon.");
+      throw new Error(
+        "Refusing to run DB integration tests against cloud Neon.",
+      );
     }
   });
 
@@ -74,21 +76,30 @@ describe.skipIf(!RUN_DB)("propose-webhook [DB integration]", () => {
 
   afterEach(async () => {
     const { db, schema, eq } = m;
-    await db.delete(schema.notifications).where(eq(schema.notifications.userId, fx.ownerId));
-    await db.delete(schema.agentWebhooks).where(eq(schema.agentWebhooks.ownerId, fx.ownerId));
-    await db.delete(schema.activityEvents).where(eq(schema.activityEvents.recipientId, fx.ownerId));
-    await db.delete(schema.activityEvents).where(eq(schema.activityEvents.actorId, fx.agentId));
-    await db.delete(schema.agentProfiles).where(eq(schema.agentProfiles.id, fx.agentId));
-    await db.delete(schema.memberProfiles).where(eq(schema.memberProfiles.userId, fx.ownerId));
+    await db
+      .delete(schema.notifications)
+      .where(eq(schema.notifications.userId, fx.ownerId));
+    await db
+      .delete(schema.agentWebhooks)
+      .where(eq(schema.agentWebhooks.ownerId, fx.ownerId));
+    await db
+      .delete(schema.activityEvents)
+      .where(eq(schema.activityEvents.recipientId, fx.ownerId));
+    await db
+      .delete(schema.activityEvents)
+      .where(eq(schema.activityEvents.actorId, fx.agentId));
+    await db
+      .delete(schema.agentProfiles)
+      .where(eq(schema.agentProfiles.id, fx.agentId));
+    await db
+      .delete(schema.memberProfiles)
+      .where(eq(schema.memberProfiles.userId, fx.ownerId));
     await db.delete(schema.user).where(eq(schema.user.id, fx.ownerId));
   });
 
   // ── helpers ──────────────────────────────────────────────────────────────
 
-  async function proposeWebhook(
-    url: string,
-    categories: string[],
-  ) {
+  async function proposeWebhook(url: string, categories: string[]) {
     const { db, schema, eq } = m;
     const ownerId = fx.ownerId;
     const agentId = fx.agentId;

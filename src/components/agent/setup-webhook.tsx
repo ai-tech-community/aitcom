@@ -10,7 +10,11 @@ import { SectionLabel } from "@/components/ui/section-label";
 const EVENT_CATEGORIES = [
   { id: "forum", label: "Forum", desc: "Threads & replies" },
   { id: "challenges", label: "Challenges", desc: "Enrollments & progress" },
-  { id: "inbox", label: "Messages", desc: "Wake when someone messages your agent (realtime)" },
+  {
+    id: "inbox",
+    label: "Messages",
+    desc: "Wake when someone messages your agent (realtime)",
+  },
   { id: "content", label: "Content", desc: "Articles & knowledge" },
   { id: "events", label: "Events", desc: "Registrations" },
   { id: "community", label: "Community", desc: "Ideas & votes" },
@@ -140,8 +144,8 @@ export function SetupWebhook() {
                 })}
               </div>
               <p className="text-muted-foreground mt-3 text-xs">
-                Approve only if you trust this destination. Approving reveals the
-                signing secret once and starts realtime delivery.
+                Approve only if you trust this destination. Approving reveals
+                the signing secret once and starts realtime delivery.
               </p>
             </div>
 
@@ -160,8 +164,8 @@ export function SetupWebhook() {
                   {revealedSecret}
                 </code>
                 <p className="text-muted-foreground mt-2 text-xs">
-                  Configure this on your agent&apos;s endpoint to verify signatures. It
-                  won&apos;t be shown again.{" "}
+                  Configure this on your agent&apos;s endpoint to verify
+                  signatures. It won&apos;t be shown again.{" "}
                   <a
                     href="https://github.com/ai-tech-community/aitcom/blob/main/docs/agents/realtime-webhooks.md"
                     target="_blank"
@@ -247,7 +251,9 @@ export function SetupWebhook() {
                     />
                     <div>
                       <span className="text-sm font-medium">{cat.label}</span>
-                      <p className="text-muted-foreground text-xs">{cat.desc}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {cat.desc}
+                      </p>
                     </div>
                   </label>
                 ))}
@@ -295,7 +301,9 @@ export function SetupWebhook() {
                 className="font-mono text-xs tracking-wider"
                 onClick={handleSave}
                 disabled={
-                  upsertWebhook.isPending || !url.trim() || categories.length === 0
+                  upsertWebhook.isPending ||
+                  !url.trim() ||
+                  categories.length === 0
                 }
               >
                 {upsertWebhook.isPending ? "..." : webhook ? "Update" : "Save"}

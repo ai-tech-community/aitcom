@@ -33,7 +33,12 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
   const webhooks = await db
     .select()
     .from(agentWebhooks)
-    .where(and(eq(agentWebhooks.isEnabled, true), eq(agentWebhooks.status, "active")));
+    .where(
+      and(
+        eq(agentWebhooks.isEnabled, true),
+        eq(agentWebhooks.status, "active"),
+      ),
+    );
 
   for (const webhook of webhooks) {
     try {
@@ -75,7 +80,11 @@ export async function dispatchWebhooks(db: DB): Promise<DispatchResult> {
       let consecutiveFailures = webhook.consecutiveFailures;
 
       for (const evt of matchingEvents) {
-        const actorName = await resolveActorName(db, evt.actorId, evt.actorType);
+        const actorName = await resolveActorName(
+          db,
+          evt.actorId,
+          evt.actorType,
+        );
         const t0 = Date.now();
         const outcome = await deliverEvent(webhook, evt, actorName);
         const latencyMs = Date.now() - t0;

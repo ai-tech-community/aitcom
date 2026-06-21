@@ -205,8 +205,10 @@ export function NotificationPanel({ onClose }: Props) {
                     }}
                     className="text-primary mt-2 inline-block text-xs font-medium underline-offset-4 hover:underline"
                   >
-                    {typeof (n.metadata as NotificationMetadata)?.linkLabel === "string"
-                      ? ((n.metadata as NotificationMetadata).linkLabel as string)
+                    {typeof (n.metadata as NotificationMetadata)?.linkLabel ===
+                    "string"
+                      ? ((n.metadata as NotificationMetadata)
+                          .linkLabel as string)
                       : "Review suggestion"}
                   </Link>
                 )}

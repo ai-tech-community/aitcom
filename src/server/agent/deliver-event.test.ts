@@ -50,32 +50,54 @@ describe("webhookMatchesEvent", () => {
     expect(webhookMatchesEvent(webhook(), event(), 0)).toBe(true);
   });
   it("treats a null-recipient event as public (matches any subscriber)", () => {
-    expect(webhookMatchesEvent(webhook(), event({ recipientId: null }), 0)).toBe(true);
+    expect(
+      webhookMatchesEvent(webhook(), event({ recipientId: null }), 0),
+    ).toBe(true);
   });
   it("rejects events addressed to a different recipient", () => {
-    expect(webhookMatchesEvent(webhook(), event({ recipientId: "someone-else" }), 0)).toBe(false);
+    expect(
+      webhookMatchesEvent(webhook(), event({ recipientId: "someone-else" }), 0),
+    ).toBe(false);
   });
   it("rejects the webhook agent's own actions", () => {
     expect(
-      webhookMatchesEvent(webhook(), event({ actorId: "agent1", actorType: "agent", recipientId: null }), 0),
+      webhookMatchesEvent(
+        webhook(),
+        event({ actorId: "agent1", actorType: "agent", recipientId: null }),
+        0,
+      ),
     ).toBe(false);
   });
   it("rejects actions the webhook's categories don't subscribe to", () => {
-    expect(webhookMatchesEvent(webhook({ categories: ["forum"] }), event(), 0)).toBe(false);
+    expect(
+      webhookMatchesEvent(webhook({ categories: ["forum"] }), event(), 0),
+    ).toBe(false);
   });
   it("dampens agent chains after 2 consecutive agent events", () => {
     expect(
-      webhookMatchesEvent(webhook(), event({ actorType: "agent", actorId: "agent2", recipientId: null }), 2),
+      webhookMatchesEvent(
+        webhook(),
+        event({ actorType: "agent", actorId: "agent2", recipientId: null }),
+        2,
+      ),
     ).toBe(false);
   });
   it("rejects a pending webhook even when category and recipient match", () => {
     expect(
-      webhookMatchesEvent(webhook({ status: "pending", categories: ["inbox"] }), event({ action: "message.created", recipientId: "owner1" }), 0),
+      webhookMatchesEvent(
+        webhook({ status: "pending", categories: ["inbox"] }),
+        event({ action: "message.created", recipientId: "owner1" }),
+        0,
+      ),
     ).toBe(false);
   });
   it("accepts an active webhook on the same event", () => {
     expect(
-      webhookMatchesEvent(webhook({ status: "active", categories: ["inbox"] }), event({ action: "message.created", recipientId: "owner1" }), 0),
+      webhookMatchesEvent(
+        webhook({ status: "active", categories: ["inbox"] }),
+        event({ action: "message.created", recipientId: "owner1" }),
+        0,
+      ),
     ).toBe(true);
   });
 });
@@ -101,18 +123,28 @@ describe("deliverEvent", () => {
       data: { actorName: "Alice", actorType: "member" },
     });
     const headers = init!.headers as Record<string, string>;
-    const expectedSig = createHmac("sha256", "s3cr3t").update(body).digest("hex");
+    const expectedSig = createHmac("sha256", "s3cr3t")
+      .update(body)
+      .digest("hex");
     expect(headers["X-AIT-Signature"]).toBe(`sha256=${expectedSig}`);
     expect(headers["X-AIT-Event"]).toBe("message.sent");
   });
 
   it("returns not-ok on a non-2xx response", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: false, status: 500 } as Response);
-    expect(await deliverEvent(webhook(), event(), "Alice")).toEqual({ ok: false, status: 500 });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+    } as Response);
+    expect(await deliverEvent(webhook(), event(), "Alice")).toEqual({
+      ok: false,
+      status: 500,
+    });
   });
 
   it("returns not-ok when the request throws", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network"));
-    expect(await deliverEvent(webhook(), event(), "Alice")).toEqual({ ok: false });
+    expect(await deliverEvent(webhook(), event(), "Alice")).toEqual({
+      ok: false,
+    });
   });
 });

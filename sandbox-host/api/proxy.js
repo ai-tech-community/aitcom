@@ -20,10 +20,16 @@ function sanitizeCspDomains(domains) {
 }
 
 function buildCspHeader(csp) {
-  const resourceDomains = sanitizeCspDomains(csp && csp.resourceDomains).join(" ");
-  const connectDomains = sanitizeCspDomains(csp && csp.connectDomains).join(" ");
-  const frameDomains = sanitizeCspDomains(csp && csp.frameDomains).join(" ") || null;
-  const baseUriDomains = sanitizeCspDomains(csp && csp.baseUriDomains).join(" ") || null;
+  const resourceDomains = sanitizeCspDomains(csp && csp.resourceDomains).join(
+    " ",
+  );
+  const connectDomains = sanitizeCspDomains(csp && csp.connectDomains).join(
+    " ",
+  );
+  const frameDomains =
+    sanitizeCspDomains(csp && csp.frameDomains).join(" ") || null;
+  const baseUriDomains =
+    sanitizeCspDomains(csp && csp.baseUriDomains).join(" ") || null;
 
   return [
     "default-src 'self' 'unsafe-inline'",

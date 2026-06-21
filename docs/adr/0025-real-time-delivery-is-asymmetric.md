@@ -1,6 +1,6 @@
 # Real-time delivery is asymmetric: human-side push, agent-side reactive-when-awake
 
-**Status:** accepted (Tier 0 implemented; Tier 1/2 accepted but deferred)
+**Status:** accepted (Tier 0 implemented; Tier 1 SSE implemented; Tier 2 agent-wake implemented — see per-tier notes; `wait-for-work` long-poll not built)
 **Builds on:** [ADR-0017](0017-agent-communication-boundary-and-manifest.md), [ADR-0023](0023-work-grid-dispatch-is-a-claimable-pull-queue.md)
 
 The owner↔agent inbox ([[agent-communication-boundary]]) and the
@@ -36,27 +36,35 @@ founding ethos ([[agent-commission]], ADR-0023) that the power is the human's
   (`refetchIntervalInBackground` defaults to false), with **optimistic UI** on
   send so the human's own messages appear instantly. Near-real-time *perception*
   for ~zero infrastructure.
-- **Tier 1 (deferred):** replace polling with **Server-Sent Events** over Vercel
+- **Tier 1 (implemented):** replace polling with **Server-Sent Events** over Vercel
   Fluid Compute (built for long-lived streaming), backed by a **pub/sub fabric**
   (Upstash Redis via the Vercel Marketplace) so a write on any function instance
   fans out to the connected browser. Sub-second human-side latency, no polling
   load. SSE (one-way server→browser) is chosen over WebSockets because the
   traffic is overwhelmingly events *landing*; full duplex buys nothing here.
 
-### Agent side — reactive-when-awake (Tier 2, deferred)
+### Agent side — reactive-when-awake (Tier 2, implemented)
 
 - **Pull is the floor.** The [[work-grid]] claim queue + inbox tools
   (`check-inbox`, `get-briefing`, `get-notifications`) mean an agent always
   catches up on its next session. This already works and never excludes an
   offline agent.
-- **Event-driven wake replaces the cron.** Today `webhook-dispatch` is a *cron*
-  (minutes of latency). Move to **publish-on-write → Vercel Queues** (durable,
-  at-least-once) so an always-on agent's webhook fires in **seconds**, with the
-  queue as the durability backstop.
-- **MCP long-poll** (`wait-for-work`): a tool that holds the request open (up to
-  ~250s on Fluid Compute) and returns the instant a matching cell or message
-  arrives, so an *online-but-idle* agent reacts immediately instead of
-  poll-sleeping. Pure MCP — no new transport.
+- **Event-driven wake replaces the cron (implemented, #182).** A human→agent
+  message now fires the agent's webhook in **seconds** via an immediate
+  `after()` dispatch path, with the existing `* * * * *` `webhook-dispatch`
+  cron retained as the durable backstop. At-least-once (bounded ~2× per
+  message); agents dedup on `eventId`. The durability backstop is the cron
+  here, **not Vercel Queues** — the originally-proposed Queues mechanism was
+  not needed once the cron already owned the cursor and re-delivery.
+- **Owner-approved agent self-registration (implemented, #183).** An agent may
+  *propose* its own webhook via the `register-webhook` MCP tool; the proposal
+  lands `pending` and delivers nothing until the owner approves it. Keeps the
+  owner in control of where their agent's data is sent.
+- **MCP long-poll** (`wait-for-work`): **not built.** A tool that holds the
+  request open (up to ~250s on Fluid Compute) and returns the instant a
+  matching cell or message arrives, for an *online-but-idle* agent. Still a
+  valid future optimisation; the immediate webhook path covers the always-on
+  case for now.
 
 ## Consequences
 
@@ -66,8 +74,10 @@ founding ethos ([[agent-commission]], ADR-0023) that the power is the human's
   *on-demand* part is standing up the [[agent-commission]] once; the execution
   and return happen whenever the agent is awake/woken. This matches ADR-0023's
   pull-queue + push-to-wake + deadline model exactly.
-- Tier 1/2 add managed infra (Upstash Redis, Vercel Queues). Until they land,
-  Tier 0 polling is the delivery mechanism and the cron remains the agent-wake.
+- Tier 1/2 add managed infra (Upstash Redis for human-side SSE fan-out and the
+  immediate agent-wake path). The cron remains the durable agent-wake backstop;
+  Vercel Queues were not required. Tier 0 polling stays as the graceful
+  degradation when SSE is unavailable.
 
 ## Rejected alternatives
 

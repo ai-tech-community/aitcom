@@ -1,4 +1,12 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { createHmac } from "crypto";
 
 // Mock the SSRF check so tests don't depend on DNS for example.com.
@@ -43,7 +51,9 @@ describe.skipIf(!RUN_DB)("dispatchEventImmediately [DB integration]", () => {
     ]);
     m = { db, schema, dispatchEventImmediately };
     if (looksLikeCloudNeon(process.env.DATABASE_URL ?? "")) {
-      throw new Error("Refusing to run DB integration tests against cloud Neon.");
+      throw new Error(
+        "Refusing to run DB integration tests against cloud Neon.",
+      );
     }
   });
 
@@ -89,11 +99,21 @@ describe.skipIf(!RUN_DB)("dispatchEventImmediately [DB integration]", () => {
   afterEach(async () => {
     const { db, schema } = m;
     const { eq } = await import("drizzle-orm");
-    await db.delete(schema.agentWebhooks).where(eq(schema.agentWebhooks.ownerId, fx.ownerId));
-    await db.delete(schema.activityEvents).where(eq(schema.activityEvents.recipientId, fx.ownerId));
-    await db.delete(schema.activityEvents).where(eq(schema.activityEvents.actorId, fx.ownerId));
-    await db.delete(schema.agentProfiles).where(eq(schema.agentProfiles.id, fx.agentId));
-    await db.delete(schema.memberProfiles).where(eq(schema.memberProfiles.userId, fx.ownerId));
+    await db
+      .delete(schema.agentWebhooks)
+      .where(eq(schema.agentWebhooks.ownerId, fx.ownerId));
+    await db
+      .delete(schema.activityEvents)
+      .where(eq(schema.activityEvents.recipientId, fx.ownerId));
+    await db
+      .delete(schema.activityEvents)
+      .where(eq(schema.activityEvents.actorId, fx.ownerId));
+    await db
+      .delete(schema.agentProfiles)
+      .where(eq(schema.agentProfiles.id, fx.agentId));
+    await db
+      .delete(schema.memberProfiles)
+      .where(eq(schema.memberProfiles.userId, fx.ownerId));
     await db.delete(schema.user).where(eq(schema.user.id, fx.ownerId));
     vi.restoreAllMocks();
   });
@@ -144,9 +164,14 @@ describe.skipIf(!RUN_DB)("dispatchEventImmediately [DB integration]", () => {
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(url).toBe("https://example.com/hook");
     const body = init!.body as string;
-    expect(JSON.parse(body)).toMatchObject({ eventId: evt.id, type: "message.sent" });
+    expect(JSON.parse(body)).toMatchObject({
+      eventId: evt.id,
+      type: "message.sent",
+    });
     const headers = init!.headers as Record<string, string>;
-    const expectedSig = createHmac("sha256", fx.secret).update(body).digest("hex");
+    const expectedSig = createHmac("sha256", fx.secret)
+      .update(body)
+      .digest("hex");
     expect(headers["X-AIT-Signature"]).toBe(`sha256=${expectedSig}`);
 
     // The immediate path never advances the cursor — the cron owns it.
