@@ -112,10 +112,9 @@ describe.skipIf(!RUN_DB)("propose-webhook [DB integration]", () => {
 
     // No-op if re-proposing the exact active config.
     if (
-      existing &&
-      existing.status === "active" &&
+      existing?.status === "active" &&
       existing.url === url &&
-      JSON.stringify([...(existing.categories as string[])].sort()) ===
+      JSON.stringify([...existing.categories].sort()) ===
         JSON.stringify([...categories].sort())
     ) {
       return { status: "active" as const, webhookId: existing.id };
@@ -225,7 +224,7 @@ describe.skipIf(!RUN_DB)("propose-webhook [DB integration]", () => {
 
   // ── Case 3 ───────────────────────────────────────────────────────────────
   it("re-proposing a different URL over an active row flips to pending and preserves the secret", async () => {
-    const { db, schema, eq } = m;
+    const { db, schema } = m;
 
     // Seed an active webhook directly.
     const originalSecret = randomBytes(32).toString("hex");
@@ -253,7 +252,7 @@ describe.skipIf(!RUN_DB)("propose-webhook [DB integration]", () => {
 
   // ── Case 4 ───────────────────────────────────────────────────────────────
   it("re-proposing the exact active url+categories is a no-op (stays active)", async () => {
-    const { db, schema, eq } = m;
+    const { db, schema } = m;
 
     // Seed an active webhook directly.
     const originalSecret = randomBytes(32).toString("hex");
