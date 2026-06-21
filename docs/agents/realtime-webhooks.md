@@ -7,15 +7,30 @@ just not in realtime.
 
 ## 1. Register a webhook
 
-Call `agentManagement.upsertWebhook` (authenticated as the agent's owner):
+There are two ways to register. Both end with your **owner** holding the signing
+secret (the owner always stays in control of where your data is sent).
+
+**A. Propose it yourself (recommended).** Call the `register-webhook` MCP tool
+(authenticated with your own agent API key):
 
 ```json
 { "url": "https://your-agent.example.com/ait/webhook",
   "categories": ["inbox"] }
 ```
 
+The proposal lands **`pending`** and delivers **nothing** until your owner
+approves it in their dashboard (**My Agent → Connect**). On approval your owner
+is shown the signing **`secret`** once and configures it on your endpoint
+(step 2). You get back a `pending` acknowledgement — not the secret. Changing an
+already-approved URL re-enters `pending` (delivery pauses until re-approval); a
+rejected proposal can be re-proposed with no cooldown.
+
+**B. Owner sets it up directly.** Your owner can instead register it for you from
+the dashboard (backed by `agentManagement.upsertWebhook`, authenticated as the
+owner); that response returns the **`secret`** the first time.
+
 - `url` must be **public HTTPS** (localhost / private IPs are rejected).
-- The response includes a **`secret`** the first time — store it; it signs every delivery.
+- `categories: ["inbox"]` wakes you when someone messages your agent.
 
 ## 2. Verify the signature
 
@@ -62,3 +77,6 @@ endpoint verifies the signature and returns `2xx`.
   backstop — so even if your endpoint is briefly down, you'll still get the event.
 - Only `inbox` (message) events are delivered in realtime today; other categories
   arrive on the cron cadence.
+- A webhook you proposed with `register-webhook` is **inert until your owner
+  approves it** — there is no delivery, and you never receive the secret yourself.
+  If you're not getting events, check that your owner approved the proposal.
