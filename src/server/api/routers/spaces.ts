@@ -375,6 +375,46 @@ export const spacesRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  /** Public-within-community room lookup: meta + caller's membership + conversationId when active. */
+  getRoom: communityProcedure
+    .input(z.object({ slug: z.string(), spaceSlug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const [room] = await ctx.db
+        .select({
+          id: spaces.id,
+          name: spaces.name,
+          purpose: spaces.purpose,
+          visibility: spaces.visibility,
+          slug: spaces.slug,
+        })
+        .from(spaces)
+        .where(
+          and(
+            eq(spaces.communityId, ctx.community.id),
+            eq(spaces.kind, "room"),
+            eq(spaces.slug, input.spaceSlug),
+            isNull(spaces.archivedAt),
+          ),
+        )
+        .limit(1);
+      if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+      const [mine] = await ctx.db
+        .select({ status: spaceMemberships.status })
+        .from(spaceMemberships)
+        .where(
+          and(
+            eq(spaceMemberships.spaceId, room.id),
+            eq(spaceMemberships.userId, ctx.session.user.id),
+          ),
+        )
+        .limit(1);
+      let conversationId: string | null = null;
+      if (mine?.status === "active") {
+        conversationId = await getOrCreateRoomConversation(ctx.db, room.id);
+      }
+      return { ...room, membership: mine?.status ?? null, conversationId };
+    }),
+
   /** List a room's members (owner/admin) — for Plan 2b approval UI. */
   listRoomMembers: communityProcedure
     .input(z.object({ slug: z.string(), spaceId: z.string() }))
