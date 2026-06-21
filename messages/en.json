@@ -1698,17 +1698,6 @@
           "lastSync": "Last synced",
           "never": "never"
         }
-      },
-      "spaces": {
-        "title": "Spaces",
-        "description": "Choose which surfaces appear in your community, their order, and their labels.",
-        "save": "Save",
-        "cancel": "Cancel",
-        "moveUp": "Move up",
-        "moveDown": "Move down",
-        "enabledToggle": "Toggle visibility",
-        "enabled": "Shown",
-        "disabled": "Hidden"
       }
     },
     "invite": {
@@ -1857,7 +1846,18 @@
       "markDone": "Mark done"
     },
     "directoryEmpty": "No communities yet. Be the first to start one.",
-    "membersEmpty": "No members yet."
+    "membersEmpty": "No members yet.",
+    "spaces": {
+      "title": "Spaces",
+      "description": "Choose which surfaces appear in your community, their order, and their labels.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "enabledToggle": "Toggle visibility",
+      "enabled": "Shown",
+      "disabled": "Hidden"
+    }
   },
   "notificationPrefs": {
     "title": "Notifications",

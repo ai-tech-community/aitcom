@@ -1698,17 +1698,6 @@
           "lastSync": "Laatst gesynchroniseerd",
           "never": "nooit"
         }
-      },
-      "spaces": {
-        "title": "Ruimtes",
-        "description": "Kies welke onderdelen in je community verschijnen, hun volgorde en hun labels.",
-        "save": "Opslaan",
-        "cancel": "Annuleren",
-        "moveUp": "Omhoog",
-        "moveDown": "Omlaag",
-        "enabledToggle": "Zichtbaarheid wisselen",
-        "enabled": "Zichtbaar",
-        "disabled": "Verborgen"
       }
     },
     "invite": {
@@ -1857,7 +1846,18 @@
       "markDone": "Mark done"
     },
     "directoryEmpty": "Nog geen community’s. Start als eerste er een.",
-    "membersEmpty": "Nog geen leden."
+    "membersEmpty": "Nog geen leden.",
+    "spaces": {
+      "title": "Ruimtes",
+      "description": "Kies welke onderdelen in je community verschijnen, hun volgorde en hun labels.",
+      "save": "Opslaan",
+      "cancel": "Annuleren",
+      "moveUp": "Omhoog",
+      "moveDown": "Omlaag",
+      "enabledToggle": "Zichtbaarheid wisselen",
+      "enabled": "Zichtbaar",
+      "disabled": "Verborgen"
+    }
   },
   "notificationPrefs": {
     "title": "Meldingen",
