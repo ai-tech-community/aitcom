@@ -49,7 +49,8 @@ function buildCspHeader(csp) {
 // The sandbox proxy relay. Implements the MCP Apps proxy protocol (spec
 // 2026-01-26): sandbox-proxy-ready -> sandbox-resource-ready{html} -> doc.write,
 // then bidirectional JSON-RPC relay between host and the inner View iframe.
-// Host origins allowed to embed this proxy (add the production app origin here).
+// Host origins allowed to embed this proxy: localhost (dev), *.vercel.app
+// (previews), and the production app domain aitcommunity.org (+ subdomains).
 const PROXY_HTML = `<!doctype html>
 <html>
   <head>
@@ -67,6 +68,7 @@ const PROXY_HTML = `<!doctype html>
       var ALLOWED_HOST_ORIGIN = [
         /^https?:\\/\\/(localhost|127\\.0\\.0\\.1)(:\\d+)?$/,
         /^https:\\/\\/([a-z0-9-]+\\.)*vercel\\.app$/,
+        /^https:\\/\\/([a-z0-9-]+\\.)*aitcommunity\\.org$/,
       ];
 
       if (window.self === window.top) throw new Error("iframe-only");
