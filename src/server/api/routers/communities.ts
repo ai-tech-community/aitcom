@@ -14,7 +14,9 @@ import {
   communityInvites,
   memberProfiles,
   user,
+  spaces,
 } from "@/server/db/schema";
+import { buildDefaultSpaceRows } from "@/server/communities/space-defaults";
 import { generateSlug } from "@/server/communities/slug-utils";
 import {
   canManageRole,
@@ -352,6 +354,11 @@ export const communitiesRouter = createTRPCRouter({
         role: "owner",
         status: "active",
       });
+
+      // Seed the default builtin spaces so the new community's nav is populated.
+      await ctx.db
+        .insert(spaces)
+        .values(buildDefaultSpaceRows(community!.id));
 
       await logActivity(ctx.db, {
         actorId: ctx.session.user.id,
