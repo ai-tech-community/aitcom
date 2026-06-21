@@ -102,25 +102,28 @@ export async function logActivity(
     recipientId?: string;
     communityId?: string;
   },
-) {
+): Promise<typeof activityEvents.$inferSelect> {
   const personalityLabel = classifyPersonality(event.action);
   const contextType = deriveContextType(event.action);
 
-  await db.insert(activityEvents).values({
-    actorId: event.actorId,
-    actorType: event.actorType,
-    action: event.action,
-    targetType: event.targetType,
-    targetId: event.targetId,
-    collabSessionId: event.collabSessionId ?? null,
-    contextType: contextType ?? null,
-    recipientId: event.recipientId ?? null,
-    communityId: event.communityId,
-    metadata: {
-      ...event.metadata,
-      ...(personalityLabel ? { personalityLabel } : {}),
-    },
-  });
+  const [row] = await db
+    .insert(activityEvents)
+    .values({
+      actorId: event.actorId,
+      actorType: event.actorType,
+      action: event.action,
+      targetType: event.targetType,
+      targetId: event.targetId,
+      collabSessionId: event.collabSessionId ?? null,
+      contextType: contextType ?? null,
+      recipientId: event.recipientId ?? null,
+      communityId: event.communityId,
+      metadata: {
+        ...event.metadata,
+        ...(personalityLabel ? { personalityLabel } : {}),
+      },
+    })
+    .returning();
 
   // Fire-and-forget: check challenge progress for member platform actions
   if (event.actorType === "member") {
@@ -131,6 +134,8 @@ export async function logActivity(
       event.metadata,
     ).catch((err) => console.error("[challenges] progress check failed:", err));
   }
+
+  return row!;
 }
 
 /**
