@@ -103,8 +103,7 @@ export function registerWebhookTools(server: McpServer, keyData: AgentKeyData) {
 
       // No-op if the agent re-proposes the exact active config.
       if (
-        existing &&
-        existing.status === "active" &&
+        existing?.status === "active" &&
         existing.url === url &&
         JSON.stringify([...existing.categories].sort()) ===
           JSON.stringify([...categories].sort())
