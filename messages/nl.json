@@ -1880,7 +1880,15 @@
       "private": "Privé",
       "visibility": "Wie kan deelnemen?",
       "edit": "Bewerken",
-      "archive": "Archiveren"
+      "archive": "Archiveren",
+      "members": "Leden",
+      "addMembers": "Leden toevoegen",
+      "add": "Toevoegen",
+      "approve": "Goedkeuren",
+      "pendingRequests": "Openstaande verzoeken",
+      "searchMembers": "Leden zoeken…",
+      "noMembers": "Nog geen leden.",
+      "memberCount": "{count} leden"
     }
   },
   "notificationPrefs": {

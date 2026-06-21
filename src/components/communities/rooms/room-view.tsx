@@ -2,11 +2,15 @@
 
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
+import { Lock } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Spinner } from "@/components/ui/spinner";
 import { ErrorState } from "@/components/ui/error-state";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { getInitials } from "@/lib/avatar";
 import { ConversationView } from "@/components/messages/conversation-view";
+import { RoomMembersPanel } from "./room-members-panel";
 
 export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string }) {
   const t = useTranslations("communities.rooms");
@@ -28,15 +32,71 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
   if (isError || !room) return <ErrorState onRetry={refetch} />;
 
   if (room.membership === "active" && room.conversationId) {
+    const MAX_SHOWN_AVATARS = 3;
+    const pendingCount = 0; // panel fetches this; 0 here since getRoom doesn't return pending separately
+
     return (
-      // Height: fills the community content area (below ~16rem of nav + header) while
-      // keeping a 24rem floor so the composer stays visible on short viewports.
       <div className="flex h-[calc(100vh-16rem)] min-h-96 flex-col">
-        <ConversationView
-          conversationId={room.conversationId}
-          peer={{ name: room.name ?? t("untitled"), image: null, isAgent: false }}
-          onToggleProfile={() => undefined}
-        />
+        {/* Room header */}
+        <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div>
+              <h1 className="text-base font-semibold leading-tight">{room.name ?? t("untitled")}</h1>
+              {room.purpose ? (
+                <p className="text-muted-foreground text-xs">{room.purpose}</p>
+              ) : null}
+            </div>
+            {/* Visibility marker — Mono-Is-Machine */}
+            {room.visibility === "private" ? (
+              <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs">
+                <Lock className="size-3" aria-hidden />
+                {t("private")}
+              </span>
+            ) : (
+              <span className="text-muted-foreground font-mono text-xs">/ {t("public")}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Avatar stack */}
+            {room.memberAvatars && room.memberAvatars.length > 0 ? (
+              <div className="flex items-center">
+                <div className="flex -space-x-2">
+                  {room.memberAvatars.slice(0, MAX_SHOWN_AVATARS).map((av) => (
+                    <Avatar key={av.userId} size="sm" className="border-background ring-background border-2">
+                      <AvatarImage src={av.avatarUrl ?? undefined} alt={av.displayName ?? ""} />
+                      <AvatarFallback>{getInitials(av.displayName ?? "")}</AvatarFallback>
+                    </Avatar>
+                  ))}
+                </div>
+                {room.memberCount > MAX_SHOWN_AVATARS ? (
+                  <span className="text-muted-foreground ml-2 font-mono text-xs">
+                    +{room.memberCount - MAX_SHOWN_AVATARS}
+                  </span>
+                ) : null}
+              </div>
+            ) : (
+              <span className="text-muted-foreground font-mono text-xs">
+                {t("memberCount", { count: room.memberCount })}
+              </span>
+            )}
+            {/* Members panel */}
+            <RoomMembersPanel
+              slug={slug}
+              spaceId={room.id}
+              spaceSlug={spaceSlug}
+              viewerIsAdmin={room.viewerIsAdmin}
+              pendingCount={pendingCount}
+            />
+          </div>
+        </div>
+        {/* Headerless chat — fills remaining height */}
+        <div className="min-h-0 flex-1">
+          <ConversationView
+            conversationId={room.conversationId}
+            peer={{ name: room.name ?? t("untitled"), image: null, isAgent: false }}
+            hideHeader
+          />
+        </div>
       </div>
     );
   }

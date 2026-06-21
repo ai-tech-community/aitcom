@@ -1880,7 +1880,15 @@
       "private": "Private",
       "visibility": "Who can join?",
       "edit": "Edit",
-      "archive": "Archive"
+      "archive": "Archive",
+      "members": "Members",
+      "addMembers": "Add members",
+      "add": "Add",
+      "approve": "Approve",
+      "pendingRequests": "Pending requests",
+      "searchMembers": "Search members…",
+      "noMembers": "No members yet.",
+      "memberCount": "{count} members"
     }
   },
   "notificationPrefs": {
