@@ -11,6 +11,7 @@ type Props = { onClose: () => void };
 
 type NotificationMetadata = {
   reviewPath?: unknown;
+  linkLabel?: unknown;
 };
 
 function reviewPathFromMetadata(metadata: unknown) {
@@ -204,7 +205,9 @@ export function NotificationPanel({ onClose }: Props) {
                     }}
                     className="text-primary mt-2 inline-block text-xs font-medium underline-offset-4 hover:underline"
                   >
-                    Review suggestion
+                    {typeof (n.metadata as NotificationMetadata)?.linkLabel === "string"
+                      ? ((n.metadata as NotificationMetadata).linkLabel as string)
+                      : "Review suggestion"}
                   </Link>
                 )}
               </div>
