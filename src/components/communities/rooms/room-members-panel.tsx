@@ -73,129 +73,124 @@ export function RoomMembersPanel({
           <SheetTitle>{t("members")}</SheetTitle>
         </SheetHeader>
 
-        {viewerIsAdmin ? (
-          <>
-            {membersQuery.isLoading ? (
-              <div className="flex justify-center py-8">
-                <Spinner className="size-6" />
-              </div>
-            ) : membersQuery.isError ? (
-              <ErrorState onRetry={() => membersQuery.refetch()} />
+        {membersQuery.isLoading ? (
+          <div className="flex justify-center py-8">
+            <Spinner className="size-6" />
+          </div>
+        ) : membersQuery.isError ? (
+          <ErrorState onRetry={() => membersQuery.refetch()} />
+        ) : (
+          <div className="mt-4 overflow-y-auto">
+            {/* Active members — visible to all room members */}
+            {activeMembers.length === 0 ? (
+              <p className="text-muted-foreground text-sm">{t("noMembers")}</p>
             ) : (
-              <div className="mt-4 overflow-y-auto">
-                {/* Active members */}
-                {activeMembers.length === 0 ? (
-                  <p className="text-muted-foreground text-sm">{t("noMembers")}</p>
-                ) : (
-                  activeMembers.map((m) => (
-                    <div key={m.userId} className="flex items-center gap-3 py-2">
+              activeMembers.map((m) => (
+                <div key={m.userId} className="flex items-center gap-3 py-2">
+                  <Avatar size="sm">
+                    <AvatarImage src={m.avatarUrl ?? undefined} alt={m.displayName ?? ""} />
+                    <AvatarFallback>{getInitials(m.displayName ?? "")}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm">{m.displayName}</span>
+                </div>
+              ))
+            )}
+
+            {/* Pending requests — admin-only */}
+            {viewerIsAdmin && pendingMembers.length > 0 ? (
+              <div className="mt-4 border-t pt-4">
+                <p className="text-muted-foreground mb-2 text-xs">
+                  {t("pendingRequests")}
+                </p>
+                {pendingMembers.map((m) => (
+                  <div key={m.userId} className="flex items-center justify-between py-2">
+                    <div className="flex items-center gap-3">
                       <Avatar size="sm">
-                        <AvatarImage src={m.avatarUrl ?? undefined} alt={m.displayName ?? ""} />
+                        <AvatarImage
+                          src={m.avatarUrl ?? undefined}
+                          alt={m.displayName ?? ""}
+                        />
                         <AvatarFallback>{getInitials(m.displayName ?? "")}</AvatarFallback>
                       </Avatar>
                       <span className="text-sm">{m.displayName}</span>
                     </div>
-                  ))
-                )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={approveMutation.isPending}
+                      aria-label={`${t("approve")} ${m.displayName ?? ""}`}
+                      onClick={() =>
+                        approveMutation.mutate({ slug, spaceId, userId: m.userId })
+                      }
+                    >
+                      {t("approve")}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
 
-                {/* Pending requests */}
-                {pendingMembers.length > 0 ? (
-                  <div className="mt-4 border-t pt-4">
-                    <p className="text-muted-foreground mb-2 text-xs">
-                      {t("pendingRequests")}
-                    </p>
-                    {pendingMembers.map((m) => (
-                      <div key={m.userId} className="flex items-center justify-between py-2">
-                        <div className="flex items-center gap-3">
-                          <Avatar size="sm">
-                            <AvatarImage
-                              src={m.avatarUrl ?? undefined}
-                              alt={m.displayName ?? ""}
-                            />
-                            <AvatarFallback>{getInitials(m.displayName ?? "")}</AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{m.displayName}</span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={approveMutation.isPending}
-                          aria-label={`${t("approve")} ${m.displayName ?? ""}`}
-                          onClick={() =>
-                            approveMutation.mutate({ slug, spaceId, userId: m.userId })
-                          }
-                        >
-                          {t("approve")}
-                        </Button>
-                      </div>
-                    ))}
+            {/* Add members — admin-only */}
+            {viewerIsAdmin ? (
+              <div className="mt-4 border-t pt-4">
+                <p className="text-muted-foreground mb-2 text-xs">
+                  {t("addMembers")}
+                </p>
+                <Input
+                  placeholder={t("searchMembers")}
+                  aria-label={t("searchMembers")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="mb-3"
+                />
+                {communityMembersQuery.isLoading ? (
+                  <div className="flex justify-center py-2">
+                    <Spinner className="size-4" />
                   </div>
                 ) : null}
-
-                {/* Add members */}
-                <div className="mt-4 border-t pt-4">
-                  <p className="text-muted-foreground mb-2 text-xs">
-                    {t("addMembers")}
-                  </p>
-                  <Input
-                    placeholder={t("searchMembers")}
-                    aria-label={t("searchMembers")}
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="mb-3"
-                  />
-                  {communityMembersQuery.isLoading ? (
-                    <div className="flex justify-center py-2">
-                      <Spinner className="size-4" />
-                    </div>
-                  ) : null}
-                  {communityMembersQuery.data?.items.map((m) => {
-                    const alreadyMember = activeMembers.some(
-                      (am) => am.userId === m.profile.userId,
-                    );
-                    if (alreadyMember) return null;
-                    return (
-                      <div
-                        key={m.profile.userId}
-                        className="flex items-center justify-between py-2"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Avatar size="sm">
-                            <AvatarImage
-                              src={m.avatarUrl ?? undefined}
-                              alt={m.profile.displayName ?? ""}
-                            />
-                            <AvatarFallback>
-                              {getInitials(m.profile.displayName ?? "")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{m.profile.displayName}</span>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={addMutation.isPending}
-                          aria-label={`${t("add")} ${m.profile.displayName ?? ""}`}
-                          onClick={() =>
-                            addMutation.mutate({
-                              slug,
-                              spaceId,
-                              userId: m.profile.userId,
-                            })
-                          }
-                        >
-                          {t("add")}
-                        </Button>
+                {communityMembersQuery.data?.items.map((m) => {
+                  const alreadyMember = activeMembers.some(
+                    (am) => am.userId === m.profile.userId,
+                  );
+                  if (alreadyMember) return null;
+                  return (
+                    <div
+                      key={m.profile.userId}
+                      className="flex items-center justify-between py-2"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar size="sm">
+                          <AvatarImage
+                            src={m.avatarUrl ?? undefined}
+                            alt={m.profile.displayName ?? ""}
+                          />
+                          <AvatarFallback>
+                            {getInitials(m.profile.displayName ?? "")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">{m.profile.displayName}</span>
                       </div>
-                    );
-                  })}
-                </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={addMutation.isPending}
+                        aria-label={`${t("add")} ${m.profile.displayName ?? ""}`}
+                        onClick={() =>
+                          addMutation.mutate({
+                            slug,
+                            spaceId,
+                            userId: m.profile.userId,
+                          })
+                        }
+                      >
+                        {t("add")}
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </>
-        ) : (
-          /* Non-admin: no listRoomMembers access — show nothing beyond the title */
-          <p className="text-muted-foreground mt-4 text-sm">{t("noMembers")}</p>
+            ) : null}
+          </div>
         )}
       </SheetContent>
     </Sheet>
