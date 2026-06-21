@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { authClient } from "@/server/better-auth/client";
 import { AitLogo } from "@/components/ait-logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { MessagesNavLink } from "@/components/inbox/messages-nav-link";
 
 // Source of truth for the IA split — see ADR-0010.
 // New top-level destinations default to `primary: false` unless they are a
@@ -193,6 +194,7 @@ export function Navbar() {
           <LanguageSwitcher />
           {user ? (
             <>
+              <MessagesNavLink />
               <NotificationBell />
               <DropdownMenu>
                 <DropdownMenuTrigger
@@ -277,6 +279,7 @@ export function Navbar() {
             </svg>
           </a>
           <LanguageSwitcher />
+          {user && <MessagesNavLink />}
           {user && <NotificationBell />}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger
