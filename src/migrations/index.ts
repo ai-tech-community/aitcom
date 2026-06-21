@@ -71,6 +71,7 @@ import * as migration_20260620_points_events from "./20260620_points_events";
 import * as migration_20260620a_chat from "./20260620a_chat";
 import * as migration_20260620b_points_boosts from "./20260620b_points_boosts";
 import * as migration_20260621a_agent_webhook_status from "./20260621a_agent_webhook_status";
+import * as migration_20260621b_spaces from "./20260621b_spaces";
 
 export const migrations = [
   {
@@ -437,5 +438,10 @@ export const migrations = [
     up: migration_20260621a_agent_webhook_status.up,
     down: migration_20260621a_agent_webhook_status.down,
     name: "20260621a_agent_webhook_status",
+  },
+  {
+    up: migration_20260621b_spaces.up,
+    down: migration_20260621b_spaces.down,
+    name: "20260621b_spaces",
   },
 ];
