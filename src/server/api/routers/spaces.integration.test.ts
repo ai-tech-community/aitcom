@@ -459,22 +459,35 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
     await db.delete(schema.user).where(eq(schema.user.id, activeId));
   });
 
-  it("active member count subquery counts only active members", async () => {
+  it("grouped active-member count counts only active members (not pending)", async () => {
     const { db, schema } = m;
-    const { eq, sql } = await import("drizzle-orm");
+    const { and, eq, inArray, sql } = await import("drizzle-orm");
     const aId = `rm-a-${Date.now()}`;
     await db.insert(schema.user).values({ id: aId, email: `${aId}@example.test`, name: "A" });
     await db.insert(schema.spaceMemberships).values([
       { spaceId: roomSpaceId, userId: aId, status: "active" },
       { spaceId: roomSpaceId, userId: userId, status: "pending_request" },
     ]);
-    const [row] = await db
+    // Mirror listRooms/inbox: a grouped COUNT mapped by spaceId — NOT an inline
+    // correlated subquery. Drizzle emits the interpolated outer column unqualified
+    // inside sql``, so `space_id = "id"` mis-correlates to the membership table's
+    // own id and silently returns 0; the grouped form is the fix and is asserted
+    // here as a regression guard.
+    const counts = await db
       .select({
-        memberCount: sql<number>`(SELECT COUNT(*)::int FROM app.space_membership WHERE space_id = ${schema.spaces.id} AND status = 'active')`,
+        spaceId: schema.spaceMemberships.spaceId,
+        count: sql<number>`COUNT(*)::int`,
       })
-      .from(schema.spaces)
-      .where(eq(schema.spaces.id, roomSpaceId));
-    expect(row?.memberCount).toBe(1);
+      .from(schema.spaceMemberships)
+      .where(
+        and(
+          inArray(schema.spaceMemberships.spaceId, [roomSpaceId]),
+          eq(schema.spaceMemberships.status, "active"),
+        ),
+      )
+      .groupBy(schema.spaceMemberships.spaceId);
+    const countById = new Map(counts.map((c) => [c.spaceId, c.count]));
+    expect(countById.get(roomSpaceId) ?? 0).toBe(1);
     await db.delete(schema.spaceMemberships).where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
     await db.delete(schema.user).where(eq(schema.user.id, aId));
   });

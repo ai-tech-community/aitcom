@@ -4,7 +4,6 @@ import { use } from "react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import { FeedPage } from "@/components/communities/feed/feed-page";
-import { CommunityRoomsDirectory } from "@/components/communities/rooms/community-rooms-directory";
 import { Activity } from "lucide-react";
 
 export function CommunityOverviewPageClient({
@@ -67,8 +66,6 @@ export function CommunityOverviewPageClient({
             </div>
           </div>
         )}
-
-      {isMember ? <CommunityRoomsDirectory slug={slug} /> : null}
 
       <FeedPage
         slug={slug}
