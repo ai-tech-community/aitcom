@@ -3332,6 +3332,9 @@ export const spaceMemberships = appSchema.table(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+    // Per-user room read marker (Plan 2b) — newest message the user has seen in
+    // this room's conversation. Null = never opened (all messages unread).
+    lastReadAt: d.timestamp({ withTimezone: true }),
   }),
   (t) => [
     uniqueIndex("space_membership_space_user_uidx").on(t.spaceId, t.userId),

@@ -74,6 +74,7 @@ import * as migration_20260621a_agent_webhook_status from "./20260621a_agent_web
 import * as migration_20260621b_spaces from "./20260621b_spaces";
 import * as migration_20260621c_spaces_backfill from "./20260621c_spaces_backfill";
 import * as migration_20260622a_spaces_rooms from "./20260622a_spaces_rooms";
+import * as migration_20260622b_space_membership_read_marker from "./20260622b_space_membership_read_marker";
 
 export const migrations = [
   {
@@ -455,5 +456,10 @@ export const migrations = [
     up: migration_20260622a_spaces_rooms.up,
     down: migration_20260622a_spaces_rooms.down,
     name: "20260622a_spaces_rooms",
+  },
+  {
+    up: migration_20260622b_space_membership_read_marker.up,
+    down: migration_20260622b_space_membership_read_marker.down,
+    name: "20260622b_space_membership_read_marker",
   },
 ];
