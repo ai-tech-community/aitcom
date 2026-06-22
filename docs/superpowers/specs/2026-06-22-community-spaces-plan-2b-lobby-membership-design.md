@@ -102,8 +102,10 @@ unread branch already exists.
   semantics as DMs). Keep it consistent with how DM unread is computed in the same function.
 
 ### Tests
-Unit-level coverage of unread computation for the three cases: `lastReadAt` null (all unread),
-before newest message (positive count), at/after newest message (zero).
+DB-gated integration coverage (the house pattern — `RUN_DB_TESTS=1` + local Postgres, via
+`spaces.integration.test.ts`) of unread for the three cases: `lastReadAt` null (all unread),
+before newest message (positive count), at/after newest message (zero). Rooms reuse the existing
+DM unread branch, so this verifies the short-circuit removal rather than new logic.
 
 ---
 
@@ -114,10 +116,16 @@ pattern (no schema change — `type` is a free varchar):
 
 | Type | Fired in | Recipients | Deep-link (`metadata`) |
 |------|----------|------------|------------------------|
-| `room_access_request` | `requestAccess` | room moderators (`role='moderator'`, status active) + community owner/admin | room Members panel, pending section |
+| `room_access_request` | `requestAccess` | community **owners/admins** (the approvers — matches `approveMember`'s gate; deduped, requester excluded) | room Members panel, pending section |
 | `room_access_approved` | `approveMember` | the approved requester | the room |
 
-- Fan-out to admins follows the `events.ts` `admins.map(...)` insert pattern.
+Recipients are the community owners/admins because `approveMember`/`denyMember` are gated to
+`communityRole ∈ {owner, admin}` — notifying only those who can act keeps the queue meaningful.
+Granting room moderators their own approve/deny rights (and notifications) is a deferred enhancement
+(see §8).
+
+- Fan-out to admins follows the `events.ts` `admins.map(...)` insert pattern (query
+  `communityMemberships` where `role ∈ ('owner','admin')` and `status='active'`).
 - `title`/`content` are composed server-side as strings, consistent with current notification
   call-sites (`events.ts`, `agent-feed.ts`). `metadata` carries the community slug + room slug so
   the bell/panel can route the click.
@@ -180,8 +188,10 @@ that leak nothing beyond name/purpose/count; `memberCount` is accurate.
 
 ## 7. Cross-cutting
 
-- **Types:** `payload generate:types` after the `lastReadAt` column add; update/guard consumers of
-  the regenerated types (per house rule — stale committed types hide the break).
+- **Types:** `spaceMemberships` is a drizzle-defined app table (`src/server/db/schema.ts`), not a
+  Payload collection, so adding `lastReadAt` to the schema definition makes the type flow
+  automatically — **no `payload generate:types` step** (that house rule applies to Payload
+  collection fields, which this is not).
 - **i18n:** new keys under `communities.rooms.*` (lobby card actions: open/join/request/pending;
   approvals: approve/deny/pending; invite) in `messages/en.json` and `messages/nl.json`.
 - **Realtime:** unchanged — room chat continues to use the inbox `messages` + SSE infra per
@@ -192,10 +202,15 @@ that leak nothing beyond name/purpose/count; `memberCount` is accurate.
 ## 8. Out of scope (deferred)
 
 - Community-wide aggregate approvals page (fast-follow once communities run many rooms).
+- Room-moderator approve/deny rights + notifications (Plan 2b keeps approval gated to community
+  owners/admins; room moderators managing their own queue is a later enhancement).
 - Live presence indicators on lobby cards (Plan 3).
 - Resident-agent badge on lobby cards (Plan 3).
 - Email / push notification channels (in-app only for now).
 - Denied / invited notifications.
+- Non-member (public, logged-out or non-community-member) lobby teasers — the Town Square directory
+  is scoped to community members in Plan 2b (`listRooms` is a `communityProcedure`); a public
+  funnel needs a separately-authorized read path and is deferred.
 - The rare same-second `listConversations` pagination tie between merged DM + room rows
   (pre-existing minor; not addressed here).
 
