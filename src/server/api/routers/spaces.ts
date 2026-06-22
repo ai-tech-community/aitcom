@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -9,15 +9,18 @@ import {
 } from "@/server/api/trpc";
 import {
   communities,
+  communityMemberships,
   spaces,
   spaceMemberships,
   memberProfiles,
+  notifications,
   user,
 } from "@/server/db/schema";
 import {
   canJoinDirectly,
   roomSlugFromName,
 } from "@/server/communities/room-access";
+import { roomAccessRequestRecipients } from "@/server/communities/room-notifications";
 import { getOrCreateRoomConversation } from "@/server/communities/room-conversation";
 import { getAvatarUrl } from "@/lib/avatar";
 
@@ -334,7 +337,12 @@ export const spacesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       if (!ctx.communityRole) throw new TRPCError({ code: "FORBIDDEN" });
       const [room] = await ctx.db
-        .select({ id: spaces.id, visibility: spaces.visibility })
+        .select({
+          id: spaces.id,
+          visibility: spaces.visibility,
+          name: spaces.name,
+          slug: spaces.slug,
+        })
         .from(spaces)
         .where(
           and(
@@ -352,14 +360,50 @@ export const spacesRouter = createTRPCRouter({
           message: "This room is public — join it directly.",
         });
       }
-      await ctx.db
+      const inserted = await ctx.db
         .insert(spaceMemberships)
         .values({
           spaceId: room.id,
           userId: ctx.session.user.id,
           status: "pending_request",
         })
-        .onConflictDoNothing();
+        .onConflictDoNothing()
+        .returning({ id: spaceMemberships.id });
+
+      // Only notify on a genuinely new request (a duplicate re-request inserts
+      // nothing and must not re-ping admins).
+      if (inserted.length > 0) {
+        const admins = await ctx.db
+          .select({ userId: communityMemberships.userId })
+          .from(communityMemberships)
+          .where(
+            and(
+              eq(communityMemberships.communityId, ctx.community.id),
+              eq(communityMemberships.status, "active"),
+              sql`${communityMemberships.role} IN ('owner', 'admin')`,
+            ),
+          );
+        const recipients = roomAccessRequestRecipients(
+          admins.map((a) => a.userId),
+          ctx.session.user.id,
+        );
+        if (recipients.length > 0) {
+          await ctx.db.insert(notifications).values(
+            recipients.map((adminId) => ({
+              userId: adminId,
+              type: "room_access_request",
+              title: "New room access request",
+              content: `A member requested access to ${room.name ?? "a room"} in ${ctx.community.name}.`,
+              metadata: {
+                reviewPath: `/communities/${input.slug}/spaces/${room.slug}`,
+                linkLabel: "Review request",
+                spaceId: room.id,
+              },
+              communityId: ctx.community.id,
+            })),
+          );
+        }
+      }
       return { success: true };
     }),
 
