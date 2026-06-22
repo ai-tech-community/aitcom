@@ -6,7 +6,7 @@ import { Lock } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { SectionLabel } from "@/components/ui/section-label";
 
@@ -30,13 +30,30 @@ export function CommunityRoomsDirectory({ slug }: { slug: string }) {
     onError: (e) => toast.error(e.message),
   });
 
+  // Skeleton grid while loading — product surfaces show shape, not a spinner.
   if (roomsQuery.isLoading) {
     return (
-      <div className="flex justify-center py-6">
-        <Spinner className="size-5" />
-      </div>
+      <section className="mb-6">
+        <SectionLabel as="h2">{t("directoryTitle")}</SectionLabel>
+        <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="border-border flex flex-col gap-3 rounded-lg border p-4"
+            >
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-3 w-full" />
+              <div className="mt-1 flex items-center justify-between">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-8 w-16 rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     );
   }
+
   if (roomsQuery.isError) {
     return (
       <div className="mb-6">
@@ -50,35 +67,47 @@ export function CommunityRoomsDirectory({ slug }: { slug: string }) {
 
   return (
     <section className="mb-6">
-      <SectionLabel as="h2">{t("directoryTitle")}</SectionLabel>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <SectionLabel as="h2">
+        {t("directoryTitle")} · {rooms.length}
+      </SectionLabel>
+      <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
         {rooms.map((room) => {
-          const isPrivate = room.visibility === "private";
           const isMemberOfRoom = room.membership === "active";
           const isPending = room.membership === "pending_request";
+          const isPrivate = room.visibility === "private";
           const locked = isPrivate && !isMemberOfRoom;
           return (
             <div
               key={room.id}
-              className="border-border flex flex-col gap-2 rounded-lg border p-4"
+              className={`flex flex-col gap-2 rounded-lg border p-4 transition-colors ${
+                locked
+                  ? "border-border bg-muted/40"
+                  : "border-border hover:border-foreground/25"
+              }`}
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {locked ? (
-                  <Lock className="text-muted-foreground size-4 shrink-0" />
+                  <Lock
+                    aria-hidden="true"
+                    className="text-muted-foreground size-3.5 shrink-0"
+                  />
                 ) : null}
-                <h3 className="truncate text-sm font-medium">
+                <h3 className="truncate text-sm font-semibold">
                   {room.name ?? t("untitled")}
                 </h3>
               </div>
+
               {room.purpose ? (
                 <p className="text-muted-foreground line-clamp-2 text-sm">
                   {room.purpose}
                 </p>
               ) : null}
-              <p className="text-muted-foreground font-mono text-xs">
-                {t("memberCount", { count: room.memberCount })}
-              </p>
-              <div className="mt-1">
+
+              {/* Footer pinned to the card bottom so actions align across the row. */}
+              <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+                <span className="text-muted-foreground font-mono text-xs">
+                  {t("memberCount", { count: room.memberCount })}
+                </span>
                 {isMemberOfRoom ? (
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/communities/${slug}/spaces/${room.slug}`}>
@@ -86,7 +115,7 @@ export function CommunityRoomsDirectory({ slug }: { slug: string }) {
                     </Link>
                   </Button>
                 ) : isPending ? (
-                  <Button variant="outline" size="sm" disabled>
+                  <Button variant="ghost" size="sm" disabled>
                     {t("pendingShort")}
                   </Button>
                 ) : isPrivate ? (

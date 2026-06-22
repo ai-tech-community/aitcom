@@ -142,44 +142,8 @@ export function RoomMembersPanel({
           </div>
         ) : (
           <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-4">
-            {/* In this room — visible to all room members */}
-            <section>
-              <SectionLabel as="h3">
-                {t("members")} · {activeMembers.length}
-              </SectionLabel>
-              {activeMembers.length === 0 ? (
-                <p className="text-muted-foreground py-3 text-sm">
-                  {t("noMembers")}
-                </p>
-              ) : (
-                <div className="divide-border/60 mt-1 divide-y">
-                  {activeMembers.map((m) => {
-                    const isSelf = m.userId === currentUserId;
-                    const tag = isSelf
-                      ? t("you")
-                      : m.role === "moderator"
-                        ? t("moderator")
-                        : null;
-                    return (
-                      <PersonRow
-                        key={m.userId}
-                        name={m.displayName ?? ""}
-                        avatarUrl={m.avatarUrl}
-                        trailing={
-                          tag ? (
-                            <span className="text-muted-foreground shrink-0 font-mono text-xs tracking-wider uppercase">
-                              {tag}
-                            </span>
-                          ) : null
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-
-            {/* Pending requests — admin-only */}
+            {/* Pending requests — admin-only. The actionable queue leads so an
+                admin arriving from a request notification acts first. */}
             {viewerIsAdmin && pendingMembers.length > 0 ? (
               <section>
                 <SectionLabel as="h3">
@@ -230,6 +194,43 @@ export function RoomMembersPanel({
                 </div>
               </section>
             ) : null}
+
+            {/* In this room — visible to all room members */}
+            <section>
+              <SectionLabel as="h3">
+                {t("members")} · {activeMembers.length}
+              </SectionLabel>
+              {activeMembers.length === 0 ? (
+                <p className="text-muted-foreground py-3 text-sm">
+                  {t("noMembers")}
+                </p>
+              ) : (
+                <div className="divide-border/60 mt-1 divide-y">
+                  {activeMembers.map((m) => {
+                    const isSelf = m.userId === currentUserId;
+                    const tag = isSelf
+                      ? t("you")
+                      : m.role === "moderator"
+                        ? t("moderator")
+                        : null;
+                    return (
+                      <PersonRow
+                        key={m.userId}
+                        name={m.displayName ?? ""}
+                        avatarUrl={m.avatarUrl}
+                        trailing={
+                          tag ? (
+                            <span className="text-muted-foreground shrink-0 font-mono text-xs tracking-wider uppercase">
+                              {tag}
+                            </span>
+                          ) : null
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </section>
 
             {/* Add members — admin-only */}
             {viewerIsAdmin ? (
