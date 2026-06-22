@@ -238,10 +238,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
         <div className="rounded-lg border p-4">
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label
-                htmlFor="room-name"
-                className="text-sm font-medium"
-              >
+              <label htmlFor="room-name" className="text-sm font-medium">
                 {tRooms("name")}
               </label>
               <Input
@@ -254,10 +251,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
             </div>
 
             <div className="space-y-1.5">
-              <label
-                htmlFor="room-purpose"
-                className="text-sm font-medium"
-              >
+              <label htmlFor="room-purpose" className="text-sm font-medium">
                 {tRooms("purpose")}
               </label>
               <Input
@@ -277,7 +271,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
               />
               <label
                 htmlFor="room-visibility"
-                className="text-sm font-medium select-none cursor-pointer"
+                className="cursor-pointer text-sm font-medium select-none"
               >
                 {roomPublic ? tRooms("public") : tRooms("private")}
               </label>
@@ -349,7 +343,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
                       />
                       <label
                         htmlFor={`edit-room-visibility-${room.id}`}
-                        className="text-sm font-medium select-none cursor-pointer"
+                        className="cursor-pointer text-sm font-medium select-none"
                       >
                         {draftRoomPublic ? tRooms("public") : tRooms("private")}
                       </label>
@@ -390,7 +384,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
                           {room.purpose}
                         </p>
                       )}
-                      <span className="font-mono text-muted-foreground text-xs">
+                      <span className="text-muted-foreground font-mono text-xs">
                         /{" "}
                         {room.visibility === "private"
                           ? tRooms("private").toLowerCase()

@@ -222,8 +222,7 @@ export function ConversationList({
                 t("agentLabel"),
               );
               const isRoom = conv.isRoom;
-              const isPrivateRoom =
-                isRoom && conv.roomVisibility === "private";
+              const isPrivateRoom = isRoom && conv.roomVisibility === "private";
               const isActive = conv.id === activeConversationId;
               const unread = conv.unreadCount > 0;
               const previewSender =

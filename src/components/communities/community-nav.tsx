@@ -123,7 +123,7 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
                 {item.isPrivate && (
                   <>
                     <Lock
-                      className="ml-1 inline-block size-3 text-muted-foreground"
+                      className="text-muted-foreground ml-1 inline-block size-3"
                       aria-hidden="true"
                     />
                     <span className="sr-only">private room</span>

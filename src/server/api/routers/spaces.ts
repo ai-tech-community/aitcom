@@ -7,8 +7,17 @@ import {
   publicProcedure,
   communityProcedure,
 } from "@/server/api/trpc";
-import { communities, spaces, spaceMemberships, memberProfiles, user } from "@/server/db/schema";
-import { canJoinDirectly, roomSlugFromName } from "@/server/communities/room-access";
+import {
+  communities,
+  spaces,
+  spaceMemberships,
+  memberProfiles,
+  user,
+} from "@/server/db/schema";
+import {
+  canJoinDirectly,
+  roomSlugFromName,
+} from "@/server/communities/room-access";
 import { getOrCreateRoomConversation } from "@/server/communities/room-conversation";
 import { getAvatarUrl } from "@/lib/avatar";
 
@@ -310,7 +319,11 @@ export const spacesRouter = createTRPCRouter({
       }
       await ctx.db
         .insert(spaceMemberships)
-        .values({ spaceId: room.id, userId: ctx.session.user.id, status: "active" })
+        .values({
+          spaceId: room.id,
+          userId: ctx.session.user.id,
+          status: "active",
+        })
         .onConflictDoNothing();
       return { success: true };
     }),
@@ -346,7 +359,9 @@ export const spacesRouter = createTRPCRouter({
 
   /** Approve a pending member (owner/admin). */
   approveMember: communityProcedure
-    .input(z.object({ slug: z.string(), spaceId: z.string(), userId: z.string() }))
+    .input(
+      z.object({ slug: z.string(), spaceId: z.string(), userId: z.string() }),
+    )
     .mutation(async ({ ctx, input }) => {
       if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN" });
@@ -437,7 +452,10 @@ export const spacesRouter = createTRPCRouter({
           image: user.image,
         })
         .from(spaceMemberships)
-        .leftJoin(memberProfiles, eq(memberProfiles.userId, spaceMemberships.userId))
+        .leftJoin(
+          memberProfiles,
+          eq(memberProfiles.userId, spaceMemberships.userId),
+        )
         .leftJoin(user, eq(user.id, spaceMemberships.userId))
         .where(
           and(
@@ -492,7 +510,10 @@ export const spacesRouter = createTRPCRouter({
           image: user.image,
         })
         .from(spaceMemberships)
-        .leftJoin(memberProfiles, eq(memberProfiles.userId, spaceMemberships.userId))
+        .leftJoin(
+          memberProfiles,
+          eq(memberProfiles.userId, spaceMemberships.userId),
+        )
         .leftJoin(user, eq(user.id, spaceMemberships.userId))
         .where(eq(spaceMemberships.spaceId, input.spaceId))
         // pending_request first, then active — approval queue visible at top.
@@ -511,7 +532,9 @@ export const spacesRouter = createTRPCRouter({
 
   /** Add a community member to a room (owner/admin). Upserts to active status. */
   addMember: communityProcedure
-    .input(z.object({ slug: z.string(), spaceId: z.string(), userId: z.string() }))
+    .input(
+      z.object({ slug: z.string(), spaceId: z.string(), userId: z.string() }),
+    )
     .mutation(async ({ ctx, input }) => {
       if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
         throw new TRPCError({ code: "FORBIDDEN" });

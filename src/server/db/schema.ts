@@ -3272,9 +3272,7 @@ export const spaces = appSchema.table(
     builtinSurface: d
       .varchar("builtin_surface", { length: 20 })
       .$type<"forum" | "events" | "classroom" | "ideas" | "members">(),
-    visibility: d
-      .varchar({ length: 10 })
-      .$type<"public" | "private">(),
+    visibility: d.varchar({ length: 10 }).$type<"public" | "private">(),
     name: d.text(),
     purpose: d.text(),
     slug: d.text().notNull(),

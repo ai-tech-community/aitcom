@@ -12,11 +12,21 @@ import { getInitials } from "@/lib/avatar";
 import { ConversationView } from "@/components/messages/conversation-view";
 import { RoomMembersPanel } from "./room-members-panel";
 
-export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string }) {
+export function RoomView({
+  slug,
+  spaceSlug,
+}: {
+  slug: string;
+  spaceSlug: string;
+}) {
   const t = useTranslations("communities.rooms");
   const utils = api.useUtils();
-  const { data: room, isLoading, isError, refetch } =
-    api.spaces.getRoom.useQuery({ slug, spaceSlug });
+  const {
+    data: room,
+    isLoading,
+    isError,
+    refetch,
+  } = api.spaces.getRoom.useQuery({ slug, spaceSlug });
 
   const invalidate = () => utils.spaces.getRoom.invalidate({ slug, spaceSlug });
   const join = api.spaces.joinRoom.useMutation({
@@ -28,7 +38,12 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
     onError: () => toast.error(t("requestAccess.error")),
   });
 
-  if (isLoading) return <div className="flex justify-center py-16"><Spinner className="size-6" /></div>;
+  if (isLoading)
+    return (
+      <div className="flex justify-center py-16">
+        <Spinner className="size-6" />
+      </div>
+    );
   if (isError || !room) return <ErrorState onRetry={refetch} />;
 
   if (room.membership === "active" && room.conversationId) {
@@ -40,7 +55,9 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
         <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-base font-semibold leading-tight">{room.name ?? t("untitled")}</h1>
+              <h1 className="text-base leading-tight font-semibold">
+                {room.name ?? t("untitled")}
+              </h1>
               {room.purpose ? (
                 <p className="text-muted-foreground text-xs">{room.purpose}</p>
               ) : null}
@@ -52,7 +69,9 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
                 {t("private")}
               </span>
             ) : (
-              <span className="text-muted-foreground font-mono text-xs">/ {t("public")}</span>
+              <span className="text-muted-foreground font-mono text-xs">
+                / {t("public")}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -61,9 +80,18 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
               <div className="flex items-center">
                 <div className="flex -space-x-2">
                   {room.memberAvatars.slice(0, MAX_SHOWN_AVATARS).map((av) => (
-                    <Avatar key={av.userId} size="sm" className="border-background ring-background border-2">
-                      <AvatarImage src={av.avatarUrl ?? undefined} alt={av.displayName ?? ""} />
-                      <AvatarFallback>{getInitials(av.displayName ?? "")}</AvatarFallback>
+                    <Avatar
+                      key={av.userId}
+                      size="sm"
+                      className="border-background ring-background border-2"
+                    >
+                      <AvatarImage
+                        src={av.avatarUrl ?? undefined}
+                        alt={av.displayName ?? ""}
+                      />
+                      <AvatarFallback>
+                        {getInitials(av.displayName ?? "")}
+                      </AvatarFallback>
                     </Avatar>
                   ))}
                 </div>
@@ -91,7 +119,11 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
         <div className="min-h-0 flex-1">
           <ConversationView
             conversationId={room.conversationId}
-            peer={{ name: room.name ?? t("untitled"), image: null, isAgent: false }}
+            peer={{
+              name: room.name ?? t("untitled"),
+              image: null,
+              isAgent: false,
+            }}
             hideHeader
           />
         </div>
@@ -106,15 +138,26 @@ export function RoomView({ slug, spaceSlug }: { slug: string; spaceSlug: string 
   return (
     <div className="mx-auto max-w-md rounded-lg border p-8 text-center">
       <h2 className="text-lg font-semibold">{room.name}</h2>
-      {room.purpose ? <p className="text-muted-foreground mt-1 text-sm">{room.purpose}</p> : null}
+      {room.purpose ? (
+        <p className="text-muted-foreground mt-1 text-sm">{room.purpose}</p>
+      ) : null}
       {room.membership === "pending_request" ? (
         <p className="text-muted-foreground mt-6 text-sm">{t("pending")}</p>
       ) : room.visibility === "public" ? (
-        <Button className="mt-6" onClick={() => join.mutate({ slug, spaceId: room.id })} disabled={join.isPending}>
+        <Button
+          className="mt-6"
+          onClick={() => join.mutate({ slug, spaceId: room.id })}
+          disabled={join.isPending}
+        >
           {t("join.label")}
         </Button>
       ) : (
-        <Button className="mt-6" variant="outline" onClick={() => request.mutate({ slug, spaceId: room.id })} disabled={request.isPending}>
+        <Button
+          className="mt-6"
+          variant="outline"
+          onClick={() => request.mutate({ slug, spaceId: room.id })}
+          disabled={request.isPending}
+        >
           {t("requestAccess.label")}
         </Button>
       )}

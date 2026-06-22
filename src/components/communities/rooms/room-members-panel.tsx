@@ -94,7 +94,9 @@ export function RoomMembersPanel({
   });
 
   const allMembers = membersQuery.data ?? [];
-  const pendingMembers = allMembers.filter((m) => m.status === "pending_request");
+  const pendingMembers = allMembers.filter(
+    (m) => m.status === "pending_request",
+  );
   // Moderators first, then members — alphabetical-stable from the query order.
   const activeMembers = allMembers
     .filter((m) => m.status !== "pending_request")
@@ -188,7 +190,11 @@ export function RoomMembersPanel({
                           disabled={approveMutation.isPending}
                           aria-label={`${t("approve")} ${m.displayName ?? ""}`}
                           onClick={() =>
-                            approveMutation.mutate({ slug, spaceId, userId: m.userId })
+                            approveMutation.mutate({
+                              slug,
+                              spaceId,
+                              userId: m.userId,
+                            })
                           }
                         >
                           {t("approve")}

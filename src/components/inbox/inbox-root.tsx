@@ -45,7 +45,7 @@ export function InboxRoot() {
           : (conv.participants[0]?.displayName ?? "Unknown"),
       image:
         conv.isRoom || conv.type === "agent"
-          ? (conv.type === "agent" ? conv.agentInfo?.avatar : null) ?? null
+          ? ((conv.type === "agent" ? conv.agentInfo?.avatar : null) ?? null)
           : (conv.participants[0]?.image ?? null),
       isAgent: conv.type === "agent",
     };

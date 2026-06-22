@@ -25,13 +25,17 @@ describe.skipIf(!RUN_DB)("spaces router [DB integration]", () => {
   let userId: string;
 
   beforeAll(async () => {
-    const [{ db }, schema, { buildDefaultSpaceRows }, { getOrCreateRoomConversation }] =
-      await Promise.all([
-        import("@/server/db"),
-        import("@/server/db/schema"),
-        import("@/server/communities/space-defaults"),
-        import("@/server/communities/room-conversation"),
-      ]);
+    const [
+      { db },
+      schema,
+      { buildDefaultSpaceRows },
+      { getOrCreateRoomConversation },
+    ] = await Promise.all([
+      import("@/server/db"),
+      import("@/server/db/schema"),
+      import("@/server/communities/space-defaults"),
+      import("@/server/communities/room-conversation"),
+    ]);
     m = { db, schema, buildDefaultSpaceRows, getOrCreateRoomConversation };
   });
 
@@ -142,11 +146,13 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
   let roomSpaceId: string;
 
   beforeAll(async () => {
-    const [{ db }, schema, { getOrCreateRoomConversation }] = await Promise.all([
-      import("@/server/db"),
-      import("@/server/db/schema"),
-      import("@/server/communities/room-conversation"),
-    ]);
+    const [{ db }, schema, { getOrCreateRoomConversation }] = await Promise.all(
+      [
+        import("@/server/db"),
+        import("@/server/db/schema"),
+        import("@/server/communities/room-conversation"),
+      ],
+    );
     m = { db, schema, getOrCreateRoomConversation };
   });
 
