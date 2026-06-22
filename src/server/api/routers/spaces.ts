@@ -272,7 +272,6 @@ export const spacesRouter = createTRPCRouter({
           purpose: spaces.purpose,
           slug: spaces.slug,
           visibility: spaces.visibility,
-          memberCount: sql<number>`(SELECT COUNT(*)::int FROM app.space_membership WHERE space_id = ${spaces.id} AND status = 'active')`,
         })
         .from(spaces)
         .where(
@@ -284,25 +283,45 @@ export const spacesRouter = createTRPCRouter({
         )
         .orderBy(asc(spaces.position));
       const roomIds = rooms.map((r) => r.id);
-      // Scope the caller's membership lookup to the listed rooms (was: all rooms).
-      const mine = roomIds.length
-        ? await ctx.db
-            .select({
-              spaceId: spaceMemberships.spaceId,
-              status: spaceMemberships.status,
-            })
-            .from(spaceMemberships)
-            .where(
-              and(
-                eq(spaceMemberships.userId, ctx.session.user.id),
-                inArray(spaceMemberships.spaceId, roomIds),
+      // Two scoped lookups over the listed rooms: the caller's membership, and
+      // each room's active-member count. A grouped count (not an inline
+      // correlated subquery) — Drizzle emits the interpolated outer column
+      // unqualified inside a sql`` subquery, which silently mis-correlates.
+      const [mine, counts] = roomIds.length
+        ? await Promise.all([
+            ctx.db
+              .select({
+                spaceId: spaceMemberships.spaceId,
+                status: spaceMemberships.status,
+              })
+              .from(spaceMemberships)
+              .where(
+                and(
+                  eq(spaceMemberships.userId, ctx.session.user.id),
+                  inArray(spaceMemberships.spaceId, roomIds),
+                ),
               ),
-            )
-        : [];
+            ctx.db
+              .select({
+                spaceId: spaceMemberships.spaceId,
+                count: sql<number>`COUNT(*)::int`,
+              })
+              .from(spaceMemberships)
+              .where(
+                and(
+                  inArray(spaceMemberships.spaceId, roomIds),
+                  eq(spaceMemberships.status, "active"),
+                ),
+              )
+              .groupBy(spaceMemberships.spaceId),
+          ])
+        : [[], []];
       const byId = new Map(mine.map((mem) => [mem.spaceId, mem.status]));
+      const countById = new Map(counts.map((c) => [c.spaceId, c.count]));
       return rooms.map((r) => ({
         ...r,
         membership: byId.get(r.id) ?? null,
+        memberCount: countById.get(r.id) ?? 0,
       }));
     }),
 

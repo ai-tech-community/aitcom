@@ -2,19 +2,20 @@
 
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Lock } from "lucide-react";
+import { Lock, Users } from "lucide-react";
 import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { SectionLabel } from "@/components/ui/section-label";
+import { SpaceAvatar } from "./space-avatar";
 
 /**
- * Town Square (Plan 2b): a directory of the community's rooms. Public rooms show
- * Join/Open; private rooms render as locked teaser cards (name + purpose + count)
- * with Request access — nothing private leaks. Scoped to community members
- * (listRooms is a communityProcedure).
+ * Town Square (Plan 2b): a directory of the community's rooms, rendered as a
+ * scannable list. Public rooms show Join/Open; private rooms appear as locked
+ * teaser rows (name + purpose + member count) with Request access — nothing
+ * private leaks. Scoped to community members (listRooms is a communityProcedure).
  */
 export function CommunityRoomsDirectory({ slug }: { slug: string }) {
   const t = useTranslations("communities.rooms");
@@ -30,26 +31,22 @@ export function CommunityRoomsDirectory({ slug }: { slug: string }) {
     onError: (e) => toast.error(e.message),
   });
 
-  // Skeleton grid while loading — product surfaces show shape, not a spinner.
   if (roomsQuery.isLoading) {
     return (
       <section className="mb-6">
         <SectionLabel as="h2">{t("directoryTitle")}</SectionLabel>
-        <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="border-border flex flex-col gap-3 rounded-lg border p-4"
-            >
-              <Skeleton className="h-4 w-2/3" />
-              <Skeleton className="h-3 w-full" />
-              <div className="mt-1 flex items-center justify-between">
-                <Skeleton className="h-3 w-16" />
-                <Skeleton className="h-8 w-16 rounded-md" />
+        <ul className="border-border divide-border/60 mt-3 divide-y overflow-hidden rounded-lg border">
+          {[0, 1].map((i) => (
+            <li key={i} className="flex items-center gap-3 p-3">
+              <Skeleton className="size-9 shrink-0 rounded-md" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <Skeleton className="h-3.5 w-1/3" />
+                <Skeleton className="h-3 w-2/3" />
               </div>
-            </div>
+              <Skeleton className="h-8 w-16 shrink-0 rounded-md" />
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
     );
   }
@@ -70,44 +67,47 @@ export function CommunityRoomsDirectory({ slug }: { slug: string }) {
       <SectionLabel as="h2">
         {t("directoryTitle")} · {rooms.length}
       </SectionLabel>
-      <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(16rem,1fr))] gap-3">
+      <ul className="border-border divide-border/60 mt-3 divide-y overflow-hidden rounded-lg border">
         {rooms.map((room) => {
           const isMemberOfRoom = room.membership === "active";
           const isPending = room.membership === "pending_request";
           const isPrivate = room.visibility === "private";
           const locked = isPrivate && !isMemberOfRoom;
           return (
-            <div
+            <li
               key={room.id}
-              className={`flex flex-col gap-2 rounded-lg border p-4 transition-colors ${
-                locked
-                  ? "border-border bg-muted/40"
-                  : "border-border hover:border-foreground/25"
-              }`}
+              className="hover:bg-muted/40 flex items-center gap-3 p-3 transition-colors"
             >
-              <div className="flex items-center gap-1.5">
-                {locked ? (
-                  <Lock
-                    aria-hidden="true"
-                    className="text-muted-foreground size-3.5 shrink-0"
-                  />
+              <SpaceAvatar name={room.name} />
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  {locked ? (
+                    <Lock
+                      aria-hidden="true"
+                      className="text-muted-foreground size-3.5 shrink-0"
+                    />
+                  ) : null}
+                  <span className="truncate text-sm font-semibold">
+                    {room.name ?? t("untitled")}
+                  </span>
+                </div>
+                {room.purpose ? (
+                  <p className="text-muted-foreground truncate text-sm">
+                    {room.purpose}
+                  </p>
                 ) : null}
-                <h3 className="truncate text-sm font-semibold">
-                  {room.name ?? t("untitled")}
-                </h3>
               </div>
 
-              {room.purpose ? (
-                <p className="text-muted-foreground line-clamp-2 text-sm">
-                  {room.purpose}
-                </p>
-              ) : null}
+              <span
+                className="text-muted-foreground hidden shrink-0 items-center gap-1 font-mono text-xs sm:inline-flex"
+                aria-label={t("memberCount", { count: room.memberCount })}
+              >
+                <Users aria-hidden="true" className="size-3.5" />
+                {room.memberCount}
+              </span>
 
-              {/* Footer pinned to the card bottom so actions align across the row. */}
-              <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                <span className="text-muted-foreground font-mono text-xs">
-                  {t("memberCount", { count: room.memberCount })}
-                </span>
+              <div className="shrink-0">
                 {isMemberOfRoom ? (
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/communities/${slug}/spaces/${room.slug}`}>
@@ -140,10 +140,10 @@ export function CommunityRoomsDirectory({ slug }: { slug: string }) {
                   </Button>
                 )}
               </div>
-            </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
 }

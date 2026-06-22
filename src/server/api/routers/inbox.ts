@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, lt, sql, ne, or, ilike } from "drizzle-orm";
+import { eq, and, desc, lt, sql, ne, or, ilike, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -154,37 +154,62 @@ export const inboxRouter = createTRPCRouter({
       // ── Space (room) conversations the caller is an ACTIVE member of ────
       // Gate on spaceMemberships.status === "active". No participant rows exist,
       // so there is no lastReadAt — unread is computed from all messages below.
-      const roomRows: ConvRow[] = (
-        await ctx.db
-          .select({
-            conversationId: conversations.id,
-            convType: conversations.type,
-            convUpdatedAt: conversations.updatedAt,
-            spaceId: conversations.spaceId,
-            roomName: spaces.name,
-            roomSlug: spaces.slug,
-            roomVisibility: spaces.visibility,
-            communitySlug: communities.slug,
-            communityName: communities.name,
-            communityLogoUrl: communities.logoUrl,
-            memberCount: sql<number>`(SELECT COUNT(*)::int FROM app.space_membership WHERE space_id = ${conversations.spaceId} AND status = 'active')`,
-            lastReadAt: spaceMemberships.lastReadAt,
-          })
-          .from(conversations)
-          .innerJoin(spaces, eq(spaces.id, conversations.spaceId))
-          .innerJoin(communities, eq(communities.id, spaces.communityId))
-          .innerJoin(
-            spaceMemberships,
-            eq(spaceMemberships.spaceId, conversations.spaceId),
-          )
-          .where(
-            and(
-              eq(conversations.type, "space"),
-              eq(spaceMemberships.userId, userId),
-              eq(spaceMemberships.status, "active"),
-            ),
-          )
-      ).map((r) => ({
+      const roomRowsRaw = await ctx.db
+        .select({
+          conversationId: conversations.id,
+          convType: conversations.type,
+          convUpdatedAt: conversations.updatedAt,
+          spaceId: conversations.spaceId,
+          roomName: spaces.name,
+          roomSlug: spaces.slug,
+          roomVisibility: spaces.visibility,
+          communitySlug: communities.slug,
+          communityName: communities.name,
+          communityLogoUrl: communities.logoUrl,
+          lastReadAt: spaceMemberships.lastReadAt,
+        })
+        .from(conversations)
+        .innerJoin(spaces, eq(spaces.id, conversations.spaceId))
+        .innerJoin(communities, eq(communities.id, spaces.communityId))
+        .innerJoin(
+          spaceMemberships,
+          eq(spaceMemberships.spaceId, conversations.spaceId),
+        )
+        .where(
+          and(
+            eq(conversations.type, "space"),
+            eq(spaceMemberships.userId, userId),
+            eq(spaceMemberships.status, "active"),
+          ),
+        );
+
+      // Active-member counts per room via a grouped query, mapped by spaceId. An
+      // inline correlated subquery mis-correlates here: Drizzle emits the
+      // interpolated outer column unqualified inside sql``, so `space_id = "id"`
+      // resolves to the membership table's own column and the count is wrong.
+      const roomSpaceIds = roomRowsRaw
+        .map((r) => r.spaceId)
+        .filter((id): id is string => id !== null);
+      const roomCounts = roomSpaceIds.length
+        ? await ctx.db
+            .select({
+              spaceId: spaceMemberships.spaceId,
+              count: sql<number>`COUNT(*)::int`,
+            })
+            .from(spaceMemberships)
+            .where(
+              and(
+                inArray(spaceMemberships.spaceId, roomSpaceIds),
+                eq(spaceMemberships.status, "active"),
+              ),
+            )
+            .groupBy(spaceMemberships.spaceId)
+        : [];
+      const roomCountBySpace = new Map(
+        roomCounts.map((c) => [c.spaceId, c.count]),
+      );
+
+      const roomRows: ConvRow[] = roomRowsRaw.map((r) => ({
         conversationId: r.conversationId,
         lastReadAt: r.lastReadAt,
         isPinned: false,
@@ -197,7 +222,7 @@ export const inboxRouter = createTRPCRouter({
         communitySlug: r.communitySlug,
         communityName: r.communityName,
         communityLogoUrl: r.communityLogoUrl,
-        memberCount: r.memberCount ?? 0,
+        memberCount: r.spaceId ? (roomCountBySpace.get(r.spaceId) ?? 0) : 0,
       }));
 
       const participantRows: ConvRow[] = [...dmRows, ...roomRows];
