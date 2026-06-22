@@ -16,6 +16,10 @@ import { SpaceAvatar } from "./space-avatar";
  * scannable list. Public rooms show Join/Open; private rooms appear as locked
  * teaser rows (name + purpose + member count) with Request access — nothing
  * private leaks. Scoped to community members (listRooms is a communityProcedure).
+ *
+ * NOTE: intentionally not mounted on the community overview (a full list there
+ * doesn't scale once a community has many rooms). Staged for the dedicated
+ * Rooms index / ASCII Discover surface — do not delete as "dead code".
  */
 export function CommunityRoomsDirectory({ slug }: { slug: string }) {
   const t = useTranslations("communities.rooms");

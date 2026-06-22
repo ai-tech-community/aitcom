@@ -458,6 +458,9 @@ export const spacesRouter = createTRPCRouter({
         )
         .limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+      // Only flip a genuinely pending request → active. Gating on the status
+      // keeps a no-op re-approve of an already-active member from firing a
+      // duplicate "Access approved" notification (mirrors denyMember's guard).
       const updated = await ctx.db
         .update(spaceMemberships)
         .set({ status: "active" })
@@ -465,6 +468,7 @@ export const spacesRouter = createTRPCRouter({
           and(
             eq(spaceMemberships.spaceId, input.spaceId),
             eq(spaceMemberships.userId, input.userId),
+            eq(spaceMemberships.status, "pending_request"),
           ),
         )
         .returning({ id: spaceMemberships.id });
