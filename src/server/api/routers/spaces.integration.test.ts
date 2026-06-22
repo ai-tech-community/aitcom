@@ -422,4 +422,40 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
     await db.delete(schema.messages).where(eq(schema.messages.conversationId, conversationId));
     await db.delete(schema.user).where(eq(schema.user.id, otherId));
   });
+
+  it("denyMember-style delete removes only pending_request rows", async () => {
+    const { db, schema } = m;
+    const { eq, and } = await import("drizzle-orm");
+    const pendingId = `rm-pending-${Date.now()}`;
+    const activeId = `rm-active-${Date.now()}`;
+    await db.insert(schema.user).values([
+      { id: pendingId, email: `${pendingId}@example.test`, name: "Pending" },
+      { id: activeId, email: `${activeId}@example.test`, name: "Active" },
+    ]);
+    await db.insert(schema.spaceMemberships).values([
+      { spaceId: roomSpaceId, userId: pendingId, status: "pending_request" },
+      { spaceId: roomSpaceId, userId: activeId, status: "active" },
+    ]);
+
+    // Mirror denyMember's where-clause.
+    await db
+      .delete(schema.spaceMemberships)
+      .where(
+        and(
+          eq(schema.spaceMemberships.spaceId, roomSpaceId),
+          eq(schema.spaceMemberships.userId, pendingId),
+          eq(schema.spaceMemberships.status, "pending_request"),
+        ),
+      );
+
+    const remaining = await db
+      .select({ userId: schema.spaceMemberships.userId })
+      .from(schema.spaceMemberships)
+      .where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
+    expect(remaining.map((r) => r.userId)).toEqual([activeId]);
+
+    await db.delete(schema.spaceMemberships).where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
+    await db.delete(schema.user).where(eq(schema.user.id, pendingId));
+    await db.delete(schema.user).where(eq(schema.user.id, activeId));
+  });
 });

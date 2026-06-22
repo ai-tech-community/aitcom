@@ -418,6 +418,56 @@ export const spacesRouter = createTRPCRouter({
       }
       // Confirm the room belongs to this community before mutating membership.
       const [room] = await ctx.db
+        .select({ id: spaces.id, name: spaces.name, slug: spaces.slug })
+        .from(spaces)
+        .where(
+          and(
+            eq(spaces.id, input.spaceId),
+            eq(spaces.communityId, ctx.community.id),
+            eq(spaces.kind, "room"),
+          ),
+        )
+        .limit(1);
+      if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+      const updated = await ctx.db
+        .update(spaceMemberships)
+        .set({ status: "active" })
+        .where(
+          and(
+            eq(spaceMemberships.spaceId, input.spaceId),
+            eq(spaceMemberships.userId, input.userId),
+          ),
+        )
+        .returning({ id: spaceMemberships.id });
+
+      if (updated.length > 0) {
+        await ctx.db.insert(notifications).values({
+          userId: input.userId,
+          type: "room_access_approved",
+          title: "Access approved",
+          content: `You're now a member of ${room.name ?? "a room"} in ${ctx.community.name}.`,
+          metadata: {
+            reviewPath: `/communities/${input.slug}/spaces/${room.slug}`,
+            linkLabel: "Open room",
+            spaceId: input.spaceId,
+          },
+          communityId: ctx.community.id,
+        });
+      }
+      return { success: true };
+    }),
+
+  /** Deny (remove) a pending access request (owner/admin). Never touches active members. */
+  denyMember: communityProcedure
+    .input(
+      z.object({ slug: z.string(), spaceId: z.string(), userId: z.string() }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      // Confirm the room belongs to this community before mutating membership.
+      const [room] = await ctx.db
         .select({ id: spaces.id })
         .from(spaces)
         .where(
@@ -429,13 +479,15 @@ export const spacesRouter = createTRPCRouter({
         )
         .limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+      // Only a still-pending request is removable here — guard against deleting
+      // an active member by racing status.
       await ctx.db
-        .update(spaceMemberships)
-        .set({ status: "active" })
+        .delete(spaceMemberships)
         .where(
           and(
             eq(spaceMemberships.spaceId, input.spaceId),
             eq(spaceMemberships.userId, input.userId),
+            eq(spaceMemberships.status, "pending_request"),
           ),
         );
       return { success: true };
