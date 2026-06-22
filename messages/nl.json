@@ -1857,7 +1857,44 @@
       "enabledToggle": "Zichtbaarheid wisselen",
       "enabled": "Zichtbaar",
       "disabled": "Verborgen",
-      "rename": "Ruimtenaam wijzigen"
+      "rename": "Ruimtenaam wijzigen",
+      "edit": "Bewerken",
+      "archive": "Archiveren"
+    },
+    "rooms": {
+      "title": "Ruimtes",
+      "join": {
+        "label": "Deelnemen",
+        "error": "Deelnemen aan ruimte mislukt. Probeer het opnieuw."
+      },
+      "requestAccess": {
+        "label": "Toegang aanvragen",
+        "error": "Toegangsverzoek versturen mislukt. Probeer het opnieuw."
+      },
+      "pending": "Je verzoek wacht op goedkeuring.",
+      "untitled": "Ruimte",
+      "create": "Ruimte aanmaken",
+      "name": "Ruimtenaam",
+      "purpose": "Doel",
+      "public": "Openbaar",
+      "private": "Privé",
+      "visibility": "Wie kan deelnemen?",
+      "edit": "Bewerken",
+      "archive": "Archiveren",
+      "members": "Leden",
+      "addMembers": "Leden toevoegen",
+      "add": "Toevoegen",
+      "approve": "Goedkeuren",
+      "pendingRequests": "Openstaande verzoeken",
+      "searchMembers": "Leden zoeken…",
+      "noMembers": "Nog geen leden.",
+      "memberCount": "{count} leden",
+      "openInCommunity": "Openen in community",
+      "community": "Community",
+      "inCommunity": "in {community}",
+      "you": "Jij",
+      "moderator": "Mod",
+      "noResults": "Geen leden gevonden."
     }
   },
   "notificationPrefs": {

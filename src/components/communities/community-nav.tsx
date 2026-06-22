@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Lock } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { api } from "@/trpc/react";
 import { cn } from "@/lib/utils";
@@ -19,9 +20,11 @@ interface NavItem {
   key: string;
   href: string;
   label: string;
+  isPrivate?: boolean;
 }
 
 export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
+  const tRooms = useTranslations("communities.rooms");
   const t = useTranslations("communities.profile");
   const pathname = usePathname();
 
@@ -31,6 +34,8 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
   const { data: spaceTabs, isError: spaceTabsError } = api.spaces.list.useQuery(
     { slug },
   );
+
+  const { data: roomTabs } = api.spaces.listRooms.useQuery({ slug });
 
   const surfaceItems: NavItem[] = spaceTabsError
     ? BUILTIN_SURFACES.map((s) => ({
@@ -49,9 +54,17 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
           ),
         }));
 
+  const roomItems: NavItem[] = (roomTabs ?? []).map((room) => ({
+    key: `room-${room.id}`,
+    href: `${basePath}/spaces/${room.slug}`,
+    label: room.name ?? tRooms("untitled"),
+    isPrivate: room.visibility === "private" && room.membership !== "active",
+  }));
+
   const navItems: NavItem[] = [
     { key: "overview", href: basePath, label: t("overview") },
     ...surfaceItems,
+    ...roomItems,
     ...(memberRole
       ? [
           {
@@ -107,6 +120,15 @@ export function CommunityNav({ slug, memberRole }: CommunityNavProps) {
                 )}
               >
                 {item.label}
+                {item.isPrivate && (
+                  <>
+                    <Lock
+                      className="text-muted-foreground ml-1 inline-block size-3"
+                      aria-hidden="true"
+                    />
+                    <span className="sr-only">private room</span>
+                  </>
+                )}
               </Link>
             );
           })}

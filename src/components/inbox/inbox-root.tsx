@@ -38,13 +38,14 @@ export function InboxRoot() {
     if (!conv) return null;
     return {
       conversationId: conv.id,
-      displayName:
-        conv.type === "agent"
+      displayName: conv.isRoom
+        ? (conv.title ?? "Room")
+        : conv.type === "agent"
           ? (conv.agentInfo?.name ?? t("agentLabel"))
           : (conv.participants[0]?.displayName ?? "Unknown"),
       image:
-        conv.type === "agent"
-          ? (conv.agentInfo?.avatar ?? null)
+        conv.isRoom || conv.type === "agent"
+          ? ((conv.type === "agent" ? conv.agentInfo?.avatar : null) ?? null)
           : (conv.participants[0]?.image ?? null),
       isAgent: conv.type === "agent",
     };

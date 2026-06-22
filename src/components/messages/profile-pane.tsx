@@ -1,6 +1,6 @@
 "use client";
 
-import { BotIcon, Github, Globe, Linkedin } from "lucide-react";
+import { BotIcon, Github, Globe, Linkedin, Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
@@ -255,6 +255,79 @@ export function ProfilePane({
           {t("viewFullProfile")}
         </Link>
       </div>
+    </div>
+  );
+}
+
+type RoomInfoPaneProps = {
+  roomName: string;
+  roomVisibility: "public" | "private" | null;
+  memberCount: number;
+  communityName: string | null;
+  communityLogoUrl: string | null;
+  communitySlug: string | null;
+  roomSlug: string | null;
+};
+
+export function RoomInfoPane({
+  roomName,
+  roomVisibility,
+  memberCount,
+  communityName,
+  communityLogoUrl,
+  communitySlug,
+  roomSlug,
+}: RoomInfoPaneProps) {
+  const t = useTranslations("communities.rooms");
+
+  return (
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto">
+      <Header label={`/ ${t("community").toUpperCase()}`} />
+
+      {/* Community identity */}
+      <div className="flex flex-col items-center gap-3 px-5 py-6 text-center">
+        <Avatar className="size-20">
+          {communityLogoUrl && communityName && (
+            <AvatarImage src={communityLogoUrl} alt={communityName} />
+          )}
+          <AvatarFallback className="text-xl">
+            {getInitials(communityName ?? "?")}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <p className="text-foreground text-base font-semibold">
+            {communityName ?? "—"}
+          </p>
+        </div>
+      </div>
+
+      {/* Room identity */}
+      <div className="border-border space-y-2 border-t px-5 py-4">
+        <p className="text-foreground text-sm font-semibold">{roomName}</p>
+        <div className="flex items-center gap-2">
+          {roomVisibility === "private" ? (
+            <Lock className="text-muted-foreground h-3 w-3 shrink-0" />
+          ) : null}
+          <span className="text-muted-foreground font-mono text-xs">
+            {roomVisibility === "private" ? t("private") : t("public")}
+          </span>
+        </div>
+        <p className="text-muted-foreground font-mono text-xs">
+          {t("memberCount", { count: memberCount })}
+        </p>
+      </div>
+
+      {/* Open in community link */}
+      {communitySlug && roomSlug && (
+        <div className="border-border mt-auto border-t px-5 py-4">
+          <Link
+            href={`/communities/${communitySlug}/spaces/${roomSlug}`}
+            className="border-border hover:bg-secondary focus-visible:ring-ring flex items-center justify-center rounded-md border px-3 py-2 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+          >
+            {t("openInCommunity")}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

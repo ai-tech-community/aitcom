@@ -1857,7 +1857,44 @@
       "enabledToggle": "Toggle visibility",
       "enabled": "Shown",
       "disabled": "Hidden",
-      "rename": "Rename space name"
+      "rename": "Rename space name",
+      "edit": "Edit",
+      "archive": "Archive"
+    },
+    "rooms": {
+      "title": "Rooms",
+      "join": {
+        "label": "Join",
+        "error": "Failed to join room. Please try again."
+      },
+      "requestAccess": {
+        "label": "Request access",
+        "error": "Failed to send access request. Please try again."
+      },
+      "pending": "Your request is pending approval.",
+      "untitled": "Room",
+      "create": "Create room",
+      "name": "Room name",
+      "purpose": "Purpose",
+      "public": "Public",
+      "private": "Private",
+      "visibility": "Who can join?",
+      "edit": "Edit",
+      "archive": "Archive",
+      "members": "Members",
+      "addMembers": "Add members",
+      "add": "Add",
+      "approve": "Approve",
+      "pendingRequests": "Pending requests",
+      "searchMembers": "Search members…",
+      "noMembers": "No members yet.",
+      "memberCount": "{count} members",
+      "openInCommunity": "Open in community",
+      "community": "Community",
+      "inCommunity": "in {community}",
+      "you": "You",
+      "moderator": "Mod",
+      "noResults": "No members found."
     }
   },
   "notificationPrefs": {

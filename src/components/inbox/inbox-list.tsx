@@ -61,8 +61,9 @@ export function InboxList() {
   const filteredConversations =
     search.length > 0
       ? conversations.filter((conv) => {
-          const name =
-            conv.type === "agent"
+          const name = conv.isRoom
+            ? conv.title
+            : conv.type === "agent"
               ? conv.agentInfo?.name
               : conv.participants[0]?.displayName;
           return name?.toLowerCase().includes(search.toLowerCase());
@@ -180,9 +181,11 @@ export function InboxList() {
             <div className="flex flex-col py-1">
               {filteredConversations.map((conv) => {
                 const isAgent = conv.type === "agent";
-                const displayName = isAgent
-                  ? (conv.agentInfo?.name ?? t("agentLabel"))
-                  : (conv.participants[0]?.displayName ?? "Unknown");
+                const displayName = conv.isRoom
+                  ? (conv.title ?? "Room")
+                  : isAgent
+                    ? (conv.agentInfo?.name ?? t("agentLabel"))
+                    : (conv.participants[0]?.displayName ?? "Unknown");
                 const image = isAgent
                   ? null
                   : (conv.participants[0]?.image ?? null);
