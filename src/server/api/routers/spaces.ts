@@ -347,7 +347,10 @@ export const spacesRouter = createTRPCRouter({
         .limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
       if (room.visibility !== "private") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "This room is public — join it directly." });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This room is public — join it directly.",
+        });
       }
       await ctx.db
         .insert(spaceMemberships)

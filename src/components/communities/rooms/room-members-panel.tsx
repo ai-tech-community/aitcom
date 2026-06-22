@@ -223,7 +223,9 @@ export function RoomMembersPanel({
                   </div>
                 ) : communityMembersQuery.isError ? (
                   <div className="mt-2">
-                    <ErrorState onRetry={() => communityMembersQuery.refetch()} />
+                    <ErrorState
+                      onRetry={() => communityMembersQuery.refetch()}
+                    />
                   </div>
                 ) : addCandidates.length === 0 ? (
                   <p className="text-muted-foreground py-3 text-sm">
