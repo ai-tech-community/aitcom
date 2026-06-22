@@ -21,6 +21,7 @@ import {
   user,
 } from "@/server/db/schema";
 import { isActiveMember } from "@/server/communities/room-access";
+import { countRoomUnread } from "@/server/communities/room-unread";
 import { logActivity } from "@/server/agent/activity";
 import { publishInboxEvent } from "@/server/inbox/publish";
 import { after } from "next/server";
@@ -167,6 +168,7 @@ export const inboxRouter = createTRPCRouter({
             communityName: communities.name,
             communityLogoUrl: communities.logoUrl,
             memberCount: sql<number>`(SELECT COUNT(*)::int FROM app.space_membership WHERE space_id = ${conversations.spaceId} AND status = 'active')`,
+            lastReadAt: spaceMemberships.lastReadAt,
           })
           .from(conversations)
           .innerJoin(spaces, eq(spaces.id, conversations.spaceId))
@@ -184,7 +186,7 @@ export const inboxRouter = createTRPCRouter({
           )
       ).map((r) => ({
         conversationId: r.conversationId,
-        lastReadAt: null,
+        lastReadAt: r.lastReadAt,
         isPinned: false,
         convType: r.convType,
         convUpdatedAt: r.convUpdatedAt,
@@ -293,11 +295,15 @@ export const inboxRouter = createTRPCRouter({
             agentInfo = agent ?? null;
           }
 
-          // Unread count: messages after lastReadAt that aren't sent by the current user as "human"
+          // Unread count: messages after lastReadAt not sent by the current user as "human"
           let unreadCount = 0;
           if (isRoom) {
-            // Rooms have no per-member read marker yet (Plan 2b/3) — show 0 rather than a permanently-inflated badge.
-            unreadCount = 0;
+            unreadCount = await countRoomUnread(
+              ctx.db,
+              row.conversationId,
+              userId,
+              row.lastReadAt,
+            );
           } else if (row.lastReadAt) {
             const [unreadRow] = await ctx.db
               .select({ count: sql<number>`count(*)::int` })
