@@ -272,6 +272,7 @@ export const spacesRouter = createTRPCRouter({
           purpose: spaces.purpose,
           slug: spaces.slug,
           visibility: spaces.visibility,
+          memberCount: sql<number>`(SELECT COUNT(*)::int FROM app.space_membership WHERE space_id = ${spaces.id} AND status = 'active')`,
         })
         .from(spaces)
         .where(
@@ -282,14 +283,23 @@ export const spacesRouter = createTRPCRouter({
           ),
         )
         .orderBy(asc(spaces.position));
-      const mine = await ctx.db
-        .select({
-          spaceId: spaceMemberships.spaceId,
-          status: spaceMemberships.status,
-        })
-        .from(spaceMemberships)
-        .where(eq(spaceMemberships.userId, ctx.session.user.id));
-      const byId = new Map(mine.map((m) => [m.spaceId, m.status]));
+      const roomIds = rooms.map((r) => r.id);
+      // Scope the caller's membership lookup to the listed rooms (was: all rooms).
+      const mine = roomIds.length
+        ? await ctx.db
+            .select({
+              spaceId: spaceMemberships.spaceId,
+              status: spaceMemberships.status,
+            })
+            .from(spaceMemberships)
+            .where(
+              and(
+                eq(spaceMemberships.userId, ctx.session.user.id),
+                inArray(spaceMemberships.spaceId, roomIds),
+              ),
+            )
+        : [];
+      const byId = new Map(mine.map((mem) => [mem.spaceId, mem.status]));
       return rooms.map((r) => ({
         ...r,
         membership: byId.get(r.id) ?? null,

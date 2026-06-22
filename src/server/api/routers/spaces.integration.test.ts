@@ -458,4 +458,24 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
     await db.delete(schema.user).where(eq(schema.user.id, pendingId));
     await db.delete(schema.user).where(eq(schema.user.id, activeId));
   });
+
+  it("active member count subquery counts only active members", async () => {
+    const { db, schema } = m;
+    const { eq, sql } = await import("drizzle-orm");
+    const aId = `rm-a-${Date.now()}`;
+    await db.insert(schema.user).values({ id: aId, email: `${aId}@example.test`, name: "A" });
+    await db.insert(schema.spaceMemberships).values([
+      { spaceId: roomSpaceId, userId: aId, status: "active" },
+      { spaceId: roomSpaceId, userId: userId, status: "pending_request" },
+    ]);
+    const [row] = await db
+      .select({
+        memberCount: sql<number>`(SELECT COUNT(*)::int FROM app.space_membership WHERE space_id = ${schema.spaces.id} AND status = 'active')`,
+      })
+      .from(schema.spaces)
+      .where(eq(schema.spaces.id, roomSpaceId));
+    expect(row?.memberCount).toBe(1);
+    await db.delete(schema.spaceMemberships).where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
+    await db.delete(schema.user).where(eq(schema.user.id, aId));
+  });
 });
