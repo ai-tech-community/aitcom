@@ -138,7 +138,9 @@ export function CommunityRoomsDirectory({ slug }: { slug: string }) {
                     variant="outline"
                     size="sm"
                     disabled={joinMutation.isPending}
-                    onClick={() => joinMutation.mutate({ slug, spaceId: room.id })}
+                    onClick={() =>
+                      joinMutation.mutate({ slug, spaceId: room.id })
+                    }
                   >
                     {t("join.label")}
                   </Button>

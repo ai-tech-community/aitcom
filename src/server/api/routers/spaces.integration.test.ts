@@ -378,7 +378,8 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
   it("countRoomUnread honors lastReadAt and excludes the viewer's own human messages", async () => {
     const { db, schema, getOrCreateRoomConversation } = m;
     const { eq } = await import("drizzle-orm");
-    const { countRoomUnread } = await import("@/server/communities/room-unread");
+    const { countRoomUnread } =
+      await import("@/server/communities/room-unread");
 
     // A second member who posts in the room.
     const otherId = `rm-other-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
@@ -397,8 +398,20 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
     const t1 = new Date(Date.now() - 60_000);
     const t2 = new Date(Date.now() - 30_000);
     await db.insert(schema.messages).values([
-      { conversationId, senderId: otherId, senderType: "human", content: "first", createdAt: t1 },
-      { conversationId, senderId: otherId, senderType: "human", content: "second", createdAt: t2 },
+      {
+        conversationId,
+        senderId: otherId,
+        senderType: "human",
+        content: "first",
+        createdAt: t1,
+      },
+      {
+        conversationId,
+        senderId: otherId,
+        senderType: "human",
+        content: "second",
+        createdAt: t2,
+      },
     ]);
 
     // Never read → both unread.
@@ -406,7 +419,9 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
     // Read at t1 → only the t2 message is unread.
     expect(await countRoomUnread(db, conversationId, userId, t1)).toBe(1);
     // Read after the latest → zero unread.
-    expect(await countRoomUnread(db, conversationId, userId, new Date())).toBe(0);
+    expect(await countRoomUnread(db, conversationId, userId, new Date())).toBe(
+      0,
+    );
     // The viewer's own human message does not count as unread.
     await db.insert(schema.messages).values({
       conversationId,
@@ -416,10 +431,17 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
       createdAt: new Date(),
     });
     expect(
-      await countRoomUnread(db, conversationId, userId, new Date(Date.now() - 1_000)),
+      await countRoomUnread(
+        db,
+        conversationId,
+        userId,
+        new Date(Date.now() - 1_000),
+      ),
     ).toBe(0);
 
-    await db.delete(schema.messages).where(eq(schema.messages.conversationId, conversationId));
+    await db
+      .delete(schema.messages)
+      .where(eq(schema.messages.conversationId, conversationId));
     await db.delete(schema.user).where(eq(schema.user.id, otherId));
   });
 
@@ -454,7 +476,9 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
       .where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
     expect(remaining.map((r) => r.userId)).toEqual([activeId]);
 
-    await db.delete(schema.spaceMemberships).where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
+    await db
+      .delete(schema.spaceMemberships)
+      .where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
     await db.delete(schema.user).where(eq(schema.user.id, pendingId));
     await db.delete(schema.user).where(eq(schema.user.id, activeId));
   });
@@ -463,7 +487,9 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
     const { db, schema } = m;
     const { and, eq, inArray, sql } = await import("drizzle-orm");
     const aId = `rm-a-${Date.now()}`;
-    await db.insert(schema.user).values({ id: aId, email: `${aId}@example.test`, name: "A" });
+    await db
+      .insert(schema.user)
+      .values({ id: aId, email: `${aId}@example.test`, name: "A" });
     await db.insert(schema.spaceMemberships).values([
       { spaceId: roomSpaceId, userId: aId, status: "active" },
       { spaceId: roomSpaceId, userId: userId, status: "pending_request" },
@@ -488,7 +514,9 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
       .groupBy(schema.spaceMemberships.spaceId);
     const countById = new Map(counts.map((c) => [c.spaceId, c.count]));
     expect(countById.get(roomSpaceId) ?? 0).toBe(1);
-    await db.delete(schema.spaceMemberships).where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
+    await db
+      .delete(schema.spaceMemberships)
+      .where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
     await db.delete(schema.user).where(eq(schema.user.id, aId));
   });
 });
