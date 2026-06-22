@@ -93,6 +93,14 @@ export function RoomMembersPanel({
     onError: (e) => toast.error(e.message),
   });
 
+  const denyMutation = api.spaces.denyMember.useMutation({
+    onSuccess: () => {
+      void utils.spaces.listRoomMembers.invalidate({ slug, spaceId });
+      void utils.spaces.getRoom.invalidate({ slug, spaceSlug });
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const allMembers = membersQuery.data ?? [];
   const pendingMembers = allMembers.filter(
     (m) => m.status === "pending_request",
@@ -184,21 +192,38 @@ export function RoomMembersPanel({
                       name={m.displayName ?? ""}
                       avatarUrl={m.avatarUrl}
                       trailing={
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={approveMutation.isPending}
-                          aria-label={`${t("approve")} ${m.displayName ?? ""}`}
-                          onClick={() =>
-                            approveMutation.mutate({
-                              slug,
-                              spaceId,
-                              userId: m.userId,
-                            })
-                          }
-                        >
-                          {t("approve")}
-                        </Button>
+                        <div className="flex shrink-0 gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={approveMutation.isPending}
+                            aria-label={`${t("approve")} ${m.displayName ?? ""}`}
+                            onClick={() =>
+                              approveMutation.mutate({
+                                slug,
+                                spaceId,
+                                userId: m.userId,
+                              })
+                            }
+                          >
+                            {t("approve")}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={denyMutation.isPending}
+                            aria-label={`${t("deny")} ${m.displayName ?? ""}`}
+                            onClick={() =>
+                              denyMutation.mutate({
+                                slug,
+                                spaceId,
+                                userId: m.userId,
+                              })
+                            }
+                          >
+                            {t("deny")}
+                          </Button>
+                        </div>
                       }
                     />
                   ))}
@@ -209,7 +234,7 @@ export function RoomMembersPanel({
             {/* Add members — admin-only */}
             {viewerIsAdmin ? (
               <section>
-                <SectionLabel as="h3">{t("addMembers")}</SectionLabel>
+                <SectionLabel as="h3">{t("inviteMembers")}</SectionLabel>
                 <Input
                   placeholder={t("searchMembers")}
                   aria-label={t("searchMembers")}
@@ -244,7 +269,7 @@ export function RoomMembersPanel({
                             variant="outline"
                             size="sm"
                             disabled={addMutation.isPending}
-                            aria-label={`${t("add")} ${m.profile.displayName ?? ""}`}
+                            aria-label={`${t("invite")} ${m.profile.displayName ?? ""}`}
                             onClick={() =>
                               addMutation.mutate({
                                 slug,
@@ -253,7 +278,7 @@ export function RoomMembersPanel({
                               })
                             }
                           >
-                            {t("add")}
+                            {t("invite")}
                           </Button>
                         }
                       />
