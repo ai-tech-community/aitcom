@@ -1894,7 +1894,14 @@
       "inCommunity": "in {community}",
       "you": "Jij",
       "moderator": "Mod",
-      "noResults": "Geen leden gevonden."
+      "noResults": "Geen leden gevonden.",
+      "open": "Openen",
+      "pendingShort": "In afwachting",
+      "deny": "Weigeren",
+      "invite": "Uitnodigen",
+      "inviteMembers": "Leden uitnodigen",
+      "directoryTitle": "Ruimtes",
+      "directoryEmpty": "Nog geen ruimtes."
     }
   },
   "notificationPrefs": {
