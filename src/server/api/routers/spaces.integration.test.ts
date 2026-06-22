@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 function looksLikeCloudNeon(url: string): boolean {
@@ -372,5 +373,53 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
         ),
       );
     expect(afterApproval.map((m) => m.userId)).toContain(userId);
+  });
+
+  it("countRoomUnread honors lastReadAt and excludes the viewer's own human messages", async () => {
+    const { db, schema, getOrCreateRoomConversation } = m;
+    const { eq } = await import("drizzle-orm");
+    const { countRoomUnread } = await import("@/server/communities/room-unread");
+
+    // A second member who posts in the room.
+    const otherId = `rm-other-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    await db.insert(schema.user).values({
+      id: otherId,
+      email: `${otherId}@example.test`,
+      name: "Other Member",
+    });
+
+    // getOrCreateRoomConversation returns the conversation id. If your local
+    // helper returns a row instead, use `.id` here.
+    const conversationId = await getOrCreateRoomConversation(db, roomSpaceId);
+
+    // Explicit timestamps so the before/after assertions are deterministic
+    // (without these both rows default to "now" and the math breaks).
+    const t1 = new Date(Date.now() - 60_000);
+    const t2 = new Date(Date.now() - 30_000);
+    await db.insert(schema.messages).values([
+      { conversationId, senderId: otherId, senderType: "human", content: "first", createdAt: t1 },
+      { conversationId, senderId: otherId, senderType: "human", content: "second", createdAt: t2 },
+    ]);
+
+    // Never read → both unread.
+    expect(await countRoomUnread(db, conversationId, userId, null)).toBe(2);
+    // Read at t1 → only the t2 message is unread.
+    expect(await countRoomUnread(db, conversationId, userId, t1)).toBe(1);
+    // Read after the latest → zero unread.
+    expect(await countRoomUnread(db, conversationId, userId, new Date())).toBe(0);
+    // The viewer's own human message does not count as unread.
+    await db.insert(schema.messages).values({
+      conversationId,
+      senderId: userId,
+      senderType: "human",
+      content: "mine",
+      createdAt: new Date(),
+    });
+    expect(
+      await countRoomUnread(db, conversationId, userId, new Date(Date.now() - 1_000)),
+    ).toBe(0);
+
+    await db.delete(schema.messages).where(eq(schema.messages.conversationId, conversationId));
+    await db.delete(schema.user).where(eq(schema.user.id, otherId));
   });
 });
