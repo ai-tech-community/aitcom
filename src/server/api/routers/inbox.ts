@@ -432,19 +432,36 @@ export const inboxRouter = createTRPCRouter({
       // Reverse to chronological order
       items.reverse();
 
-      // Fire-and-forget: update lastReadAt
-      ctx.db
-        .update(conversationParticipants)
-        .set({ lastReadAt: new Date() })
-        .where(
-          and(
-            eq(conversationParticipants.conversationId, input.conversationId),
-            eq(conversationParticipants.userId, userId),
-          ),
-        )
-        .catch((err: unknown) => {
-          console.error("[inbox] update failed:", err);
-        });
+      // Fire-and-forget: update lastReadAt. DM/agent conversations track it on
+      // conversationParticipants; space (room) conversations track it on the
+      // caller's spaceMembership (rooms have no participant rows).
+      if (conv.type === "space" && conv.spaceId) {
+        ctx.db
+          .update(spaceMemberships)
+          .set({ lastReadAt: new Date() })
+          .where(
+            and(
+              eq(spaceMemberships.spaceId, conv.spaceId),
+              eq(spaceMemberships.userId, userId),
+            ),
+          )
+          .catch((err: unknown) => {
+            console.error("[inbox] space lastReadAt update failed:", err);
+          });
+      } else {
+        ctx.db
+          .update(conversationParticipants)
+          .set({ lastReadAt: new Date() })
+          .where(
+            and(
+              eq(conversationParticipants.conversationId, input.conversationId),
+              eq(conversationParticipants.userId, userId),
+            ),
+          )
+          .catch((err: unknown) => {
+            console.error("[inbox] update failed:", err);
+          });
+      }
 
       return { messages: items, nextCursor, hasMore };
     }),
