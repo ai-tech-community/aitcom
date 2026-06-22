@@ -221,6 +221,10 @@ export function RoomMembersPanel({
                   <div className="flex justify-center py-4">
                     <Spinner className="size-4" />
                   </div>
+                ) : communityMembersQuery.isError ? (
+                  <div className="mt-2">
+                    <ErrorState onRetry={() => communityMembersQuery.refetch()} />
+                  </div>
                 ) : addCandidates.length === 0 ? (
                   <p className="text-muted-foreground py-3 text-sm">
                     {t("noResults")}

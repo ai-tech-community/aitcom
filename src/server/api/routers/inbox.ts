@@ -295,7 +295,10 @@ export const inboxRouter = createTRPCRouter({
 
           // Unread count: messages after lastReadAt that aren't sent by the current user as "human"
           let unreadCount = 0;
-          if (row.lastReadAt) {
+          if (isRoom) {
+            // Rooms have no per-member read marker yet (Plan 2b/3) — show 0 rather than a permanently-inflated badge.
+            unreadCount = 0;
+          } else if (row.lastReadAt) {
             const [unreadRow] = await ctx.db
               .select({ count: sql<number>`count(*)::int` })
               .from(messages)
@@ -383,7 +386,8 @@ export const inboxRouter = createTRPCRouter({
         .limit(1);
       if (!conv) throw new TRPCError({ code: "NOT_FOUND" });
       if (conv.type === "space") {
-        await requireSpaceConversationAccess(ctx.db, conv.spaceId!, userId);
+        if (!conv.spaceId) throw new TRPCError({ code: "NOT_FOUND" });
+        await requireSpaceConversationAccess(ctx.db, conv.spaceId, userId);
       } else {
         // Verify user is a participant
         const [participant] = await ctx.db
@@ -476,9 +480,10 @@ export const inboxRouter = createTRPCRouter({
 
       // ── Space (room) conversations ──────────────────────────────────────
       if (convRow?.type === "space") {
+        if (!convRow.spaceId) throw new TRPCError({ code: "NOT_FOUND" });
         const memberIds = await requireSpaceConversationAccess(
           ctx.db,
-          convRow.spaceId!,
+          convRow.spaceId,
           userId,
         );
 

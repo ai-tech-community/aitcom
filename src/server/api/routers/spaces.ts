@@ -334,7 +334,7 @@ export const spacesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       if (!ctx.communityRole) throw new TRPCError({ code: "FORBIDDEN" });
       const [room] = await ctx.db
-        .select({ id: spaces.id })
+        .select({ id: spaces.id, visibility: spaces.visibility })
         .from(spaces)
         .where(
           and(
@@ -346,6 +346,9 @@ export const spacesRouter = createTRPCRouter({
         )
         .limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+      if (room.visibility !== "private") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This room is public — join it directly." });
+      }
       await ctx.db
         .insert(spaceMemberships)
         .values({

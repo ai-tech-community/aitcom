@@ -395,6 +395,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
                       <Button
                         size="sm"
                         variant="outline"
+                        aria-label={`${tRooms("edit")} ${room.name ?? ""}`}
                         onClick={() => {
                           setEditingRoomId(room.id);
                           setDraftRoomName(room.name ?? "");
@@ -407,6 +408,7 @@ export function ComposeSpaces({ slug }: { slug: string }) {
                       <Button
                         size="sm"
                         variant="ghost"
+                        aria-label={`${tRooms("archive")} ${room.name ?? ""}`}
                         onClick={() =>
                           archiveRoom.mutate({ slug, spaceId: room.id })
                         }

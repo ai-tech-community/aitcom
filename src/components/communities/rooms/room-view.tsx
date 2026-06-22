@@ -70,7 +70,7 @@ export function RoomView({
               </span>
             ) : (
               <span className="text-muted-foreground font-mono text-xs">
-                / {t("public")}
+                {t("public")}
               </span>
             )}
           </div>

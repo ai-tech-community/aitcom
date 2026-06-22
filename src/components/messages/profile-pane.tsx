@@ -308,7 +308,7 @@ export function RoomInfoPane({
           {roomVisibility === "private" ? (
             <Lock className="text-muted-foreground h-3 w-3 shrink-0" />
           ) : null}
-          <span className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
+          <span className="text-muted-foreground font-mono text-xs">
             {roomVisibility === "private" ? t("private") : t("public")}
           </span>
         </div>
