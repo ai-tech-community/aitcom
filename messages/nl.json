@@ -1891,7 +1891,10 @@
       "memberCount": "{count} leden",
       "openInCommunity": "Openen in community",
       "community": "Community",
-      "inCommunity": "in {community}"
+      "inCommunity": "in {community}",
+      "you": "Jij",
+      "moderator": "Mod",
+      "noResults": "Geen leden gevonden."
     }
   },
   "notificationPrefs": {

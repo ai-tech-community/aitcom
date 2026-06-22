@@ -1891,7 +1891,10 @@
       "memberCount": "{count} members",
       "openInCommunity": "Open in community",
       "community": "Community",
-      "inCommunity": "in {community}"
+      "inCommunity": "in {community}",
+      "you": "You",
+      "moderator": "Mod",
+      "noResults": "No members found."
     }
   },
   "notificationPrefs": {
