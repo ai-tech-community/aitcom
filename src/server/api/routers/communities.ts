@@ -29,7 +29,8 @@ import {
   canRedeemInvite,
 } from "@/server/communities/invite-policy";
 import { logActivity } from "@/server/agent/activity";
-import { loadPublicLiveness } from "@/server/communities/discovery-queries";
+import { loadPublicLiveness, loadDiscoveryCandidates } from "@/server/communities/discovery-queries";
+import { livenessScore } from "@/server/communities/discovery";
 import {
   loadStackFaces,
   loadStackFacesForCommunities,
@@ -138,6 +139,39 @@ export const communitiesRouter = createTRPCRouter({
       }));
 
       return { items: itemsWithFaces, nextCursor };
+    }),
+
+  /** Top communities by liveness score (anonymous trending shelf). No pagination. */
+  trending: publicProcedure
+    .input(z.object({ limit: z.number().min(1).max(48).default(24) }))
+    .query(async ({ ctx, input }) => {
+      const candidates = await loadDiscoveryCandidates(ctx.db, new Date());
+      const ranked = candidates
+        .map((c) => ({ ...c, score: livenessScore(c) }))
+        .sort(
+          (a, b) =>
+            b.score - a.score ||
+            b.activeNow - a.activeNow ||
+            b.memberCount - a.memberCount ||
+            (a.communityId < b.communityId ? -1 : a.communityId > b.communityId ? 1 : 0),
+        )
+        .slice(0, input.limit);
+      const faces = await loadStackFacesForCommunities(
+        ctx.db,
+        ranked.map((c) => c.communityId),
+      );
+      return {
+        items: ranked.map((c) => ({
+          id: c.communityId,
+          name: c.name,
+          slug: c.slug,
+          description: c.description,
+          logoUrl: c.logoUrl,
+          joinPolicy: "open" as const, // display-only; Join uses the real policy on the community page
+          memberCount: c.memberCount,
+          faces: faces.get(c.communityId) ?? [],
+        })),
+      };
     }),
 
   /** Get community by slug (public profile) */
