@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 function looksLikeCloudNeon(url: string): boolean {
@@ -372,5 +373,150 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
         ),
       );
     expect(afterApproval.map((m) => m.userId)).toContain(userId);
+  });
+
+  it("countRoomUnread honors lastReadAt and excludes the viewer's own human messages", async () => {
+    const { db, schema, getOrCreateRoomConversation } = m;
+    const { eq } = await import("drizzle-orm");
+    const { countRoomUnread } =
+      await import("@/server/communities/room-unread");
+
+    // A second member who posts in the room.
+    const otherId = `rm-other-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    await db.insert(schema.user).values({
+      id: otherId,
+      email: `${otherId}@example.test`,
+      name: "Other Member",
+    });
+
+    // getOrCreateRoomConversation returns the conversation id. If your local
+    // helper returns a row instead, use `.id` here.
+    const conversationId = await getOrCreateRoomConversation(db, roomSpaceId);
+
+    // Explicit timestamps so the before/after assertions are deterministic
+    // (without these both rows default to "now" and the math breaks).
+    const t1 = new Date(Date.now() - 60_000);
+    const t2 = new Date(Date.now() - 30_000);
+    await db.insert(schema.messages).values([
+      {
+        conversationId,
+        senderId: otherId,
+        senderType: "human",
+        content: "first",
+        createdAt: t1,
+      },
+      {
+        conversationId,
+        senderId: otherId,
+        senderType: "human",
+        content: "second",
+        createdAt: t2,
+      },
+    ]);
+
+    // Never read → both unread.
+    expect(await countRoomUnread(db, conversationId, userId, null)).toBe(2);
+    // Read at t1 → only the t2 message is unread.
+    expect(await countRoomUnread(db, conversationId, userId, t1)).toBe(1);
+    // Read after the latest → zero unread.
+    expect(await countRoomUnread(db, conversationId, userId, new Date())).toBe(
+      0,
+    );
+    // The viewer's own human message does not count as unread.
+    await db.insert(schema.messages).values({
+      conversationId,
+      senderId: userId,
+      senderType: "human",
+      content: "mine",
+      createdAt: new Date(),
+    });
+    expect(
+      await countRoomUnread(
+        db,
+        conversationId,
+        userId,
+        new Date(Date.now() - 1_000),
+      ),
+    ).toBe(0);
+
+    await db
+      .delete(schema.messages)
+      .where(eq(schema.messages.conversationId, conversationId));
+    await db.delete(schema.user).where(eq(schema.user.id, otherId));
+  });
+
+  it("denyMember-style delete removes only pending_request rows", async () => {
+    const { db, schema } = m;
+    const { eq, and } = await import("drizzle-orm");
+    const pendingId = `rm-pending-${Date.now()}`;
+    const activeId = `rm-active-${Date.now()}`;
+    await db.insert(schema.user).values([
+      { id: pendingId, email: `${pendingId}@example.test`, name: "Pending" },
+      { id: activeId, email: `${activeId}@example.test`, name: "Active" },
+    ]);
+    await db.insert(schema.spaceMemberships).values([
+      { spaceId: roomSpaceId, userId: pendingId, status: "pending_request" },
+      { spaceId: roomSpaceId, userId: activeId, status: "active" },
+    ]);
+
+    // Mirror denyMember's where-clause.
+    await db
+      .delete(schema.spaceMemberships)
+      .where(
+        and(
+          eq(schema.spaceMemberships.spaceId, roomSpaceId),
+          eq(schema.spaceMemberships.userId, pendingId),
+          eq(schema.spaceMemberships.status, "pending_request"),
+        ),
+      );
+
+    const remaining = await db
+      .select({ userId: schema.spaceMemberships.userId })
+      .from(schema.spaceMemberships)
+      .where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
+    expect(remaining.map((r) => r.userId)).toEqual([activeId]);
+
+    await db
+      .delete(schema.spaceMemberships)
+      .where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
+    await db.delete(schema.user).where(eq(schema.user.id, pendingId));
+    await db.delete(schema.user).where(eq(schema.user.id, activeId));
+  });
+
+  it("grouped active-member count counts only active members (not pending)", async () => {
+    const { db, schema } = m;
+    const { and, eq, inArray, sql } = await import("drizzle-orm");
+    const aId = `rm-a-${Date.now()}`;
+    await db
+      .insert(schema.user)
+      .values({ id: aId, email: `${aId}@example.test`, name: "A" });
+    await db.insert(schema.spaceMemberships).values([
+      { spaceId: roomSpaceId, userId: aId, status: "active" },
+      { spaceId: roomSpaceId, userId: userId, status: "pending_request" },
+    ]);
+    // Mirror listRooms/inbox: a grouped COUNT mapped by spaceId — NOT an inline
+    // correlated subquery. Drizzle emits the interpolated outer column unqualified
+    // inside sql``, so `space_id = "id"` mis-correlates to the membership table's
+    // own id and silently returns 0; the grouped form is the fix and is asserted
+    // here as a regression guard.
+    const counts = await db
+      .select({
+        spaceId: schema.spaceMemberships.spaceId,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(schema.spaceMemberships)
+      .where(
+        and(
+          inArray(schema.spaceMemberships.spaceId, [roomSpaceId]),
+          eq(schema.spaceMemberships.status, "active"),
+        ),
+      )
+      .groupBy(schema.spaceMemberships.spaceId);
+    const countById = new Map(counts.map((c) => [c.spaceId, c.count]));
+    expect(countById.get(roomSpaceId) ?? 0).toBe(1);
+    await db
+      .delete(schema.spaceMemberships)
+      .where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
+    await db.delete(schema.user).where(eq(schema.user.id, aId));
   });
 });

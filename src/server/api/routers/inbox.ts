@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, lt, sql, ne, or, ilike } from "drizzle-orm";
+import { eq, and, desc, lt, sql, ne, or, ilike, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -21,6 +21,7 @@ import {
   user,
 } from "@/server/db/schema";
 import { isActiveMember } from "@/server/communities/room-access";
+import { countRoomUnread } from "@/server/communities/room-unread";
 import { logActivity } from "@/server/agent/activity";
 import { publishInboxEvent } from "@/server/inbox/publish";
 import { after } from "next/server";
@@ -153,38 +154,64 @@ export const inboxRouter = createTRPCRouter({
       // ── Space (room) conversations the caller is an ACTIVE member of ────
       // Gate on spaceMemberships.status === "active". No participant rows exist,
       // so there is no lastReadAt — unread is computed from all messages below.
-      const roomRows: ConvRow[] = (
-        await ctx.db
-          .select({
-            conversationId: conversations.id,
-            convType: conversations.type,
-            convUpdatedAt: conversations.updatedAt,
-            spaceId: conversations.spaceId,
-            roomName: spaces.name,
-            roomSlug: spaces.slug,
-            roomVisibility: spaces.visibility,
-            communitySlug: communities.slug,
-            communityName: communities.name,
-            communityLogoUrl: communities.logoUrl,
-            memberCount: sql<number>`(SELECT COUNT(*)::int FROM app.space_membership WHERE space_id = ${conversations.spaceId} AND status = 'active')`,
-          })
-          .from(conversations)
-          .innerJoin(spaces, eq(spaces.id, conversations.spaceId))
-          .innerJoin(communities, eq(communities.id, spaces.communityId))
-          .innerJoin(
-            spaceMemberships,
-            eq(spaceMemberships.spaceId, conversations.spaceId),
-          )
-          .where(
-            and(
-              eq(conversations.type, "space"),
-              eq(spaceMemberships.userId, userId),
-              eq(spaceMemberships.status, "active"),
-            ),
-          )
-      ).map((r) => ({
+      const roomRowsRaw = await ctx.db
+        .select({
+          conversationId: conversations.id,
+          convType: conversations.type,
+          convUpdatedAt: conversations.updatedAt,
+          spaceId: conversations.spaceId,
+          roomName: spaces.name,
+          roomSlug: spaces.slug,
+          roomVisibility: spaces.visibility,
+          communitySlug: communities.slug,
+          communityName: communities.name,
+          communityLogoUrl: communities.logoUrl,
+          lastReadAt: spaceMemberships.lastReadAt,
+        })
+        .from(conversations)
+        .innerJoin(spaces, eq(spaces.id, conversations.spaceId))
+        .innerJoin(communities, eq(communities.id, spaces.communityId))
+        .innerJoin(
+          spaceMemberships,
+          eq(spaceMemberships.spaceId, conversations.spaceId),
+        )
+        .where(
+          and(
+            eq(conversations.type, "space"),
+            eq(spaceMemberships.userId, userId),
+            eq(spaceMemberships.status, "active"),
+          ),
+        );
+
+      // Active-member counts per room via a grouped query, mapped by spaceId. An
+      // inline correlated subquery mis-correlates here: Drizzle emits the
+      // interpolated outer column unqualified inside sql``, so `space_id = "id"`
+      // resolves to the membership table's own column and the count is wrong.
+      const roomSpaceIds = roomRowsRaw
+        .map((r) => r.spaceId)
+        .filter((id): id is string => id !== null);
+      const roomCounts = roomSpaceIds.length
+        ? await ctx.db
+            .select({
+              spaceId: spaceMemberships.spaceId,
+              count: sql<number>`COUNT(*)::int`,
+            })
+            .from(spaceMemberships)
+            .where(
+              and(
+                inArray(spaceMemberships.spaceId, roomSpaceIds),
+                eq(spaceMemberships.status, "active"),
+              ),
+            )
+            .groupBy(spaceMemberships.spaceId)
+        : [];
+      const roomCountBySpace = new Map(
+        roomCounts.map((c) => [c.spaceId, c.count]),
+      );
+
+      const roomRows: ConvRow[] = roomRowsRaw.map((r) => ({
         conversationId: r.conversationId,
-        lastReadAt: null,
+        lastReadAt: r.lastReadAt,
         isPinned: false,
         convType: r.convType,
         convUpdatedAt: r.convUpdatedAt,
@@ -195,7 +222,7 @@ export const inboxRouter = createTRPCRouter({
         communitySlug: r.communitySlug,
         communityName: r.communityName,
         communityLogoUrl: r.communityLogoUrl,
-        memberCount: r.memberCount ?? 0,
+        memberCount: r.spaceId ? (roomCountBySpace.get(r.spaceId) ?? 0) : 0,
       }));
 
       const participantRows: ConvRow[] = [...dmRows, ...roomRows];
@@ -293,11 +320,15 @@ export const inboxRouter = createTRPCRouter({
             agentInfo = agent ?? null;
           }
 
-          // Unread count: messages after lastReadAt that aren't sent by the current user as "human"
+          // Unread count: messages after lastReadAt not sent by the current user as "human"
           let unreadCount = 0;
           if (isRoom) {
-            // Rooms have no per-member read marker yet (Plan 2b/3) — show 0 rather than a permanently-inflated badge.
-            unreadCount = 0;
+            unreadCount = await countRoomUnread(
+              ctx.db,
+              row.conversationId,
+              userId,
+              row.lastReadAt,
+            );
           } else if (row.lastReadAt) {
             const [unreadRow] = await ctx.db
               .select({ count: sql<number>`count(*)::int` })
@@ -432,19 +463,36 @@ export const inboxRouter = createTRPCRouter({
       // Reverse to chronological order
       items.reverse();
 
-      // Fire-and-forget: update lastReadAt
-      ctx.db
-        .update(conversationParticipants)
-        .set({ lastReadAt: new Date() })
-        .where(
-          and(
-            eq(conversationParticipants.conversationId, input.conversationId),
-            eq(conversationParticipants.userId, userId),
-          ),
-        )
-        .catch((err: unknown) => {
-          console.error("[inbox] update failed:", err);
-        });
+      // Fire-and-forget: update lastReadAt. DM/agent conversations track it on
+      // conversationParticipants; space (room) conversations track it on the
+      // caller's spaceMembership (rooms have no participant rows).
+      if (conv.type === "space" && conv.spaceId) {
+        ctx.db
+          .update(spaceMemberships)
+          .set({ lastReadAt: new Date() })
+          .where(
+            and(
+              eq(spaceMemberships.spaceId, conv.spaceId),
+              eq(spaceMemberships.userId, userId),
+            ),
+          )
+          .catch((err: unknown) => {
+            console.error("[inbox] space lastReadAt update failed:", err);
+          });
+      } else {
+        ctx.db
+          .update(conversationParticipants)
+          .set({ lastReadAt: new Date() })
+          .where(
+            and(
+              eq(conversationParticipants.conversationId, input.conversationId),
+              eq(conversationParticipants.userId, userId),
+            ),
+          )
+          .catch((err: unknown) => {
+            console.error("[inbox] update failed:", err);
+          });
+      }
 
       return { messages: items, nextCursor, hasMore };
     }),
@@ -714,6 +762,11 @@ export const inboxRouter = createTRPCRouter({
   totalUnreadCount: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
+    // Two unread sources, UNION ALL'd then summed: DM/agent conversations
+    // (tracked on conversationParticipants) and room conversations (no
+    // participant rows — tracked on the caller's active spaceMembership, the
+    // same marker getMessages/listConversations use). Without the room arm the
+    // global badge silently undercounts room unread.
     const [result] = await ctx.db
       .select({ total: sql<number>`coalesce(sum(sub.cnt), 0)::int` })
       .from(
@@ -725,6 +778,20 @@ export const inboxRouter = createTRPCRouter({
           WHERE cp.user_id = ${userId}
             AND (m.sender_id != ${userId} OR m.sender_type != 'human')
             AND (cp.last_read_at IS NULL OR m.created_at > cp.last_read_at)
+          GROUP BY m.conversation_id
+
+          UNION ALL
+
+          SELECT count(*) as cnt
+          FROM ${messages} m
+          JOIN ${conversations} c
+            ON c.id = m.conversation_id AND c.type = 'space'
+          JOIN ${spaceMemberships} sm
+            ON sm.space_id = c.space_id
+            AND sm.user_id = ${userId}
+            AND sm.status = 'active'
+          WHERE (m.sender_id != ${userId} OR m.sender_type != 'human')
+            AND (sm.last_read_at IS NULL OR m.created_at > sm.last_read_at)
           GROUP BY m.conversation_id
         ) sub`,
       );

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -9,15 +9,18 @@ import {
 } from "@/server/api/trpc";
 import {
   communities,
+  communityMemberships,
   spaces,
   spaceMemberships,
   memberProfiles,
+  notifications,
   user,
 } from "@/server/db/schema";
 import {
   canJoinDirectly,
   roomSlugFromName,
 } from "@/server/communities/room-access";
+import { roomAccessRequestRecipients } from "@/server/communities/room-notifications";
 import { getOrCreateRoomConversation } from "@/server/communities/room-conversation";
 import { getAvatarUrl } from "@/lib/avatar";
 
@@ -279,17 +282,46 @@ export const spacesRouter = createTRPCRouter({
           ),
         )
         .orderBy(asc(spaces.position));
-      const mine = await ctx.db
-        .select({
-          spaceId: spaceMemberships.spaceId,
-          status: spaceMemberships.status,
-        })
-        .from(spaceMemberships)
-        .where(eq(spaceMemberships.userId, ctx.session.user.id));
-      const byId = new Map(mine.map((m) => [m.spaceId, m.status]));
+      const roomIds = rooms.map((r) => r.id);
+      // Two scoped lookups over the listed rooms: the caller's membership, and
+      // each room's active-member count. A grouped count (not an inline
+      // correlated subquery) — Drizzle emits the interpolated outer column
+      // unqualified inside a sql`` subquery, which silently mis-correlates.
+      const [mine, counts] = roomIds.length
+        ? await Promise.all([
+            ctx.db
+              .select({
+                spaceId: spaceMemberships.spaceId,
+                status: spaceMemberships.status,
+              })
+              .from(spaceMemberships)
+              .where(
+                and(
+                  eq(spaceMemberships.userId, ctx.session.user.id),
+                  inArray(spaceMemberships.spaceId, roomIds),
+                ),
+              ),
+            ctx.db
+              .select({
+                spaceId: spaceMemberships.spaceId,
+                count: sql<number>`COUNT(*)::int`,
+              })
+              .from(spaceMemberships)
+              .where(
+                and(
+                  inArray(spaceMemberships.spaceId, roomIds),
+                  eq(spaceMemberships.status, "active"),
+                ),
+              )
+              .groupBy(spaceMemberships.spaceId),
+          ])
+        : [[], []];
+      const byId = new Map(mine.map((mem) => [mem.spaceId, mem.status]));
+      const countById = new Map(counts.map((c) => [c.spaceId, c.count]));
       return rooms.map((r) => ({
         ...r,
         membership: byId.get(r.id) ?? null,
+        memberCount: countById.get(r.id) ?? 0,
       }));
     }),
 
@@ -334,7 +366,12 @@ export const spacesRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       if (!ctx.communityRole) throw new TRPCError({ code: "FORBIDDEN" });
       const [room] = await ctx.db
-        .select({ id: spaces.id, visibility: spaces.visibility })
+        .select({
+          id: spaces.id,
+          visibility: spaces.visibility,
+          name: spaces.name,
+          slug: spaces.slug,
+        })
         .from(spaces)
         .where(
           and(
@@ -352,19 +389,109 @@ export const spacesRouter = createTRPCRouter({
           message: "This room is public — join it directly.",
         });
       }
-      await ctx.db
+      const inserted = await ctx.db
         .insert(spaceMemberships)
         .values({
           spaceId: room.id,
           userId: ctx.session.user.id,
           status: "pending_request",
         })
-        .onConflictDoNothing();
+        .onConflictDoNothing()
+        .returning({ id: spaceMemberships.id });
+
+      // Only notify on a genuinely new request (a duplicate re-request inserts
+      // nothing and must not re-ping admins).
+      if (inserted.length > 0) {
+        const admins = await ctx.db
+          .select({ userId: communityMemberships.userId })
+          .from(communityMemberships)
+          .where(
+            and(
+              eq(communityMemberships.communityId, ctx.community.id),
+              eq(communityMemberships.status, "active"),
+              sql`${communityMemberships.role} IN ('owner', 'admin')`,
+            ),
+          );
+        const recipients = roomAccessRequestRecipients(
+          admins.map((a) => a.userId),
+          ctx.session.user.id,
+        );
+        if (recipients.length > 0) {
+          await ctx.db.insert(notifications).values(
+            recipients.map((adminId) => ({
+              userId: adminId,
+              type: "room_access_request",
+              title: "New room access request",
+              content: `A member requested access to ${room.name ?? "a room"} in ${ctx.community.name}.`,
+              metadata: {
+                reviewPath: `/communities/${input.slug}/spaces/${room.slug}`,
+                linkLabel: "Review request",
+                spaceId: room.id,
+              },
+              communityId: ctx.community.id,
+            })),
+          );
+        }
+      }
       return { success: true };
     }),
 
   /** Approve a pending member (owner/admin). */
   approveMember: communityProcedure
+    .input(
+      z.object({ slug: z.string(), spaceId: z.string(), userId: z.string() }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.communityRole !== "owner" && ctx.communityRole !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      // Confirm the room belongs to this community before mutating membership.
+      const [room] = await ctx.db
+        .select({ id: spaces.id, name: spaces.name, slug: spaces.slug })
+        .from(spaces)
+        .where(
+          and(
+            eq(spaces.id, input.spaceId),
+            eq(spaces.communityId, ctx.community.id),
+            eq(spaces.kind, "room"),
+          ),
+        )
+        .limit(1);
+      if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+      // Only flip a genuinely pending request → active. Gating on the status
+      // keeps a no-op re-approve of an already-active member from firing a
+      // duplicate "Access approved" notification (mirrors denyMember's guard).
+      const updated = await ctx.db
+        .update(spaceMemberships)
+        .set({ status: "active" })
+        .where(
+          and(
+            eq(spaceMemberships.spaceId, input.spaceId),
+            eq(spaceMemberships.userId, input.userId),
+            eq(spaceMemberships.status, "pending_request"),
+          ),
+        )
+        .returning({ id: spaceMemberships.id });
+
+      if (updated.length > 0) {
+        await ctx.db.insert(notifications).values({
+          userId: input.userId,
+          type: "room_access_approved",
+          title: "Access approved",
+          content: `You're now a member of ${room.name ?? "a room"} in ${ctx.community.name}.`,
+          metadata: {
+            reviewPath: `/communities/${input.slug}/spaces/${room.slug}`,
+            linkLabel: "Open room",
+            spaceId: input.spaceId,
+          },
+          communityId: ctx.community.id,
+        });
+      }
+      return { success: true };
+    }),
+
+  /** Deny (remove) a pending access request (owner/admin). Never touches active members. */
+  denyMember: communityProcedure
     .input(
       z.object({ slug: z.string(), spaceId: z.string(), userId: z.string() }),
     )
@@ -385,13 +512,15 @@ export const spacesRouter = createTRPCRouter({
         )
         .limit(1);
       if (!room) throw new TRPCError({ code: "NOT_FOUND" });
+      // Only a still-pending request is removable here — guard against deleting
+      // an active member by racing status.
       await ctx.db
-        .update(spaceMemberships)
-        .set({ status: "active" })
+        .delete(spaceMemberships)
         .where(
           and(
             eq(spaceMemberships.spaceId, input.spaceId),
             eq(spaceMemberships.userId, input.userId),
+            eq(spaceMemberships.status, "pending_request"),
           ),
         );
       return { success: true };

@@ -1894,7 +1894,14 @@
       "inCommunity": "in {community}",
       "you": "You",
       "moderator": "Mod",
-      "noResults": "No members found."
+      "noResults": "No members found.",
+      "open": "Open",
+      "pendingShort": "Pending",
+      "deny": "Deny",
+      "invite": "Invite",
+      "inviteMembers": "Invite members",
+      "directoryTitle": "Rooms",
+      "directoryEmpty": "No rooms yet."
     }
   },
   "notificationPrefs": {
