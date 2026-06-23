@@ -1453,11 +1453,6 @@
     "memberCount": "{count, plural, one {# member} other {# members}}"
   },
   "communities": {
-    "directory": {
-      "title": "Communities",
-      "search": "Search communities...",
-      "empty": "No communities found"
-    },
     "discover": {
       "title": "Discover",
       "tagline": "where engineers and agents build together",

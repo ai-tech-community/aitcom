@@ -17,7 +17,7 @@ export function SpaceRow({
     <li className="hover:bg-muted/40 flex items-center gap-3 p-3 transition-colors">
       <SpaceAvatar name={spaceName} />
       <div className="min-w-0 flex-1">
-        <span className="truncate text-sm font-semibold">#{spaceName ?? t("roomFallback")}</span>
+        <p className="truncate text-sm font-semibold">#{spaceName ?? t("roomFallback")}</p>
         <p className="text-muted-foreground truncate text-sm">
           {t("inCommunity", { community: communityName })}
         </p>

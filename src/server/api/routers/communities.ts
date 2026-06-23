@@ -83,11 +83,14 @@ export const communitiesRouter = createTRPCRouter({
       }
 
       // Keyset pagination. Newest: (createdAt, id) desc. Largest: (memberCount, id) desc.
+      // For `largest`, always use the memberCount keyset (treating a missing
+      // cursor count as 0) so it can't silently fall back to the createdAt keyset
+      // while the ORDER BY is memberCount-based — that would skip/duplicate rows.
       const memberCountExpr = sql<number>`coalesce(${memberCountSq.count}, 0)`;
       if (input.cursor) {
-        if (input.sort === "largest" && input.cursor.memberCount != null) {
+        if (input.sort === "largest") {
           conditions.push(
-            sql`(${memberCountExpr}, ${communities.id}) < (${input.cursor.memberCount}, ${input.cursor.id})`,
+            sql`(${memberCountExpr}, ${communities.id}) < (${input.cursor.memberCount ?? 0}, ${input.cursor.id})`,
           );
         } else {
           conditions.push(
