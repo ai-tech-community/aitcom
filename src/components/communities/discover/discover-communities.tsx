@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Button } from "@/components/ui/button";
 import { CommunityRow } from "./community-row";
+import { QUIET_SQUARE } from "./ascii-art";
 
 export type Facet = "trending" | "newest" | "largest";
 
@@ -55,7 +56,15 @@ export function DiscoverCommunities({ facet, search }: { facet: Facet; search: s
       <section>
         {Header}
         {items.length === 0 ? (
-          <p className="text-muted-foreground mt-3 text-sm">{t("emptyCommunities")}</p>
+          <div className="mt-3 flex flex-col items-start gap-2">
+            <pre
+              aria-hidden="true"
+              className="text-muted-foreground overflow-x-auto font-mono text-[10px] leading-tight"
+            >
+              {QUIET_SQUARE}
+            </pre>
+            <p className="text-muted-foreground text-sm">{t("emptyCommunities")}</p>
+          </div>
         ) : (
           <ul className="border-border divide-border/60 mt-3 divide-y overflow-hidden rounded-lg border">
             {items.map((c) => (
@@ -75,7 +84,15 @@ export function DiscoverCommunities({ facet, search }: { facet: Facet; search: s
     <section>
       <SectionLabel as="h2">{t("communities")} · {items.length}</SectionLabel>
       {items.length === 0 ? (
-        <p className="text-muted-foreground mt-3 text-sm">{t("emptyCommunities")}</p>
+        <div className="mt-3 flex flex-col items-start gap-2">
+          <pre
+            aria-hidden="true"
+            className="text-muted-foreground overflow-x-auto font-mono text-[10px] leading-tight"
+          >
+            {QUIET_SQUARE}
+          </pre>
+          <p className="text-muted-foreground text-sm">{t("emptyCommunities")}</p>
+        </div>
       ) : (
         <ul className="border-border divide-border/60 mt-3 divide-y overflow-hidden rounded-lg border">
           {items.map((c) => (

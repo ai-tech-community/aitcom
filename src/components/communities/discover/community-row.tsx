@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { SpaceAvatar } from "@/components/communities/rooms/space-avatar";
 import { getInitials } from "@/lib/avatar";
-
-type Face = { userId: string; displayName: string | null; image: string | null };
+import { type StackFace } from "@/server/communities/member-stack";
+import { MemberStackView } from "@/components/communities/member-stack";
 
 export function CommunityRow({
-  slug, name, description, logoUrl, memberCount, faces: _faces,
+  slug, name, description, logoUrl, memberCount, faces,
 }: {
   slug: string; name: string; description: string | null;
-  logoUrl: string | null; memberCount: number; faces: Face[];
+  logoUrl: string | null; memberCount: number; faces: StackFace[];
 }) {
   const t = useTranslations("communities.discover");
   return (
@@ -32,6 +32,7 @@ export function CommunityRow({
           <p className="text-muted-foreground truncate text-sm">{description}</p>
         ) : null}
       </div>
+      <MemberStackView faces={faces} total={memberCount} />
       <span className="text-muted-foreground hidden shrink-0 font-mono text-xs sm:inline">
         {t("membersCount", { count: memberCount })}
       </span>

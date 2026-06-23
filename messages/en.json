@@ -1474,7 +1474,8 @@
       "inCommunity": "in {community}",
       "loadMore": "load more",
       "emptyCommunities": "the square's quiet here — try another search",
-      "emptySpaces": "no public rooms match — try another search"
+      "emptySpaces": "no public rooms match — try another search",
+      "roomFallback": "room"
     },
     "stack": {
       "memberFallback": "Member",

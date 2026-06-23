@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Button } from "@/components/ui/button";
 import { SpaceRow } from "./space-row";
+import { QUIET_SQUARE } from "./ascii-art";
 
 export function DiscoverSpaces({ search }: { search: string }) {
   const t = useTranslations("communities.discover");
@@ -38,7 +39,15 @@ export function DiscoverSpaces({ search }: { search: string }) {
     return (
       <section className="mt-10">
         <SectionLabel as="h2">{t("spaces")}</SectionLabel>
-        <p className="text-muted-foreground mt-3 text-sm">{t("emptySpaces")}</p>
+        <div className="mt-3 flex flex-col items-start gap-2">
+          <pre
+            aria-hidden="true"
+            className="text-muted-foreground overflow-x-auto font-mono text-[10px] leading-tight"
+          >
+            {QUIET_SQUARE}
+          </pre>
+          <p className="text-muted-foreground text-sm">{t("emptySpaces")}</p>
+        </div>
       </section>
     );
   }

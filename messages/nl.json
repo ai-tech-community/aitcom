@@ -1474,7 +1474,8 @@
       "inCommunity": "in {community}",
       "loadMore": "meer laden",
       "emptyCommunities": "het is rustig op het plein — probeer een andere zoekopdracht",
-      "emptySpaces": "geen openbare ruimtes gevonden — probeer iets anders"
+      "emptySpaces": "geen openbare ruimtes gevonden — probeer iets anders",
+      "roomFallback": "ruimte"
     },
     "stack": {
       "memberFallback": "Lid",
