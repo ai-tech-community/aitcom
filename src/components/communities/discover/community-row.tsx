@@ -7,7 +7,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { SpaceAvatar } from "@/components/communities/rooms/space-avatar";
 import { getInitials } from "@/lib/avatar";
 
-type Face = { userId: string; displayName: string | null; avatarUrl: string | null };
+type Face = { userId: string; displayName: string | null; image: string | null };
 
 export function CommunityRow({
   slug, name, description, logoUrl, memberCount, faces: _faces,
