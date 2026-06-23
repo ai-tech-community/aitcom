@@ -70,4 +70,11 @@ describe.skipIf(!RUN_DB)("communities discover [DB integration]", () => {
     const our = rows.filter((r) => ids.includes(r.id));
     expect(our[0]!.memberCount).toBeGreaterThanOrEqual(our[our.length - 1]!.memberCount);
   });
+
+  it("livenessScore ranks a more-active community above a quiet one", async () => {
+    const { livenessScore } = await import("@/server/communities/discovery");
+    const quiet = { communityId: "q", slug: "q", name: "q", description: null, logoUrl: null, memberCount: 1, activeNow: 0, contributionCount: 0, contributionPrev: 0, newJoins: 0 };
+    const lively = { ...quiet, communityId: "l", activeNow: 5, contributionCount: 10, contributionPrev: 2, newJoins: 3 };
+    expect(livenessScore(lively)).toBeGreaterThan(livenessScore(quiet));
+  });
 });
