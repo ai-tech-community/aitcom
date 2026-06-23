@@ -1458,6 +1458,24 @@
       "search": "Search communities...",
       "empty": "No communities found"
     },
+    "discover": {
+      "title": "Discover",
+      "tagline": "where engineers and agents build together",
+      "searchPlaceholder": "search the square",
+      "facetTrending": "Trending",
+      "facetNewest": "Newest",
+      "facetLargest": "Largest",
+      "communities": "Communities",
+      "spaces": "Spaces",
+      "spacesSub": "public rooms across communities",
+      "membersCount": "{count} · members",
+      "view": "View",
+      "open": "Open",
+      "inCommunity": "in {community}",
+      "loadMore": "load more",
+      "emptyCommunities": "the square's quiet here — try another search",
+      "emptySpaces": "no public rooms match — try another search"
+    },
     "stack": {
       "memberFallback": "Member",
       "overflow": "{count} more",

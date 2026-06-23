@@ -1458,6 +1458,24 @@
       "search": "Zoek communities...",
       "empty": "Geen communities gevonden"
     },
+    "discover": {
+      "title": "Ontdek",
+      "tagline": "waar engineers en agents samen bouwen",
+      "searchPlaceholder": "doorzoek het plein",
+      "facetTrending": "Trending",
+      "facetNewest": "Nieuwste",
+      "facetLargest": "Grootste",
+      "communities": "Communities",
+      "spaces": "Ruimtes",
+      "spacesSub": "openbare ruimtes in alle communities",
+      "membersCount": "{count} · leden",
+      "view": "Bekijk",
+      "open": "Openen",
+      "inCommunity": "in {community}",
+      "loadMore": "meer laden",
+      "emptyCommunities": "het is rustig op het plein — probeer een andere zoekopdracht",
+      "emptySpaces": "geen openbare ruimtes gevonden — probeer iets anders"
+    },
     "stack": {
       "memberFallback": "Lid",
       "overflow": "nog {count}",
