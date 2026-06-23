@@ -531,6 +531,29 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
     }).returning();
     await db.insert(schema.spaceMemberships).values({ spaceId: roomSpaceId, userId, status: "active" });
 
+    // Create an unlisted community with a public room (should be excluded from discover).
+    const unlistedSuffix = `unlisted-${Date.now()}`;
+    const [unlistedUser] = await db.insert(schema.user).values({
+      id: `discover-unlisted-user-${unlistedSuffix}`,
+      email: `discover-unlisted-${unlistedSuffix}@example.test`,
+      name: "Unlisted User",
+    }).returning();
+    const [unlistedCom] = await db.insert(schema.communities).values({
+      name: `Unlisted Community ${unlistedSuffix}`,
+      slug: `unlisted-com-${unlistedSuffix}`,
+      createdBy: unlistedUser!.id,
+      isListedInDirectory: false,
+    }).returning();
+    const [unlistedRoom] = await db.insert(schema.spaces).values({
+      communityId: unlistedCom!.id,
+      kind: "room",
+      visibility: "public",
+      name: "Unlisted Public Room",
+      slug: `unlisted-room-${unlistedSuffix}`,
+      position: 100,
+      createdBy: unlistedUser!.id,
+    }).returning();
+
     // Replicate discoverPublic's core query shape.
     const rooms = await db.select({ id: schema.spaces.id, visibility: schema.spaces.visibility })
       .from(schema.spaces)
@@ -545,6 +568,7 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
     const roomIds = rooms.map((r) => r.id);
     expect(roomIds).toContain(roomSpaceId);
     expect(roomIds).not.toContain(priv!.id);
+    expect(roomIds).not.toContain(unlistedRoom!.id);
 
     const counts = await db.select({ spaceId: schema.spaceMemberships.spaceId, count: sql<number>`COUNT(*)::int` })
       .from(schema.spaceMemberships)
@@ -555,5 +579,8 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
 
     await db.delete(schema.spaceMemberships).where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
     await db.delete(schema.spaces).where(eq(schema.spaces.id, priv!.id));
+    await db.delete(schema.spaces).where(eq(schema.spaces.id, unlistedRoom!.id));
+    await db.delete(schema.communities).where(eq(schema.communities.id, unlistedCom!.id));
+    await db.delete(schema.user).where(eq(schema.user.id, unlistedUser!.id));
   });
 });
