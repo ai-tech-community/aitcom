@@ -48,8 +48,13 @@ export const communitiesRouter = createTRPCRouter({
       z.object({
         search: z.string().optional(),
         limit: z.number().min(1).max(50).default(20),
+        sort: z.enum(["newest", "largest"]).default("newest"),
         cursor: z
-          .object({ createdAt: z.string().datetime(), id: z.string() })
+          .object({
+            createdAt: z.string().datetime(),
+            id: z.string(),
+            memberCount: z.number().nullish(),
+          })
           .nullish(),
       }),
     )
@@ -76,12 +81,24 @@ export const communitiesRouter = createTRPCRouter({
         );
       }
 
-      // Keyset pagination: (createdAt, id) descending
+      // Keyset pagination. Newest: (createdAt, id) desc. Largest: (memberCount, id) desc.
+      const memberCountExpr = sql<number>`coalesce(${memberCountSq.count}, 0)`;
       if (input.cursor) {
-        conditions.push(
-          sql`(${communities.createdAt}, ${communities.id}) < (${input.cursor.createdAt}, ${input.cursor.id})`,
-        );
+        if (input.sort === "largest" && input.cursor.memberCount != null) {
+          conditions.push(
+            sql`(${memberCountExpr}, ${communities.id}) < (${input.cursor.memberCount}, ${input.cursor.id})`,
+          );
+        } else {
+          conditions.push(
+            sql`(${communities.createdAt}, ${communities.id}) < (${input.cursor.createdAt}, ${input.cursor.id})`,
+          );
+        }
       }
+
+      const orderBy =
+        input.sort === "largest"
+          ? [desc(memberCountExpr), desc(communities.id)]
+          : [desc(communities.createdAt), desc(communities.id)];
 
       const items = await ctx.db
         .select({
@@ -91,19 +108,23 @@ export const communitiesRouter = createTRPCRouter({
           description: communities.description,
           logoUrl: communities.logoUrl,
           joinPolicy: communities.joinPolicy,
-          memberCount: sql<number>`coalesce(${memberCountSq.count}, 0)`,
+          memberCount: memberCountExpr,
           createdAt: communities.createdAt,
         })
         .from(communities)
         .leftJoin(memberCountSq, eq(communities.id, memberCountSq.communityId))
         .where(and(...conditions))
-        .orderBy(desc(communities.createdAt), desc(communities.id))
+        .orderBy(...orderBy)
         .limit(input.limit + 1);
 
       let nextCursor: typeof input.cursor | undefined;
       if (items.length > input.limit) {
         const next = items.pop()!;
-        nextCursor = { createdAt: next.createdAt.toISOString(), id: next.id };
+        nextCursor = {
+          createdAt: next.createdAt.toISOString(),
+          id: next.id,
+          memberCount: next.memberCount,
+        };
       }
 
       // One extra query for the whole page (no N+1): leadership-first faces.
