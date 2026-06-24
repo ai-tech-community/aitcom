@@ -40,6 +40,9 @@ type BuildingModalProps = {
   windowIndex?: number;
   /** When provided, the minimize button calls this instead of toggling internal minimize state. */
   onMinimize?: () => void;
+  /** Fired after the exit animation completes (e.g. once isOpen flips to false).
+   *  Lets a parent defer real removal until the close animation has played. */
+  onExitComplete?: () => void;
   children: React.ReactNode;
 };
 
@@ -58,6 +61,7 @@ export function BuildingModal({
   subtitle,
   windowIndex = 0,
   onMinimize,
+  onExitComplete,
   children,
 }: BuildingModalProps) {
   const isMobile = useIsMobile();
@@ -160,7 +164,7 @@ export function BuildingModal({
 
   return (
     <LazyMotion features={domMax}>
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={onExitComplete}>
         {isOpen && (
           <m.div
             ref={containerRef}

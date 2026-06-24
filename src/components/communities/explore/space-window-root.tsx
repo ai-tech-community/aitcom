@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import { Terminal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { authClient } from "@/server/better-auth/client";
@@ -23,6 +24,28 @@ export function SpaceWindowRoot() {
   const { data: session } = authClient.useSession();
   const t = useTranslations("communities.discover");
 
+  // Keys mid-close: the window stays mounted with isOpen={false} so its exit
+  // animation can play; real removal happens on the modal's onExitComplete.
+  const [closingKeys, setClosingKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+
+  const beginClose = useCallback((key: string) => {
+    setClosingKeys((prev) => new Set(prev).add(key));
+  }, []);
+
+  const finishClose = useCallback(
+    (key: string) => {
+      closeSpace(key);
+      setClosingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    },
+    [closeSpace],
+  );
+
   if (!session?.user) return null;
 
   return (
@@ -34,11 +57,12 @@ export function SpaceWindowRoot() {
         return (
           <BuildingModal
             key={key}
-            isOpen
+            isOpen={!closingKeys.has(key)}
             title={ref.spaceName ?? ref.spaceSlug}
             windowIndex={i}
-            onClose={() => closeSpace(key)}
+            onClose={() => beginClose(key)}
             onMinimize={() => minimizeSpace(key)}
+            onExitComplete={() => finishClose(key)}
           >
             <RoomView slug={ref.communitySlug} spaceSlug={ref.spaceSlug} fillHeight />
           </BuildingModal>

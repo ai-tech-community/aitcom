@@ -14,13 +14,15 @@ vi.mock("@/components/communities/rooms/room-view", () => ({
   RoomView: ({ spaceSlug }: { spaceSlug: string }) => <div data-testid="roomview">{spaceSlug}</div>,
 }));
 vi.mock("@/components/community/building-modal", () => ({
-  BuildingModal: ({ title, children, onClose, onMinimize }: {
-    title: string; children: React.ReactNode; onClose: () => void; onMinimize?: () => void;
+  BuildingModal: ({ title, children, onClose, onMinimize, onExitComplete, isOpen }: {
+    title: string; children: React.ReactNode; onClose: () => void;
+    onMinimize?: () => void; onExitComplete?: () => void; isOpen: boolean;
   }) => (
-    <div data-testid="window">
+    <div data-testid="window" data-open={String(isOpen)}>
       <span data-testid="window-title">{title}</span>
       <button onClick={onMinimize}>min</button>
       <button onClick={onClose}>close</button>
+      <button onClick={onExitComplete}>exitdone</button>
       {children}
     </div>
   ),
@@ -74,5 +76,23 @@ describe("SpaceWindowRoot", () => {
     const restore = screen.getByRole("button", { name: /Design/ });
     fireEvent.click(restore);
     expect(screen.getByTestId("window")).toBeInTheDocument();
+  });
+
+  it("keeps the window mounted (isOpen=false) on close until the exit animation completes", () => {
+    render(
+      <SpaceWindowProvider>
+        <Harness />
+        <SpaceWindowRoot />
+      </SpaceWindowProvider>,
+    );
+    fireEvent.click(screen.getByText("open"));
+    fireEvent.click(screen.getByText("close"));
+    // Deferred: still mounted, but driven closed so the exit animation can play.
+    const win = screen.getByTestId("window");
+    expect(win).toBeInTheDocument();
+    expect(win).toHaveAttribute("data-open", "false");
+    // Once the modal reports its exit animation finished, it is removed.
+    fireEvent.click(screen.getByText("exitdone"));
+    expect(screen.queryByTestId("window")).not.toBeInTheDocument();
   });
 });
