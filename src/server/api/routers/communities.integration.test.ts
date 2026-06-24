@@ -60,14 +60,12 @@ describe.skipIf(!RUN_DB)("communities discover [DB integration]", () => {
       await db
         .insert(schema.user)
         .values({ id: u, email: `${u}@e.test`, name: u });
-      await db
-        .insert(schema.communityMemberships)
-        .values({
-          communityId: small!.id,
-          userId: u,
-          status: "active",
-          role: "member",
-        });
+      await db.insert(schema.communityMemberships).values({
+        communityId: small!.id,
+        userId: u,
+        status: "active",
+        role: "member",
+      });
     }
     for (let i = 0; i < 3; i++) {
       const u = `m-l-${sfx}-${i}`;
@@ -75,14 +73,12 @@ describe.skipIf(!RUN_DB)("communities discover [DB integration]", () => {
       await db
         .insert(schema.user)
         .values({ id: u, email: `${u}@e.test`, name: u });
-      await db
-        .insert(schema.communityMemberships)
-        .values({
-          communityId: large!.id,
-          userId: u,
-          status: "active",
-          role: "member",
-        });
+      await db.insert(schema.communityMemberships).values({
+        communityId: large!.id,
+        userId: u,
+        status: "active",
+        role: "member",
+      });
     }
   });
 
