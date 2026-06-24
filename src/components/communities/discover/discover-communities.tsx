@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Button } from "@/components/ui/button";
-import { CommunityRow } from "./community-row";
+import { CommunityCard } from "./community-card";
 import { QUIET_SQUARE } from "./ascii-art";
 
 export type Facet = "trending" | "newest" | "largest";
@@ -66,12 +66,12 @@ export function DiscoverCommunities({ facet, search }: { facet: Facet; search: s
             <p className="text-muted-foreground text-sm">{t("emptyCommunities")}</p>
           </div>
         ) : (
-          <ul className="border-border divide-border/60 mt-3 divide-y overflow-hidden rounded-lg border">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((c) => (
-              <CommunityRow key={c.id} slug={c.slug} name={c.name} description={c.description}
+              <CommunityCard key={c.id} slug={c.slug} name={c.name} description={c.description}
                 logoUrl={c.logoUrl} memberCount={c.memberCount} faces={c.faces} />
             ))}
-          </ul>
+          </div>
         )}
       </section>
     );
@@ -94,12 +94,12 @@ export function DiscoverCommunities({ facet, search }: { facet: Facet; search: s
           <p className="text-muted-foreground text-sm">{t("emptyCommunities")}</p>
         </div>
       ) : (
-        <ul className="border-border divide-border/60 mt-3 divide-y overflow-hidden rounded-lg border">
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((c) => (
-            <CommunityRow key={c.id} slug={c.slug} name={c.name} description={c.description}
+            <CommunityCard key={c.id} slug={c.slug} name={c.name} description={c.description}
               logoUrl={c.logoUrl} memberCount={c.memberCount} faces={c.faces} />
           ))}
-        </ul>
+        </div>
       )}
       {listQ.hasNextPage ? (
         <div className="mt-3 flex justify-center">
