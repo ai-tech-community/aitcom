@@ -1,0 +1,100 @@
+"use client";
+
+import { useCallback, useState } from "react";
+import { Terminal } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { authClient } from "@/server/better-auth/client";
+import { BuildingModal } from "@/components/community/building-modal";
+import { RoomView } from "@/components/communities/rooms/room-view";
+import { useInboxStream } from "@/components/inbox/use-inbox-stream";
+import { useSpaceWindows } from "./space-window-provider";
+import { windowKey } from "./space-window-reducer";
+
+// Mounted while any space window exists (open OR parked in the taskbar); relies
+// on the module-level singleton in useInboxStream so all windows (and the
+// inbox) share ONE EventSource. Keeping it alive for minimized windows keeps
+// their unread/last-message state live so restoring is instant.
+function SpaceWindowStream() {
+  useInboxStream();
+  return null;
+}
+
+export function SpaceWindowRoot() {
+  const { open, minimized, closeSpace, minimizeSpace, restoreSpace } =
+    useSpaceWindows();
+  const { data: session } = authClient.useSession();
+  const t = useTranslations("communities.discover");
+
+  // Keys mid-close: the window stays mounted with isOpen={false} so its exit
+  // animation can play; real removal happens on the modal's onExitComplete.
+  const [closingKeys, setClosingKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+
+  const beginClose = useCallback((key: string) => {
+    setClosingKeys((prev) => new Set(prev).add(key));
+  }, []);
+
+  const finishClose = useCallback(
+    (key: string) => {
+      closeSpace(key);
+      setClosingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    },
+    [closeSpace],
+  );
+
+  if (!session?.user) return null;
+
+  return (
+    <>
+      {(open.length > 0 || minimized.length > 0) && <SpaceWindowStream />}
+
+      {open.map((ref, i) => {
+        const key = windowKey(ref);
+        return (
+          <BuildingModal
+            key={key}
+            isOpen={!closingKeys.has(key)}
+            title={ref.spaceName ?? ref.spaceSlug}
+            windowIndex={i}
+            onClose={() => beginClose(key)}
+            onMinimize={() => minimizeSpace(key)}
+            onExitComplete={() => finishClose(key)}
+          >
+            <RoomView
+              slug={ref.communitySlug}
+              spaceSlug={ref.spaceSlug}
+              fillHeight
+            />
+          </BuildingModal>
+        );
+      })}
+
+      {minimized.length > 0 && (
+        <div className="fixed bottom-3 left-3 z-40 flex flex-wrap items-end gap-2 sm:bottom-4 sm:left-4">
+          {minimized.map((ref) => {
+            const key = windowKey(ref);
+            const label = ref.spaceName ?? ref.spaceSlug;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => restoreSpace(key)}
+                className="border-border bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center gap-2 rounded-t-lg border px-3 py-2 font-mono text-xs tracking-wider transition-colors"
+                aria-label={t("restoreSpace", { space: label })}
+                title={t("restoreSpace", { space: label })}
+              >
+                <Terminal aria-hidden className="size-3.5" />
+                <span className="max-w-32 truncate">{label.toUpperCase()}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}

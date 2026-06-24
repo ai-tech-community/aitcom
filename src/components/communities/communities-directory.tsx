@@ -1,108 +1,61 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import { useTranslations } from "next-intl";
-import { api } from "@/trpc/react";
-import { Input } from "@/components/ui/input";
-import { SectionLabel } from "@/components/ui/section-label";
-import { ErrorState } from "@/components/ui/error-state";
-import { EmptyState } from "@/components/ui/empty-state";
-import { CommunityCard } from "./community-card";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { TownSquareHero } from "./discover/town-square-hero";
+import { DiscoverFacets } from "./discover/discover-facets";
+import {
+  DiscoverCommunities,
+  type Facet,
+} from "./discover/discover-communities";
+import { DiscoverSpaces } from "./discover/discover-spaces";
 import { CreateCommunityDialog } from "./create-community-dialog";
-import { RecommendedCommunities } from "./discovery/recommended-communities";
 
 const DEBOUNCE_MS = 300;
 
 export function CommunitiesDirectory() {
-  const t = useTranslations("communities");
-
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debounced, setDebounced] = useState("");
+  const [facet, setFacet] = useState<Facet>("trending");
+  const ref = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSearchChange = useCallback((value: string) => {
-    setSearch(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setDebouncedSearch(value);
-    }, DEBOUNCE_MS);
+  const onSearchChange = useCallback((v: string) => {
+    setSearch(v);
+    if (ref.current) clearTimeout(ref.current);
+    ref.current = setTimeout(() => setDebounced(v), DEBOUNCE_MS);
   }, []);
+  useEffect(
+    () => () => {
+      if (ref.current) clearTimeout(ref.current);
+    },
+    [],
+  );
 
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
-
-  const { data, isLoading, isError, refetch } = api.communities.list.useQuery({
-    search: debouncedSearch || undefined,
-    limit: 20,
-  });
-
-  const communities = data?.items ?? [];
+  const searching = debounced.trim().length > 0;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
-      {/* Section Header */}
-      <div className="border-border flex items-center justify-between border-b pb-4">
-        <SectionLabel as="h1" bordered={false}>
-          {t("directory.title")}
-        </SectionLabel>
-        <CreateCommunityDialog />
+    <div className="mx-auto max-w-5xl px-6 py-16 sm:px-12">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <TownSquareHero search={search} onSearchChange={onSearchChange} />
+        </div>
+        <div className="shrink-0 pt-1">
+          <CreateCommunityDialog />
+        </div>
       </div>
 
-      {/* Recommended for you */}
-      <div className="mt-8">
-        <RecommendedCommunities />
-      </div>
-
-      {/* Search */}
-      <div className="mt-4">
-        <Input
-          type="text"
-          value={search}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          placeholder={`/ ${t("directory.search")}`}
-          className="font-mono text-sm tracking-wider"
+      <div className="mt-6">
+        <DiscoverFacets
+          value={facet}
+          onChange={setFacet}
+          disabled={searching}
         />
       </div>
 
-      {/* Grid */}
-      {isLoading ? (
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="border-border animate-pulse rounded-lg border p-4"
-            >
-              <div className="bg-muted h-12 w-12 rounded-lg" />
-              <div className="bg-muted mt-3 h-4 w-3/4 rounded" />
-              <div className="bg-muted mt-2 h-3 w-1/2 rounded" />
-            </div>
-          ))}
-        </div>
-      ) : isError ? (
-        <div className="mt-12">
-          <ErrorState onRetry={() => void refetch()} />
-        </div>
-      ) : communities.length === 0 ? (
-        <EmptyState className="mt-12" title={t("directoryEmpty")} />
-      ) : (
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {communities.map((community) => (
-            <CommunityCard
-              key={community.id}
-              slug={community.slug}
-              name={community.name}
-              description={community.description}
-              logoUrl={community.logoUrl}
-              memberCount={community.memberCount}
-              joinPolicy={community.joinPolicy}
-              faces={community.faces}
-            />
-          ))}
-        </div>
-      )}
+      <div className="mt-6">
+        <DiscoverCommunities facet={facet} search={debounced} />
+      </div>
+
+      <DiscoverSpaces search={debounced} />
     </div>
   );
 }

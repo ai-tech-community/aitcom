@@ -13,6 +13,7 @@ import {
   m,
   AnimatePresence,
   useDragControls,
+  useMotionValue,
 } from "framer-motion";
 import { Terminal, Minus, Maximize2, Minimize2, X } from "lucide-react";
 
@@ -37,6 +38,11 @@ type BuildingModalProps = {
   subtitle?: string;
   /** Offset index so multiple windows don't stack exactly on top of each other */
   windowIndex?: number;
+  /** When provided, the minimize button calls this instead of toggling internal minimize state. */
+  onMinimize?: () => void;
+  /** Fired after the exit animation completes (e.g. once isOpen flips to false).
+   *  Lets a parent defer real removal until the close animation has played. */
+  onExitComplete?: () => void;
   children: React.ReactNode;
 };
 
@@ -54,12 +60,18 @@ export function BuildingModal({
   title,
   subtitle,
   windowIndex = 0,
+  onMinimize,
+  onExitComplete,
   children,
 }: BuildingModalProps) {
   const isMobile = useIsMobile();
   const [windowState, setWindowState] = useState<WindowState>("normal");
   const [size, setSize] = useState({ w: DEFAULT_WIDTH, h: DEFAULT_HEIGHT });
   const dragControls = useDragControls();
+  // Drag offset, owned here so we can zero it when leaving the normal state —
+  // otherwise a leftover translate would shift the maximized (inset) window.
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
   const resizeRef = useRef<{
     startX: number;
     startY: number;
@@ -73,8 +85,20 @@ export function BuildingModal({
     if (isOpen) {
       setWindowState("normal");
       setSize({ w: DEFAULT_WIDTH, h: DEFAULT_HEIGHT });
+      x.set(0);
+      y.set(0);
     }
-  }, [isOpen]);
+  }, [isOpen, x, y]);
+
+  // Zero the drag offset whenever the window leaves the normal (draggable)
+  // state, so maximized/minimized align to their CSS-positioned edges instead
+  // of being shifted by a previous drag's transform.
+  useEffect(() => {
+    if (windowState !== "normal") {
+      x.set(0);
+      y.set(0);
+    }
+  }, [windowState, x, y]);
 
   const toggleMaximize = useCallback(() => {
     setWindowState((s) => (s === "maximized" ? "normal" : "maximized"));
@@ -83,6 +107,14 @@ export function BuildingModal({
   const toggleMinimize = useCallback(() => {
     setWindowState((s) => (s === "minimized" ? "normal" : "minimized"));
   }, []);
+
+  const handleMinimizeClick = useCallback(() => {
+    if (onMinimize) {
+      onMinimize();
+      return;
+    }
+    toggleMinimize();
+  }, [onMinimize, toggleMinimize]);
 
   // Resize via pointer drag on the handle
   const onResizePointerDown = useCallback(
@@ -132,7 +164,7 @@ export function BuildingModal({
 
   return (
     <LazyMotion features={domMax}>
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={onExitComplete}>
         {isOpen && (
           <m.div
             ref={containerRef}
@@ -140,14 +172,18 @@ export function BuildingModal({
               isMobile
                 ? "inset-0 z-40 rounded-none"
                 : windowState === "maximized"
-                  ? "inset-0 z-40 rounded-none"
+                  ? "inset-x-0 top-12 bottom-0 z-40 rounded-none"
                   : windowState === "minimized"
                     ? "bottom-0 z-40 w-72 rounded-t-lg rounded-b-none"
                     : "z-40 rounded-lg"
             }`}
-            style={
-              isMobile
-                ? undefined
+            style={{
+              // x/y carry the drag offset; zeroed (above) when not normal so
+              // maximized/minimized snap to their CSS edges.
+              x,
+              y,
+              ...(isMobile
+                ? {}
                 : windowState === "normal"
                   ? {
                       width: size.w,
@@ -157,8 +193,8 @@ export function BuildingModal({
                     }
                   : windowState === "minimized"
                     ? { left: 16 + windowIndex * 288 }
-                    : undefined
-            }
+                    : {}),
+            }}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -190,8 +226,9 @@ export function BuildingModal({
                 {!isMobile && (
                   <>
                     <button
-                      onClick={toggleMinimize}
+                      onClick={handleMinimizeClick}
                       className="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
+                      aria-label="Minimize"
                       title="Minimize"
                     >
                       <Minus className="h-3.5 w-3.5" />
@@ -199,6 +236,9 @@ export function BuildingModal({
                     <button
                       onClick={toggleMaximize}
                       className="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
+                      aria-label={
+                        windowState === "maximized" ? "Restore" : "Maximize"
+                      }
                       title={
                         windowState === "maximized" ? "Restore" : "Maximize"
                       }

@@ -29,7 +29,11 @@ import {
   canRedeemInvite,
 } from "@/server/communities/invite-policy";
 import { logActivity } from "@/server/agent/activity";
-import { loadPublicLiveness } from "@/server/communities/discovery-queries";
+import {
+  loadPublicLiveness,
+  loadDiscoveryCandidates,
+} from "@/server/communities/discovery-queries";
+import { livenessScore } from "@/server/communities/discovery";
 import {
   loadStackFaces,
   loadStackFacesForCommunities,
@@ -48,8 +52,13 @@ export const communitiesRouter = createTRPCRouter({
       z.object({
         search: z.string().optional(),
         limit: z.number().min(1).max(50).default(20),
+        sort: z.enum(["newest", "largest"]).default("newest"),
         cursor: z
-          .object({ createdAt: z.string().datetime(), id: z.string() })
+          .object({
+            createdAt: z.string().datetime(),
+            id: z.string(),
+            memberCount: z.number().nullish(),
+          })
           .nullish(),
       }),
     )
@@ -76,12 +85,27 @@ export const communitiesRouter = createTRPCRouter({
         );
       }
 
-      // Keyset pagination: (createdAt, id) descending
+      // Keyset pagination. Newest: (createdAt, id) desc. Largest: (memberCount, id) desc.
+      // For `largest`, always use the memberCount keyset (treating a missing
+      // cursor count as 0) so it can't silently fall back to the createdAt keyset
+      // while the ORDER BY is memberCount-based — that would skip/duplicate rows.
+      const memberCountExpr = sql<number>`coalesce(${memberCountSq.count}, 0)`;
       if (input.cursor) {
-        conditions.push(
-          sql`(${communities.createdAt}, ${communities.id}) < (${input.cursor.createdAt}, ${input.cursor.id})`,
-        );
+        if (input.sort === "largest") {
+          conditions.push(
+            sql`(${memberCountExpr}, ${communities.id}) < (${input.cursor.memberCount ?? 0}, ${input.cursor.id})`,
+          );
+        } else {
+          conditions.push(
+            sql`(${communities.createdAt}, ${communities.id}) < (${input.cursor.createdAt}, ${input.cursor.id})`,
+          );
+        }
       }
+
+      const orderBy =
+        input.sort === "largest"
+          ? [desc(memberCountExpr), desc(communities.id)]
+          : [desc(communities.createdAt), desc(communities.id)];
 
       const items = await ctx.db
         .select({
@@ -91,19 +115,23 @@ export const communitiesRouter = createTRPCRouter({
           description: communities.description,
           logoUrl: communities.logoUrl,
           joinPolicy: communities.joinPolicy,
-          memberCount: sql<number>`coalesce(${memberCountSq.count}, 0)`,
+          memberCount: memberCountExpr,
           createdAt: communities.createdAt,
         })
         .from(communities)
         .leftJoin(memberCountSq, eq(communities.id, memberCountSq.communityId))
         .where(and(...conditions))
-        .orderBy(desc(communities.createdAt), desc(communities.id))
+        .orderBy(...orderBy)
         .limit(input.limit + 1);
 
       let nextCursor: typeof input.cursor | undefined;
       if (items.length > input.limit) {
         const next = items.pop()!;
-        nextCursor = { createdAt: next.createdAt.toISOString(), id: next.id };
+        nextCursor = {
+          createdAt: next.createdAt.toISOString(),
+          id: next.id,
+          memberCount: next.memberCount,
+        };
       }
 
       // One extra query for the whole page (no N+1): leadership-first faces.
@@ -117,6 +145,43 @@ export const communitiesRouter = createTRPCRouter({
       }));
 
       return { items: itemsWithFaces, nextCursor };
+    }),
+
+  /** Top communities by liveness score (anonymous trending shelf). No pagination. */
+  trending: publicProcedure
+    .input(z.object({ limit: z.number().min(1).max(48).default(24) }))
+    .query(async ({ ctx, input }) => {
+      const candidates = await loadDiscoveryCandidates(ctx.db, new Date());
+      const ranked = candidates
+        .map((c) => ({ ...c, score: livenessScore(c) }))
+        .sort(
+          (a, b) =>
+            b.score - a.score ||
+            b.activeNow - a.activeNow ||
+            b.memberCount - a.memberCount ||
+            (a.communityId < b.communityId
+              ? -1
+              : a.communityId > b.communityId
+                ? 1
+                : 0),
+        )
+        .slice(0, input.limit);
+      const faces = await loadStackFacesForCommunities(
+        ctx.db,
+        ranked.map((c) => c.communityId),
+      );
+      return {
+        items: ranked.map((c) => ({
+          id: c.communityId,
+          name: c.name,
+          slug: c.slug,
+          description: c.description,
+          logoUrl: c.logoUrl,
+          joinPolicy: "open" as const, // display-only; Join uses the real policy on the community page
+          memberCount: c.memberCount,
+          faces: faces.get(c.communityId) ?? [],
+        })),
+      };
     }),
 
   /** Get community by slug (public profile) */

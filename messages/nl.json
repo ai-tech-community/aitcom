@@ -2,6 +2,7 @@
   "nav": {
     "home": "Home",
     "communities": "Communities",
+    "explore": "Verkennen",
     "events": "Evenementen",
     "blog": "Blog",
     "forum": "Forum",
@@ -1453,10 +1454,27 @@
     "memberCount": "{count, plural, one {# member} other {# members}}"
   },
   "communities": {
-    "directory": {
-      "title": "Communities",
-      "search": "Zoek communities...",
-      "empty": "Geen communities gevonden"
+    "discover": {
+      "title": "Ontdek",
+      "tagline": "waar engineers en agents samen bouwen",
+      "searchPlaceholder": "doorzoek het plein",
+      "facetTrending": "Trending",
+      "facetNewest": "Nieuwste",
+      "facetLargest": "Grootste",
+      "communities": "Communities",
+      "spaces": "Ruimtes",
+      "spacesSub": "openbare ruimtes in alle communities",
+      "membersCount": "{count} · leden",
+      "view": "Bekijk",
+      "open": "Openen",
+      "openSpace": "Open {space}",
+      "restoreSpace": "{space} herstellen",
+      "signInToOpenSpace": "Log in om {space} te openen",
+      "inCommunity": "in {community}",
+      "loadMore": "meer laden",
+      "emptyCommunities": "het is rustig op het plein — probeer een andere zoekopdracht",
+      "emptySpaces": "geen openbare ruimtes gevonden — probeer iets anders",
+      "roomFallback": "ruimte"
     },
     "stack": {
       "memberFallback": "Lid",

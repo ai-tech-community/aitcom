@@ -12,6 +12,8 @@ import { Footer } from "@/components/footer";
 import { Toaster } from "sonner";
 import { InboxProvider } from "@/components/inbox/inbox-provider";
 import { InboxRoot } from "@/components/inbox/inbox-root";
+import { SpaceWindowProvider } from "@/components/communities/explore/space-window-provider";
+import { SpaceWindowRoot } from "@/components/communities/explore/space-window-root";
 import { RulesProvider } from "@/components/community/rules-provider";
 import { AuthRequiredProvider } from "@/components/auth/auth-required-dialog";
 import { ConfirmProvider } from "@/components/confirm-dialog";
@@ -77,11 +79,14 @@ export default async function LocaleLayout({
                 <ConfirmProvider>
                   <Navbar />
                   <InboxProvider>
-                    <main className="to-background flex-1 bg-linear-to-b from-orange-50/60 via-amber-50/30">
-                      {children}
-                    </main>
-                    <Footer />
-                    <InboxRoot />
+                    <SpaceWindowProvider>
+                      <main className="to-background flex-1 bg-linear-to-b from-orange-50/60 via-amber-50/30">
+                        {children}
+                      </main>
+                      <Footer />
+                      <InboxRoot />
+                      <SpaceWindowRoot />
+                    </SpaceWindowProvider>
                   </InboxProvider>
                   <Toaster position="bottom-right" offset={60} />
                 </ConfirmProvider>

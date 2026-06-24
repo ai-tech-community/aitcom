@@ -1,5 +1,15 @@
 import { z } from "zod";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  or,
+  sql,
+} from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -323,6 +333,96 @@ export const spacesRouter = createTRPCRouter({
         membership: byId.get(r.id) ?? null,
         memberCount: countById.get(r.id) ?? 0,
       }));
+    }),
+
+  /** Cross-community public rooms for Discover. Public; grouped active count; keyset (createdAt,id). */
+  discoverPublic: publicProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        limit: z.number().min(1).max(50).default(20),
+        cursor: z
+          .object({ createdAt: z.string().datetime(), id: z.string() })
+          .nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const conditions = [
+        eq(spaces.kind, "room"),
+        eq(spaces.visibility, "public"),
+        isNull(spaces.archivedAt),
+        eq(communities.isListedInDirectory, true),
+        isNull(communities.deletedAt),
+      ];
+      if (input.search) {
+        const esc = input.search.replace(/[%_\\]/g, "\\$&");
+        conditions.push(
+          or(
+            ilike(spaces.name, `%${esc}%`),
+            ilike(spaces.purpose, `%${esc}%`),
+          )!,
+        );
+      }
+      if (input.cursor) {
+        conditions.push(
+          sql`(${spaces.createdAt}, ${spaces.id}) < (${input.cursor.createdAt}, ${input.cursor.id})`,
+        );
+      }
+      const rows = await ctx.db
+        .select({
+          spaceId: spaces.id,
+          spaceName: spaces.name,
+          spaceSlug: spaces.slug,
+          createdAt: spaces.createdAt,
+          communityName: communities.name,
+          communitySlug: communities.slug,
+        })
+        .from(spaces)
+        .innerJoin(communities, eq(communities.id, spaces.communityId))
+        .where(and(...conditions))
+        .orderBy(desc(spaces.createdAt), desc(spaces.id))
+        .limit(input.limit + 1);
+
+      let nextCursor: typeof input.cursor | undefined;
+      if (rows.length > input.limit) {
+        const next = rows.pop()!;
+        nextCursor = {
+          createdAt: next.createdAt.toISOString(),
+          id: next.spaceId,
+        };
+      }
+
+      // Grouped active-member count (NOT an inline correlated subquery — that
+      // mis-correlates under Drizzle; see Plan 2b fix).
+      const spaceIds = rows.map((r) => r.spaceId);
+      const counts = spaceIds.length
+        ? await ctx.db
+            .select({
+              spaceId: spaceMemberships.spaceId,
+              count: sql<number>`COUNT(*)::int`,
+            })
+            .from(spaceMemberships)
+            .where(
+              and(
+                inArray(spaceMemberships.spaceId, spaceIds),
+                eq(spaceMemberships.status, "active"),
+              ),
+            )
+            .groupBy(spaceMemberships.spaceId)
+        : [];
+      const countById = new Map(counts.map((c) => [c.spaceId, c.count]));
+
+      return {
+        items: rows.map((r) => ({
+          spaceId: r.spaceId,
+          spaceName: r.spaceName,
+          spaceSlug: r.spaceSlug,
+          communityName: r.communityName,
+          communitySlug: r.communitySlug,
+          memberCount: countById.get(r.spaceId) ?? 0,
+        })),
+        nextCursor,
+      };
     }),
 
   /** Join a PUBLIC room instantly (active community member). */

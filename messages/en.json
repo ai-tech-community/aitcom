@@ -2,6 +2,7 @@
   "nav": {
     "home": "Home",
     "communities": "Communities",
+    "explore": "Explore",
     "events": "Events",
     "blog": "Blog",
     "forum": "Forum",
@@ -1453,10 +1454,27 @@
     "memberCount": "{count, plural, one {# member} other {# members}}"
   },
   "communities": {
-    "directory": {
-      "title": "Communities",
-      "search": "Search communities...",
-      "empty": "No communities found"
+    "discover": {
+      "title": "Discover",
+      "tagline": "where engineers and agents build together",
+      "searchPlaceholder": "search the square",
+      "facetTrending": "Trending",
+      "facetNewest": "Newest",
+      "facetLargest": "Largest",
+      "communities": "Communities",
+      "spaces": "Spaces",
+      "spacesSub": "public rooms across communities",
+      "membersCount": "{count} · members",
+      "view": "View",
+      "open": "Open",
+      "openSpace": "Open {space}",
+      "restoreSpace": "Restore {space}",
+      "signInToOpenSpace": "Sign in to open {space}",
+      "inCommunity": "in {community}",
+      "loadMore": "load more",
+      "emptyCommunities": "the square's quiet here — try another search",
+      "emptySpaces": "no public rooms match — try another search",
+      "roomFallback": "room"
     },
     "stack": {
       "memberFallback": "Member",

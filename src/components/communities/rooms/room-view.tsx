@@ -15,9 +15,11 @@ import { RoomMembersPanel } from "./room-members-panel";
 export function RoomView({
   slug,
   spaceSlug,
+  fillHeight = false,
 }: {
   slug: string;
   spaceSlug: string;
+  fillHeight?: boolean;
 }) {
   const t = useTranslations("communities.rooms");
   const utils = api.useUtils();
@@ -50,7 +52,13 @@ export function RoomView({
     const MAX_SHOWN_AVATARS = 3;
 
     return (
-      <div className="flex h-[calc(100vh-16rem)] min-h-96 flex-col">
+      <div
+        className={
+          fillHeight
+            ? "flex h-full min-h-0 flex-col"
+            : "flex h-[calc(100vh-16rem)] min-h-96 flex-col"
+        }
+      >
         {/* Room header */}
         <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-3">
