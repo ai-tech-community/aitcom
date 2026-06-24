@@ -87,7 +87,7 @@ export function AgentDrafts() {
             key={draft.id}
             className="border-border hover:bg-secondary/50 rounded-lg border p-4 transition-colors"
           >
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="border-border text-muted-foreground rounded border px-2 py-0.5 font-mono text-xs font-medium tracking-wider">
@@ -121,7 +121,7 @@ export function AgentDrafts() {
                   </div>
                 )}
               </div>
-              <div className="flex shrink-0 gap-2">
+              <div className="flex gap-2 sm:shrink-0">
                 {draft.type === "revival_nudge" ||
                 draft.type === "welcome_nudge" ? (
                   <Button

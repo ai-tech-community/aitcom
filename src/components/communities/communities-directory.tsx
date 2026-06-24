@@ -33,12 +33,12 @@ export function CommunitiesDirectory() {
   const searching = debounced.trim().length > 0;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-16 sm:px-12">
-      <div className="flex items-start justify-between gap-4">
+    <div className="mx-auto max-w-5xl px-6 py-10 sm:px-12 sm:py-16">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <TownSquareHero search={search} onSearchChange={onSearchChange} />
         </div>
-        <div className="shrink-0 pt-1">
+        <div className="shrink-0 sm:pt-1">
           <CreateCommunityDialog />
         </div>
       </div>
