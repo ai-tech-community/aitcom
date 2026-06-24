@@ -1467,6 +1467,7 @@
       "membersCount": "{count} · leden",
       "view": "Bekijk",
       "open": "Openen",
+      "openSpace": "Open {space}",
       "inCommunity": "in {community}",
       "loadMore": "meer laden",
       "emptyCommunities": "het is rustig op het plein — probeer een andere zoekopdracht",

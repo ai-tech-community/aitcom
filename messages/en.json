@@ -1467,6 +1467,7 @@
       "membersCount": "{count} · members",
       "view": "View",
       "open": "Open",
+      "openSpace": "Open {space}",
       "inCommunity": "in {community}",
       "loadMore": "load more",
       "emptyCommunities": "the square's quiet here — try another search",

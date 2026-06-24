@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import { Button } from "@/components/ui/button";
-import { SpaceRow } from "./space-row";
+import { SpaceCard } from "./space-card";
 import { QUIET_SQUARE } from "./ascii-art";
 
 export function DiscoverSpaces({ search }: { search: string }) {
@@ -56,12 +56,18 @@ export function DiscoverSpaces({ search }: { search: string }) {
     <section className="mt-10">
       <SectionLabel as="h2">{t("spaces")} · {items.length}</SectionLabel>
       <p className="text-muted-foreground mt-1 font-mono text-xs">{t("spacesSub")}</p>
-      <ul className="border-border divide-border/60 mt-3 divide-y overflow-hidden rounded-lg border">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((s) => (
-          <SpaceRow key={s.spaceId} spaceName={s.spaceName} spaceSlug={s.spaceSlug}
-            communityName={s.communityName} communitySlug={s.communitySlug} memberCount={s.memberCount} />
+          <SpaceCard
+            key={s.spaceId}
+            spaceName={s.spaceName}
+            spaceSlug={s.spaceSlug}
+            communityName={s.communityName}
+            communitySlug={s.communitySlug}
+            memberCount={s.memberCount}
+          />
         ))}
-      </ul>
+      </div>
       {q.hasNextPage ? (
         <div className="mt-3 flex justify-center">
           <Button variant="ghost" size="sm" disabled={q.isFetchingNextPage} onClick={() => void q.fetchNextPage()}>
