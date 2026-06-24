@@ -38,7 +38,7 @@ export function CommunityCard({
         ) : (
           <SpaceAvatar name={name} />
         )}
-        <p className="min-w-0 flex-1 truncate text-sm font-semibold">{name}</p>
+        <span className="block min-w-0 flex-1 truncate text-sm font-semibold">{name}</span>
       </div>
       {description ? (
         <p className="text-muted-foreground line-clamp-2 text-sm">{description}</p>

@@ -31,14 +31,17 @@ export function SpaceCard({
       <div className="flex items-center gap-3">
         <SpaceAvatar name={spaceName} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">#{label}</p>
-          <p className="text-muted-foreground truncate text-xs">
+          <span className="block truncate text-sm font-semibold">#{label}</span>
+          <span className="text-muted-foreground block truncate text-xs">
             {t("inCommunity", { community: communityName })}
-          </p>
+          </span>
         </div>
       </div>
       <div className="mt-auto flex items-center">
-        <span className="text-muted-foreground inline-flex items-center gap-1 font-mono text-xs">
+        <span
+          aria-label={t("membersCount", { count: memberCount })}
+          className="text-muted-foreground inline-flex items-center gap-1 font-mono text-xs"
+        >
           <Users aria-hidden="true" className="size-3.5" />
           {memberCount}
         </span>
