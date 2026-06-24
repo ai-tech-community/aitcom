@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Users } from "lucide-react";
 import { SpaceAvatar } from "@/components/communities/rooms/space-avatar";
 import { useSpaceWindows } from "@/components/communities/explore/space-window-provider";
+import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 
 export function SpaceCard({
   spaceName,
@@ -20,11 +21,17 @@ export function SpaceCard({
 }) {
   const t = useTranslations("communities.discover");
   const { openSpace } = useSpaceWindows();
+  const { requireAuth } = useRequireAuth();
   const label = spaceName ?? t("roomFallback");
   return (
     <button
       type="button"
-      onClick={() => openSpace({ communitySlug, spaceSlug, spaceName, communityName })}
+      onClick={() =>
+        requireAuth(
+          () => openSpace({ communitySlug, spaceSlug, spaceName, communityName }),
+          t("signInToOpenSpace", { space: label }),
+        )
+      }
       aria-label={t("openSpace", { space: label })}
       className="border-border hover:border-foreground/30 hover:bg-muted/40 flex h-full flex-col gap-3 rounded-lg border p-4 text-left transition-colors"
     >

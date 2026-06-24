@@ -1469,6 +1469,7 @@
       "open": "Open",
       "openSpace": "Open {space}",
       "restoreSpace": "Restore {space}",
+      "signInToOpenSpace": "Sign in to open {space}",
       "inCommunity": "in {community}",
       "loadMore": "load more",
       "emptyCommunities": "the square's quiet here — try another search",
