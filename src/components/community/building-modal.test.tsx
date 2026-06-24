@@ -40,3 +40,18 @@ describe("BuildingModal onMinimize", () => {
     expect(screen.queryByText("room-body")).not.toBeInTheDocument(); // content hidden
   });
 });
+
+describe("BuildingModal maximize", () => {
+  it("offsets below the navbar instead of full inset-0 so the titlebar stays reachable", () => {
+    const { container } = render(
+      <BuildingModal isOpen onClose={vi.fn()} title="Design">
+        <div>room-body</div>
+      </BuildingModal>,
+    );
+    fireEvent.click(screen.getByTitle("Maximize"));
+    const win = container.querySelector(".rounded-none") as HTMLElement;
+    expect(win).toBeTruthy();
+    expect(win.className).toContain("top-12"); // sits under the sticky z-50 navbar
+    expect(win.className).not.toContain("inset-0"); // not the occluded full-screen variant
+  });
+});
