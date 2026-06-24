@@ -9,8 +9,10 @@ import { useInboxStream } from "@/components/inbox/use-inbox-stream";
 import { useSpaceWindows } from "./space-window-provider";
 import { windowKey } from "./space-window-reducer";
 
-// Mounted only while a window is open; relies on the module-level singleton in
-// useInboxStream so all windows (and the inbox) share ONE EventSource.
+// Mounted while any space window exists (open OR parked in the taskbar); relies
+// on the module-level singleton in useInboxStream so all windows (and the
+// inbox) share ONE EventSource. Keeping it alive for minimized windows keeps
+// their unread/last-message state live so restoring is instant.
 function SpaceWindowStream() {
   useInboxStream();
   return null;
@@ -25,7 +27,7 @@ export function SpaceWindowRoot() {
 
   return (
     <>
-      {open.length > 0 && <SpaceWindowStream />}
+      {(open.length > 0 || minimized.length > 0) && <SpaceWindowStream />}
 
       {open.map((ref, i) => {
         const key = windowKey(ref);

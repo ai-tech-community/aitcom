@@ -49,7 +49,7 @@ describe("BuildingModal maximize", () => {
       </BuildingModal>,
     );
     fireEvent.click(screen.getByTitle("Maximize"));
-    const win = container.querySelector(".rounded-none") as HTMLElement;
+    const win = container.querySelector(".rounded-none")!;
     expect(win).toBeTruthy();
     expect(win.className).toContain("top-12"); // sits under the sticky z-50 navbar
     expect(win.className).not.toContain("inset-0"); // not the occluded full-screen variant

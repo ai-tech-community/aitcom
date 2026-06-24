@@ -224,6 +224,7 @@ export function BuildingModal({
                     <button
                       onClick={handleMinimizeClick}
                       className="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
+                      aria-label="Minimize"
                       title="Minimize"
                     >
                       <Minus className="h-3.5 w-3.5" />
@@ -231,6 +232,7 @@ export function BuildingModal({
                     <button
                       onClick={toggleMaximize}
                       className="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
+                      aria-label={windowState === "maximized" ? "Restore" : "Maximize"}
                       title={
                         windowState === "maximized" ? "Restore" : "Maximize"
                       }
