@@ -1,6 +1,7 @@
 "use client";
 
 import { Terminal } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { authClient } from "@/server/better-auth/client";
 import { BuildingModal } from "@/components/community/building-modal";
 import { RoomView } from "@/components/communities/rooms/room-view";
@@ -18,6 +19,7 @@ function SpaceWindowStream() {
 export function SpaceWindowRoot() {
   const { open, minimized, closeSpace, minimizeSpace, restoreSpace } = useSpaceWindows();
   const { data: session } = authClient.useSession();
+  const t = useTranslations("communities.discover");
 
   if (!session?.user) return null;
 
@@ -52,8 +54,8 @@ export function SpaceWindowRoot() {
                 type="button"
                 onClick={() => restoreSpace(key)}
                 className="border-border bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center gap-2 rounded-t-lg border px-3 py-2 font-mono text-xs tracking-wider transition-colors"
-                aria-label={`Restore ${label}`}
-                title={`Restore ${label}`}
+                aria-label={t("restoreSpace", { space: label })}
+                title={t("restoreSpace", { space: label })}
               >
                 <Terminal aria-hidden className="size-3.5" />
                 <span className="max-w-32 truncate">{label.toUpperCase()}</span>

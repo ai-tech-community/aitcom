@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next-intl", () => ({
+  useTranslations: () => (k: string, vars?: Record<string, unknown>) =>
+    vars ? `${k}:${JSON.stringify(vars)}` : k,
+}));
 vi.mock("@/components/inbox/use-inbox-stream", () => ({ useInboxStream: vi.fn() }));
 vi.mock("@/server/better-auth/client", () => ({
   authClient: { useSession: () => ({ data: { user: { id: "u" } } }) },
