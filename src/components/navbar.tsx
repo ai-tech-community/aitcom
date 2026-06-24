@@ -29,7 +29,7 @@ import { MessagesNavLink } from "@/components/inbox/messages-nav-link";
 // New top-level destinations default to `primary: false` unless they are a
 // recurring action surface or a flagship product.
 const navLinks = [
-  { href: "/communities", key: "communities", shortcut: "C", primary: true },
+  { href: "/communities", key: "explore", shortcut: "C", primary: true },
   { href: "/events", key: "events", shortcut: "E", primary: true },
   { href: "/challenges", key: "challenges", shortcut: "G", primary: true },
   { href: "/launchpad", key: "launchpad", shortcut: "L", primary: true },
