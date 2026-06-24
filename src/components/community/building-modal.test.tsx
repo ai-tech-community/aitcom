@@ -21,7 +21,12 @@ describe("BuildingModal onMinimize", () => {
   it("calls onMinimize and keeps content mounted when provided", () => {
     const onMinimize = vi.fn();
     render(
-      <BuildingModal isOpen onClose={vi.fn()} title="Design" onMinimize={onMinimize}>
+      <BuildingModal
+        isOpen
+        onClose={vi.fn()}
+        title="Design"
+        onMinimize={onMinimize}
+      >
         <div>room-body</div>
       </BuildingModal>,
     );

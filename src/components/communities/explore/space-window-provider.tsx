@@ -52,7 +52,10 @@ const SpaceWindowContext = createContext<SpaceWindowContextValue | null>(null);
 export function SpaceWindowProvider({ children }: { children: ReactNode }) {
   const breakpoint = useBreakpoint();
   const router = useRouter();
-  const [state, dispatch] = useReducer(spaceWindowReducer, initialSpaceWindowState);
+  const [state, dispatch] = useReducer(
+    spaceWindowReducer,
+    initialSpaceWindowState,
+  );
   const maxOpen = MAX_OPEN_BY_BREAKPOINT[breakpoint];
 
   // When the viewport shrinks, push overflow windows into the taskbar.
@@ -63,18 +66,35 @@ export function SpaceWindowProvider({ children }: { children: ReactNode }) {
   const openSpace = useCallback(
     (ref: SpaceWindowRef) => {
       if (breakpoint === "mobile") {
-        router.push(`/communities/${ref.communitySlug}/spaces/${ref.spaceSlug}`);
+        router.push(
+          `/communities/${ref.communitySlug}/spaces/${ref.spaceSlug}`,
+        );
         return;
       }
-      dispatch({ type: "open", ref, maxOpen: MAX_OPEN_BY_BREAKPOINT[breakpoint] });
+      dispatch({
+        type: "open",
+        ref,
+        maxOpen: MAX_OPEN_BY_BREAKPOINT[breakpoint],
+      });
     },
     [breakpoint, router],
   );
 
-  const closeSpace = useCallback((key: string) => dispatch({ type: "close", key }), []);
-  const minimizeSpace = useCallback((key: string) => dispatch({ type: "minimize", key }), []);
+  const closeSpace = useCallback(
+    (key: string) => dispatch({ type: "close", key }),
+    [],
+  );
+  const minimizeSpace = useCallback(
+    (key: string) => dispatch({ type: "minimize", key }),
+    [],
+  );
   const restoreSpace = useCallback(
-    (key: string) => dispatch({ type: "restore", key, maxOpen: MAX_OPEN_BY_BREAKPOINT[breakpoint] }),
+    (key: string) =>
+      dispatch({
+        type: "restore",
+        key,
+        maxOpen: MAX_OPEN_BY_BREAKPOINT[breakpoint],
+      }),
     [breakpoint],
   );
 
@@ -87,12 +107,17 @@ export function SpaceWindowProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <SpaceWindowContext.Provider value={value}>{children}</SpaceWindowContext.Provider>
+    <SpaceWindowContext.Provider value={value}>
+      {children}
+    </SpaceWindowContext.Provider>
   );
 }
 
 export function useSpaceWindows(): SpaceWindowContextValue {
   const ctx = useContext(SpaceWindowContext);
-  if (!ctx) throw new Error("useSpaceWindows must be used within a <SpaceWindowProvider>");
+  if (!ctx)
+    throw new Error(
+      "useSpaceWindows must be used within a <SpaceWindowProvider>",
+    );
   return ctx;
 }

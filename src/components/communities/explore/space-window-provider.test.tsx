@@ -7,10 +7,17 @@ vi.mock("@/i18n/navigation", () => ({ useRouter: () => ({ push: pushMock }) }));
 import { SpaceWindowProvider, useSpaceWindows } from "./space-window-provider";
 
 function setWidth(w: number) {
-  Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: w });
+  Object.defineProperty(window, "innerWidth", {
+    writable: true,
+    configurable: true,
+    value: w,
+  });
 }
 const ref = (slug: string) => ({
-  communitySlug: "acme", spaceSlug: slug, spaceName: slug, communityName: "ACME",
+  communitySlug: "acme",
+  spaceSlug: slug,
+  spaceName: slug,
+  communityName: "ACME",
 });
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <SpaceWindowProvider>{children}</SpaceWindowProvider>
@@ -30,7 +37,11 @@ describe("useSpaceWindows", () => {
     act(() => result.current.openSpace(ref("b")));
     act(() => result.current.openSpace(ref("c")));
     act(() => result.current.openSpace(ref("d")));
-    expect(result.current.open.map((w) => w.spaceSlug)).toEqual(["b", "c", "d"]);
+    expect(result.current.open.map((w) => w.spaceSlug)).toEqual([
+      "b",
+      "c",
+      "d",
+    ]);
     expect(result.current.minimized.map((w) => w.spaceSlug)).toEqual(["a"]);
   });
 

@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { TownSquareHero } from "./discover/town-square-hero";
 import { DiscoverFacets } from "./discover/discover-facets";
-import { DiscoverCommunities, type Facet } from "./discover/discover-communities";
+import {
+  DiscoverCommunities,
+  type Facet,
+} from "./discover/discover-communities";
 import { DiscoverSpaces } from "./discover/discover-spaces";
 import { CreateCommunityDialog } from "./create-community-dialog";
 
@@ -20,7 +23,12 @@ export function CommunitiesDirectory() {
     if (ref.current) clearTimeout(ref.current);
     ref.current = setTimeout(() => setDebounced(v), DEBOUNCE_MS);
   }, []);
-  useEffect(() => () => { if (ref.current) clearTimeout(ref.current); }, []);
+  useEffect(
+    () => () => {
+      if (ref.current) clearTimeout(ref.current);
+    },
+    [],
+  );
 
   const searching = debounced.trim().length > 0;
 
@@ -30,11 +38,17 @@ export function CommunitiesDirectory() {
         <div className="min-w-0 flex-1">
           <TownSquareHero search={search} onSearchChange={onSearchChange} />
         </div>
-        <div className="shrink-0 pt-1"><CreateCommunityDialog /></div>
+        <div className="shrink-0 pt-1">
+          <CreateCommunityDialog />
+        </div>
       </div>
 
       <div className="mt-6">
-        <DiscoverFacets value={facet} onChange={setFacet} disabled={searching} />
+        <DiscoverFacets
+          value={facet}
+          onChange={setFacet}
+          disabled={searching}
+        />
       </div>
 
       <div className="mt-6">

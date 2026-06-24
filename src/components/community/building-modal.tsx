@@ -236,7 +236,9 @@ export function BuildingModal({
                     <button
                       onClick={toggleMaximize}
                       className="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
-                      aria-label={windowState === "maximized" ? "Restore" : "Maximize"}
+                      aria-label={
+                        windowState === "maximized" ? "Restore" : "Maximize"
+                      }
                       title={
                         windowState === "maximized" ? "Restore" : "Maximize"
                       }

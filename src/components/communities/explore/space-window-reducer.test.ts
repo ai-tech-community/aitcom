@@ -16,13 +16,21 @@ const keys = (list: SpaceWindowRef[]) => list.map(windowKey);
 
 describe("spaceWindowReducer", () => {
   it("opens a window", () => {
-    const s = spaceWindowReducer(initialSpaceWindowState, { type: "open", ref: ref("a"), maxOpen: 3 });
+    const s = spaceWindowReducer(initialSpaceWindowState, {
+      type: "open",
+      ref: ref("a"),
+      maxOpen: 3,
+    });
     expect(keys(s.open)).toEqual(["acme/a"]);
     expect(s.minimized).toEqual([]);
   });
 
   it("dedupes an already-open space (no second window)", () => {
-    let s = spaceWindowReducer(initialSpaceWindowState, { type: "open", ref: ref("a"), maxOpen: 3 });
+    let s = spaceWindowReducer(initialSpaceWindowState, {
+      type: "open",
+      ref: ref("a"),
+      maxOpen: 3,
+    });
     s = spaceWindowReducer(s, { type: "open", ref: ref("a"), maxOpen: 3 });
     expect(keys(s.open)).toEqual(["acme/a"]);
   });
@@ -37,7 +45,11 @@ describe("spaceWindowReducer", () => {
   });
 
   it("minimizes and restores", () => {
-    let s = spaceWindowReducer(initialSpaceWindowState, { type: "open", ref: ref("a"), maxOpen: 3 });
+    let s = spaceWindowReducer(initialSpaceWindowState, {
+      type: "open",
+      ref: ref("a"),
+      maxOpen: 3,
+    });
     s = spaceWindowReducer(s, { type: "minimize", key: "acme/a" });
     expect(s.open).toEqual([]);
     expect(keys(s.minimized)).toEqual(["acme/a"]);
@@ -47,7 +59,11 @@ describe("spaceWindowReducer", () => {
   });
 
   it("re-opening a minimized space restores it", () => {
-    let s = spaceWindowReducer(initialSpaceWindowState, { type: "open", ref: ref("a"), maxOpen: 3 });
+    let s = spaceWindowReducer(initialSpaceWindowState, {
+      type: "open",
+      ref: ref("a"),
+      maxOpen: 3,
+    });
     s = spaceWindowReducer(s, { type: "minimize", key: "acme/a" });
     s = spaceWindowReducer(s, { type: "open", ref: ref("a"), maxOpen: 3 });
     expect(keys(s.open)).toEqual(["acme/a"]);
@@ -55,7 +71,11 @@ describe("spaceWindowReducer", () => {
   });
 
   it("closes from open and from minimized", () => {
-    let s = spaceWindowReducer(initialSpaceWindowState, { type: "open", ref: ref("a"), maxOpen: 3 });
+    let s = spaceWindowReducer(initialSpaceWindowState, {
+      type: "open",
+      ref: ref("a"),
+      maxOpen: 3,
+    });
     s = spaceWindowReducer(s, { type: "open", ref: ref("b"), maxOpen: 3 });
     s = spaceWindowReducer(s, { type: "minimize", key: "acme/b" });
     s = spaceWindowReducer(s, { type: "close", key: "acme/a" });

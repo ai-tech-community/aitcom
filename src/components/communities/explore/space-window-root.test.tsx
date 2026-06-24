@@ -6,17 +6,32 @@ vi.mock("next-intl", () => ({
   useTranslations: () => (k: string, vars?: Record<string, unknown>) =>
     vars ? `${k}:${JSON.stringify(vars)}` : k,
 }));
-vi.mock("@/components/inbox/use-inbox-stream", () => ({ useInboxStream: vi.fn() }));
+vi.mock("@/components/inbox/use-inbox-stream", () => ({
+  useInboxStream: vi.fn(),
+}));
 vi.mock("@/server/better-auth/client", () => ({
   authClient: { useSession: () => ({ data: { user: { id: "u" } } }) },
 }));
 vi.mock("@/components/communities/rooms/room-view", () => ({
-  RoomView: ({ spaceSlug }: { spaceSlug: string }) => <div data-testid="roomview">{spaceSlug}</div>,
+  RoomView: ({ spaceSlug }: { spaceSlug: string }) => (
+    <div data-testid="roomview">{spaceSlug}</div>
+  ),
 }));
 vi.mock("@/components/community/building-modal", () => ({
-  BuildingModal: ({ title, children, onClose, onMinimize, onExitComplete, isOpen }: {
-    title: string; children: React.ReactNode; onClose: () => void;
-    onMinimize?: () => void; onExitComplete?: () => void; isOpen: boolean;
+  BuildingModal: ({
+    title,
+    children,
+    onClose,
+    onMinimize,
+    onExitComplete,
+    isOpen,
+  }: {
+    title: string;
+    children: React.ReactNode;
+    onClose: () => void;
+    onMinimize?: () => void;
+    onExitComplete?: () => void;
+    isOpen: boolean;
   }) => (
     <div data-testid="window" data-open={String(isOpen)}>
       <span data-testid="window-title">{title}</span>
@@ -36,7 +51,12 @@ function Harness() {
   return (
     <button
       onClick={() =>
-        openSpace({ communitySlug: "acme", spaceSlug: "design", spaceName: "Design", communityName: "ACME" })
+        openSpace({
+          communitySlug: "acme",
+          spaceSlug: "design",
+          spaceName: "Design",
+          communityName: "ACME",
+        })
       }
     >
       open
@@ -45,7 +65,11 @@ function Harness() {
 }
 
 beforeEach(() => {
-  Object.defineProperty(window, "innerWidth", { writable: true, configurable: true, value: 1280 });
+  Object.defineProperty(window, "innerWidth", {
+    writable: true,
+    configurable: true,
+    value: 1280,
+  });
 });
 
 describe("SpaceWindowRoot", () => {

@@ -28,7 +28,8 @@ export function SpaceCard({
       type="button"
       onClick={() =>
         requireAuth(
-          () => openSpace({ communitySlug, spaceSlug, spaceName, communityName }),
+          () =>
+            openSpace({ communitySlug, spaceSlug, spaceName, communityName }),
           t("signInToOpenSpace", { space: label }),
         )
       }

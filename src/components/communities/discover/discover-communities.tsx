@@ -17,7 +17,10 @@ function RowsSkeleton() {
       {[0, 1, 2].map((i) => (
         <li key={i} className="flex items-center gap-3 p-3">
           <Skeleton className="size-9 shrink-0 rounded-md" />
-          <div className="flex-1 space-y-1.5"><Skeleton className="h-3.5 w-1/3" /><Skeleton className="h-3 w-2/3" /></div>
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-3.5 w-1/3" />
+            <Skeleton className="h-3 w-2/3" />
+          </div>
           <Skeleton className="h-8 w-16 shrink-0 rounded-md" />
         </li>
       ))}
@@ -25,7 +28,13 @@ function RowsSkeleton() {
   );
 }
 
-export function DiscoverCommunities({ facet, search }: { facet: Facet; search: string }) {
+export function DiscoverCommunities({
+  facet,
+  search,
+}: {
+  facet: Facet;
+  search: string;
+}) {
   const t = useTranslations("communities.discover");
   const searching = search.trim().length > 0;
   // Trending shelf only when not searching and facet is trending.
@@ -41,16 +50,31 @@ export function DiscoverCommunities({ facet, search }: { facet: Facet; search: s
       limit: 20,
       sort: facet === "largest" && !searching ? "largest" : "newest",
     },
-    { enabled: !useTrending, getNextPageParam: (last) => last.nextCursor ?? undefined },
+    {
+      enabled: !useTrending,
+      getNextPageParam: (last) => last.nextCursor ?? undefined,
+    },
   );
 
-  const Header = (
-    <SectionLabel as="h2">{t("communities")}</SectionLabel>
-  );
+  const Header = <SectionLabel as="h2">{t("communities")}</SectionLabel>;
 
   if (useTrending) {
-    if (trendingQ.isLoading) return <section>{Header}<RowsSkeleton /></section>;
-    if (trendingQ.isError) return <section>{Header}<div className="mt-3"><ErrorState onRetry={() => void trendingQ.refetch()} /></div></section>;
+    if (trendingQ.isLoading)
+      return (
+        <section>
+          {Header}
+          <RowsSkeleton />
+        </section>
+      );
+    if (trendingQ.isError)
+      return (
+        <section>
+          {Header}
+          <div className="mt-3">
+            <ErrorState onRetry={() => void trendingQ.refetch()} />
+          </div>
+        </section>
+      );
     const items = trendingQ.data?.items ?? [];
     return (
       <section>
@@ -63,13 +87,22 @@ export function DiscoverCommunities({ facet, search }: { facet: Facet; search: s
             >
               {QUIET_SQUARE}
             </pre>
-            <p className="text-muted-foreground text-sm">{t("emptyCommunities")}</p>
+            <p className="text-muted-foreground text-sm">
+              {t("emptyCommunities")}
+            </p>
           </div>
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((c) => (
-              <CommunityCard key={c.id} slug={c.slug} name={c.name} description={c.description}
-                logoUrl={c.logoUrl} memberCount={c.memberCount} faces={c.faces} />
+              <CommunityCard
+                key={c.id}
+                slug={c.slug}
+                name={c.name}
+                description={c.description}
+                logoUrl={c.logoUrl}
+                memberCount={c.memberCount}
+                faces={c.faces}
+              />
             ))}
           </div>
         )}
@@ -77,12 +110,28 @@ export function DiscoverCommunities({ facet, search }: { facet: Facet; search: s
     );
   }
 
-  if (listQ.isLoading) return <section>{Header}<RowsSkeleton /></section>;
-  if (listQ.isError) return <section>{Header}<div className="mt-3"><ErrorState onRetry={() => void listQ.refetch()} /></div></section>;
+  if (listQ.isLoading)
+    return (
+      <section>
+        {Header}
+        <RowsSkeleton />
+      </section>
+    );
+  if (listQ.isError)
+    return (
+      <section>
+        {Header}
+        <div className="mt-3">
+          <ErrorState onRetry={() => void listQ.refetch()} />
+        </div>
+      </section>
+    );
   const items = listQ.data?.pages.flatMap((p) => p.items) ?? [];
   return (
     <section>
-      <SectionLabel as="h2">{t("communities")} · {items.length}</SectionLabel>
+      <SectionLabel as="h2">
+        {t("communities")} · {items.length}
+      </SectionLabel>
       {items.length === 0 ? (
         <div className="mt-3 flex flex-col items-start gap-2">
           <pre
@@ -91,19 +140,33 @@ export function DiscoverCommunities({ facet, search }: { facet: Facet; search: s
           >
             {QUIET_SQUARE}
           </pre>
-          <p className="text-muted-foreground text-sm">{t("emptyCommunities")}</p>
+          <p className="text-muted-foreground text-sm">
+            {t("emptyCommunities")}
+          </p>
         </div>
       ) : (
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((c) => (
-            <CommunityCard key={c.id} slug={c.slug} name={c.name} description={c.description}
-              logoUrl={c.logoUrl} memberCount={c.memberCount} faces={c.faces} />
+            <CommunityCard
+              key={c.id}
+              slug={c.slug}
+              name={c.name}
+              description={c.description}
+              logoUrl={c.logoUrl}
+              memberCount={c.memberCount}
+              faces={c.faces}
+            />
           ))}
         </div>
       )}
       {listQ.hasNextPage ? (
         <div className="mt-3 flex justify-center">
-          <Button variant="ghost" size="sm" disabled={listQ.isFetchingNextPage} onClick={() => void listQ.fetchNextPage()}>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={listQ.isFetchingNextPage}
+            onClick={() => void listQ.fetchNextPage()}
+          >
             {t("loadMore")}
           </Button>
         </div>

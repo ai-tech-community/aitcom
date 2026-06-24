@@ -20,7 +20,8 @@ function SpaceWindowStream() {
 }
 
 export function SpaceWindowRoot() {
-  const { open, minimized, closeSpace, minimizeSpace, restoreSpace } = useSpaceWindows();
+  const { open, minimized, closeSpace, minimizeSpace, restoreSpace } =
+    useSpaceWindows();
   const { data: session } = authClient.useSession();
   const t = useTranslations("communities.discover");
 
@@ -64,7 +65,11 @@ export function SpaceWindowRoot() {
             onMinimize={() => minimizeSpace(key)}
             onExitComplete={() => finishClose(key)}
           >
-            <RoomView slug={ref.communitySlug} spaceSlug={ref.spaceSlug} fillHeight />
+            <RoomView
+              slug={ref.communitySlug}
+              spaceSlug={ref.spaceSlug}
+              fillHeight
+            />
           </BuildingModal>
         );
       })}

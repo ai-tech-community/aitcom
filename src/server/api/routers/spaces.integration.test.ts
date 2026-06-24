@@ -524,63 +524,106 @@ describe.skipIf(!RUN_DB)("rooms [DB integration]", () => {
     const { db, schema } = m;
     const { and, eq, inArray, isNull, sql } = await import("drizzle-orm");
     // Mark the test community listed and add a private room + an active member.
-    await db.update(schema.communities).set({ isListedInDirectory: true }).where(eq(schema.communities.id, communityId));
-    const [priv] = await db.insert(schema.spaces).values({
-      communityId, kind: "room", visibility: "private", name: "secret",
-      slug: `secret-${Date.now()}`, position: 101, createdBy: userId,
-    }).returning();
-    await db.insert(schema.spaceMemberships).values({ spaceId: roomSpaceId, userId, status: "active" });
+    await db
+      .update(schema.communities)
+      .set({ isListedInDirectory: true })
+      .where(eq(schema.communities.id, communityId));
+    const [priv] = await db
+      .insert(schema.spaces)
+      .values({
+        communityId,
+        kind: "room",
+        visibility: "private",
+        name: "secret",
+        slug: `secret-${Date.now()}`,
+        position: 101,
+        createdBy: userId,
+      })
+      .returning();
+    await db
+      .insert(schema.spaceMemberships)
+      .values({ spaceId: roomSpaceId, userId, status: "active" });
 
     // Create an unlisted community with a public room (should be excluded from discover).
     const unlistedSuffix = `unlisted-${Date.now()}`;
-    const [unlistedUser] = await db.insert(schema.user).values({
-      id: `discover-unlisted-user-${unlistedSuffix}`,
-      email: `discover-unlisted-${unlistedSuffix}@example.test`,
-      name: "Unlisted User",
-    }).returning();
-    const [unlistedCom] = await db.insert(schema.communities).values({
-      name: `Unlisted Community ${unlistedSuffix}`,
-      slug: `unlisted-com-${unlistedSuffix}`,
-      createdBy: unlistedUser!.id,
-      isListedInDirectory: false,
-    }).returning();
-    const [unlistedRoom] = await db.insert(schema.spaces).values({
-      communityId: unlistedCom!.id,
-      kind: "room",
-      visibility: "public",
-      name: "Unlisted Public Room",
-      slug: `unlisted-room-${unlistedSuffix}`,
-      position: 100,
-      createdBy: unlistedUser!.id,
-    }).returning();
+    const [unlistedUser] = await db
+      .insert(schema.user)
+      .values({
+        id: `discover-unlisted-user-${unlistedSuffix}`,
+        email: `discover-unlisted-${unlistedSuffix}@example.test`,
+        name: "Unlisted User",
+      })
+      .returning();
+    const [unlistedCom] = await db
+      .insert(schema.communities)
+      .values({
+        name: `Unlisted Community ${unlistedSuffix}`,
+        slug: `unlisted-com-${unlistedSuffix}`,
+        createdBy: unlistedUser!.id,
+        isListedInDirectory: false,
+      })
+      .returning();
+    const [unlistedRoom] = await db
+      .insert(schema.spaces)
+      .values({
+        communityId: unlistedCom!.id,
+        kind: "room",
+        visibility: "public",
+        name: "Unlisted Public Room",
+        slug: `unlisted-room-${unlistedSuffix}`,
+        position: 100,
+        createdBy: unlistedUser!.id,
+      })
+      .returning();
 
     // Replicate discoverPublic's core query shape.
-    const rooms = await db.select({ id: schema.spaces.id, visibility: schema.spaces.visibility })
+    const rooms = await db
+      .select({ id: schema.spaces.id, visibility: schema.spaces.visibility })
       .from(schema.spaces)
-      .innerJoin(schema.communities, eq(schema.communities.id, schema.spaces.communityId))
-      .where(and(
-        eq(schema.spaces.kind, "room"),
-        eq(schema.spaces.visibility, "public"),
-        isNull(schema.spaces.archivedAt),
-        eq(schema.communities.isListedInDirectory, true),
-        isNull(schema.communities.deletedAt),
-      ));
+      .innerJoin(
+        schema.communities,
+        eq(schema.communities.id, schema.spaces.communityId),
+      )
+      .where(
+        and(
+          eq(schema.spaces.kind, "room"),
+          eq(schema.spaces.visibility, "public"),
+          isNull(schema.spaces.archivedAt),
+          eq(schema.communities.isListedInDirectory, true),
+          isNull(schema.communities.deletedAt),
+        ),
+      );
     const roomIds = rooms.map((r) => r.id);
     expect(roomIds).toContain(roomSpaceId);
     expect(roomIds).not.toContain(priv!.id);
     expect(roomIds).not.toContain(unlistedRoom!.id);
 
-    const counts = await db.select({ spaceId: schema.spaceMemberships.spaceId, count: sql<number>`COUNT(*)::int` })
+    const counts = await db
+      .select({
+        spaceId: schema.spaceMemberships.spaceId,
+        count: sql<number>`COUNT(*)::int`,
+      })
       .from(schema.spaceMemberships)
-      .where(and(inArray(schema.spaceMemberships.spaceId, roomIds), eq(schema.spaceMemberships.status, "active")))
+      .where(
+        and(
+          inArray(schema.spaceMemberships.spaceId, roomIds),
+          eq(schema.spaceMemberships.status, "active"),
+        ),
+      )
       .groupBy(schema.spaceMemberships.spaceId);
     const byId = new Map(counts.map((c) => [c.spaceId, c.count]));
     expect(byId.get(roomSpaceId) ?? 0).toBe(1);
 
-    await db.delete(schema.spaceMemberships).where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
+    await db
+      .delete(schema.spaceMemberships)
+      .where(eq(schema.spaceMemberships.spaceId, roomSpaceId));
     await db.delete(schema.spaces).where(eq(schema.spaces.id, priv!.id));
-    await db.delete(schema.spaces).where(eq(schema.spaces.id, unlistedRoom!.id));
-    await db.delete(schema.communities).where(eq(schema.communities.id, unlistedCom!.id));
+    await db
+      .delete(schema.spaces)
+      .where(eq(schema.spaces.id, unlistedRoom!.id));
+    await db
+      .delete(schema.communities)
+      .where(eq(schema.communities.id, unlistedCom!.id));
     await db.delete(schema.user).where(eq(schema.user.id, unlistedUser!.id));
   });
 });

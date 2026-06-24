@@ -28,7 +28,13 @@ beforeEach(() => {
 describe("SpaceCard", () => {
   it("opens the space window on click with the full ref (signed in)", () => {
     render(
-      <SpaceCard spaceName="Design" spaceSlug="design" communityName="ACME" communitySlug="acme" memberCount={4} />,
+      <SpaceCard
+        spaceName="Design"
+        spaceSlug="design"
+        communityName="ACME"
+        communitySlug="acme"
+        memberCount={4}
+      />,
     );
     fireEvent.click(screen.getByRole("button"));
     expect(requireAuth).toHaveBeenCalledTimes(1);
@@ -44,7 +50,13 @@ describe("SpaceCard", () => {
     // Simulate signed-out: requireAuth prompts instead of running the action.
     requireAuth.mockImplementation(() => undefined);
     render(
-      <SpaceCard spaceName="Design" spaceSlug="design" communityName="ACME" communitySlug="acme" memberCount={4} />,
+      <SpaceCard
+        spaceName="Design"
+        spaceSlug="design"
+        communityName="ACME"
+        communitySlug="acme"
+        memberCount={4}
+      />,
     );
     fireEvent.click(screen.getByRole("button"));
     expect(requireAuth).toHaveBeenCalledTimes(1);

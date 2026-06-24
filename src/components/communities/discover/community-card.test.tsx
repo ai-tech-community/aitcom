@@ -7,18 +7,36 @@ vi.mock("next-intl", () => ({
     vars ? `${k}:${JSON.stringify(vars)}` : k,
 }));
 vi.mock("@/i18n/navigation", () => ({
-  Link: ({ href, children, ...p }: { href: string; children: React.ReactNode }) => (
-    <a href={href} {...p}>{children}</a>
+  Link: ({
+    href,
+    children,
+    ...p
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => (
+    <a href={href} {...p}>
+      {children}
+    </a>
   ),
 }));
-vi.mock("@/components/communities/member-stack", () => ({ MemberStackView: () => <div /> }));
+vi.mock("@/components/communities/member-stack", () => ({
+  MemberStackView: () => <div />,
+}));
 
 import { CommunityCard } from "./community-card";
 
 describe("CommunityCard", () => {
   it("links to the community page", () => {
     render(
-      <CommunityCard slug="acme" name="ACME" description="Builders" logoUrl={null} memberCount={12} faces={[]} />,
+      <CommunityCard
+        slug="acme"
+        name="ACME"
+        description="Builders"
+        logoUrl={null}
+        memberCount={12}
+        faces={[]}
+      />,
     );
     const link = screen.getByRole("link", { name: /ACME/ });
     expect(link).toHaveAttribute("href", "/communities/acme");

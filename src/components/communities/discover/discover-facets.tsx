@@ -22,7 +22,11 @@ export function DiscoverFacets({
     largest: t("facetLargest"),
   };
   return (
-    <div role="tablist" aria-label={t("communities")} className="flex items-center gap-4">
+    <div
+      role="tablist"
+      aria-label={t("communities")}
+      className="flex items-center gap-4"
+    >
       {FACETS.map((f) => {
         const active = value === f;
         return (
@@ -34,7 +38,9 @@ export function DiscoverFacets({
             onClick={() => onChange(f)}
             className={cn(
               "font-mono text-xs tracking-wider uppercase transition-colors disabled:opacity-50",
-              active ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              active
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {active ? "[ " : ""}

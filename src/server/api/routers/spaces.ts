@@ -1,5 +1,15 @@
 import { z } from "zod";
-import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  or,
+  sql,
+} from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import {
@@ -331,7 +341,9 @@ export const spacesRouter = createTRPCRouter({
       z.object({
         search: z.string().optional(),
         limit: z.number().min(1).max(50).default(20),
-        cursor: z.object({ createdAt: z.string().datetime(), id: z.string() }).nullish(),
+        cursor: z
+          .object({ createdAt: z.string().datetime(), id: z.string() })
+          .nullish(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -345,7 +357,10 @@ export const spacesRouter = createTRPCRouter({
       if (input.search) {
         const esc = input.search.replace(/[%_\\]/g, "\\$&");
         conditions.push(
-          or(ilike(spaces.name, `%${esc}%`), ilike(spaces.purpose, `%${esc}%`))!,
+          or(
+            ilike(spaces.name, `%${esc}%`),
+            ilike(spaces.purpose, `%${esc}%`),
+          )!,
         );
       }
       if (input.cursor) {
@@ -371,7 +386,10 @@ export const spacesRouter = createTRPCRouter({
       let nextCursor: typeof input.cursor | undefined;
       if (rows.length > input.limit) {
         const next = rows.pop()!;
-        nextCursor = { createdAt: next.createdAt.toISOString(), id: next.spaceId };
+        nextCursor = {
+          createdAt: next.createdAt.toISOString(),
+          id: next.spaceId,
+        };
       }
 
       // Grouped active-member count (NOT an inline correlated subquery — that
@@ -379,9 +397,17 @@ export const spacesRouter = createTRPCRouter({
       const spaceIds = rows.map((r) => r.spaceId);
       const counts = spaceIds.length
         ? await ctx.db
-            .select({ spaceId: spaceMemberships.spaceId, count: sql<number>`COUNT(*)::int` })
+            .select({
+              spaceId: spaceMemberships.spaceId,
+              count: sql<number>`COUNT(*)::int`,
+            })
             .from(spaceMemberships)
-            .where(and(inArray(spaceMemberships.spaceId, spaceIds), eq(spaceMemberships.status, "active")))
+            .where(
+              and(
+                inArray(spaceMemberships.spaceId, spaceIds),
+                eq(spaceMemberships.status, "active"),
+              ),
+            )
             .groupBy(spaceMemberships.spaceId)
         : [];
       const countById = new Map(counts.map((c) => [c.spaceId, c.count]));

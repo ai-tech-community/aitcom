@@ -29,7 +29,10 @@ import {
   canRedeemInvite,
 } from "@/server/communities/invite-policy";
 import { logActivity } from "@/server/agent/activity";
-import { loadPublicLiveness, loadDiscoveryCandidates } from "@/server/communities/discovery-queries";
+import {
+  loadPublicLiveness,
+  loadDiscoveryCandidates,
+} from "@/server/communities/discovery-queries";
 import { livenessScore } from "@/server/communities/discovery";
 import {
   loadStackFaces,
@@ -156,7 +159,11 @@ export const communitiesRouter = createTRPCRouter({
             b.score - a.score ||
             b.activeNow - a.activeNow ||
             b.memberCount - a.memberCount ||
-            (a.communityId < b.communityId ? -1 : a.communityId > b.communityId ? 1 : 0),
+            (a.communityId < b.communityId
+              ? -1
+              : a.communityId > b.communityId
+                ? 1
+                : 0),
         )
         .slice(0, input.limit);
       const faces = await loadStackFacesForCommunities(

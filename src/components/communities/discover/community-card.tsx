@@ -38,10 +38,14 @@ export function CommunityCard({
         ) : (
           <SpaceAvatar name={name} />
         )}
-        <span className="block min-w-0 flex-1 truncate text-sm font-semibold">{name}</span>
+        <span className="block min-w-0 flex-1 truncate text-sm font-semibold">
+          {name}
+        </span>
       </div>
       {description ? (
-        <p className="text-muted-foreground line-clamp-2 text-sm">{description}</p>
+        <p className="text-muted-foreground line-clamp-2 text-sm">
+          {description}
+        </p>
       ) : null}
       <div className="mt-auto flex items-center justify-between">
         <MemberStackView faces={faces} total={memberCount} />

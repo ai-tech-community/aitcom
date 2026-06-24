@@ -10,7 +10,10 @@ export type SpaceWindowState = {
   minimized: SpaceWindowRef[];
 };
 
-export const initialSpaceWindowState: SpaceWindowState = { open: [], minimized: [] };
+export const initialSpaceWindowState: SpaceWindowState = {
+  open: [],
+  minimized: [],
+};
 
 export const MAX_OPEN_BY_BREAKPOINT = {
   desktop: 3,
@@ -18,7 +21,10 @@ export const MAX_OPEN_BY_BREAKPOINT = {
   mobile: 0,
 } as const;
 
-export function windowKey(ref: { communitySlug: string; spaceSlug: string }): string {
+export function windowKey(ref: {
+  communitySlug: string;
+  spaceSlug: string;
+}): string {
   return `${ref.communitySlug}/${ref.spaceSlug}`;
 }
 
@@ -49,12 +55,18 @@ export function spaceWindowReducer(
       const key = windowKey(action.ref);
       if (state.open.some((w) => windowKey(w) === key)) return state; // dedupe
       const minimized = state.minimized.filter((w) => windowKey(w) !== key);
-      return clampOverflow([...state.open, action.ref], minimized, action.maxOpen);
+      return clampOverflow(
+        [...state.open, action.ref],
+        minimized,
+        action.maxOpen,
+      );
     }
     case "restore": {
       const ref = state.minimized.find((w) => windowKey(w) === action.key);
       if (!ref) return state;
-      const minimized = state.minimized.filter((w) => windowKey(w) !== action.key);
+      const minimized = state.minimized.filter(
+        (w) => windowKey(w) !== action.key,
+      );
       return clampOverflow([...state.open, ref], minimized, action.maxOpen);
     }
     case "minimize": {
