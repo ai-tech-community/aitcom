@@ -37,6 +37,8 @@ type BuildingModalProps = {
   subtitle?: string;
   /** Offset index so multiple windows don't stack exactly on top of each other */
   windowIndex?: number;
+  /** When provided, the minimize button calls this instead of toggling internal minimize state. */
+  onMinimize?: () => void;
   children: React.ReactNode;
 };
 
@@ -54,6 +56,7 @@ export function BuildingModal({
   title,
   subtitle,
   windowIndex = 0,
+  onMinimize,
   children,
 }: BuildingModalProps) {
   const isMobile = useIsMobile();
@@ -83,6 +86,14 @@ export function BuildingModal({
   const toggleMinimize = useCallback(() => {
     setWindowState((s) => (s === "minimized" ? "normal" : "minimized"));
   }, []);
+
+  const handleMinimizeClick = useCallback(() => {
+    if (onMinimize) {
+      onMinimize();
+      return;
+    }
+    toggleMinimize();
+  }, [onMinimize, toggleMinimize]);
 
   // Resize via pointer drag on the handle
   const onResizePointerDown = useCallback(
@@ -190,7 +201,7 @@ export function BuildingModal({
                 {!isMobile && (
                   <>
                     <button
-                      onClick={toggleMinimize}
+                      onClick={handleMinimizeClick}
                       className="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1 transition-colors"
                       title="Minimize"
                     >
