@@ -1,8 +1,6 @@
 import type { CollectionAfterChangeHook, CollectionConfig } from "payload";
 
 import {
-  EVENT_AUDIENCE_LABELS,
-  EVENT_AUDIENCE_OPTIONS,
   EVENT_FOCUS_LABELS,
   EVENT_FOCUS_OPTIONS,
   EVENT_FORMAT_LABELS,
@@ -318,12 +316,9 @@ export const Events: CollectionConfig = {
             },
             {
               name: "audience",
-              type: "select",
+              type: "relationship",
+              relationTo: "audiences",
               hasMany: true,
-              options: EVENT_AUDIENCE_OPTIONS.map((value) => ({
-                label: EVENT_AUDIENCE_LABELS[value],
-                value,
-              })),
             },
             {
               name: "tags",

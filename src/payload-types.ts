@@ -67,6 +67,7 @@ export interface Config {
   };
   blocks: {};
   collections: {
+    audiences: Audience;
     events: Event;
     speakers: Speaker;
     articles: Article;
@@ -107,6 +108,7 @@ export interface Config {
   };
   collectionsJoins: {};
   collectionsSelect: {
+    audiences: AudiencesSelect<false> | AudiencesSelect<true>;
     events: EventsSelect<false> | EventsSelect<true>;
     speakers: SpeakersSelect<false> | SpeakersSelect<true>;
     articles: ArticlesSelect<false> | ArticlesSelect<true>;
@@ -175,6 +177,41 @@ export interface UserAuthOperations {
     email: string;
     password: string;
   };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audiences".
+ */
+export interface Audience {
+  id: number;
+  name: string;
+  slug: string;
+  /**
+   * Classifier vocabulary used to map discovered events onto this audience.
+   */
+  interests?:
+    | {
+        tag: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Weekday x time-of-day ranges when this audience is reachable. Times are interpreted in the event's local timezone.
+   */
+  preferredSlots?:
+    | {
+        weekdays: ('mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun')[];
+        startTime: string;
+        endTime: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Curated overlap links (e.g. Executives ↔ Founders). Links are treated as bidirectional by the conflict engine even if not stored symmetrically.
+   */
+  relatedAudiences?: (number | Audience)[] | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -252,7 +289,7 @@ export interface Event {
    * 1-10 relevance score for AIT Community.
    */
   aitFitScore?: number | null;
-  audience?: ('engineers' | 'founders' | 'marketers' | 'product' | 'researchers' | 'mixed')[] | null;
+  audience?: (number | Audience)[] | null;
   /**
    * Optional keyword tags for search and curation.
    */
@@ -1389,6 +1426,10 @@ export interface PayloadLockedDocument {
   id: number;
   document?:
     | ({
+        relationTo: 'audiences';
+        value: number | Audience;
+      } | null)
+    | ({
         relationTo: 'events';
         value: number | Event;
       } | null)
@@ -1561,6 +1602,31 @@ export interface PayloadMigration {
   batch?: number | null;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audiences_select".
+ */
+export interface AudiencesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  interests?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  preferredSlots?:
+    | T
+    | {
+        weekdays?: T;
+        startTime?: T;
+        endTime?: T;
+        id?: T;
+      };
+  relatedAudiences?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

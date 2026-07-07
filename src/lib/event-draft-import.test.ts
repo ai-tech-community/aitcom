@@ -62,6 +62,34 @@ describe("buildEventDraftImportPayload", () => {
   });
 });
 
+describe("audience slugs", () => {
+  it("accepts arbitrary audience slugs, not just the legacy enum values", () => {
+    // "executives" is a real `audiences` slug (src/lib/audience-seed.ts) that
+    // was never part of the old 6-value EVENT_AUDIENCE_OPTIONS enum — the
+    // schema must no longer constrain `audience` to that closed set now that
+    // it's a pass-through slug array resolved server-side.
+    const result = buildEventDraftImportPayload({
+      title: "Executive AI Roundtable",
+      date: "2026-06-01",
+      audience: ["executives", "some-future-audience-slug"],
+    });
+
+    expect(result.draftData.audience).toEqual([
+      "executives",
+      "some-future-audience-slug",
+    ]);
+  });
+
+  it("omits audience entirely when none are provided", () => {
+    const result = buildEventDraftImportPayload({
+      title: "Untargeted Event",
+      date: "2026-06-02",
+    });
+
+    expect(result.draftData.audience).toBeUndefined();
+  });
+});
+
 describe("discovered event batch helpers", () => {
   it("parses and maps batches", () => {
     const batch = parseDiscoveredEventBatch([

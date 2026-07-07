@@ -290,6 +290,69 @@ reputation item: like exam-pass XP, it is gated only on a member-authored,
 un-reviewed exam, so it stays a local credential and never feeds reputation
 ([[adr-0028-lesson-exam-gates-completion-not-reputation]]).
 
+### Event
+
+A scheduled gathering — workshop, meetup, deep-dive, or [[hackathon]] leg — with
+a date, timezone-aware start/end, a format (online / in-person / hybrid), a
+location, and one or more target [[audience]]s. A [[shared-surface]]: Hub-wide
+or community-scoped by `communityId`. An event is either **native** (created by
+a [[community-admin|community organizer]] on the platform) or a
+[[discovered-event]] ingested from an external platform.
+
+### Audience
+
+A **Hub-global, curated audience type** (e.g. Engineers, Founders, Executives)
+that an [[event]] targets — the shared vocabulary that makes two events
+comparable for [[scheduling-conflict]] detection. Each audience carries its
+interest tags, its [[preferred-time-slot]]s, and curated **related-audience
+links** to audiences it overlaps with (Executives ↔ Founders). Interest tags
+are the classifier's vocabulary — what the curation agent uses to map a
+[[discovered-event]]'s content onto audiences — not a conflict input
+themselves. The catalog is Hub-curated (platform operators add entries), never
+free-form per organizer: two organizers' "CEOs" and "Executives" must resolve
+to the same entry or conflict detection is blind.
+_Avoid_: audience type, segment, target group.
+
+### Preferred time slot
+
+A **weekday × time-of-day range, in the event's local timezone, when an
+[[audience]] is actually reachable** (e.g. Executives: weekday breakfasts and
+early evenings). Authored as Hub-curated editorial defaults on the Audience,
+designed to be refined later by observed registration data — the curation must
+respect local workweek realities (e.g. Sun–Thu in Israel).
+
+### Scheduling conflict
+
+A **graded, not binary, collision between two [[event]]s**: they share at least
+one [[audience]] (or hit via a related-audience link, at reduced severity), are
+close in time, and compete for the same catchment — the same city/region for
+in-person events; timezone-compatible everywhere for online events; hybrid
+counts as both. Severity grades from exact time overlap down to same-day
+proximity, with a wider buffer for in-person events (travel, fatigue) than
+online. Detection is always a query against our own event index — never a live
+call to external platforms. Surfaced as **advisory, never blocking**: creation
+shows warnings plus ranked alternative slots, reviewers see conflict state in
+the approval queue, and a monitoring scan notifies organizers when a new
+conflict appears against an already-scheduled event.
+
+### Tentative hold
+
+The **anonymized presence of an unpublished native [[event]] in the conflict
+index**: once a draft has a chosen date and [[audience]], other organizers'
+conflict checks see a low-severity "another event targeting this audience is
+being planned around this time" — no title, organizer, or community revealed
+until publication. Exists so two organizers drafting on the platform can't
+collide blind, without leaking either one's plans.
+
+### Discovered event
+
+An external event (Luma, Meetup, Eventbrite, …) **ingested into the event index
+so it can be conflict-checked against**, via the curation pipeline
+(agent discovery, connected Luma calendars, or URL import). The curating agent
+classifies its [[audience]]s at ingestion; the existing human review queue
+([[adr-0011-community-event-submission-approval]]) catches mislabels. It exists
+to be scheduled *around*, not to be attended *through* the platform.
+
 ### Hackathon
 
 The **composition of an Event and a Challenge** — not a new swallowing entity.
