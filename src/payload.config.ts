@@ -7,6 +7,7 @@ import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import sharp from "sharp";
 import { resendAdapter } from "@payloadcms/email-resend";
 
+import { Audiences } from "./collections/Audiences";
 import { Events } from "./collections/Events";
 import { Speakers } from "./collections/Speakers";
 import { Articles } from "./collections/Articles";
@@ -75,6 +76,7 @@ export default buildConfig({
     },
   },
   collections: [
+    Audiences,
     Events,
     Speakers,
     Articles,

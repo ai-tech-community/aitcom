@@ -75,6 +75,7 @@ import * as migration_20260621b_spaces from "./20260621b_spaces";
 import * as migration_20260621c_spaces_backfill from "./20260621c_spaces_backfill";
 import * as migration_20260622a_spaces_rooms from "./20260622a_spaces_rooms";
 import * as migration_20260622b_space_membership_read_marker from "./20260622b_space_membership_read_marker";
+import * as migration_20260707a_audiences_collection_seed from "./20260707a_audiences_collection_seed";
 
 export const migrations = [
   {
@@ -461,5 +462,10 @@ export const migrations = [
     up: migration_20260622b_space_membership_read_marker.up,
     down: migration_20260622b_space_membership_read_marker.down,
     name: "20260622b_space_membership_read_marker",
+  },
+  {
+    up: migration_20260707a_audiences_collection_seed.up,
+    down: migration_20260707a_audiences_collection_seed.down,
+    name: "20260707a_audiences_collection_seed",
   },
 ];
