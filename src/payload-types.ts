@@ -289,7 +289,7 @@ export interface Event {
    * 1-10 relevance score for AIT Community.
    */
   aitFitScore?: number | null;
-  audience?: ('engineers' | 'founders' | 'marketers' | 'product' | 'researchers' | 'mixed')[] | null;
+  audience?: (number | Audience)[] | null;
   /**
    * Optional keyword tags for search and curation.
    */

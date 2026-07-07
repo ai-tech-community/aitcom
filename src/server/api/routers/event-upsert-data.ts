@@ -8,6 +8,7 @@ import {
   EVENT_LEVEL_OPTIONS,
   EVENT_TYPES,
 } from "@/lib/event-metadata";
+import type { Audience } from "@/payload-types";
 
 export const eventUpsertSchema = z.object({
   title: z.string().min(3).max(255),
@@ -81,7 +82,15 @@ export function buildEventPayloadData(
     city: normalizeOptionalString(input.city),
     focus: input.focus,
     level: input.level,
-    audience: input.audience?.length ? input.audience : undefined,
+    // TODO(G-T3 / #202): events.audience is now a relationship to
+    // `audiences`, resolved by slug — this schema/builder still speaks the
+    // legacy enum-string vocabulary end to end. Cast is a temporary type
+    // shim (G-T2 / #201) so `pnpm typecheck` stays green; Task 3 must
+    // resolve `input.audience` slugs to `audiences` relationship ids
+    // server-side before this reaches `payload.create`/`payload.update`.
+    audience: (input.audience?.length ? input.audience : undefined) as
+      | (number | Audience)[]
+      | undefined,
     sourceUrl: normalizeOptionalString(input.sourceUrl),
     aitFitScore: input.aitFitScore,
     tags: input.tags?.length

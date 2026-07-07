@@ -195,7 +195,15 @@ export default async function EventDetailPage({
         )
         .filter(Boolean)
     : [];
-  const audience = Array.isArray(event.audience) ? event.audience : [];
+  // TODO(G-T3 / #202): events.audience is now a relationship (populated
+  // Audience docs at depth 1: { id, slug, name, ... }), but this page still
+  // treats it as the legacy enum-string vocabulary (EVENT_AUDIENCE_LABELS
+  // lookups below). Cast is a temporary type shim (G-T2 / #201) so
+  // `pnpm typecheck` stays green; Task 3 must read `.slug` off each
+  // populated Audience instead.
+  const audience = (Array.isArray(event.audience)
+    ? event.audience
+    : []) as unknown as string[];
   const attendanceMode =
     event.format === "online"
       ? "https://schema.org/OnlineEventAttendanceMode"
@@ -360,7 +368,10 @@ export default async function EventDetailPage({
                 <DetailRow
                   label="Audience"
                   value={audience
-                    .map((entry) => EVENT_AUDIENCE_LABELS[entry] ?? entry)
+                    .map(
+                      (entry) =>
+                        EVENT_AUDIENCE_LABELS[entry as EventAudience] ?? entry,
+                    )
                     .join(", ")}
                 />
               )}
@@ -719,7 +730,10 @@ export default async function EventDetailPage({
                 <DetailRow
                   label="Audience"
                   value={audience
-                    .map((entry) => EVENT_AUDIENCE_LABELS[entry] ?? entry)
+                    .map(
+                      (entry) =>
+                        EVENT_AUDIENCE_LABELS[entry as EventAudience] ?? entry,
+                    )
                     .join(", ")}
                 />
               )}

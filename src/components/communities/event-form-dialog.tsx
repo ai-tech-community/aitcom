@@ -213,7 +213,12 @@ export function EventFormDialog({
         city: editData.city,
         focus: editData.focus as EventFocus | "",
         level: editData.level as EventLevel | "",
-        audience: editData.audience,
+        // TODO(G-T3 / #202): events.audience is now a relationship (populated
+        // Audience docs at depth 1), but this form still speaks the legacy
+        // enum-string vocabulary end to end. Cast is a temporary type shim
+        // (G-T2 / #201) so `pnpm typecheck` stays green; Task 3 must map
+        // populated audiences -> slugs here and slugs -> ids on submit.
+        audience: editData.audience as unknown as EventAudience[],
         sourceUrl: editData.sourceUrl,
         aitFitScore: editData.aitFitScore,
         tags: editData.tags,

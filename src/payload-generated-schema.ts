@@ -28,14 +28,6 @@ export const enum_audiences_preferred_slots_weekdays = pgEnum(
   "enum_audiences_preferred_slots_weekdays",
   ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
 );
-export const enum_events_audience = pgEnum("enum_events_audience", [
-  "engineers",
-  "founders",
-  "marketers",
-  "product",
-  "researchers",
-  "mixed",
-]);
 export const enum_events_type = pgEnum("enum_events_type", [
   "workshop",
   "hackathon",
@@ -74,10 +66,6 @@ export const enum_events_status = pgEnum("enum_events_status", [
   "completed",
   "rejected",
 ]);
-export const enum__events_v_version_audience = pgEnum(
-  "enum__events_v_version_audience",
-  ["engineers", "founders", "marketers", "product", "researchers", "mixed"],
-);
 export const enum__events_v_version_type = pgEnum(
   "enum__events_v_version_type",
   ["workshop", "hackathon", "deep_dive", "meetup"],
@@ -400,25 +388,6 @@ export const audiences_rels = pgTable(
   ],
 );
 
-export const events_audience = pgTable(
-  "events_audience",
-  {
-    order: integer("order").notNull(),
-    parent: integer("parent_id").notNull(),
-    value: enum_events_audience("value"),
-    id: serial("id").primaryKey(),
-  },
-  (columns) => [
-    index("events_audience_order_idx").on(columns.order),
-    index("events_audience_parent_idx").on(columns.parent),
-    foreignKey({
-      columns: [columns["parent"]],
-      foreignColumns: [events.id],
-      name: "events_audience_parent_fk",
-    }).onDelete("cascade"),
-  ],
-);
-
 export const events_tags = pgTable(
   "events_tags",
   {
@@ -570,6 +539,7 @@ export const events_rels = pgTable(
     order: integer("order"),
     parent: integer("parent_id").notNull(),
     path: varchar("path").notNull(),
+    audiencesID: integer("audiences_id"),
     mediaID: integer("media_id"),
     speakersID: integer("speakers_id"),
   },
@@ -577,12 +547,18 @@ export const events_rels = pgTable(
     index("events_rels_order_idx").on(columns.order),
     index("events_rels_parent_idx").on(columns.parent),
     index("events_rels_path_idx").on(columns.path),
+    index("events_rels_audiences_id_idx").on(columns.audiencesID),
     index("events_rels_media_id_idx").on(columns.mediaID),
     index("events_rels_speakers_id_idx").on(columns.speakersID),
     foreignKey({
       columns: [columns["parent"]],
       foreignColumns: [events.id],
       name: "events_rels_parent_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["audiencesID"]],
+      foreignColumns: [audiences.id],
+      name: "events_rels_audiences_fk",
     }).onDelete("cascade"),
     foreignKey({
       columns: [columns["mediaID"]],
@@ -593,25 +569,6 @@ export const events_rels = pgTable(
       columns: [columns["speakersID"]],
       foreignColumns: [speakers.id],
       name: "events_rels_speakers_fk",
-    }).onDelete("cascade"),
-  ],
-);
-
-export const _events_v_version_audience = pgTable(
-  "_events_v_version_audience",
-  {
-    order: integer("order").notNull(),
-    parent: integer("parent_id").notNull(),
-    value: enum__events_v_version_audience("value"),
-    id: serial("id").primaryKey(),
-  },
-  (columns) => [
-    index("_events_v_version_audience_order_idx").on(columns.order),
-    index("_events_v_version_audience_parent_idx").on(columns.parent),
-    foreignKey({
-      columns: [columns["parent"]],
-      foreignColumns: [_events_v.id],
-      name: "_events_v_version_audience_parent_fk",
     }).onDelete("cascade"),
   ],
 );
@@ -810,6 +767,7 @@ export const _events_v_rels = pgTable(
     order: integer("order"),
     parent: integer("parent_id").notNull(),
     path: varchar("path").notNull(),
+    audiencesID: integer("audiences_id"),
     mediaID: integer("media_id"),
     speakersID: integer("speakers_id"),
   },
@@ -817,12 +775,18 @@ export const _events_v_rels = pgTable(
     index("_events_v_rels_order_idx").on(columns.order),
     index("_events_v_rels_parent_idx").on(columns.parent),
     index("_events_v_rels_path_idx").on(columns.path),
+    index("_events_v_rels_audiences_id_idx").on(columns.audiencesID),
     index("_events_v_rels_media_id_idx").on(columns.mediaID),
     index("_events_v_rels_speakers_id_idx").on(columns.speakersID),
     foreignKey({
       columns: [columns["parent"]],
       foreignColumns: [_events_v.id],
       name: "_events_v_rels_parent_fk",
+    }).onDelete("cascade"),
+    foreignKey({
+      columns: [columns["audiencesID"]],
+      foreignColumns: [audiences.id],
+      name: "_events_v_rels_audiences_fk",
     }).onDelete("cascade"),
     foreignKey({
       columns: [columns["mediaID"]],
@@ -3179,16 +3143,6 @@ export const relations_audiences = relations(audiences, ({ many }) => ({
     relationName: "_rels",
   }),
 }));
-export const relations_events_audience = relations(
-  events_audience,
-  ({ one }) => ({
-    parent: one(events, {
-      fields: [events_audience.parent],
-      references: [events.id],
-      relationName: "audience",
-    }),
-  }),
-);
 export const relations_events_tags = relations(events_tags, ({ one }) => ({
   _parentID: one(events, {
     fields: [events_tags._parentID],
@@ -3212,6 +3166,11 @@ export const relations_events_rels = relations(events_rels, ({ one }) => ({
     references: [events.id],
     relationName: "_rels",
   }),
+  audiencesID: one(audiences, {
+    fields: [events_rels.audiencesID],
+    references: [audiences.id],
+    relationName: "audiences",
+  }),
   mediaID: one(media, {
     fields: [events_rels.mediaID],
     references: [media.id],
@@ -3224,9 +3183,6 @@ export const relations_events_rels = relations(events_rels, ({ one }) => ({
   }),
 }));
 export const relations_events = relations(events, ({ one, many }) => ({
-  audience: many(events_audience, {
-    relationName: "audience",
-  }),
   tags: many(events_tags, {
     relationName: "tags",
   }),
@@ -3247,16 +3203,6 @@ export const relations_events = relations(events, ({ one, many }) => ({
     relationName: "_rels",
   }),
 }));
-export const relations__events_v_version_audience = relations(
-  _events_v_version_audience,
-  ({ one }) => ({
-    parent: one(_events_v, {
-      fields: [_events_v_version_audience.parent],
-      references: [_events_v.id],
-      relationName: "version_audience",
-    }),
-  }),
-);
 export const relations__events_v_version_tags = relations(
   _events_v_version_tags,
   ({ one }) => ({
@@ -3285,6 +3231,11 @@ export const relations__events_v_rels = relations(
       references: [_events_v.id],
       relationName: "_rels",
     }),
+    audiencesID: one(audiences, {
+      fields: [_events_v_rels.audiencesID],
+      references: [audiences.id],
+      relationName: "audiences",
+    }),
     mediaID: one(media, {
       fields: [_events_v_rels.mediaID],
       references: [media.id],
@@ -3302,9 +3253,6 @@ export const relations__events_v = relations(_events_v, ({ one, many }) => ({
     fields: [_events_v.parent],
     references: [events.id],
     relationName: "parent",
-  }),
-  version_audience: many(_events_v_version_audience, {
-    relationName: "version_audience",
   }),
   version_tags: many(_events_v_version_tags, {
     relationName: "version_tags",
@@ -3957,14 +3905,12 @@ export const relations_payload_migrations = relations(
 type DatabaseSchema = {
   enum__locales: typeof enum__locales;
   enum_audiences_preferred_slots_weekdays: typeof enum_audiences_preferred_slots_weekdays;
-  enum_events_audience: typeof enum_events_audience;
   enum_events_type: typeof enum_events_type;
   enum_events_format: typeof enum_events_format;
   enum_events_focus: typeof enum_events_focus;
   enum_events_level: typeof enum_events_level;
   enum_events_review_status: typeof enum_events_review_status;
   enum_events_status: typeof enum_events_status;
-  enum__events_v_version_audience: typeof enum__events_v_version_audience;
   enum__events_v_version_type: typeof enum__events_v_version_type;
   enum__events_v_version_format: typeof enum__events_v_version_format;
   enum__events_v_version_focus: typeof enum__events_v_version_focus;
@@ -4019,12 +3965,10 @@ type DatabaseSchema = {
   audiences_preferred_slots: typeof audiences_preferred_slots;
   audiences: typeof audiences;
   audiences_rels: typeof audiences_rels;
-  events_audience: typeof events_audience;
   events_tags: typeof events_tags;
   events: typeof events;
   events_locales: typeof events_locales;
   events_rels: typeof events_rels;
-  _events_v_version_audience: typeof _events_v_version_audience;
   _events_v_version_tags: typeof _events_v_version_tags;
   _events_v: typeof _events_v;
   _events_v_locales: typeof _events_v_locales;
@@ -4093,12 +4037,10 @@ type DatabaseSchema = {
   relations_audiences_preferred_slots: typeof relations_audiences_preferred_slots;
   relations_audiences_rels: typeof relations_audiences_rels;
   relations_audiences: typeof relations_audiences;
-  relations_events_audience: typeof relations_events_audience;
   relations_events_tags: typeof relations_events_tags;
   relations_events_locales: typeof relations_events_locales;
   relations_events_rels: typeof relations_events_rels;
   relations_events: typeof relations_events;
-  relations__events_v_version_audience: typeof relations__events_v_version_audience;
   relations__events_v_version_tags: typeof relations__events_v_version_tags;
   relations__events_v_locales: typeof relations__events_v_locales;
   relations__events_v_rels: typeof relations__events_v_rels;
