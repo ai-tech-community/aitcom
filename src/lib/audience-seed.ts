@@ -4,8 +4,10 @@
  *
  * Slugs are the stable public vocabulary (CONTEXT.md [[audience]]): the
  * first six MUST exactly equal the legacy `EVENT_AUDIENCE_OPTIONS` enum
- * values (src/lib/event-metadata.ts) because a later task migrates the
- * `events.audience` select field to a relationship pointing at these rows.
+ * values that used to live in src/lib/event-metadata.ts (removed in
+ * G-T3/#202 — see the literal list locked in audience-seed.test.ts) because
+ * `events.audience` was migrated from that select field to a relationship
+ * pointing at these rows (G-T2/#201).
  */
 
 export const WEEKDAY_VALUES = [

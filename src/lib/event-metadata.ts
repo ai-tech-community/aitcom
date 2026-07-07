@@ -24,16 +24,6 @@ export const EVENT_LEVEL_OPTIONS = [
 ] as const;
 export type EventLevel = (typeof EVENT_LEVEL_OPTIONS)[number];
 
-export const EVENT_AUDIENCE_OPTIONS = [
-  "engineers",
-  "founders",
-  "marketers",
-  "product",
-  "researchers",
-  "mixed",
-] as const;
-export type EventAudience = (typeof EVENT_AUDIENCE_OPTIONS)[number];
-
 export const EVENT_FORMAT_OPTIONS = ["online", "in-person", "hybrid"] as const;
 export type EventFormat = (typeof EVENT_FORMAT_OPTIONS)[number];
 
@@ -65,15 +55,6 @@ export const EVENT_LEVEL_LABELS: Record<EventLevel, string> = {
   mid: "Mid",
   senior: "Senior",
   expert: "Expert",
-  mixed: "Mixed",
-};
-
-export const EVENT_AUDIENCE_LABELS: Record<EventAudience, string> = {
-  engineers: "Engineers",
-  founders: "Founders",
-  marketers: "Marketers",
-  product: "Product",
-  researchers: "Researchers",
   mixed: "Mixed",
 };
 

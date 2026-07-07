@@ -446,7 +446,7 @@ export const hackathonRouter = createTRPCRouter({
           slug: deriveSlug(input.name, `e-${suffix}`),
           status: "draft",
           communityId: community.id,
-          ...buildEventPayloadData({
+          ...(await buildEventPayloadData(payload, {
             title: input.name,
             description: input.description,
             type: "hackathon",
@@ -455,7 +455,7 @@ export const hackathonRouter = createTRPCRouter({
             endTime: input.endTime,
             location: input.location,
             format: input.format,
-          }),
+          })),
           challengeId: String(challenge.id),
         },
         context: { skipGeocode: true },

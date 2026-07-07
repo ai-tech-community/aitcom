@@ -13,13 +13,13 @@ import { LexicalRenderer } from "@/lib/lexical";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import {
-  EVENT_AUDIENCE_LABELS,
   EVENT_FOCUS_LABELS,
   EVENT_FORMAT_LABELS,
   EVENT_LEVEL_LABELS,
   EVENT_TYPE_LABELS,
 } from "@/lib/event-metadata";
-import type { EventAudience, EventFocus } from "@/lib/event-metadata";
+import type { EventFocus } from "@/lib/event-metadata";
+import type { Audience } from "@/payload-types";
 import {
   formatEventIsoWithOffset,
   formatEventTimeRange,
@@ -70,6 +70,8 @@ function buildAitRationale({
   aitFitScore,
 }: {
   focus: string | null;
+  // Display names of the event's `audiences` relationship docs (already
+  // resolved by the caller — see `audience` below).
   audience: string[];
   aitFitScore: number | null;
 }): string {
@@ -77,13 +79,10 @@ function buildAitRationale({
   const focusLabel = focus
     ? (EVENT_FOCUS_LABELS[focus as EventFocus] ?? String(focus))
     : null;
-  const audienceLabels = audience
-    .map((a) => EVENT_AUDIENCE_LABELS[a as EventAudience] ?? String(a))
-    .filter(Boolean);
 
   if (focusLabel) parts.push(`${focusLabel.toLowerCase()} focus`);
-  if (audienceLabels.length > 0) {
-    parts.push(`relevant for ${audienceLabels.join(", ").toLowerCase()}`);
+  if (audience.length > 0) {
+    parts.push(`relevant for ${audience.join(", ").toLowerCase()}`);
   }
   if (aitFitScore !== null && aitFitScore >= 8) parts.push("strong AIT fit");
 
@@ -195,15 +194,12 @@ export default async function EventDetailPage({
         )
         .filter(Boolean)
     : [];
-  // TODO(G-T3 / #202): events.audience is now a relationship (populated
-  // Audience docs at depth 1: { id, slug, name, ... }), but this page still
-  // treats it as the legacy enum-string vocabulary (EVENT_AUDIENCE_LABELS
-  // lookups below). Cast is a temporary type shim (G-T2 / #201) so
-  // `pnpm typecheck` stays green; Task 3 must read `.slug` off each
-  // populated Audience instead.
-  const audience = (Array.isArray(event.audience)
-    ? event.audience
-    : []) as unknown as string[];
+  // events.audience is a relationship to `audiences`, populated (depth: 2
+  // above) into full Audience docs. Non-populated (bare id) entries are
+  // guarded out defensively rather than trusted.
+  const audience = (Array.isArray(event.audience) ? event.audience : [])
+    .filter((entry): entry is Audience => typeof entry === "object")
+    .map((entry) => entry.name);
   const attendanceMode =
     event.format === "online"
       ? "https://schema.org/OnlineEventAttendanceMode"
@@ -365,15 +361,7 @@ export default async function EventDetailPage({
                 />
               )}
               {audience.length > 0 && (
-                <DetailRow
-                  label="Audience"
-                  value={audience
-                    .map(
-                      (entry) =>
-                        EVENT_AUDIENCE_LABELS[entry as EventAudience] ?? entry,
-                    )
-                    .join(", ")}
-                />
+                <DetailRow label="Audience" value={audience.join(", ")} />
               )}
               {locationParts.length > 0 && (
                 <DetailRow label="Region" value={locationShort} />
@@ -727,15 +715,7 @@ export default async function EventDetailPage({
                 />
               )}
               {audience.length > 0 && (
-                <DetailRow
-                  label="Audience"
-                  value={audience
-                    .map(
-                      (entry) =>
-                        EVENT_AUDIENCE_LABELS[entry as EventAudience] ?? entry,
-                    )
-                    .join(", ")}
-                />
+                <DetailRow label="Audience" value={audience.join(", ")} />
               )}
               {locationParts.length > 0 && (
                 <DetailRow label="Region" value={locationShort} />

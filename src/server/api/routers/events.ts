@@ -40,9 +40,11 @@ import {
   normalizeOptionalString,
   buildEventPayloadData,
 } from "./event-upsert-data";
+import { resolveAudienceIds } from "./audience-resolve";
 import { runEventImport } from "@/server/events/import-from-url";
 import { checkEventImportRateLimit } from "@/server/events/import-rate-limit";
 import { formatEventTimeRange, isValidTimeZone } from "@/lib/event-time";
+import type { Audience } from "@/payload-types";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -605,7 +607,7 @@ export const eventsRouter = createTRPCRouter({
           slug,
           status: "published",
           communityId: community.id,
-          ...buildEventPayloadData(input),
+          ...(await buildEventPayloadData(payload, input)),
         },
       });
 
@@ -702,7 +704,8 @@ export const eventsRouter = createTRPCRouter({
         data.city = normalizeOptionalString(input.city);
       if (input.focus !== undefined) data.focus = input.focus;
       if (input.level !== undefined) data.level = input.level;
-      if (input.audience !== undefined) data.audience = input.audience;
+      if (input.audience !== undefined)
+        data.audience = await resolveAudienceIds(payload, input.audience);
       if (input.sourceUrl !== undefined)
         data.sourceUrl = normalizeOptionalString(input.sourceUrl);
       if (input.aitFitScore !== undefined) data.aitFitScore = input.aitFitScore;
@@ -875,7 +878,7 @@ export const eventsRouter = createTRPCRouter({
           status: "draft" as const,
           communityId: community.id,
           submittedBy: userId,
-          ...buildEventPayloadData(input),
+          ...(await buildEventPayloadData(payload, input)),
           // Strip curation-only fields that members cannot set
           aitFitScore: undefined,
           curatedByAgent: false,
@@ -1199,7 +1202,18 @@ export const eventsRouter = createTRPCRouter({
         city: e.city ?? "",
         focus: e.focus ?? "",
         level: e.level ?? "",
-        audience: Array.isArray(e.audience) ? e.audience : [],
+        // `e.audience` is populated (depth: 1 above) with full `Audience`
+        // docs; expose slug + name so the form can render chips and submit
+        // slugs back through the tRPC slug-based API boundary. Entries that
+        // come back as bare ids (unpopulated) are dropped defensively.
+        audience: Array.isArray(e.audience)
+          ? e.audience
+              .filter(
+                (entry): entry is Audience =>
+                  typeof entry === "object" && entry !== null,
+              )
+              .map((entry) => ({ slug: entry.slug, name: entry.name }))
+          : [],
         sourceUrl: e.sourceUrl ?? "",
         aitFitScore: e.aitFitScore != null ? String(e.aitFitScore) : "",
         tags,
@@ -1465,7 +1479,8 @@ export const eventsRouter = createTRPCRouter({
         data.city = normalizeOptionalString(input.city);
       if (input.focus !== undefined) data.focus = input.focus;
       if (input.level !== undefined) data.level = input.level;
-      if (input.audience !== undefined) data.audience = input.audience;
+      if (input.audience !== undefined)
+        data.audience = await resolveAudienceIds(payload, input.audience);
       if (input.sourceUrl !== undefined)
         data.sourceUrl = normalizeOptionalString(input.sourceUrl);
       if (input.tags !== undefined)

@@ -20,18 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import {
-  EVENT_AUDIENCE_LABELS,
-  EVENT_AUDIENCE_OPTIONS,
   EVENT_FOCUS_LABELS,
   EVENT_FOCUS_OPTIONS,
   EVENT_FORMAT_LABELS,
   EVENT_FORMAT_OPTIONS,
   EVENT_LEVEL_LABELS,
   EVENT_LEVEL_OPTIONS,
-  type EventAudience,
   type EventFocus,
   type EventFormat,
   type EventLevel,
@@ -110,7 +108,8 @@ interface EventFormData {
   city: string;
   focus: EventFocus | "";
   level: EventLevel | "";
-  audience: EventAudience[];
+  // Slugs — the stable public audience vocabulary (CONTEXT.md [[audience]]).
+  audience: string[];
   sourceUrl: string;
   aitFitScore: string;
   tags: string;
@@ -188,6 +187,10 @@ export function EventFormDialog({
       { enabled: open && isEditing && !!eventId },
     );
 
+  // Audience chip options (slug + display name); public, cacheable.
+  const { data: audienceOptions, isLoading: audienceOptionsLoading } =
+    api.audiences.list.useQuery(undefined, { enabled: open });
+
   useEffect(() => {
     if (!open) return;
     if (isEditing) {
@@ -213,12 +216,9 @@ export function EventFormDialog({
         city: editData.city,
         focus: editData.focus as EventFocus | "",
         level: editData.level as EventLevel | "",
-        // TODO(G-T3 / #202): events.audience is now a relationship (populated
-        // Audience docs at depth 1), but this form still speaks the legacy
-        // enum-string vocabulary end to end. Cast is a temporary type shim
-        // (G-T2 / #201) so `pnpm typecheck` stays green; Task 3 must map
-        // populated audiences -> slugs here and slugs -> ids on submit.
-        audience: editData.audience as unknown as EventAudience[],
+        // `getEventForEdit` already maps the populated relationship down to
+        // { slug, name }[]; the form only needs the slugs.
+        audience: editData.audience.map((a) => a.slug),
         sourceUrl: editData.sourceUrl,
         aitFitScore: editData.aitFitScore,
         tags: editData.tags,
@@ -335,7 +335,7 @@ export function EventFormDialog({
     }
   };
 
-  const toggleAudience = (value: EventAudience) => {
+  const toggleAudience = (value: string) => {
     setForm((current) => ({
       ...current,
       audience: current.audience.includes(value)
@@ -728,19 +728,27 @@ export function EventFormDialog({
               <div className="space-y-2 sm:col-span-2">
                 <Label>Audience</Label>
                 <div className="flex flex-wrap gap-2">
-                  {EVENT_AUDIENCE_OPTIONS.map((value) => {
-                    const active = form.audience.includes(value);
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => toggleAudience(value)}
-                        className={`rounded border px-3 py-1 text-sm ${active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"}`}
-                      >
-                        {EVENT_AUDIENCE_LABELS[value]}
-                      </button>
-                    );
-                  })}
+                  {audienceOptionsLoading ? (
+                    <>
+                      <Skeleton className="h-7 w-20" />
+                      <Skeleton className="h-7 w-24" />
+                      <Skeleton className="h-7 w-16" />
+                    </>
+                  ) : (
+                    (audienceOptions ?? []).map(({ slug, name }) => {
+                      const active = form.audience.includes(slug);
+                      return (
+                        <button
+                          key={slug}
+                          type="button"
+                          onClick={() => toggleAudience(slug)}
+                          className={`rounded border px-3 py-1 text-sm ${active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"}`}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
               </div>
               <div className="space-y-2 sm:col-span-2">

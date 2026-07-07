@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
+import type { Payload } from "payload";
 import { buildEventPayloadData, eventUpsertSchema } from "./event-upsert-data";
+
+// None of these cases pass `audience`, so resolveAudienceIds short-circuits
+// before ever touching `payload.find` — an unimplemented stub is enough.
+const noopPayload = {} as Payload;
 
 describe("buildEventPayloadData", () => {
   const base = {
@@ -9,26 +14,29 @@ describe("buildEventPayloadData", () => {
     location: "Amsterdam",
   };
 
-  it("passes coverImage media id straight through", () => {
-    const data = buildEventPayloadData({ ...base, coverImage: 42 });
+  it("passes coverImage media id straight through", async () => {
+    const data = await buildEventPayloadData(noopPayload, {
+      ...base,
+      coverImage: 42,
+    });
     expect(data.coverImage).toBe(42);
   });
 
-  it("leaves coverImage undefined when not provided", () => {
-    const data = buildEventPayloadData(base);
+  it("leaves coverImage undefined when not provided", async () => {
+    const data = await buildEventPayloadData(noopPayload, base);
     expect(data.coverImage).toBeUndefined();
   });
 
-  it("passes a valid IANA timezone through", () => {
-    const data = buildEventPayloadData({
+  it("passes a valid IANA timezone through", async () => {
+    const data = await buildEventPayloadData(noopPayload, {
       ...base,
       timezone: "America/New_York",
     });
     expect(data.timezone).toBe("America/New_York");
   });
 
-  it("leaves timezone undefined when not provided, so the collection default (Europe/Amsterdam) applies", () => {
-    const data = buildEventPayloadData(base);
+  it("leaves timezone undefined when not provided, so the collection default (Europe/Amsterdam) applies", async () => {
+    const data = await buildEventPayloadData(noopPayload, base);
     expect(data.timezone).toBeUndefined();
   });
 });

@@ -1,9 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { EVENT_AUDIENCE_OPTIONS } from "./event-metadata";
 import { AUDIENCE_SEED, WEEKDAY_VALUES } from "./audience-seed";
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// The legacy `events.audience` select field's enum values (formerly
+// EVENT_AUDIENCE_OPTIONS in event-metadata.ts, removed in G-T3/#202 once the
+// field became an `audiences` relationship). Locked here, literally, because
+// this is the one place in the codebase that still needs to assert the
+// historical invariant: the first six `audiences` seed slugs must exactly
+// match what the legacy enum used to allow, in order.
+const LEGACY_EVENT_AUDIENCE_VALUES = [
+  "engineers",
+  "founders",
+  "marketers",
+  "product",
+  "researchers",
+  "mixed",
+] as const;
 
 describe("AUDIENCE_SEED", () => {
   it("has unique slugs", () => {
@@ -17,7 +31,7 @@ describe("AUDIENCE_SEED", () => {
 
   it("first six slugs exactly equal the legacy EVENT_AUDIENCE_OPTIONS values, in order", () => {
     const firstSix = AUDIENCE_SEED.slice(0, 6).map((a) => a.slug);
-    expect(firstSix).toEqual([...EVENT_AUDIENCE_OPTIONS]);
+    expect(firstSix).toEqual([...LEGACY_EVENT_AUDIENCE_VALUES]);
   });
 
   it("includes executives as the seventh entry", () => {

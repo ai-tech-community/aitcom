@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import {
-  EVENT_AUDIENCE_OPTIONS,
   EVENT_FOCUS_OPTIONS,
   EVENT_FORMAT_OPTIONS,
   EVENT_LEVEL_OPTIONS,
@@ -27,7 +26,12 @@ export const discoveredEventImportSchema = z.object({
   city: optionalTrimmedString,
   focus: z.enum(EVENT_FOCUS_OPTIONS).optional(),
   level: z.enum(EVENT_LEVEL_OPTIONS).optional(),
-  audience: z.array(z.enum(EVENT_AUDIENCE_OPTIONS)).max(6).optional(),
+  // Slugs — the stable public audience vocabulary (CONTEXT.md [[audience]]).
+  // Passed through unresolved; whatever eventually writes this draft to
+  // `events` (via event-upsert-data.ts's buildEventPayloadData /
+  // resolveAudienceIds) is responsible for resolving slugs to `audiences`
+  // relationship ids.
+  audience: z.array(z.string()).max(8).optional(),
   sourceUrl: z.url().optional(),
   aitFitScore: z.number().min(1).max(10).optional(),
   tags: z.array(z.string().trim().min(1).max(50)).max(20).optional(),
