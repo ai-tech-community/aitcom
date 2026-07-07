@@ -200,7 +200,7 @@ export interface Audience {
    */
   preferredSlots?:
     | {
-        weekdays?: ('mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun')[] | null;
+        weekdays: ('mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun')[];
         startTime: string;
         endTime: string;
         id?: string | null;

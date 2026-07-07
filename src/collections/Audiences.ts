@@ -1,14 +1,21 @@
 import type { CollectionConfig } from "payload";
 
-const WEEKDAY_OPTIONS = [
-  { label: "Monday", value: "mon" },
-  { label: "Tuesday", value: "tue" },
-  { label: "Wednesday", value: "wed" },
-  { label: "Thursday", value: "thu" },
-  { label: "Friday", value: "fri" },
-  { label: "Saturday", value: "sat" },
-  { label: "Sunday", value: "sun" },
-];
+import { WEEKDAY_VALUES } from "@/lib/audience-seed";
+
+const WEEKDAY_LABELS: Record<(typeof WEEKDAY_VALUES)[number], string> = {
+  mon: "Monday",
+  tue: "Tuesday",
+  wed: "Wednesday",
+  thu: "Thursday",
+  fri: "Friday",
+  sat: "Saturday",
+  sun: "Sunday",
+};
+
+const WEEKDAY_OPTIONS = WEEKDAY_VALUES.map((value) => ({
+  label: WEEKDAY_LABELS[value],
+  value,
+}));
 
 export const Audiences: CollectionConfig = {
   slug: "audiences",
@@ -41,6 +48,7 @@ export const Audiences: CollectionConfig = {
           name: "weekdays",
           type: "select",
           hasMany: true,
+          required: true,
           options: WEEKDAY_OPTIONS,
         },
         { name: "startTime", type: "text", required: true },

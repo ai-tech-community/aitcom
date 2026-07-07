@@ -198,7 +198,9 @@ export default async function EventDetailPage({
   // above) into full Audience docs. Non-populated (bare id) entries are
   // guarded out defensively rather than trusted.
   const audience = (Array.isArray(event.audience) ? event.audience : [])
-    .filter((entry): entry is Audience => typeof entry === "object")
+    .filter(
+      (entry): entry is Audience => typeof entry === "object" && entry !== null,
+    )
     .map((entry) => entry.name);
   const attendanceMode =
     event.format === "online"
