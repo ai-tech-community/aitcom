@@ -61,6 +61,10 @@ describe("CONFLICT_GRADE_ORDER", () => {
   it("orders grades most severe first", () => {
     expect(CONFLICT_GRADE_ORDER).toEqual(["clash", "same-evening", "same-day"]);
   });
+
+  it("is frozen so downstream sorts cannot mutate shared module state", () => {
+    expect(Object.isFrozen(CONFLICT_GRADE_ORDER)).toBe(true);
+  });
 });
 
 describe("evaluateConflict", () => {
@@ -135,13 +139,128 @@ describe("evaluateConflict", () => {
   });
 
   it("grades same local day, start times >4h apart, as same-day", () => {
-    // Start-to-start gap is 8 hours; both in-person but the +-60min pads
-    // (9:00-13:00Z vs 17:00-21:00Z) still don't overlap.
+    // Start-to-start gap is 8 hours; both in-person but the +-60min padded
+    // windows (09:00-13:00 CEST vs 17:00-21:00 CEST, i.e. 07:00-11:00Z vs
+    // 15:00-19:00Z) still don't overlap.
     const candidate = makeCandidate({ startTime: "10:00", endTime: "12:00" });
     const event = makeEvent({ startTime: "18:00", endTime: "20:00" });
     const verdict = evaluateConflict(candidate, event, NO_RELATED);
     expect(verdict?.grade).toBe("same-day");
     expect(verdict?.overlapMinutes).toBeNull();
+  });
+
+  it("returns null when equal date strings hide different event-local days (20:00 Amsterdam vs 20:00 Los Angeles)", () => {
+    // Candidate 2026-07-15 20:00-22:00 CEST = 18:00-20:00Z. Corpus
+    // 2026-07-15 20:00-22:00 PDT = 2026-07-16T03:00-05:00Z. Projected into
+    // the candidate's timezone the corpus start is 05:00 CEST on Jul 16 —
+    // a different event-local day, so no conflict despite equal `date`
+    // strings and a 9-hour start gap.
+    const candidate = makeCandidate({
+      format: "online",
+      date: "2026-07-15",
+      startTime: "20:00",
+      endTime: "22:00",
+      timezone: AMSTERDAM,
+      city: null,
+      latitude: null,
+      longitude: null,
+    });
+    const event = makeEvent({
+      format: "online",
+      date: "2026-07-15",
+      startTime: "20:00",
+      endTime: "22:00",
+      timezone: "America/Los_Angeles",
+      city: null,
+      latitude: null,
+      longitude: null,
+    });
+    expect(evaluateConflict(candidate, event, NO_RELATED)).toBeNull();
+  });
+
+  it("grades a cross-midnight 30-minute real-time gap (23:30 New York vs 08:00 Amsterdam next date) as same-evening", () => {
+    // Candidate 2026-07-15 23:30 EDT + 120min default = 03:30-05:30Z.
+    // Corpus 2026-07-16 08:00 CEST + 120min default = 06:00-08:00Z. The
+    // starts are 2.5h apart (a 30-minute raw gap), so this is the same
+    // evening for a shared audience even though the raw date strings differ
+    // and the corpus start falls on the next calendar day in the
+    // candidate's timezone.
+    const candidate = makeCandidate({
+      format: "online",
+      date: "2026-07-15",
+      startTime: "23:30",
+      endTime: null,
+      timezone: "America/New_York",
+      city: null,
+      latitude: null,
+      longitude: null,
+    });
+    const event = makeEvent({
+      format: "online",
+      date: "2026-07-16",
+      startTime: "08:00",
+      endTime: null,
+      timezone: AMSTERDAM,
+      city: null,
+      latitude: null,
+      longitude: null,
+    });
+    const verdict = evaluateConflict(candidate, event, NO_RELATED);
+    expect(verdict?.grade).toBe("same-evening");
+    expect(verdict?.overlapMinutes).toBeNull();
+  });
+
+  it("grades two all-day events with equal date strings as same-day even across timezones", () => {
+    // Neither side has a start instant, so the raw calendar-date strings
+    // are the only available day semantics (documented in rule.ts).
+    const candidate = makeCandidate({
+      format: "online",
+      date: "2026-07-15",
+      startTime: null,
+      endTime: null,
+      timezone: AMSTERDAM,
+      city: null,
+      latitude: null,
+      longitude: null,
+    });
+    const event = makeEvent({
+      format: "online",
+      date: "2026-07-15",
+      startTime: null,
+      endTime: null,
+      timezone: "America/Los_Angeles",
+      city: null,
+      latitude: null,
+      longitude: null,
+    });
+    const verdict = evaluateConflict(candidate, event, NO_RELATED);
+    expect(verdict?.grade).toBe("same-day");
+    expect(verdict?.overlapMinutes).toBeNull();
+  });
+
+  it("treats hybrid as in-person for the catchment gate and applies the travel pad", () => {
+    // Hybrid candidate in Amsterdam vs in-person corpus in Utrecht (~36km):
+    // catchment passes on coords, and because one side is hybrid the +-60min
+    // pads apply — 16:00-18:00 vs 18:45-20:45 CEST touch only via pads, so
+    // this is a clash with 0 raw overlap (an online<->online pair with these
+    // times would be same-evening).
+    const candidate = makeCandidate({
+      format: "hybrid",
+      startTime: "16:00",
+      endTime: "18:00",
+      city: "Amsterdam",
+      ...AMSTERDAM_COORDS,
+    });
+    const event = makeEvent({
+      format: "in-person",
+      startTime: "18:45",
+      endTime: "20:45",
+      city: "Utrecht",
+      ...UTRECHT_COORDS,
+    });
+    const verdict = evaluateConflict(candidate, event, NO_RELATED);
+    expect(verdict?.grade).toBe("clash");
+    expect(verdict?.overlapMinutes).toBe(0);
   });
 
   it("fails the catchment gate for in-person events with coords >50km apart", () => {

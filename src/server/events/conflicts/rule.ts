@@ -12,7 +12,7 @@
  * construction (it takes plain data in, returns plain data out).
  */
 
-import { eventWallTimeToUtc } from "@/lib/event-time";
+import { eventWallTimeToUtc, instantToZonedDateString } from "@/lib/event-time";
 import { haversineDistanceKm } from "@/lib/geo";
 
 export interface ConflictCandidate {
@@ -46,12 +46,15 @@ export interface ConflictVerdict {
   overlapMinutes: number | null; // when a padded time overlap exists
 }
 
-/** Most severe first — used for sorting verdict lists. */
-export const CONFLICT_GRADE_ORDER: ConflictGrade[] = [
+/**
+ * Most severe first — used for sorting verdict lists. Frozen: this is shared
+ * module state, and a downstream in-place `.sort()` must not mutate it.
+ */
+export const CONFLICT_GRADE_ORDER: readonly ConflictGrade[] = Object.freeze([
   "clash",
   "same-evening",
   "same-day",
-];
+]);
 
 const MINUTE_MS = 60_000;
 const DEFAULT_DURATION_MS = 120 * MINUTE_MS;
@@ -75,6 +78,11 @@ function calendarDateKey(date: string): string {
 
 function sameCalendarDay(a: string, b: string): boolean {
   return calendarDateKey(a) === calendarDateKey(b);
+}
+
+/** Calendar date (YYYY-MM-DD) of a UTC epoch-ms instant as observed in `timezone`. */
+function instantDayInZone(epochMs: number, timezone: string): string {
+  return instantToZonedDateString(new Date(epochMs).toISOString(), timezone);
 }
 
 function isOnline(format: ConflictCandidate["format"]): boolean {
@@ -144,20 +152,43 @@ interface TimeGradeResult {
 
 /**
  * Time grade. Missing `startTime` on either side falls back to all-day
- * semantics (same calendar day or nothing). Otherwise both intervals are
- * built (defaulting a missing `endTime` to a 120-minute duration), padded
- * +-60 minutes when either side is in-person/hybrid, and tested for overlap.
- * A padded overlap is a `clash` (reporting the raw, unpadded overlap in
- * minutes, floored at 0). Failing that, same calendar day with a
- * start-to-start gap of at most 4 hours is `same-evening`, otherwise
- * `same-day`; different calendar days produce no conflict.
+ * semantics (same event-local calendar day or nothing). Otherwise both
+ * intervals are built (defaulting a missing `endTime` to a 120-minute
+ * duration), padded +-60 minutes when either side is in-person/hybrid, and
+ * tested for overlap. A padded overlap is a `clash` (reporting the raw,
+ * unpadded overlap in minutes, floored at 0). Failing that, a start-to-start
+ * gap of at most 4 hours is `same-evening` — real-time adjacency counts even
+ * across a local midnight (23:30 New York back-to-back with 08:00 Amsterdam
+ * the next calendar date is still the same evening for a shared audience).
+ * Else, same calendar day with both start instants projected into the
+ * candidate's timezone → `same-day`; different days → no conflict.
  */
 function computeTimeGrade(
   candidate: TimeFields,
   event: TimeFields,
 ): TimeGradeResult | null {
   if (!candidate.startTime || !event.startTime) {
-    if (!sameCalendarDay(candidate.date, event.date)) return null;
+    if (candidate.startTime || event.startTime) {
+      // Exactly one side is all-day: project the timed side's start instant
+      // into the candidate's timezone and compare with the all-day side's
+      // authoritative calendar date.
+      const [timed, allDay] = candidate.startTime
+        ? [candidate, event]
+        : [event, candidate];
+      const timedDay = instantDayInZone(
+        eventWallTimeToUtc(
+          timed.date,
+          timed.startTime!,
+          timed.timezone,
+        ).getTime(),
+        candidate.timezone,
+      );
+      if (timedDay !== calendarDateKey(allDay.date)) return null;
+    } else if (!sameCalendarDay(candidate.date, event.date)) {
+      // Both sides are all-day: no instant exists on either side, so raw
+      // calendar-date-string equality is the only available semantics.
+      return null;
+    }
     return { grade: "same-day", overlapMinutes: null };
   }
 
@@ -204,13 +235,23 @@ function computeTimeGrade(
     };
   }
 
-  if (!sameCalendarDay(candidate.date, event.date)) return null;
-
+  // Same-evening is about real-time adjacency for the attendee, so the
+  // start-gap check comes first and deliberately ignores calendar days: two
+  // events 2.5h apart straddling a local midnight still compete for the same
+  // evening.
   const startGapMs = Math.abs(candidateStart - eventStart);
-  return {
-    grade: startGapMs <= SAME_EVENING_GAP_MS ? "same-evening" : "same-day",
-    overlapMinutes: null,
-  };
+  if (startGapMs <= SAME_EVENING_GAP_MS) {
+    return { grade: "same-evening", overlapMinutes: null };
+  }
+
+  // Same-day compares both start instants projected into the candidate's
+  // timezone — equal raw `date` strings can hide different event-local days
+  // (20:00 Amsterdam and 20:00 Los Angeles on the same date do not compete).
+  const candidateDay = instantDayInZone(candidateStart, candidate.timezone);
+  const eventDay = instantDayInZone(eventStart, candidate.timezone);
+  if (candidateDay !== eventDay) return null;
+
+  return { grade: "same-day", overlapMinutes: null };
 }
 
 /** Lowers a grade by one step; `same-day` is the floor. */
