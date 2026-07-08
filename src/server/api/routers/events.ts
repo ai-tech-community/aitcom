@@ -1063,7 +1063,12 @@ export const eventsRouter = createTRPCRouter({
         slug: e.slug,
         type: e.type,
         date: e.date,
+        startTime: e.startTime ?? null,
+        endTime: e.endTime ?? null,
+        timezone: e.timezone ?? null,
         location: e.location,
+        format: e.format ?? null,
+        city: e.city ?? null,
         status: e.status,
         submittedBy: e.submittedBy ?? null,
         communityId: community.id,
@@ -1075,6 +1080,18 @@ export const eventsRouter = createTRPCRouter({
           e.coverImage && typeof e.coverImage === "object"
             ? ((e.coverImage as { url?: string }).url ?? null)
             : null,
+        // `e.audience` is populated (depth: 1 above) with full `Audience`
+        // docs; expose slug + name for the queue's conflict-check badge
+        // (I-T4 / #208). Entries that come back as bare ids (unpopulated)
+        // are dropped defensively — mirrors getEventForEdit above.
+        audience: Array.isArray(e.audience)
+          ? e.audience
+              .filter(
+                (entry): entry is Audience =>
+                  typeof entry === "object" && entry !== null,
+              )
+              .map((entry) => ({ slug: entry.slug, name: entry.name }))
+          : [],
       }));
     }),
 

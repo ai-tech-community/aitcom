@@ -179,6 +179,7 @@
     "conflictRetry": "Retry",
     "conflictShowMore": "+{count} more",
     "conflictShowFewer": "Show fewer",
+    "pendingConflictBadgeAriaLabel": "{count} conflicts found, highest severity {grade}",
     "slotSuggestionsSectionLabel": "Suggested times",
     "slotReasonClear": "Clear",
     "slotReasonPreferred": "Preferred by {audience}",

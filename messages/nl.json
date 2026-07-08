@@ -179,6 +179,7 @@
     "conflictRetry": "Opnieuw proberen",
     "conflictShowMore": "+{count} meer",
     "conflictShowFewer": "Minder tonen",
+    "pendingConflictBadgeAriaLabel": "{count} conflicten gevonden, hoogste ernst {grade}",
     "slotSuggestionsSectionLabel": "Voorgestelde tijden",
     "slotReasonClear": "Vrij",
     "slotReasonPreferred": "Voorkeur van {audience}",

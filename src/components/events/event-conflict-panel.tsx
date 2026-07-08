@@ -73,7 +73,10 @@ const REST_MAX_HEIGHT_CLASS = "max-h-32";
 // panel's ~240px vertical budget.
 const COMPACT_BADGE_CLASS = "py-0 font-mono text-[10px] leading-4 uppercase";
 
-const GRADE_BADGE_VARIANT: Record<
+// Exported so the approval-queue badge (Task 4 / #208) can render a
+// summary chip in the same visual language as `ConflictRow` without
+// re-deriving the grade → variant/icon/label mapping.
+export const GRADE_BADGE_VARIANT: Record<
   ConflictGrade,
   "destructive" | "warning" | "info"
 > = {
@@ -82,7 +85,7 @@ const GRADE_BADGE_VARIANT: Record<
   "same-day": "info",
 };
 
-const GRADE_ICON: Record<
+export const GRADE_ICON: Record<
   ConflictGrade,
   React.ComponentType<{
     className?: string;
@@ -94,7 +97,7 @@ const GRADE_ICON: Record<
   "same-day": Info,
 };
 
-const GRADE_LABEL_KEY: Record<ConflictGrade, string> = {
+export const GRADE_LABEL_KEY: Record<ConflictGrade, string> = {
   clash: "conflictGradeClash",
   "same-evening": "conflictGradeSameEvening",
   "same-day": "conflictGradeSameDay",
