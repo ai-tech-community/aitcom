@@ -36,10 +36,13 @@ import {
   type EventType,
 } from "@/lib/event-metadata";
 import { DEFAULT_EVENT_TIMEZONE } from "@/lib/event-time";
+import { cn } from "@/lib/utils";
 import {
   EventConflictPanel,
+  SlotSuggestionChips,
   type ConflictCheckInput,
   type ConflictPanelState,
+  type SlotSuggestionTriple,
 } from "@/components/events/event-conflict-panel";
 
 // Debounce delay for the live conflict check — long enough that typing a
@@ -102,7 +105,7 @@ function getMutationErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-interface EventFormData {
+export interface EventFormData {
   title: string;
   summary: string;
   description: string;
@@ -133,7 +136,7 @@ interface EventFormData {
   coverImageUrl: string | null;
 }
 
-const emptyForm: EventFormData = {
+export const emptyEventFormData: EventFormData = {
   title: "",
   summary: "",
   description: "",
@@ -172,6 +175,69 @@ interface EventFormDialogProps {
   isAdminOrOwner?: boolean;
 }
 
+/**
+ * Maps form state to the `createEvent`/`updateEvent`/`resubmitEvent` mutation
+ * payload shape. Pure and exported so #210 (explicit audience clear on edit)
+ * is unit-testable without rendering the dialog — see event-form-dialog.test.tsx.
+ *
+ * #210: an edit/resubmit must be able to send `audience: []` as an explicit
+ * "clear every audience" — the server (I-T1) now honors an empty array on
+ * update rather than treating it as "no change". Create (and the initial
+ * submit-for-approval flow) keeps omit-when-empty: the server requires at
+ * least one audience on create, so an empty array there is a validation
+ * error, never an intentional clear.
+ */
+export function buildEventSubmitPayload(
+  form: EventFormData,
+  mode: EventFormDialogProps["mode"],
+  communitySlug: string,
+) {
+  const isEditingMode = mode === "edit" || mode === "resubmit";
+  const parsedTags = form.tags
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
+  return {
+    communitySlug,
+    title: form.title,
+    summary: form.summary || undefined,
+    description: form.description || undefined,
+    type: form.type,
+    date: form.date,
+    startTime: form.startTime || undefined,
+    endTime: form.endTime || undefined,
+    timezone: form.timezone || undefined,
+    location: form.location,
+    format: form.format || undefined,
+    region: form.region || undefined,
+    country: form.country || undefined,
+    city: form.city || undefined,
+    focus: form.focus || undefined,
+    level: form.level || undefined,
+    audience: isEditingMode
+      ? form.audience
+      : form.audience.length
+        ? form.audience
+        : undefined,
+    sourceUrl: form.sourceUrl || undefined,
+    aitFitScore: form.aitFitScore ? parseInt(form.aitFitScore, 10) : undefined,
+    tags: parsedTags.length ? parsedTags : undefined,
+    curatedByAgent: form.curatedByAgent,
+    discoverySource: form.discoverySource || undefined,
+    confidenceScore: form.confidenceScore
+      ? parseFloat(form.confidenceScore)
+      : undefined,
+    lastVerifiedAt: form.lastVerifiedAt || undefined,
+    videoUrl: form.videoUrl || undefined,
+    maxAttendees: form.maxAttendees
+      ? parseInt(form.maxAttendees, 10)
+      : undefined,
+    // number = keep/replace, null = clear (server clears on null, leaves on undefined)
+    coverImage: form.coverImageId,
+  };
+}
+
 export function EventFormDialog({
   slug,
   mode,
@@ -183,7 +249,7 @@ export function EventFormDialog({
   const t = useTranslations("events");
   const tc = useTranslations("common");
   const utils = api.useUtils();
-  const [form, setForm] = useState<EventFormData>(emptyForm);
+  const [form, setForm] = useState<EventFormData>(emptyEventFormData);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [coverUploading, setCoverUploading] = useState(false);
 
@@ -271,12 +337,48 @@ export function EventFormDialog({
           ? "conflicts"
           : "clear";
 
+  // T3 (#207): applying a suggested slot writes the three fields, then
+  // briefly rings the date/start/end inputs so the organizer sees exactly
+  // what changed — the debounced conflict check re-runs on its own once
+  // `form.date`/`form.startTime`/`form.endTime` settle, same as manual edits.
+  const [slotApplyFlash, setSlotApplyFlash] = useState(false);
+  const slotApplyFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  useEffect(() => {
+    return () => {
+      if (slotApplyFlashTimeoutRef.current)
+        clearTimeout(slotApplyFlashTimeoutRef.current);
+    };
+  }, []);
+
+  const applySuggestion = (slot: SlotSuggestionTriple) => {
+    setForm((current) => ({
+      ...current,
+      date: slot.date,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+    }));
+    if (slotApplyFlashTimeoutRef.current)
+      clearTimeout(slotApplyFlashTimeoutRef.current);
+    setSlotApplyFlash(true);
+    slotApplyFlashTimeoutRef.current = setTimeout(
+      () => setSlotApplyFlash(false),
+      1000,
+    );
+  };
+
+  const slotApplyFlashClass = slotApplyFlash
+    ? "ring-success/60 ring-2 transition-shadow duration-200 motion-reduce:transition-none"
+    : "";
+
   useEffect(() => {
     if (!open) return;
     if (isEditing) {
       if (!editData) return;
       setForm({
-        ...emptyForm,
+        ...emptyEventFormData,
         title: editData.title,
         summary: editData.summary,
         description: editData.description,
@@ -315,7 +417,7 @@ export function EventFormDialog({
       // New events default their timezone from the organizer's browser —
       // geocoding (Nominatim) can't tell us the zone, so the organizer's own
       // zone is the best available signal. They can still override it below.
-      setForm({ ...emptyForm, timezone: getBrowserTimeZone() });
+      setForm({ ...emptyEventFormData, timezone: getBrowserTimeZone() });
       setImportUrl("");
     }
   }, [open, isEditing, editData]);
@@ -362,45 +464,7 @@ export function EventFormDialog({
       toast.error(getMutationErrorMessage(error, "Failed to resubmit event")),
   });
 
-  const parsedTags = form.tags
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-
-  const payload = {
-    communitySlug: slug,
-    title: form.title,
-    summary: form.summary || undefined,
-    description: form.description || undefined,
-    type: form.type,
-    date: form.date,
-    startTime: form.startTime || undefined,
-    endTime: form.endTime || undefined,
-    timezone: form.timezone || undefined,
-    location: form.location,
-    format: form.format || undefined,
-    region: form.region || undefined,
-    country: form.country || undefined,
-    city: form.city || undefined,
-    focus: form.focus || undefined,
-    level: form.level || undefined,
-    audience: form.audience.length ? form.audience : undefined,
-    sourceUrl: form.sourceUrl || undefined,
-    aitFitScore: form.aitFitScore ? parseInt(form.aitFitScore, 10) : undefined,
-    tags: parsedTags.length ? parsedTags : undefined,
-    curatedByAgent: form.curatedByAgent,
-    discoverySource: form.discoverySource || undefined,
-    confidenceScore: form.confidenceScore
-      ? parseFloat(form.confidenceScore)
-      : undefined,
-    lastVerifiedAt: form.lastVerifiedAt || undefined,
-    videoUrl: form.videoUrl || undefined,
-    maxAttendees: form.maxAttendees
-      ? parseInt(form.maxAttendees, 10)
-      : undefined,
-    // number = keep/replace, null = clear (server clears on null, leaves on undefined)
-    coverImage: form.coverImageId,
-  };
+  const payload = buildEventSubmitPayload(form, mode, slug);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -601,6 +665,7 @@ export function EventFormDialog({
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
                   required
+                  className={cn(slotApplyFlashClass)}
                 />
               </div>
               <div className="space-y-2">
@@ -612,6 +677,7 @@ export function EventFormDialog({
                   onChange={(e) =>
                     setForm({ ...form, startTime: e.target.value })
                   }
+                  className={cn(slotApplyFlashClass)}
                 />
               </div>
               <div className="space-y-2">
@@ -623,6 +689,7 @@ export function EventFormDialog({
                   onChange={(e) =>
                     setForm({ ...form, endTime: e.target.value })
                   }
+                  className={cn(slotApplyFlashClass)}
                 />
               </div>
               <div className="space-y-2">
@@ -651,7 +718,17 @@ export function EventFormDialog({
                 conflicts={conflictCheck.data?.conflicts ?? []}
                 checkedAudiences={conflictCheck.data?.checkedAudiences ?? []}
                 onRetry={() => void conflictCheck.refetch()}
-              />
+              >
+                {/* SlotSuggestionChips itself renders null when there are no
+                    suggestions; the panel only mounts `children` inside its
+                    "conflicts" frame, so this stays out of the other states. */}
+                <SlotSuggestionChips
+                  suggestions={conflictCheck.data?.suggestions ?? []}
+                  checkedAudiences={conflictCheck.data?.checkedAudiences ?? []}
+                  timezone={form.timezone || DEFAULT_EVENT_TIMEZONE}
+                  onApply={applySuggestion}
+                />
+              </EventConflictPanel>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="event-location">{t("eventLocation")}</Label>
                 <Input

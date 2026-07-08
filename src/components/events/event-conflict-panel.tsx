@@ -19,7 +19,7 @@
  */
 
 import { Fragment, useId, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -32,7 +32,8 @@ import {
 import type { RouterInputs } from "@/trpc/react";
 import type { WireConflict } from "@/server/events/conflicts/corpus";
 import type { ConflictGrade } from "@/server/events/conflicts/rule";
-import { formatEventTimeRange } from "@/lib/event-time";
+import type { SlotSuggestion } from "@/server/events/conflicts/suggest";
+import { eventWallTimeToUtc, formatEventTimeRange } from "@/lib/event-time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -202,6 +203,118 @@ export function ConflictRow({ conflict }: { conflict: WireConflict }) {
         </div>
       )}
     </li>
+  );
+}
+
+/** The (date, startTime, endTime) triple a chip click hands back to the
+ * dialog — deliberately narrower than `SlotSuggestion` so `onApply` can never
+ * see `reasons`/`dayOffset` and accidentally leak them into form state. */
+export type SlotSuggestionTriple = Pick<
+  SlotSuggestion,
+  "date" | "startTime" | "endTime"
+>;
+
+export interface SlotSuggestionChipsProps {
+  /** Server caps this at 5. */
+  suggestions: SlotSuggestion[];
+  checkedAudiences: CheckedAudience[];
+  /** Event timezone (already defaulted by the caller) — anchors the
+   * weekday/date label so it never drifts a day at a UTC boundary. */
+  timezone: string;
+  onApply: (slot: SlotSuggestionTriple) => void;
+}
+
+/** "Wed, Jul 15 · 18:00–20:00", locale- and timezone-aware. Anchored at
+ * noon (mirrors `suggest.ts`'s own `weekdayOfDateInZone`) so DST-boundary
+ * dates still resolve to the correct calendar day. */
+function formatSuggestionDateTime(
+  suggestion: SlotSuggestionTriple,
+  timezone: string,
+  locale: string,
+): string {
+  const instant = eventWallTimeToUtc(suggestion.date, "12:00", timezone);
+  const dateLabel = new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: timezone,
+  }).format(instant);
+  return `${dateLabel} · ${suggestion.startTime}–${suggestion.endTime}`;
+}
+
+/** Machine reason codes → display copy, resolving `preferred:<slug>` against
+ * the audiences the organizer actually checked (never an arbitrary lookup —
+ * a suggestion's reasons are always a subset of the checked audiences). */
+function reasonLabels(
+  reasons: string[],
+  checkedAudiences: CheckedAudience[],
+  t: ReturnType<typeof useTranslations>,
+): string[] {
+  return reasons.map((reason) => {
+    if (reason === "clear") return t("slotReasonClear");
+    if (reason === "original-time") return t("slotReasonOriginalTime");
+    if (reason.startsWith("preferred:")) {
+      const slug = reason.slice("preferred:".length);
+      const audience =
+        checkedAudiences.find((a) => a.slug === slug)?.name ?? slug;
+      return t("slotReasonPreferred", { audience });
+    }
+    return reason;
+  });
+}
+
+/**
+ * One-click alternative-slot chips (Slice I, #207). Pure display + callback —
+ * the dialog owns applying a chosen slot to form state and re-running the
+ * debounced conflict check. Mounted via the panel's `children` seam so it
+ * only ever renders inside the "conflicts" frame (see `EventConflictPanel`).
+ */
+export function SlotSuggestionChips({
+  suggestions,
+  checkedAudiences,
+  timezone,
+  onApply,
+}: SlotSuggestionChipsProps) {
+  const t = useTranslations("events");
+  const locale = useLocale();
+
+  if (suggestions.length === 0) return null;
+
+  return (
+    <div className="mt-2">
+      <SectionLabel as="p" bordered={false} className="mb-1">
+        {t("slotSuggestionsSectionLabel")}
+      </SectionLabel>
+      <ul className="flex flex-wrap gap-1.5">
+        {suggestions.map((suggestion) => (
+          <li
+            key={`${suggestion.date}|${suggestion.startTime}|${suggestion.endTime}`}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                onApply({
+                  date: suggestion.date,
+                  startTime: suggestion.startTime,
+                  endTime: suggestion.endTime,
+                })
+              }
+            >
+              <span className="font-mono">
+                {formatSuggestionDateTime(suggestion, timezone, locale)}
+              </span>
+              <span className="text-muted-foreground font-normal normal-case">
+                {reasonLabels(suggestion.reasons, checkedAudiences, t).join(
+                  " · ",
+                )}
+              </span>
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

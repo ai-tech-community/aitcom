@@ -4,11 +4,13 @@ import { render, screen, within, fireEvent } from "@testing-library/react";
 vi.mock("next-intl", () => ({
   useTranslations: () => (k: string, vars?: Record<string, unknown>) =>
     vars ? `${k}:${JSON.stringify(vars)}` : k,
+  useLocale: () => "en-US",
 }));
 
 import {
   ConflictRow,
   EventConflictPanel,
+  SlotSuggestionChips,
   type EventConflictPanelProps,
 } from "./event-conflict-panel";
 import type {
@@ -16,6 +18,7 @@ import type {
   TentativeWireConflict,
   WireConflict,
 } from "@/server/events/conflicts/corpus";
+import type { SlotSuggestion } from "@/server/events/conflicts/suggest";
 
 const revealed = (
   overrides: Partial<RevealedWireConflict> = {},
@@ -191,5 +194,134 @@ describe("ConflictRow", () => {
     render(<ConflictRow conflict={tentative({ grade: "same-day" })} />);
     expect(screen.getByText(/conflictTentativeHold/)).toBeInTheDocument();
     expect(screen.queryByText("conflictGradeSameDay")).not.toBeInTheDocument();
+  });
+});
+
+describe("SlotSuggestionChips", () => {
+  const baseSuggestion: SlotSuggestion = {
+    date: "2026-07-15",
+    startTime: "18:00",
+    endTime: "20:00",
+    reasons: ["clear"],
+    dayOffset: 0,
+  };
+
+  function renderChips(
+    overrides: {
+      suggestions?: SlotSuggestion[];
+      onApply?: (slot: {
+        date: string;
+        startTime: string;
+        endTime: string;
+      }) => void;
+    } = {},
+  ) {
+    const onApply = overrides.onApply ?? vi.fn();
+    const utils = render(
+      <SlotSuggestionChips
+        suggestions={overrides.suggestions ?? [baseSuggestion]}
+        checkedAudiences={checkedAudiences}
+        timezone="Europe/Amsterdam"
+        onApply={onApply}
+      />,
+    );
+    return { ...utils, onApply };
+  }
+
+  it("renders nothing when there are no suggestions", () => {
+    const { container } = renderChips({ suggestions: [] });
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders a chip with a mono locale-formatted date+time label", () => {
+    renderChips();
+    expect(screen.getByText("Wed, Jul 15 · 18:00–20:00")).toBeInTheDocument();
+  });
+
+  it("renders the clear reason annotation", () => {
+    renderChips({ suggestions: [{ ...baseSuggestion, reasons: ["clear"] }] });
+    expect(screen.getByText("slotReasonClear")).toBeInTheDocument();
+  });
+
+  it("renders the preferred-audience reason annotation, resolving the slug to a name", () => {
+    renderChips({
+      suggestions: [{ ...baseSuggestion, reasons: ["preferred:ai-engineers"] }],
+    });
+    expect(
+      screen.getByText(
+        `slotReasonPreferred:${JSON.stringify({ audience: "AI Engineers" })}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the original-time reason annotation", () => {
+    renderChips({
+      suggestions: [{ ...baseSuggestion, reasons: ["original-time"] }],
+    });
+    expect(screen.getByText("slotReasonOriginalTime")).toBeInTheDocument();
+  });
+
+  it("calls onApply with the exact {date,startTime,endTime} triple on click, dropping reasons/dayOffset", () => {
+    const { onApply } = renderChips({
+      suggestions: [
+        {
+          date: "2026-07-20",
+          startTime: "09:00",
+          endTime: "10:30",
+          reasons: ["clear", "preferred:founders"],
+          dayOffset: 5,
+        },
+      ],
+    });
+    fireEvent.click(screen.getByRole("button"));
+    expect(onApply).toHaveBeenCalledExactlyOnceWith({
+      date: "2026-07-20",
+      startTime: "09:00",
+      endTime: "10:30",
+    });
+  });
+
+  it("renders 3-5 chips as real, individually clickable buttons", () => {
+    const suggestions: SlotSuggestion[] = [
+      { ...baseSuggestion, startTime: "18:00" },
+      { ...baseSuggestion, startTime: "19:00" },
+      { ...baseSuggestion, startTime: "20:00" },
+    ];
+    renderChips({ suggestions });
+    expect(screen.getAllByRole("button")).toHaveLength(3);
+  });
+});
+
+const slotChipsBaseProps = {
+  suggestions: [
+    {
+      date: "2026-07-15",
+      startTime: "18:00",
+      endTime: "20:00",
+      reasons: ["clear"],
+      dayOffset: 0,
+    } satisfies SlotSuggestion,
+  ],
+  checkedAudiences,
+  timezone: "Europe/Amsterdam",
+  onApply: vi.fn(),
+};
+
+describe("EventConflictPanel + SlotSuggestionChips composition", () => {
+  it("does not render slot chips passed as children outside the conflicts state", () => {
+    renderPanel({
+      state: "clear",
+      children: <SlotSuggestionChips {...slotChipsBaseProps} />,
+    });
+    expect(screen.queryByRole("button", { name: /·/ })).not.toBeInTheDocument();
+  });
+
+  it("renders slot chips passed as children inside the conflicts state", () => {
+    renderPanel({
+      state: "conflicts",
+      conflicts: [revealed()],
+      children: <SlotSuggestionChips {...slotChipsBaseProps} />,
+    });
+    expect(screen.getByText("Wed, Jul 15 · 18:00–20:00")).toBeInTheDocument();
   });
 });
