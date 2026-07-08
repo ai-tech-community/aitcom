@@ -1563,7 +1563,7 @@ export const eventsRouter = createTRPCRouter({
   checkConflicts: protectedProcedure
     .input(
       z.object({
-        date: z.string().min(8),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}/),
         startTime: z
           .string()
           .regex(/^\d{2}:\d{2}$/)

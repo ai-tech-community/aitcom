@@ -33,7 +33,11 @@ export interface SuggestSlotsAudience {
   preferredSlots: { weekdays: Weekday[]; startTime: string; endTime: string }[];
 }
 
-const DEFAULT_WINDOW_DAYS = 7;
+/** Scan window (days each side of the organizer's chosen date). Exported so
+ * `corpus.ts` can derive its `fetchCorpus` date window from the same value —
+ * the two must stay in lock-step or suggestions at the window edge get
+ * scored against a truncated corpus. */
+export const DEFAULT_WINDOW_DAYS = 7;
 const DEFAULT_MAX_RESULTS = 5;
 
 /** Calendar-date key (YYYY-MM-DD) taken directly from the authoritative `date` field. */

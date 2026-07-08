@@ -16,6 +16,7 @@ import type { Payload } from "payload";
 import { DEFAULT_EVENT_TIMEZONE } from "@/lib/event-time";
 import type { Weekday } from "@/lib/audience-seed";
 import type { ConflictGrade, ConflictVerdict, CorpusEvent } from "./rule";
+import { DEFAULT_WINDOW_DAYS } from "./suggest";
 
 export interface ExpandedAudience {
   id: number;
@@ -158,7 +159,9 @@ export async function fetchCorpus(
   }));
 }
 
-const CORPUS_WINDOW_DAYS = 7;
+// Mirrors suggest.ts's scan window so a single corpus fetch always covers
+// every alternative slot `suggestSlots` might score (see corpusDateWindow).
+const CORPUS_WINDOW_DAYS = DEFAULT_WINDOW_DAYS;
 const CORPUS_WINDOW_BUFFER_DAYS = 1;
 
 /** Calendar-date key (YYYY-MM-DD) taken directly from the authoritative `date` field. */
