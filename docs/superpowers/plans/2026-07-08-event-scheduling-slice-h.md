@@ -52,12 +52,12 @@ export interface ConflictVerdict {
 **The rule (evaluateConflict(candidate, corpusEvent, relatedIdSet) → ConflictVerdict | null):**
 1. **Audience gate:** shared id in `audienceIds` → `direct`; else shared id when candidate's set is expanded with `relatedIdSet` → `related`; else **no conflict (null)**.
 2. **Catchment gate:** `online` matches any catchment (an online event competes with everything its audience could attend). Both sides effectively in-person (`in-person`, or `hybrid` on its in-person side) → same catchment iff (a) both have coords and `haversineDistanceKm ≤ 50`, or (b) coords missing on either and both `city` non-empty and equal case-insensitively (trimmed). In-person with no coords AND no city on either side → **not** same catchment (conservative: no false positives from unknown geography). Fail gate → null.
-3. **Time grade** (all instants via `eventWallTimeToUtc`):
-   - Missing `startTime` on either side → all-day semantics: same event-local calendar day (in the candidate's timezone) → grade `same-day`, `overlapMinutes: null`; different day → null.
-   - Missing `endTime` → assume 120-minute duration.
-   - Pad both intervals ±60 minutes when either side is in-person/hybrid (travel + fatigue buffer); no padding for online↔online.
-   - Padded intervals overlap → `clash` (+ report raw unpadded overlap minutes, 0 if only the pads touch).
-   - Else same event-local calendar day: start-to-start gap ≤ 4h → `same-evening`; else `same-day`. Different days → null.
+3. **Time grade** (all instants via `eventWallTimeToUtc`; precedence refined during T1 review — this text is authoritative, implemented in `rule.ts computeTimeGrade`):
+   - Missing `endTime` → assume 120-minute duration. Pad both intervals ±60 minutes when either side is in-person/hybrid; no padding online↔online.
+   - **(i) Clash:** padded intervals overlap → `clash` (+ raw unpadded overlap minutes, 0 if only pads touch).
+   - **(ii) Same-evening:** real-instant start-to-start gap ≤ 4h → `same-evening`, **day-independent** (two events 30 real minutes apart across local midnight/timezones are adjacent regardless of calendar labels).
+   - **(iii) Same-day:** both start instants projected into the **candidate's timezone** fall on the same calendar date → `same-day`. Else null.
+   - **All-day handling** (missing `startTime`): both sides all-day → raw date-string equality → `same-day` (only coherent option, no instants exist). Mixed: project the timed side's instant into the candidate's timezone and compare with the all-day side's authoritative date → `same-day` or null. All-day grades are capped at `same-day` with `overlapMinutes: null`.
 4. **Related downgrade:** `audienceMatch === "related"` lowers the grade one step (`clash`→`same-evening`, `same-evening`→`same-day`, `same-day` stays — the floor).
 5. Grade ordering export: `CONFLICT_GRADE_ORDER = ["clash", "same-evening", "same-day"]` (most severe first) for sorting.
 
