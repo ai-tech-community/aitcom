@@ -55,6 +55,7 @@ import {
   fetchCorpus,
   toWireConflict,
 } from "@/server/events/conflicts/corpus";
+import { resolveExcludeEventId } from "@/server/events/conflicts/exclude-ownership";
 import {
   evaluateConflict,
   CONFLICT_GRADE_ORDER,
@@ -1581,7 +1582,7 @@ export const eventsRouter = createTRPCRouter({
         excludeEventId: z.number().optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const timezone = isValidTimeZone(input.timezone)
         ? input.timezone
         : DEFAULT_EVENT_TIMEZONE;
@@ -1596,6 +1597,16 @@ export const eventsRouter = createTRPCRouter({
         return { conflicts: [], suggestions: [], checkedAudiences: [] };
       }
 
+      // #212: excludeEventId is honored only for the event's own submitter
+      // or a community owner/admin — otherwise dropped, so a caller can't
+      // sweep ids to de-anonymize someone else's tentative hold.
+      const excludeEventId = await resolveExcludeEventId(
+        payload,
+        ctx.db,
+        ctx.session,
+        input.excludeEventId,
+      );
+
       const checkedAudiences = direct.map(({ slug, name }) => ({
         slug,
         name,
@@ -1609,7 +1620,7 @@ export const eventsRouter = createTRPCRouter({
         dateFrom,
         dateTo,
         audienceIdsExpanded,
-        excludeEventId: input.excludeEventId,
+        excludeEventId,
       });
 
       const candidate: ConflictCandidate = {

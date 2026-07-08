@@ -13,7 +13,7 @@
 
 import type { Payload } from "payload";
 
-import { DEFAULT_EVENT_TIMEZONE } from "@/lib/event-time";
+import { DEFAULT_EVENT_TIMEZONE, isValidTimeZone } from "@/lib/event-time";
 import type { Weekday } from "@/lib/audience-seed";
 import type { ConflictGrade, ConflictVerdict, CorpusEvent } from "./rule";
 import { DEFAULT_WINDOW_DAYS } from "./suggest";
@@ -141,7 +141,11 @@ export async function fetchCorpus(
     date: doc.date,
     startTime: doc.startTime ?? null,
     endTime: doc.endTime ?? null,
-    timezone: doc.timezone ?? DEFAULT_EVENT_TIMEZONE,
+    // A garbage/legacy timezone value (bad IANA name) must not 500 the whole
+    // check — fall back the same as a missing one.
+    timezone: isValidTimeZone(doc.timezone)
+      ? doc.timezone
+      : DEFAULT_EVENT_TIMEZONE,
     // Online is the conservative widest-competition default: an event with
     // no recorded format is treated as competing with everything.
     format: doc.format ?? "online",
