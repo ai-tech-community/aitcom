@@ -11,9 +11,14 @@
  * `ConflictRow` is also exported standalone — Task 4 (#208) reuses it
  * read-only in the approval queue. `children` is a seam for Task 3 (#207) to
  * mount a slot-suggestion chip row inside the conflicts frame.
+ *
+ * Vertical budget: the row layout is deliberately two-line (~50px/row by
+ * class math) so the full 3-visible-row frame stays under the binding
+ * ~240px ceiling — see the height arithmetic in the task report before
+ * adding anything to a row.
  */
 
-import { useState } from "react";
+import { Fragment, useId, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   AlertTriangle,
@@ -62,6 +67,11 @@ export interface EventConflictPanelProps {
 const VISIBLE_ROWS = 3;
 const REST_MAX_HEIGHT_CLASS = "max-h-32";
 
+// py-0 + leading-4 keeps each badge at 18px (16px line + 2px border), so a
+// row's first line resolves to the title's 20px — load-bearing for the
+// panel's ~240px vertical budget.
+const COMPACT_BADGE_CLASS = "py-0 font-mono text-[10px] leading-4 uppercase";
+
 const GRADE_BADGE_VARIANT: Record<
   ConflictGrade,
   "destructive" | "warning" | "info"
@@ -99,19 +109,24 @@ function conflictRowKey(conflict: WireConflict, index: number): string {
 }
 
 /**
- * Single conflict row. Exported standalone for the approval queue (#208) to
- * reuse read-only. Renders the [[tentative-hold]] anonymized shape when
- * `conflict.tentative` — no title, time, or link fields exist on that variant
- * by wire contract, so there is nothing else to render for it.
+ * Single conflict row, two lines tall (vertical-budget compliant). Exported
+ * standalone for the approval queue (#208) to reuse read-only. Renders the
+ * [[tentative-hold]] anonymized shape when `conflict.tentative` — no title,
+ * time, or link fields exist on that variant by wire contract, so there is
+ * nothing else to render for it.
  */
 export function ConflictRow({ conflict }: { conflict: WireConflict }) {
   const t = useTranslations("events");
 
   if (conflict.tentative) {
     return (
-      <li className="border-info/40 bg-info/5 text-info flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm">
-        <Lock className="size-4 shrink-0" aria-hidden="true" />
-        <span>{t("conflictTentativeHold", { date: conflict.date })}</span>
+      <li className="py-1.5">
+        <p className="border-info/40 bg-info/5 text-info flex items-center gap-2 rounded-md border border-dashed px-2 py-1 text-sm">
+          <Lock className="size-4 shrink-0" aria-hidden="true" />
+          <span className="truncate">
+            {t("conflictTentativeHold", { date: conflict.date })}
+          </span>
+        </p>
       </li>
     );
   }
@@ -123,52 +138,68 @@ export function ConflictRow({ conflict }: { conflict: WireConflict }) {
     endTime: conflict.endTime,
     timezone: conflict.timezone,
   });
-  const overlapText =
-    conflict.overlapMinutes != null
-      ? t("conflictOverlapMinutes", { minutes: conflict.overlapMinutes })
-      : null;
-  const metaLine = [timeRange, overlapText].filter(Boolean).join(" · ");
+  const metaParts: React.ReactNode[] = [];
+  if (timeRange) metaParts.push(<span key="time">{timeRange}</span>);
+  if (conflict.overlapMinutes != null) {
+    metaParts.push(
+      <span key="overlap">
+        {t("conflictOverlapMinutes", { minutes: conflict.overlapMinutes })}
+      </span>,
+    );
+  }
+  if (conflict.audienceMatch === "related") {
+    metaParts.push(
+      <span key="related" className="truncate">
+        {t("conflictRelatedAudience")}
+      </span>,
+    );
+  }
 
   return (
-    <li className="flex flex-col gap-1 py-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <li className="flex flex-col gap-0.5 py-1.5">
+      <div className="flex min-w-0 items-center gap-2">
         <Badge
           variant={GRADE_BADGE_VARIANT[conflict.grade]}
-          className="gap-1 font-mono text-[10px] tracking-wide uppercase"
+          className={`shrink-0 gap-1 tracking-wide ${COMPACT_BADGE_CLASS}`}
         >
           <GradeIcon className="size-3" aria-hidden="true" />
           <span aria-hidden="true">/</span>
           {t(GRADE_LABEL_KEY[conflict.grade])}
         </Badge>
-        <span className="text-foreground text-sm font-medium">
+        <span className="text-foreground min-w-0 flex-1 truncate text-sm font-medium">
           {conflict.title}
         </span>
-      </div>
-      {metaLine && <p className="text-muted-foreground text-xs">{metaLine}</p>}
-      <div className="flex items-center gap-2">
-        <Badge variant="outline" className="font-mono text-[10px] uppercase">
+        <Badge
+          variant="outline"
+          className={`ml-auto shrink-0 ${COMPACT_BADGE_CLASS}`}
+        >
           {conflict.sourceType === "import"
             ? t("conflictSourceImport")
             : t("conflictSourceNative")}
         </Badge>
-        {conflict.sourceUrl && (
-          <a
-            href={conflict.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={t("conflictSourceLinkLabel", {
-              title: conflict.title,
-            })}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <ExternalLink className="size-3.5" aria-hidden="true" />
-          </a>
-        )}
       </div>
-      {conflict.audienceMatch === "related" && (
-        <p className="text-muted-foreground text-xs">
-          {t("conflictRelatedAudience")}
-        </p>
+      {(metaParts.length > 0 || conflict.sourceUrl) && (
+        <div className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs">
+          {metaParts.map((part, index) => (
+            <Fragment key={index}>
+              {index > 0 && <span aria-hidden="true">·</span>}
+              {part}
+            </Fragment>
+          ))}
+          {conflict.sourceUrl && (
+            <a
+              href={conflict.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t("conflictSourceLinkLabel", {
+                title: conflict.title,
+              })}
+              className="hover:text-foreground ml-auto shrink-0"
+            >
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+            </a>
+          )}
+        </div>
       )}
     </li>
   );
@@ -183,6 +214,7 @@ export function EventConflictPanel({
 }: EventConflictPanelProps) {
   const t = useTranslations("events");
   const [expanded, setExpanded] = useState(false);
+  const overflowRegionId = useId();
 
   if (state === "idle") return null;
 
@@ -190,7 +222,7 @@ export function EventConflictPanel({
     return (
       <div aria-live="polite" className="sm:col-span-2">
         <div className="bg-muted/40 rounded-lg border p-3">
-          <Skeleton className="h-10 w-full motion-reduce:animate-none" />
+          <Skeleton className="h-10 w-full" />
         </div>
       </div>
     );
@@ -231,7 +263,7 @@ export function EventConflictPanel({
   return (
     <div aria-live="polite" className="sm:col-span-2">
       <div className="bg-muted/40 rounded-lg border p-3">
-        <SectionLabel as="p" bordered={false} className="mb-2">
+        <SectionLabel as="p" bordered={false} className="mb-1">
           {t("conflictSectionLabel")}
         </SectionLabel>
         <ul className="divide-border/60 divide-y">
@@ -246,7 +278,8 @@ export function EventConflictPanel({
           <>
             {expanded && (
               <ul
-                className={`divide-border/60 mt-1 ${REST_MAX_HEIGHT_CLASS} divide-y overflow-y-auto`}
+                id={overflowRegionId}
+                className={`divide-border/60 ${REST_MAX_HEIGHT_CLASS} divide-y overflow-y-auto`}
               >
                 {rest.map((conflict, index) => (
                   <ConflictRow
@@ -258,8 +291,10 @@ export function EventConflictPanel({
             )}
             <button
               type="button"
+              aria-expanded={expanded}
+              aria-controls={overflowRegionId}
               onClick={() => setExpanded((current) => !current)}
-              className="text-muted-foreground hover:text-foreground mt-2 font-mono text-xs tracking-wide uppercase transition-colors motion-reduce:transition-none"
+              className="text-muted-foreground hover:text-foreground mt-1 font-mono text-xs tracking-wide uppercase transition-colors motion-reduce:transition-none"
             >
               {expanded
                 ? t("conflictShowFewer")
@@ -268,7 +303,7 @@ export function EventConflictPanel({
           </>
         )}
         {children}
-        <p className="text-muted-foreground mt-2 text-xs">
+        <p className="text-muted-foreground mt-1 text-[11px] leading-4">
           {t("conflictHonesty")}
         </p>
       </div>

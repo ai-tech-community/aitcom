@@ -139,12 +139,17 @@ describe("EventConflictPanel", () => {
     const expandButton = screen.getByRole("button", {
       name: `conflictShowMore:${JSON.stringify({ count: 1 })}`,
     });
+    expect(expandButton).toHaveAttribute("aria-expanded", "false");
+    expect(expandButton).toHaveAttribute("aria-controls");
     fireEvent.click(expandButton);
 
     expect(screen.getByText("Row Four")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "conflictShowFewer" }),
-    ).toBeInTheDocument();
+    const collapseButton = screen.getByRole("button", {
+      name: "conflictShowFewer",
+    });
+    expect(collapseButton).toHaveAttribute("aria-expanded", "true");
+    const controlledId = collapseButton.getAttribute("aria-controls")!;
+    expect(document.getElementById(controlledId)).toBeInTheDocument();
   });
 
   it("marks the conflicts results region aria-live=polite", () => {

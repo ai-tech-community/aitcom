@@ -216,10 +216,14 @@ export function EventFormDialog({
 
   useEffect(() => {
     if (conflictDebounceRef.current) clearTimeout(conflictDebounceRef.current);
-    if (!conflictGateMet) {
+    if (!open || !conflictGateMet) {
       setDebouncedConflictInput(undefined);
       return;
     }
+    // While the edit payload loads the dialog shows only a spinner and `form`
+    // still holds the previous open's values — don't schedule a check for a
+    // form the user can't see yet.
+    if (isEditing && editLoading) return;
     conflictDebounceRef.current = setTimeout(() => {
       setDebouncedConflictInput({
         date: form.date,
@@ -238,7 +242,9 @@ export function EventFormDialog({
         clearTimeout(conflictDebounceRef.current);
     };
   }, [
+    open,
     conflictGateMet,
+    editLoading,
     form.date,
     form.startTime,
     form.endTime,
