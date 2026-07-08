@@ -18,7 +18,6 @@ import { useTranslations } from "next-intl";
 
 import { api } from "@/trpc/react";
 import type { RouterInputs } from "@/trpc/react";
-import type { WireConflict } from "@/server/events/conflicts/corpus";
 import { badgeVariants } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
 import { cn } from "@/lib/utils";
@@ -27,6 +26,7 @@ import {
   GRADE_BADGE_VARIANT,
   GRADE_ICON,
   GRADE_LABEL_KEY,
+  conflictRowKey,
 } from "./event-conflict-panel";
 
 type ConflictCheckInput = RouterInputs["events"]["checkConflicts"];
@@ -40,12 +40,6 @@ export interface PendingEventForConflictCheck {
   format?: string | null;
   city?: string | null;
   audience: { slug: string; name: string }[];
-}
-
-function conflictRowKey(conflict: WireConflict, index: number): string {
-  return conflict.tentative
-    ? `tentative-${conflict.date}-${index}`
-    : `revealed-${conflict.id}`;
 }
 
 export function PendingEventConflictBadge({
@@ -78,7 +72,10 @@ export function PendingEventConflictBadge({
       audience: audienceSlugs,
       excludeEventId: event.id,
     },
-    { enabled },
+    // retry: 1 for parity with the create/edit dialog's checkConflicts call
+    // (event-form-dialog.tsx) — a transient failure here should degrade to
+    // "renders nothing" once, not hammer the corpus query indefinitely.
+    { enabled, retry: 1 },
   );
 
   if (query.isLoading || !query.data) return null;
@@ -95,7 +92,7 @@ export function PendingEventConflictBadge({
       <button
         type="button"
         aria-expanded={expanded}
-        aria-controls={expansionId}
+        {...(expanded ? { "aria-controls": expansionId } : {})}
         onClick={() => setExpanded((current) => !current)}
         aria-label={t("pendingConflictBadgeAriaLabel", {
           count: conflicts.length,

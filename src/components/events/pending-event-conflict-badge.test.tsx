@@ -129,15 +129,57 @@ describe("PendingEventConflictBadge", () => {
     render(<PendingEventConflictBadge event={baseEvent} />);
     const trigger = screen.getByRole("button");
     expect(trigger).toHaveAttribute("aria-expanded", "false");
+    // aria-controls is omitted while collapsed — nothing with that id exists
+    // in the DOM yet, so pointing at it would be a dangling reference.
+    expect(trigger).not.toHaveAttribute("aria-controls");
     expect(screen.queryByText("Other Meetup")).not.toBeInTheDocument();
 
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
+    expect(trigger).toHaveAttribute("aria-controls");
     expect(screen.getByText("Other Meetup")).toBeInTheDocument();
 
     fireEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(trigger).not.toHaveAttribute("aria-controls");
     expect(screen.queryByText("Other Meetup")).not.toBeInTheDocument();
+  });
+
+  // Final-review item 1 (CRITICAL): the badge is mounted inside the pending
+  // row's <Link>/<a> in page.tsx, wrapped in `<span className="contents"
+  // onClick={(e) => e.preventDefault()}>` — the same house pattern every
+  // other interactive cluster in `renderEventRow` uses to stop a click from
+  // both toggling its own state *and* navigating (a draft's row 404s).
+  // Reproduce that exact wrapper here and assert the click event actually
+  // arrives at the anchor as defaultPrevented, and that the badge's own
+  // toggle still fires (preventDefault must not also stop propagation).
+  it("does not navigate when clicked inside a wrapping <a> using the house preventDefault pattern", () => {
+    mockQuery({
+      data: { conflicts: [revealed()], suggestions: [], checkedAudiences: [] },
+    });
+    render(
+      // A raw <a> stands in for the row's `Link` (from `@/i18n/navigation`,
+      // which renders an <a> under the hood) — this test is about native
+      // click-bubbling/preventDefault semantics, identical either way, and
+      // a raw tag keeps the test free of next-intl's routing context.
+      // eslint-disable-next-line @next/next/no-html-link-for-pages
+      <a href="/events/some-slug">
+        <span className="contents" onClick={(e) => e.preventDefault()}>
+          <PendingEventConflictBadge event={baseEvent} />
+        </span>
+      </a>,
+    );
+    const trigger = screen.getByRole("button");
+    // fireEvent.click's return value is the native dispatchEvent result:
+    // false once something in the bubble path called preventDefault() on a
+    // cancelable event — exactly what we're asserting the wrapping span did.
+    const notPrevented = fireEvent.click(trigger);
+
+    expect(notPrevented).toBe(false);
+    // The badge's own toggle handler (attached to the trigger, a descendant
+    // of the preventDefault span) still ran — preventDefault on the bubbled
+    // event stops the anchor's navigation, not sibling/descendant handlers.
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
   it("renders tentative-hold conflicts from OTHER drafts (anonymized rows count and expand)", () => {

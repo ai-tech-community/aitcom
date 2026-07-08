@@ -238,6 +238,30 @@ export function buildEventSubmitPayload(
   };
 }
 
+/**
+ * Pure derivation of the conflict panel's display state (I-T2 / #206,
+ * final-review item 2). Pulled out of the component so the "checking during
+ * the debounce window" behavior is unit-testable without rendering the
+ * dialog (mirrors `buildEventSubmitPayload`'s seam above): `debouncePending`
+ * must win over a leftover `conflictCount`/`isError` from the *previous*
+ * debounced input, otherwise the panel would flash the previous (now stale)
+ * result for the whole 600ms window instead of "checking".
+ */
+export function deriveConflictPanelState(params: {
+  gateMet: boolean;
+  debouncePending: boolean;
+  hasDebouncedInput: boolean;
+  isFetching: boolean;
+  isError: boolean;
+  conflictCount: number;
+}): ConflictPanelState {
+  if (!params.gateMet) return "idle";
+  if (params.debouncePending || !params.hasDebouncedInput || params.isFetching)
+    return "checking";
+  if (params.isError) return "error";
+  return params.conflictCount > 0 ? "conflicts" : "clear";
+}
+
 export function EventFormDialog({
   slug,
   mode,
@@ -269,13 +293,18 @@ export function EventFormDialog({
 
   // Live scheduling-conflict check (I-T2 / #206). The gate mirrors the
   // server's own requirements: checkConflicts needs a date and at least one
-  // target audience. The debounced tuple below is the query input; while a
-  // debounce is pending (or the query is actively fetching) the panel shows
-  // "checking" rather than flashing a stale/empty result.
+  // target audience. `debouncePending` is set synchronously (same effect
+  // pass, before the timer is scheduled) whenever a relevant input change
+  // (re)starts the 600ms timer, and cleared either when the timer actually
+  // fires or when the gate/open/editLoading guards bail out early. Folding
+  // it into `conflictPanelState` below means the panel shows "checking" for
+  // the *entire* debounce window instead of flashing the previous (now
+  // stale) result until the timer lands.
   const conflictGateMet = !!form.date && form.audience.length >= 1;
   const [debouncedConflictInput, setDebouncedConflictInput] = useState<
     ConflictCheckInput | undefined
   >(undefined);
+  const [debouncePending, setDebouncePending] = useState(false);
   const conflictDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -284,13 +313,19 @@ export function EventFormDialog({
     if (conflictDebounceRef.current) clearTimeout(conflictDebounceRef.current);
     if (!open || !conflictGateMet) {
       setDebouncedConflictInput(undefined);
+      setDebouncePending(false);
       return;
     }
     // While the edit payload loads the dialog shows only a spinner and `form`
     // still holds the previous open's values — don't schedule a check for a
     // form the user can't see yet.
-    if (isEditing && editLoading) return;
+    if (isEditing && editLoading) {
+      setDebouncePending(false);
+      return;
+    }
+    setDebouncePending(true);
     conflictDebounceRef.current = setTimeout(() => {
+      setDebouncePending(false);
       setDebouncedConflictInput({
         date: form.date,
         startTime: form.startTime || undefined,
@@ -327,15 +362,14 @@ export function EventFormDialog({
     { enabled: open && !!debouncedConflictInput, retry: 1 },
   );
 
-  const conflictPanelState: ConflictPanelState = !conflictGateMet
-    ? "idle"
-    : !debouncedConflictInput || conflictCheck.isFetching
-      ? "checking"
-      : conflictCheck.isError
-        ? "error"
-        : (conflictCheck.data?.conflicts.length ?? 0) > 0
-          ? "conflicts"
-          : "clear";
+  const conflictPanelState: ConflictPanelState = deriveConflictPanelState({
+    gateMet: conflictGateMet,
+    debouncePending,
+    hasDebouncedInput: !!debouncedConflictInput,
+    isFetching: conflictCheck.isFetching,
+    isError: conflictCheck.isError,
+    conflictCount: conflictCheck.data?.conflicts.length ?? 0,
+  });
 
   // T3 (#207): applying a suggested slot writes the three fields, then
   // briefly rings the date/start/end inputs so the organizer sees exactly
@@ -718,6 +752,7 @@ export function EventFormDialog({
                 conflicts={conflictCheck.data?.conflicts ?? []}
                 checkedAudiences={conflictCheck.data?.checkedAudiences ?? []}
                 onRetry={() => void conflictCheck.refetch()}
+                scope={form.city.trim() || undefined}
               >
                 {/* SlotSuggestionChips itself renders null when there are no
                     suggestions; the panel only mounts `children` inside its

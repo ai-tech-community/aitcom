@@ -12,10 +12,28 @@
  * read-only in the approval queue. `children` is a seam for Task 3 (#207) to
  * mount a slot-suggestion chip row inside the conflicts frame.
  *
- * Vertical budget: the row layout is deliberately two-line (~50px/row by
- * class math) so the full 3-visible-row frame stays under the binding
- * ~240px ceiling — see the height arithmetic in the task report before
- * adding anything to a row.
+ * Vertical budget: the row layout is deliberately two-line so the full
+ * 3-visible-row frame stays under a ~240px ceiling (Tailwind defaults, 16px
+ * root; worst case = 3 revealed rows + expander visible) — the arithmetic,
+ * so nothing added to a row silently blows the budget:
+ *
+ *   Frame border (`border`, 1px top + bottom)                       2px
+ *   Frame padding (`p-3`, 12px × 2)                                24px
+ *   Header (SectionLabel `text-xs` lh 16px + `mb-1` 4px)            20px
+ *   Row line 1 (max of title `text-sm` lh 20px;
+ *     badge `leading-4` 16px + `py-0` + 2px border = 18px)          20px
+ *   Row line gap (`gap-0.5`)                                        2px
+ *   Row line 2 (`text-xs` lh 16px)                                 16px
+ *   Row padding (`py-1.5`, 6px × 2)                                12px
+ *   → Row total                                                    50px
+ *   3 rows + 2 `divide-y` borders (3 × 50 + 2)                    152px
+ *   Expander (`mt-1` 4px + `text-xs` 16px)                         20px
+ *   Honesty line (`mt-1` 4px + `text-[11px] leading-4` 16px)       20px
+ *   → Frame total: 2 + 24 + 20 + 152 + 20 + 20 = 238px ≤ ~240px      ✓
+ *
+ * (The tentative row is shorter still — 42px — and the expanded overflow
+ * list stays capped at `max-h-32` (128px) with internal scroll, so it never
+ * grows the frame past the cap.)
  */
 
 import { Fragment, useId, useState } from "react";
@@ -61,6 +79,12 @@ export interface EventConflictPanelProps {
   conflicts: WireConflict[];
   checkedAudiences: CheckedAudience[];
   onRetry: () => void;
+  /** Human-readable catchment name (the dialog passes the trimmed `city`
+   * field when non-empty) — named in the "clear" message so "no conflicts"
+   * doesn't read as a blanket global guarantee when the check was scoped to
+   * a specific place. Omitted entirely (falls back to `conflictClear`) when
+   * there's no known scope, e.g. an online-only event with no city. */
+  scope?: string;
   /** T3 seam: slot-suggestion chip row, rendered inside the conflicts frame. */
   children?: React.ReactNode;
 }
@@ -105,8 +129,10 @@ export const GRADE_LABEL_KEY: Record<ConflictGrade, string> = {
 
 /** Stable React key for a wire conflict row — tentative rows carry no id, so
  * their calendar date plus list index stands in (anonymization means two
- * tentative rows can otherwise be indistinguishable). */
-function conflictRowKey(conflict: WireConflict, index: number): string {
+ * tentative rows can otherwise be indistinguishable). Exported so the
+ * approval-queue badge (`pending-event-conflict-badge.tsx`) shares this
+ * exact key derivation instead of maintaining its own duplicate. */
+export function conflictRowKey(conflict: WireConflict, index: number): string {
   return conflict.tentative
     ? `tentative-${conflict.date}-${index}`
     : `revealed-${conflict.id}`;
@@ -143,10 +169,15 @@ export function ConflictRow({ conflict }: { conflict: WireConflict }) {
     timezone: conflict.timezone,
   });
   const metaParts: React.ReactNode[] = [];
-  if (timeRange) metaParts.push(<span key="time">{timeRange}</span>);
+  if (timeRange)
+    metaParts.push(
+      <span key="time" className="whitespace-nowrap">
+        {timeRange}
+      </span>,
+    );
   if (conflict.overlapMinutes != null) {
     metaParts.push(
-      <span key="overlap">
+      <span key="overlap" className="whitespace-nowrap">
         {t("conflictOverlapMinutes", { minutes: conflict.overlapMinutes })}
       </span>,
     );
@@ -326,6 +357,7 @@ export function EventConflictPanel({
   conflicts,
   checkedAudiences,
   onRetry,
+  scope,
   children,
 }: EventConflictPanelProps) {
   const t = useTranslations("events");
@@ -366,7 +398,9 @@ export function EventConflictPanel({
             className="text-success size-4 shrink-0"
             aria-hidden="true"
           />
-          {t("conflictClear", { audiences })}
+          {scope
+            ? t("conflictClearScoped", { audiences, scope })
+            : t("conflictClear", { audiences })}
         </p>
       </div>
     );
@@ -408,7 +442,7 @@ export function EventConflictPanel({
             <button
               type="button"
               aria-expanded={expanded}
-              aria-controls={overflowRegionId}
+              {...(expanded ? { "aria-controls": overflowRegionId } : {})}
               onClick={() => setExpanded((current) => !current)}
               className="text-muted-foreground hover:text-foreground mt-1 font-mono text-xs tracking-wide uppercase transition-colors motion-reduce:transition-none"
             >

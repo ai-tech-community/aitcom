@@ -204,7 +204,15 @@ export default function CommunityEventsPage({
           // `sm:order-4` slot as the other status chips, while the panel's
           // own `sm:order-20 sm:basis-full` wraps it onto a full-width line
           // under the row (paired with `sm:flex-wrap` on the row below).
-          <span className="contents">
+          // Same house pattern as every other interactive cluster in this
+          // row (edit/cancel, approve/reject, resubmit): the row itself is a
+          // `<Link>`/`<a>` for navigation, so a click on the badge's own
+          // trigger button must call `preventDefault()` on the bubbled event
+          // or it both toggles the expansion *and* navigates (a draft's
+          // `/events/${slug}` link 404s). `span.contents` carries the
+          // handler fine — event delegation follows the DOM tree, not the
+          // `display: contents` layout box.
+          <span className="contents" onClick={(e) => e.preventDefault()}>
             <PendingEventConflictBadge
               event={{
                 id: event.id as number,

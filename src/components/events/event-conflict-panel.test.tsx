@@ -91,6 +91,29 @@ describe("EventConflictPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("names the catchment scope on a clear result when the dialog passed one", () => {
+    renderPanel({ state: "clear", checkedAudiences, scope: "Amsterdam" });
+    expect(
+      screen.getByText(
+        `conflictClearScoped:${JSON.stringify({ audiences: "AI Engineers, Founders", scope: "Amsterdam" })}`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        `conflictClear:${JSON.stringify({ audiences: "AI Engineers, Founders" })}`,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("falls back to the unscoped clear message when no scope is passed", () => {
+    renderPanel({ state: "clear", checkedAudiences, scope: undefined });
+    expect(
+      screen.getByText(
+        `conflictClear:${JSON.stringify({ audiences: "AI Engineers, Founders" })}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("fires onRetry from the error state's retry button", () => {
     const { onRetry } = renderPanel({ state: "error" });
     expect(screen.getByText("conflictCheckFailed")).toBeInTheDocument();
@@ -143,7 +166,10 @@ describe("EventConflictPanel", () => {
       name: `conflictShowMore:${JSON.stringify({ count: 1 })}`,
     });
     expect(expandButton).toHaveAttribute("aria-expanded", "false");
-    expect(expandButton).toHaveAttribute("aria-controls");
+    // aria-controls only makes sense once the controlled region exists in
+    // the DOM — it's omitted entirely while collapsed rather than pointing
+    // at an id nothing renders.
+    expect(expandButton).not.toHaveAttribute("aria-controls");
     fireEvent.click(expandButton);
 
     expect(screen.getByText("Row Four")).toBeInTheDocument();
@@ -151,6 +177,7 @@ describe("EventConflictPanel", () => {
       name: "conflictShowFewer",
     });
     expect(collapseButton).toHaveAttribute("aria-expanded", "true");
+    expect(collapseButton).toHaveAttribute("aria-controls");
     const controlledId = collapseButton.getAttribute("aria-controls")!;
     expect(document.getElementById(controlledId)).toBeInTheDocument();
   });

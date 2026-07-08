@@ -1615,8 +1615,10 @@ export const eventsRouter = createTRPCRouter({
       }
 
       // #212: excludeEventId is honored only for the event's own submitter
-      // or a community owner/admin — otherwise dropped, so a caller can't
-      // sweep ids to de-anonymize someone else's tentative hold.
+      // or an active community owner/admin/moderator — otherwise dropped, so
+      // a caller can't sweep ids to de-anonymize someone else's tentative
+      // hold. See exclude-ownership.ts's isCommunityEventReviewer for the
+      // source of truth on which roles qualify.
       const excludeEventId = await resolveExcludeEventId(
         payload,
         ctx.db,
