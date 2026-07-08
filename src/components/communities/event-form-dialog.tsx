@@ -36,6 +36,16 @@ import {
   type EventType,
 } from "@/lib/event-metadata";
 import { DEFAULT_EVENT_TIMEZONE } from "@/lib/event-time";
+import {
+  EventConflictPanel,
+  type ConflictCheckInput,
+  type ConflictPanelState,
+} from "@/components/events/event-conflict-panel";
+
+// Debounce delay for the live conflict check — long enough that typing a
+// title/summary doesn't spam checkConflicts, short enough to feel live once
+// the organizer settles on a date/audience combo.
+const CONFLICT_CHECK_DEBOUNCE_MS = 600;
 
 function getBrowserTimeZone(): string {
   try {
@@ -190,6 +200,70 @@ export function EventFormDialog({
   // Audience chip options (slug + display name); public, cacheable.
   const { data: audienceOptions, isLoading: audienceOptionsLoading } =
     api.audiences.list.useQuery(undefined, { enabled: open });
+
+  // Live scheduling-conflict check (I-T2 / #206). The gate mirrors the
+  // server's own requirements: checkConflicts needs a date and at least one
+  // target audience. The debounced tuple below is the query input; while a
+  // debounce is pending (or the query is actively fetching) the panel shows
+  // "checking" rather than flashing a stale/empty result.
+  const conflictGateMet = !!form.date && form.audience.length >= 1;
+  const [debouncedConflictInput, setDebouncedConflictInput] = useState<
+    ConflictCheckInput | undefined
+  >(undefined);
+  const conflictDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (conflictDebounceRef.current) clearTimeout(conflictDebounceRef.current);
+    if (!conflictGateMet) {
+      setDebouncedConflictInput(undefined);
+      return;
+    }
+    conflictDebounceRef.current = setTimeout(() => {
+      setDebouncedConflictInput({
+        date: form.date,
+        startTime: form.startTime || undefined,
+        endTime: form.endTime || undefined,
+        timezone: form.timezone || undefined,
+        format: (form.format || "online") as ConflictCheckInput["format"],
+        // No lat/long in this form — geocoding is server-side only.
+        city: form.city || undefined,
+        audience: form.audience,
+        excludeEventId: isEditing ? eventId : undefined,
+      });
+    }, CONFLICT_CHECK_DEBOUNCE_MS);
+    return () => {
+      if (conflictDebounceRef.current)
+        clearTimeout(conflictDebounceRef.current);
+    };
+  }, [
+    conflictGateMet,
+    form.date,
+    form.startTime,
+    form.endTime,
+    form.timezone,
+    form.format,
+    form.city,
+    form.audience,
+    isEditing,
+    eventId,
+  ]);
+
+  const conflictCheck = api.events.checkConflicts.useQuery(
+    debouncedConflictInput ?? { date: "", audience: [], format: "online" },
+    { enabled: open && !!debouncedConflictInput, retry: 1 },
+  );
+
+  const conflictPanelState: ConflictPanelState = !conflictGateMet
+    ? "idle"
+    : !debouncedConflictInput || conflictCheck.isFetching
+      ? "checking"
+      : conflictCheck.isError
+        ? "error"
+        : (conflictCheck.data?.conflicts.length ?? 0) > 0
+          ? "conflicts"
+          : "clear";
 
   useEffect(() => {
     if (!open) return;
@@ -566,6 +640,12 @@ export function EventFormDialog({
                   {t("eventTimezoneHint")}
                 </p>
               </div>
+              <EventConflictPanel
+                state={conflictPanelState}
+                conflicts={conflictCheck.data?.conflicts ?? []}
+                checkedAudiences={conflictCheck.data?.checkedAudiences ?? []}
+                onRetry={() => void conflictCheck.refetch()}
+              />
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="event-location">{t("eventLocation")}</Label>
                 <Input
@@ -750,6 +830,11 @@ export function EventFormDialog({
                     })
                   )}
                 </div>
+                {!conflictGateMet && (
+                  <p className="text-muted-foreground text-xs">
+                    {t("conflictHintIncomplete")}
+                  </p>
+                )}
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="event-tags">Tags</Label>
