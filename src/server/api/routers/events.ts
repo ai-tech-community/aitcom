@@ -43,8 +43,24 @@ import {
 import { resolveAudienceIds } from "./audience-resolve";
 import { runEventImport } from "@/server/events/import-from-url";
 import { checkEventImportRateLimit } from "@/server/events/import-rate-limit";
-import { formatEventTimeRange, isValidTimeZone } from "@/lib/event-time";
+import {
+  DEFAULT_EVENT_TIMEZONE,
+  formatEventTimeRange,
+  isValidTimeZone,
+} from "@/lib/event-time";
 import type { Audience } from "@/payload-types";
+import {
+  corpusDateWindow,
+  expandAudiences,
+  fetchCorpus,
+  toWireConflict,
+} from "@/server/events/conflicts/corpus";
+import {
+  evaluateConflict,
+  CONFLICT_GRADE_ORDER,
+  type ConflictCandidate,
+} from "@/server/events/conflicts/rule";
+import { suggestSlots } from "@/server/events/conflicts/suggest";
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
@@ -1537,5 +1553,107 @@ export const eventsRouter = createTRPCRouter({
       });
 
       return event;
+    }),
+
+  // Slice H (#205): scheduling-conflict check for the organizer form. Thin
+  // glue — audience expansion, corpus fetch, and wire-shaping (incl.
+  // tentative-hold anonymization) all live in server/events/conflicts/*; the
+  // rule and slot-suggestion math are pure (ADR-0035: no live external calls
+  // anywhere in this path).
+  checkConflicts: protectedProcedure
+    .input(
+      z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}($|T)/),
+        startTime: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/)
+          .optional(),
+        endTime: z
+          .string()
+          .regex(/^\d{2}:\d{2}$/)
+          .optional(),
+        timezone: z.string().optional(),
+        format: z.enum(["online", "in-person", "hybrid"]).default("online"),
+        city: z.string().optional(),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
+        audience: z.array(z.string()).min(1).max(8),
+        excludeEventId: z.number().optional(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const timezone = isValidTimeZone(input.timezone)
+        ? input.timezone
+        : DEFAULT_EVENT_TIMEZONE;
+
+      const payload = await getPayloadClient();
+      const { direct, relatedIdSet } = await expandAudiences(
+        payload,
+        input.audience,
+      );
+
+      if (direct.length === 0) {
+        return { conflicts: [], suggestions: [], checkedAudiences: [] };
+      }
+
+      const checkedAudiences = direct.map(({ slug, name }) => ({
+        slug,
+        name,
+      }));
+      const audienceIdsExpanded = Array.from(
+        new Set([...direct.map((a) => a.id), ...relatedIdSet]),
+      );
+
+      const { dateFrom, dateTo } = corpusDateWindow(input.date);
+      const corpus = await fetchCorpus(payload, {
+        dateFrom,
+        dateTo,
+        audienceIdsExpanded,
+        excludeEventId: input.excludeEventId,
+      });
+
+      const candidate: ConflictCandidate = {
+        date: input.date,
+        startTime: input.startTime ?? null,
+        endTime: input.endTime ?? null,
+        timezone,
+        format: input.format,
+        city: input.city ?? null,
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
+        audienceIds: direct.map((a) => a.id),
+      };
+
+      const verdicts = corpus
+        .map((event) => evaluateConflict(candidate, event, relatedIdSet))
+        .filter((verdict) => verdict !== null);
+
+      verdicts.sort((a, b) => {
+        const gradeDiff =
+          CONFLICT_GRADE_ORDER.indexOf(a.grade) -
+          CONFLICT_GRADE_ORDER.indexOf(b.grade);
+        if (gradeDiff !== 0) return gradeDiff;
+        const tentativeDiff = Number(a.tentative) - Number(b.tentative);
+        if (tentativeDiff !== 0) return tentativeDiff;
+        return a.event.date.localeCompare(b.event.date);
+      });
+
+      const suggestions = suggestSlots({
+        candidate,
+        corpus,
+        relatedIdSet,
+        audiences: direct.map(({ id, slug, preferredSlots }) => ({
+          id,
+          slug,
+          preferredSlots,
+        })),
+        now: new Date(),
+      });
+
+      return {
+        conflicts: verdicts.map(toWireConflict),
+        suggestions,
+        checkedAudiences,
+      };
     }),
 });
