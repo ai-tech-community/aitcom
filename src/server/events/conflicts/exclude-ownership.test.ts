@@ -114,13 +114,48 @@ describe("resolveExcludeEventId", () => {
     expect(result).toBe(42);
   });
 
-  it("ignores excludeEventId when the caller is only a moderator of the event's community", async () => {
+  it("honors excludeEventId when the caller is an active moderator of the event's community", async () => {
+    // Moderators are legitimate pending-queue reviewers (see
+    // getPendingCommunityEvents' owner/admin/moderator gate) and already see
+    // the full draft there — honoring the param doesn't reopen the #212
+    // oracle, and dropping it made every pending row self-clash for them.
     const { payload } = mockPayload({
       id: 42,
       submittedBy: "someone-else",
       communityId: "community-1",
     });
     const { db } = mockDb({ status: "active", role: "moderator" });
+
+    const result = await resolveExcludeEventId(payload, db, session, 42);
+
+    expect(result).toBe(42);
+  });
+
+  it("ignores excludeEventId for a moderator of a DIFFERENT community (oracle guarantee)", async () => {
+    // The membership lookup is scoped to the event's own communityId, so a
+    // moderator elsewhere resolves no membership row — the param is dropped
+    // exactly like any stranger's, preserving #212's de-anonymization
+    // guarantee for callers who cannot otherwise see the draft.
+    const { payload } = mockPayload({
+      id: 42,
+      submittedBy: "someone-else",
+      communityId: "community-1",
+    });
+    const { db, findFirst } = mockDb(null);
+
+    const result = await resolveExcludeEventId(payload, db, session, 42);
+
+    expect(result).toBeUndefined();
+    expect(findFirst).toHaveBeenCalledOnce();
+  });
+
+  it("ignores excludeEventId when the caller's moderator membership is not active", async () => {
+    const { payload } = mockPayload({
+      id: 42,
+      submittedBy: "someone-else",
+      communityId: "community-1",
+    });
+    const { db } = mockDb({ status: "pending_approval", role: "moderator" });
 
     const result = await resolveExcludeEventId(payload, db, session, 42);
 

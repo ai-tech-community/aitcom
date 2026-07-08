@@ -22,7 +22,11 @@ vi.mock("next-intl", () => ({
 }));
 
 import { PendingEventConflictBadge } from "./pending-event-conflict-badge";
-import type { RevealedWireConflict } from "@/server/events/conflicts/corpus";
+import type {
+  RevealedWireConflict,
+  TentativeWireConflict,
+  WireConflict,
+} from "@/server/events/conflicts/corpus";
 
 const revealed = (
   overrides: Partial<RevealedWireConflict> = {},
@@ -42,6 +46,17 @@ const revealed = (
   ...overrides,
 });
 
+const tentative = (
+  overrides: Partial<TentativeWireConflict> = {},
+): TentativeWireConflict => ({
+  tentative: true,
+  grade: "clash",
+  audienceMatch: "direct",
+  date: "2026-07-20",
+  sourceType: "hold",
+  ...overrides,
+});
+
 const baseEvent = {
   id: 42,
   date: "2026-07-20",
@@ -55,7 +70,7 @@ const baseEvent = {
 
 function mockQuery(overrides: {
   data?: {
-    conflicts: RevealedWireConflict[];
+    conflicts: WireConflict[];
     suggestions: [];
     checkedAudiences: [];
   };
@@ -125,18 +140,30 @@ describe("PendingEventConflictBadge", () => {
     expect(screen.queryByText("Other Meetup")).not.toBeInTheDocument();
   });
 
-  it("filters out a self-match conflict (moderator excludeEventId gate no-op edge case)", () => {
+  it("renders tentative-hold conflicts from OTHER drafts (anonymized rows count and expand)", () => {
+    // A pending event never conflicts with itself here: excludeEventId is
+    // honored server-side for every role that can view this queue (submitter
+    // + owner/admin/moderator — see resolveExcludeEventId). So any tentative
+    // row that arrives is genuinely ANOTHER unpublished draft, and must
+    // render — the badge does no self-filtering of its own (it couldn't:
+    // tentative rows carry no id on the wire).
     mockQuery({
       data: {
-        conflicts: [revealed({ id: baseEvent.id })],
+        conflicts: [tentative({ date: "2026-07-20" })],
         suggestions: [],
         checkedAudiences: [],
       },
     });
-    const { container } = render(
-      <PendingEventConflictBadge event={baseEvent} />,
-    );
-    expect(container).toBeEmptyDOMElement();
+    render(<PendingEventConflictBadge event={baseEvent} />);
+    const trigger = screen.getByRole("button", { name: /conflictGradeClash/ });
+    expect(trigger).toHaveTextContent("1");
+
+    fireEvent.click(trigger);
+    expect(
+      screen.getByText(
+        `conflictTentativeHold:${JSON.stringify({ date: "2026-07-20" })}`,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("never enables the query for rows without an audience", () => {

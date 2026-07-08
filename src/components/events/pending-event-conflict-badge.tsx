@@ -60,11 +60,13 @@ export function PendingEventConflictBadge({
   const audienceSlugs = event.audience.map((a) => a.slug);
   const enabled = audienceSlugs.length >= 1;
 
-  // The queue viewer is an admin/moderator reviewing their own community's
-  // submission — excludeEventId: event.id keeps the pending event from
-  // conflicting with itself. Honored server-side for owner/admin (T1); for
-  // moderators it's silently dropped, so the self-match filter below is the
-  // backstop that keeps this badge honest either way.
+  // excludeEventId: event.id keeps the pending event from conflicting with
+  // itself. resolveExcludeEventId honors it for every role that can reach
+  // this queue — the submitter and active owner/admin/moderator of the
+  // event's community (the same trio getPendingCommunityEvents admits) — so
+  // no self-match ever arrives here. That server-side exclusion is the only
+  // correct place to handle it: a draft's self-match would come back as an
+  // anonymized tentative row (no id on the wire), unfilterable client-side.
   const query = api.events.checkConflicts.useQuery(
     {
       date: event.date,
@@ -81,13 +83,10 @@ export function PendingEventConflictBadge({
 
   if (query.isLoading || !query.data) return null;
 
-  const conflicts = query.data.conflicts.filter(
-    (c) => c.tentative || c.id !== event.id,
-  );
+  const conflicts = query.data.conflicts;
   if (conflicts.length === 0) return null;
 
-  // Pre-sorted by the server (most severe first) — still true after the
-  // self-match filter, which only removes entries, never reorders.
+  // Pre-sorted by the server (most severe first).
   const highestGrade = conflicts[0]!.grade;
   const GradeIcon = GRADE_ICON[highestGrade];
 

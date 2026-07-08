@@ -4,22 +4,40 @@
  * corpus `where` clause and infer whether a given id is a live
  * [[tentative-hold]] (its absence from an otherwise-identical result set
  * de-anonymizes it) — so it's honored only when the caller owns the event or
- * administers its community; a stranger's `excludeEventId` is silently
+ * moderates its community; a stranger's `excludeEventId` is silently
  * dropped (same response as if the param were omitted). Kept out of
  * `corpus.ts`, which is Payload-only by contract — this needs the
  * drizzle-backed `communityMemberships` lookup too.
  *
- * Reuses `isCommunityHackathonAdmin` (an active owner|admin predicate) rather
- * than inventing a parallel role system — see `events.ts`'s own
- * admin/moderator gates (e.g. `getPendingCommunityEvents`,
- * `updateEvent`) for the house pattern this mirrors.
+ * The community-role branch admits active owner/admin/moderator — the exact
+ * trio `getPendingCommunityEvents` admits to the approval queue (see
+ * `events.ts`). That does not reopen the #212 oracle: its threat model was
+ * callers who cannot otherwise see the draft, and all three roles already
+ * see the full draft in that queue. Withholding the param from moderators
+ * made every pending row tentatively clash with ITSELF for them (I-T4 /
+ * #208) — and the self-match arrives anonymized (no id on the wire), so no
+ * client-side filter can remove it.
  */
 
 import { and, eq } from "drizzle-orm";
 import type { Payload } from "payload";
 
 import { communityMemberships } from "@/server/db/schema";
-import { isCommunityHackathonAdmin } from "@/server/hackathon/community-admin";
+import type { MembershipRow } from "@/server/hackathon/community-admin";
+
+/** Active owner/admin/moderator of the event's community — mirrors the
+ * approval-queue gate in `getPendingCommunityEvents`. Kept db-free (same
+ * shape as `isCommunityHackathonAdmin`) so it stays unit-testable. */
+function isCommunityEventReviewer(
+  membership: MembershipRow | null | undefined,
+): boolean {
+  if (membership?.status !== "active") return false;
+  return (
+    membership.role === "owner" ||
+    membership.role === "admin" ||
+    membership.role === "moderator"
+  );
+}
 
 export interface ExcludeEventSession {
   user: { id: string };
@@ -28,9 +46,9 @@ export interface ExcludeEventSession {
 /**
  * Resolves the `excludeEventId` a `checkConflicts` caller sent to a safe
  * value for `fetchCorpus`: itself when the caller submitted the event or
- * holds an active owner/admin role in its community, `undefined` otherwise
- * — including when the id doesn't resolve to an event at all (wrapped so a
- * bad/stale id degrades to "ignored", never a thrown error).
+ * holds an active owner/admin/moderator role in its community, `undefined`
+ * otherwise — including when the id doesn't resolve to an event at all
+ * (wrapped so a bad/stale id degrades to "ignored", never a thrown error).
  */
 export async function resolveExcludeEventId(
   payload: Payload,
@@ -62,7 +80,7 @@ export async function resolveExcludeEventId(
     ),
   });
 
-  return isCommunityHackathonAdmin(membership ?? null)
+  return isCommunityEventReviewer(membership ?? null)
     ? excludeEventId
     : undefined;
 }
