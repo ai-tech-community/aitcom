@@ -21,6 +21,8 @@ import { EventFormDialog } from "@/components/communities/event-form-dialog";
 import { ErrorState } from "@/components/ui/error-state";
 import { formatEventTimeRange } from "@/lib/event-time";
 import { CreateHackathonDialog } from "@/components/hackathon/create-hackathon-dialog";
+import { PendingEventConflictBadge } from "@/components/events/pending-event-conflict-badge";
+import { cn } from "@/lib/utils";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -140,12 +142,15 @@ export default function CommunityEventsPage({
       endTime?: string | null;
       timezone?: string | null;
       location: string;
+      format?: string | null;
+      city?: string | null;
       status: string;
       source?: string;
       lumaUrl?: string | null;
       slug?: string | null;
       coverImageId?: number | null;
       coverImageUrl?: string | null;
+      audience?: { slug: string; name: string }[];
     },
     opts: {
       showAdminActions?: boolean;
@@ -155,6 +160,13 @@ export default function CommunityEventsPage({
     } = {},
   ) {
     const isLuma = event.source === "luma";
+    // Pending rows need to wrap onto a second line when the conflict badge's
+    // expansion is open (see the `sm:order-20 sm:basis-full` panel below) —
+    // every other tab's rows keep the single-line flex layout unchanged.
+    const rowClassName = cn(
+      sharedRowClassName,
+      opts.showApproveReject && "sm:flex-wrap",
+    );
 
     const innerContent = (
       <>
@@ -184,6 +196,37 @@ export default function CommunityEventsPage({
         <span className="border-border text-muted-foreground hidden rounded border px-2.5 py-0.5 font-mono text-xs font-medium tracking-wider sm:order-3 sm:inline">
           {typeLabels[event.type] ?? event.type}
         </span>
+        {opts.showApproveReject && (
+          // Fresh conflict check for the review queue (I-T4 / #208) — never a
+          // stored snapshot. `contents` dissolves this wrapper so the badge's
+          // trigger chip and (when expanded) its full-width panel become
+          // direct flex children of the row: the chip takes the same
+          // `sm:order-4` slot as the other status chips, while the panel's
+          // own `sm:order-20 sm:basis-full` wraps it onto a full-width line
+          // under the row (paired with `sm:flex-wrap` on the row below).
+          // Same house pattern as every other interactive cluster in this
+          // row (edit/cancel, approve/reject, resubmit): the row itself is a
+          // `<Link>`/`<a>` for navigation, so a click on the badge's own
+          // trigger button must call `preventDefault()` on the bubbled event
+          // or it both toggles the expansion *and* navigates (a draft's
+          // `/events/${slug}` link 404s). `span.contents` carries the
+          // handler fine — event delegation follows the DOM tree, not the
+          // `display: contents` layout box.
+          <span className="contents" onClick={(e) => e.preventDefault()}>
+            <PendingEventConflictBadge
+              event={{
+                id: event.id as number,
+                date: event.date,
+                startTime: event.startTime,
+                endTime: event.endTime,
+                timezone: event.timezone,
+                format: event.format,
+                city: event.city,
+                audience: event.audience ?? [],
+              }}
+            />
+          </span>
+        )}
         {opts.showStatus && event.status === "rejected" && (
           <span className="text-destructive flex items-center gap-1 font-mono text-xs font-medium sm:order-4 sm:ml-2">
             <XOctagon className="size-3" /> REJECTED — edit and resubmit
@@ -308,7 +351,7 @@ export default function CommunityEventsPage({
           href={event.lumaUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={sharedRowClassName}
+          className={rowClassName}
         >
           {innerContent}
         </a>
@@ -329,11 +372,7 @@ export default function CommunityEventsPage({
         : `/events/${event.slug}`;
       if (href) {
         return (
-          <Link
-            key={event.id}
-            href={href as never}
-            className={sharedRowClassName}
-          >
+          <Link key={event.id} href={href as never} className={rowClassName}>
             {innerContent}
           </Link>
         );
@@ -341,7 +380,7 @@ export default function CommunityEventsPage({
     }
 
     return (
-      <div key={event.id} className={sharedRowClassName}>
+      <div key={event.id} className={rowClassName}>
         {innerContent}
       </div>
     );

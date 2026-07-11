@@ -36,6 +36,19 @@ import {
   type EventType,
 } from "@/lib/event-metadata";
 import { DEFAULT_EVENT_TIMEZONE } from "@/lib/event-time";
+import { cn } from "@/lib/utils";
+import {
+  EventConflictPanel,
+  SlotSuggestionChips,
+  type ConflictCheckInput,
+  type ConflictPanelState,
+  type SlotSuggestionTriple,
+} from "@/components/events/event-conflict-panel";
+
+// Debounce delay for the live conflict check — long enough that typing a
+// title/summary doesn't spam checkConflicts, short enough to feel live once
+// the organizer settles on a date/audience combo.
+const CONFLICT_CHECK_DEBOUNCE_MS = 600;
 
 function getBrowserTimeZone(): string {
   try {
@@ -92,7 +105,7 @@ function getMutationErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-interface EventFormData {
+export interface EventFormData {
   title: string;
   summary: string;
   description: string;
@@ -123,7 +136,7 @@ interface EventFormData {
   coverImageUrl: string | null;
 }
 
-const emptyForm: EventFormData = {
+export const emptyEventFormData: EventFormData = {
   title: "",
   summary: "",
   description: "",
@@ -162,6 +175,93 @@ interface EventFormDialogProps {
   isAdminOrOwner?: boolean;
 }
 
+/**
+ * Maps form state to the `createEvent`/`updateEvent`/`resubmitEvent` mutation
+ * payload shape. Pure and exported so #210 (explicit audience clear on edit)
+ * is unit-testable without rendering the dialog — see event-form-dialog.test.tsx.
+ *
+ * #210: an edit/resubmit must be able to send `audience: []` as an explicit
+ * "clear every audience" — the server (I-T1) now honors an empty array on
+ * update rather than treating it as "no change". Create (and the initial
+ * submit-for-approval flow) keeps omit-when-empty: the server requires at
+ * least one audience on create, so an empty array there is a validation
+ * error, never an intentional clear.
+ */
+export function buildEventSubmitPayload(
+  form: EventFormData,
+  mode: EventFormDialogProps["mode"],
+  communitySlug: string,
+) {
+  const isEditingMode = mode === "edit" || mode === "resubmit";
+  const parsedTags = form.tags
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+
+  return {
+    communitySlug,
+    title: form.title,
+    summary: form.summary || undefined,
+    description: form.description || undefined,
+    type: form.type,
+    date: form.date,
+    startTime: form.startTime || undefined,
+    endTime: form.endTime || undefined,
+    timezone: form.timezone || undefined,
+    location: form.location,
+    format: form.format || undefined,
+    region: form.region || undefined,
+    country: form.country || undefined,
+    city: form.city || undefined,
+    focus: form.focus || undefined,
+    level: form.level || undefined,
+    audience: isEditingMode
+      ? form.audience
+      : form.audience.length
+        ? form.audience
+        : undefined,
+    sourceUrl: form.sourceUrl || undefined,
+    aitFitScore: form.aitFitScore ? parseInt(form.aitFitScore, 10) : undefined,
+    tags: parsedTags.length ? parsedTags : undefined,
+    curatedByAgent: form.curatedByAgent,
+    discoverySource: form.discoverySource || undefined,
+    confidenceScore: form.confidenceScore
+      ? parseFloat(form.confidenceScore)
+      : undefined,
+    lastVerifiedAt: form.lastVerifiedAt || undefined,
+    videoUrl: form.videoUrl || undefined,
+    maxAttendees: form.maxAttendees
+      ? parseInt(form.maxAttendees, 10)
+      : undefined,
+    // number = keep/replace, null = clear (server clears on null, leaves on undefined)
+    coverImage: form.coverImageId,
+  };
+}
+
+/**
+ * Pure derivation of the conflict panel's display state (I-T2 / #206,
+ * final-review item 2). Pulled out of the component so the "checking during
+ * the debounce window" behavior is unit-testable without rendering the
+ * dialog (mirrors `buildEventSubmitPayload`'s seam above): `debouncePending`
+ * must win over a leftover `conflictCount`/`isError` from the *previous*
+ * debounced input, otherwise the panel would flash the previous (now stale)
+ * result for the whole 600ms window instead of "checking".
+ */
+export function deriveConflictPanelState(params: {
+  gateMet: boolean;
+  debouncePending: boolean;
+  hasDebouncedInput: boolean;
+  isFetching: boolean;
+  isError: boolean;
+  conflictCount: number;
+}): ConflictPanelState {
+  if (!params.gateMet) return "idle";
+  if (params.debouncePending || !params.hasDebouncedInput || params.isFetching)
+    return "checking";
+  if (params.isError) return "error";
+  return params.conflictCount > 0 ? "conflicts" : "clear";
+}
+
 export function EventFormDialog({
   slug,
   mode,
@@ -173,7 +273,7 @@ export function EventFormDialog({
   const t = useTranslations("events");
   const tc = useTranslations("common");
   const utils = api.useUtils();
-  const [form, setForm] = useState<EventFormData>(emptyForm);
+  const [form, setForm] = useState<EventFormData>(emptyEventFormData);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [coverUploading, setCoverUploading] = useState(false);
 
@@ -191,12 +291,128 @@ export function EventFormDialog({
   const { data: audienceOptions, isLoading: audienceOptionsLoading } =
     api.audiences.list.useQuery(undefined, { enabled: open });
 
+  // Live scheduling-conflict check (I-T2 / #206). The gate mirrors the
+  // server's own requirements: checkConflicts needs a date and at least one
+  // target audience. `debouncePending` is set synchronously (same effect
+  // pass, before the timer is scheduled) whenever a relevant input change
+  // (re)starts the 600ms timer, and cleared either when the timer actually
+  // fires or when the gate/open/editLoading guards bail out early. Folding
+  // it into `conflictPanelState` below means the panel shows "checking" for
+  // the *entire* debounce window instead of flashing the previous (now
+  // stale) result until the timer lands.
+  const conflictGateMet = !!form.date && form.audience.length >= 1;
+  const [debouncedConflictInput, setDebouncedConflictInput] = useState<
+    ConflictCheckInput | undefined
+  >(undefined);
+  const [debouncePending, setDebouncePending] = useState(false);
+  const conflictDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (conflictDebounceRef.current) clearTimeout(conflictDebounceRef.current);
+    if (!open || !conflictGateMet) {
+      setDebouncedConflictInput(undefined);
+      setDebouncePending(false);
+      return;
+    }
+    // While the edit payload loads the dialog shows only a spinner and `form`
+    // still holds the previous open's values — don't schedule a check for a
+    // form the user can't see yet.
+    if (isEditing && editLoading) {
+      setDebouncePending(false);
+      return;
+    }
+    setDebouncePending(true);
+    conflictDebounceRef.current = setTimeout(() => {
+      setDebouncePending(false);
+      setDebouncedConflictInput({
+        date: form.date,
+        startTime: form.startTime || undefined,
+        endTime: form.endTime || undefined,
+        timezone: form.timezone || undefined,
+        format: (form.format || "online") as ConflictCheckInput["format"],
+        // No lat/long in this form — geocoding is server-side only.
+        city: form.city || undefined,
+        audience: form.audience,
+        excludeEventId: isEditing ? eventId : undefined,
+      });
+    }, CONFLICT_CHECK_DEBOUNCE_MS);
+    return () => {
+      if (conflictDebounceRef.current)
+        clearTimeout(conflictDebounceRef.current);
+    };
+  }, [
+    open,
+    conflictGateMet,
+    editLoading,
+    form.date,
+    form.startTime,
+    form.endTime,
+    form.timezone,
+    form.format,
+    form.city,
+    form.audience,
+    isEditing,
+    eventId,
+  ]);
+
+  const conflictCheck = api.events.checkConflicts.useQuery(
+    debouncedConflictInput ?? { date: "", audience: [], format: "online" },
+    { enabled: open && !!debouncedConflictInput, retry: 1 },
+  );
+
+  const conflictPanelState: ConflictPanelState = deriveConflictPanelState({
+    gateMet: conflictGateMet,
+    debouncePending,
+    hasDebouncedInput: !!debouncedConflictInput,
+    isFetching: conflictCheck.isFetching,
+    isError: conflictCheck.isError,
+    conflictCount: conflictCheck.data?.conflicts.length ?? 0,
+  });
+
+  // T3 (#207): applying a suggested slot writes the three fields, then
+  // briefly rings the date/start/end inputs so the organizer sees exactly
+  // what changed — the debounced conflict check re-runs on its own once
+  // `form.date`/`form.startTime`/`form.endTime` settle, same as manual edits.
+  const [slotApplyFlash, setSlotApplyFlash] = useState(false);
+  const slotApplyFlashTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  useEffect(() => {
+    return () => {
+      if (slotApplyFlashTimeoutRef.current)
+        clearTimeout(slotApplyFlashTimeoutRef.current);
+    };
+  }, []);
+
+  const applySuggestion = (slot: SlotSuggestionTriple) => {
+    setForm((current) => ({
+      ...current,
+      date: slot.date,
+      startTime: slot.startTime,
+      endTime: slot.endTime,
+    }));
+    if (slotApplyFlashTimeoutRef.current)
+      clearTimeout(slotApplyFlashTimeoutRef.current);
+    setSlotApplyFlash(true);
+    slotApplyFlashTimeoutRef.current = setTimeout(
+      () => setSlotApplyFlash(false),
+      1000,
+    );
+  };
+
+  const slotApplyFlashClass = slotApplyFlash
+    ? "ring-success/60 ring-2 transition-shadow duration-200 motion-reduce:transition-none"
+    : "";
+
   useEffect(() => {
     if (!open) return;
     if (isEditing) {
       if (!editData) return;
       setForm({
-        ...emptyForm,
+        ...emptyEventFormData,
         title: editData.title,
         summary: editData.summary,
         description: editData.description,
@@ -235,7 +451,7 @@ export function EventFormDialog({
       // New events default their timezone from the organizer's browser —
       // geocoding (Nominatim) can't tell us the zone, so the organizer's own
       // zone is the best available signal. They can still override it below.
-      setForm({ ...emptyForm, timezone: getBrowserTimeZone() });
+      setForm({ ...emptyEventFormData, timezone: getBrowserTimeZone() });
       setImportUrl("");
     }
   }, [open, isEditing, editData]);
@@ -282,45 +498,7 @@ export function EventFormDialog({
       toast.error(getMutationErrorMessage(error, "Failed to resubmit event")),
   });
 
-  const parsedTags = form.tags
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-
-  const payload = {
-    communitySlug: slug,
-    title: form.title,
-    summary: form.summary || undefined,
-    description: form.description || undefined,
-    type: form.type,
-    date: form.date,
-    startTime: form.startTime || undefined,
-    endTime: form.endTime || undefined,
-    timezone: form.timezone || undefined,
-    location: form.location,
-    format: form.format || undefined,
-    region: form.region || undefined,
-    country: form.country || undefined,
-    city: form.city || undefined,
-    focus: form.focus || undefined,
-    level: form.level || undefined,
-    audience: form.audience.length ? form.audience : undefined,
-    sourceUrl: form.sourceUrl || undefined,
-    aitFitScore: form.aitFitScore ? parseInt(form.aitFitScore, 10) : undefined,
-    tags: parsedTags.length ? parsedTags : undefined,
-    curatedByAgent: form.curatedByAgent,
-    discoverySource: form.discoverySource || undefined,
-    confidenceScore: form.confidenceScore
-      ? parseFloat(form.confidenceScore)
-      : undefined,
-    lastVerifiedAt: form.lastVerifiedAt || undefined,
-    videoUrl: form.videoUrl || undefined,
-    maxAttendees: form.maxAttendees
-      ? parseInt(form.maxAttendees, 10)
-      : undefined,
-    // number = keep/replace, null = clear (server clears on null, leaves on undefined)
-    coverImage: form.coverImageId,
-  };
+  const payload = buildEventSubmitPayload(form, mode, slug);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -521,6 +699,7 @@ export function EventFormDialog({
                   value={form.date}
                   onChange={(e) => setForm({ ...form, date: e.target.value })}
                   required
+                  className={cn(slotApplyFlashClass)}
                 />
               </div>
               <div className="space-y-2">
@@ -532,6 +711,7 @@ export function EventFormDialog({
                   onChange={(e) =>
                     setForm({ ...form, startTime: e.target.value })
                   }
+                  className={cn(slotApplyFlashClass)}
                 />
               </div>
               <div className="space-y-2">
@@ -543,6 +723,7 @@ export function EventFormDialog({
                   onChange={(e) =>
                     setForm({ ...form, endTime: e.target.value })
                   }
+                  className={cn(slotApplyFlashClass)}
                 />
               </div>
               <div className="space-y-2">
@@ -566,6 +747,23 @@ export function EventFormDialog({
                   {t("eventTimezoneHint")}
                 </p>
               </div>
+              <EventConflictPanel
+                state={conflictPanelState}
+                conflicts={conflictCheck.data?.conflicts ?? []}
+                checkedAudiences={conflictCheck.data?.checkedAudiences ?? []}
+                onRetry={() => void conflictCheck.refetch()}
+                scope={form.city.trim() || undefined}
+              >
+                {/* SlotSuggestionChips itself renders null when there are no
+                    suggestions; the panel only mounts `children` inside its
+                    "conflicts" frame, so this stays out of the other states. */}
+                <SlotSuggestionChips
+                  suggestions={conflictCheck.data?.suggestions ?? []}
+                  checkedAudiences={conflictCheck.data?.checkedAudiences ?? []}
+                  timezone={form.timezone || DEFAULT_EVENT_TIMEZONE}
+                  onApply={applySuggestion}
+                />
+              </EventConflictPanel>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="event-location">{t("eventLocation")}</Label>
                 <Input
@@ -750,6 +948,11 @@ export function EventFormDialog({
                     })
                   )}
                 </div>
+                {!conflictGateMet && (
+                  <p className="text-muted-foreground text-xs">
+                    {t("conflictHintIncomplete")}
+                  </p>
+                )}
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="event-tags">Tags</Label>

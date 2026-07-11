@@ -86,7 +86,13 @@ export async function buildEventPayloadData(
     city: normalizeOptionalString(input.city),
     focus: input.focus,
     level: input.level,
-    audience: await resolveAudienceIds(payload, input.audience),
+    // Create paths keep omit-when-empty semantics (#210 is about *clearing*
+    // an existing event's audience on update/resubmit, not creating one with
+    // none): only call resolveAudienceIds — whose defined-[] input now means
+    // "explicit clear" — when there's actually something to resolve.
+    audience: input.audience?.length
+      ? await resolveAudienceIds(payload, input.audience)
+      : undefined,
     sourceUrl: normalizeOptionalString(input.sourceUrl),
     aitFitScore: input.aitFitScore,
     tags: input.tags?.length

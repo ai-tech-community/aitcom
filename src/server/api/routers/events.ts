@@ -55,6 +55,7 @@ import {
   fetchCorpus,
   toWireConflict,
 } from "@/server/events/conflicts/corpus";
+import { resolveExcludeEventId } from "@/server/events/conflicts/exclude-ownership";
 import {
   evaluateConflict,
   CONFLICT_GRADE_ORDER,
@@ -1062,7 +1063,12 @@ export const eventsRouter = createTRPCRouter({
         slug: e.slug,
         type: e.type,
         date: e.date,
+        startTime: e.startTime ?? null,
+        endTime: e.endTime ?? null,
+        timezone: e.timezone ?? null,
         location: e.location,
+        format: e.format ?? null,
+        city: e.city ?? null,
         status: e.status,
         submittedBy: e.submittedBy ?? null,
         communityId: community.id,
@@ -1074,6 +1080,18 @@ export const eventsRouter = createTRPCRouter({
           e.coverImage && typeof e.coverImage === "object"
             ? ((e.coverImage as { url?: string }).url ?? null)
             : null,
+        // `e.audience` is populated (depth: 1 above) with full `Audience`
+        // docs; expose slug + name for the queue's conflict-check badge
+        // (I-T4 / #208). Entries that come back as bare ids (unpopulated)
+        // are dropped defensively — mirrors getEventForEdit above.
+        audience: Array.isArray(e.audience)
+          ? e.audience
+              .filter(
+                (entry): entry is Audience =>
+                  typeof entry === "object" && entry !== null,
+              )
+              .map((entry) => ({ slug: entry.slug, name: entry.name }))
+          : [],
       }));
     }),
 
@@ -1581,7 +1599,7 @@ export const eventsRouter = createTRPCRouter({
         excludeEventId: z.number().optional(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const timezone = isValidTimeZone(input.timezone)
         ? input.timezone
         : DEFAULT_EVENT_TIMEZONE;
@@ -1596,6 +1614,18 @@ export const eventsRouter = createTRPCRouter({
         return { conflicts: [], suggestions: [], checkedAudiences: [] };
       }
 
+      // #212: excludeEventId is honored only for the event's own submitter
+      // or an active community owner/admin/moderator — otherwise dropped, so
+      // a caller can't sweep ids to de-anonymize someone else's tentative
+      // hold. See exclude-ownership.ts's isCommunityEventReviewer for the
+      // source of truth on which roles qualify.
+      const excludeEventId = await resolveExcludeEventId(
+        payload,
+        ctx.db,
+        ctx.session,
+        input.excludeEventId,
+      );
+
       const checkedAudiences = direct.map(({ slug, name }) => ({
         slug,
         name,
@@ -1609,7 +1639,7 @@ export const eventsRouter = createTRPCRouter({
         dateFrom,
         dateTo,
         audienceIdsExpanded,
-        excludeEventId: input.excludeEventId,
+        excludeEventId,
       });
 
       const candidate: ConflictCandidate = {

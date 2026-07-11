@@ -300,6 +300,20 @@ describe("fetchCorpus", () => {
     expect(event?.timezone).toBe(DEFAULT_EVENT_TIMEZONE);
   });
 
+  it("falls back timezone to DEFAULT_EVENT_TIMEZONE when the doc's timezone is garbage (not a valid IANA zone)", async () => {
+    const { payload } = mockPayload([
+      { docs: [baseDoc({ timezone: "Not/AZone" })] },
+    ]);
+
+    const [event] = await fetchCorpus(payload, {
+      dateFrom: "2026-07-01",
+      dateTo: "2026-07-31",
+      audienceIdsExpanded: [1],
+    });
+
+    expect(event?.timezone).toBe(DEFAULT_EVENT_TIMEZONE);
+  });
+
   it('falls back format to "online" when the doc\'s format is null', async () => {
     const { payload } = mockPayload([{ docs: [baseDoc({ format: null })] }]);
 

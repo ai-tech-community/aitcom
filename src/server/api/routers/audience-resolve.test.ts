@@ -38,11 +38,17 @@ describe("resolveAudienceIds", () => {
     expect(ids).toEqual([1]);
   });
 
-  it("resolves to undefined when no slugs are provided", async () => {
+  it("resolves to undefined when slugs is not provided (not-provided semantics)", async () => {
     const payload = mockPayload([]);
 
     expect(await resolveAudienceIds(payload, undefined)).toBeUndefined();
-    expect(await resolveAudienceIds(payload, [])).toBeUndefined();
+    expect(payload.find).not.toHaveBeenCalled();
+  });
+
+  it("resolves a defined empty array to [] (explicit-clear semantics, #210)", async () => {
+    const payload = mockPayload([]);
+
+    expect(await resolveAudienceIds(payload, [])).toEqual([]);
     expect(payload.find).not.toHaveBeenCalled();
   });
 
