@@ -12,6 +12,8 @@
     "build": "next build",
     "check": "next lint && tsc --noEmit",
     "db:apply": "tsx --env-file=.env scripts/db-apply-pending.ts",
+    "db:apply:dev": "tsx --env-file=.env.dev scripts/db-apply-pending.ts",
+    "db:apply:dev:dry": "tsx --env-file=.env.dev scripts/db-apply-pending.ts --dry-run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
