@@ -84,6 +84,11 @@ export default async function Home() {
     where: {
       status: { equals: "published" },
       date: { greater_than_equal: new Date().toISOString() },
+      // Discovered (Luma) events are "scheduled around, not attended
+      // through" (CONTEXT.md [[discovered-event]]) — keep them out of
+      // hub-wide public attend-through surfaces like this upcoming-events
+      // block; they stay in the conflict corpus (corpus.ts untouched).
+      discoverySource: { not_equals: "luma" },
     },
     sort: "date",
     limit: 5,

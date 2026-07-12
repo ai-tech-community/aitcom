@@ -265,6 +265,7 @@ describe("upsertDiscoveredEvent", () => {
       collection: string;
       id: number;
       data: Record<string, unknown>;
+      context?: Record<string, unknown>;
     };
     expect(updateCall.collection).toBe("events");
     expect(updateCall.id).toBe(55);
@@ -273,12 +274,41 @@ describe("upsertDiscoveredEvent", () => {
       sourceUrl: "https://lu.ma/ai-builders",
     });
     expect(updateCall.data.slug).toBeUndefined();
+    // Re-syncs never change location, so the update path skips the
+    // collection's throttled Nominatim geocode hook (Events.ts) via this
+    // context flag.
+    expect(updateCall.context).toEqual({ skipGeocode: true });
     expect(result).toEqual({ action: "updated", eventId: 55 });
+  });
+
+  it("includes a communityId-derived component in the generated slug so the same Luma event cross-listed on two communities doesn't collide on the unique `slug` field", async () => {
+    const payloadA = mockPayload({ docs: [] });
+    const payloadB = mockPayload({ docs: [] });
+    const nA = makeNormalized({ communityId: "community-1" });
+    const nB = makeNormalized({ communityId: "community-2" });
+
+    await upsertDiscoveredEvent(payloadA, nA, makeClassification(), NOW_ISO);
+    await upsertDiscoveredEvent(payloadB, nB, makeClassification(), NOW_ISO);
+
+    const slugA = (
+      (payloadA.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+        data: Record<string, unknown>;
+      }
+    ).data.slug;
+    const slugB = (
+      (payloadB.create as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+        data: Record<string, unknown>;
+      }
+    ).data.slug;
+
+    expect(slugA).not.toBe(slugB);
   });
 });
 
 describe("archiveStaleDiscoveredEvents", () => {
-  it("finds luma-discovered events for the community with sourceUrl not in the seen set, using the documented where clause", async () => {
+  const TODAY = "2026-07-12";
+
+  it("finds luma-discovered events for the community with sourceUrl not in the seen set, not already archived, and on/after today, using the documented where clause", async () => {
     const find = vi.fn().mockResolvedValue({ docs: [] });
     const update = vi.fn();
     const payload = { find, update } as unknown as Payload;
@@ -287,6 +317,7 @@ describe("archiveStaleDiscoveredEvents", () => {
       payload,
       "community-1",
       new Set(["https://lu.ma/still-here"]),
+      TODAY,
     );
 
     expect(find).toHaveBeenCalledWith({
@@ -296,6 +327,8 @@ describe("archiveStaleDiscoveredEvents", () => {
           { communityId: { equals: "community-1" } },
           { discoverySource: { equals: "luma" } },
           { sourceUrl: { not_in: ["https://lu.ma/still-here"] } },
+          { reviewStatus: { not_equals: "archived" } },
+          { date: { greater_than_equal: TODAY } },
         ],
       },
       limit: 500,
@@ -312,6 +345,7 @@ describe("archiveStaleDiscoveredEvents", () => {
       payload,
       "community-1",
       new Set(),
+      TODAY,
     );
 
     expect(update).toHaveBeenCalledTimes(2);
@@ -337,6 +371,7 @@ describe("archiveStaleDiscoveredEvents", () => {
       payload,
       "community-1",
       new Set(["https://lu.ma/still-here"]),
+      TODAY,
     );
 
     expect(update).not.toHaveBeenCalled();

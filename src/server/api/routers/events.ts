@@ -491,6 +491,12 @@ export const eventsRouter = createTRPCRouter({
           and: [
             { status: { equals: "published" } },
             { communityId: { equals: community.id } },
+            // Persisted Luma rows (Slice K ingestion) are excluded here — the
+            // live-merge below (`lumaEvents`) is the display source for this
+            // community's Luma calendar. Without this, a synced-and-persisted
+            // Luma event would render twice: once from this native `find`,
+            // once from the live merge.
+            { discoverySource: { not_equals: "luma" } },
           ],
         },
         sort: "date",

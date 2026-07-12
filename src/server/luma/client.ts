@@ -74,9 +74,23 @@ export async function getCalendars(apiKey: string): Promise<LumaCalendar[]> {
   ];
 }
 
+/**
+ * Fetches up to 2 pages (Luma's max page size × 2) of a calendar's events,
+ * sorted by `start_at` ascending.
+ *
+ * `after` is optional and, when supplied, is passed through as the `after`
+ * query param on `/v1/calendar/list-events` so the API returns events
+ * starting from that instant forward instead of the calendar's oldest
+ * events. Without it (the default — used by the live display path in
+ * `getCommunityEvents`, unchanged), a calendar with more than 2 pages of
+ * history returns only its OLDEST events and can truncate before reaching
+ * anything upcoming; the ingestion cron always passes `after` (now) so the
+ * corpus it feeds sees future events instead.
+ */
 export async function getCalendarEvents(
   apiKey: string,
   calendarApiId: string,
+  after?: string,
 ): Promise<LumaEvent[]> {
   const events: LumaEvent[] = [];
   let cursor: string | null = null;
@@ -87,6 +101,7 @@ export async function getCalendarEvents(
       sort_column: "start_at",
       sort_direction: "asc",
     };
+    if (after) params.after = after;
     if (cursor) params.pagination_cursor = cursor;
 
     const data = await lumaFetch<LumaEventsResponse>(

@@ -77,10 +77,19 @@ export async function GET(req: Request) {
       ),
     );
 
+  // Calendar-date lower bound for archiveStaleDiscoveredEvents's sweep — see
+  // that function's doc comment: past luma-sourced rows are never archival
+  // candidates.
+  const todayDate = nowIso.slice(0, 10);
+
   let communities = 0;
   let created = 0;
   let updated = 0;
   let archived = 0;
+  // Count of upserts whose classifier found no audience match at all
+  // (confidence 0) — a visible signal in cron logs of the classification
+  // gap, since those events entered the corpus with an empty `audience`.
+  let unclassified = 0;
 
   for (const integration of integrations) {
     // Counts attempted communities (mirrors event-conflict-monitor's
@@ -89,9 +98,14 @@ export async function GET(req: Request) {
     communities++;
     try {
       const apiKey = decryptApiKey(integration.apiKeyEncrypted);
+      // `after: nowIso` requests events from now forward — without it, Luma
+      // returns the calendar's OLDEST events first, and a calendar with more
+      // than 2 pages of history would never reach anything upcoming (see
+      // getCalendarEvents's doc comment).
       const rawEvents = await getCalendarEvents(
         apiKey,
         integration.calendarApiId,
+        nowIso,
       );
 
       const seenSourceUrls = new Set<string>();
@@ -102,24 +116,41 @@ export async function GET(req: Request) {
         );
         if (!normalized.lumaUrl) continue; // no dedupe key to upsert against
 
-        const classification = classifyAudiences(
-          {
-            title: normalized.title,
-            description: normalized.description,
-            location: normalized.location,
-          },
-          audiences,
-        );
-        const result = await upsertDiscoveredEvent(
-          payload,
-          normalized,
-          classification,
-          nowIso,
-        );
-        if (result.action === "created") created++;
-        else if (result.action === "updated") updated++;
+        // Per-EVENT isolation: one malformed/conflicting event (e.g. a slug
+        // collision surviving the communityId disambiguation, or a
+        // classify/upsert throw) must not abort the rest of this community's
+        // sync — mirrors the per-COMMUNITY try/catch below. `seen` only gets
+        // this url on success, so a failed event is correctly treated as
+        // "not seen" and left alone by the staleness sweep rather than
+        // wrongly archived.
+        try {
+          const classification = classifyAudiences(
+            {
+              title: normalized.title,
+              description: normalized.description,
+              location: normalized.location,
+            },
+            audiences,
+          );
+          const result = await upsertDiscoveredEvent(
+            payload,
+            normalized,
+            classification,
+            nowIso,
+          );
+          if (result.action === "created") created++;
+          else if (result.action === "updated") updated++;
+          if (result.action !== "skipped" && classification.confidence === 0) {
+            unclassified++;
+          }
 
-        seenSourceUrls.add(normalized.lumaUrl);
+          seenSourceUrls.add(normalized.lumaUrl);
+        } catch (err) {
+          console.error(
+            `event-discovery-sync: upsert failed for event ${normalized.lumaUrl} (community ${integration.communityId})`,
+            err,
+          );
+        }
       }
 
       // Only sweep for stale events when the fetch actually returned some.
@@ -139,6 +170,7 @@ export async function GET(req: Request) {
           payload,
           integration.communityId,
           seenSourceUrls,
+          todayDate,
         );
       }
 
@@ -154,5 +186,11 @@ export async function GET(req: Request) {
     }
   }
 
-  return NextResponse.json({ communities, created, updated, archived });
+  return NextResponse.json({
+    communities,
+    created,
+    updated,
+    archived,
+    unclassified,
+  });
 }

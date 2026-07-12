@@ -153,6 +153,10 @@ export default async function EventsPage({
 
   const now = new Date().toISOString();
   const conditions: Where[] = [{ status: { equals: "published" } }];
+  // Discovered (Luma) events are "scheduled around, not attended through"
+  // (CONTEXT.md [[discovered-event]]) — keep them out of this hub-wide
+  // public listing; they stay in the conflict corpus (corpus.ts untouched).
+  conditions.push({ discoverySource: { not_equals: "luma" } });
   conditions.push(
     isPast
       ? { date: { less_than: now } }

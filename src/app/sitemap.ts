@@ -44,7 +44,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const { docs: events } = await payload.find({
     collection: "events",
-    where: { status: { equals: "published" } },
+    where: {
+      status: { equals: "published" },
+      // Discovered (Luma) events are "scheduled around, not attended
+      // through" (CONTEXT.md [[discovered-event]]) — omit them from the
+      // public sitemap; they stay in the conflict corpus (corpus.ts
+      // untouched).
+      discoverySource: { not_equals: "luma" },
+    },
     limit: 1000,
     depth: 0,
   });
