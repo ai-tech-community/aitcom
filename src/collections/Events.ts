@@ -27,6 +27,23 @@ function locationChanged(
   );
 }
 
+/**
+ * An "online" event (or one whose location string is a placeholder like
+ * "Online"/"TBA" — the Luma normalizer's fallback for a calendar entry with
+ * no geo/meeting-url signal at all) has no physical catchment to geocode:
+ * `latitude`/`longitude` only feed the conflict corpus's distance check
+ * (corpus.ts), which is already skipped for non-in-person events. Skipping
+ * the Nominatim call here also spares the cron's throttled (1.1s) client
+ * from being burned on venues that will never resolve to anything useful.
+ * In-person events on the create path still geocode as before — this only
+ * short-circuits the online/placeholder case.
+ */
+function isUngeocodableLocation(d: Record<string, unknown>): boolean {
+  if (d.format === "online") return true;
+  const location = typeof d.location === "string" ? d.location : "";
+  return location === "Online" || location === "TBA";
+}
+
 const geocodeAfterChange: CollectionAfterChangeHook = async ({
   doc,
   previousDoc,
@@ -35,6 +52,9 @@ const geocodeAfterChange: CollectionAfterChangeHook = async ({
 }) => {
   const d = doc as Record<string, unknown>;
   const prev = previousDoc as Record<string, unknown> | undefined;
+
+  if (isUngeocodableLocation(d)) return;
+
   const alreadyGeocoded =
     typeof d.latitude === "number" && typeof d.longitude === "number";
   const mustGeocode =

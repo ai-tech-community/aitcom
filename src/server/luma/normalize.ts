@@ -14,6 +14,15 @@ export interface NormalizedEvent {
   /** IANA timezone the start/end times are expressed in. */
   timezone: string | null;
   location: string;
+  /**
+   * Attendance format, derived from the source's structured
+   * physical/online signal. Optional so native-event mappings (which have no
+   * such raw signal) need not set it — only the Luma path populates it. The
+   * "location" string alone can't recover this: Luma collapses both a
+   * physical address and an online meeting link into the same field, so the
+   * raw event's geo/meeting-url pair is the only reliable source.
+   */
+  format?: "online" | "in-person" | "hybrid";
   maxAttendees: number | null;
   image: string | null;
   status: string;
@@ -22,6 +31,22 @@ export interface NormalizedEvent {
   lumaUrl: string | null;
   coverImageId?: number | null;
   coverImageUrl?: string | null;
+}
+
+/**
+ * Derive attendance format from the raw Luma event's structured signal.
+ * Both physical + online → "hybrid"; physical only → "in-person"; online
+ * only → "online". Neither (a "TBA"-style event) defaults to "online": an
+ * in-person event with no geocodable address is inert in the conflict
+ * catchment anyway (normalize sets no coordinates), whereas "online" keeps
+ * it corpus-useful — the conservative, competition-widest default.
+ */
+function deriveLumaFormat(event: LumaEvent): "online" | "in-person" | "hybrid" {
+  const hasPhysical = Boolean(event.geo_address_json?.address);
+  const hasOnline = Boolean(event.meeting_url);
+  if (hasPhysical && hasOnline) return "hybrid";
+  if (hasPhysical) return "in-person";
+  return "online";
 }
 
 // Luma gives absolute instants plus the event's IANA timezone; render the
@@ -61,6 +86,7 @@ export function normalizeLumaEvent(
     endTime: event.end_at ? extractTime(event.end_at, timezone) : null,
     timezone,
     location,
+    format: deriveLumaFormat(event),
     maxAttendees: event.max_capacity,
     image: event.cover_url,
     status: "published",
