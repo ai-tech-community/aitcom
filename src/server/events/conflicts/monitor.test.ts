@@ -108,6 +108,7 @@ function makeTarget(overrides: Partial<MonitorTarget> = {}): MonitorTarget {
     organizerId: "user-1",
     eventId: 42,
     eventTitle: "AI Meetup",
+    eventSlug: "ai-meetup",
     ...overrides,
   };
 }
@@ -160,7 +161,13 @@ describe("buildMonitorTarget", () => {
       organizerId: "user-1",
       eventId: 42,
       eventTitle: "AI Meetup",
+      eventSlug: "test-event",
     });
+  });
+
+  it("maps the event doc's slug into eventSlug", () => {
+    const doc = makeEventDoc({ slug: "ai-meetup-2026" });
+    expect(buildMonitorTarget(doc)?.eventSlug).toBe("ai-meetup-2026");
   });
 
   it("returns null when submittedBy is empty", () => {
@@ -329,8 +336,8 @@ describe("buildConflictNotification", () => {
     );
   });
 
-  it("carries the target eventId, all conflicting event ids, and the top verdict's grade in metadata", () => {
-    const target = makeTarget({ eventId: 42 });
+  it("carries the target eventId, all conflicting event ids, the top verdict's grade, and reviewPath in metadata", () => {
+    const target = makeTarget({ eventId: 42, eventSlug: "ai-meetup" });
     const top = makeVerdict({
       grade: "clash",
       event: makeCorpusEvent({ id: 200 }),
@@ -346,6 +353,33 @@ describe("buildConflictNotification", () => {
       eventId: 42,
       conflictingEventIds: [200, 201],
       topGrade: "clash",
+      reviewPath: "/events/ai-meetup",
     });
+  });
+
+  it("builds reviewPath as a leading-slash path from the target's eventSlug", () => {
+    const target = makeTarget({ eventSlug: "quarterly-summit" });
+    const notification = buildConflictNotification(target, [makeVerdict()]);
+
+    expect(notification.metadata.reviewPath).toBe("/events/quarterly-summit");
+    expect(notification.metadata.reviewPath as string).toMatch(/^\//);
+  });
+
+  it("truncates a long event title in the notification title so it stays within the 255-char notifications.title column", () => {
+    const longTitle = "A".repeat(300);
+    const target = makeTarget({ eventTitle: longTitle });
+
+    const notification = buildConflictNotification(target, [makeVerdict()]);
+
+    expect(notification.title.length).toBeLessThanOrEqual(255);
+    expect(notification.title).toBe(
+      `Schedule conflict for "${"A".repeat(199)}…"`,
+    );
+  });
+
+  it("leaves a short event title untouched in the notification title", () => {
+    const target = makeTarget({ eventTitle: "AI Meetup" });
+    const notification = buildConflictNotification(target, [makeVerdict()]);
+    expect(notification.title).toBe('Schedule conflict for "AI Meetup"');
   });
 });

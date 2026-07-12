@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { getPayloadClient } from "@/server/payload";
@@ -103,7 +103,11 @@ export async function GET(req: Request) {
       // index broadcast_delivery_dedupe_uidx WHERE dedupe_key IS NOT NULL.
       // onConflictDoNothing() with no target covers partial indexes in
       // Postgres. Each pair is claimed at most once, ever (forever dedupe).
-      const newlyClaimed: ConflictVerdict[] = [];
+      // pairsAlerted is incremented only after the notification insert below
+      // succeeds, so it counts pairs actually alerted, not merely claimed —
+      // a failed notification insert must not overcount.
+      const newlyClaimed: { verdict: ConflictVerdict; deliveryId: string }[] =
+        [];
       for (const verdict of material) {
         const claimed = await db
           .insert(broadcastDeliveries)
@@ -116,20 +120,24 @@ export async function GET(req: Request) {
           })
           .onConflictDoNothing()
           .returning({ id: broadcastDeliveries.id });
-        if (claimed.length === 0) continue; // already alerted for this pair
-        pairsAlerted++;
-        newlyClaimed.push(verdict);
+        const row = claimed[0];
+        if (!row) continue; // already alerted for this pair
+        newlyClaimed.push({ verdict, deliveryId: row.id });
       }
 
       if (newlyClaimed.length === 0) continue;
 
-      const notif = buildConflictNotification(target, newlyClaimed);
+      const notif = buildConflictNotification(
+        target,
+        newlyClaimed.map((c) => c.verdict),
+      );
 
       // In-app notification: written immediately after the claims win so a
       // mid-run crash (Vercel timeout) cannot leave claimed pairs without a
       // visible notification. Small at-least-once gap accepted (same as
       // event-reminders): if this insert itself fails, those pairs never
-      // alert again (forever-dedupe already claimed them).
+      // alert again (forever-dedupe already claimed them) — so we don't
+      // count them as alerted below.
       await db.insert(notifications).values({
         userId: target.organizerId,
         type: "event_conflict",
@@ -139,6 +147,7 @@ export async function GET(req: Request) {
         communityId: doc.communityId ?? null,
       });
       eventsNotified++;
+      pairsAlerted += newlyClaimed.length;
 
       // Transactional email (ceiling-EXEMPT — NO allowPromotional call, this
       // is about the organizer's own event). Failure must not lose the
@@ -150,7 +159,22 @@ export async function GET(req: Request) {
           .where(eq(user.id, target.organizerId))
           .limit(1);
         if (organizer?.email) {
-          await sendBroadcastEmail(organizer.email, notif.title, notif.content);
+          const emailSent = await sendBroadcastEmail(
+            organizer.email,
+            notif.title,
+            notif.content,
+          );
+          if (emailSent) {
+            await db
+              .update(broadcastDeliveries)
+              .set({ emailSent: true })
+              .where(
+                inArray(
+                  broadcastDeliveries.id,
+                  newlyClaimed.map((c) => c.deliveryId),
+                ),
+              );
+          }
         }
       } catch (err) {
         console.error(

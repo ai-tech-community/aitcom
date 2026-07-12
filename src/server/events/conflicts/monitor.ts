@@ -37,6 +37,7 @@ export interface MonitorTarget {
   organizerId: string;
   eventId: number;
   eventTitle: string;
+  eventSlug: string;
 }
 
 /**
@@ -92,6 +93,7 @@ export function buildMonitorTarget(eventDoc: Event): MonitorTarget | null {
     organizerId,
     eventId: eventDoc.id,
     eventTitle: eventDoc.title,
+    eventSlug: eventDoc.slug,
   };
 }
 
@@ -143,6 +145,21 @@ function calendarDateKey(date: string): string {
 }
 
 /**
+ * `notifications.title` is `varchar(255)`; event titles are unbounded free
+ * text. Truncate the embedded event title well under that ceiling (200 chars
+ * leaves ~55 chars of headroom for the `Schedule conflict for "…"` wrapper)
+ * so a long title can never overflow the column and throw on insert — which,
+ * because the `broadcastDeliveries` claim has already won by that point,
+ * would permanently suppress that alert (forever-dedupe, no retry).
+ */
+const EVENT_TITLE_TRUNCATE_LENGTH = 200;
+
+function truncateEventTitle(title: string): string {
+  if (title.length <= EVENT_TITLE_TRUNCATE_LENGTH) return title;
+  return `${title.slice(0, EVENT_TITLE_TRUNCATE_LENGTH - 1)}…`;
+}
+
+/**
  * Builds the single consolidated in-app notification for one event's
  * newly-appeared material conflicts (brief decision #4: one notification per
  * event per run, not one per pair). `newConflicts` must be non-empty and is
@@ -163,12 +180,19 @@ export function buildConflictNotification(
   const date = calendarDateKey(target.candidate.date);
 
   return {
-    title: `Schedule conflict for "${target.eventTitle}"`,
+    title: `Schedule conflict for "${truncateEventTitle(target.eventTitle)}"`,
     content: `${count} ${noun} now ${verb} for your audience around ${date}, including "${top.event.title}".`,
     metadata: {
       eventId: target.eventId,
       conflictingEventIds: newConflicts.map((verdict) => verdict.event.id),
       topGrade: top.grade,
+      // Community slug isn't cleanly available on the event doc (only
+      // `communityId`, not a slug — resolving it would mean an extra query
+      // per event this cron doesn't otherwise need), so this points at the
+      // public event page rather than the community-scoped manage page that
+      // other reviewPaths use. Same leading-slash, locale-free contract
+      // consumed by notification-panel.tsx / notifications-page-content.tsx.
+      reviewPath: `/events/${target.eventSlug}`,
     },
   };
 }
