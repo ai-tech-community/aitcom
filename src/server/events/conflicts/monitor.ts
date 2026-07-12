@@ -8,7 +8,7 @@
  * the Slice J task brief (.superpowers/sdd/task-1-brief.md) for the design.
  */
 
-import { DEFAULT_EVENT_TIMEZONE } from "@/lib/event-time";
+import { DEFAULT_EVENT_TIMEZONE, isValidTimeZone } from "@/lib/event-time";
 import type { Audience, Event } from "@/payload-types";
 import {
   CONFLICT_GRADE_ORDER,
@@ -72,7 +72,13 @@ export function buildMonitorTarget(eventDoc: Event): MonitorTarget | null {
     date: eventDoc.date,
     startTime: eventDoc.startTime ?? null,
     endTime: eventDoc.endTime ?? null,
-    timezone: eventDoc.timezone ?? DEFAULT_EVENT_TIMEZONE,
+    // Legacy/imported events can carry a garbage IANA string; validate the
+    // same way corpus.ts does so a bad zone falls back rather than throwing a
+    // RangeError deep in eventWallTimeToUtc mid-scan on the organizer's own
+    // event.
+    timezone: isValidTimeZone(eventDoc.timezone)
+      ? eventDoc.timezone
+      : DEFAULT_EVENT_TIMEZONE,
     format: eventDoc.format ?? "online",
     city: eventDoc.city ?? null,
     latitude: eventDoc.latitude ?? null,

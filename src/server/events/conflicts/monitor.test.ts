@@ -173,6 +173,11 @@ describe("buildMonitorTarget", () => {
     expect(buildMonitorTarget(doc)).toBeNull();
   });
 
+  it("returns null when submittedBy is whitespace only", () => {
+    const doc = makeEventDoc({ submittedBy: "   " });
+    expect(buildMonitorTarget(doc)).toBeNull();
+  });
+
   it("returns null when audience is an empty array", () => {
     const doc = makeEventDoc({ audience: [] });
     expect(buildMonitorTarget(doc)).toBeNull();
@@ -195,6 +200,13 @@ describe("buildMonitorTarget", () => {
 
   it("falls back timezone to DEFAULT_EVENT_TIMEZONE when the doc's timezone is null", () => {
     const doc = makeEventDoc({ timezone: null });
+    expect(buildMonitorTarget(doc)?.candidate.timezone).toBe(
+      DEFAULT_EVENT_TIMEZONE,
+    );
+  });
+
+  it("falls back timezone to DEFAULT_EVENT_TIMEZONE when the doc's timezone is a garbage IANA string", () => {
+    const doc = makeEventDoc({ timezone: "Not/AReal_Zone" });
     expect(buildMonitorTarget(doc)?.candidate.timezone).toBe(
       DEFAULT_EVENT_TIMEZONE,
     );
