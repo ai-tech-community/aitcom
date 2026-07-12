@@ -13,6 +13,14 @@ New migrations apply cleanly on top of it, against real prod-shaped data, with z
 production risk. A branch is a normal Neon cloud endpoint, so the existing
 `db-apply` driver (neon-serverless) connects to it directly — no proxy, no code change.
 
+## Concrete coordinates (this project)
+
+- Neon org: `org-odd-forest-17808561`
+- Project: `muddy-truth-19293777` (name `ait`) — its `production` branch endpoint is
+  `ep-ancient-poetry-aieo7394`, the same host as the prod `.env` `DATABASE_URL`.
+- Verify branch: `dev-verify` (endpoint `ep-dawn-silence-ainb5gl5`), created off
+  `production` on 2026-07-12.
+
 ## One-time setup (run in an interactive terminal — needs your Neon login)
 
 ```bash
@@ -20,25 +28,24 @@ production risk. A branch is a normal Neon cloud endpoint, so the existing
 npm i -g neonctl
 neonctl auth
 
-# 2. Find the project id (the prod endpoint is ep-ancient-poetry-aieo7394)
-neonctl projects list
-
-# 3. Create a dev branch off production (copy-on-write; cheap, instant)
-neonctl branches create --project-id <PROJECT_ID> --name dev-verify
-
-# 4. Get its POOLED connection string
-neonctl connection-string dev-verify --project-id <PROJECT_ID> --pooled
+# 2. (If the branch doesn't exist) create it off production — copy-on-write, instant
+neonctl branches create --project-id muddy-truth-19293777 --org-id org-odd-forest-17808561 \
+  --name dev-verify --parent production
 ```
 
-Then create `.env.dev` (gitignored) — copy your real `.env` and replace only
-`DATABASE_URL` with the branch connection string from step 4:
+Then create `.env.dev` (gitignored) as a copy of `.env` with **only** the endpoint id
+swapped from the prod endpoint to the branch endpoint (this preserves the database
+name, role, and password, which the branch inherits from production):
 
-```
-DATABASE_URL="postgres://…@ep-…-dev-verify-pooler.…neon.tech/aitcom?sslmode=require"
+```bash
+sed 's/ep-ancient-poetry-aieo7394/ep-dawn-silence-ainb5gl5/g' .env > .env.dev
 ```
 
-Everything else (Payload secret, etc.) can be copied from `.env` — the branch is a
-throwaway clone.
+Verify `.env.dev`'s host is the **branch** endpoint before using it:
+
+```bash
+grep '^DATABASE_URL' .env.dev | grep -o 'ep-[a-z0-9-]*'   # must show ep-dawn-silence-ainb5gl5
+```
 
 ## Verifying a migration
 
