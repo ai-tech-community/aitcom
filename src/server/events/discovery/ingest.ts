@@ -39,13 +39,13 @@ function toEventType(type: string): EventType {
 }
 
 /**
- * Format heuristic (documented per the task brief — Luma's normalize.ts
- * gives no format signal directly): "in-person" when the location string is
- * non-empty and doesn't look like a URL (e.g. a street address, venue name);
- * "online" otherwise (empty/"TBA" location, or a URL such as a video-call
- * link). This is a coarse default meant to feed human curator review via the
- * dormant `format` field, not a strong signal — deliberately simple per
- * YAGNI, no venue-name dictionary or geocoding here.
+ * Fallback-only format heuristic from the location string: "in-person" when
+ * it is non-empty and doesn't look like a URL (a street address / venue
+ * name); "online" otherwise. This is only reached when a NormalizedEvent
+ * carries no `format` — the Luma path now derives a real
+ * online/in-person/hybrid signal from the raw event's geo/meeting-url pair
+ * (normalize.ts), which `buildDiscoveredEventData` prefers. Kept as a
+ * defensive default for any event that somehow lacks that signal.
  */
 function deriveFormat(location: string): "online" | "in-person" {
   if (!location || URL_PATTERN.test(location)) return "online";
@@ -82,7 +82,10 @@ export function buildDiscoveredEventData(
     endTime: n.endTime,
     timezone: n.timezone,
     location: n.location,
-    format: deriveFormat(n.location),
+    // Prefer the real online/in-person/hybrid signal the source derived from
+    // its structured geo/meeting-url data; fall back to the location-string
+    // heuristic only when a NormalizedEvent carries no format at all.
+    format: n.format ?? deriveFormat(n.location),
     type: toEventType(n.type),
     status: "published" as const,
     communityId: n.communityId,

@@ -77,19 +77,13 @@ describe("buildDiscoveredEventData", () => {
     );
   });
 
-  it('sets format "in-person" when location is non-empty and not a URL', () => {
+  it("prefers the normalized event's real format signal over the location heuristic (online event whose location would heuristically read in-person)", () => {
+    // Regression: an online Luma event ("Online"/venue-name location) that
+    // the string heuristic alone would misclassify as "in-person" — and thus
+    // gate it out of the conflict catchment — must keep its real "online"
+    // format from the source.
     const data = buildDiscoveredEventData(
-      makeNormalized({ location: "Startup Village, Amsterdam" }),
-      makeClassification(),
-      NOW_ISO,
-    );
-
-    expect(data.format).toBe("in-person");
-  });
-
-  it('sets format "online" when location looks like a URL', () => {
-    const data = buildDiscoveredEventData(
-      makeNormalized({ location: "https://meet.google.com/abc-defg-hij" }),
+      makeNormalized({ format: "online", location: "Startup Village" }),
       makeClassification(),
       NOW_ISO,
     );
@@ -97,9 +91,45 @@ describe("buildDiscoveredEventData", () => {
     expect(data.format).toBe("online");
   });
 
-  it('sets format "online" when location is empty', () => {
+  it('carries a "hybrid" format signal through unchanged', () => {
     const data = buildDiscoveredEventData(
-      makeNormalized({ location: "" }),
+      makeNormalized({ format: "hybrid", location: "" }),
+      makeClassification(),
+      NOW_ISO,
+    );
+
+    expect(data.format).toBe("hybrid");
+  });
+
+  it('falls back to "in-person" from the location string when no format signal is present and location is non-empty and not a URL', () => {
+    const data = buildDiscoveredEventData(
+      makeNormalized({
+        format: undefined,
+        location: "Startup Village, Amsterdam",
+      }),
+      makeClassification(),
+      NOW_ISO,
+    );
+
+    expect(data.format).toBe("in-person");
+  });
+
+  it('falls back to "online" from the location string when no format signal is present and location looks like a URL', () => {
+    const data = buildDiscoveredEventData(
+      makeNormalized({
+        format: undefined,
+        location: "https://meet.google.com/abc-defg-hij",
+      }),
+      makeClassification(),
+      NOW_ISO,
+    );
+
+    expect(data.format).toBe("online");
+  });
+
+  it('falls back to "online" from the location string when no format signal is present and location is empty', () => {
+    const data = buildDiscoveredEventData(
+      makeNormalized({ format: undefined, location: "" }),
       makeClassification(),
       NOW_ISO,
     );
