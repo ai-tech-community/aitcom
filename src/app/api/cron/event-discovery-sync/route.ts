@@ -122,11 +122,25 @@ export async function GET(req: Request) {
         seenSourceUrls.add(normalized.lumaUrl);
       }
 
-      archived += await archiveStaleDiscoveredEvents(
-        payload,
-        integration.communityId,
-        seenSourceUrls,
-      );
+      // Only sweep for stale events when the fetch actually returned some.
+      // getCalendarEvents throws on non-OK HTTP, but a 200 with an empty
+      // `entries` array (Luma glitch, a rate-limit answered 200, a pagination
+      // edge, a momentarily-empty calendar) is indistinguishable from "the
+      // community genuinely cleared their calendar" — from a single response
+      // we cannot tell them apart. Archiving on an empty result would mark
+      // EVERY previously-ingested luma event for this community as
+      // "archived", dropping the whole community's corpus for up to 24h with
+      // no error logged. The conservative lesser evil is to skip the sweep on
+      // an empty fetch (a stale event lingers, its lastVerifiedAt simply stops
+      // advancing) rather than wipe the corpus on any transient blip. On a
+      // non-empty fetch, archival works as before.
+      if (rawEvents.length > 0) {
+        archived += await archiveStaleDiscoveredEvents(
+          payload,
+          integration.communityId,
+          seenSourceUrls,
+        );
+      }
 
       await db
         .update(communityLumaIntegrations)
