@@ -8,9 +8,11 @@
  * matching only. No I/O, no Date, fully deterministic.
  *
  * Matching rules:
- * - The event's title, description, and location are lowercased, stripped
- *   of punctuation, and joined into one normalized string; splitting that
- *   string on whitespace yields a token set.
+ * - The event's title, description, and location are lowercased, have
+ *   punctuation deleted *in place* (so "A.I." becomes the token "ai", not
+ *   "a"/"i"), and are joined into one whitespace-delimited normalized string;
+ *   splitting that string on whitespace yields a token set. Interest tags and
+ *   the audience name/slug are normalized identically so both sides agree.
  * - A single-word interest tag matches if it appears as a whole token in
  *   that set (avoids false positives like "ai" inside "explain").
  * - A multi-word interest tag ("product management") matches if it appears
@@ -52,11 +54,19 @@ const HITS_FOR_FULL_CONFIDENCE = 3;
 
 /** Lowercase, strip punctuation, and collapse to single-space-joined words. */
 function normalizeText(value: string): string {
-  return value
-    .toLowerCase()
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((word) => word.length > 0)
-    .join(" ");
+  return (
+    value
+      .toLowerCase()
+      // Strip punctuation *in place* (delete it, don't treat it as a word
+      // boundary) so internally-punctuated acronyms like "A.I." collapse to the
+      // single token "ai" rather than splitting into "a"/"i". Whitespace remains
+      // the only token delimiter. The same normalization is applied to interest
+      // tags and audience name/slug so both sides of every comparison agree.
+      .replace(/[^\p{L}\p{N}\s]+/gu, "")
+      .split(/\s+/u)
+      .filter((word) => word.length > 0)
+      .join(" ")
+  );
 }
 
 function tokenSetOf(normalized: string): Set<string> {

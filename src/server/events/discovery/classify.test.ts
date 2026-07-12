@@ -64,11 +64,13 @@ describe("classifyAudiences", () => {
     expect(result.audienceIds).toEqual([4]);
   });
 
-  it("does not match a multi-word interest phrase when its words appear apart, not adjacent", () => {
+  it("does not match a multi-word interest phrase when both words are present but non-adjacent", () => {
+    // Both "product" and "management" appear, but out of order and not
+    // adjacent, so the phrase tag "product management" must not match.
     const result = classifyAudiences(
       {
         title: "Community meetup",
-        description: "A talk on the management of roadmap topics",
+        description: "Our product roadmaps need careful management",
       },
       [WIDGETS_WITH_PHRASE],
     );
@@ -113,11 +115,21 @@ describe("classifyAudiences", () => {
     expect(result.audienceIds).toEqual([1, 2]);
   });
 
-  it("is case- and punctuation-insensitive", () => {
+  it("is case-insensitive and treats trailing punctuation as noise", () => {
     const result = classifyAudiences(
-      { title: "A.I., ENGINEERING!! -- what's next?!" },
+      { title: "ENGINEERING!! -- what's next?!" },
       [ENGINEERS],
     );
+    expect(result.audienceIds).toEqual([1]);
+  });
+
+  it('collapses an internally-punctuated acronym so "A.I." matches the tag "ai"', () => {
+    // Regression guard: "A.I." must normalize to the single token "ai"
+    // (punctuation stripped in place, not used as a word boundary) so a Luma
+    // title written "A.I. Summit" matches an audience whose interest is "ai".
+    const result = classifyAudiences({ title: "A.I. Summit for builders" }, [
+      ENGINEERS,
+    ]);
     expect(result.audienceIds).toEqual([1]);
   });
 
