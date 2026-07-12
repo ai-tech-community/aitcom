@@ -333,7 +333,10 @@ online. Detection is always a query against our own event index — never a live
 call to external platforms. Surfaced as **advisory, never blocking**: creation
 shows warnings plus ranked alternative slots, reviewers see conflict state in
 the approval queue, and a monitoring scan notifies organizers when a new
-conflict appears against an already-scheduled event.
+conflict appears against an already-scheduled event. The monitoring dedupe is
+per-pair and forever (never re-armed): a deliberate accepted limitation is
+that a rescheduled event which later re-conflicts with the same competitor at
+a new date will not re-alert (revisit in Slice K if it proves to matter).
 
 ### Tentative hold
 

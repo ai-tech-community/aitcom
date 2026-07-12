@@ -47,8 +47,9 @@ collisions when an event is being scheduled and suggest better times.
 7. **Monitoring (Phase 2)** — a Vercel cron (mirroring
    `src/app/api/cron/event-reminders/route.ts`) re-checks upcoming native
    events against the growing index; new material conflicts produce one
-   deduped advisory notification to the organizer. Respects the notification
-   ceiling.
+   deduped advisory notification to the organizer. Transactional, like
+   `event-reminders` — ceiling-exempt, not subject to the promotional
+   notification ceiling.
 8. **Phasing** — engine first, discovery grows:
    - **Phase 1:** Audience collection + enum migration, conflict engine,
      creation-flow warnings + suggested slots, tentative holds. Corpus =
@@ -86,13 +87,13 @@ collisions when an event is being scheduled and suggest better times.
 
 ## Slices
 
-| Slice | Scope | Depends on |
-|---|---|---|
-| G — Audience foundation | Audiences collection, seed from enum, events migration enum→relationship, consumer updates, types regen | — |
-| H — Conflict engine + tentative holds | conflict rule, severity grading, suggested-slot ranking, tRPC check endpoint, tentative holds | G |
-| I — Creation-flow UI + approval queue | inline panel, slot chips, approval-queue conflict state | H |
-| J — Monitoring cron + notifications | scheduled re-check, deduped organizer notifications | H |
-| K — Discovery ingestion + learned slots | agent-scale external event ingestion, audience classification, learned slot refinement | G, H |
+| Slice                                   | Scope                                                                                                   | Depends on |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------- | ---------- |
+| G — Audience foundation                 | Audiences collection, seed from enum, events migration enum→relationship, consumer updates, types regen | —          |
+| H — Conflict engine + tentative holds   | conflict rule, severity grading, suggested-slot ranking, tRPC check endpoint, tentative holds           | G          |
+| I — Creation-flow UI + approval queue   | inline panel, slot chips, approval-queue conflict state                                                 | H          |
+| J — Monitoring cron + notifications     | scheduled re-check, deduped organizer notifications                                                     | H          |
+| K — Discovery ingestion + learned slots | agent-scale external event ingestion, audience classification, learned slot refinement                  | G, H       |
 
 ## Non-goals / guardrails
 
