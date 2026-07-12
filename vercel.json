@@ -41,6 +41,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/event-discovery-sync",
+      "schedule": "0 5 * * *"
+    },
+    {
       "path": "/api/cron/event-conflict-monitor",
       "schedule": "0 6 * * *"
     },
