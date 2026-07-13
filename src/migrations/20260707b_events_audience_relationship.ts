@@ -42,34 +42,31 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       FOREIGN KEY ("audiences_id") REFERENCES "public"."audiences"("id") ON DELETE cascade ON UPDATE no action;
 
     -- ── data migration: junction rows → rel rows, resolved by slug ─────────
-    INSERT INTO "events_rels" ("order", "parent_id", "path", "audiences_id")
-    SELECT ea."order", ea."parent_id", 'audience', a."id"
-    FROM "events_audience" ea
-    JOIN "audiences" a ON a."slug" = ea."value"::text
-    WHERE NOT EXISTS (
-      SELECT 1 FROM "events_rels" er
-      WHERE er."parent_id" = ea."parent_id"
-        AND er."path" = 'audience'
-        AND er."order" = ea."order"
-    );
-
-    INSERT INTO "_events_v_rels" ("order", "parent_id", "path", "audiences_id")
-    SELECT va."order", va."parent_id", 'audience', a."id"
-    FROM "_events_v_version_audience" va
-    JOIN "audiences" a ON a."slug" = va."value"::text
-    WHERE NOT EXISTS (
-      SELECT 1 FROM "_events_v_rels" vr
-      WHERE vr."parent_id" = va."parent_id"
-        AND vr."path" = 'audience'
-        AND vr."order" = va."order"
-    );
-
-    -- ── safety net: row-count parity before we drop the old source data ────
+    -- Guarded by to_regclass: on a fresh database the legacy junction tables
+    -- never existed, so the data-move and its parity assert have nothing to
+    -- do (#209). plpgsql resolves table names per-statement at first
+    -- execution, so the guarded bodies never touch the missing tables.
     DO $$
     DECLARE
       junction_count integer;
       rel_count integer;
     BEGIN
+      IF to_regclass('public.events_audience') IS NULL THEN
+        RETURN;
+      END IF;
+
+      INSERT INTO "events_rels" ("order", "parent_id", "path", "audiences_id")
+      SELECT ea."order", ea."parent_id", 'audience', a."id"
+      FROM "events_audience" ea
+      JOIN "audiences" a ON a."slug" = ea."value"::text
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "events_rels" er
+        WHERE er."parent_id" = ea."parent_id"
+          AND er."path" = 'audience'
+          AND er."order" = ea."order"
+      );
+
+      -- safety net: row-count parity before we drop the old source data
       SELECT count(*) INTO junction_count FROM "events_audience";
       SELECT count(*) INTO rel_count FROM "events_rels" WHERE "path" = 'audience';
       IF rel_count <> junction_count THEN
@@ -84,6 +81,22 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       junction_count integer;
       rel_count integer;
     BEGIN
+      IF to_regclass('public._events_v_version_audience') IS NULL THEN
+        RETURN;
+      END IF;
+
+      INSERT INTO "_events_v_rels" ("order", "parent_id", "path", "audiences_id")
+      SELECT va."order", va."parent_id", 'audience', a."id"
+      FROM "_events_v_version_audience" va
+      JOIN "audiences" a ON a."slug" = va."value"::text
+      WHERE NOT EXISTS (
+        SELECT 1 FROM "_events_v_rels" vr
+        WHERE vr."parent_id" = va."parent_id"
+          AND vr."path" = 'audience'
+          AND vr."order" = va."order"
+      );
+
+      -- safety net: row-count parity before we drop the old source data
       SELECT count(*) INTO junction_count FROM "_events_v_version_audience";
       SELECT count(*) INTO rel_count FROM "_events_v_rels" WHERE "path" = 'audience';
       IF rel_count <> junction_count THEN
