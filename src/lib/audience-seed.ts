@@ -43,7 +43,18 @@ export const AUDIENCE_SEED: AudienceSeedEntry[] = [
   {
     slug: "engineers",
     name: "Engineers",
-    interests: ["ai", "engineering", "llms"],
+    interests: [
+      "ai",
+      "engineering",
+      "llms",
+      "machine learning",
+      "developers",
+      "mlops",
+      "infrastructure",
+      "open source",
+      "devops",
+      "coding",
+    ],
     preferredSlots: [
       { weekdays: ["tue", "wed", "thu"], startTime: "18:00", endTime: "21:00" },
       { weekdays: ["sat"], startTime: "10:00", endTime: "13:00" },
@@ -53,7 +64,17 @@ export const AUDIENCE_SEED: AudienceSeedEntry[] = [
   {
     slug: "founders",
     name: "Founders",
-    interests: ["startups", "fundraising", "ai"],
+    interests: [
+      "startups",
+      "fundraising",
+      "ai",
+      "founder",
+      "venture",
+      "vc",
+      "pitch",
+      "entrepreneurship",
+      "growth",
+    ],
     preferredSlots: [
       { weekdays: ["tue", "wed", "thu"], startTime: "17:00", endTime: "20:00" },
     ],
@@ -62,7 +83,16 @@ export const AUDIENCE_SEED: AudienceSeedEntry[] = [
   {
     slug: "marketers",
     name: "Marketers",
-    interests: [],
+    interests: [
+      "marketing",
+      "growth",
+      "brand",
+      "content",
+      "seo",
+      "demand generation",
+      "social media",
+      "advertising",
+    ],
     preferredSlots: [
       { weekdays: ["tue", "wed", "thu"], startTime: "16:00", endTime: "18:00" },
     ],
@@ -71,7 +101,15 @@ export const AUDIENCE_SEED: AudienceSeedEntry[] = [
   {
     slug: "product",
     name: "Product",
-    interests: [],
+    interests: [
+      "product management",
+      "product",
+      "ux",
+      "user experience",
+      "design",
+      "roadmap",
+      "discovery",
+    ],
     preferredSlots: [
       { weekdays: ["tue", "wed", "thu"], startTime: "17:00", endTime: "19:00" },
     ],
@@ -80,7 +118,16 @@ export const AUDIENCE_SEED: AudienceSeedEntry[] = [
   {
     slug: "researchers",
     name: "Researchers",
-    interests: [],
+    interests: [
+      "research",
+      "machine learning",
+      "deep learning",
+      "nlp",
+      "papers",
+      "phd",
+      "academia",
+      "science",
+    ],
     preferredSlots: [
       { weekdays: ["wed", "thu"], startTime: "15:00", endTime: "18:00" },
     ],
@@ -89,7 +136,14 @@ export const AUDIENCE_SEED: AudienceSeedEntry[] = [
   {
     slug: "mixed",
     name: "Mixed",
-    interests: [],
+    interests: [
+      "networking",
+      "community",
+      "meetup",
+      "social",
+      "demo day",
+      "showcase",
+    ],
     preferredSlots: [
       { weekdays: ["tue", "wed", "thu"], startTime: "18:00", endTime: "20:00" },
     ],
@@ -98,7 +152,16 @@ export const AUDIENCE_SEED: AudienceSeedEntry[] = [
   {
     slug: "executives",
     name: "Executives",
-    interests: ["leadership", "strategy", "ai"],
+    interests: [
+      "leadership",
+      "strategy",
+      "ai",
+      "executive",
+      "ceo",
+      "board",
+      "enterprise",
+      "transformation",
+    ],
     preferredSlots: [
       { weekdays: ["tue", "wed", "thu"], startTime: "08:00", endTime: "10:00" },
       { weekdays: ["tue", "wed", "thu"], startTime: "17:00", endTime: "19:00" },
