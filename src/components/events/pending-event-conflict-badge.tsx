@@ -110,7 +110,9 @@ export function PendingEventConflictBadge({
         aria-label={t("conflictBadgeCheckFailedRetry")}
         className={cn(
           badgeVariants({ variant: "outline" }),
-          "text-muted-foreground cursor-pointer gap-1 py-0 font-mono text-[10px] leading-4 tracking-wide uppercase sm:order-4",
+          // -my-0.75 + min-h-6: 24px hit target (WCAG 2.5.8) while keeping
+          // the chip's 18px visual footprint in the row's status slot.
+          "text-muted-foreground -my-0.75 min-h-6 cursor-pointer gap-1 py-0 font-mono text-[10px] leading-4 tracking-wide uppercase sm:order-4",
         )}
       >
         <RotateCw className="size-3" aria-hidden="true" />
@@ -141,10 +143,11 @@ export function PendingEventConflictBadge({
         })}
         className={cn(
           badgeVariants({ variant: GRADE_BADGE_VARIANT[highestGrade] }),
-          // sm:order-4 shares the queue row's status-chip slot (see
-          // page.tsx's `contents` wrapper note); the expansion below carries
-          // its own order so it always wraps to a trailing full-width line.
-          "cursor-pointer gap-1 py-0 font-mono text-[10px] leading-4 tracking-wide uppercase sm:order-4",
+          // sm:order-4 shares the queue row's status-chip slot; the
+          // expansion below carries its own order so it always wraps to a
+          // trailing full-width line. -my-0.75 + min-h-6: 24px hit target
+          // (WCAG 2.5.8) while keeping the chip's 18px visual footprint.
+          "-my-0.75 min-h-6 cursor-pointer gap-1 py-0 font-mono text-[10px] leading-4 tracking-wide uppercase sm:order-4",
         )}
       >
         <GradeIcon className="size-3" aria-hidden="true" />
