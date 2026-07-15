@@ -326,7 +326,7 @@ describe("SlotSuggestionChips", () => {
     });
   });
 
-  it("renders 3-5 chips as real, individually clickable buttons", () => {
+  it("renders up to 3 chips as real, individually clickable buttons", () => {
     const suggestions: SlotSuggestion[] = [
       { ...baseSuggestion, startTime: "18:00" },
       { ...baseSuggestion, startTime: "19:00" },
@@ -334,6 +334,22 @@ describe("SlotSuggestionChips", () => {
     ];
     renderChips({ suggestions });
     expect(screen.getAllByRole("button")).toHaveLength(3);
+  });
+
+  it("caps visible chips at the top 3 of the server's pre-ranked 5", () => {
+    const suggestions: SlotSuggestion[] = [
+      "17:00",
+      "18:00",
+      "19:00",
+      "20:00",
+      "21:00",
+    ].map((startTime) => ({ ...baseSuggestion, startTime }));
+    renderChips({ suggestions });
+    const chips = screen.getAllByRole("button");
+    expect(chips).toHaveLength(3);
+    // Best-ranked first: the top of the server ordering survives the cap.
+    expect(chips[0]).toHaveTextContent("17:00");
+    expect(screen.queryByText(/21:00/)).not.toBeInTheDocument();
   });
 });
 

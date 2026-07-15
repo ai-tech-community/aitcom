@@ -95,6 +95,7 @@ export interface EventConflictPanelProps {
 }
 
 const VISIBLE_ROWS = 3;
+const VISIBLE_SUGGESTIONS = 3;
 const REST_MAX_HEIGHT_CLASS = "max-h-32";
 
 // py-0 + leading-4 keeps each badge at 18px (16px line + 2px border), so a
@@ -256,7 +257,9 @@ export type SlotSuggestionTriple = Pick<
 >;
 
 export interface SlotSuggestionChipsProps {
-  /** Server caps this at 5. */
+  /** Server caps this at 5, pre-ranked best-first; the UI renders only the
+   * top `VISIBLE_SUGGESTIONS` (3) to stay inside the ≤4-options decision
+   * budget. */
   suggestions: SlotSuggestion[];
   checkedAudiences: CheckedAudience[];
   /** Event timezone (already defaulted by the caller) — anchors the
@@ -321,13 +324,19 @@ export function SlotSuggestionChips({
 
   if (suggestions.length === 0) return null;
 
+  // The server sends up to 5 pre-ranked suggestions; showing all five puts
+  // 5 near-identical choices (plus the implicit "keep my time") at one
+  // decision point — past the ≤4-options working-memory budget. The top 3
+  // carry the decision; the rest add noise, not options.
+  const visible = suggestions.slice(0, VISIBLE_SUGGESTIONS);
+
   return (
     <div className="mt-2">
       <SectionLabel as="p" bordered={false} className="mb-1">
         {t("slotSuggestionsSectionLabel")}
       </SectionLabel>
       <ul className="flex flex-wrap gap-1.5">
-        {suggestions.map((suggestion) => (
+        {visible.map((suggestion) => (
           <li
             key={`${suggestion.date}|${suggestion.startTime}|${suggestion.endTime}`}
           >
@@ -335,6 +344,10 @@ export function SlotSuggestionChips({
               type="button"
               variant="outline"
               size="sm"
+              // h-auto + whitespace-normal: a long NL reason ("Voorkeur van
+              // {audience}") must wrap inside the chip instead of overflowing
+              // the 90vh dialog on narrow screens (Button base is nowrap).
+              className="h-auto min-h-8 py-1 whitespace-normal"
               onClick={() =>
                 onApply({
                   date: suggestion.date,
@@ -348,10 +361,10 @@ export function SlotSuggestionChips({
                   sr-only prefix rather than aria-label so the visible reason
                   text stays part of the name. */}
               <span className="sr-only">{t("slotApplySrLabel")} </span>
-              <span className="font-mono">
+              <span className="font-mono whitespace-nowrap">
                 {formatSuggestionDateTime(suggestion, timezone, locale)}
               </span>
-              <span className="text-muted-foreground font-normal normal-case">
+              <span className="text-muted-foreground text-left font-normal normal-case">
                 {reasonLabels(suggestion.reasons, checkedAudiences, t).join(
                   " · ",
                 )}
