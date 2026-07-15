@@ -4,9 +4,11 @@
  * Approval-queue conflict badge (Slice I, Task 4 / #208). Runs a fresh
  * `checkConflicts` for a pending event's own scheduling fields — no stored
  * snapshot, so a reviewer always sees the *current* state of the corpus,
- * even if it changed since submission. Silent (renders null) while loading
- * and on a clear result, matching the create/edit dialog's "no noise"
- * convention; only a genuine conflict earns screen space.
+ * even if it changed since submission. Silent (renders null) only on a
+ * genuine clear result; loading shows a chip-sized skeleton and a failed
+ * check shows a retryable "check unavailable" chip, so a reviewer can never
+ * mistake "check didn't run" for "no conflicts" (No-Silent-Failure Rule —
+ * absence of a badge must mean the check completed clean).
  *
  * Reuses `ConflictRow` (read-only) and the grade → variant/icon/label maps
  * from `event-conflict-panel.tsx` so the summary chip and the expansion both
@@ -15,11 +17,13 @@
 
 import { useId, useState } from "react";
 import { useTranslations } from "next-intl";
+import { RotateCw } from "lucide-react";
 
 import { api } from "@/trpc/react";
 import type { RouterInputs } from "@/trpc/react";
 import { badgeVariants } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   ConflictRow,
@@ -78,7 +82,39 @@ export function PendingEventConflictBadge({
     { enabled, retry: 1 },
   );
 
-  if (query.isLoading || !query.data) return null;
+  if (!enabled) return null;
+
+  // Reserve the chip slot while the check runs so the badge doesn't pop in
+  // after a reviewer has already read the row as "no conflicts".
+  if (query.isLoading) {
+    return (
+      <Skeleton
+        className="h-4.5 w-16 rounded-full sm:order-4"
+        aria-hidden="true"
+      />
+    );
+  }
+
+  // A failed check must be distinguishable from a clean one — a reviewer
+  // approving on a silently-absent badge is the worst failure mode here.
+  if (query.isError) {
+    return (
+      <button
+        type="button"
+        onClick={() => void query.refetch()}
+        aria-label={t("conflictBadgeCheckFailedRetry")}
+        className={cn(
+          badgeVariants({ variant: "outline" }),
+          "text-muted-foreground cursor-pointer gap-1 py-0 font-mono text-[10px] leading-4 tracking-wide uppercase sm:order-4",
+        )}
+      >
+        <RotateCw className="size-3" aria-hidden="true" />
+        {t("conflictBadgeCheckFailed")}
+      </button>
+    );
+  }
+
+  if (!query.data) return null;
 
   const conflicts = query.data.conflicts;
   if (conflicts.length === 0) return null;

@@ -362,6 +362,24 @@ export function EventFormDialog({
     { enabled: open && !!debouncedConflictInput, retry: 1 },
   );
 
+  // Every debounce fire changes the query key, so `conflictCheck.data` drops
+  // to undefined for the whole re-check. Keep the last completed result so
+  // the panel can stay mounted (dimmed, "/ RECHECKING") instead of collapsing
+  // to a skeleton and shoving every field below it ~180px per cycle (design
+  // critique 2026-07-14, P1). Cleared on close so a reopened dialog for a
+  // different event never flashes the previous event's conflicts.
+  const [lastConflictData, setLastConflictData] = useState<
+    typeof conflictCheck.data
+  >(undefined);
+  useEffect(() => {
+    if (!open) {
+      setLastConflictData(undefined);
+      return;
+    }
+    if (conflictCheck.data) setLastConflictData(conflictCheck.data);
+  }, [open, conflictCheck.data]);
+  const conflictData = conflictCheck.data ?? lastConflictData;
+
   const conflictPanelState: ConflictPanelState = deriveConflictPanelState({
     gateMet: conflictGateMet,
     debouncePending,
@@ -747,10 +765,41 @@ export function EventFormDialog({
                   {t("eventTimezoneHint")}
                 </p>
               </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Audience</Label>
+                <div className="flex flex-wrap gap-2">
+                  {audienceOptionsLoading ? (
+                    <>
+                      <Skeleton className="h-7 w-20" />
+                      <Skeleton className="h-7 w-24" />
+                      <Skeleton className="h-7 w-16" />
+                    </>
+                  ) : (
+                    (audienceOptions ?? []).map(({ slug, name }) => {
+                      const active = form.audience.includes(slug);
+                      return (
+                        <button
+                          key={slug}
+                          type="button"
+                          onClick={() => toggleAudience(slug)}
+                          className={`rounded border px-3 py-1 text-sm ${active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"}`}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+                {!conflictGateMet && (
+                  <p className="text-muted-foreground text-xs">
+                    {t("conflictHintIncomplete")}
+                  </p>
+                )}
+              </div>
               <EventConflictPanel
                 state={conflictPanelState}
-                conflicts={conflictCheck.data?.conflicts ?? []}
-                checkedAudiences={conflictCheck.data?.checkedAudiences ?? []}
+                conflicts={conflictData?.conflicts ?? []}
+                checkedAudiences={conflictData?.checkedAudiences ?? []}
                 onRetry={() => void conflictCheck.refetch()}
                 scope={form.city.trim() || undefined}
               >
@@ -758,8 +807,8 @@ export function EventFormDialog({
                     suggestions; the panel only mounts `children` inside its
                     "conflicts" frame, so this stays out of the other states. */}
                 <SlotSuggestionChips
-                  suggestions={conflictCheck.data?.suggestions ?? []}
-                  checkedAudiences={conflictCheck.data?.checkedAudiences ?? []}
+                  suggestions={conflictData?.suggestions ?? []}
+                  checkedAudiences={conflictData?.checkedAudiences ?? []}
                   timezone={form.timezone || DEFAULT_EVENT_TIMEZONE}
                   onApply={applySuggestion}
                 />
@@ -923,37 +972,6 @@ export function EventFormDialog({
                   />
                 </div>
               )}
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Audience</Label>
-                <div className="flex flex-wrap gap-2">
-                  {audienceOptionsLoading ? (
-                    <>
-                      <Skeleton className="h-7 w-20" />
-                      <Skeleton className="h-7 w-24" />
-                      <Skeleton className="h-7 w-16" />
-                    </>
-                  ) : (
-                    (audienceOptions ?? []).map(({ slug, name }) => {
-                      const active = form.audience.includes(slug);
-                      return (
-                        <button
-                          key={slug}
-                          type="button"
-                          onClick={() => toggleAudience(slug)}
-                          className={`rounded border px-3 py-1 text-sm ${active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"}`}
-                        >
-                          {name}
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-                {!conflictGateMet && (
-                  <p className="text-muted-foreground text-xs">
-                    {t("conflictHintIncomplete")}
-                  </p>
-                )}
-              </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="event-tags">Tags</Label>
                 <Input

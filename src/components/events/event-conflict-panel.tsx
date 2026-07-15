@@ -13,7 +13,7 @@
  * mount a slot-suggestion chip row inside the conflicts frame.
  *
  * Vertical budget: the row layout is deliberately two-line so the full
- * 3-visible-row frame stays under a ~240px ceiling (Tailwind defaults, 16px
+ * 3-visible-row frame stays under a ~250px ceiling (Tailwind defaults, 16px
  * root; worst case = 3 revealed rows + expander visible) — the arithmetic,
  * so nothing added to a row silently blows the budget:
  *
@@ -27,9 +27,9 @@
  *   Row padding (`py-1.5`, 6px × 2)                                12px
  *   → Row total                                                    50px
  *   3 rows + 2 `divide-y` borders (3 × 50 + 2)                    152px
- *   Expander (`mt-1` 4px + `text-xs` 16px)                         20px
+ *   Expander (`mt-1` 4px + `min-h-6` 24px — WCAG 2.5.8 target)     28px
  *   Honesty line (`mt-1` 4px + `text-[11px] leading-4` 16px)       20px
- *   → Frame total: 2 + 24 + 20 + 152 + 20 + 20 = 238px ≤ ~240px      ✓
+ *   → Frame total: 2 + 24 + 20 + 152 + 28 + 20 = 246px ≤ ~250px      ✓
  *
  * (The tentative row is shorter still — 42px — and the expanded overflow
  * list stays capped at `max-h-32` (128px) with internal scroll, so it never
@@ -52,6 +52,7 @@ import type { WireConflict } from "@/server/events/conflicts/corpus";
 import type { ConflictGrade } from "@/server/events/conflicts/rule";
 import type { SlotSuggestion } from "@/server/events/conflicts/suggest";
 import { eventWallTimeToUtc, formatEventTimeRange } from "@/lib/event-time";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -75,7 +76,11 @@ export interface CheckedAudience {
 
 export interface EventConflictPanelProps {
   state: ConflictPanelState;
-  /** Pre-sorted by the server (most severe first). */
+  /** Pre-sorted by the server (most severe first). During a re-check the
+   * dialog keeps passing the *previous* result here (see `lastConflictData`
+   * in event-form-dialog.tsx), so the frame stays rendered — dimmed, with a
+   * "/ RECHECKING" header — instead of collapsing to a skeleton and shoving
+   * every field below it ~180px per debounce cycle. */
   conflicts: WireConflict[];
   checkedAudiences: CheckedAudience[];
   onRetry: () => void;
@@ -229,7 +234,9 @@ export function ConflictRow({ conflict }: { conflict: WireConflict }) {
               aria-label={t("conflictSourceLinkLabel", {
                 title: conflict.title,
               })}
-              className="hover:text-foreground ml-auto shrink-0"
+              // min 24×24 target (WCAG 2.5.8); -my-1 keeps the meta line's
+              // 16px vertical footprint so the row budget holds.
+              className="hover:text-foreground -my-1 ml-auto flex min-h-6 min-w-6 shrink-0 items-center justify-center"
             >
               <ExternalLink className="size-3.5" aria-hidden="true" />
             </a>
@@ -336,6 +343,11 @@ export function SlotSuggestionChips({
                 })
               }
             >
+              {/* Gives the chip an action-verb accessible name ("Apply
+                  suggested time: Wed, Jul 15 …") instead of a bare fact —
+                  sr-only prefix rather than aria-label so the visible reason
+                  text stays part of the name. */}
+              <span className="sr-only">{t("slotApplySrLabel")} </span>
               <span className="font-mono">
                 {formatSuggestionDateTime(suggestion, timezone, locale)}
               </span>
@@ -366,10 +378,14 @@ export function EventConflictPanel({
 
   if (state === "idle") return null;
 
-  if (state === "checking") {
+  // First check (no previous result to keep on screen): a skeleton, with an
+  // sr-only status line so the aria-live region actually announces something
+  // — a bare skeleton is silent to screen readers.
+  if (state === "checking" && conflicts.length === 0) {
     return (
       <div aria-live="polite" className="sm:col-span-2">
         <div className="bg-muted/40 rounded-lg border p-3">
+          <span className="sr-only">{t("conflictChecking")}</span>
           <Skeleton className="h-10 w-full" />
         </div>
       </div>
@@ -406,15 +422,25 @@ export function EventConflictPanel({
     );
   }
 
-  // state === "conflicts"
+  // state === "conflicts", or state === "checking" with the previous result
+  // still in hand — the frame stays mounted (dimmed, relabeled) during a
+  // re-check so the organizer can compare against what they just saw and
+  // nothing below the panel jumps.
+  const rechecking = state === "checking";
   const visible = conflicts.slice(0, VISIBLE_ROWS);
   const rest = conflicts.slice(VISIBLE_ROWS);
 
   return (
     <div aria-live="polite" className="sm:col-span-2">
-      <div className="bg-muted/40 rounded-lg border p-3">
+      <div
+        aria-busy={rechecking}
+        className={cn(
+          "bg-muted/40 rounded-lg border p-3 transition-opacity duration-200 motion-reduce:transition-none",
+          rechecking && "opacity-60",
+        )}
+      >
         <SectionLabel as="p" bordered={false} className="mb-1">
-          {t("conflictSectionLabel")}
+          {rechecking ? t("conflictRechecking") : t("conflictSectionLabel")}
         </SectionLabel>
         <ul className="divide-border/60 divide-y">
           {visible.map((conflict, index) => (
@@ -444,7 +470,7 @@ export function EventConflictPanel({
               aria-expanded={expanded}
               {...(expanded ? { "aria-controls": overflowRegionId } : {})}
               onClick={() => setExpanded((current) => !current)}
-              className="text-muted-foreground hover:text-foreground mt-1 font-mono text-xs tracking-wide uppercase transition-colors motion-reduce:transition-none"
+              className="text-muted-foreground hover:text-foreground mt-1 flex min-h-6 items-center font-mono text-xs tracking-wide uppercase transition-colors motion-reduce:transition-none"
             >
               {expanded
                 ? t("conflictShowFewer")
