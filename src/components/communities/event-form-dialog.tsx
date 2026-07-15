@@ -368,9 +368,8 @@ export function EventFormDialog({
   // to a skeleton and shoving every field below it ~180px per cycle (design
   // critique 2026-07-14, P1). Cleared on close so a reopened dialog for a
   // different event never flashes the previous event's conflicts.
-  const [lastConflictData, setLastConflictData] = useState<
-    typeof conflictCheck.data
-  >(undefined);
+  const [lastConflictData, setLastConflictData] =
+    useState<typeof conflictCheck.data>(undefined);
   useEffect(() => {
     if (!open) {
       setLastConflictData(undefined);
