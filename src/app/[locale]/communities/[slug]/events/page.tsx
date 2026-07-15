@@ -236,14 +236,14 @@ export default function CommunityEventsPage({
             onClick={(e) => e.preventDefault()}
           >
             <button
-              className="rounded p-1 hover:bg-zinc-100"
+              className="hover:bg-secondary flex min-h-6 min-w-6 items-center justify-center rounded p-1"
               title="Edit and resubmit"
               onClick={() => {
                 setEditingEvent({ id: event.id as number, resubmit: true });
                 setDialogOpen(true);
               }}
             >
-              <Pencil className="size-3.5 text-zinc-400" />
+              <Pencil className="text-muted-foreground size-3.5" />
             </button>
           </div>
         )}
@@ -264,7 +264,7 @@ export default function CommunityEventsPage({
               event.status !== "draft" &&
               event.slug && (
                 <button
-                  className="border-border text-muted-foreground hover:bg-secondary/40 rounded border px-2 py-0.5 font-mono text-xs"
+                  className="border-border text-muted-foreground hover:bg-secondary/40 flex min-h-6 items-center rounded border px-2 py-0.5 font-mono text-xs"
                   onClick={() =>
                     router.push(
                       `/communities/${slug}/events/${event.slug}/manage` as never,
@@ -275,16 +275,16 @@ export default function CommunityEventsPage({
                 </button>
               )}
             <button
-              className="rounded p-1 hover:bg-zinc-100"
+              className="hover:bg-secondary flex min-h-6 min-w-6 items-center justify-center rounded p-1"
               onClick={() => {
                 setEditingEvent({ id: event.id as number });
                 setDialogOpen(true);
               }}
             >
-              <Pencil className="size-3.5 text-zinc-400" />
+              <Pencil className="text-muted-foreground size-3.5" />
             </button>
             <button
-              className="rounded p-1 hover:bg-zinc-100"
+              className="hover:bg-secondary flex min-h-6 min-w-6 items-center justify-center rounded p-1"
               onClick={async () => {
                 if (
                   await confirm({
@@ -299,7 +299,7 @@ export default function CommunityEventsPage({
                 }
               }}
             >
-              <XCircle className="size-3.5 text-zinc-400" />
+              <XCircle className="text-muted-foreground size-3.5" />
             </button>
           </div>
         )}
@@ -313,7 +313,7 @@ export default function CommunityEventsPage({
                 manage button above. */}
             {event.type === "hackathon" && event.slug && isAdminOrOwner && (
               <button
-                className="border-border text-muted-foreground hover:bg-secondary/40 rounded border px-2 py-0.5 font-mono text-xs"
+                className="border-border text-muted-foreground hover:bg-secondary/40 flex min-h-6 items-center rounded border px-2 py-0.5 font-mono text-xs"
                 onClick={() =>
                   router.push(
                     `/communities/${slug}/events/${event.slug}/manage` as never,
@@ -324,7 +324,7 @@ export default function CommunityEventsPage({
               </button>
             )}
             <button
-              className="flex items-center gap-1 rounded border border-green-600 px-2 py-0.5 font-mono text-xs text-green-600 hover:bg-green-50 disabled:opacity-50"
+              className="border-success text-success hover:bg-success/10 flex min-h-6 items-center gap-1 rounded border px-2 py-0.5 font-mono text-xs disabled:opacity-50"
               disabled={approveMutation.isPending || rejectMutation.isPending}
               onClick={() =>
                 approveMutation.mutate({
@@ -336,7 +336,7 @@ export default function CommunityEventsPage({
               <CheckCircle className="size-3" /> Approve
             </button>
             <button
-              className="flex items-center gap-1 rounded border border-red-500 px-2 py-0.5 font-mono text-xs text-red-500 hover:bg-red-50 disabled:opacity-50"
+              className="border-destructive text-destructive hover:bg-destructive/10 flex min-h-6 items-center gap-1 rounded border px-2 py-0.5 font-mono text-xs disabled:opacity-50"
               disabled={approveMutation.isPending || rejectMutation.isPending}
               onClick={() =>
                 rejectMutation.mutate({
@@ -447,8 +447,11 @@ export default function CommunityEventsPage({
               }`}
             >
               PENDING
+              {/* Warning token, not orange: "pending review" is a
+                  needs-attention status, and Signal Orange stays reserved
+                  for the screen's one primary action (Submit Event). */}
               {pendingCount > 0 && (
-                <span className="flex size-4 items-center justify-center rounded-full bg-orange-500 text-xs text-white">
+                <span className="bg-warning text-warning-foreground flex size-4 items-center justify-center rounded-full text-xs">
                   {pendingCount}
                 </span>
               )}
