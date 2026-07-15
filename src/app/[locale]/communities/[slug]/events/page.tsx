@@ -198,34 +198,27 @@ export default function CommunityEventsPage({
         </span>
         {opts.showApproveReject && (
           // Fresh conflict check for the review queue (I-T4 / #208) — never a
-          // stored snapshot. `contents` dissolves this wrapper so the badge's
-          // trigger chip and (when expanded) its full-width panel become
-          // direct flex children of the row: the chip takes the same
-          // `sm:order-4` slot as the other status chips, while the panel's
-          // own `sm:order-20 sm:basis-full` wraps it onto a full-width line
-          // under the row (paired with `sm:flex-wrap` on the row below).
-          // Same house pattern as every other interactive cluster in this
-          // row (edit/cancel, approve/reject, resubmit): the row itself is a
-          // `<Link>`/`<a>` for navigation, so a click on the badge's own
-          // trigger button must call `preventDefault()` on the bubbled event
-          // or it both toggles the expansion *and* navigates (a draft's
-          // `/events/${slug}` link 404s). `span.contents` carries the
-          // handler fine — event delegation follows the DOM tree, not the
-          // `display: contents` layout box.
-          <span className="contents" onClick={(e) => e.preventDefault()}>
-            <PendingEventConflictBadge
-              event={{
-                id: event.id as number,
-                date: event.date,
-                startTime: event.startTime,
-                endTime: event.endTime,
-                timezone: event.timezone,
-                format: event.format,
-                city: event.city,
-                audience: event.audience ?? [],
-              }}
-            />
-          </span>
+          // stored snapshot. The badge's trigger chip and (when expanded) its
+          // full-width panel render as direct flex children of the row: the
+          // chip takes the same `sm:order-4` slot as the other status chips,
+          // while the panel's own `sm:order-20 sm:basis-full` wraps it onto a
+          // full-width line under the row (paired with `sm:flex-wrap` on the
+          // row below). No preventDefault wrapper here (#214): pending rows
+          // are drafts, which never render as links (see the href logic
+          // below), so nothing bubbles to an anchor — and a wrapper would
+          // suppress the sourceUrl links inside the expanded ConflictRows.
+          <PendingEventConflictBadge
+            event={{
+              id: event.id as number,
+              date: event.date,
+              startTime: event.startTime,
+              endTime: event.endTime,
+              timezone: event.timezone,
+              format: event.format,
+              city: event.city,
+              audience: event.audience ?? [],
+            }}
+          />
         )}
         {opts.showStatus && event.status === "rejected" && (
           <span className="text-destructive flex items-center gap-1 font-mono text-xs font-medium sm:order-4 sm:ml-2">
@@ -315,6 +308,21 @@ export default function CommunityEventsPage({
             className="flex shrink-0 items-center gap-1 sm:order-6"
             onClick={(e) => e.preventDefault()}
           >
+            {/* Pending rows never link (#214), so a draft hackathon's manage
+                surface needs its own affordance — mirrors the events tab's
+                manage button above. */}
+            {event.type === "hackathon" && event.slug && isAdminOrOwner && (
+              <button
+                className="border-border text-muted-foreground hover:bg-secondary/40 rounded border px-2 py-0.5 font-mono text-xs"
+                onClick={() =>
+                  router.push(
+                    `/communities/${slug}/events/${event.slug}/manage` as never,
+                  )
+                }
+              >
+                {tHackathon("manage")}
+              </button>
+            )}
             <button
               className="flex items-center gap-1 rounded border border-green-600 px-2 py-0.5 font-mono text-xs text-green-600 hover:bg-green-50 disabled:opacity-50"
               disabled={approveMutation.isPending || rejectMutation.isPending}
@@ -358,18 +366,32 @@ export default function CommunityEventsPage({
       );
     }
 
-    if (event.slug) {
+    // Pending-queue rows are NEVER wrapped in an anchor (#214): their
+    // interactive children (conflict badge + the sourceUrl links inside its
+    // expansion, approve/reject, the manage button above) must work
+    // standalone, and every pending event is a draft — its public page 404s.
+    if (event.slug && !opts.showApproveReject) {
       // A draft hackathon has no public event page yet (it 404s) — send admins
       // and owners to its manage surface instead. Moderators can see the row
       // but the manage page would redirect them, so leave it unlinked (like
       // slug-less rows below). Published hackathons keep the public link.
       const isDraftHackathon =
         event.type === "hackathon" && event.status === "draft";
+      // The public event page hides draft AND rejected submissions
+      // (`status not_in ["draft","rejected"]` in events/[slug]/page.tsx), so
+      // linking those rows guarantees a 404 (#214). They fall through to the
+      // plain <div> row below — which also keeps the pending queue's
+      // interactive children (conflict badge, approve/reject, sourceUrl
+      // links in the expansion) out of a wrapping anchor.
+      const isPubliclyVisible =
+        event.status !== "draft" && event.status !== "rejected";
       const href = isDraftHackathon
         ? isAdminOrOwner
           ? `/communities/${slug}/events/${event.slug}/manage`
           : null
-        : `/events/${event.slug}`;
+        : isPubliclyVisible
+          ? `/events/${event.slug}`
+          : null;
       if (href) {
         return (
           <Link key={event.id} href={href as never} className={rowClassName}>
