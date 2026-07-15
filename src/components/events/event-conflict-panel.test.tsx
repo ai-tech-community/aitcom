@@ -367,6 +367,23 @@ describe("EventConflictPanel + SlotSuggestionChips composition", () => {
       conflicts: [revealed()],
       children: <SlotSuggestionChips {...slotChipsBaseProps} />,
     });
-    expect(screen.getByText("Wed, Jul 15 · 18:00–20:00")).toBeInTheDocument();
+    const chip = screen.getByRole("button", { name: /·/ });
+    expect(chip).toBeInTheDocument();
+    expect(chip).toBeEnabled();
+  });
+
+  it("disables slot chips while re-checking so a stale slot can't be applied", () => {
+    renderPanel({
+      state: "checking",
+      conflicts: [revealed()],
+      children: <SlotSuggestionChips {...slotChipsBaseProps} />,
+    });
+    // Disabled via the panel's wrapping <fieldset disabled> — :disabled
+    // matches through fieldset ancestry, so real browsers block activation
+    // (spec: click() on a disabled form control does nothing) and the
+    // Button's disabled:pointer-events-none styling kicks in. jsdom's
+    // synthetic fireEvent.click bypasses both, so asserting the disabled
+    // state is the faithful check here, not a synthetic click.
+    expect(screen.getByRole("button", { name: /·/ })).toBeDisabled();
   });
 });

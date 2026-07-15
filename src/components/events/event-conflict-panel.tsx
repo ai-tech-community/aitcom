@@ -378,60 +378,50 @@ export function EventConflictPanel({
 
   if (state === "idle") return null;
 
-  // First check (no previous result to keep on screen): a skeleton, with an
-  // sr-only status line so the aria-live region actually announces something
-  // — a bare skeleton is silent to screen readers.
+  let inner: React.ReactNode;
+
   if (state === "checking" && conflicts.length === 0) {
-    return (
-      <div aria-live="polite" className="sm:col-span-2">
-        <div className="bg-muted/40 rounded-lg border p-3">
-          <span className="sr-only">{t("conflictChecking")}</span>
-          <Skeleton className="h-10 w-full" />
-        </div>
+    // First check (no previous result to keep on screen): a skeleton, with
+    // an sr-only status line so the live region actually announces something
+    // — a bare skeleton is silent to screen readers.
+    inner = (
+      <div className="bg-muted/40 rounded-lg border p-3">
+        <span className="sr-only">{t("conflictChecking")}</span>
+        <Skeleton className="h-10 w-full" />
       </div>
     );
-  }
-
-  if (state === "error") {
-    return (
-      <div aria-live="polite" className="sm:col-span-2">
-        <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
-          <span>{t("conflictCheckFailed")}</span>
-          <Button type="button" variant="outline" size="xs" onClick={onRetry}>
-            {t("conflictRetry")}
-          </Button>
-        </p>
-      </div>
+  } else if (state === "error") {
+    inner = (
+      <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+        <span>{t("conflictCheckFailed")}</span>
+        <Button type="button" variant="outline" size="xs" onClick={onRetry}>
+          {t("conflictRetry")}
+        </Button>
+      </p>
     );
-  }
-
-  if (state === "clear") {
+  } else if (state === "clear") {
     const audiences = checkedAudiences.map((a) => a.name).join(", ");
-    return (
-      <div aria-live="polite" className="sm:col-span-2">
-        <p className="text-foreground flex items-center gap-2 text-sm">
-          <CheckCircle2
-            className="text-success size-4 shrink-0"
-            aria-hidden="true"
-          />
-          {scope
-            ? t("conflictClearScoped", { audiences, scope })
-            : t("conflictClear", { audiences })}
-        </p>
-      </div>
+    inner = (
+      <p className="text-foreground flex items-center gap-2 text-sm">
+        <CheckCircle2
+          className="text-success size-4 shrink-0"
+          aria-hidden="true"
+        />
+        {scope
+          ? t("conflictClearScoped", { audiences, scope })
+          : t("conflictClear", { audiences })}
+      </p>
     );
-  }
+  } else {
+    // state === "conflicts", or state === "checking" with the previous
+    // result still in hand — the frame stays mounted (dimmed, relabeled)
+    // during a re-check so the organizer can compare against what they just
+    // saw and nothing below the panel jumps.
+    const rechecking = state === "checking";
+    const visible = conflicts.slice(0, VISIBLE_ROWS);
+    const rest = conflicts.slice(VISIBLE_ROWS);
 
-  // state === "conflicts", or state === "checking" with the previous result
-  // still in hand — the frame stays mounted (dimmed, relabeled) during a
-  // re-check so the organizer can compare against what they just saw and
-  // nothing below the panel jumps.
-  const rechecking = state === "checking";
-  const visible = conflicts.slice(0, VISIBLE_ROWS);
-  const rest = conflicts.slice(VISIBLE_ROWS);
-
-  return (
-    <div aria-live="polite" className="sm:col-span-2">
+    inner = (
       <div
         aria-busy={rechecking}
         className={cn(
@@ -478,11 +468,29 @@ export function EventConflictPanel({
             </button>
           </>
         )}
-        {children}
+        {/* A disabled fieldset (display: contents, so no layout box) hard-
+            blocks the slot chips while a re-check is in flight — a click on
+            a dimmed chip would apply a slot computed against inputs the
+            organizer just changed. */}
+        <fieldset disabled={rechecking} className="contents">
+          {children}
+        </fieldset>
         <p className="text-muted-foreground mt-1 text-[11px] leading-4">
           {t("conflictHonesty")}
         </p>
       </div>
+    );
+  }
+
+  // One live region mounted across every visible state: ARIA live regions
+  // only reliably announce *mutations to an existing node* — a div that
+  // mounts already containing its content (the previous shape here, one
+  // aria-live div per state branch) is silent or double-announced depending
+  // on the SR/browser pair. Keeping the wrapper stable and swapping only
+  // `inner` makes checking → clear/conflicts/error transitions announceable.
+  return (
+    <div aria-live="polite" className="sm:col-span-2">
+      {inner}
     </div>
   );
 }

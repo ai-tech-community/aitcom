@@ -85,13 +85,18 @@ export function PendingEventConflictBadge({
   if (!enabled) return null;
 
   // Reserve the chip slot while the check runs so the badge doesn't pop in
-  // after a reviewer has already read the row as "no conflicts".
+  // after a reviewer has already read the row as "no conflicts" — with
+  // sr-only text so the same guarantee holds for screen readers (a bare
+  // aria-hidden skeleton would sound exactly like "clear").
   if (query.isLoading) {
     return (
-      <Skeleton
-        className="h-4.5 w-16 rounded-full sm:order-4"
-        aria-hidden="true"
-      />
+      <>
+        <span className="sr-only">{t("conflictChecking")}</span>
+        <Skeleton
+          className="h-4.5 w-16 rounded-full sm:order-4"
+          aria-hidden="true"
+        />
+      </>
     );
   }
 
