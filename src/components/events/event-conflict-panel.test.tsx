@@ -73,13 +73,31 @@ describe("EventConflictPanel", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders a skeleton inside an aria-live region while checking", () => {
+  it("renders a skeleton with an sr-only status inside an aria-live region on a first check", () => {
     const { container } = renderPanel({ state: "checking" });
     const live = container.querySelector('[aria-live="polite"]');
     expect(live).toBeInTheDocument();
     expect(
       container.querySelector('[data-slot="skeleton"]'),
     ).toBeInTheDocument();
+    // A bare skeleton is silent to screen readers — the live region must
+    // carry announceable text.
+    expect(screen.getByText("conflictChecking")).toBeInTheDocument();
+  });
+
+  it("keeps the previous conflicts frame mounted (dimmed, relabeled) while re-checking", () => {
+    const { container } = renderPanel({
+      state: "checking",
+      conflicts: [revealed()],
+    });
+    // No skeleton swap — the frame itself stays, so nothing below it jumps.
+    expect(
+      container.querySelector('[data-slot="skeleton"]'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("AI Meetup Amsterdam")).toBeInTheDocument();
+    expect(screen.getByText("conflictRechecking")).toBeInTheDocument();
+    expect(screen.queryByText("conflictSectionLabel")).not.toBeInTheDocument();
+    expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
   });
 
   it("names the checked audiences on a clear result", () => {
@@ -349,6 +367,23 @@ describe("EventConflictPanel + SlotSuggestionChips composition", () => {
       conflicts: [revealed()],
       children: <SlotSuggestionChips {...slotChipsBaseProps} />,
     });
-    expect(screen.getByText("Wed, Jul 15 · 18:00–20:00")).toBeInTheDocument();
+    const chip = screen.getByRole("button", { name: /·/ });
+    expect(chip).toBeInTheDocument();
+    expect(chip).toBeEnabled();
+  });
+
+  it("disables slot chips while re-checking so a stale slot can't be applied", () => {
+    renderPanel({
+      state: "checking",
+      conflicts: [revealed()],
+      children: <SlotSuggestionChips {...slotChipsBaseProps} />,
+    });
+    // Disabled via the panel's wrapping <fieldset disabled> — :disabled
+    // matches through fieldset ancestry, so real browsers block activation
+    // (spec: click() on a disabled form control does nothing) and the
+    // Button's disabled:pointer-events-none styling kicks in. jsdom's
+    // synthetic fireEvent.click bypasses both, so asserting the disabled
+    // state is the faithful check here, not a synthetic click.
+    expect(screen.getByRole("button", { name: /·/ })).toBeDisabled();
   });
 });

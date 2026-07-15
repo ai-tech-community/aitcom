@@ -75,11 +75,17 @@ function mockQuery(overrides: {
     checkedAudiences: [];
   };
   isLoading?: boolean;
+  isError?: boolean;
+  refetch?: () => void;
 }) {
+  const refetch = overrides.refetch ?? vi.fn();
   useQueryMock.mockReturnValue({
     data: overrides.data,
     isLoading: overrides.isLoading ?? false,
+    isError: overrides.isError ?? false,
+    refetch,
   });
+  return { refetch };
 }
 
 describe("PendingEventConflictBadge", () => {
@@ -87,12 +93,26 @@ describe("PendingEventConflictBadge", () => {
     useQueryMock.mockReset();
   });
 
-  it("renders nothing while loading", () => {
+  it("reserves the chip slot with a skeleton while loading (never a silent gap)", () => {
     mockQuery({ isLoading: true, data: undefined });
     const { container } = render(
       <PendingEventConflictBadge event={baseEvent} />,
     );
-    expect(container).toBeEmptyDOMElement();
+    expect(
+      container.querySelector('[data-slot="skeleton"]'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("renders a retryable 'check unavailable' chip on error instead of nothing", () => {
+    const { refetch } = mockQuery({ isError: true, data: undefined });
+    render(<PendingEventConflictBadge event={baseEvent} />);
+    const chip = screen.getByRole("button", {
+      name: "conflictBadgeCheckFailedRetry",
+    });
+    expect(chip).toHaveTextContent("conflictBadgeCheckFailed");
+    fireEvent.click(chip);
+    expect(refetch).toHaveBeenCalledOnce();
   });
 
   it("renders nothing when there are zero conflicts", () => {
