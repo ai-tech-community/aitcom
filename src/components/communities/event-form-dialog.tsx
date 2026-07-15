@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, ImagePlus, X } from "lucide-react";
+import { Check, Loader2, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   EVENT_FOCUS_LABELS,
@@ -773,7 +773,14 @@ export function EventFormDialog({
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>{t("audienceLabel")}</Label>
-                <div className="flex flex-wrap gap-2">
+                {/* The gate input for the conflict check. aria-pressed +
+                    check glyph: selected state must never be fill-color
+                    alone (WCAG 4.1.2 / 1.4.1, Pair-With-A-Cue). */}
+                <div
+                  role="group"
+                  aria-label={t("audienceLabel")}
+                  className="flex flex-wrap gap-2"
+                >
                   {audienceOptionsLoading ? (
                     <>
                       <Skeleton className="h-7 w-20" />
@@ -787,9 +794,13 @@ export function EventFormDialog({
                         <button
                           key={slug}
                           type="button"
+                          aria-pressed={active}
                           onClick={() => toggleAudience(slug)}
-                          className={`rounded border px-3 py-1 text-sm ${active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"}`}
+                          className={`inline-flex items-center gap-1.5 rounded border px-3 py-1 text-sm ${active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"}`}
                         >
+                          {active && (
+                            <Check className="size-3.5" aria-hidden="true" />
+                          )}
                           {name}
                         </button>
                       );
