@@ -235,6 +235,7 @@
     "conflictHonesty": "Based on events AIT knows about.",
     "conflictCheckFailed": "Conflict check unavailable right now — you can still submit.",
     "conflictRetry": "Retry",
+    "rejectEventConfirm": "Reject this event submission? The submitter can edit and resubmit it.",
     "conflictChecking": "Checking for schedule conflicts…",
     "conflictRechecking": "Rechecking…",
     "conflictBadgeCheckFailed": "Check unavailable",

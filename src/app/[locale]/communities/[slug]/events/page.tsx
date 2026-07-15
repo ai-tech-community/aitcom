@@ -31,9 +31,13 @@ const typeLabels: Record<string, string> = {
   meetup: "MEETUP",
 };
 
+/** Wire dates are calendar dates ("YYYY-MM-DD"), not instants — format from
+ * the string parts directly. `new Date("YYYY-MM-DD")` parses as UTC midnight
+ * and reading local getters shifts the day for every viewer west of
+ * Greenwich (a July 5 event rendered July 4). */
 function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}.${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
+  const [year, month, day] = dateStr.split("-");
+  return `${year}.${month}.${day}`;
 }
 
 type Tab = "published" | "pending" | "mine";
@@ -87,6 +91,7 @@ export default function CommunityEventsPage({
     data: pendingEvents,
     isLoading: pendingLoading,
     isError: pendingError,
+    refetch: refetchPending,
   } = api.events.getPendingCommunityEvents.useQuery(
     { communitySlug: slug },
     { enabled: canModerate },
@@ -96,6 +101,7 @@ export default function CommunityEventsPage({
     data: mySubmissions,
     isLoading: mySubmissionsLoading,
     isError: mySubmissionsError,
+    refetch: refetchMySubmissions,
   } = api.events.getMyEventSubmissions.useQuery(
     { communitySlug: slug },
     { enabled: isActiveMember && !!session?.user },
@@ -338,12 +344,21 @@ export default function CommunityEventsPage({
             <button
               className="border-destructive text-destructive hover:bg-destructive/10 flex min-h-6 items-center gap-1 rounded border px-2 py-0.5 font-mono text-xs disabled:opacity-50"
               disabled={approveMutation.isPending || rejectMutation.isPending}
-              onClick={() =>
-                rejectMutation.mutate({
-                  eventId: event.id as number,
-                  communitySlug: slug,
-                })
-              }
+              // Same risk treatment as cancel-event above: rejection lands
+              // on a real submitter, so a mis-click must not fire silently.
+              onClick={async () => {
+                if (
+                  await confirm({
+                    description: t("rejectEventConfirm"),
+                    destructive: true,
+                  })
+                ) {
+                  rejectMutation.mutate({
+                    eventId: event.id as number,
+                    communitySlug: slug,
+                  });
+                }
+              }}
             >
               <XOctagon className="size-3" /> {t("reject")}
             </button>
@@ -517,11 +532,15 @@ export default function CommunityEventsPage({
         </>
       )}
 
-      {/* PENDING tab (admin/mod only) — supplementary: hide on error
-          (explicit !pendingError; No-Silent-Failure) */}
-      {activeTab === "pending" && canModerate && !pendingError && (
+      {/* PENDING tab (admin/mod only). This is the user-selected core
+          section, not a supplementary widget — an error must show as an
+          error (No-Silent-Failure), or a blank pane reads as "queue clear"
+          and a moderator stops reviewing. */}
+      {activeTab === "pending" && canModerate && (
         <>
-          {pendingLoading ? (
+          {pendingError ? (
+            <ErrorState onRetry={() => void refetchPending()} />
+          ) : pendingLoading ? (
             <div className="space-y-2">
               {[1, 2].map((n) => (
                 <div
@@ -545,11 +564,14 @@ export default function CommunityEventsPage({
         </>
       )}
 
-      {/* MY SUBMISSIONS tab (active member, non-moderator) — supplementary:
-          hide on error (explicit !mySubmissionsError; No-Silent-Failure) */}
-      {activeTab === "mine" && isActiveMember && !mySubmissionsError && (
+      {/* MY SUBMISSIONS tab (active member, non-moderator). Same as the
+          pending tab: the selected core section must surface its own fetch
+          error, never render blank (No-Silent-Failure). */}
+      {activeTab === "mine" && isActiveMember && (
         <>
-          {mySubmissionsLoading ? (
+          {mySubmissionsError ? (
+            <ErrorState onRetry={() => void refetchMySubmissions()} />
+          ) : mySubmissionsLoading ? (
             <div className="space-y-2">
               {[1, 2].map((n) => (
                 <div

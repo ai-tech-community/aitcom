@@ -235,6 +235,7 @@
     "conflictHonesty": "Gebaseerd op evenementen die AIT kent.",
     "conflictCheckFailed": "Conflictcontrole nu niet beschikbaar — je kunt nog steeds indienen.",
     "conflictRetry": "Opnieuw proberen",
+    "rejectEventConfirm": "Deze inzending afwijzen? De indiener kan het evenement bewerken en opnieuw indienen.",
     "conflictChecking": "Controleren op planningsconflicten…",
     "conflictRechecking": "Opnieuw controleren…",
     "conflictBadgeCheckFailed": "Controle niet beschikbaar",
