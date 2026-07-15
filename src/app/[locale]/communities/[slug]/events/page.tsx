@@ -221,13 +221,13 @@ export default function CommunityEventsPage({
           />
         )}
         {opts.showStatus && event.status === "rejected" && (
-          <span className="text-destructive flex items-center gap-1 font-mono text-xs font-medium sm:order-4 sm:ml-2">
-            <XOctagon className="size-3" /> REJECTED — edit and resubmit
+          <span className="text-destructive flex items-center gap-1 font-mono text-xs font-medium uppercase sm:order-4 sm:ml-2">
+            <XOctagon className="size-3" /> {t("rejectedEditResubmit")}
           </span>
         )}
         {opts.showStatus && event.status === "draft" && (
-          <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs font-medium sm:order-4 sm:ml-2">
-            <Clock className="size-3" /> PENDING APPROVAL
+          <span className="text-muted-foreground flex items-center gap-1 font-mono text-xs font-medium uppercase sm:order-4 sm:ml-2">
+            <Clock className="size-3" /> {t("pendingApproval")}
           </span>
         )}
         {opts.showResubmit && event.status === "rejected" && (
@@ -237,7 +237,7 @@ export default function CommunityEventsPage({
           >
             <button
               className="hover:bg-secondary flex min-h-6 min-w-6 items-center justify-center rounded p-1"
-              title="Edit and resubmit"
+              title={t("editAndResubmit")}
               onClick={() => {
                 setEditingEvent({ id: event.id as number, resubmit: true });
                 setDialogOpen(true);
@@ -333,7 +333,7 @@ export default function CommunityEventsPage({
                 })
               }
             >
-              <CheckCircle className="size-3" /> Approve
+              <CheckCircle className="size-3" /> {t("approve")}
             </button>
             <button
               className="border-destructive text-destructive hover:bg-destructive/10 flex min-h-6 items-center gap-1 rounded border px-2 py-0.5 font-mono text-xs disabled:opacity-50"
@@ -345,7 +345,7 @@ export default function CommunityEventsPage({
                 })
               }
             >
-              <XOctagon className="size-3" /> Reject
+              <XOctagon className="size-3" /> {t("reject")}
             </button>
           </div>
         )}
@@ -410,14 +410,14 @@ export default function CommunityEventsPage({
 
   const tableHeader = (
     <div className="border-border hidden items-center border-b px-4 py-2.5 sm:flex">
-      <span className="text-muted-foreground w-32 font-mono text-xs font-medium tracking-wider">
-        / DATE
+      <span className="text-muted-foreground w-32 font-mono text-xs font-medium tracking-wider uppercase">
+        / {t("headerDate")}
       </span>
-      <span className="text-muted-foreground flex-1 font-mono text-xs font-medium tracking-wider">
-        / NAME
+      <span className="text-muted-foreground flex-1 font-mono text-xs font-medium tracking-wider uppercase">
+        / {t("headerName")}
       </span>
-      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-        / TYPE
+      <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider uppercase">
+        / {t("headerType")}
       </span>
     </div>
   );
@@ -429,24 +429,24 @@ export default function CommunityEventsPage({
         <div className="flex gap-1 font-mono text-xs tracking-wider">
           <button
             onClick={() => setActiveTab("published")}
-            className={`rounded border px-3 py-1.5 transition-colors ${
+            className={`rounded border px-3 py-1.5 uppercase transition-colors ${
               activeTab === "published"
                 ? "border-foreground bg-foreground text-background"
                 : "border-border text-muted-foreground hover:bg-secondary/40"
             }`}
           >
-            EVENTS
+            {t("tabEvents")}
           </button>
           {canModerate && (
             <button
               onClick={() => setActiveTab("pending")}
-              className={`flex items-center gap-1.5 rounded border px-3 py-1.5 transition-colors ${
+              className={`flex items-center gap-1.5 rounded border px-3 py-1.5 uppercase transition-colors ${
                 activeTab === "pending"
                   ? "border-foreground bg-foreground text-background"
                   : "border-border text-muted-foreground hover:bg-secondary/40"
               }`}
             >
-              PENDING
+              {t("tabPending")}
               {/* Warning token, not orange: "pending review" is a
                   needs-attention status, and Signal Orange stays reserved
                   for the screen's one primary action (Submit Event). */}
@@ -460,13 +460,13 @@ export default function CommunityEventsPage({
           {isActiveMember && (
             <button
               onClick={() => setActiveTab("mine")}
-              className={`rounded border px-3 py-1.5 transition-colors ${
+              className={`rounded border px-3 py-1.5 uppercase transition-colors ${
                 activeTab === "mine"
                   ? "border-foreground bg-foreground text-background"
                   : "border-border text-muted-foreground hover:bg-secondary/40"
               }`}
             >
-              MY SUBMISSIONS
+              {t("tabMySubmissions")}
             </button>
           )}
         </div>
@@ -482,7 +482,7 @@ export default function CommunityEventsPage({
               }}
             >
               <Plus className="mr-1.5 size-4" />
-              {canModerate ? t("createEvent") : "Submit Event"}
+              {canModerate ? t("createEvent") : t("submitEvent")}
             </Button>
           )}
         </div>
@@ -532,7 +532,7 @@ export default function CommunityEventsPage({
             </div>
           ) : (pendingEvents?.length ?? 0) === 0 ? (
             <p className="text-muted-foreground mt-8 text-center">
-              No events pending approval.
+              {t("noEventsPendingApproval")}
             </p>
           ) : (
             <>
@@ -560,7 +560,7 @@ export default function CommunityEventsPage({
             </div>
           ) : (mySubmissions?.length ?? 0) === 0 ? (
             <p className="text-muted-foreground mt-8 text-center">
-              No submissions yet.
+              {t("noSubmissionsYet")}
             </p>
           ) : (
             <>

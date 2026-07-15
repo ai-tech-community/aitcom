@@ -490,7 +490,7 @@ export function EventFormDialog({
       void utils.events.getCommunityEvents.invalidate();
     },
     onError: (error) =>
-      toast.error(getMutationErrorMessage(error, "Failed to update event")),
+      toast.error(getMutationErrorMessage(error, t("eventUpdateError"))),
   });
 
   const submitMutation = api.events.submitEvent.useMutation({
@@ -501,7 +501,7 @@ export function EventFormDialog({
       void utils.events.getMyEventSubmissions.invalidate();
     },
     onError: (error) =>
-      toast.error(getMutationErrorMessage(error, "Failed to submit event")),
+      toast.error(getMutationErrorMessage(error, t("eventSubmitError"))),
   });
 
   const resubmitMutation = api.events.resubmitEvent.useMutation({
@@ -512,7 +512,7 @@ export function EventFormDialog({
       void utils.events.getPendingCommunityEvents.invalidate();
     },
     onError: (error) =>
-      toast.error(getMutationErrorMessage(error, "Failed to resubmit event")),
+      toast.error(getMutationErrorMessage(error, t("eventResubmitError"))),
   });
 
   const payload = buildEventSubmitPayload(form, mode, slug);
@@ -546,12 +546,12 @@ export function EventFormDialog({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("alt", form.title || "Event cover");
+      formData.append("alt", form.title || t("eventCoverAlt"));
       const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
-      if (!res.ok) throw new Error("Upload failed");
+      if (!res.ok) throw new Error(t("uploadFailed"));
       const data = (await res.json()) as { url: string; id: number };
       setForm((current) => ({
         ...current,
@@ -603,7 +603,7 @@ export function EventFormDialog({
         <DialogHeader>
           <DialogTitle>
             {mode === "resubmit"
-              ? "Edit & Resubmit"
+              ? t("dialogEditResubmitTitle")
               : mode === "create"
                 ? t("createEvent")
                 : t("editEvent")}
@@ -617,9 +617,7 @@ export function EventFormDialog({
           <form onSubmit={handleSubmit} className="space-y-6">
             {mode === "create" && (
               <div className="border-border bg-secondary/30 space-y-2 rounded-lg border p-3">
-                <Label htmlFor="event-import-url">
-                  Import from a link (Meetup, Eventbrite, Luma)
-                </Label>
+                <Label htmlFor="event-import-url">{t("importFromLink")}</Label>
                 <div className="flex gap-2">
                   <Input
                     id="event-import-url"
@@ -642,12 +640,13 @@ export function EventFormDialog({
                     {importMutation.isPending ? (
                       <Loader2 className="mr-2 size-4 animate-spin" />
                     ) : null}
-                    {importMutation.isPending ? "Importing..." : "Import"}
+                    {importMutation.isPending
+                      ? t("importing")
+                      : t("importAction")}
                   </Button>
                 </div>
                 <p className="text-muted-foreground text-xs">
-                  We&apos;ll pre-fill what we can find. You can edit everything
-                  before submitting.
+                  {t("importHint")}
                 </p>
               </div>
             )}
@@ -664,7 +663,7 @@ export function EventFormDialog({
                 />
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="event-summary">Summary</Label>
+                <Label htmlFor="event-summary">{t("eventSummary")}</Label>
                 <Textarea
                   id="event-summary"
                   value={form.summary}
@@ -701,10 +700,18 @@ export function EventFormDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="meetup">Meetup</SelectItem>
-                    <SelectItem value="workshop">Workshop</SelectItem>
-                    <SelectItem value="hackathon">Hackathon</SelectItem>
-                    <SelectItem value="deep_dive">Deep Dive</SelectItem>
+                    <SelectItem value="meetup">
+                      {t("eventTypeMeetup")}
+                    </SelectItem>
+                    <SelectItem value="workshop">
+                      {t("eventTypeWorkshop")}
+                    </SelectItem>
+                    <SelectItem value="hackathon">
+                      {t("eventTypeHackathon")}
+                    </SelectItem>
+                    <SelectItem value="deep_dive">
+                      {t("eventTypeDeepDive")}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -765,7 +772,7 @@ export function EventFormDialog({
                 </p>
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label>Audience</Label>
+                <Label>{t("audienceLabel")}</Label>
                 <div className="flex flex-wrap gap-2">
                   {audienceOptionsLoading ? (
                     <>
@@ -825,7 +832,7 @@ export function EventFormDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="event-format">Format</Label>
+                <Label htmlFor="event-format">{t("formatLabel")}</Label>
                 <Select
                   value={form.format || "__none"}
                   onValueChange={(v) =>
@@ -836,10 +843,10 @@ export function EventFormDialog({
                   }
                 >
                   <SelectTrigger id="event-format">
-                    <SelectValue placeholder="Select format" />
+                    <SelectValue placeholder={t("selectFormat")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none">None</SelectItem>
+                    <SelectItem value="__none">{t("selectNone")}</SelectItem>
                     {EVENT_FORMAT_OPTIONS.map((value) => (
                       <SelectItem key={value} value={value}>
                         {EVENT_FORMAT_LABELS[value]}
@@ -861,7 +868,7 @@ export function EventFormDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="event-region">Region</Label>
+                <Label htmlFor="event-region">{t("regionLabel")}</Label>
                 <Input
                   id="event-region"
                   value={form.region}
@@ -870,7 +877,7 @@ export function EventFormDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="event-country">Country</Label>
+                <Label htmlFor="event-country">{t("countryLabel")}</Label>
                 <Input
                   id="event-country"
                   value={form.country}
@@ -881,7 +888,7 @@ export function EventFormDialog({
                 />
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="event-city">City</Label>
+                <Label htmlFor="event-city">{t("cityLabel")}</Label>
                 <Input
                   id="event-city"
                   value={form.city}
@@ -893,7 +900,7 @@ export function EventFormDialog({
 
             <div className="grid gap-4 border-t pt-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="event-focus">Focus</Label>
+                <Label htmlFor="event-focus">{t("focusLabel")}</Label>
                 <Select
                   value={form.focus || "__none"}
                   onValueChange={(v) =>
@@ -904,10 +911,10 @@ export function EventFormDialog({
                   }
                 >
                   <SelectTrigger id="event-focus">
-                    <SelectValue placeholder="Select focus" />
+                    <SelectValue placeholder={t("selectFocus")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none">None</SelectItem>
+                    <SelectItem value="__none">{t("selectNone")}</SelectItem>
                     {EVENT_FOCUS_OPTIONS.map((value) => (
                       <SelectItem key={value} value={value}>
                         {EVENT_FOCUS_LABELS[value]}
@@ -917,7 +924,7 @@ export function EventFormDialog({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="event-level">Level</Label>
+                <Label htmlFor="event-level">{t("levelLabel")}</Label>
                 <Select
                   value={form.level || "__none"}
                   onValueChange={(v) =>
@@ -928,10 +935,10 @@ export function EventFormDialog({
                   }
                 >
                   <SelectTrigger id="event-level">
-                    <SelectValue placeholder="Select level" />
+                    <SelectValue placeholder={t("selectLevel")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none">None</SelectItem>
+                    <SelectItem value="__none">{t("selectNone")}</SelectItem>
                     {EVENT_LEVEL_OPTIONS.map((value) => (
                       <SelectItem key={value} value={value}>
                         {EVENT_LEVEL_LABELS[value]}
@@ -942,7 +949,7 @@ export function EventFormDialog({
               </div>
               {isAdminOrOwner && (
                 <div className="space-y-2">
-                  <Label htmlFor="event-score">AIT fit score</Label>
+                  <Label htmlFor="event-score">{t("aitFitScoreLabel")}</Label>
                   <Input
                     id="event-score"
                     type="number"
@@ -957,7 +964,9 @@ export function EventFormDialog({
               )}
               {isAdminOrOwner && (
                 <div className="space-y-2">
-                  <Label htmlFor="event-confidence">Confidence score</Label>
+                  <Label htmlFor="event-confidence">
+                    {t("confidenceScoreLabel")}
+                  </Label>
                   <Input
                     id="event-confidence"
                     type="number"
@@ -972,7 +981,7 @@ export function EventFormDialog({
                 </div>
               )}
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="event-tags">Tags</Label>
+                <Label htmlFor="event-tags">{t("tagsLabel")}</Label>
                 <Input
                   id="event-tags"
                   value={form.tags}
@@ -981,7 +990,7 @@ export function EventFormDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="event-source">Source URL</Label>
+                <Label htmlFor="event-source">{t("sourceUrlLabel")}</Label>
                 <Input
                   id="event-source"
                   type="url"
@@ -995,7 +1004,7 @@ export function EventFormDialog({
               {isAdminOrOwner && (
                 <div className="space-y-2">
                   <Label htmlFor="event-discovery-source">
-                    Discovery source
+                    {t("discoverySourceLabel")}
                   </Label>
                   <Input
                     id="event-discovery-source"
@@ -1009,7 +1018,9 @@ export function EventFormDialog({
               )}
               {isAdminOrOwner && (
                 <div className="space-y-2">
-                  <Label htmlFor="event-last-verified">Last verified at</Label>
+                  <Label htmlFor="event-last-verified">
+                    {t("lastVerifiedAtLabel")}
+                  </Label>
                   <Input
                     id="event-last-verified"
                     type="datetime-local"
@@ -1021,7 +1032,7 @@ export function EventFormDialog({
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="event-video">Video URL</Label>
+                <Label htmlFor="event-video">{t("videoUrlLabel")}</Label>
                 <Input
                   id="event-video"
                   type="url"
@@ -1041,19 +1052,19 @@ export function EventFormDialog({
                       setForm({ ...form, curatedByAgent: e.target.checked })
                     }
                   />
-                  <span className="text-sm">Curated by agent</span>
+                  <span className="text-sm">{t("curatedByAgent")}</span>
                 </label>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label>Cover image</Label>
+              <Label>{t("coverImageLabel")}</Label>
               {form.coverImageUrl ? (
                 <div className="relative w-fit">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={form.coverImageUrl}
-                    alt="Event cover preview"
+                    alt={t("coverPreviewAlt")}
                     className="border-border h-28 rounded-lg border object-cover"
                   />
                   <button
@@ -1083,7 +1094,7 @@ export function EventFormDialog({
                   ) : (
                     <ImagePlus className="mr-2 size-4" />
                   )}
-                  {coverUploading ? "Uploading..." : "Upload cover image"}
+                  {coverUploading ? t("uploading") : t("uploadCoverImage")}
                 </Button>
               )}
               <input
@@ -1099,21 +1110,21 @@ export function EventFormDialog({
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />
                   {mode === "resubmit"
-                    ? "Resubmitting..."
+                    ? t("resubmitting")
                     : mode === "edit"
-                      ? "Saving..."
+                      ? t("saving")
                       : isAdminOrOwner
                         ? t("creating")
-                        : "Submitting..."}
+                        : t("submitting")}
                 </>
               ) : mode === "resubmit" ? (
-                "Resubmit for Approval"
+                t("resubmitForApproval")
               ) : mode === "edit" ? (
                 t("editEvent")
               ) : isAdminOrOwner ? (
                 t("createEvent")
               ) : (
-                "Submit for Approval"
+                t("submitForApproval")
               )}
             </Button>
           </form>
