@@ -27,6 +27,10 @@ import { NORTH_AMERICA, NA_BRANDS } from "./seed-data/na";
 import { EUROPE, EU_BRANDS } from "./seed-data/eu";
 import { APAC_ME_AF_LATAM, APAC_BRANDS } from "./seed-data/apac";
 import { AI_NATIVE, AI_NATIVE_BRANDS } from "./seed-data/ai-native";
+import {
+  REFRESH_2026_07_DATACENTERS,
+  REFRESH_2026_07_BRANDS,
+} from "./seed-data/refresh-2026-07";
 
 // Canonical core brands (always present). Other brands come from regional files.
 const CORE_BRANDS: SeedBrand[] = [
@@ -279,14 +283,19 @@ const ALL_BRANDS = dedupeBrands(
   EU_BRANDS,
   APAC_BRANDS,
   AI_NATIVE_BRANDS,
+  REFRESH_2026_07_BRANDS,
 );
 
+// The refresh batch goes last so that if it ever restates a site already held in
+// a regional file, the established record wins and the refresh is ignored rather
+// than silently overwriting curated data. New slugs are unaffected.
 const ALL_DATACENTERS = dedupeDatacenters(
   SHOWCASE,
   NORTH_AMERICA,
   EUROPE,
   APAC_ME_AF_LATAM,
   AI_NATIVE,
+  REFRESH_2026_07_DATACENTERS,
 );
 
 async function main() {

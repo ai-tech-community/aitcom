@@ -21,12 +21,35 @@ import { and, eq, sql } from "drizzle-orm";
 
 import {
   BRAND_UPSERTS,
-  NEW_BRANDS,
-  OWNERSHIP_EDGES,
+  NEW_BRANDS as BASE_NEW_BRANDS,
+  OWNERSHIP_EDGES as BASE_OWNERSHIP_EDGES,
 } from "./seed-data/ownership";
-import { SUBSIDIES } from "./seed-data/subsidies";
-import { PERMITS } from "./seed-data/permits";
-import { CAPEX_UPDATES } from "./seed-data/capex";
+import { SUBSIDIES as BASE_SUBSIDIES } from "./seed-data/subsidies";
+import { PERMITS as BASE_PERMITS } from "./seed-data/permits";
+import { CAPEX_UPDATES as BASE_CAPEX_UPDATES } from "./seed-data/capex";
+import {
+  REFRESH_2026_07_NEW_BRANDS,
+  REFRESH_2026_07_OWNERSHIP_EDGES,
+  REFRESH_2026_07_SUBSIDIES,
+  REFRESH_2026_07_PERMITS,
+  REFRESH_2026_07_CAPEX,
+} from "./seed-data/refresh-2026-07";
+
+// The 2026-07 refresh batch is appended to each base list. All the inserts below
+// are onConflictDoNothing or slug-guarded, so re-running stays idempotent.
+//
+// Note: REFRESH_2026_07_REFUSED_SUBSIDIES is deliberately NOT seeded. The
+// `subsidy` table has no status column, so a refused award would be stored
+// indistinguishably from a granted one. Those records stay in the seed module
+// and in the research appendix until the schema can tell the two apart.
+const NEW_BRANDS = [...BASE_NEW_BRANDS, ...REFRESH_2026_07_NEW_BRANDS];
+const OWNERSHIP_EDGES = [
+  ...BASE_OWNERSHIP_EDGES,
+  ...REFRESH_2026_07_OWNERSHIP_EDGES,
+];
+const SUBSIDIES = [...BASE_SUBSIDIES, ...REFRESH_2026_07_SUBSIDIES];
+const PERMITS = [...BASE_PERMITS, ...REFRESH_2026_07_PERMITS];
+const CAPEX_UPDATES = [...BASE_CAPEX_UPDATES, ...REFRESH_2026_07_CAPEX];
 
 async function main() {
   // ── 1. Insert new parent/holding brands ──

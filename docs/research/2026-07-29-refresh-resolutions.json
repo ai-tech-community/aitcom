@@ -1,0 +1,68 @@
+{
+  "_comment": "Human-decided resolutions for conflicts the reconciler surfaced. Applied by generate-seed-file.mjs. Every entry states why, so the research document can explain the choice.",
+
+  "excludeDatacenters": [
+    {
+      "slug": "microsoft-mount-pleasant-wi",
+      "reason": "Same site as the existing microsoft-mt-pleasant. Inserting would create a twin. The new fact (now operational) is applied by src/scripts/apply-datacenter-updates.ts instead."
+    },
+    {
+      "slug": "meta-hyperion-richland-parish-la",
+      "reason": "Same site as the existing meta-hyperion-richland. The expansion to 5 GW is applied as an update, not an insert."
+    }
+  ],
+
+  "mergeDatacenters": [
+    {
+      "keepContentFrom": "buzz-hpc-greater-toronto-on",
+      "drop": "hive-buzz-greater-toronto-on",
+      "finalSlug": "buzz-hpc-greater-toronto-on",
+      "reason": "Identical facts, identical coordinates. Kept the record whose operatorSlug is buzz-hpc, because BUZZ HPC owns the site; HIVE Digital is its parent company, which is an ownership edge, not an operator. Sources from both records are unioned.",
+      "alsoAddOwnershipEdge": {
+        "parentSlug": "hive-digital",
+        "childSlug": "buzz-hpc",
+        "note": "BUZZ HPC is a subsidiary of HIVE Digital Technologies; both agents state this independently."
+      }
+    },
+    {
+      "keepContentFrom": "applied-digital-delta-forge-1-boyce-la",
+      "drop": "applied-digital-delta-forge-boyce-la",
+      "finalSlug": "applied-digital-delta-forge-boyce-la",
+      "reason": "Same campus in Boyce, Louisiana. Kept the richer record (two sources, fuller lease detail) but under the shorter slug, because the capex record already points at that form and 'Delta Forge 1' is a phase name rather than a separate site."
+    },
+    {
+      "keepContentFrom": "nscale-bjerkvik-narvik-no",
+      "drop": "nscale-narvik-no",
+      "finalSlug": "nscale-narvik-no",
+      "reason": "Same Nscale site. Kept the record naming Bjerkvik, the actual location outside Narvik, with two sources and a construction status the sources support; the alternative said 'expanding' on one source. Final slug follows the shorter regional convention, with Bjerkvik carried in the city field."
+    }
+  ],
+
+  "repointChildren": [
+    {
+      "from": "openai-effingham-county-ga",
+      "to": "openai-camellia-effingham-ga",
+      "reason": "Capex record for Project Camellia; the site agent's slug is the canonical one."
+    },
+    {
+      "from": "applied-digital-boyce-la",
+      "to": "applied-digital-delta-forge-boyce-la",
+      "reason": "Capex record for the Boyce campus, matching the merged site slug above."
+    },
+    {
+      "from": "hut8-beacon-point-tx",
+      "to": "hut8-beacon-point-nueces-tx",
+      "reason": "Supplier record (Jacobs, EPCM). The AI-native agent produced a fuller Beacon Point record from Hut 8's SEC filings; use that slug."
+    },
+    {
+      "from": "red-admiral-rochfortbridge-ie",
+      "to": "red-admiral-rochfortbridge-westmeath",
+      "reason": "Permit records for the Rochfortbridge campus; the EU site agent's slug is canonical."
+    },
+    {
+      "from": "stack-berry-hill-pittsylvania-va",
+      "to": "stack-berry-hill-va",
+      "reason": "Permit record for the Berry Hill / Southern Virginia Megasite campus; the NA site agent's slug is canonical."
+    }
+  ]
+}
