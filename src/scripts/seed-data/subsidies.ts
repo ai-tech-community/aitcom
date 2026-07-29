@@ -285,7 +285,7 @@ export const SUBSIDIES: SeedSubsidy[] = [
 
   // UNVERIFIED: ImagiNE Act provides 10% investment credit; specific Meta Sarpy $230M figure not in public sources
   {
-    datacenterSlug: "meta-sarpy-county",
+    datacenterSlug: "meta-sarpy-papillion",
     recipientBrandSlug: "meta",
     kind: "tax-abatement",
     awardedBy:

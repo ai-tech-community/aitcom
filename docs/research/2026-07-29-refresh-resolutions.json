@@ -63,6 +63,11 @@
       "from": "stack-berry-hill-pittsylvania-va",
       "to": "stack-berry-hill-va",
       "reason": "Permit record for the Berry Hill / Southern Virginia Megasite campus; the NA site agent's slug is canonical."
+    },
+    {
+      "from": "meta-temple-tx",
+      "to": "meta-temple",
+      "reason": "The capex agent attached Meta's $1.2bn Temple figure to meta-temple-tx and flagged that meta-temple and meta-temple-tx described one site. That duplicate has since been fixed: meta-temple-tx was deleted from ai-native.ts and meta-temple corrected from Meta's own one-pager, so the capex record follows the surviving slug."
     }
   ]
 }

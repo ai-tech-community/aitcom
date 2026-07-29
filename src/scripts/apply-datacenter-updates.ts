@@ -136,12 +136,51 @@ const UPDATES: FieldUpdate[] = [
   },
 ];
 
+// Each pair below is one physical site that was seeded twice under two different
+// slugs. Because the slugs differ, `dedupeDatacenters()` saw two sites and
+// inserted both, so both rows are live and must be merged here — unlike the 13
+// same-slug duplicates, which dedupe collapsed and which needed only a seed-file
+// cleanup.
+//
+// In every case the surviving slug is the one that remains in na.ts / apac.ts,
+// which is also the row that existing child records and any user-generated
+// findings already point at.
 const MERGES: Merge[] = [
   {
     keep: "meta-temple",
     remove: "meta-temple-tx",
     reason:
       "Same site: identical coordinates (31.0982, -97.3428), same city, same operator. Seeded twice — once from na.ts and once from ai-native.ts — with conflicting capacity (240MW vs 700MW), cooling and aiDedicated values. Neither figure was sourced; Meta publishes no megawatt number for Temple. Keeping the na.ts slug because it carries the correct Oncor utility link.",
+  },
+  {
+    keep: "nebius-kansas-city",
+    remove: "nebius-kansas-city-mo",
+    reason:
+      "Same Nebius Kansas City campus at identical coordinates (39.0997, -94.5786). The two records disagreed on status (operational vs under-construction) and capacity (40MW vs 300MW planned); neither is sourced well enough to overwrite the other, so the surviving row keeps its own values and the conflict is recorded in the research note.",
+  },
+  {
+    keep: "cerebras-santa-clara-condor",
+    remove: "cerebras-condor-galaxy-1-santa-clara",
+    reason:
+      "Both describe the Cerebras/G42 Condor Galaxy 1 supercomputer hosted in Colovore Santa Clara, at identical coordinates (37.3541, -121.9552).",
+  },
+  {
+    keep: "aligned-salt-lake-city",
+    remove: "aligned-slc-01-salt-lake-city",
+    reason:
+      "Both are Aligned SLC-01 in the Salt Lake City area at identical coordinates (40.7608, -111.8910); the names even agree. The records disagreed on aiDedicated (false vs true) and capacity (unset vs 36MW).",
+  },
+  {
+    keep: "g42-stargate-uae-abu-dhabi",
+    remove: "stargate-uae-abu-dhabi",
+    reason:
+      "Both are the 1 GW Stargate UAE first phase by G42/Khazna with OpenAI, at identical coordinates (24.4539, 54.3773). Same planned capacity, differing only on status.",
+  },
+  {
+    keep: "humain-saudi-riyadh",
+    remove: "humain-riyadh-sa",
+    reason:
+      "Both are the HUMAIN (Saudi PIF) Riyadh AI campus at identical coordinates (24.7136, 46.6753), same 1,900MW planned capacity, differing only on status.",
   },
 ];
 

@@ -4727,7 +4727,7 @@ export const REFRESH_2026_07_CAPEX: CapexUpdate[] = [
       "Money already spent, not a pledge. Brandon Oyer, AWS director of power and water for the Americas, said on 2026-07-23: 'Today we're announcing we've already invested 13.8 billion dollars and we're only part of the way done.' Exceeds the original $11bn commitment made in 2024. Campus is in Olive Township / New Carlisle, St. Joseph County, Indiana (Indiana Enterprise Center); ~30 buildings planned, ~18 operational at the time of the statement. Same site as the Project Rainier / Anthropic build already tracked under this slug. County abatement-compliance review had recorded $8.9bn invested as of 2026-01-01, so this is a genuine in-window increase. Sourcing is a local TV report quoting the AWS executive directly; no AWS press release or SEC filing states the site-level figure.",
   },
   {
-    datacenterSlug: "meta-temple-tx",
+    datacenterSlug: "meta-temple",
     capexUsd: 1200000000,
     sources: [
       {
@@ -4738,7 +4738,7 @@ export const REFRESH_2026_07_CAPEX: CapexUpdate[] = [
       },
     ],
     notes:
-      "Site went live 2026-07-22. Reported wording: 'The campus spans more than 760,000 square feet across two buildings and represents an investment of more than $1.2 billion once completed.' Figure is a floor ('more than $1.2 billion'), so 1.2e9 is a lower bound, not an exact spend. Capacity reported at roughly 198MW; the campus is 393 acres at 3101 Industrial Boulevard. NOTE: the existing slug list contains BOTH 'meta-temple' and 'meta-temple-tx' for what appears to be the same site - this record is attached to 'meta-temple-tx' and the duplicate should be reconciled. Meta's own newsroom post for this opening could not be located; datacenterdynamics.com coverage returned HTTP 403.",
+      "Site went live 2026-07-22. Reported wording: 'The campus spans more than 760,000 square feet across two buildings and represents an investment of more than $1.2 billion once completed.' Figure is a floor ('more than $1.2 billion'), so 1.2e9 is a lower bound, not an exact spend. Capacity reported at roughly 198MW; the campus is 393 acres at 3101 Industrial Boulevard. The duplicate this record originally flagged ('meta-temple' and 'meta-temple-tx' describing one site) has since been resolved: meta-temple-tx was removed from ai-native.ts and this record re-pointed to meta-temple. Meta's own newsroom post for this opening could not be located; datacenterdynamics.com coverage returned HTTP 403.",
   },
   {
     datacenterSlug: "meta-hyperion-richland",

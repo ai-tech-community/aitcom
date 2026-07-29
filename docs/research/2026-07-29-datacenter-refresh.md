@@ -14,17 +14,17 @@ exposed in the data that was already there.
 
 New records, in [`src/scripts/seed-data/refresh-2026-07.ts`](../../src/scripts/seed-data/refresh-2026-07.ts):
 
-| Dataset | Records |
-| --- | ---: |
-| Datacenter sites | 114 |
-| Brands / operators | 89 |
-| Permits | 18 |
-| Subsidies awarded | 5 |
-| Subsidies refused | 3 |
-| Capex figures | 10 |
-| Renewable commitments | 2 |
-| Ownership edges | 17 |
-| Supplier links | 4 |
+| Dataset               | Records |
+| --------------------- | ------: |
+| Datacenter sites      |     114 |
+| Brands / operators    |      89 |
+| Permits               |      18 |
+| Subsidies awarded     |       5 |
+| Subsidies refused     |       3 |
+| Capex figures         |      10 |
+| Renewable commitments |       2 |
+| Ownership edges       |      17 |
+| Supplier links        |       4 |
 
 Backed by **399 source entries across 375 distinct URLs** — 169 classified primary
 (operator newsroom, SEC filing, planning portal, government release), 230 secondary.
@@ -112,13 +112,13 @@ would misrepresent the planning landscape.
 - **Hanover County, Virginia** killed Tract's 427-acre campus 4–3, rejecting both the
   rezoning and the substation permit, over 0.6–2.0 million gallons/day of water.
 - Citrus County FL, Douglas County GA, Tyler TX and Pocatello ID all refused permits.
-  Archer County TX and Columbiana AL refused *subsidies*, both unanimously.
+  Archer County TX and Columbiana AL refused _subsidies_, both unanimously.
 - **QTS withdrew** its appeals for the PW Digital Gateway in Prince William County VA — up
   to 27 million sq ft.
 
 One case shows local refusal being routed around: Boulder City NV's Planning Commission
 denied the Townsite Solar 2 datacenter on 2026-05-20; the developer withdrew, and BLM
-approved an *amendment* to the existing 2023 solar right-of-way on 2026-06-26, reusing the
+approved an _amendment_ to the existing 2023 solar right-of-way on 2026-06-26, reusing the
 earlier environmental review instead of conducting a new one.
 
 ### The subsidy-per-job arithmetic
@@ -170,35 +170,73 @@ in circulation are mostly not construction spending.
 
 ---
 
-## 4. Defects found in the existing dataset
+## 4. Defects found in the existing dataset — and fixed
 
-The refresh surfaced problems that predate it.
+The refresh surfaced problems that predate it. All but the last are now fixed, and
+[`src/scripts/seed-data/seed-integrity.test.ts`](../../src/scripts/seed-data/seed-integrity.test.ts)
+exists so they cannot recur silently.
 
-1. **`meta-temple` and `meta-temple-tx` are the same site**, seeded twice from `na.ts` and
-   `ai-native.ts` with identical coordinates (31.0982, -97.3428) but conflicting values:
-   240 MW vs 700 MW planned, air vs direct-to-chip cooling, `aiDedicated` false vs true.
-   `dedupeDatacenters()` compares slugs only, so both rows insert.
+### 4.1 Six sites were seeded twice under two different slugs
 
-   Checking against Meta directly: **both source URLs are dead (404)**, and **Meta publishes
-   no megawatt figure for Temple at all**. Neither capacity was ever sourced. Meta's own
-   one-pager gives $1.2bn, two buildings, 760,000+ sq ft, ~100 operations roles, Oncor power.
-   The site went live on 2026-07-22 as the first to open with Meta's AI-optimised design —
-   a fact inside our window that no agent caught.
+`dedupeDatacenters()` compares slugs, so a site entered under two spellings looks like two
+sites and **both rows insert**. Six cases:
 
-2. **13 sites are defined twice** across the seed files under the same slug
-   (`coreweave-las-vegas-lv1`, `equinix-dc2-ashburn`, `qts-irving-tx` and 10 others). The
-   database is unaffected, since dedupe keeps the first, but the source files contradict
-   themselves and the second definition is silently dead.
+| Surviving slug                | Removed duplicate                      | Conflicting values                                              |
+| ----------------------------- | -------------------------------------- | --------------------------------------------------------------- |
+| `meta-temple`                 | `meta-temple-tx`                       | 240 vs 700 MW, air vs direct-to-chip, aiDedicated false vs true |
+| `nebius-kansas-city`          | `nebius-kansas-city-mo`                | operational/40 MW vs under-construction/300 MW                  |
+| `aligned-salt-lake-city`      | `aligned-slc-01-salt-lake-city`        | aiDedicated false vs true, unset vs 36 MW                       |
+| `cerebras-santa-clara-condor` | `cerebras-condor-galaxy-1-santa-clara` | unset vs 8 MW                                                   |
+| `g42-stargate-uae-abu-dhabi`  | `stargate-uae-abu-dhabi`               | status only                                                     |
+| `humain-saudi-riyadh`         | `humain-riyadh-sa`                     | status only                                                     |
 
-3. **2 child records point at datacenters that do not exist**: permits and suppliers
-   reference `meta-sarpy-county` and `apple-maiden-nc`, where the real slugs are
-   `meta-sarpy-county-ne` and something else entirely. `seed-investigations.ts` reports
-   missing slugs at the end of its run, so this was visible but unnoticed.
+Only the Temple pair was known. **The other five were found by the new integrity test**
+within minutes of it being written, by grouping records on operator plus exact coordinates.
 
-4. **The `subsidy` table has no status column.** A refused abatement cannot be stored
-   without looking like an award. Three refusals are therefore held in
-   `REFRESH_2026_07_REFUSED_SUBSIDIES` and **are not seeded**. Losing them would leave only
-   the approvals.
+The Temple case is the clearest illustration of why this matters. **Both of its source URLs
+are dead (404)**, and **Meta publishes no megawatt figure for Temple at all** — so neither
+240 MW nor 700 MW was ever evidenced by anything. Meta's own one-pager gives $1.2bn, two
+buildings, 760,000+ sq ft, ~100 operations roles and Oncor power. Chasing it also revealed
+that the site went live on 2026-07-22 as the first to open with Meta's AI-optimised design,
+a fact inside our window that none of the eight agents caught.
+
+`meta-temple` has been corrected from that one-pager. For the rest, the surviving row keeps
+its own values: the conflicts are between two unsourced figures, and picking a winner would
+be a guess dressed as a correction. The discarded values are recorded rather than lost.
+
+### 4.2 Thirteen sites were defined twice under the _same_ slug
+
+`coreweave-las-vegas-lv1`, `equinix-dc2-ashburn`, `qts-irving-tx` and ten others, each in a
+regional file _and_ `ai-native.ts`. Dedupe keeps the first, so the second was dead code —
+the database was never affected, but the files contradicted themselves, and in several cases
+the dead copy carried a capacity figure the live one lacked while disagreeing about cooling,
+power source and whether the site is AI-dedicated.
+
+All thirteen dead copies are removed. Nothing was merged from them: the values conflict and
+neither copy is better sourced, so importing them would inject unverified data.
+
+### 4.3 Two child records pointed at datacenters that do not exist
+
+Permits and subsidies referenced `meta-sarpy-county` (the real slug is
+`meta-sarpy-papillion`) and `apple-maiden-nc`, which **had no record at all**.
+`seed-investigations.ts` reports missing slugs at the end of its run, so this was visible
+but never acted on, and those findings were dropped at every seed.
+
+The first is now re-pointed. For the second, Apple's Maiden campus is a real facility whose
+permits and subsidy are real, so a sourced record was added rather than deleting the
+findings.
+
+### 4.4 A utility slug had no brand
+
+`aws-anthropic-new-carlisle-in` referenced `aep-indiana-michigan-power`, which was never
+declared, so the site seeded with a null utility. Added as a brand — it is a distinct AEP
+operating company from the existing `aep-ohio`.
+
+### 4.5 Still open: the `subsidy` table has no status column
+
+A refused abatement cannot be stored without looking like an award. Three refusals are held
+in `REFRESH_2026_07_REFUSED_SUBSIDIES` and **are not seeded**. This one needs a migration,
+so it is left for a deliberate schema change rather than folded into a data refresh.
 
 ---
 
@@ -270,20 +308,25 @@ field changes with their justifying sources, and merges duplicate rows by re-poi
 child record onto the survivor before deleting the loser.
 
 It currently carries three updates (Mount Pleasant → operational, Hyperion → expanding at
-5 GW, Temple → operational and AI-dedicated with corrected capacity and capex) and one merge
-(`meta-temple-tx` → `meta-temple`).
+5 GW, Temple → operational and AI-dedicated with corrected capacity) and **six merges** —
+the duplicate-slug pairs in §4.1. Those merges matter: both rows of each pair are live in
+the database today, so until the script runs, the map shows six phantom sites.
 
 ---
 
 ## 8. Follow-ups
 
 1. Add a status/decision column to `subsidy` so refusals can be stored, then seed
-   `REFRESH_2026_07_REFUSED_SUBSIDIES`.
+   `REFRESH_2026_07_REFUSED_SUBSIDIES` (§4.5).
 2. Pull Virginia DEQ air permits manually.
-3. Fix the 2 dangling child references (`meta-sarpy-county`, `apple-maiden-nc`).
-4. Remove the 13 duplicate slug definitions from the seed files.
-5. Consider a `jurisdiction_policy` table for moratoriums and statewide programme pauses,
+3. Consider a `jurisdiction_policy` table for moratoriums and statewide programme pauses,
    which currently have nowhere to live.
-6. Re-verify the existing 266 records. This refresh only added new ones; the pre-existing
-   rows were last checked on 2026-04-28, and the Temple case shows how badly a stale record
-   can drift.
+4. Re-verify the existing records. This refresh only added new ones; the pre-existing rows
+   were last checked on 2026-04-28, and the Temple case shows how far a stale record can
+   drift — a capacity figure that no source ever supported, sitting behind two dead URLs.
+5. Resolve the conflicting values recorded in §4.1 and §4.2 by going to the operator, the
+   way Temple was resolved. Each is a pair of unsourced numbers where the dataset currently
+   asserts one of them.
+6. Consider whether `aws-northern-virginia-pjm` belongs in the datacenter table at all. It
+   is a regional aggregate of many buildings, not a facility, and it is the sole entry on
+   the integrity test's collision allowlist.
