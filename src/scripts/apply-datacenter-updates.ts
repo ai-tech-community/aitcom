@@ -44,15 +44,20 @@ type FieldUpdate = {
   slug: string;
   /** Why this row is being changed, in one line — shown in the dry run. */
   reason: string;
+  /**
+   * Fields to set. `null` is meaningful and distinct from omitting a key: it
+   * CLEARS a value. Use it when the existing figure turns out to have no source
+   * behind it — leaving a fabricated number in place is worse than a blank.
+   */
   set: Partial<{
     status: string;
     aiDedicated: boolean;
-    capacityMw: number;
-    capacityMwPlanned: number;
+    capacityMw: number | null;
+    capacityMwPlanned: number | null;
     coolingType: string;
     description: string;
     onlineDate: string;
-    capexUsd: number;
+    capexUsd: number | null;
   }>;
   /** Appended to the row's existing sources; duplicates by URL are skipped. */
   addSources: DatacenterSource[];
@@ -115,6 +120,11 @@ const UPDATES: FieldUpdate[] = [
       status: "operational",
       aiDedicated: true,
       capacityMw: 198,
+      // Cleared deliberately. The 240MW planned figure came from the record whose
+      // only source URL is now a 404, and Meta publishes no capacity number for
+      // Temple at all. An unsourced number is worse than a blank here, and it
+      // would also contradict the 198MW actual.
+      capacityMwPlanned: null,
       capexUsd: 1_200_000_000,
       coolingType: "closed-loop",
       description:
