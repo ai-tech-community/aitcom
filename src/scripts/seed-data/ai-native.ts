@@ -4,82 +4,6 @@ import type { SeedDatacenter, SeedBrand } from "./types";
 export const AI_NATIVE: SeedDatacenter[] = [
   // ========== (a) AI-NATIVE / NEOCLOUD OPERATORS ==========
 
-  // --- CoreWeave footprint (skipping coreweave-plano which is already seeded) ---
-  {
-    slug: "coreweave-las-vegas-lv1",
-    name: "CoreWeave Las Vegas LV1",
-    operatorSlug: "coreweave",
-    status: "operational",
-    aiDedicated: true,
-    lat: 36.1699,
-    lng: -115.1398,
-    city: "Las Vegas",
-    region: "NV",
-    country: "US",
-    capacityMw: 36,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description:
-      "CoreWeave GPU cloud region in Las Vegas; one of the operator's earliest dedicated H100/H200 cluster sites.",
-    sources: [
-      {
-        url: "https://www.coreweave.com/data-centers",
-        title: "CoreWeave Data Centers",
-        type: "operator",
-      },
-      {
-        url: "https://www.datacenterdynamics.com/en/news/coreweave-expands-with-new-data-centers-across-the-us/",
-        title: "CoreWeave expands with new data centers across the US",
-        type: "news",
-      },
-    ],
-  },
-  {
-    slug: "coreweave-atlanta-at1",
-    name: "CoreWeave Atlanta AT1",
-    operatorSlug: "coreweave",
-    status: "operational",
-    aiDedicated: true,
-    lat: 33.749,
-    lng: -84.388,
-    city: "Atlanta",
-    region: "GA",
-    country: "US",
-    capacityMw: 24,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description: "CoreWeave Atlanta GPU cloud region serving the US Southeast.",
-    sources: [
-      {
-        url: "https://www.coreweave.com/data-centers",
-        title: "CoreWeave Data Centers",
-        type: "operator",
-      },
-    ],
-  },
-  {
-    slug: "coreweave-chicago-ch1",
-    name: "CoreWeave Chicago CH1",
-    operatorSlug: "coreweave",
-    status: "operational",
-    aiDedicated: true,
-    lat: 41.8781,
-    lng: -87.6298,
-    city: "Chicago",
-    region: "IL",
-    country: "US",
-    capacityMw: 32,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description: "CoreWeave Chicago AI cloud region.",
-    sources: [
-      {
-        url: "https://www.coreweave.com/data-centers",
-        title: "CoreWeave Data Centers",
-        type: "operator",
-      },
-    ],
-  },
   {
     slug: "coreweave-weehawken-nj1",
     name: "CoreWeave Weehawken NJ1",
@@ -344,36 +268,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
     ],
   },
 
-  // --- Lambda Labs ---
-  {
-    slug: "lambda-allen-tx",
-    name: "Lambda Labs Allen TX (1-Click Cluster)",
-    operatorSlug: "lambda-labs",
-    status: "operational",
-    aiDedicated: true,
-    lat: 33.1032,
-    lng: -96.6706,
-    city: "Allen",
-    region: "TX",
-    country: "US",
-    capacityMw: 24,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description:
-      "Lambda's Texas H100/H200 cluster site supporting their 1-Click Cluster product.",
-    sources: [
-      {
-        url: "https://lambdalabs.com/blog/lambda-raises-480m-series-d",
-        title: "Lambda Series D",
-        type: "pr",
-      },
-      {
-        url: "https://lambdalabs.com/service/gpu-cloud",
-        title: "Lambda GPU Cloud",
-        type: "operator",
-      },
-    ],
-  },
   {
     slug: "lambda-san-francisco-bay",
     name: "Lambda Labs SF Bay Cluster",
@@ -425,31 +319,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
     ],
   },
 
-  // --- Cerebras ---
-  {
-    slug: "cerebras-condor-galaxy-1-santa-clara",
-    name: "Cerebras Condor Galaxy 1 (Santa Clara)",
-    operatorSlug: "cerebras",
-    status: "operational",
-    aiDedicated: true,
-    lat: 37.3541,
-    lng: -121.9552,
-    city: "Santa Clara",
-    region: "CA",
-    country: "US",
-    capacityMw: 8,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description:
-      "Cerebras / G42 Condor Galaxy 1 wafer-scale AI supercomputer hosted in Colovore Santa Clara.",
-    sources: [
-      {
-        url: "https://www.cerebras.net/press-release/cerebras-g42-launch-worlds-largest-ai-supercomputer-condor-galaxy-1",
-        title: "Condor Galaxy 1 launch",
-        type: "pr",
-      },
-    ],
-  },
   {
     slug: "cerebras-condor-galaxy-2-stockton",
     name: "Cerebras Condor Galaxy 2 (Stockton)",
@@ -471,37 +340,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
         url: "https://www.cerebras.net/press-release/cerebras-g42-launch-worlds-largest-ai-supercomputer-condor-galaxy-1",
         title: "Condor Galaxy series",
         type: "pr",
-      },
-    ],
-  },
-
-  // --- Voltage Park ---
-  {
-    slug: "voltage-park-dallas",
-    name: "Voltage Park Dallas H100 Cluster",
-    operatorSlug: "voltage-park",
-    status: "operational",
-    aiDedicated: true,
-    lat: 32.7767,
-    lng: -96.797,
-    city: "Dallas",
-    region: "TX",
-    country: "US",
-    capacityMw: 18,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description:
-      "Voltage Park's 24,000+ H100 GPU cluster, one of several US sites for the nonprofit-backed AI cloud.",
-    sources: [
-      {
-        url: "https://www.voltagepark.com/",
-        title: "Voltage Park",
-        type: "operator",
-      },
-      {
-        url: "https://www.datacenterdynamics.com/en/news/voltage-park-launches-with-24000-nvidia-h100-gpus/",
-        title: "Voltage Park launches with 24,000 H100s",
-        type: "news",
       },
     ],
   },
@@ -532,35 +370,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
       {
         url: "https://www.datacenterdynamics.com/en/news/nebius-to-invest-1bn-in-european-ai-infrastructure/",
         title: "Nebius to invest $1bn in European AI infrastructure",
-        type: "news",
-      },
-    ],
-  },
-  {
-    slug: "nebius-kansas-city-mo",
-    name: "Nebius Kansas City",
-    operatorSlug: "nebius",
-    status: "under-construction",
-    aiDedicated: true,
-    lat: 39.0997,
-    lng: -94.5786,
-    city: "Kansas City",
-    region: "MO",
-    country: "US",
-    capacityMwPlanned: 300,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description:
-      "Nebius's first US AI campus, announced 2024-2025 with up to 300MW of GPU capacity.",
-    sources: [
-      {
-        url: "https://nebius.com/blog/posts/us-expansion-kansas-city",
-        title: "Nebius Kansas City expansion",
-        type: "operator",
-      },
-      {
-        url: "https://www.reuters.com/technology/nebius-build-ai-data-center-kansas-city-2024-12-17/",
-        title: "Nebius to build AI data center in Kansas City",
         type: "news",
       },
     ],
@@ -689,31 +498,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
     ],
   },
 
-  // --- Hut 8 ---
-  {
-    slug: "hut8-medicine-hat-ab",
-    name: "Hut 8 Medicine Hat",
-    operatorSlug: "hut-8",
-    status: "operational",
-    aiDedicated: false,
-    lat: 50.0405,
-    lng: -110.6764,
-    city: "Medicine Hat",
-    region: "AB",
-    country: "CA",
-    capacityMw: 109,
-    primaryPowerSource: "gas",
-    coolingType: "air",
-    description:
-      "Hut 8 / US Bitcoin Corp Alberta site; part of the corporate footprint being assessed for HPC/AI deployments.",
-    sources: [
-      {
-        url: "https://hut8.com/our-business/data-centers/",
-        title: "Hut 8 Data Centers",
-        type: "operator",
-      },
-    ],
-  },
   {
     slug: "hut8-king-mountain-tx",
     name: "Hut 8 King Mountain",
@@ -930,31 +714,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
 
   // ========== (b) COLOCATION OPERATORS WITH AI/HPC ==========
 
-  // --- Equinix ---
-  {
-    slug: "equinix-dc2-ashburn",
-    name: "Equinix DC2 Ashburn",
-    operatorSlug: "equinix",
-    status: "operational",
-    aiDedicated: false,
-    lat: 39.0184,
-    lng: -77.4736,
-    city: "Ashburn",
-    region: "VA",
-    country: "US",
-    capacityMw: 30,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "air",
-    description:
-      "Equinix DC2 - the original Ashburn campus building, anchor of Equinix Northern Virginia.",
-    sources: [
-      {
-        url: "https://www.equinix.com/data-centers/americas-colocation/united-states-colocation/washington-dc-data-centers",
-        title: "Equinix DC data centers",
-        type: "operator",
-      },
-    ],
-  },
   {
     slug: "equinix-dc15-ashburn",
     name: "Equinix DC15 Ashburn (xScale, AI-ready)",
@@ -998,75 +757,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
       {
         url: "https://www.equinix.com/data-centers/americas-colocation/united-states-colocation/silicon-valley-data-centers",
         title: "Equinix Silicon Valley",
-        type: "operator",
-      },
-    ],
-  },
-  {
-    slug: "equinix-ny4-secaucus",
-    name: "Equinix NY4 Secaucus",
-    operatorSlug: "equinix",
-    status: "operational",
-    aiDedicated: false,
-    lat: 40.7895,
-    lng: -74.0565,
-    city: "Secaucus",
-    region: "NJ",
-    country: "US",
-    capacityMw: 25,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "air",
-    description:
-      "Equinix NY4 - flagship NY Metro carrier hotel and finance interconnection hub.",
-    sources: [
-      {
-        url: "https://www.equinix.com/data-centers/americas-colocation/united-states-colocation/new-york-data-centers/ny4",
-        title: "Equinix NY4",
-        type: "operator",
-      },
-    ],
-  },
-  {
-    slug: "equinix-ty11-tokyo",
-    name: "Equinix TY11 Tokyo",
-    operatorSlug: "equinix",
-    status: "operational",
-    aiDedicated: true,
-    lat: 35.6586,
-    lng: 139.7454,
-    city: "Tokyo",
-    country: "JP",
-    capacityMw: 40,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description:
-      "Equinix TY11 - largest Japanese facility with NVIDIA DGX-ready AI halls.",
-    sources: [
-      {
-        url: "https://www.equinix.com/newsroom/press-releases/2023/04/equinix-opens-new-ai-ready-data-center-ty11-japan",
-        title: "Equinix TY11 launch",
-        type: "pr",
-      },
-    ],
-  },
-  {
-    slug: "equinix-sy5-sydney",
-    name: "Equinix SY5 Sydney",
-    operatorSlug: "equinix",
-    status: "operational",
-    aiDedicated: false,
-    lat: -33.7654,
-    lng: 151.0686,
-    city: "Sydney",
-    country: "AU",
-    capacityMw: 20,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "air",
-    description: "Equinix SY5 Sydney xScale facility.",
-    sources: [
-      {
-        url: "https://www.equinix.com/data-centers/asia-pacific-colocation/australia-colocation/sydney-data-centers",
-        title: "Equinix Sydney",
         type: "operator",
       },
     ],
@@ -1200,29 +890,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
     ],
   },
   {
-    slug: "qts-irving-tx",
-    name: "QTS Irving (DFW1)",
-    operatorSlug: "qts",
-    status: "operational",
-    aiDedicated: true,
-    lat: 32.8607,
-    lng: -96.9709,
-    city: "Irving",
-    region: "TX",
-    country: "US",
-    capacityMw: 90,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description: "QTS Irving DFW1 facility hosting hyperscale AI tenants.",
-    sources: [
-      {
-        url: "https://www.qtsdatacenters.com/data-centers/dallas",
-        title: "QTS Dallas",
-        type: "operator",
-      },
-    ],
-  },
-  {
     slug: "qts-hillsboro-or",
     name: "QTS Hillsboro",
     operatorSlug: "qts",
@@ -1273,30 +940,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
     ],
   },
   {
-    slug: "aligned-slc-01-salt-lake-city",
-    name: "Aligned SLC-01 Salt Lake City",
-    operatorSlug: "aligned",
-    status: "operational",
-    aiDedicated: true,
-    lat: 40.7608,
-    lng: -111.891,
-    city: "West Jordan",
-    region: "UT",
-    country: "US",
-    capacityMw: 36,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description:
-      "Aligned Salt Lake City facility designed for HPC/AI workloads.",
-    sources: [
-      {
-        url: "https://www.aligneddc.com/data-centers/salt-lake-city",
-        title: "Aligned SLC",
-        type: "operator",
-      },
-    ],
-  },
-  {
     slug: "aligned-iad-02-ashburn",
     name: "Aligned IAD-02 Ashburn",
     operatorSlug: "aligned",
@@ -1321,32 +964,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
     ],
   },
 
-  // --- Switch ---
-  {
-    slug: "switch-citadel-tahoe-reno",
-    name: "Switch Citadel Campus (Tahoe Reno)",
-    operatorSlug: "switch",
-    status: "expanding",
-    aiDedicated: true,
-    lat: 39.5848,
-    lng: -119.4391,
-    city: "Sparks",
-    region: "NV",
-    country: "US",
-    capacityMw: 650,
-    capacityMwPlanned: 7300,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description:
-      "Switch The Citadel - planned to be the largest data center campus in the world; hosts AI hyperscale tenants including Tesla and NVIDIA.",
-    sources: [
-      {
-        url: "https://www.switch.com/the-citadel-campus/",
-        title: "Switch The Citadel",
-        type: "operator",
-      },
-    ],
-  },
   {
     slug: "switch-pyramid-las-vegas",
     name: "Switch Las Vegas Pyramid Campus",
@@ -1395,30 +1012,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
     ],
   },
 
-  // --- NextDC (Australia) ---
-  {
-    slug: "nextdc-s3-sydney",
-    name: "NextDC S3 Sydney",
-    operatorSlug: "nextdc",
-    status: "operational",
-    aiDedicated: true,
-    lat: -33.8073,
-    lng: 151.0186,
-    city: "Sydney",
-    country: "AU",
-    capacityMw: 80,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description:
-      "NextDC S3 Sydney - hyperscale AI hosting site in Macquarie Park.",
-    sources: [
-      {
-        url: "https://www.nextdc.com/data-centres/s3-sydney-data-centre",
-        title: "NextDC S3",
-        type: "operator",
-      },
-    ],
-  },
   {
     slug: "nextdc-m3-melbourne",
     name: "NextDC M3 Melbourne",
@@ -1445,34 +1038,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
 
   // ========== (c) 2024-2026 MEGA-CAMPUSES ==========
 
-  {
-    slug: "stargate-uae-abu-dhabi",
-    name: "Stargate UAE (G42 / Khazna Abu Dhabi)",
-    operatorSlug: "g42",
-    status: "under-construction",
-    aiDedicated: true,
-    lat: 24.4539,
-    lng: 54.3773,
-    city: "Abu Dhabi",
-    country: "AE",
-    capacityMwPlanned: 1000,
-    primaryPowerSource: "hybrid",
-    coolingType: "direct-to-chip",
-    description:
-      "Stargate UAE - 1GW first-phase AI campus by G42/Khazna in partnership with OpenAI, Oracle, NVIDIA, SoftBank, Cisco. Announced 2025.",
-    sources: [
-      {
-        url: "https://openai.com/index/introducing-stargate-uae/",
-        title: "Introducing Stargate UAE",
-        type: "pr",
-      },
-      {
-        url: "https://www.reuters.com/world/middle-east/openai-launch-data-center-uae-with-g42-2025-05-15/",
-        title: "OpenAI launches data center in UAE with G42",
-        type: "news",
-      },
-    ],
-  },
   {
     slug: "meta-sarpy-county-ne",
     name: "Meta Sarpy County (Papillion)",
@@ -1517,29 +1082,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
       {
         url: "https://about.fb.com/news/2024/04/kearney-data-center/",
         title: "Kearney data center announcement",
-        type: "pr",
-      },
-    ],
-  },
-  {
-    slug: "meta-temple-tx",
-    name: "Meta Temple Texas",
-    operatorSlug: "meta",
-    status: "under-construction",
-    aiDedicated: true,
-    lat: 31.0982,
-    lng: -97.3428,
-    city: "Temple",
-    region: "TX",
-    country: "US",
-    capacityMwPlanned: 700,
-    primaryPowerSource: "grid-mixed",
-    coolingType: "direct-to-chip",
-    description: "Meta's Temple, Texas AI hyperscale campus, announced 2024.",
-    sources: [
-      {
-        url: "https://about.fb.com/news/2024/03/temple-texas-data-center/",
-        title: "Meta Temple announcement",
         type: "pr",
       },
     ],
@@ -1697,30 +1239,6 @@ export const AI_NATIVE: SeedDatacenter[] = [
         type: "news",
       },
       { url: "https://x.ai/", title: "xAI", type: "operator" },
-    ],
-  },
-  {
-    slug: "humain-riyadh-sa",
-    name: "HUMAIN Riyadh (PIF AI Campus)",
-    operatorSlug: "humain",
-    status: "under-construction",
-    aiDedicated: true,
-    lat: 24.7136,
-    lng: 46.6753,
-    city: "Riyadh",
-    country: "SA",
-    capacityMwPlanned: 1900,
-    primaryPowerSource: "hybrid",
-    coolingType: "direct-to-chip",
-    description:
-      "HUMAIN - Saudi PIF-backed AI national champion launched 2025; multi-GW campus plans with NVIDIA and AMD GPUs.",
-    sources: [
-      { url: "https://www.humain.ai/", title: "HUMAIN", type: "operator" },
-      {
-        url: "https://www.reuters.com/technology/artificial-intelligence/saudi-arabia-launches-humain-ai-company-2025-05-12/",
-        title: "Saudi Arabia launches HUMAIN",
-        type: "news",
-      },
     ],
   },
   {

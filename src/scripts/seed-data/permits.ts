@@ -200,7 +200,7 @@ export const PERMITS: SeedPermit[] = [
   },
 
   {
-    datacenterSlug: "meta-sarpy-county",
+    datacenterSlug: "meta-sarpy-papillion",
     kind: "zoning",
     issuingBody:
       "Sarpy County Planning Commission / Board of County Commissioners",

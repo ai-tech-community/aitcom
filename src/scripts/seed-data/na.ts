@@ -742,28 +742,41 @@ export const NORTH_AMERICA: SeedDatacenter[] = [
       },
     ],
   },
+  // CORRECTED 2026-07-29. This site was previously seeded twice — here and as
+  // "meta-temple-tx" in ai-native.ts — with contradictory, unsourced figures
+  // (240MW vs 700MW planned, air vs direct-to-chip, aiDedicated false vs true).
+  // The duplicate has been removed. Both original source URLs are dead (404),
+  // and Meta publishes NO megawatt figure for Temple, so neither capacity was
+  // ever evidenced. Values below come from Meta's own one-pager except capacityMw,
+  // which is local reporting and is flagged as such in the description.
   {
     slug: "meta-temple",
     name: "Meta Temple TX Campus",
     operatorSlug: "meta",
-    status: "under-construction",
-    aiDedicated: false,
+    status: "operational",
+    aiDedicated: true,
     lat: 31.0982,
     lng: -97.3428,
     city: "Temple",
     region: "TX",
     country: "US",
-    capacityMwPlanned: 240,
+    capacityMw: 198,
     primaryPowerSource: "grid-mixed",
     utilitySlug: "oncor",
-    coolingType: "air",
+    coolingType: "closed-loop",
     description:
-      "Meta's Temple, Texas campus broke ground in 2022 as a five-building, $800M+ project on the ERCOT grid.",
+      "Meta's Temple, Texas campus — two buildings, 760,000+ sq ft — which went live in July 2026 as the first facility to open with Meta's AI-optimised datacenter design. Meta states $1.2bn invested, groundbreaking in 2022 and ~100 operations roles, but publishes no capacity figure; the ~198MW here comes from local reporting, not from Meta. Power is supplied by Oncor on the ERCOT grid and matched 100% with renewables.",
     sources: [
       {
-        url: "https://www.meta.com/data-centers/temple/",
-        title: "Meta Temple",
+        url: "https://datacenters.atmeta.com/asset/temple-data-center-one-pager/",
+        title: "Meta Temple Data Center (one-pager)",
         type: "operator",
+      },
+      {
+        url: "https://www.kwtx.com/2026/07/22/meta-goes-live-temple-with-12-billion-ai-data-center/",
+        title: "Meta goes live in Temple with $1.2 billion AI data center",
+        type: "news",
+        publishedAt: "2026-07-22",
       },
     ],
   },
@@ -1649,6 +1662,39 @@ export const NORTH_AMERICA: SeedDatacenter[] = [
       },
     ],
   },
+  // ADDED 2026-07-29. Permit and subsidy records already referenced
+  // "apple-maiden-nc", but no datacenter record existed, so those findings were
+  // silently dropped at seed time. Apple publishes no capacity figure for the
+  // campus; MW is therefore omitted rather than estimated. Coordinates are the
+  // Maiden town centroid, not a surveyed parcel.
+  {
+    slug: "apple-maiden-nc",
+    name: "Apple Maiden NC (iDataCenter)",
+    operatorSlug: "apple",
+    status: "operational",
+    aiDedicated: false,
+    lat: 35.5757,
+    lng: -81.2112,
+    city: "Maiden",
+    region: "NC",
+    country: "US",
+    primaryPowerSource: "hybrid",
+    utilitySlug: "duke-energy",
+    description:
+      "Apple's first large owned datacenter campus, opened in 2010 on 183 acres in Maiden, North Carolina, and now over 1 million sq ft across multiple buildings serving iCloud and Apple services. Grid power comes from Duke Energy, supplemented on site by three 20MW solar farms and a 10MW biogas fuel cell installation generating a reported 244 million kWh of renewable energy per year. Apple has invested roughly $3bn in the campus and committed a further $448m in April 2021. No IT load figure is published.",
+    sources: [
+      {
+        url: "https://baxtel.com/data-center/apple-maiden-north-carolina",
+        title: "Apple Maiden North Carolina Data Center",
+        type: "other",
+      },
+      {
+        url: "https://www.datacenterknowledge.com/build-design/a-look-inside-apple-s-idatacenter-in-north-carolina",
+        title: "A Look Inside Apple's iDataCenter in North Carolina",
+        type: "news",
+      },
+    ],
+  },
   {
     slug: "switch-pyramid-grand-rapids",
     name: "Switch Pyramid Campus (Grand Rapids MI)",
@@ -1943,6 +1989,14 @@ export const NA_BRANDS: SeedBrand[] = [
     slug: "mid-american-energy",
     canonicalName: "MidAmerican Energy",
     website: "https://www.midamericanenergy.com",
+  },
+  // Added 2026-07-29. Referenced as a utilitySlug by aws-anthropic-new-carlisle-in
+  // but never declared, so that site seeded with a null utility. A distinct AEP
+  // operating company from aep-ohio, serving Indiana and Michigan.
+  {
+    slug: "aep-indiana-michigan-power",
+    canonicalName: "AEP Indiana Michigan Power",
+    website: "https://www.indianamichiganpower.com",
   },
   {
     slug: "grand-river-dam-authority",
