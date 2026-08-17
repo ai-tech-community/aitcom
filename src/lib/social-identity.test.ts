@@ -96,6 +96,18 @@ describe("isLinkedinOAuthConfigured", () => {
         BETTER_AUTH_LINKEDIN_CLIENT_SECRET: "secret",
       }),
     ).toBe(true);
+    expect(
+      isLinkedinOAuthConfigured({
+        BETTER_AUTH_LINKEDIN_CLIENT_ID: "  id  ",
+        BETTER_AUTH_LINKEDIN_CLIENT_SECRET: "  secret  ",
+      }),
+    ).toBe(true);
+    expect(
+      isLinkedinOAuthConfigured({
+        BETTER_AUTH_LINKEDIN_CLIENT_ID: "   ",
+        BETTER_AUTH_LINKEDIN_CLIENT_SECRET: "secret",
+      }),
+    ).toBe(false);
   });
 });
 
@@ -114,13 +126,13 @@ describe("canDisconnectProvider", () => {
     );
   });
 
-  it("ignores LinkedIn when deciding whether GitHub is the last sign-in", () => {
+  it("allows disconnecting GitHub when LinkedIn remains as a sign-in", () => {
     expect(
       canDisconnectProvider("github", [
         { providerId: "github" },
         { providerId: "linkedin" },
       ]),
-    ).toEqual({ ok: false, reason: "last_sign_in" });
+    ).toEqual({ ok: true });
   });
 
   it("allows disconnecting GitHub when a password exists", () => {
@@ -132,10 +144,10 @@ describe("canDisconnectProvider", () => {
     ).toEqual({ ok: true });
   });
 
-  it("always allows disconnecting LinkedIn", () => {
+  it("blocks disconnecting LinkedIn when it is the only sign-in method", () => {
     expect(
       canDisconnectProvider("linkedin", [{ providerId: "linkedin" }]),
-    ).toEqual({ ok: true });
+    ).toEqual({ ok: false, reason: "last_sign_in" });
   });
 });
 

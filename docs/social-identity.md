@@ -20,20 +20,20 @@ Do not ask them to paste a GitHub URL for verification.
 
 ## LinkedIn
 
-LinkedIn is **not** a sign-in method in the UI. Members connect it from
-`/dashboard/settings` via Better Auth `linkSocial`. A pasted LinkedIn URL
-alone is not verified.
+When `BETTER_AUTH_LINKEDIN_CLIENT_ID` and
+`BETTER_AUTH_LINKEDIN_CLIENT_SECRET` are both set, LinkedIn appears on
+sign-in, sign-up, and Settings. Detection reads `process.env[name]` at
+request time so a Vercel runtime secret enables the button without a
+rebuild that inlines `undefined`.
 
-LinkedIn OAuth is optional and gated on env vars. Without credentials the
-connect button is hidden and Settings explains that the server is not
-configured.
+A pasted LinkedIn URL alone is not verified.
 
 ### Env vars
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `BETTER_AUTH_LINKEDIN_CLIENT_ID` | No | LinkedIn app client ID |
-| `BETTER_AUTH_LINKEDIN_CLIENT_SECRET` | No | LinkedIn app secret |
+| Variable                             | Required | Purpose                |
+| ------------------------------------ | -------- | ---------------------- |
+| `BETTER_AUTH_LINKEDIN_CLIENT_ID`     | No       | LinkedIn app client ID |
+| `BETTER_AUTH_LINKEDIN_CLIENT_SECRET` | No       | LinkedIn app secret    |
 
 Both must be set to enable the flow. Create an app at
 [LinkedIn Developers](https://www.linkedin.com/developers/apps), add the
@@ -58,12 +58,12 @@ already-pasted `linkedin.com/in/...` URL as the href.
 
 ## Connect / disconnect
 
-- Settings: `/[locale]/dashboard/settings`
-- Connect uses `authClient.linkSocial` (OAuth redirect)
+- Sign-in / sign-up: Continue with LinkedIn (same callback
+  `{BETTER_AUTH_URL}/api/auth/callback/linkedin`)
+- Settings: `/[locale]/dashboard/settings` — connect via `linkSocial`
 - Disconnect uses `members.disconnectSocial`
-- GitHub cannot be disconnected if it is the only remaining sign-in method
-  (add a password first)
-- LinkedIn is verification-only, so it can always be disconnected
+- Neither GitHub nor LinkedIn can be disconnected if it is the only
+  remaining sign-in method
 
 ## Schema
 
@@ -89,8 +89,9 @@ already-pasted `linkedin.com/in/...` URL as the href.
    - Disconnect GitHub is disabled with the password hint.
 
 4. **LinkedIn (credentials set)**
-   - Settings: Connect LinkedIn → OAuth → verified badge.
-   - Public profile and leaderboard show a verified LinkedIn mark.
+   - Sign-in and sign-up show **Continue with LinkedIn** next to GitHub.
+   - Settings shows Connect LinkedIn (not the “not configured” copy).
+   - Completing OAuth verifies the identity on the public profile.
    - Pasting a LinkedIn URL in the profile form without connecting does
      **not** show a verified badge.
 

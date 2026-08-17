@@ -28,12 +28,9 @@ import {
   BADGES,
 } from "@/lib/gamification";
 import { getAvatarUrl } from "@/lib/avatar";
-import { env } from "@/env";
+import { isLinkedinOAuthEnabled } from "@/lib/linkedin-oauth-env";
 import { auth } from "@/server/better-auth";
-import {
-  canDisconnectProvider,
-  isLinkedinOAuthConfigured,
-} from "@/lib/social-identity";
+import { canDisconnectProvider } from "@/lib/social-identity";
 import {
   clearVerifiedIdentity,
   ensureGithubIdentityForUser,
@@ -111,13 +108,15 @@ export const membersRouter = createTRPCRouter({
         github: canDisconnectProvider("github", accounts).ok,
         linkedin: canDisconnectProvider("linkedin", accounts).ok,
       },
-      linkedinConnectAvailable: isLinkedinOAuthConfigured({
-        BETTER_AUTH_LINKEDIN_CLIENT_ID: env.BETTER_AUTH_LINKEDIN_CLIENT_ID,
-        BETTER_AUTH_LINKEDIN_CLIENT_SECRET:
-          env.BETTER_AUTH_LINKEDIN_CLIENT_SECRET,
-      }),
+      linkedinConnectAvailable: isLinkedinOAuthEnabled(),
     };
   }),
+
+  /** Public flag for auth pages — request-time env, not a build-time snapshot. */
+  getAuthProviders: publicProcedure.query(() => ({
+    github: true,
+    linkedin: isLinkedinOAuthEnabled(),
+  })),
 
   /**
    * The current user's activity streak, derived from activityEvents (no
@@ -314,7 +313,7 @@ export const membersRouter = createTRPCRouter({
       if (!allowed.ok) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
-          message: "Add a password before disconnecting GitHub.",
+          message: "Add another sign-in method before disconnecting.",
         });
       }
 
