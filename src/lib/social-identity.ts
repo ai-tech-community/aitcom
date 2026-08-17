@@ -130,29 +130,22 @@ export function isLinkedinOAuthConfigured(env: {
   BETTER_AUTH_LINKEDIN_CLIENT_ID?: string;
   BETTER_AUTH_LINKEDIN_CLIENT_SECRET?: string;
 }): boolean {
-  return Boolean(
-    env.BETTER_AUTH_LINKEDIN_CLIENT_ID &&
-    env.BETTER_AUTH_LINKEDIN_CLIENT_SECRET,
-  );
+  const id = env.BETTER_AUTH_LINKEDIN_CLIENT_ID?.trim();
+  const secret = env.BETTER_AUTH_LINKEDIN_CLIENT_SECRET?.trim();
+  return Boolean(id && secret);
 }
 
 /**
- * GitHub/LinkedIn may be disconnected only when another sign-in method remains.
- * LinkedIn is a verification provider (not a sign-in method in the UI), so it
- * is always safe to disconnect.
+ * A provider may be disconnected only when another sign-in method remains
+ * (password, GitHub, or LinkedIn).
  */
 export function canDisconnectProvider(
   provider: SocialProvider,
   accounts: { providerId: string }[],
 ): { ok: true } | { ok: false; reason: "last_sign_in" } {
-  if (provider === "linkedin") return { ok: true };
-
-  const remainingSignIn = accounts.filter((account) => {
-    if (account.providerId === provider) return false;
-    // LinkedIn is verification-only and cannot keep the user signed in.
-    if (account.providerId === "linkedin") return false;
-    return true;
-  });
+  const remainingSignIn = accounts.filter(
+    (account) => account.providerId !== provider,
+  );
 
   if (remainingSignIn.length === 0) {
     return { ok: false, reason: "last_sign_in" };

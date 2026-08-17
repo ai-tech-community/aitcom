@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 import { env } from "@/env";
-import { isLinkedinOAuthConfigured } from "@/lib/social-identity";
+import { readLinkedinOAuthCredentials } from "@/lib/linkedin-oauth-env";
 import { db } from "@/server/db";
 import { memberProfiles } from "@/server/db/schema";
 import { checkEarlyAdopterBadge } from "@/lib/gamification";
@@ -19,10 +19,7 @@ import {
 } from "@/server/social/sync";
 import { resolveBetterAuthBaseUrl, resolveTrustedOrigins } from "./base-url";
 
-const linkedinConfigured = isLinkedinOAuthConfigured({
-  BETTER_AUTH_LINKEDIN_CLIENT_ID: env.BETTER_AUTH_LINKEDIN_CLIENT_ID,
-  BETTER_AUTH_LINKEDIN_CLIENT_SECRET: env.BETTER_AUTH_LINKEDIN_CLIENT_SECRET,
-});
+const linkedinCredentials = readLinkedinOAuthCredentials();
 
 export const auth = betterAuth({
   baseURL: resolveBetterAuthBaseUrl({
@@ -142,13 +139,11 @@ export const auth = betterAuth({
       clientId: env.BETTER_AUTH_GITHUB_CLIENT_ID,
       clientSecret: env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
     },
-    ...(linkedinConfigured
+    ...(linkedinCredentials
       ? {
           linkedin: {
-            clientId: env.BETTER_AUTH_LINKEDIN_CLIENT_ID!,
-            clientSecret: env.BETTER_AUTH_LINKEDIN_CLIENT_SECRET!,
-            // Verification-only: members connect LinkedIn from settings.
-            disableSignUp: true,
+            clientId: linkedinCredentials.clientId,
+            clientSecret: linkedinCredentials.clientSecret,
           },
         }
       : {}),

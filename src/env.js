@@ -56,9 +56,12 @@ export const env = createEnv({
     BETTER_AUTH_GITHUB_CLIENT_ID: process.env.BETTER_AUTH_GITHUB_CLIENT_ID,
     BETTER_AUTH_GITHUB_CLIENT_SECRET:
       process.env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
-    BETTER_AUTH_LINKEDIN_CLIENT_ID: process.env.BETTER_AUTH_LINKEDIN_CLIENT_ID,
+    // Computed keys: Next.js may inline `process.env.BETTER_AUTH_LINKEDIN_*`
+    // as undefined at build time if the optional secrets were runtime-only.
+    BETTER_AUTH_LINKEDIN_CLIENT_ID:
+      process.env["BETTER_AUTH_LINKEDIN_CLIENT_ID"],
     BETTER_AUTH_LINKEDIN_CLIENT_SECRET:
-      process.env.BETTER_AUTH_LINKEDIN_CLIENT_SECRET,
+      process.env["BETTER_AUTH_LINKEDIN_CLIENT_SECRET"],
     DATABASE_URL: process.env.DATABASE_URL,
     NEON_LOCAL_PROXY: process.env.NEON_LOCAL_PROXY,
     PAYLOAD_SECRET: process.env.PAYLOAD_SECRET,

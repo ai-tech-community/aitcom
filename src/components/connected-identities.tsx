@@ -16,6 +16,7 @@ export function ConnectedIdentities() {
   const pathname = usePathname();
   const utils = api.useUtils();
   const { data, isLoading } = api.members.getMyProfile.useQuery();
+  const providers = api.members.getAuthProviders.useQuery();
   const [pending, setPending] = useState<"github" | "linkedin" | null>(null);
 
   const disconnect = api.members.disconnectSocial.useMutation({
@@ -78,7 +79,7 @@ export function ConnectedIdentities() {
           }}
         />
 
-        {data.linkedinConnectAvailable ? (
+        {data.linkedinConnectAvailable || providers.data?.linkedin ? (
           <IdentityRow
             icon={<Linkedin className="h-4 w-4" />}
             title={t("linkedinIdentity")}
@@ -89,6 +90,8 @@ export function ConnectedIdentities() {
               linkedinConnected ? t("disconnectLinkedin") : t("connectLinkedin")
             }
             pending={pending === "linkedin" || disconnect.isPending}
+            disabled={linkedinConnected && !data.canDisconnect.linkedin}
+            disabledReason={t("disconnectGithubNeedPassword")}
             onClick={() => {
               if (linkedinConnected) {
                 setPending("linkedin");
