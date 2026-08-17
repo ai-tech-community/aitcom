@@ -39,6 +39,7 @@ import {
   loadGithubAccountIds,
   loadSocialIdentitiesForUsers,
   presentMemberSocials,
+  toLeaderboardSocial,
   toPublicSocialJson,
 } from "@/server/social/present";
 
@@ -484,7 +485,7 @@ export const membersRouter = createTRPCRouter({
       // Filter by skill in application layer (JSON column)
       const filtered = input.skill
         ? items.filter((item) =>
-            item.profile.skills.some(
+            (item.profile.skills ?? []).some(
               (s) => s.toLowerCase() === input.skill?.toLowerCase(),
             ),
           )
@@ -533,22 +534,7 @@ export const membersRouter = createTRPCRouter({
             agentId: m.agentId,
             badgeCount: badgeCountMap.get(m.profile.userId) ?? 0,
             hasAgent: !!m.agentId,
-            social: {
-              github: social.github?.verified
-                ? {
-                    handle: social.github.handle,
-                    url: social.github.url,
-                    verified: true as const,
-                  }
-                : null,
-              linkedin: social.linkedin?.verified
-                ? {
-                    handle: social.linkedin.handle,
-                    url: social.linkedin.url,
-                    verified: true as const,
-                  }
-                : null,
-            },
+            social: toLeaderboardSocial(social),
           };
         }),
         nextCursor: hasMore ? input.cursor + input.limit : null,
@@ -609,22 +595,7 @@ export const membersRouter = createTRPCRouter({
         image: t.image,
         avatarUrl: getAvatarUrl(t.email, t.image),
         badgeCount: badgeCountMap.get(t.profile.userId) ?? 0,
-        social: {
-          github: social.github?.verified
-            ? {
-                handle: social.github.handle,
-                url: social.github.url,
-                verified: true as const,
-              }
-            : null,
-          linkedin: social.linkedin?.verified
-            ? {
-                handle: social.linkedin.handle,
-                url: social.linkedin.url,
-                verified: true as const,
-              }
-            : null,
-        },
+        social: toLeaderboardSocial(social),
       };
     });
   }),
