@@ -1,6 +1,7 @@
 "use client";
 
-import { BotIcon, Github, Globe, Linkedin, Lock } from "lucide-react";
+import { BotIcon, Lock } from "lucide-react";
+import { VerifiedSocials } from "@/components/verified-socials";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
 import { Link } from "@/i18n/navigation";
@@ -165,44 +166,15 @@ export function ProfilePane({
           )}
         </div>
 
-        {/* Links */}
-        {(profile.githubUrl ?? profile.linkedinUrl ?? profile.websiteUrl) && (
-          <div className="flex items-center gap-3">
-            {profile.githubUrl && (
-              <a
-                href={profile.githubUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="GitHub"
-                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded transition-colors focus-visible:ring-2 focus-visible:outline-none"
-              >
-                <Github className="h-4 w-4" />
-              </a>
-            )}
-            {profile.linkedinUrl && (
-              <a
-                href={profile.linkedinUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="LinkedIn"
-                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded transition-colors focus-visible:ring-2 focus-visible:outline-none"
-              >
-                <Linkedin className="h-4 w-4" />
-              </a>
-            )}
-            {profile.websiteUrl && (
-              <a
-                href={profile.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Website"
-                className="text-muted-foreground hover:text-foreground focus-visible:ring-ring rounded transition-colors focus-visible:ring-2 focus-visible:outline-none"
-              >
-                <Globe className="h-4 w-4" />
-              </a>
-            )}
-          </div>
-        )}
+        <VerifiedSocials
+          github={data.social.github}
+          linkedin={data.social.linkedin}
+          websiteUrl={data.social.website?.url ?? profile.websiteUrl}
+          githubLabel="GitHub"
+          linkedinLabel="LinkedIn"
+          websiteLabel="Website"
+          verifiedLabel={t("verified")}
+        />
       </div>
 
       {/* Facts */}

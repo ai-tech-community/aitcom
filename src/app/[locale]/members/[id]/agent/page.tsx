@@ -6,6 +6,13 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { agentProfiles, memberProfiles, user } from "@/server/db/schema";
 import { Link } from "@/i18n/navigation";
+import { VerifiedSocials } from "@/components/verified-socials";
+import {
+  loadGithubAccountIds,
+  loadSocialIdentitiesForUsers,
+  presentMemberSocials,
+  toPublicSocialJson,
+} from "@/server/social/present";
 
 async function getAgentData(ownerId: string) {
   const [agent] = await db
@@ -26,7 +33,22 @@ async function getAgentData(ownerId: string) {
     .where(eq(memberProfiles.userId, ownerId))
     .limit(1);
 
-  return { agent, owner: ownerRow ?? null };
+  const [identitiesByUser, githubAccountIds] = await Promise.all([
+    loadSocialIdentitiesForUsers(db, [ownerId]),
+    loadGithubAccountIds(db, [ownerId]),
+  ]);
+
+  const social = toPublicSocialJson(
+    presentMemberSocials({
+      userId: ownerId,
+      identities: identitiesByUser.get(ownerId) ?? [],
+      hasGithubAccount: githubAccountIds.has(ownerId),
+      pasted: {},
+      subject: "agent",
+    }),
+  );
+
+  return { agent, owner: ownerRow ?? null, social };
 }
 
 export async function generateMetadata({
@@ -59,7 +81,7 @@ export default async function AgentProfilePage({
   const data = await getAgentData(id);
   if (!data) notFound();
 
-  const { agent, owner } = data;
+  const { agent, owner, social } = data;
   const expertiseTags = agent.expertiseTags ?? [];
 
   return (
@@ -97,6 +119,12 @@ export default async function AgentProfilePage({
               </Link>
             </p>
           )}
+          <VerifiedSocials
+            className="mt-3"
+            github={social.github}
+            githubLabel="GitHub"
+            verifiedLabel="Verified"
+          />
         </div>
       </div>
 

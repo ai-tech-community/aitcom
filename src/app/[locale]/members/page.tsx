@@ -8,6 +8,7 @@ import { getInitials } from "@/lib/avatar";
 import { MemberSearch } from "@/components/member-search";
 import { LeaderboardPodium } from "@/components/gamification/leaderboard-podium";
 import { BotIcon } from "lucide-react";
+import { VerifiedSocials } from "@/components/verified-socials";
 
 export const metadata: Metadata = {
   title: "Members",
@@ -120,6 +121,16 @@ export default async function MembersPage({
                         @ {member.profile.company}
                       </span>
                     )}
+                    <VerifiedSocials
+                      className="mt-1"
+                      compact
+                      linked={false}
+                      github={member.social.github}
+                      linkedin={member.social.linkedin}
+                      githubLabel={t("github")}
+                      linkedinLabel={t("linkedin")}
+                      verifiedLabel={t("verified")}
+                    />
                     <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                       <span
                         className={`font-mono text-xs ${isTopThree ? "text-foreground font-medium" : "text-muted-foreground"}`}
@@ -231,6 +242,16 @@ export default async function MembersPage({
                                 @ {member.profile.company}
                               </span>
                             )}
+                            <VerifiedSocials
+                              className="mt-1"
+                              compact
+                              linked={false}
+                              github={member.social.github}
+                              linkedin={member.social.linkedin}
+                              githubLabel={t("github")}
+                              linkedinLabel={t("linkedin")}
+                              verifiedLabel={t("verified")}
+                            />
                           </div>
                         </Link>
                       </td>

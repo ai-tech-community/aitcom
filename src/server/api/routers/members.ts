@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { eq, sql, and, or, ilike, inArray, desc, gte } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 import {
   createTRPCRouter,
@@ -15,6 +16,7 @@ import {
   hackathonCertificates,
   activityEvents,
   pointsEvents,
+  account,
 } from "@/server/db/schema";
 import { computeStreakData, pointsTriggerType } from "@/lib/gamification";
 import { getPayloadClient } from "@/server/payload";
@@ -26,6 +28,22 @@ import {
   BADGES,
 } from "@/lib/gamification";
 import { getAvatarUrl } from "@/lib/avatar";
+import { env } from "@/env";
+import { auth } from "@/server/better-auth";
+import {
+  canDisconnectProvider,
+  isLinkedinOAuthConfigured,
+} from "@/lib/social-identity";
+import {
+  clearVerifiedIdentity,
+  ensureGithubIdentityForUser,
+} from "@/server/social/sync";
+import {
+  loadGithubAccountIds,
+  loadSocialIdentitiesForUsers,
+  presentMemberSocials,
+  toPublicSocialJson,
+} from "@/server/social/present";
 
 const upsertProfileInput = z.object({
   displayName: z.string().min(1).max(255),
@@ -54,12 +72,50 @@ export const membersRouter = createTRPCRouter({
       .from(memberBadges)
       .where(eq(memberBadges.userId, userId));
 
+    await ensureGithubIdentityForUser(ctx.db, userId);
+
+    const [identitiesByUser, githubAccountIds, accounts] = await Promise.all([
+      loadSocialIdentitiesForUsers(ctx.db, [userId]),
+      loadGithubAccountIds(ctx.db, [userId]),
+      ctx.db
+        .select({ providerId: account.providerId })
+        .from(account)
+        .where(eq(account.userId, userId)),
+    ]);
+
+    const social = presentMemberSocials({
+      userId,
+      identities: identitiesByUser.get(userId) ?? [],
+      hasGithubAccount: githubAccountIds.has(userId),
+      pasted: {
+        githubUrl: profile?.githubUrl,
+        linkedinUrl: profile?.linkedinUrl,
+        websiteUrl: profile?.websiteUrl,
+      },
+      subject: "member",
+    });
+
     return {
       profile: profile ?? null,
       badges: badges.map((b) => ({
         ...BADGES[b.badgeSlug],
         earnedAt: b.earnedAt,
       })),
+      social: toPublicSocialJson(social),
+      accounts: {
+        github: accounts.some((a) => a.providerId === "github"),
+        linkedin: accounts.some((a) => a.providerId === "linkedin"),
+        password: accounts.some((a) => a.providerId === "credential"),
+      },
+      canDisconnect: {
+        github: canDisconnectProvider("github", accounts).ok,
+        linkedin: canDisconnectProvider("linkedin", accounts).ok,
+      },
+      linkedinConnectAvailable: isLinkedinOAuthConfigured({
+        BETTER_AUTH_LINKEDIN_CLIENT_ID: env.BETTER_AUTH_LINKEDIN_CLIENT_ID,
+        BETTER_AUTH_LINKEDIN_CLIENT_SECRET:
+          env.BETTER_AUTH_LINKEDIN_CLIENT_SECRET,
+      }),
     };
   }),
 
@@ -244,6 +300,40 @@ export const membersRouter = createTRPCRouter({
       return { success: true, isNew };
     }),
 
+  /** Disconnect a verified social provider (GitHub / LinkedIn). */
+  disconnectSocial: protectedProcedure
+    .input(z.object({ provider: z.enum(["github", "linkedin"]) }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const accounts = await ctx.db
+        .select({ providerId: account.providerId })
+        .from(account)
+        .where(eq(account.userId, userId));
+
+      const allowed = canDisconnectProvider(input.provider, accounts);
+      if (!allowed.ok) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Add a password before disconnecting GitHub.",
+        });
+      }
+
+      try {
+        await auth.api.unlinkAccount({
+          headers: ctx.headers,
+          body: { providerId: input.provider },
+        });
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Could not disconnect that account.",
+        });
+      }
+
+      await clearVerifiedIdentity(ctx.db, userId, input.provider);
+      return { success: true };
+    }),
+
   /** Get a public member profile by userId. */
   getPublicProfile: publicProcedure
     .input(z.object({ userId: z.string() }))
@@ -260,6 +350,8 @@ export const membersRouter = createTRPCRouter({
         .limit(1);
 
       if (!profile) return null;
+
+      await ensureGithubIdentityForUser(ctx.db, input.userId);
 
       const [memberUser] = await ctx.db
         .select({ email: user.email, image: user.image })
@@ -303,6 +395,23 @@ export const membersRouter = createTRPCRouter({
         challengeTitleById = new Map(docs.map((d) => [d.id, d.title]));
       }
 
+      const [identitiesByUser, githubAccountIds] = await Promise.all([
+        loadSocialIdentitiesForUsers(ctx.db, [input.userId]),
+        loadGithubAccountIds(ctx.db, [input.userId]),
+      ]);
+
+      const social = presentMemberSocials({
+        userId: input.userId,
+        identities: identitiesByUser.get(input.userId) ?? [],
+        hasGithubAccount: githubAccountIds.has(input.userId),
+        pasted: {
+          githubUrl: profile.githubUrl,
+          linkedinUrl: profile.linkedinUrl,
+          websiteUrl: profile.websiteUrl,
+        },
+        subject: "member",
+      });
+
       return {
         profile,
         user: memberUser
@@ -323,6 +432,7 @@ export const membersRouter = createTRPCRouter({
           issuedAt: c.issuedAt,
         })),
         eventsAttended: attendedCount?.count ?? 0,
+        social: toPublicSocialJson(social),
       };
     }),
 
@@ -399,15 +509,49 @@ export const membersRouter = createTRPCRouter({
         badgeCounts.map((bc) => [bc.userId, bc.count]),
       );
 
+      const [identitiesByUser, githubAccountIds] = await Promise.all([
+        loadSocialIdentitiesForUsers(ctx.db, memberIds),
+        loadGithubAccountIds(ctx.db, memberIds),
+      ]);
+
       return {
-        items: filtered.map((m) => ({
-          profile: m.profile,
-          image: m.image,
-          avatarUrl: getAvatarUrl(m.email, m.image),
-          agentId: m.agentId,
-          badgeCount: badgeCountMap.get(m.profile.userId) ?? 0,
-          hasAgent: !!m.agentId,
-        })),
+        items: filtered.map((m) => {
+          const social = presentMemberSocials({
+            userId: m.profile.userId,
+            identities: identitiesByUser.get(m.profile.userId) ?? [],
+            hasGithubAccount: githubAccountIds.has(m.profile.userId),
+            pasted: {
+              githubUrl: m.profile.githubUrl,
+              linkedinUrl: m.profile.linkedinUrl,
+              websiteUrl: m.profile.websiteUrl,
+            },
+            subject: "member",
+          });
+          return {
+            profile: m.profile,
+            image: m.image,
+            avatarUrl: getAvatarUrl(m.email, m.image),
+            agentId: m.agentId,
+            badgeCount: badgeCountMap.get(m.profile.userId) ?? 0,
+            hasAgent: !!m.agentId,
+            social: {
+              github: social.github?.verified
+                ? {
+                    handle: social.github.handle,
+                    url: social.github.url,
+                    verified: true as const,
+                  }
+                : null,
+              linkedin: social.linkedin?.verified
+                ? {
+                    handle: social.linkedin.handle,
+                    url: social.linkedin.url,
+                    verified: true as const,
+                  }
+                : null,
+            },
+          };
+        }),
         nextCursor: hasMore ? input.cursor + input.limit : null,
       };
     }),
@@ -444,11 +588,45 @@ export const membersRouter = createTRPCRouter({
       badgeCounts.map((bc) => [bc.userId, bc.count]),
     );
 
-    return top.map((t) => ({
-      profile: t.profile,
-      image: t.image,
-      avatarUrl: getAvatarUrl(t.email, t.image),
-      badgeCount: badgeCountMap.get(t.profile.userId) ?? 0,
-    }));
+    const [identitiesByUser, githubAccountIds] = await Promise.all([
+      loadSocialIdentitiesForUsers(ctx.db, userIds),
+      loadGithubAccountIds(ctx.db, userIds),
+    ]);
+
+    return top.map((t) => {
+      const social = presentMemberSocials({
+        userId: t.profile.userId,
+        identities: identitiesByUser.get(t.profile.userId) ?? [],
+        hasGithubAccount: githubAccountIds.has(t.profile.userId),
+        pasted: {
+          githubUrl: t.profile.githubUrl,
+          linkedinUrl: t.profile.linkedinUrl,
+          websiteUrl: t.profile.websiteUrl,
+        },
+        subject: "member",
+      });
+      return {
+        profile: t.profile,
+        image: t.image,
+        avatarUrl: getAvatarUrl(t.email, t.image),
+        badgeCount: badgeCountMap.get(t.profile.userId) ?? 0,
+        social: {
+          github: social.github?.verified
+            ? {
+                handle: social.github.handle,
+                url: social.github.url,
+                verified: true as const,
+              }
+            : null,
+          linkedin: social.linkedin?.verified
+            ? {
+                handle: social.linkedin.handle,
+                url: social.linkedin.url,
+                verified: true as const,
+              }
+            : null,
+        },
+      };
+    });
   }),
 });

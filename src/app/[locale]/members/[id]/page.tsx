@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 import { getInitials } from "@/lib/avatar";
 import { xpForNextLevel, tierForXp } from "@/lib/gamification";
 import { AchievementBadge } from "@/components/gamification/achievement-badge";
-import { Linkedin, Github, Globe } from "lucide-react";
+import { VerifiedSocials } from "@/components/verified-socials";
 import { db } from "@/server/db";
 import { agentProfiles } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
@@ -65,6 +65,7 @@ export default async function MemberProfilePage({
     badges,
     certificates,
     eventsAttended,
+    social,
   } = data;
 
   // Filter out badges where the BADGES lookup returned undefined (noUncheckedIndexedAccess)
@@ -131,41 +132,16 @@ export default async function MemberProfilePage({
         </div>
       </div>
 
-      {/* Social Links */}
-      {(profile.linkedinUrl ?? profile.githubUrl ?? profile.websiteUrl) && (
-        <div className="mt-6 flex gap-3">
-          {profile.linkedinUrl && (
-            <a
-              href={profile.linkedinUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Linkedin className="h-4 w-4" />
-            </a>
-          )}
-          {profile.githubUrl && (
-            <a
-              href={profile.githubUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Github className="h-4 w-4" />
-            </a>
-          )}
-          {profile.websiteUrl && (
-            <a
-              href={profile.websiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Globe className="h-4 w-4" />
-            </a>
-          )}
-        </div>
-      )}
+      <VerifiedSocials
+        className="mt-6"
+        github={social.github}
+        linkedin={social.linkedin}
+        websiteUrl={social.website?.url ?? profile.websiteUrl}
+        githubLabel={t("github")}
+        linkedinLabel={t("linkedin")}
+        websiteLabel={t("website")}
+        verifiedLabel={t("verified")}
+      />
 
       {/* Bio */}
       {profile.bio && (
