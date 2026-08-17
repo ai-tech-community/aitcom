@@ -7,6 +7,7 @@ import {
 } from "@/lib/social-identity";
 import { db } from "@/server/db";
 import { account, socialIdentities } from "@/server/db/schema";
+import { ignoreMissingSocialIdentityTable } from "@/server/social/errors";
 
 type Db = typeof db;
 
@@ -116,20 +117,27 @@ export async function ensureGithubIdentityForUser(
 
   if (!githubAccount) return;
 
-  const [existing] = await database
-    .select()
-    .from(socialIdentities)
-    .where(
-      and(
-        eq(socialIdentities.userId, userId),
-        eq(socialIdentities.provider, "github"),
-      ),
-    )
-    .limit(1);
+  const [existing] = await ignoreMissingSocialIdentityTable(
+    () =>
+      database
+        .select()
+        .from(socialIdentities)
+        .where(
+          and(
+            eq(socialIdentities.userId, userId),
+            eq(socialIdentities.provider, "github"),
+          ),
+        )
+        .limit(1),
+    [],
+  );
 
   if (existing?.handle) return;
 
-  await syncGithubIdentityFromAccount(database, githubAccount, fetchFn);
+  await ignoreMissingSocialIdentityTable(
+    () => syncGithubIdentityFromAccount(database, githubAccount, fetchFn),
+    undefined,
+  );
 }
 
 export async function syncLinkedinIdentityFromAccount(

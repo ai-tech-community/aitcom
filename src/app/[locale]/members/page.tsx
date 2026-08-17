@@ -9,6 +9,7 @@ import { MemberSearch } from "@/components/member-search";
 import { LeaderboardPodium } from "@/components/gamification/leaderboard-podium";
 import { BotIcon } from "lucide-react";
 import { VerifiedSocials } from "@/components/verified-socials";
+import { leaderboardSkills } from "@/server/social/present";
 
 export const metadata: Metadata = {
   title: "Members",
@@ -74,7 +75,7 @@ export default async function MembersPage({
               const rank = i + 1;
               const avatarUrl = member.avatarUrl ?? member.image ?? null;
               const initials = getInitials(member.profile.displayName);
-              const skills = member.profile.skills.slice(0, 3);
+              const skills = leaderboardSkills(member.profile.skills);
               const isTopThree = rank <= 3;
 
               return (
@@ -125,8 +126,8 @@ export default async function MembersPage({
                       className="mt-1"
                       compact
                       linked={false}
-                      github={member.social.github}
-                      linkedin={member.social.linkedin}
+                      github={member.social?.github ?? null}
+                      linkedin={member.social?.linkedin ?? null}
                       githubLabel={t("github")}
                       linkedinLabel={t("linkedin")}
                       verifiedLabel={t("verified")}
@@ -188,7 +189,7 @@ export default async function MembersPage({
                   const rank = i + 1;
                   const avatarUrl = member.avatarUrl ?? member.image ?? null;
                   const initials = getInitials(member.profile.displayName);
-                  const skills = member.profile.skills.slice(0, 3);
+                  const skills = leaderboardSkills(member.profile.skills);
                   const isTopThree = rank <= 3;
 
                   return (
@@ -246,8 +247,8 @@ export default async function MembersPage({
                               className="mt-1"
                               compact
                               linked={false}
-                              github={member.social.github}
-                              linkedin={member.social.linkedin}
+                              github={member.social?.github ?? null}
+                              linkedin={member.social?.linkedin ?? null}
                               githubLabel={t("github")}
                               linkedinLabel={t("linkedin")}
                               verifiedLabel={t("verified")}

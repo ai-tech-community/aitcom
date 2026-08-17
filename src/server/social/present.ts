@@ -7,6 +7,7 @@ import {
 } from "@/lib/social-identity";
 import type { db } from "@/server/db";
 import { account, socialIdentities } from "@/server/db/schema";
+import { ignoreMissingSocialIdentityTable } from "@/server/social/errors";
 
 type Db = typeof db;
 
@@ -25,16 +26,20 @@ export async function loadSocialIdentitiesForUsers(
   const map = new Map<string, StoredSocialIdentity[]>();
   if (userIds.length === 0) return map;
 
-  const rows = await database
-    .select({
-      userId: socialIdentities.userId,
-      provider: socialIdentities.provider,
-      providerAccountId: socialIdentities.providerAccountId,
-      handle: socialIdentities.handle,
-      profileUrl: socialIdentities.profileUrl,
-    })
-    .from(socialIdentities)
-    .where(inArray(socialIdentities.userId, userIds));
+  const rows = await ignoreMissingSocialIdentityTable(
+    () =>
+      database
+        .select({
+          userId: socialIdentities.userId,
+          provider: socialIdentities.provider,
+          providerAccountId: socialIdentities.providerAccountId,
+          handle: socialIdentities.handle,
+          profileUrl: socialIdentities.profileUrl,
+        })
+        .from(socialIdentities)
+        .where(inArray(socialIdentities.userId, userIds)),
+    [],
+  );
 
   for (const row of rows) {
     const list = map.get(row.userId) ?? [];
@@ -127,4 +132,32 @@ export function toPublicSocialJson(social: PublicSocialPresentation) {
       ? { url: social.website.url, verified: false }
       : null,
   };
+}
+
+/** Verified-only marks for the public leaderboard (unverified pasted URLs stay off). */
+export function toLeaderboardSocial(social: PublicSocialPresentation) {
+  return {
+    github: social.github?.verified
+      ? {
+          handle: social.github.handle,
+          url: social.github.url,
+          verified: true as const,
+        }
+      : null,
+    linkedin: social.linkedin?.verified
+      ? {
+          handle: social.linkedin.handle,
+          url: social.linkedin.url,
+          verified: true as const,
+        }
+      : null,
+  };
+}
+
+/** Skills chip list for a leaderboard row — null / non-array profiles still render. */
+export function leaderboardSkills(skills: unknown): string[] {
+  if (!Array.isArray(skills)) return [];
+  return skills
+    .filter((skill): skill is string => typeof skill === "string")
+    .slice(0, 3);
 }
