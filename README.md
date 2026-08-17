@@ -167,6 +167,8 @@ Optional services:
 | --- | --- |
 | `BETTER_AUTH_GITHUB_CLIENT_ID` | GitHub OAuth — [create an app](https://github.com/settings/developers) |
 | `BETTER_AUTH_GITHUB_CLIENT_SECRET` | GitHub OAuth secret |
+| `BETTER_AUTH_LINKEDIN_CLIENT_ID` | LinkedIn OAuth (optional) — [create an app](https://www.linkedin.com/developers/apps) with Sign In with LinkedIn using OpenID Connect. Redirect: `{BETTER_AUTH_URL}/api/auth/callback/linkedin` |
+| `BETTER_AUTH_LINKEDIN_CLIENT_SECRET` | LinkedIn OAuth secret (optional; both LinkedIn vars required to enable connect) |
 | `RESEND_API_KEY` | Email delivery via [Resend](https://resend.com/) |
 | `S3_ACCESS_KEY_ID` | S3-compatible storage for file uploads |
 | `S3_SECRET_ACCESS_KEY` | S3 secret key |
@@ -174,7 +176,9 @@ Optional services:
 | `S3_REGION` | S3 region (default: `eu-central-1`) |
 | `CRON_SECRET` | Authorization token for cron endpoints |
 
-See [.env.example](.env.example) for the full list.
+See [.env.example](.env.example) for the full list. Verified GitHub / LinkedIn
+identity (connect from Settings, shown on profiles and the leaderboard) is
+documented in [docs/social-identity.md](docs/social-identity.md).
 
 #### Database Setup
 

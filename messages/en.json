@@ -593,7 +593,11 @@
     "certificates": "Certificates",
     "certificateUntitled": "Hackathon",
     "certificateWinner": "Winner",
-    "certificateParticipant": "Participant"
+    "certificateParticipant": "Participant",
+    "github": "GitHub",
+    "linkedin": "LinkedIn",
+    "website": "Website",
+    "verified": "Verified"
   },
   "dashboard": {
     "myProfile": "MY PROFILE",
@@ -623,7 +627,21 @@
     "settings": "Settings",
     "impact": "Impact",
     "qa": "QA",
-    "settingsComingSoon": "Settings coming soon."
+    "settingsComingSoon": "Settings coming soon.",
+    "connectedIdentities": "CONNECTED IDENTITIES",
+    "connectedIdentitiesHelp": "GitHub is verified automatically if you signed in with it. LinkedIn is verified only after you connect it here — a pasted URL is not enough.",
+    "githubIdentity": "GitHub",
+    "linkedinIdentity": "LinkedIn",
+    "connectGithub": "CONNECT GITHUB",
+    "disconnectGithub": "DISCONNECT",
+    "connectLinkedin": "CONNECT LINKEDIN",
+    "disconnectLinkedin": "DISCONNECT",
+    "verified": "Verified",
+    "linkedinNotConfigured": "LinkedIn connect is not configured on this server. Set BETTER_AUTH_LINKEDIN_CLIENT_ID and BETTER_AUTH_LINKEDIN_CLIENT_SECRET.",
+    "disconnectGithubNeedPassword": "Add a password on this account before disconnecting GitHub.",
+    "socialDisconnected": "Identity disconnected.",
+    "socialDisconnectError": "Could not disconnect that identity.",
+    "socialConnectError": "Could not start the connect flow."
   },
   "activity": {
     "scopeLabel": "Activity scope",
@@ -678,7 +696,8 @@
     "loadError": "Couldn't load. Check your connection and try again.",
     "retry": "Retry",
     "uiMessageError": "This interactive message couldn’t load.",
-    "uiMessageSandboxed": "sandboxed"
+    "uiMessageSandboxed": "sandboxed",
+    "verified": "Verified"
   },
   "onboarding": {
     "welcomeTitle": "Welcome to AIT Community!",

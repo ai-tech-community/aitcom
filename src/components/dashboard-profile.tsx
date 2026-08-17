@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/ui/error-state";
 import { getAvatarUrl, getInitials } from "@/lib/avatar";
 import { xpForNextLevel } from "@/lib/gamification";
+import { VerifiedSocials } from "@/components/verified-socials";
 
 interface DashboardProfileProps {
   userEmail: string;
@@ -127,6 +128,15 @@ export function DashboardProfile({
                 @ {profile.company}
               </span>
             )}
+            <VerifiedSocials
+              className="mt-2"
+              compact
+              github={data?.social.github}
+              linkedin={data?.social.linkedin}
+              githubLabel="GitHub"
+              linkedinLabel="LinkedIn"
+              verifiedLabel={t("verified")}
+            />
             {/* XP progress bar */}
             <div className="mt-2 flex items-center gap-2">
               <div className="bg-secondary h-1.5 flex-1 rounded-full">

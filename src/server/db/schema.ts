@@ -67,6 +67,7 @@ export const user = appSchema.table("user", (d) => ({
 export const userRelations = relations(user, ({ many }) => ({
   account: many(account),
   session: many(session),
+  socialIdentities: many(socialIdentities),
 }));
 
 export const account = appSchema.table(
@@ -241,6 +242,56 @@ export const memberProfileRelations = relations(memberProfiles, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+/** Verified social identities bound from OAuth (not pasted profile URLs). */
+export const socialIdentities = appSchema.table(
+  "social_identity",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    provider: d
+      .varchar({ length: 32 })
+      .notNull()
+      .$type<"github" | "linkedin">(),
+    providerAccountId: d.varchar({ length: 255 }).notNull(),
+    handle: d.varchar({ length: 255 }),
+    profileUrl: d.varchar({ length: 512 }),
+    verifiedAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("social_identity_user_provider_uidx").on(t.userId, t.provider),
+    uniqueIndex("social_identity_provider_account_uidx").on(
+      t.provider,
+      t.providerAccountId,
+    ),
+    index("social_identity_user_idx").on(t.userId),
+  ],
+);
+
+export const socialIdentityRelations = relations(
+  socialIdentities,
+  ({ one }) => ({
+    user: one(user, {
+      fields: [socialIdentities.userId],
+      references: [user.id],
+    }),
+  }),
+);
 
 // Member badges (join table)
 export const memberBadges = appSchema.table(

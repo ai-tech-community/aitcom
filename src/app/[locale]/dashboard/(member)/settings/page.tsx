@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { ConnectedIdentities } from "@/components/connected-identities";
+import { SectionLabel } from "@/components/ui/section-label";
+
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
@@ -8,15 +11,9 @@ export const metadata: Metadata = {
 export default async function DashboardSettingsPage() {
   const t = await getTranslations("dashboard");
   return (
-    <div>
-      <div className="border-border border-b pb-4">
-        <span className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / SETTINGS
-        </span>
-      </div>
-      <p className="text-muted-foreground mt-6 text-sm">
-        {t("settingsComingSoon")}
-      </p>
+    <div className="space-y-8">
+      <SectionLabel>{t("settings")}</SectionLabel>
+      <ConnectedIdentities />
     </div>
   );
 }

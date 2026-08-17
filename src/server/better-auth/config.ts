@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 import { env } from "@/env";
+import { isLinkedinOAuthConfigured } from "@/lib/social-identity";
 import { db } from "@/server/db";
 import { memberProfiles } from "@/server/db/schema";
 import { checkEarlyAdopterBadge } from "@/lib/gamification";
@@ -12,7 +13,16 @@ import {
   redeemForCreatedUser,
   redeemAfterVerification,
 } from "@/server/hackathon/redeem-on-auth";
+import {
+  onAuthAccountCreated,
+  onAuthAccountDeleted,
+} from "@/server/social/sync";
 import { resolveBetterAuthBaseUrl, resolveTrustedOrigins } from "./base-url";
+
+const linkedinConfigured = isLinkedinOAuthConfigured({
+  BETTER_AUTH_LINKEDIN_CLIENT_ID: env.BETTER_AUTH_LINKEDIN_CLIENT_ID,
+  BETTER_AUTH_LINKEDIN_CLIENT_SECRET: env.BETTER_AUTH_LINKEDIN_CLIENT_SECRET,
+});
 
 export const auth = betterAuth({
   baseURL: resolveBetterAuthBaseUrl({
@@ -36,7 +46,27 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
+  account: {
+    accountLinking: {
+      enabled: true,
+      // LinkedIn email is optional and may differ from the member email.
+      allowDifferentEmails: true,
+      trustedProviders: ["github", "linkedin"],
+    },
+  },
   databaseHooks: {
+    account: {
+      create: {
+        after: async (created) => {
+          await onAuthAccountCreated(created);
+        },
+      },
+      delete: {
+        after: async (deleted) => {
+          await onAuthAccountDeleted(deleted);
+        },
+      },
+    },
     user: {
       create: {
         after: async (user) => {
@@ -112,6 +142,16 @@ export const auth = betterAuth({
       clientId: env.BETTER_AUTH_GITHUB_CLIENT_ID,
       clientSecret: env.BETTER_AUTH_GITHUB_CLIENT_SECRET,
     },
+    ...(linkedinConfigured
+      ? {
+          linkedin: {
+            clientId: env.BETTER_AUTH_LINKEDIN_CLIENT_ID!,
+            clientSecret: env.BETTER_AUTH_LINKEDIN_CLIENT_SECRET!,
+            // Verification-only: members connect LinkedIn from settings.
+            disableSignUp: true,
+          },
+        }
+      : {}),
   },
 });
 

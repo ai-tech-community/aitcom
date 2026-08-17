@@ -593,7 +593,11 @@
     "certificates": "Certificaten",
     "certificateUntitled": "Hackathon",
     "certificateWinner": "Winnaar",
-    "certificateParticipant": "Deelnemer"
+    "certificateParticipant": "Deelnemer",
+    "github": "GitHub",
+    "linkedin": "LinkedIn",
+    "website": "Website",
+    "verified": "Geverifieerd"
   },
   "dashboard": {
     "myProfile": "MIJN PROFIEL",
@@ -623,7 +627,21 @@
     "settings": "Instellingen",
     "impact": "Impact",
     "qa": "QA",
-    "settingsComingSoon": "Instellingen komen binnenkort."
+    "settingsComingSoon": "Instellingen komen binnenkort.",
+    "connectedIdentities": "GEKOPPELDE IDENTITEITEN",
+    "connectedIdentitiesHelp": "GitHub is automatisch geverifieerd als je daarmee inlogt. LinkedIn is pas geverifieerd nadat je het hier koppelt — een geplakte URL telt niet.",
+    "githubIdentity": "GitHub",
+    "linkedinIdentity": "LinkedIn",
+    "connectGithub": "GITHUB KOPPELEN",
+    "disconnectGithub": "ONTKOPPELEN",
+    "connectLinkedin": "LINKEDIN KOPPELEN",
+    "disconnectLinkedin": "ONTKOPPELEN",
+    "verified": "Geverifieerd",
+    "linkedinNotConfigured": "LinkedIn-koppeling is niet geconfigureerd. Zet BETTER_AUTH_LINKEDIN_CLIENT_ID en BETTER_AUTH_LINKEDIN_CLIENT_SECRET.",
+    "disconnectGithubNeedPassword": "Stel eerst een wachtwoord in voordat je GitHub ontkoppelt.",
+    "socialDisconnected": "Identiteit ontkoppeld.",
+    "socialDisconnectError": "Identiteit ontkoppelen mislukt.",
+    "socialConnectError": "Koppelen starten mislukt."
   },
   "activity": {
     "scopeLabel": "Activiteitsbereik",
@@ -678,7 +696,8 @@
     "loadError": "Laden mislukt. Controleer je verbinding en probeer opnieuw.",
     "retry": "Opnieuw proberen",
     "uiMessageError": "Dit interactieve bericht kon niet worden geladen.",
-    "uiMessageSandboxed": "afgeschermd"
+    "uiMessageSandboxed": "afgeschermd",
+    "verified": "Geverifieerd"
   },
   "onboarding": {
     "welcomeTitle": "Welkom bij AIT Community!",
