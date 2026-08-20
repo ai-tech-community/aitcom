@@ -5,8 +5,9 @@
 # dataset never blocks `docker compose up` or a local `pnpm db:seed`.
 #
 # Order matters:
-#   1. dev user      — owner for the Hub + author for content seeds
+#   1. dev user      — createdBy for the Hub + author for content seeds
 #   2. root Hub       — the `ait` community every user is enrolled into
+#                      (anchor, not a tenant — no organizer role)
 #   3. Payload seeds  — CMS content (also pushes the Payload `public` schema)
 #   4. app seeds      — Drizzle `app` schema content
 #

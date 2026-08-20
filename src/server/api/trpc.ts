@@ -21,6 +21,9 @@ import {
 } from "@/server/db/schema";
 import type { CommunityRole } from "@/server/communities/role-utils";
 import { checkRateLimit } from "@/server/agent/rate-limit";
+import { HUB_SLUG } from "@/server/communities/hub";
+
+export { HUB_SLUG };
 
 /**
  * 1. CONTEXT
@@ -200,9 +203,6 @@ export function requireScope(scopes: string[], required: string) {
     });
   }
 }
-
-/** The root Hub community slug (the "ait" row every user belongs to). */
-export const HUB_SLUG = "ait";
 
 /** Throws unless the caller is owner/admin of the root Hub community.
  *  Seam for the future Hub-operator role/settings epic (#85). */
