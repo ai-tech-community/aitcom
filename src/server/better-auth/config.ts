@@ -4,6 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { env } from "@/env";
 import { readLinkedinOAuthCredentials } from "@/lib/linkedin-oauth-env";
 import { db } from "@/server/db";
+import { enrollInHub } from "@/server/db/enroll-in-hub";
 import { memberProfiles } from "@/server/db/schema";
 import { checkEarlyAdopterBadge } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
@@ -72,6 +73,9 @@ export const auth = betterAuth({
             userId: user.id,
             displayName,
           });
+          // Universal Hub enrolment (ADR-0019). No community.joined event —
+          // that would pollute discovery liveness for the root row.
+          await enrollInHub(db, user.id);
           await checkEarlyAdopterBadge(db, user.id);
           await logActivity(db, {
             actorId: user.id,

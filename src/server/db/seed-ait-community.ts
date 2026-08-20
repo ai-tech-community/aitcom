@@ -1,6 +1,10 @@
 /**
- * Seed migration — creates the default "AIT Community" and enrols all
- * existing users as members (first user by createdAt becomes owner).
+ * Seed migration — creates the default Hub root (`ait`) and enrols all
+ * existing users as plain members. The root is an **anchor, not a tenant**
+ * (ADR-0019): it is unlisted and has no community organizer.
+ *
+ * If the community already exists, missing memberships are backfilled
+ * (idempotent) instead of skipping.
  *
  * Run with:
  *   npx tsx src/server/db/seed-ait-community.ts
@@ -12,6 +16,7 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "./index";
 import * as schema from "./schema";
 import { communities, communityMemberships } from "./schema";
+import { backfillHubEnrollment, reclassifyAitAsAnchor } from "./enroll-in-hub";
 
 async function seed() {
   console.log("Checking for existing AIT community...");
@@ -23,7 +28,13 @@ async function seed() {
     .limit(1);
 
   if (existing.length > 0) {
-    console.log("AIT community already exists (slug: ait). Skipping.");
+    console.log(
+      "AIT community already exists (slug: ait). Backfilling memberships...",
+    );
+    const { enrolled } = await backfillHubEnrollment(db);
+    const { demoted } = await reclassifyAitAsAnchor(db);
+    console.log(`  ✓ Enrolled ${enrolled} missing user(s).`);
+    console.log(`  ✓ Demoted ${demoted} privileged membership(s) on ait.`);
     return;
   }
 
@@ -38,11 +49,12 @@ async function seed() {
     process.exit(1);
   }
 
-  const owner = users[0]!;
-  const members = users.slice(1);
+  // createdBy is required on community, but the creator is not an organizer
+  // of the Hub — every user is enrolled as a plain member (ADR-0019).
+  const createdBy = users[0]!;
 
   console.log(
-    `Creating AIT community with owner ${owner.id} and ${members.length} additional member(s)...`,
+    `Creating AIT Hub root with ${users.length} member(s) (no organizer)...`,
   );
 
   await db.transaction(async (tx) => {
@@ -54,8 +66,8 @@ async function seed() {
         description:
           "The official AIT (AI Tech) community — where engineers, creators, and AI enthusiasts build the future together.",
         joinPolicy: "open",
-        isListedInDirectory: true,
-        createdBy: owner.id,
+        isListedInDirectory: false,
+        createdBy: createdBy.id,
       })
       .returning({ id: communities.id });
 
@@ -63,34 +75,20 @@ async function seed() {
       throw new Error("Failed to insert AIT community row.");
     }
 
-    const communityId = community.id;
+    await tx.insert(communityMemberships).values(
+      users.map((u) => ({
+        communityId: community.id,
+        userId: u.id,
+        role: "member" as const,
+        status: "active" as const,
+      })),
+    );
 
-    // Insert owner membership
-    await tx.insert(communityMemberships).values({
-      communityId,
-      userId: owner.id,
-      role: "owner",
-      status: "active",
-    });
-
-    // Insert remaining users as members
-    if (members.length > 0) {
-      await tx.insert(communityMemberships).values(
-        members.map((u) => ({
-          communityId,
-          userId: u.id,
-          role: "member" as const,
-          status: "active" as const,
-        })),
-      );
-    }
-
-    console.log(`  ✓ Community created: ${communityId}`);
-    console.log(`  ✓ Owner enrolled: ${owner.id}`);
-    console.log(`  ✓ Members enrolled: ${members.length}`);
+    console.log(`  ✓ Community created: ${community.id}`);
+    console.log(`  ✓ Members enrolled: ${users.length}`);
   });
 
-  console.log("\nAIT community seeded successfully!");
+  console.log("\nAIT Hub root seeded successfully!");
 }
 
 seed()
