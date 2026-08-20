@@ -136,8 +136,8 @@ describe("Hub enrolment on signup (ADR-0019)", () => {
       "../better-auth/config.ts",
     );
     const src = readFileSync(configPath, "utf8");
-    expect(src).toContain('from "@/server/db/enroll-in-hub"');
-    expect(src).toContain("enrollInHub(db, user.id)");
+    expect(src).toContain('from "@/server/db/enroll-on-auth"');
+    expect(src).toContain("enrollForCreatedUser(user)");
   });
 });
 

@@ -172,6 +172,13 @@ describe.skipIf(!RUN_DB)("Hub enrolment [DB integration]", () => {
       status: "active",
     });
 
+    const { listMyCommunities } =
+      await import("@/server/communities/my-communities");
+    const mine = await listMyCommunities(db, created!.id);
+    expect(mine.some((m) => m.slug === "ait" && m.status === "active")).toBe(
+      true,
+    );
+
     const agent = await db.query.agentProfiles.findFirst({
       where: eq(schema.agentProfiles.ownerId, created!.id),
     });

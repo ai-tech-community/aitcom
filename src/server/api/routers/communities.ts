@@ -39,6 +39,7 @@ import {
   loadStackFacesForCommunities,
 } from "@/server/communities/member-stack-queries";
 import { HUB_SLUG } from "@/server/api/trpc";
+import { listMyCommunities } from "@/server/communities/my-communities";
 
 /** Escape SQL LIKE/ILIKE pattern characters */
 function escapeLike(str: string): string {
@@ -840,32 +841,9 @@ export const communitiesRouter = createTRPCRouter({
       return { success: true };
     }),
 
-  /** List communities the user belongs to */
+  /** List communities the user belongs to, including the unlisted Hub root. */
   getMyCommunities: protectedProcedure.query(async ({ ctx }) => {
-    const memberships = await ctx.db
-      .select({
-        communityId: communityMemberships.communityId,
-        role: communityMemberships.role,
-        status: communityMemberships.status,
-        joinedAt: communityMemberships.joinedAt,
-        name: communities.name,
-        slug: communities.slug,
-        description: communities.description,
-        logoUrl: communities.logoUrl,
-        autonomyLevel: communities.autonomyLevel,
-      })
-      .from(communityMemberships)
-      .innerJoin(
-        communities,
-        and(
-          eq(communityMemberships.communityId, communities.id),
-          isNull(communities.deletedAt),
-        ),
-      )
-      .where(eq(communityMemberships.userId, ctx.session.user.id))
-      .orderBy(desc(communityMemberships.joinedAt));
-
-    return memberships;
+    return listMyCommunities(ctx.db, ctx.session.user.id);
   }),
 
   // ─── Admin Procedures ─────────────────────────────────────────────
