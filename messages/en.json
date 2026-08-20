@@ -569,7 +569,14 @@
     "resettingPassword": "Resetting...",
     "passwordResetSuccess": "Password reset successfully. You can now sign in.",
     "invalidResetToken": "This reset link is invalid or has expired.",
-    "accountCreated": "Account created!"
+    "accountCreated": "Account created!",
+    "checkEmailToVerify": "Account created. Check your inbox for a verification link, then sign in.",
+    "emailNotVerified": "Verify your email to sign in",
+    "emailNotVerifiedDescription": "We sent a link to this address. Check your inbox, or resend the verification email.",
+    "resendVerification": "Resend verification email",
+    "resendingVerification": "Sending...",
+    "verificationEmailSent": "Verification email sent. Check your inbox.",
+    "verificationEmailFailed": "Could not send the verification email."
   },
   "language": {
     "en": "English",

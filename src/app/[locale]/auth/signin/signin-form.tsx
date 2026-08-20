@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
+import { MailIcon } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { SocialOAuthButtons } from "@/components/auth/social-oauth-buttons";
 import { authClient } from "@/server/better-auth/client";
 import { getPostAuthRedirect } from "@/lib/auth-redirect";
+import { isEmailNotVerifiedError } from "@/lib/auth-errors";
 import { toast } from "sonner";
 
 export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
@@ -18,8 +20,10 @@ export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
   const params = useSearchParams();
   const session = authClient.useSession();
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   // Target is a full, locale-prefixed path — push with the plain router so the
   // locale isn't prefixed twice. See lib/auth-redirect.
@@ -33,16 +37,36 @@ export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setNeedsVerification(false);
     const { error } = await authClient.signIn.email({
       email,
       password,
     });
     setLoading(false);
     if (error) {
+      if (isEmailNotVerifiedError(error)) {
+        setNeedsVerification(true);
+        return;
+      }
       toast.error(error.message ?? "Sign in failed");
       return;
     }
     router.push(target);
+  }
+
+  async function handleResendVerification() {
+    if (!email) return;
+    setResending(true);
+    const { error } = await authClient.sendVerificationEmail({
+      email,
+      callbackURL: target,
+    });
+    setResending(false);
+    if (error) {
+      toast.error(error.message ?? t("verificationEmailFailed"));
+      return;
+    }
+    toast.success(t("verificationEmailSent"));
   }
 
   const signUpHref = params.toString()
@@ -98,6 +122,36 @@ export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+          {needsVerification ? (
+            <div
+              role="alert"
+              className="space-y-3 rounded-lg border border-border bg-card px-4 py-3"
+            >
+              <div className="flex items-start gap-3">
+                <MailIcon
+                  className="text-warning mt-0.5 size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">{t("emailNotVerified")}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {t("emailNotVerifiedDescription")}
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={resending || !email}
+                onClick={handleResendVerification}
+              >
+                {resending
+                  ? t("resendingVerification")
+                  : t("resendVerification")}
+              </Button>
+            </div>
+          ) : null}
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? t("signingIn") : t("signIn")}
           </Button>
