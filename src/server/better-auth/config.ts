@@ -4,7 +4,11 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { env } from "@/env";
 import { readLinkedinOAuthCredentials } from "@/lib/linkedin-oauth-env";
 import { db } from "@/server/db";
-import { enrollInHub } from "@/server/db/enroll-in-hub";
+import {
+  enrollAfterVerification,
+  enrollForCreatedUser,
+  enrollOnSessionCreated,
+} from "@/server/db/enroll-on-auth";
 import { memberProfiles } from "@/server/db/schema";
 import { checkEarlyAdopterBadge } from "@/lib/gamification";
 import { logActivity } from "@/server/agent/activity";
@@ -69,17 +73,36 @@ export const auth = betterAuth({
         },
       },
     },
+    session: {
+      create: {
+        after: async (session) => {
+          // User row is committed by first sign-in. Retries Hub enrolment
+          // if user.create.after missed it (email+password / Neon FK).
+          await enrollOnSessionCreated(session).catch(() => {
+            /* non-blocking: getMyCommunities also self-heals */
+          });
+        },
+      },
+    },
     user: {
       create: {
         after: async (user) => {
           const displayName = user.name || user.email.split("@")[0]!;
-          await db.insert(memberProfiles).values({
-            userId: user.id,
-            displayName,
-          });
+          try {
+            await db.insert(memberProfiles).values({
+              userId: user.id,
+              displayName,
+            });
+          } catch {
+            /* don't skip Hub enrolment if the profile insert races */
+          }
           // Universal Hub enrolment (ADR-0019). No community.joined event —
           // that would pollute discovery liveness for the root row.
-          await enrollInHub(db, user.id);
+          // Isolated so a failed insert (uncommitted user row on a second
+          // Neon connection) cannot skip welcome / badge / activity.
+          await enrollForCreatedUser(user).catch(() => {
+            /* retried on verify, first session, and getMyCommunities */
+          });
           await checkEarlyAdopterBadge(db, user.id);
           await logActivity(db, {
             actorId: user.id,
@@ -135,6 +158,9 @@ export const auth = betterAuth({
       await sendVerificationEmail({ user, url });
     },
     afterEmailVerification: async (user: { id: string; email: string }) => {
+      await enrollAfterVerification(user).catch(() => {
+        /* non-blocking: session.create / getMyCommunities also retry */
+      });
       await redeemAfterVerification(user).catch(() => {
         /* non-blocking */
       });
