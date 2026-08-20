@@ -35,6 +35,9 @@ export function buildHackathonChallengeData(args: ChallengeDataArgs) {
     communityId: args.communityId,
     objectives: [] as unknown[],
     cellTemplate: [] as unknown[],
+    // Empty array — not null. A null JSON `tags` value crashes the Payload
+    // admin editor (blank form body) and makes bulk status save fail silently.
+    tags: [] as string[],
     rewards: { xpReward: 0 },
     teamConfig: { minTeamSize: args.teamMin, maxTeamSize: args.teamMax },
   };

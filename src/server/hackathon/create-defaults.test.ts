@@ -35,6 +35,7 @@ describe("buildHackathonChallengeData", () => {
     expect(data.communityId).toBe("comm-1");
     expect(data.objectives).toEqual([]);
     expect(data.cellTemplate).toEqual([]);
+    expect(data.tags).toEqual([]);
     expect(data.rewards).toEqual({ xpReward: 0 });
     expect(data.teamConfig).toEqual({ minTeamSize: 2, maxTeamSize: 4 });
   });

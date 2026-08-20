@@ -79,6 +79,7 @@ import * as migration_20260707a_audiences_collection_seed from "./20260707a_audi
 import * as migration_20260707b_events_audience_relationship from "./20260707b_events_audience_relationship";
 import * as migration_20260713a_audience_interests_backfill from "./20260713a_audience_interests_backfill";
 import * as migration_20260817a_social_identity from "./20260817a_social_identity";
+import * as migration_20260820a_draft_stuck_test_challenge from "./20260820a_draft_stuck_test_challenge";
 
 export const migrations = [
   {
@@ -485,5 +486,10 @@ export const migrations = [
     up: migration_20260817a_social_identity.up,
     down: migration_20260817a_social_identity.down,
     name: "20260817a_social_identity",
+  },
+  {
+    up: migration_20260820a_draft_stuck_test_challenge.up,
+    down: migration_20260820a_draft_stuck_test_challenge.down,
+    name: "20260820a_draft_stuck_test_challenge",
   },
 ];

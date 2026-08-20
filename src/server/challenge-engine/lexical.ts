@@ -18,7 +18,18 @@ export type LexicalNode = {
 
 /** Create a Lexical text node. `format` is a bitmask (1 = bold, 2 = italic, …). */
 export function text(t: string, format = 0): LexicalNode {
-  return { type: "text", text: t, version: 1, format };
+  // Payload admin's Lexical parser requires the serialized TextNode extras
+  // (detail/mode/style). Omitting them is what blank-forms hackathon-created
+  // challenge rows in /admin.
+  return {
+    type: "text",
+    text: t,
+    version: 1,
+    format,
+    detail: 0,
+    mode: "normal",
+    style: "",
+  };
 }
 
 // ── Block-level nodes ───────────────────────────────────────────────────────
@@ -31,6 +42,8 @@ export function paragraph(...children: LexicalNode[]): LexicalNode {
     format: "",
     indent: 0,
     direction: "ltr",
+    textFormat: 0,
+    textStyle: "",
     children,
   };
 }
