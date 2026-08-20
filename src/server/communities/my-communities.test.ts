@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { HUB_SLUG } from "@/server/communities/hub";
+import { HUB_DESCRIPTION, HUB_NAME, HUB_SLUG } from "@/server/communities/hub";
+import { enrollInHub } from "@/server/db/enroll-in-hub";
 
 import {
   hasActiveHubMembership,
@@ -80,6 +81,75 @@ describe("listMyCommunities (empty My Communities after email signup)", () => {
     expect(rows.some((m) => m.slug === HUB_SLUG && m.status === "active")).toBe(
       true,
     );
+  });
+
+  it("creates the missing Hub and returns the new human in getMyCommunities", async () => {
+    let hub: { id: string; deletedAt: Date | null } | undefined;
+    const memberships: MyCommunity[] = [];
+    const communityInserts: unknown[] = [];
+
+    const db = {
+      query: {
+        communities: {
+          findFirst: async () => hub,
+        },
+      },
+      insert: () => ({
+        values: (v: Record<string, unknown>) => {
+          if (v.slug === HUB_SLUG) {
+            communityInserts.push(v);
+            hub = { id: "hub-ait-created", deletedAt: null };
+            return {
+              onConflictDoNothing: () => ({
+                returning: async () => [{ id: hub!.id }],
+              }),
+            };
+          }
+          memberships.push(
+            aitRow({
+              communityId: String(v.communityId),
+              role: v.role as MyCommunity["role"],
+              status: v.status as MyCommunity["status"],
+              name: HUB_NAME,
+              description: HUB_DESCRIPTION,
+            }),
+          );
+          return { onConflictDoNothing: async () => undefined };
+        },
+      }),
+      select: () => {
+        const chain: Record<string, unknown> = {};
+        for (const m of ["from", "innerJoin", "where", "orderBy"]) {
+          chain[m] = () => chain;
+        }
+        chain.then = (
+          resolve: (v: MyCommunity[]) => unknown,
+          reject?: (e: unknown) => unknown,
+        ) => Promise.resolve([...memberships]).then(resolve, reject);
+        return chain;
+      },
+    };
+
+    const rows = await listMyCommunities(db as never, SOREN_ID, enrollInHub);
+
+    expect(communityInserts).toEqual([
+      {
+        name: HUB_NAME,
+        slug: HUB_SLUG,
+        description: HUB_DESCRIPTION,
+        joinPolicy: "open",
+        isListedInDirectory: false,
+        createdBy: SOREN_ID,
+      },
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      slug: HUB_SLUG,
+      name: HUB_NAME,
+      status: "active",
+      role: "member",
+    });
+    expect(hub).toEqual({ id: "hub-ait-created", deletedAt: null });
   });
 
   it("does not treat a non-ait tenant as Hub enrolment", async () => {

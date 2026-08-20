@@ -62,7 +62,8 @@ export function hasActiveHubMembership(rows: MyCommunity[]): boolean {
  * My Communities list with Hub self-heal. Email+password signup can miss the
  * `user.create.after` insert (Better Auth may still be inside that
  * transaction, so a second Neon connection cannot see the new user row).
- * If `ait` is missing we enrol and re-read so the dashboard is not empty.
+ * If the `ait` membership — or the Hub row itself — is missing, enrollInHub
+ * creates the unlisted root and enrols so the dashboard is not empty.
  */
 export async function listMyCommunities(
   db: DB,

@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 
-import { HUB_SLUG } from "@/server/communities/hub";
+import { HUB_DESCRIPTION, HUB_NAME, HUB_SLUG } from "@/server/communities/hub";
 import type { db as _db } from "@/server/db";
 import { communities, communityMemberships, user } from "@/server/db/schema";
 
@@ -13,18 +13,82 @@ async function findHub(db: DB): Promise<{ id: string } | undefined> {
   });
 }
 
+async function findHubRow(
+  db: DB,
+): Promise<{ id: string; deletedAt: Date | null } | undefined> {
+  return db.query.communities.findFirst({
+    where: eq(communities.slug, HUB_SLUG),
+    columns: { id: true, deletedAt: true },
+  });
+}
+
+async function firstUserId(db: DB): Promise<string | undefined> {
+  const [row] = await db.select({ id: user.id }).from(user).limit(1);
+  return row?.id;
+}
+
+/**
+ * Idempotently ensure the root Hub community (`ait`) exists. Production after
+ * #239 could have enrolment self-heal with no `ait` row (never seeded, or
+ * deleted). Restores a soft-deleted row; otherwise inserts the unlisted
+ * ADR-0019 anchor. `createdBy` is a required FK only — the creator is a
+ * plain member, not an organizer. See seed-ait-community.ts.
+ */
+export async function ensureHub(
+  db: DB,
+  createdBy?: string,
+): Promise<{ id: string }> {
+  const existing = await findHubRow(db);
+  if (existing) {
+    if (existing.deletedAt) {
+      await db
+        .update(communities)
+        .set({ deletedAt: null, isListedInDirectory: false })
+        .where(eq(communities.id, existing.id));
+    }
+    return { id: existing.id };
+  }
+
+  const ownerId = createdBy ?? (await firstUserId(db));
+  if (!ownerId) {
+    throw new Error(
+      "Hub community (slug 'ait') could not be created: no users exist.",
+    );
+  }
+
+  const [created] = await db
+    .insert(communities)
+    .values({
+      name: HUB_NAME,
+      slug: HUB_SLUG,
+      description: HUB_DESCRIPTION,
+      joinPolicy: "open",
+      isListedInDirectory: false,
+      createdBy: ownerId,
+    })
+    .onConflictDoNothing()
+    .returning({ id: communities.id });
+
+  if (created) return created;
+
+  const raced = await findHubRow(db);
+  if (!raced) {
+    throw new Error("Hub community (slug 'ait') could not be created.");
+  }
+  return { id: raced.id };
+}
+
 /**
  * Idempotently enrol a user into the root Hub community (`ait`) as a plain
- * member. Safe to call repeatedly: the (community_id, user_id) unique index
- * makes the insert a no-op on conflict. Returns false if the Hub row does
- * not exist yet (e.g. before seeding). See ADR-0019.
+ * member. Creates the Hub row if it is missing so a first dashboard load is
+ * enough after deploy. Safe to call repeatedly: the (community_id, user_id)
+ * unique index makes the membership insert a no-op on conflict. See ADR-0019.
  *
  * Does **not** emit `community.joined` — `ait` is an anchor, and that event
  * would pollute discovery liveness. Signup already records `member.joined`.
  */
 export async function enrollInHub(db: DB, userId: string): Promise<boolean> {
-  const hub = await findHub(db);
-  if (!hub) return false;
+  const hub = await ensureHub(db, userId);
 
   await db
     .insert(communityMemberships)
@@ -40,18 +104,14 @@ export async function enrollInHub(db: DB, userId: string): Promise<boolean> {
 
 /**
  * Enrol every existing user who lacks a Hub (`ait`) membership. Idempotent:
- * a second run inserts nothing. Privileged roles on `ait` are left alone
- * here — see `reclassifyAitAsAnchor`.
+ * a second run inserts nothing. Creates the Hub row if it is missing.
+ * Privileged roles on `ait` are left alone here — see `reclassifyAitAsAnchor`.
  */
 export async function backfillHubEnrollment(
   db: DB,
 ): Promise<{ enrolled: number }> {
-  const hub = await findHub(db);
-  if (!hub) {
-    throw new Error(
-      "Hub community (slug 'ait') not found. Run seed-ait-community.ts first.",
-    );
-  }
+  const existing = await findHub(db);
+  const hub = existing ?? (await ensureHub(db));
 
   const alreadyRows = await db
     .select({ userId: communityMemberships.userId })

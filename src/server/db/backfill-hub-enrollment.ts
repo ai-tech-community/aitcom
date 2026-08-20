@@ -1,7 +1,11 @@
 /**
- * Idempotent backfill — enrol every existing user who lacks an `ait`
- * membership, then reclassify the Hub root as an unlisted, ownerless
- * anchor (ADR-0019). Re-running is a no-op.
+ * Idempotent backfill — ensure the unlisted Hub root (`ait`) exists, enrol
+ * every existing user who lacks a membership, then reclassify as an
+ * ownerless anchor (ADR-0019). Re-running is a no-op.
+ *
+ * A first dashboard load (`getMyCommunities` → `enrollInHub` → `ensureHub`)
+ * is enough after deploy. This script is belt-and-suspenders for stranded
+ * accounts that have not signed in yet.
  *
  * Run with:
  *   pnpm db:backfill-hub
