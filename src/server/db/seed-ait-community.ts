@@ -4,41 +4,27 @@
  * (ADR-0019): it is unlisted and has no community organizer.
  *
  * If the community already exists, missing memberships are backfilled
- * (idempotent) instead of skipping.
+ * (idempotent) instead of skipping. If it is missing, `ensureHub` inserts
+ * the same unlisted row the runtime path uses on first dashboard load.
  *
  * Run with:
  *   npx tsx src/server/db/seed-ait-community.ts
  *
  * Requires DATABASE_URL in the environment (e.g. via .env.local).
  */
-import { asc, eq } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 
 import { db } from "./index";
 import * as schema from "./schema";
-import { communities, communityMemberships } from "./schema";
-import { backfillHubEnrollment, reclassifyAitAsAnchor } from "./enroll-in-hub";
+import {
+  backfillHubEnrollment,
+  ensureHub,
+  reclassifyAitAsAnchor,
+} from "./enroll-in-hub";
 
 async function seed() {
-  console.log("Checking for existing AIT community...");
+  console.log("Checking for users (createdBy FK on the Hub root)...");
 
-  const existing = await db
-    .select({ id: communities.id })
-    .from(communities)
-    .where(eq(communities.slug, "ait"))
-    .limit(1);
-
-  if (existing.length > 0) {
-    console.log(
-      "AIT community already exists (slug: ait). Backfilling memberships...",
-    );
-    const { enrolled } = await backfillHubEnrollment(db);
-    const { demoted } = await reclassifyAitAsAnchor(db);
-    console.log(`  ✓ Enrolled ${enrolled} missing user(s).`);
-    console.log(`  ✓ Demoted ${demoted} privileged membership(s) on ait.`);
-    return;
-  }
-
-  console.log("Fetching all users ordered by createdAt...");
   const users = await db
     .select({ id: schema.user.id })
     .from(schema.user)
@@ -53,40 +39,14 @@ async function seed() {
   // of the Hub — every user is enrolled as a plain member (ADR-0019).
   const createdBy = users[0]!;
 
-  console.log(
-    `Creating AIT Hub root with ${users.length} member(s) (no organizer)...`,
-  );
+  console.log("Ensuring AIT Hub root exists (slug: ait, unlisted)...");
+  const hub = await ensureHub(db, createdBy.id);
+  console.log(`  ✓ Hub id: ${hub.id}`);
 
-  await db.transaction(async (tx) => {
-    const [community] = await tx
-      .insert(communities)
-      .values({
-        name: "AIT Community",
-        slug: "ait",
-        description:
-          "The official AIT (AI Tech) community — where engineers, creators, and AI enthusiasts build the future together.",
-        joinPolicy: "open",
-        isListedInDirectory: false,
-        createdBy: createdBy.id,
-      })
-      .returning({ id: communities.id });
-
-    if (!community) {
-      throw new Error("Failed to insert AIT community row.");
-    }
-
-    await tx.insert(communityMemberships).values(
-      users.map((u) => ({
-        communityId: community.id,
-        userId: u.id,
-        role: "member" as const,
-        status: "active" as const,
-      })),
-    );
-
-    console.log(`  ✓ Community created: ${community.id}`);
-    console.log(`  ✓ Members enrolled: ${users.length}`);
-  });
+  const { enrolled } = await backfillHubEnrollment(db);
+  const { demoted } = await reclassifyAitAsAnchor(db);
+  console.log(`  ✓ Enrolled ${enrolled} missing user(s).`);
+  console.log(`  ✓ Demoted ${demoted} privileged membership(s) on ait.`);
 
   console.log("\nAIT Hub root seeded successfully!");
 }

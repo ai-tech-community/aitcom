@@ -206,4 +206,73 @@ describe.skipIf(!RUN_DB)("Hub enrolment [DB integration]", () => {
     const third = await backfillHubEnrollment(db);
     expect(third.enrolled).toBe(0);
   });
+
+  it("creates the Hub when ait is absent and getMyCommunities returns the human", async () => {
+    const { and, eq, isNull } = await import("drizzle-orm");
+    const sfx = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+    const sorenId = `soren-${sfx}`;
+    userIds.push(sorenId);
+
+    await db.insert(schema.user).values({
+      id: sorenId,
+      email: `${sorenId}@example.test`,
+      name: "Soren Ravn",
+    });
+
+    const preexisting = await db.query.communities.findFirst({
+      where: eq(schema.communities.slug, "ait"),
+      columns: {
+        id: true,
+        deletedAt: true,
+        isListedInDirectory: true,
+        name: true,
+      },
+    });
+
+    if (preexisting && !preexisting.deletedAt) {
+      await db
+        .update(schema.communities)
+        .set({ deletedAt: new Date() })
+        .where(eq(schema.communities.id, preexisting.id));
+    }
+
+    try {
+      const { listMyCommunities } =
+        await import("@/server/communities/my-communities");
+      const mine = await listMyCommunities(db, sorenId);
+
+      expect(mine.some((m) => m.slug === "ait" && m.status === "active")).toBe(
+        true,
+      );
+
+      const hub = await db.query.communities.findFirst({
+        where: and(
+          eq(schema.communities.slug, "ait"),
+          isNull(schema.communities.deletedAt),
+        ),
+      });
+      expect(hub).toBeDefined();
+      expect(hub!.isListedInDirectory).toBe(false);
+      if (!preexisting) {
+        expect(hub!.name).toBe("AIT Community");
+        hubId = hub!.id;
+        createdHub = true;
+      }
+
+      const agent = await db.query.agentProfiles.findFirst({
+        where: eq(schema.agentProfiles.ownerId, sorenId),
+      });
+      expect(agent).toBeUndefined();
+    } finally {
+      if (preexisting) {
+        await db
+          .update(schema.communities)
+          .set({
+            deletedAt: preexisting.deletedAt,
+            isListedInDirectory: preexisting.isListedInDirectory,
+          })
+          .where(eq(schema.communities.id, preexisting.id));
+      }
+    }
+  });
 });
