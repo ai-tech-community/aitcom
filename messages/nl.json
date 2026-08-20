@@ -569,7 +569,14 @@
     "resettingPassword": "Resetten...",
     "passwordResetSuccess": "Wachtwoord succesvol gereset. Je kunt nu inloggen.",
     "invalidResetToken": "Deze resetlink is ongeldig of verlopen.",
-    "accountCreated": "Account aangemaakt!"
+    "accountCreated": "Account aangemaakt!",
+    "checkEmailToVerify": "Account aangemaakt. Check je inbox voor een verificatielink en log daarna in.",
+    "emailNotVerified": "Bevestig je e-mail om in te loggen",
+    "emailNotVerifiedDescription": "We hebben een link naar dit adres gestuurd. Check je inbox, of verstuur de verificatiemail opnieuw.",
+    "resendVerification": "Verificatiemail opnieuw versturen",
+    "resendingVerification": "Versturen...",
+    "verificationEmailSent": "Verificatiemail verstuurd. Check je inbox.",
+    "verificationEmailFailed": "De verificatiemail kon niet worden verstuurd."
   },
   "language": {
     "en": "English",

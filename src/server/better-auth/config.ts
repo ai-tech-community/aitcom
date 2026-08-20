@@ -19,6 +19,10 @@ import {
   onAuthAccountDeleted,
 } from "@/server/social/sync";
 import { resolveBetterAuthBaseUrl, resolveTrustedOrigins } from "./base-url";
+import {
+  isEmailVerificationRequired,
+  sendVerificationEmail,
+} from "./send-verification-email";
 
 const linkedinCredentials = readLinkedinOAuthCredentials();
 
@@ -97,23 +101,7 @@ export const auth = betterAuth({
   },
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,
-    sendVerificationEmail: async ({
-      user,
-      url,
-    }: {
-      user: { email: string; name?: string | null };
-      url: string;
-    }) => {
-      const resend = getResend();
-      if (!resend) return;
-      await resend.emails.send({
-        from: "AIT Community <noreply@mailer.aitcommunity.org>",
-        to: user.email,
-        subject: "Verify your email — AIT Community",
-        html: `<p>Hi ${user.name ?? "there"},</p><p>Please verify your email by clicking <a href="${url}">this link</a>.</p>`,
-      });
-    },
+    requireEmailVerification: isEmailVerificationRequired(env.RESEND_API_KEY),
     sendResetPassword: async ({
       user,
       url,
@@ -132,6 +120,20 @@ export const auth = betterAuth({
     },
   },
   emailVerification: {
+    // Better Auth only enables POST /send-verification-email (and signup /
+    // sign-in dispatch) when this callback lives here — not under
+    // emailAndPassword. Missing it returns VERIFICATION_EMAIL_ISNT_ENABLED.
+    sendOnSignUp: true,
+    sendOnSignIn: true,
+    sendVerificationEmail: async ({
+      user,
+      url,
+    }: {
+      user: { email: string; name?: string | null };
+      url: string;
+    }) => {
+      await sendVerificationEmail({ user, url });
+    },
     afterEmailVerification: async (user: { id: string; email: string }) => {
       await redeemAfterVerification(user).catch(() => {
         /* non-blocking */

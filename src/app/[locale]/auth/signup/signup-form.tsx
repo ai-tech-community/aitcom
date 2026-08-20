@@ -41,8 +41,10 @@ export function SignUpForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
       toast.error(error.message ?? "Sign up failed");
       return;
     }
-    toast.success(t("accountCreated"));
-    router.push(target);
+    // When verification is required there is no session yet — stay here
+    // instead of sending them to a gated target. If verification is off
+    // (no Resend), the session effect below continues to the target.
+    toast.success(t("checkEmailToVerify"));
   }
 
   const signInHref = params.toString()
