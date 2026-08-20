@@ -67,9 +67,10 @@ function makeBackfillDb(opts: {
     insert: () => ({
       values: (v: unknown) => {
         inserted.push(v);
+        const rows: unknown[] = Array.isArray(v) ? [...v] : [v];
         return {
           onConflictDoNothing: () => ({
-            returning: async () => (Array.isArray(v) ? v : [v]),
+            returning: async () => rows,
           }),
         };
       },

@@ -37,16 +37,11 @@ function isLocalDbConfigured(): boolean {
 const RUN_DB = isLocalDbConfigured();
 
 describe.skipIf(!RUN_DB)("Hub enrolment [DB integration]", () => {
-  type Db = typeof import("@/server/db").db;
-  type Schema = typeof import("@/server/db/schema");
-  type Enroll = typeof import("./enroll-in-hub");
-  type Auth = typeof import("@/server/better-auth").auth;
-
-  let db: Db;
-  let schema: Schema;
-  let enrollInHub: Enroll["enrollInHub"];
-  let backfillHubEnrollment: Enroll["backfillHubEnrollment"];
-  let auth: Auth;
+  let db: typeof import("@/server/db").db;
+  let schema: typeof import("@/server/db/schema");
+  let enrollInHub: typeof import("./enroll-in-hub").enrollInHub;
+  let backfillHubEnrollment: typeof import("./enroll-in-hub").backfillHubEnrollment;
+  let auth: typeof import("@/server/better-auth").auth;
 
   const userIds: string[] = [];
   const emails: string[] = [];
