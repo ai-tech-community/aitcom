@@ -81,9 +81,7 @@ describe("SignInForm EMAIL_NOT_VERIFIED", () => {
     );
     expect(mockPush).not.toHaveBeenCalled();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "resendVerification" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "resendVerification" }));
 
     await waitFor(() => {
       expect(mockSendVerificationEmail).toHaveBeenCalledWith({

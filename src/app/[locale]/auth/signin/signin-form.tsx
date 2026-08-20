@@ -125,7 +125,7 @@ export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
           {needsVerification ? (
             <div
               role="alert"
-              className="space-y-3 rounded-lg border border-border bg-card px-4 py-3"
+              className="border-border bg-card space-y-3 rounded-lg border px-4 py-3"
             >
               <div className="flex items-start gap-3">
                 <MailIcon
