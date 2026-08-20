@@ -81,7 +81,9 @@ describe("sanitizeChallengeForAdmin", () => {
 
     const text = (
       sanitized.description as {
-        root: { children: { children: { mode?: string; detail?: number }[] }[] };
+        root: {
+          children: { children: { mode?: string; detail?: number }[] }[];
+        };
       }
     ).root.children[0]!.children[0]!;
     expect(text.mode).toBe("normal");

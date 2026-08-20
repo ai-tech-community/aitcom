@@ -16,7 +16,9 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
-function sanitizeTextNode(node: Record<string, unknown>): Record<string, unknown> {
+function sanitizeTextNode(
+  node: Record<string, unknown>,
+): Record<string, unknown> {
   return {
     ...node,
     type: "text",
@@ -29,7 +31,9 @@ function sanitizeTextNode(node: Record<string, unknown>): Record<string, unknown
   };
 }
 
-function sanitizeElementNode(node: Record<string, unknown>): Record<string, unknown> {
+function sanitizeElementNode(
+  node: Record<string, unknown>,
+): Record<string, unknown> {
   const children = Array.isArray(node.children)
     ? node.children.map(sanitizeLexicalNode)
     : [];
@@ -83,7 +87,10 @@ export function sanitizeChallengeDescription(value: unknown): unknown {
       },
     };
   }
-  return { ...(asRecord(value) ?? {}), root: sanitizeElementNode({ ...root, type: "root" }) };
+  return {
+    ...(asRecord(value) ?? {}),
+    root: sanitizeElementNode({ ...root, type: "root" }),
+  };
 }
 
 function emptyToNull(value: unknown): unknown {
@@ -99,7 +106,7 @@ function coercePositiveInt(value: unknown, fallback: number): number {
 export function sanitizeChallengeCellTemplate(value: unknown): unknown {
   if (value == null) return [];
   if (!Array.isArray(value)) return value;
-  return value.map((row) => {
+  return value.map((row: unknown) => {
     const r = asRecord(row);
     if (!r) return row;
     return {
@@ -107,7 +114,9 @@ export function sanitizeChallengeCellTemplate(value: unknown): unknown {
       description: typeof r.description === "string" ? r.description : "",
       taskType: typeof r.taskType === "string" ? r.taskType : "",
       verificationMode:
-        typeof r.verificationMode === "string" ? r.verificationMode : "self-report",
+        typeof r.verificationMode === "string"
+          ? r.verificationMode
+          : "self-report",
       deadlineMinutes: coercePositiveInt(r.deadlineMinutes, 60),
     };
   });
