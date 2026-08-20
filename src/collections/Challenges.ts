@@ -1,4 +1,36 @@
-import type { CollectionConfig } from "payload";
+import type {
+  CollectionAfterReadHook,
+  CollectionBeforeValidateHook,
+  CollectionConfig,
+} from "payload";
+
+import { sanitizeChallengeForAdmin } from "@/server/challenge-engine/sanitize-admin";
+
+const sanitizeAdminDoc: CollectionAfterReadHook = ({ doc }) =>
+  sanitizeChallengeForAdmin(doc as Record<string, unknown>);
+
+const sanitizeAdminWrite: CollectionBeforeValidateHook = ({
+  data,
+  originalDoc,
+}) => {
+  if (!data) return data;
+  const sanitized = sanitizeChallengeForAdmin({
+    ...((originalDoc as Record<string, unknown> | undefined) ?? {}),
+    ...(data as Record<string, unknown>),
+  });
+  // Re-attach coerced fields so a Status-only bulk save does not re-validate
+  // the hostile live values (null tags, empty-string rewards, incomplete Lexical).
+  const next = { ...(data as Record<string, unknown>) };
+  if (sanitized.tags !== undefined) next.tags = sanitized.tags;
+  if (sanitized.description !== undefined)
+    next.description = sanitized.description;
+  if (sanitized.rewards !== undefined) next.rewards = sanitized.rewards;
+  if (sanitized.cellTemplate !== undefined)
+    next.cellTemplate = sanitized.cellTemplate;
+  if (sanitized.signalSource !== undefined)
+    next.signalSource = sanitized.signalSource;
+  return next;
+};
 
 export const Challenges: CollectionConfig = {
   slug: "challenges",
@@ -7,6 +39,10 @@ export const Challenges: CollectionConfig = {
     defaultColumns: ["title", "type", "status", "difficulty", "startsAt"],
     description:
       "Unified challenges: platform-action, repo-based, or mixed. Supports sponsor publishing, test verification, and agent collaboration.",
+  },
+  hooks: {
+    afterRead: [sanitizeAdminDoc],
+    beforeValidate: [sanitizeAdminWrite],
   },
   fields: [
     { name: "title", type: "text", required: true },
