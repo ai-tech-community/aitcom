@@ -38,7 +38,7 @@ export function ReplyForm({ threadId, isLocked }: ReplyFormProps) {
         toast.error(tRules("mustAccept"));
         return;
       }
-      toast.error(err.message);
+      toast.error(err.message.trim() ? err.message : t("replyFailed"));
     },
   });
 

@@ -32,7 +32,7 @@ export function ThreadReplyForm({ threadId, isLocked }: ThreadReplyFormProps) {
         toast.error(tRules("mustAccept"));
         return;
       }
-      toast.error(err.message);
+      toast.error(err.message.trim() || "Couldn't post your reply.");
     },
   });
 

@@ -1,4 +1,5 @@
 import type { CollectionConfig } from "payload";
+import { incrementNumeric } from "@/server/payload-numeric";
 
 export const FeedComments: CollectionConfig = {
   slug: "feed-comments",
@@ -10,19 +11,27 @@ export const FeedComments: CollectionConfig = {
   hooks: {
     afterChange: [
       async ({ doc, operation, req }) => {
-        if (operation === "create") {
-          const postId = typeof doc.post === "object" ? doc.post.id : doc.post;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const payload = req.payload as any;
-          const post = await payload.findByID({
+        if (operation !== "create") return;
+        try {
+          const postId =
+            typeof doc.post === "object" ? doc.post.id : doc.post;
+          const post = await req.payload.findByID({
             collection: "feed-posts",
             id: postId,
+            depth: 0,
+            overrideAccess: true,
           });
-          await payload.update({
+          await req.payload.update({
             collection: "feed-posts",
             id: postId,
-            data: { commentCount: (post.commentCount ?? 0) + 1 },
+            overrideAccess: true,
+            data: { commentCount: incrementNumeric(post.commentCount) },
           });
+        } catch (err) {
+          console.error(
+            "[feed-comments] failed to increment post commentCount",
+            err,
+          );
         }
       },
     ],

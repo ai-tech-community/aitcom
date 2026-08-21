@@ -426,6 +426,7 @@
     "replying": "Reageren...",
     "replyPlaceholder": "Schrijf je reactie...",
     "replyPosted": "Reactie geplaatst!",
+    "replyFailed": "Je reactie is niet geplaatst. Probeer het opnieuw.",
     "loginToReply": "Log in om te reageren",
     "loginToPost": "Log in om te posten",
     "threadLocked": "Dit topic is vergrendeld. Er kunnen geen nieuwe reacties worden toegevoegd.",
