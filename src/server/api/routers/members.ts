@@ -42,6 +42,11 @@ import {
   toLeaderboardSocial,
   toPublicSocialJson,
 } from "@/server/social/present";
+import { hasAgentOnPublicRoster } from "@/lib/public-roster";
+import {
+  publicRosterEmailVisibility,
+  publicRosterVisibility,
+} from "@/server/members/public-roster";
 
 const upsertProfileInput = z.object({
   displayName: z.string().min(1).max(255),
@@ -344,7 +349,7 @@ export const membersRouter = createTRPCRouter({
         .where(
           and(
             eq(memberProfiles.userId, input.userId),
-            eq(memberProfiles.isPublic, true),
+            publicRosterVisibility(),
           ),
         )
         .limit(1);
@@ -447,14 +452,17 @@ export const membersRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const conditions = [eq(memberProfiles.isPublic, true)];
+      const conditions = [
+        publicRosterVisibility(),
+        publicRosterEmailVisibility(),
+      ];
 
       if (input.search) {
         conditions.push(
           or(
             ilike(memberProfiles.displayName, `%${input.search}%`),
             ilike(memberProfiles.company, `%${input.search}%`),
-          )!,
+          ),
         );
       }
 
@@ -533,7 +541,10 @@ export const membersRouter = createTRPCRouter({
             avatarUrl: getAvatarUrl(m.email, m.image),
             agentId: m.agentId,
             badgeCount: badgeCountMap.get(m.profile.userId) ?? 0,
-            hasAgent: !!m.agentId,
+            hasAgent: hasAgentOnPublicRoster({
+              userId: m.profile.userId,
+              ownedActiveAgentId: m.agentId,
+            }),
             social: toLeaderboardSocial(social),
           };
         }),
@@ -551,7 +562,7 @@ export const membersRouter = createTRPCRouter({
       })
       .from(memberProfiles)
       .innerJoin(user, eq(memberProfiles.userId, user.id))
-      .where(eq(memberProfiles.isPublic, true))
+      .where(and(publicRosterVisibility(), publicRosterEmailVisibility()))
       .orderBy(sql`${memberProfiles.xp} DESC`)
       .limit(5);
 

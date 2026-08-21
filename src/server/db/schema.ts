@@ -221,6 +221,8 @@ export const memberProfiles = appSchema.table(
     githubUrl: d.varchar({ length: 255 }),
     websiteUrl: d.varchar({ length: 255 }),
     isPublic: d.boolean().default(true).notNull(),
+    /** Staff hide from /members. Not the member's own isPublic toggle. */
+    hiddenFromPublic: d.boolean().default(false).notNull(),
     xp: d.integer().default(0).notNull(),
     level: d.integer().default(1).notNull(),
     onboardingIntent: d.varchar({ length: 50 }),

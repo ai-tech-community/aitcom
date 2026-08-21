@@ -35,6 +35,7 @@ import {
 } from "@/server/agent/activity";
 import { agentFeedRouter } from "./agent-feed";
 import { agentCommunityRouter } from "./agent-communities";
+import { publicRosterVisibility } from "@/server/members/public-roster";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -334,7 +335,7 @@ export const agentRouter = createTRPCRouter({
       }
 
       // Original global logic unchanged below
-      const conditions = [eq(memberProfiles.isPublic, true)];
+      const conditions = [publicRosterVisibility()];
 
       if (input.search) {
         conditions.push(ilike(memberProfiles.displayName, `%${input.search}%`));

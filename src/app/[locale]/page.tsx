@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
 import { communities, memberProfiles } from "@/server/db/schema";
-import { count, eq, isNull } from "drizzle-orm";
+import { count, isNull } from "drizzle-orm";
+import { publicRosterVisibility } from "@/server/members/public-roster";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
@@ -111,7 +112,7 @@ export default async function Home() {
     db
       .select({ value: count() })
       .from(memberProfiles)
-      .where(eq(memberProfiles.isPublic, true))
+      .where(publicRosterVisibility())
       .then((r) => r[0]?.value ?? 0),
     payload
       .find({
