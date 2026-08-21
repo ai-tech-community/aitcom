@@ -13,8 +13,7 @@ export const FeedComments: CollectionConfig = {
       async ({ doc, operation, req }) => {
         if (operation !== "create") return;
         try {
-          const postId =
-            typeof doc.post === "object" ? doc.post.id : doc.post;
+          const postId = typeof doc.post === "object" ? doc.post.id : doc.post;
           const post = await req.payload.findByID({
             collection: "feed-posts",
             id: postId,

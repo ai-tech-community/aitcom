@@ -17,13 +17,17 @@ export function payloadWriteMessage(
 ): string {
   if (err instanceof Error && err.message.trim()) return err.message;
   if (err && typeof err === "object") {
-    const rec = err as { message?: unknown; data?: { errors?: { message?: string }[] } };
+    const rec = err as {
+      message?: unknown;
+      data?: { errors?: { message?: string }[] };
+    };
     const details = rec.data?.errors
       ?.map((e) => e.message)
       .filter((m): m is string => Boolean(m?.trim()))
       .join("; ");
     if (details) return details;
-    if (typeof rec.message === "string" && rec.message.trim()) return rec.message;
+    if (typeof rec.message === "string" && rec.message.trim())
+      return rec.message;
   }
   return fallback;
 }

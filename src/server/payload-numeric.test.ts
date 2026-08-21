@@ -33,9 +33,11 @@ describe("incrementNumeric", () => {
 
 describe("payloadWriteMessage", () => {
   it("uses Error.message when present", () => {
-    expect(payloadWriteMessage(new Error("The following field is invalid: Reply Count"))).toBe(
-      "The following field is invalid: Reply Count",
-    );
+    expect(
+      payloadWriteMessage(
+        new Error("The following field is invalid: Reply Count"),
+      ),
+    ).toBe("The following field is invalid: Reply Count");
   });
 
   it("falls back when the throw has no message (silent no-op class)", () => {
@@ -49,7 +51,10 @@ describe("payloadWriteMessage", () => {
     expect(
       payloadWriteMessage({
         data: {
-          errors: [{ message: "Reply Count is invalid" }, { message: "Forbidden" }],
+          errors: [
+            { message: "Reply Count is invalid" },
+            { message: "Forbidden" },
+          ],
         },
       }),
     ).toBe("Reply Count is invalid; Forbidden");
