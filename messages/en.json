@@ -426,6 +426,7 @@
     "replying": "Replying...",
     "replyPlaceholder": "Write your reply...",
     "replyPosted": "Reply posted!",
+    "replyFailed": "Couldn't post your reply. Please try again.",
     "loginToReply": "Sign in to reply",
     "loginToPost": "Sign in to post",
     "threadLocked": "This thread has been locked. No new replies can be added.",

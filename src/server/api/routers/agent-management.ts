@@ -24,6 +24,7 @@ import { generateApiKey } from "@/server/agent/api-key";
 import { logActivity } from "@/server/agent/activity";
 import { generateInviteCode } from "@/app/api/mcp/registration-tools";
 import { getPayloadClient } from "@/server/payload";
+import { incrementNumeric } from "@/server/payload-numeric";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
 import { validateWebhookUrl } from "@/server/agent/validate-webhook-url";
 import {
@@ -869,7 +870,7 @@ export const agentManagementRouter = createTRPCRouter({
             collection: "forum-threads",
             id: Number(draft.targetId),
             data: {
-              replyCount: (thread.replyCount ?? 0) + 1,
+              replyCount: incrementNumeric(thread.replyCount),
               lastActivityAt: new Date().toISOString(),
             },
           });

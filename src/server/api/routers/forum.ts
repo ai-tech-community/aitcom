@@ -18,6 +18,10 @@ import {
 } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { plainTextToLexical } from "@/server/challenge-engine/lexical";
+import {
+  incrementNumeric,
+  payloadWriteMessage,
+} from "@/server/payload-numeric";
 import { IDEA_CATEGORIES } from "@/lib/idea-categories";
 import { buildIdeasWhere } from "./ideas-filter";
 
@@ -30,6 +34,7 @@ async function requireRulesAcceptance(userId: string, communityId?: string) {
     where: { communityId: { equals: communityId } },
     limit: 1,
     depth: 0,
+    overrideAccess: true,
   });
 
   if (docs.length === 0) return;
@@ -47,6 +52,7 @@ async function requireRulesAcceptance(userId: string, communityId?: string) {
     },
     limit: 1,
     depth: 0,
+    overrideAccess: true,
   });
 
   if (acceptanceDocs.length === 0) {
@@ -456,11 +462,13 @@ export const forumRouter = createTRPCRouter({
         collection: "forum-threads",
         id: input.threadId,
         depth: 0,
+        overrideAccess: true,
       });
       await payload.update({
         collection: "forum-threads",
         id: input.threadId,
-        data: { viewCount: (thread.viewCount ?? 0) + 1 },
+        overrideAccess: true,
+        data: { viewCount: incrementNumeric(thread.viewCount) },
       });
       return { ok: true };
     }),
@@ -546,11 +554,21 @@ export const forumRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
 
-      const thread = await payload.findByID({
-        collection: "forum-threads",
-        id: input.threadId,
-        depth: 0,
-      });
+      let thread;
+      try {
+        thread = await payload.findByID({
+          collection: "forum-threads",
+          id: input.threadId,
+          depth: 0,
+          overrideAccess: true,
+        });
+      } catch {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Thread not found",
+        });
+      }
+
       await requireRulesAcceptance(
         ctx.session.user.id,
         thread.communityId ?? undefined,
@@ -563,16 +581,46 @@ export const forumRouter = createTRPCRouter({
         });
       }
 
-      const reply = await payload.create({
-        collection: "forum-replies",
-        data: {
-          thread: input.threadId,
-          content: plainTextToLexical(input.content),
-          authorId: ctx.session.user.id,
-          authorName: ctx.session.user.name ?? "member",
-          authorRole: "member",
-        },
-      });
+      // Hub-wide threads (no communityId) are open to any signed-in member.
+      // Community-scoped threads require an *active* membership — member is
+      // enough; do not require a Payload CMS user or operator role.
+      if (thread.communityId) {
+        const membership = await ctx.db.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, thread.communityId),
+            eq(communityMemberships.userId, ctx.session.user.id),
+            eq(communityMemberships.status, "active"),
+          ),
+        });
+        if (!membership) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You must be a community member to reply",
+          });
+        }
+      }
+
+      let reply;
+      try {
+        reply = await payload.create({
+          collection: "forum-replies",
+          overrideAccess: true,
+          data: {
+            thread: input.threadId,
+            content: plainTextToLexical(input.content),
+            authorId: ctx.session.user.id,
+            authorName: ctx.session.user.name ?? "member",
+            authorRole: "member",
+            ...(thread.communityId ? { communityId: thread.communityId } : {}),
+          },
+        });
+      } catch (err) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: payloadWriteMessage(err, "Failed to post reply"),
+          cause: err,
+        });
+      }
 
       await logActivity(ctx.db, {
         actorId: ctx.session.user.id,
@@ -966,11 +1014,13 @@ export const forumRouter = createTRPCRouter({
         collection: "forum-threads",
         id: threadId,
         depth: 0,
+        overrideAccess: true,
       });
       await payload.update({
         collection: "forum-threads",
         id: threadId,
-        data: { replyCount: Math.max(0, (thread.replyCount ?? 0) - 1) },
+        overrideAccess: true,
+        data: { replyCount: incrementNumeric(thread.replyCount, -1) },
       });
 
       return { success: true };
