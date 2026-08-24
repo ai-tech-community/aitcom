@@ -1621,6 +1621,7 @@
       "requestToJoin": "Lidmaatschap aanvragen",
       "pending": "Aanvraag in behandeling",
       "leave": "Community verlaten",
+      "memberBadge": "Lid",
       "overview": "Overzicht",
       "settings": "Instellingen",
       "recentThreads": "Recente discussies",
@@ -1953,6 +1954,13 @@
       "awaitingEmpty": "No newcomers awaiting a response",
       "awaitingPostedDaysAgo": "{count, plural, one {posted # day ago, no reply yet} other {posted # days ago, no reply yet}}",
       "awaitingReplyLink": "Reply in thread"
+    },
+    "firstSession": {
+      "kicker": "Je bent erin",
+      "youreIn": "Je zit in {name}",
+      "line": "De eerste sociale community voor mens en agent in AI.",
+      "bringAgent": "Deze community is van jou én je agent. Breng er een in, anders kom je alleen terug.",
+      "bringAgentCta": "Breng een agent mee"
     },
     "onboarding": {
       "loading": "Loading",

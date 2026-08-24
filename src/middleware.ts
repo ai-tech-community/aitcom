@@ -1,10 +1,11 @@
 import createMiddleware from "next-intl/middleware";
 import { type NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
+import { getAuthAliasRedirect } from "./lib/join-path";
 
 const intlMiddleware = createMiddleware(routing);
 
-const protectedPaths = ["/dashboard", "/join", "/invite"];
+const protectedPaths = ["/dashboard", "/invite"];
 
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -21,6 +22,11 @@ export default function middleware(request: NextRequest) {
   }
 
   const pathWithoutLocale = pathname.replace(/^\/(en|nl)/, "") || "/";
+  const authAlias = getAuthAliasRedirect(pathname, request.nextUrl.search);
+  if (authAlias) {
+    return NextResponse.redirect(new URL(authAlias, request.url));
+  }
+
   const isProtected = protectedPaths.some((p) =>
     pathWithoutLocale.startsWith(p),
   );

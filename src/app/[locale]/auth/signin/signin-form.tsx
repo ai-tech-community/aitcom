@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { MailIcon } from "lucide-react";
 import { Link } from "@/i18n/navigation";
@@ -11,11 +11,13 @@ import { Label } from "@/components/ui/label";
 import { SocialOAuthButtons } from "@/components/auth/social-oauth-buttons";
 import { authClient } from "@/server/better-auth/client";
 import { getPostAuthRedirect } from "@/lib/auth-redirect";
+import { getHubCommunityPath } from "@/lib/join-path";
 import { isEmailNotVerifiedError } from "@/lib/auth-errors";
 import { toast } from "sonner";
 
 export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
   const t = useTranslations("auth");
+  const locale = useLocale();
   const router = useRouter();
   const params = useSearchParams();
   const session = authClient.useSession();
@@ -27,7 +29,7 @@ export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
 
   // Target is a full, locale-prefixed path — push with the plain router so the
   // locale isn't prefixed twice. See lib/auth-redirect.
-  const target = getPostAuthRedirect(params);
+  const target = getPostAuthRedirect(params, getHubCommunityPath(locale));
 
   // Already signed in (e.g. landed here via a stale link) → skip the form.
   useEffect(() => {

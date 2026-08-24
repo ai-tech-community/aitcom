@@ -14,6 +14,8 @@ export const env = createEnv({
     BETTER_AUTH_GITHUB_CLIENT_SECRET: z.string(),
     BETTER_AUTH_LINKEDIN_CLIENT_ID: z.string().optional(),
     BETTER_AUTH_LINKEDIN_CLIENT_SECRET: z.string().optional(),
+    // Comma/space-separated extra origins. Preview hosts come from VERCEL_URL.
+    BETTER_AUTH_TRUSTED_ORIGINS: z.string().optional(),
     DATABASE_URL: z.string(),
     // Local-only: host:port of the wsproxy container used to reach a Dockerised
     // Postgres (e.g. "wsproxy:80"). Unset in production. See ADR-0020.
@@ -62,6 +64,7 @@ export const env = createEnv({
       process.env["BETTER_AUTH_LINKEDIN_CLIENT_ID"],
     BETTER_AUTH_LINKEDIN_CLIENT_SECRET:
       process.env["BETTER_AUTH_LINKEDIN_CLIENT_SECRET"],
+    BETTER_AUTH_TRUSTED_ORIGINS: process.env.BETTER_AUTH_TRUSTED_ORIGINS,
     DATABASE_URL: process.env.DATABASE_URL,
     NEON_LOCAL_PROXY: process.env.NEON_LOCAL_PROXY,
     PAYLOAD_SECRET: process.env.PAYLOAD_SECRET,

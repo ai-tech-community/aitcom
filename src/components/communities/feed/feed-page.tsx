@@ -14,6 +14,7 @@ import { FeedPostCard } from "./feed-post-card";
 import { CommunitySidebar } from "./community-sidebar";
 import { TopicChips } from "./topic-chips";
 import { WelcomeChecklist } from "@/components/communities/onboarding/welcome-checklist";
+import { HubFirstSessionPath } from "@/components/communities/first-session-path";
 
 interface FeedPageProps {
   slug: string;
@@ -101,6 +102,9 @@ export function FeedPage({
     <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
       {/* Left column: composer + feed */}
       <div className="min-w-0 flex-1 space-y-4">
+        {isAuthenticated && isMember && (
+          <HubFirstSessionPath slug={slug} isMember={isMember} />
+        )}
         {isAuthenticated && isMember && <WelcomeChecklist slug={slug} />}
 
         <PostComposer slug={slug} canPost={canPost} />
