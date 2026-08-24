@@ -51,4 +51,41 @@ describe("resolveTrustedOrigins", () => {
       ),
     ).toContain("http://localhost:3002");
   });
+
+  it("trusts this Vercel preview host plus production app origins", () => {
+    const previewHost =
+      "aitcom-git-cursor-join-lands-in-community-6db9-klevox.vercel.app";
+    const origins = resolveTrustedOrigins({
+      BETTER_AUTH_URL: "https://www.aitcommunity.org",
+      NEXT_PUBLIC_APP_URL: "https://www.aitcommunity.org",
+      NODE_ENV: "production",
+      VERCEL_URL: previewHost,
+      VERCEL_BRANCH_URL: previewHost,
+    });
+
+    expect(origins).toContain(`https://${previewHost}`);
+    expect(origins).toContain("https://www.aitcommunity.org");
+    expect(origins).toContain("https://aitcommunity.org");
+  });
+
+  it("does not trust an arbitrary request origin in production", () => {
+    const request = new Request("https://evil.example/api/auth/sign-in/email", {
+      headers: {
+        origin: "https://evil.example",
+        host: "evil.example",
+      },
+    });
+
+    const origins = resolveTrustedOrigins(
+      {
+        BETTER_AUTH_URL: "https://www.aitcommunity.org",
+        NODE_ENV: "production",
+        VERCEL_URL: "aitcom-abc123-klevox.vercel.app",
+      },
+      request,
+    );
+
+    expect(origins).toContain("https://aitcom-abc123-klevox.vercel.app");
+    expect(origins).not.toContain("https://evil.example");
+  });
 });

@@ -43,6 +43,8 @@ vi.mock("sonner", () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }));
 
+import { toast } from "sonner";
+
 import { SignUpForm } from "./signup-form";
 
 describe("SignUpForm post-signup landing", () => {
@@ -50,6 +52,8 @@ describe("SignUpForm post-signup landing", () => {
     mockSignUpEmail.mockReset();
     mockReplace.mockReset();
     mockUseSession.mockReturnValue({ data: null });
+    vi.mocked(toast.error).mockClear();
+    vi.mocked(toast.success).mockClear();
   });
 
   it("sends verification and OAuth callbacks to Hub, not the homepage", async () => {
@@ -93,4 +97,46 @@ describe("SignUpForm post-signup landing", () => {
     expect(mockReplace).toHaveBeenCalledWith("/en/communities/ait");
     expect(mockReplace).not.toHaveBeenCalledWith("/");
   });
+
+  it("toasts Invalid origin when signup returns an origin error", async () => {
+    mockSignUpEmail.mockResolvedValue({
+      error: { message: "Invalid origin", status: 403 },
+    });
+
+    render(<SignUpForm linkedinEnabled={false} />);
+    fillSignupForm();
+    fireEvent.click(screen.getByRole("button", { name: "signUp" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Invalid origin");
+    });
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "signUp" })).toBeEnabled();
+  });
+
+  it("toasts Invalid origin when signup throws instead of returning error", async () => {
+    mockSignUpEmail.mockRejectedValue(new Error("Invalid origin"));
+
+    render(<SignUpForm linkedinEnabled={false} />);
+    fillSignupForm();
+    fireEvent.click(screen.getByRole("button", { name: "signUp" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Invalid origin");
+    });
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "signUp" })).toBeEnabled();
+  });
 });
+
+function fillSignupForm() {
+  fireEvent.change(screen.getByLabelText("NAME"), {
+    target: { value: "Ada" },
+  });
+  fireEvent.change(screen.getByLabelText("EMAIL"), {
+    target: { value: "ada@example.com" },
+  });
+  fireEvent.change(screen.getByLabelText("PASSWORD"), {
+    target: { value: "password12" },
+  });
+}

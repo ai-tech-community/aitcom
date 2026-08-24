@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { SocialOAuthButtons } from "@/components/auth/social-oauth-buttons";
 import { authClient } from "@/server/better-auth/client";
 import { getPostAuthRedirect } from "@/lib/auth-redirect";
+import { getAuthClientErrorMessage } from "@/lib/auth-errors";
 import { getHubCommunityPath } from "@/lib/join-path";
 import { toast } from "sonner";
 
@@ -33,21 +34,26 @@ export function SignUpForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await authClient.signUp.email({
-      name,
-      email,
-      password,
-      callbackURL: target,
-    });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message ?? "Sign up failed");
-      return;
+    try {
+      const { error } = await authClient.signUp.email({
+        name,
+        email,
+        password,
+        callbackURL: target,
+      });
+      if (error) {
+        toast.error(getAuthClientErrorMessage(error, "Sign up failed"));
+        return;
+      }
+      // When verification is required there is no session yet — stay here
+      // instead of sending them to a gated target. If verification is off
+      // (no Resend), the session effect below continues to the target.
+      toast.success(t("checkEmailToVerify"));
+    } catch (error) {
+      toast.error(getAuthClientErrorMessage(error, "Sign up failed"));
+    } finally {
+      setLoading(false);
     }
-    // When verification is required there is no session yet — stay here
-    // instead of sending them to a gated target. If verification is off
-    // (no Resend), the session effect below continues to the target.
-    toast.success(t("checkEmailToVerify"));
   }
 
   const signInHref = params.toString()
