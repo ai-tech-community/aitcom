@@ -56,6 +56,29 @@ export function getJoinPageRedirect(args: {
   return `/${args.locale}/auth/signup`;
 }
 
+/**
+ * Locale-prefixed public join door: `/en/join`, `/nl/join`.
+ *
+ * Bare `/join` is left for next-intl so it can prefix `en` or `nl` from
+ * the cookie / Accept-Language (same hop prod already does). After that
+ * prefix, middleware resolves the door so the request does not depend on
+ * `join/page.tsx` being in the route table. `/join/:code` stays an invite
+ * alias.
+ */
+export function getJoinDoorRedirect(
+  pathname: string,
+  hasSession: boolean,
+  search = "",
+): string | null {
+  const localeMatch = /^\/(en|nl)(?=\/|$)/.exec(pathname);
+  if (!localeMatch) return null;
+  const locale = localeMatch[1]!;
+  const pathWithoutLocale = pathname.slice(locale.length + 1) || "/";
+  const joinDoor = pathWithoutLocale.replace(/\/+$/, "") || "/";
+  if (joinDoor !== "/join") return null;
+  return `${getJoinPageRedirect({ hasSession, locale })}${search}`;
+}
+
 /** First-session bring-an-agent card: Hub members who have not brought one in. */
 export function shouldShowFirstSessionPath(args: {
   slug: string;
