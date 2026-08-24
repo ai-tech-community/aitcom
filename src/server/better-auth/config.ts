@@ -196,6 +196,9 @@ export const auth = betterAuth({
         },
       }
     : {},
+  // Last plugin: Next.js cookies() for auth.api / Server Actions.
+  // The verify-email GET goes through toNextJsHandler and sets the
+  // session cookie itself once autoSignInAfterVerification is on.
   plugins: [nextCookies()],
 });
 

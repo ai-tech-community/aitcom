@@ -111,8 +111,17 @@ export function resolveTrustedOrigins(env: AuthUrlEnv, request?: Request) {
   return [...origins];
 }
 
-/** Host-only cookies on preview/dev; shared Domain on production app hosts. */
+/**
+ * Host-only cookies on preview/dev. Shared Domain only on Vercel production
+ * (or a non-Vercel host whose resolved auth origin is www/apex) so a preview
+ * that inherits NEXT_PUBLIC_APP_URL=https://www.aitcommunity.org does not
+ * emit Domain=aitcommunity.org from a *.vercel.app response — browsers drop
+ * that cookie and sign-in looks signed-out.
+ */
 export function resolveSessionCookieDomain(env: AuthUrlEnv) {
+  if (env.VERCEL_ENV !== undefined && env.VERCEL_ENV !== "production") {
+    return undefined;
+  }
   if (!isProductionAppOrigin(resolveBetterAuthBaseUrl(env))) return undefined;
   return PRODUCTION_COOKIE_DOMAIN;
 }

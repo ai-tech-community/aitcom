@@ -114,6 +114,21 @@ describe("Better Auth verification wiring", () => {
     expect(src).toContain("resolveSessionCookieDomain");
     expect(src).toContain("autoSignInAfterVerification: true");
   });
+
+  it("matches Better Auth 1.4: verify only sets a session cookie when auto-signin is on", () => {
+    const verifySrc = readFileSync(
+      join(
+        process.cwd(),
+        "node_modules/better-auth/dist/api/routes/email-verification.mjs",
+      ),
+      "utf8",
+    );
+    expect(verifySrc).toContain(
+      "if (ctx.context.options.emailVerification?.autoSignInAfterVerification)",
+    );
+    expect(verifySrc).toContain("setSessionCookie");
+    expect(verifySrc).toContain("throw ctx.redirect(ctx.query.callbackURL)");
+  });
 });
 
 describe("verify email URL and session cookie names", () => {

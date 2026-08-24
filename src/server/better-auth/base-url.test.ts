@@ -185,6 +185,17 @@ describe("resolveSessionCookieDomain", () => {
       }),
     ).toBeUndefined();
   });
+
+  it("does not inherit the production cookie Domain on a preview that uses the app URL", () => {
+    expect(
+      resolveSessionCookieDomain({
+        NEXT_PUBLIC_APP_URL: "https://www.aitcommunity.org",
+        NODE_ENV: "production",
+        VERCEL_ENV: "preview",
+        VERCEL_URL: "aitcom-git-fix-verify-klevox.vercel.app",
+      }),
+    ).toBeUndefined();
+  });
 });
 
 describe("canonicalizeVerificationUrl", () => {
