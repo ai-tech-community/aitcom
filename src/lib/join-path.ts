@@ -32,6 +32,18 @@ export function resolveAuthAlias(
   return AUTH_ALIASES[pathWithoutLocale] ?? null;
 }
 
+/** Locale-prefixed redirect for guessed `/signup` / `/sign-in` URLs. */
+export function getAuthAliasRedirect(
+  pathname: string,
+  search = "",
+): string | null {
+  const pathWithoutLocale = pathname.replace(/^\/(en|nl)/, "") || "/";
+  const alias = resolveAuthAlias(pathWithoutLocale);
+  if (!alias) return null;
+  const locale = pathname.startsWith("/nl") ? "nl" : "en";
+  return `/${locale}${alias}${search}`;
+}
+
 /**
  * `/join` is the human entry: guests start signup, members land in Hub.
  * Invite codes stay on `/join/:code` → `/invite/:code`.

@@ -1,7 +1,7 @@
 import createMiddleware from "next-intl/middleware";
 import { type NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
-import { resolveAuthAlias } from "./lib/join-path";
+import { getAuthAliasRedirect } from "./lib/join-path";
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -22,12 +22,9 @@ export default function middleware(request: NextRequest) {
   }
 
   const pathWithoutLocale = pathname.replace(/^\/(en|nl)/, "") || "/";
-  const authAlias = resolveAuthAlias(pathWithoutLocale);
+  const authAlias = getAuthAliasRedirect(pathname, request.nextUrl.search);
   if (authAlias) {
-    const locale = pathname.startsWith("/nl") ? "nl" : "en";
-    const dest = new URL(`/${locale}${authAlias}`, request.url);
-    dest.search = request.nextUrl.search;
-    return NextResponse.redirect(dest);
+    return NextResponse.redirect(new URL(authAlias, request.url));
   }
 
   const isProtected = protectedPaths.some((p) =>

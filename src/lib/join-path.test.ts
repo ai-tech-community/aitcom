@@ -5,6 +5,7 @@ import { HUB_SLUG } from "@/server/communities/hub";
 import {
   HUB_COMMUNITY_PATH,
   getHubCommunityPath,
+  getAuthAliasRedirect,
   getJoinPageRedirect,
   isMarketingHomePath,
   resolveAuthAlias,
@@ -45,6 +46,12 @@ describe("join path landing", () => {
     expect(resolveAuthAlias("/sign-in")).toBe("/auth/signin");
     expect(resolveAuthAlias("/auth/signup")).toBeNull();
     expect(resolveAuthAlias("/join")).toBeNull();
+    expect(getAuthAliasRedirect("/signup")).toBe("/en/auth/signup");
+    expect(getAuthAliasRedirect("/sign-in")).toBe("/en/auth/signin");
+    expect(
+      getAuthAliasRedirect("/nl/signup", "?redirect=/nl/communities/ait"),
+    ).toBe("/nl/auth/signup?redirect=/nl/communities/ait");
+    expect(getAuthAliasRedirect("/en/auth/signup")).toBeNull();
   });
 
   it("shows the first-session agent path only for Hub members without an agent", () => {
