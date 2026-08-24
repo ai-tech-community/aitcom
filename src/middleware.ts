@@ -1,7 +1,7 @@
 import createMiddleware from "next-intl/middleware";
 import { type NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
-import { getAuthAliasRedirect } from "./lib/join-path";
+import { getAuthAliasRedirect, getJoinDoorRedirect } from "./lib/join-path";
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -27,20 +27,29 @@ export default function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(authAlias, request.url));
   }
 
+  const sessionToken =
+    request.cookies.get("better-auth.session_token") ??
+    request.cookies.get("__Secure-better-auth.session_token");
+
+  // Resolve /join before next-intl so `[locale]=join` cannot 404 via hasLocale.
+  const joinDoor = getJoinDoorRedirect(
+    pathname,
+    Boolean(sessionToken),
+    request.nextUrl.search,
+  );
+  if (joinDoor) {
+    return NextResponse.redirect(new URL(joinDoor, request.url));
+  }
+
   const isProtected = protectedPaths.some((p) =>
     pathWithoutLocale.startsWith(p),
   );
 
-  if (isProtected) {
-    const sessionToken =
-      request.cookies.get("better-auth.session_token") ??
-      request.cookies.get("__Secure-better-auth.session_token");
-    if (!sessionToken) {
-      const locale = pathname.startsWith("/nl") ? "nl" : "en";
-      const signInUrl = new URL(`/${locale}/auth/signin`, request.url);
-      signInUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(signInUrl);
-    }
+  if (isProtected && !sessionToken) {
+    const locale = pathname.startsWith("/nl") ? "nl" : "en";
+    const signInUrl = new URL(`/${locale}/auth/signin`, request.url);
+    signInUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(signInUrl);
   }
 
   return intlMiddleware(request);

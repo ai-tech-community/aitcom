@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getJoinPageRedirect } from "@/lib/join-path";
 import { getSession } from "@/server/better-auth/server";
 
+export const dynamic = "force-dynamic";
+
 export default async function JoinPage({
   params,
 }: {
