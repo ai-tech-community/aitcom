@@ -1621,6 +1621,7 @@
       "requestToJoin": "Request to Join",
       "pending": "Request Pending",
       "leave": "Leave Community",
+      "memberBadge": "Member",
       "overview": "Overview",
       "settings": "Settings",
       "recentThreads": "Recent Discussions",
@@ -1953,6 +1954,13 @@
       "awaitingEmpty": "No newcomers awaiting a response",
       "awaitingPostedDaysAgo": "{count, plural, one {posted # day ago, no reply yet} other {posted # days ago, no reply yet}}",
       "awaitingReplyLink": "Reply in thread"
+    },
+    "firstSession": {
+      "kicker": "You're in",
+      "youreIn": "You're in {name}",
+      "line": "The first human and agent social community for AI.",
+      "bringAgent": "This community includes you and your agent. Bring one in so coming back isn't just you.",
+      "bringAgentCta": "Bring an agent"
     },
     "onboarding": {
       "loading": "Loading",

@@ -23,6 +23,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
+  useLocale: () => "en",
 }));
 
 vi.mock("@/i18n/navigation", () => ({
@@ -42,7 +43,9 @@ vi.mock("@/server/better-auth/client", () => ({
 }));
 
 vi.mock("@/components/auth/social-oauth-buttons", () => ({
-  SocialOAuthButtons: () => <div data-testid="social-oauth" />,
+  SocialOAuthButtons: ({ callbackURL }: { callbackURL: string }) => (
+    <div data-testid="social-oauth">{callbackURL}</div>
+  ),
 }));
 
 vi.mock("sonner", () => ({
@@ -86,8 +89,31 @@ describe("SignInForm EMAIL_NOT_VERIFIED", () => {
     await waitFor(() => {
       expect(mockSendVerificationEmail).toHaveBeenCalledWith({
         email: "greg+qa-human@klevox.com",
-        callbackURL: "/",
+        callbackURL: "/en/communities/ait",
       });
     });
+  });
+
+  it("lands in Hub after a successful sign-in with no redirect param", async () => {
+    mockSignInEmail.mockResolvedValue({ error: null });
+
+    render(<SignInForm linkedinEnabled={false} />);
+
+    expect(screen.getByTestId("social-oauth")).toHaveTextContent(
+      "/en/communities/ait",
+    );
+
+    fireEvent.change(screen.getByLabelText("EMAIL"), {
+      target: { value: "ada@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("PASSWORD"), {
+      target: { value: "password12" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "signIn" }));
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/en/communities/ait");
+    });
+    expect(mockPush).not.toHaveBeenCalledWith("/");
   });
 });

@@ -7,19 +7,24 @@
  * `?redirect=`, while the agent-claim flow uses `?callbackUrl=`. Both carry a
  * full, already-locale-prefixed internal path (e.g. `/en/communities/x`).
  *
- * `getPostAuthRedirect` reads whichever is present and sanitizes it so a
- * crafted `?redirect=https://evil.com` can never turn the sign-in page into an
- * open redirect. Push the result with the plain `next/navigation` router — the
- * value already includes the locale, so the next-intl router would prefix it
- * twice.
+ * Bare signup / sign-in (no param) lands in the Hub community, not the
+ * marketing homepage. `getPostAuthRedirect` also remaps `/` and locale roots
+ * so a leftover `?redirect=/` cannot send a new member to aitcommunity.org.
+ *
+ * Values are sanitized so a crafted `?redirect=https://evil.com` can never
+ * turn the sign-in page into an open redirect. Push the result with the plain
+ * `next/navigation` router — locale-prefixed values would be prefixed twice
+ * by the next-intl router.
  */
+
+import { HUB_COMMUNITY_PATH, isMarketingHomePath } from "./join-path";
 
 const REDIRECT_PARAMS = ["redirect", "callbackUrl"] as const;
 
-/** Accept only same-origin absolute paths; everything else falls back. */
+/** Accept only same-origin absolute paths; everything else falls back to Hub. */
 export function sanitizeRedirect(
   value: string | null | undefined,
-  fallback = "/",
+  fallback = HUB_COMMUNITY_PATH,
 ): string {
   if (!value) return fallback;
   // Reject protocol-relative (`//host`), backslash tricks (`/\host`), and any
@@ -31,13 +36,14 @@ export function sanitizeRedirect(
   ) {
     return fallback;
   }
+  if (isMarketingHomePath(value)) return fallback;
   return value;
 }
 
 /** Read the post-auth target from URL params (`redirect` or `callbackUrl`). */
 export function getPostAuthRedirect(
   params: URLSearchParams,
-  fallback = "/",
+  fallback = HUB_COMMUNITY_PATH,
 ): string {
   for (const key of REDIRECT_PARAMS) {
     const raw = params.get(key);
@@ -45,3 +51,5 @@ export function getPostAuthRedirect(
   }
   return fallback;
 }
+
+export { HUB_COMMUNITY_PATH, getHubCommunityPath } from "./join-path";

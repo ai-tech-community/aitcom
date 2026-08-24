@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,12 @@ import { Label } from "@/components/ui/label";
 import { SocialOAuthButtons } from "@/components/auth/social-oauth-buttons";
 import { authClient } from "@/server/better-auth/client";
 import { getPostAuthRedirect } from "@/lib/auth-redirect";
+import { getHubCommunityPath } from "@/lib/join-path";
 import { toast } from "sonner";
 
 export function SignUpForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
   const t = useTranslations("auth");
+  const locale = useLocale();
   const router = useRouter();
   const params = useSearchParams();
   const session = authClient.useSession();
@@ -22,7 +24,7 @@ export function SignUpForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
   const [email, setEmail] = useState(params.get("email") ?? "");
   const [password, setPassword] = useState("");
 
-  const target = getPostAuthRedirect(params);
+  const target = getPostAuthRedirect(params, getHubCommunityPath(locale));
 
   useEffect(() => {
     if (session.data?.user) router.replace(target);
@@ -35,6 +37,7 @@ export function SignUpForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
       name,
       email,
       password,
+      callbackURL: target,
     });
     setLoading(false);
     if (error) {

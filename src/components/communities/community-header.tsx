@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Users } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { getInitials } from "@/lib/avatar";
 import { JoinButton } from "./join-button";
 import { MemberStack } from "./member-stack";
@@ -41,9 +42,14 @@ export function CommunityHeader({
             </Avatar>
 
             <div className="flex flex-col gap-1">
-              <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                {community.name}
-              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {community.name}
+                </h1>
+                {membershipStatus === "active" ? (
+                  <Badge variant="outline">{t("memberBadge")}</Badge>
+                ) : null}
+              </div>
 
               <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
                 <Users className="size-4" />

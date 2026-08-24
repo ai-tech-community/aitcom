@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "@/i18n/navigation";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
+import { HUB_SLUG } from "@/server/communities/hub";
 
 type JoinPolicy = "open" | "invite_only" | "approval_required";
 type MembershipStatus = "active" | "pending_approval" | "invited" | null;
@@ -98,8 +99,12 @@ export function JoinButton({
     );
   }
 
-  // Owners cannot leave their community
-  if (membershipStatus === "active" && memberRole === "owner") {
+  // Owners cannot leave their community. Hub is the root every member
+  // belongs to — the header Member badge is the "you're in" signal.
+  if (
+    membershipStatus === "active" &&
+    (memberRole === "owner" || slug === HUB_SLUG)
+  ) {
     return null;
   }
 
