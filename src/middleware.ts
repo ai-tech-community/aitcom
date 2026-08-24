@@ -31,7 +31,8 @@ export default function middleware(request: NextRequest) {
     request.cookies.get("better-auth.session_token") ??
     request.cookies.get("__Secure-better-auth.session_token");
 
-  // Resolve /join before next-intl so `[locale]=join` cannot 404 via hasLocale.
+  // Prefixed /en/join and /nl/join: resolve here so the door does not
+  // depend on join/page.tsx. Bare /join falls through to next-intl.
   const joinDoor = getJoinDoorRedirect(
     pathname,
     Boolean(sessionToken),

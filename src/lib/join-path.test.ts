@@ -55,16 +55,20 @@ describe("join path landing", () => {
     expect(getAuthAliasRedirect("/en/auth/signup")).toBeNull();
   });
 
-  it("resolves /join, /en/join, and /nl/join as the public door", () => {
-    expect(getJoinDoorRedirect("/join", false)).toBe("/en/auth/signup");
+  it("resolves /en/join and /nl/join as the public door", () => {
     expect(getJoinDoorRedirect("/en/join", false)).toBe("/en/auth/signup");
     expect(getJoinDoorRedirect("/nl/join", false)).toBe("/nl/auth/signup");
-    expect(getJoinDoorRedirect("/join", true)).toBe("/en/communities/ait");
     expect(getJoinDoorRedirect("/en/join", true)).toBe("/en/communities/ait");
     expect(getJoinDoorRedirect("/nl/join", true)).toBe("/nl/communities/ait");
     expect(getJoinDoorRedirect("/en/join", false, "?code=abc")).toBe(
       "/en/auth/signup?code=abc",
     );
+  });
+
+  it("leaves bare /join for next-intl to prefix into locale", () => {
+    expect(getJoinDoorRedirect("/join", false)).toBeNull();
+    expect(getJoinDoorRedirect("/join", true)).toBeNull();
+    expect(getJoinDoorRedirect("/join/", false)).toBeNull();
   });
 
   it("does not treat invite-code or other routes as the join door", () => {

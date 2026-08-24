@@ -57,23 +57,25 @@ export function getJoinPageRedirect(args: {
 }
 
 /**
- * Public join door at the edge: `/join`, `/en/join`, `/nl/join`.
+ * Locale-prefixed public join door: `/en/join`, `/nl/join`.
  *
- * The page at `app/[locale]/join/page.tsx` does the same redirect, but a
- * request that never receives a locale prefix is matched as
- * `[locale]=join` and `hasLocale` 404s. Middleware must resolve the door
- * before next-intl, the same way `/signup` is aliased. `/join/:code`
- * stays an invite alias.
+ * Bare `/join` is left for next-intl so it can prefix `en` or `nl` from
+ * the cookie / Accept-Language (same hop prod already does). After that
+ * prefix, middleware resolves the door so the request does not depend on
+ * `join/page.tsx` being in the route table. `/join/:code` stays an invite
+ * alias.
  */
 export function getJoinDoorRedirect(
   pathname: string,
   hasSession: boolean,
   search = "",
 ): string | null {
-  const pathWithoutLocale = pathname.replace(/^\/(en|nl)/, "") || "/";
+  const localeMatch = /^\/(en|nl)(?=\/|$)/.exec(pathname);
+  if (!localeMatch) return null;
+  const locale = localeMatch[1]!;
+  const pathWithoutLocale = pathname.slice(locale.length + 1) || "/";
   const joinDoor = pathWithoutLocale.replace(/\/+$/, "") || "/";
   if (joinDoor !== "/join") return null;
-  const locale = pathname.startsWith("/nl") ? "nl" : "en";
   return `${getJoinPageRedirect({ hasSession, locale })}${search}`;
 }
 
