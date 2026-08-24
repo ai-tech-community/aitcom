@@ -45,6 +45,26 @@ describe("sendVerificationEmail", () => {
     expect(send.mock.calls[0]?.[0].html).toContain("Soren Ravn");
   });
 
+  it("mails a production verify URL instead of a preview host", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    const send = vi.fn().mockResolvedValue({ id: "email_qa" });
+    mockGetResend.mockReturnValue({ emails: { send } });
+
+    const sent = await sendVerificationEmail({
+      user: { email: "greg+qa-human@klevox.com", name: "Soren Ravn" },
+      url: "https://aitcom-git-preview-klevox.vercel.app/api/auth/verify-email?token=qa-token&callbackURL=%2F",
+    });
+
+    expect(sent).toBe(true);
+    const html = send.mock.calls[0]?.[0].html as string;
+    expect(html).toContain(
+      "https://www.aitcommunity.org/api/auth/verify-email?token=qa-token",
+    );
+    expect(html).toContain("callbackURL=%2Fcommunities%2Fait");
+    expect(html).not.toContain("vercel.app");
+    vi.unstubAllEnvs();
+  });
+
   it("does not pretend to send when Resend is unset", async () => {
     mockGetResend.mockReturnValue(null);
 
@@ -85,5 +105,50 @@ describe("Better Auth verification wiring", () => {
 
     const emailVerification = src.slice(src.indexOf("emailVerification:"));
     expect(emailVerification).toContain("sendVerificationEmail");
+    expect(emailVerification).toContain("autoSignInAfterVerification: true");
+  });
+
+  it("keeps the verify session cookie on production hosts", () => {
+    expect(src).toContain("nextCookies()");
+    expect(src).toContain("crossSubDomainCookies");
+    expect(src).toContain("resolveSessionCookieDomain");
+    expect(src).toContain("autoSignInAfterVerification: true");
+  });
+
+  it("matches Better Auth 1.4: verify only sets a session cookie when auto-signin is on", () => {
+    const verifySrc = readFileSync(
+      join(
+        process.cwd(),
+        "node_modules/better-auth/dist/api/routes/email-verification.mjs",
+      ),
+      "utf8",
+    );
+    expect(verifySrc).toContain(
+      "if (ctx.context.options.emailVerification?.autoSignInAfterVerification)",
+    );
+    expect(verifySrc).toContain("setSessionCookie");
+    expect(verifySrc).toContain("throw ctx.redirect(ctx.query.callbackURL)");
+  });
+});
+
+describe("verify email URL and session cookie names", () => {
+  it("rewrites the mailed verify URL through canonicalizeVerificationUrl", () => {
+    const sendSrc = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "send-verification-email.ts",
+      ),
+      "utf8",
+    );
+    expect(sendSrc).toContain("canonicalizeVerificationUrl");
+  });
+
+  it("reads both Better Auth session cookie names after verify", () => {
+    const middlewareSrc = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "../../middleware.ts"),
+      "utf8",
+    );
+    expect(middlewareSrc).toContain("better-auth.session_token");
+    expect(middlewareSrc).toContain("__Secure-better-auth.session_token");
   });
 });

@@ -1,5 +1,6 @@
 import { getResend } from "@/server/email";
 import { escapeHtml } from "@/server/email-template";
+import { canonicalizeVerificationUrl } from "./base-url";
 
 const FROM_EMAIL = "AIT Community <noreply@mailer.aitcommunity.org>";
 
@@ -28,11 +29,19 @@ export async function sendVerificationEmail({
 }): Promise<boolean> {
   const resend = getResend();
   if (!resend) return false;
+  const verifyUrl = canonicalizeVerificationUrl(url, {
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    BETTER_AUTH_BASE_URL: process.env.BETTER_AUTH_BASE_URL,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    VERCEL_URL: process.env.VERCEL_URL,
+  });
   await resend.emails.send({
     from: FROM_EMAIL,
     to: user.email,
     subject: "Verify your email — AIT Community",
-    html: `<p>Hi ${escapeHtml(user.name ?? "there")},</p><p>Please verify your email by clicking <a href="${escapeHtml(url)}">this link</a>.</p>`,
+    html: `<p>Hi ${escapeHtml(user.name ?? "there")},</p><p>Please verify your email by clicking <a href="${escapeHtml(verifyUrl)}">this link</a>.</p>`,
   });
   return true;
 }

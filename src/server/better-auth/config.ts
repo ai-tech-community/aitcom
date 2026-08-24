@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { nextCookies } from "better-auth/next-js";
 
 import { env } from "@/env";
 import { readLinkedinOAuthCredentials } from "@/lib/linkedin-oauth-env";
@@ -22,7 +23,11 @@ import {
   onAuthAccountCreated,
   onAuthAccountDeleted,
 } from "@/server/social/sync";
-import { resolveBetterAuthBaseUrl, resolveTrustedOrigins } from "./base-url";
+import {
+  resolveBetterAuthBaseUrl,
+  resolveSessionCookieDomain,
+  resolveTrustedOrigins,
+} from "./base-url";
 import {
   isEmailVerificationRequired,
   sendVerificationEmail,
@@ -30,28 +35,23 @@ import {
 
 const linkedinCredentials = readLinkedinOAuthCredentials();
 
+const authUrlEnv = {
+  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+  BETTER_AUTH_BASE_URL: process.env.BETTER_AUTH_BASE_URL,
+  NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
+  NODE_ENV: env.NODE_ENV,
+  PORT: process.env.PORT,
+  VERCEL_ENV: process.env.VERCEL_ENV,
+  VERCEL_URL: process.env.VERCEL_URL,
+  VERCEL_BRANCH_URL: process.env.VERCEL_BRANCH_URL,
+  BETTER_AUTH_TRUSTED_ORIGINS: process.env.BETTER_AUTH_TRUSTED_ORIGINS,
+};
+
+const sessionCookieDomain = resolveSessionCookieDomain(authUrlEnv);
+
 export const auth = betterAuth({
-  baseURL: resolveBetterAuthBaseUrl({
-    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
-    BETTER_AUTH_BASE_URL: process.env.BETTER_AUTH_BASE_URL,
-    NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
-    NODE_ENV: env.NODE_ENV,
-    PORT: process.env.PORT,
-  }),
-  trustedOrigins: (request) =>
-    resolveTrustedOrigins(
-      {
-        BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
-        BETTER_AUTH_BASE_URL: process.env.BETTER_AUTH_BASE_URL,
-        NEXT_PUBLIC_APP_URL: env.NEXT_PUBLIC_APP_URL,
-        NODE_ENV: env.NODE_ENV,
-        PORT: process.env.PORT,
-        VERCEL_URL: process.env.VERCEL_URL,
-        VERCEL_BRANCH_URL: process.env.VERCEL_BRANCH_URL,
-        BETTER_AUTH_TRUSTED_ORIGINS: process.env.BETTER_AUTH_TRUSTED_ORIGINS,
-      },
-      request,
-    ),
+  baseURL: resolveBetterAuthBaseUrl(authUrlEnv),
+  trustedOrigins: (request) => resolveTrustedOrigins(authUrlEnv, request),
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
@@ -151,6 +151,11 @@ export const auth = betterAuth({
     // emailAndPassword. Missing it returns VERIFICATION_EMAIL_ISNT_ENABLED.
     sendOnSignUp: true,
     sendOnSignIn: true,
+    // requireEmailVerification blocks signup from creating a session. Without
+    // this, /api/auth/verify-email confirms the address, redirects to
+    // callbackURL, and never sets better-auth.session_token /
+    // __Secure-better-auth.session_token — the leftover signed-out landing.
+    autoSignInAfterVerification: true,
     sendVerificationEmail: async ({
       user,
       url,
@@ -183,6 +188,18 @@ export const auth = betterAuth({
         }
       : {}),
   },
+  advanced: sessionCookieDomain
+    ? {
+        crossSubDomainCookies: {
+          enabled: true,
+          domain: sessionCookieDomain,
+        },
+      }
+    : {},
+  // Last plugin: Next.js cookies() for auth.api / Server Actions.
+  // The verify-email GET goes through toNextJsHandler and sets the
+  // session cookie itself once autoSignInAfterVerification is on.
+  plugins: [nextCookies()],
 });
 
 export type Session = typeof auth.$Infer.Session;
