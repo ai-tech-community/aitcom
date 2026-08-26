@@ -4,8 +4,10 @@ import { use } from "react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import {
+  memberRoleForSlug,
   resolveHubAuthUser,
   type HubAuthUser,
+  type HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
 import { FeedPage } from "@/components/communities/feed/feed-page";
 import { Activity } from "lucide-react";
@@ -13,9 +15,11 @@ import { Activity } from "lucide-react";
 export function CommunityOverviewPageClient({
   params,
   initialUser,
+  initialMemberships,
 }: {
   params: Promise<{ slug: string }>;
   initialUser: HubAuthUser | null;
+  initialMemberships: HubMembershipSeed[];
 }) {
   const { slug } = use(params);
   const { data: session } = authClient.useSession();
@@ -28,8 +32,10 @@ export function CommunityOverviewPageClient({
     { enabled: !!user },
   );
 
-  const membership = myCommunities?.find((c) => c.slug === slug);
-  const memberRole = membership?.status === "active" ? membership.role : null;
+  const memberRole = memberRoleForSlug(
+    myCommunities ?? initialMemberships,
+    slug,
+  );
   const isMember = !!memberRole;
 
   return (

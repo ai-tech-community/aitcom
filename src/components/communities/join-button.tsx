@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { LogIn, Clock, LogOut, Loader2 } from "lucide-react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useInitialAuthUser } from "@/components/auth/session-provider";
+import { resolveHubAuthUser } from "@/server/better-auth/hub-session";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "@/i18n/navigation";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
@@ -29,6 +31,7 @@ export function JoinButton({
 }: JoinButtonProps) {
   const t = useTranslations("communities.profile");
   const { data: session } = authClient.useSession();
+  const user = resolveHubAuthUser(useInitialAuthUser(), session?.user);
   const router = useRouter();
   const { promptAuth } = useRequireAuth();
   const utils = api.useUtils();
@@ -60,7 +63,7 @@ export function JoinButton({
   });
 
   const handleAction = async () => {
-    if (!session?.user) {
+    if (!user) {
       promptAuth("Sign in to join this community");
       return;
     }

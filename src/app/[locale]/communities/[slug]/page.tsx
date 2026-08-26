@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { api } from "@/trpc/server";
-import { getSession } from "@/server/better-auth/server";
-import type { HubAuthUser } from "@/server/better-auth/hub-session";
+import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 import { CommunityOverviewPageClient } from "./_overview-client";
 
 export async function generateMetadata({
@@ -36,16 +35,12 @@ export default async function CommunityOverviewPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const session = await getSession();
-  const initialUser: HubAuthUser | null = session?.user
-    ? {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-        image: session.user.image,
-      }
-    : null;
+  const { initialUser, initialMemberships } = await loadHubAuthSeed();
   return (
-    <CommunityOverviewPageClient params={params} initialUser={initialUser} />
+    <CommunityOverviewPageClient
+      params={params}
+      initialUser={initialUser}
+      initialMemberships={initialMemberships}
+    />
   );
 }

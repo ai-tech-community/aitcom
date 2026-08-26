@@ -19,8 +19,7 @@ import { AuthRequiredProvider } from "@/components/auth/auth-required-dialog";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { ConfirmProvider } from "@/components/confirm-dialog";
 import { Analytics } from "@vercel/analytics/next";
-import { getSession } from "@/server/better-auth/server";
-import type { HubAuthUser } from "@/server/better-auth/hub-session";
+import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aitcommunity.org"),
@@ -68,15 +67,7 @@ export default async function LocaleLayout({
     default: Record<string, unknown>;
   };
   const messages = messagesModule.default;
-  const session = await getSession();
-  const initialUser: HubAuthUser | null = session?.user
-    ? {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-        image: session.user.image,
-      }
-    : null;
+  const { initialUser } = await loadHubAuthSeed();
 
   return (
     <html lang={locale} className={`${geist.variable} ${geistMono.variable}`}>
