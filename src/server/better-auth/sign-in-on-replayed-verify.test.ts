@@ -3,15 +3,19 @@
 import { betterAuth } from "better-auth";
 import { createEmailVerificationToken } from "better-auth/api";
 import { memoryAdapter } from "better-auth/adapters/memory";
-import { toNextJsHandler } from "better-auth/next-js";
+import { nextCookies, toNextJsHandler } from "better-auth/next-js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
+import { PRODUCTION_COOKIE_DOMAIN } from "./base-url";
 
-import { signInOnReplayedVerification } from "./sign-in-on-replayed-verify";
+import {
+  createSignInOnReplayedVerification,
+  signInOnReplayedVerification,
+} from "./sign-in-on-replayed-verify";
 
 const SECRET = "test-secret-for-verify-replay-at-least-32-chars";
 const ORIGIN = "https://www.aitcommunity.org";
@@ -31,11 +35,37 @@ function hasSessionCookie(res: Response): boolean {
   );
 }
 
+function cookieHeaderFromSetCookie(res: Response): string {
+  const parts =
+    typeof res.headers.getSetCookie === "function"
+      ? res.headers.getSetCookie()
+      : [];
+  return parts
+    .map((cookie) => cookie.split(";")[0]?.trim())
+    .filter(Boolean)
+    .join("; ");
+}
+
 function redirectLocation(res: Response): string {
   return res.headers.get("location") ?? "";
 }
 
-async function createVerifyAuth(onMail?: (url: string) => void) {
+function sessionCookieLine(res: Response): string | undefined {
+  return (
+    typeof res.headers.getSetCookie === "function"
+      ? res.headers.getSetCookie()
+      : []
+  ).find((cookie) => cookie.includes("session_token"));
+}
+
+type CreateVerifyAuthOptions = {
+  onMail?: (url: string) => void;
+  enroll?: (session: { userId: string }) => Promise<void>;
+  productionCookieDomain?: boolean;
+  withNextCookies?: boolean;
+};
+
+async function createVerifyAuth(options: CreateVerifyAuthOptions = {}) {
   const store = {
     user: [],
     session: [],
@@ -43,6 +73,7 @@ async function createVerifyAuth(onMail?: (url: string) => void) {
     verification: [],
   };
 
+  const sessionCreates: Array<{ userId: string }> = [];
   const auth = betterAuth({
     baseURL: ORIGIN,
     secret: SECRET,
@@ -55,25 +86,52 @@ async function createVerifyAuth(onMail?: (url: string) => void) {
       sendOnSignUp: true,
       autoSignInAfterVerification: true,
       sendVerificationEmail: async ({ url }: { url: string }) => {
-        onMail?.(url);
+        options.onMail?.(url);
+      },
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          after: async (session: { userId: string }) => {
+            sessionCreates.push({ userId: session.userId });
+          },
+        },
       },
     },
     hooks: {
-      after: signInOnReplayedVerification,
+      after: options.enroll
+        ? createSignInOnReplayedVerification({ enroll: options.enroll })
+        : signInOnReplayedVerification,
     },
     trustedOrigins: [ORIGIN],
+    ...(options.productionCookieDomain
+      ? {
+          advanced: {
+            crossSubDomainCookies: {
+              enabled: true,
+              domain: PRODUCTION_COOKIE_DOMAIN,
+            },
+          },
+        }
+      : {}),
+    ...(options.withNextCookies ? { plugins: [nextCookies()] } : {}),
   });
 
-  return { auth, store };
+  return { auth, store, sessionCreates };
 }
 
-async function signUpAndCaptureVerifyUrl() {
+async function signUpAndCaptureVerifyUrl(
+  options: Omit<CreateVerifyAuthOptions, "onMail"> = {},
+) {
   let mailedUrl = "";
-  const { auth } = await createVerifyAuth((url) => {
-    mailedUrl = url;
+  const created = await createVerifyAuth({
+    ...options,
+    onMail: (url) => {
+      mailedUrl = url;
+    },
   });
 
-  await auth.api.signUpEmail({
+  await created.auth.api.signUpEmail({
     body: {
       email: "soren.prefetch.verify@example.com",
       password: "a-secure-password-123",
@@ -88,7 +146,18 @@ async function signUpAndCaptureVerifyUrl() {
   expect(parsed.pathname).toBe("/api/auth/verify-email");
   expect(parsed.searchParams.get("token")).toBeTruthy();
   expect(parsed.searchParams.get("callbackURL")).toBe(HUB_COMMUNITY_PATH);
-  return { auth, mailedUrl };
+  return { ...created, mailedUrl };
+}
+
+async function sessionFromResponse(
+  auth: Awaited<ReturnType<typeof createVerifyAuth>>["auth"],
+  res: Response,
+) {
+  const cookie = cookieHeaderFromSetCookie(res);
+  expect(cookie).toMatch(/(?:__Secure-)?better-auth\.session_token=/);
+  return auth.api.getSession({
+    headers: new Headers({ cookie }),
+  });
 }
 
 describe("verify-email prefetch then human click", () => {
@@ -101,6 +170,8 @@ describe("verify-email prefetch then human click", () => {
     expect(prefetch.status).toBeLessThan(400);
     expect(redirectLocation(prefetch)).toBe(HUB_COMMUNITY_PATH);
     expect(hasSessionCookie(prefetch)).toBe(true);
+    const prefetchSession = await sessionFromResponse(auth, prefetch);
+    expect(prefetchSession?.user.id).toBeTruthy();
 
     const human = await GET(new Request(mailedUrl));
     expect(human.status).toBeGreaterThanOrEqual(300);
@@ -108,20 +179,58 @@ describe("verify-email prefetch then human click", () => {
     expect(redirectLocation(human)).toBe(HUB_COMMUNITY_PATH);
     expect(redirectLocation(human)).not.toMatch(/[?&]error=/);
     expect(hasSessionCookie(human)).toBe(true);
+    const humanSession = await sessionFromResponse(auth, human);
+    expect(humanSession?.user.id).toBe(prefetchSession?.user.id);
+  });
+
+  it("emits the same production cookie Hub getSession already reads", async () => {
+    const enroll = vi.fn(async () => undefined);
+    const { auth, mailedUrl, sessionCreates } = await signUpAndCaptureVerifyUrl(
+      {
+        enroll,
+        productionCookieDomain: true,
+        withNextCookies: true,
+      },
+    );
+    const { GET } = toNextJsHandler(auth.handler);
+
+    const prefetch = await GET(new Request(mailedUrl));
+    const prefetchCookie = sessionCookieLine(prefetch);
+    expect(prefetchCookie).toContain(`Domain=${PRODUCTION_COOKIE_DOMAIN}`);
+    expect(prefetchCookie).toMatch(/^__Secure-better-auth\.session_token=/);
+
+    const human = await GET(new Request(mailedUrl));
+    const humanCookie = sessionCookieLine(human);
+    expect(humanCookie).toContain(`Domain=${PRODUCTION_COOKIE_DOMAIN}`);
+    expect(humanCookie).toMatch(/^__Secure-better-auth\.session_token=/);
+    expect(humanCookie).toContain("Path=/");
+    expect(humanCookie).toContain("HttpOnly");
+    expect(humanCookie).toContain("Secure");
+    expect(humanCookie).toContain("SameSite=Lax");
+
+    const fromResponse = await sessionFromResponse(auth, human);
+    expect(fromResponse?.user.id).toBeTruthy();
+    expect(sessionCreates.length).toBeGreaterThanOrEqual(2);
+    expect(enroll).toHaveBeenCalledWith({
+      userId: fromResponse?.user.id,
+    });
   });
 
   it("does not mint a session for an invalid token", async () => {
-    const { auth } = await createVerifyAuth();
+    const enroll = vi.fn(async () => undefined);
+    const { auth } = await createVerifyAuth({ enroll });
     const { GET } = toNextJsHandler(auth.handler);
     const url = `${ORIGIN}/api/auth/verify-email?token=not-a-jwt&callbackURL=${encodeURIComponent(HUB_COMMUNITY_PATH)}`;
 
     const res = await GET(new Request(url));
     expect(hasSessionCookie(res)).toBe(false);
     expect(redirectLocation(res)).toMatch(/error=invalid_token/);
+    expect(enroll).not.toHaveBeenCalled();
   });
 
   it("does not mint a session for an expired token", async () => {
-    const { auth } = await createVerifyAuth();
+    const enroll = vi.fn(async () => undefined);
+    const { auth } = await createVerifyAuth({ enroll });
     const token = await createEmailVerificationToken(
       SECRET,
       "soren.prefetch.verify@example.com",
@@ -134,12 +243,15 @@ describe("verify-email prefetch then human click", () => {
     const res = await GET(new Request(url));
     expect(hasSessionCookie(res)).toBe(false);
     expect(redirectLocation(res)).toMatch(/error=token_expired/);
+    expect(enroll).not.toHaveBeenCalled();
   });
 
   it("does not mint a session for a change-email token", async () => {
-    const { auth, mailedUrl } = await signUpAndCaptureVerifyUrl();
+    const enroll = vi.fn(async () => undefined);
+    const { auth, mailedUrl } = await signUpAndCaptureVerifyUrl({ enroll });
     const { GET } = toNextJsHandler(auth.handler);
     await GET(new Request(mailedUrl));
+    enroll.mockClear();
 
     const token = await createEmailVerificationToken(
       SECRET,
@@ -154,6 +266,7 @@ describe("verify-email prefetch then human click", () => {
     expect(hasSessionCookie(res)).toBe(false);
     expect(redirectLocation(res)).not.toMatch(/[?&]error=/);
     expect(redirectLocation(res)).toBe(HUB_COMMUNITY_PATH);
+    expect(enroll).not.toHaveBeenCalled();
   });
 });
 
@@ -185,7 +298,20 @@ describe("Better Auth already-verified leftover", () => {
       "utf8",
     );
     expect(src).toContain('from "./sign-in-on-replayed-verify"');
-    expect(src).toContain("signInOnReplayedVerification");
+    expect(src).toContain("createSignInOnReplayedVerification");
+    expect(src).toContain("enrollOnSessionCreated");
     expect(src).toContain("autoSignInAfterVerification: true");
+  });
+
+  it("rebuilds the 302 after setSessionCookie like first-verify", () => {
+    const src = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "sign-in-on-replayed-verify.ts",
+      ),
+      "utf8",
+    );
+    const mint = src.slice(src.indexOf("setSessionCookie"), src.length);
+    expect(mint).toContain("throw ctx.redirect(location)");
   });
 });

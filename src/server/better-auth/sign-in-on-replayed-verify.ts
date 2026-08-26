@@ -1,6 +1,19 @@
 import { createAuthMiddleware } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 
+import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
+
+type ReplayEnroll = (session: { userId: string }) => Promise<void>;
+
+export type SignInOnReplayedVerificationOptions = {
+  /**
+   * Hub enrolment for the replay session. First-verify already runs
+   * `afterEmailVerification` + `session.create.after`; a burned token
+   * skips the former. Keep this optional so unit tests do not load Neon.
+   */
+  enroll?: ReplayEnroll;
+};
+
 /**
  * Better Auth 1.4 verifies the JWT on every GET /verify-email, then
  * returns early when `user.emailVerified` is already true — no
@@ -10,11 +23,15 @@ import { setSessionCookie } from "better-auth/cookies";
  *
  * Mint a session only for a still-valid identity: JWT Better Auth
  * already accepted (redirect without `error=`), no change-email
- * `updateTo`, and a verified user. Expired / invalid tokens keep the
- * error redirect. Fresh tokens still take autoSignInAfterVerification.
+ * `updateTo`, and a verified user. Then rebuild the 302 the same way
+ * first-verify does (`setSessionCookie` then `throw ctx.redirect`) so
+ * the cookie is born on the response Hub's `getSession` already reads.
+ * Expired / invalid tokens keep the error redirect.
  */
-export const signInOnReplayedVerification = createAuthMiddleware(
-  async (ctx) => {
+export function createSignInOnReplayedVerification(
+  options: SignInOnReplayedVerificationOptions = {},
+) {
+  return createAuthMiddleware(async (ctx) => {
     if (ctx.path !== "/verify-email") return;
     if (responseAlreadyHasSession(ctx)) return;
     if (!isSuccessfulVerifyRedirect(ctx.context.returned)) return;
@@ -37,12 +54,31 @@ export const signInOnReplayedVerification = createAuthMiddleware(
     );
     if (!session) return;
 
+    if (options.enroll) {
+      await options.enroll({ userId: user.user.id }).catch(() => {
+        /* session.create.after / getMyCommunities also retry */
+      });
+    }
+
     await setSessionCookie(ctx, {
       session,
       user: user.user,
     });
-  },
-);
+
+    // First-verify sets the cookie and then throws this redirect so the
+    // 302 is built with Set-Cookie on the same headers object. #247
+    // appended a cookie after the already-verified 302 existed; Hub's
+    // getSession then treated the walker as signed-out.
+    const location =
+      ctx.context.returned && typeof ctx.context.returned === "object"
+        ? (readLocation(ctx.context.returned) ?? HUB_COMMUNITY_PATH)
+        : HUB_COMMUNITY_PATH;
+    throw ctx.redirect(location);
+  });
+}
+
+export const signInOnReplayedVerification =
+  createSignInOnReplayedVerification();
 
 function readVerifyToken(ctx: {
   query?: Record<string, unknown> | undefined;
@@ -95,7 +131,9 @@ function isSuccessfulVerifyRedirect(returned: unknown): boolean {
     statusCode === 302 ||
     statusCode === 301 ||
     status === "FOUND" ||
-    status === "MOVED_PERMANENTLY";
+    status === "MOVED_PERMANENTLY" ||
+    status === 302 ||
+    status === 301;
   if (!isRedirect) return false;
 
   const location = readLocation(returned);
@@ -111,6 +149,9 @@ function isSuccessfulVerifyRedirect(returned: unknown): boolean {
 }
 
 function readLocation(returned: object): string | null {
+  if (returned instanceof Response) {
+    return returned.headers.get("location") ?? returned.headers.get("Location");
+  }
   if (!("headers" in returned) || !returned.headers) return null;
   const headers = returned.headers;
   if (headers instanceof Headers) {
