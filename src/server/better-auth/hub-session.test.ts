@@ -1,0 +1,112 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { describe, expect, it } from "vitest";
+
+import {
+  memberRoleForSlug,
+  membershipStatusForSlug,
+  resolveHubAuthUser,
+  toHubAuthUser,
+} from "./hub-session";
+
+const SOREN = {
+  id: "soren-ravn",
+  name: "Soren Ravn",
+  email: "soren.prefetch.verify@example.com",
+};
+
+describe("resolveHubAuthUser", () => {
+  it("keeps the document-request user when useSession is still empty", () => {
+    expect(resolveHubAuthUser(SOREN, undefined)).toEqual(SOREN);
+    expect(resolveHubAuthUser(SOREN, null)).toEqual(SOREN);
+  });
+
+  it("prefers the client user once GET /get-session returns one", () => {
+    const client = { ...SOREN, name: "Soren" };
+    expect(resolveHubAuthUser(SOREN, client)).toEqual(client);
+  });
+
+  it("stays signed-out when neither reader has a user", () => {
+    expect(resolveHubAuthUser(null, null)).toBeNull();
+    expect(resolveHubAuthUser(undefined, undefined)).toBeNull();
+  });
+
+  it("maps a document-request session user and Hub membership", () => {
+    expect(toHubAuthUser({ id: SOREN.id, name: SOREN.name })).toEqual({
+      id: SOREN.id,
+      name: SOREN.name,
+      email: undefined,
+      image: undefined,
+    });
+    expect(toHubAuthUser(null)).toBeNull();
+    const rows = [
+      { slug: "ait", status: "active" as const, role: "member" as const },
+    ];
+    expect(memberRoleForSlug(rows, "ait")).toBe("member");
+    expect(membershipStatusForSlug(rows, "ait")).toBe("active");
+    expect(memberRoleForSlug(rows, "other")).toBeNull();
+  });
+});
+
+describe("Hub actually reads the verify cookie", () => {
+  const dir = dirname(fileURLToPath(import.meta.url));
+
+  it("locale layout seeds SessionProvider from the document-request seed", () => {
+    const src = readFileSync(
+      join(dir, "../../app/[locale]/layout.tsx"),
+      "utf8",
+    );
+    expect(src).toContain("loadHubAuthSeed");
+    expect(src).toContain("SessionProvider");
+    expect(src).toContain("initialUser");
+  });
+
+  it("community page passes the document-request user and membership into Hub", () => {
+    const src = readFileSync(
+      join(dir, "../../app/[locale]/communities/[slug]/page.tsx"),
+      "utf8",
+    );
+    expect(src).toContain("loadHubAuthSeed");
+    expect(src).toContain("initialUser");
+    expect(src).toContain("initialMemberships");
+  });
+
+  it("Hub overview and community layout use the document-request user and membership", () => {
+    const overview = readFileSync(
+      join(dir, "../../app/[locale]/communities/[slug]/_overview-client.tsx"),
+      "utf8",
+    );
+    const layout = readFileSync(
+      join(dir, "../../app/[locale]/communities/[slug]/layout.tsx"),
+      "utf8",
+    );
+    const shell = readFileSync(
+      join(
+        dir,
+        "../../app/[locale]/communities/[slug]/_community-layout-client.tsx",
+      ),
+      "utf8",
+    );
+    expect(overview).toContain("resolveHubAuthUser");
+    expect(overview).toContain("memberRoleForSlug");
+    expect(overview).toContain("initialMemberships");
+    expect(layout).toContain("loadHubAuthSeed");
+    expect(layout).toContain("initialMemberships");
+    expect(shell).toContain("resolveHubAuthUser");
+    expect(shell).toContain("initialMemberships");
+  });
+
+  it("navbar JOIN uses the same document-request user as Hub", () => {
+    const src = readFileSync(join(dir, "../../components/navbar.tsx"), "utf8");
+    expect(src).toContain("resolveHubAuthUser");
+    expect(src).toContain("initialUser");
+  });
+
+  it("document-request seed reads getSession then Hub membership", () => {
+    const src = readFileSync(join(dir, "hub-session-server.ts"), "utf8");
+    expect(src).toContain("getSession()");
+    expect(src).toContain("listMyCommunities");
+  });
+});

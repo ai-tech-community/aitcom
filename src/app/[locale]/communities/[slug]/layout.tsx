@@ -1,62 +1,22 @@
-"use client";
+import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 
-import { use } from "react";
-import { notFound } from "next/navigation";
-import { api } from "@/trpc/react";
-import { authClient } from "@/server/better-auth/client";
-import { CommunityHeader } from "@/components/communities/community-header";
-import { CommunityNav } from "@/components/communities/community-nav";
-import { Spinner } from "@/components/ui/spinner";
+import { CommunityLayoutClient } from "./_community-layout-client";
 
-export default function CommunityLayout({
+export default async function CommunityLayout({
   children,
   params,
 }: {
   children: React.ReactNode;
   params: Promise<{ slug: string; locale: string }>;
 }) {
-  const { slug } = use(params);
-  const { data: session } = authClient.useSession();
-
-  const { data: community, isLoading: communityLoading } =
-    api.communities.getBySlug.useQuery({ slug });
-
-  const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
-    undefined,
-    { enabled: !!session?.user },
-  );
-
-  if (communityLoading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Spinner className="size-8" />
-      </div>
-    );
-  }
-
-  if (!community) {
-    notFound();
-  }
-
-  // Derive membership status for this community
-  const membership = myCommunities?.find((m) => m.communityId === community.id);
-  const membershipStatus =
-    (membership?.status as "active" | "pending_approval" | "invited" | null) ??
-    null;
-
-  const memberRole = membership?.status === "active" ? membership.role : null;
-
+  const { initialUser, initialMemberships } = await loadHubAuthSeed();
   return (
-    <div className="flex flex-col">
-      <CommunityHeader
-        community={community}
-        membershipStatus={membershipStatus}
-        memberRole={memberRole}
-      />
-      <CommunityNav slug={slug} memberRole={memberRole} />
-      <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-        {children}
-      </div>
-    </div>
+    <CommunityLayoutClient
+      params={params}
+      initialUser={initialUser}
+      initialMemberships={initialMemberships}
+    >
+      {children}
+    </CommunityLayoutClient>
   );
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { api } from "@/trpc/server";
+import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 import { CommunityOverviewPageClient } from "./_overview-client";
 
 export async function generateMetadata({
@@ -29,10 +30,17 @@ export async function generateMetadata({
   }
 }
 
-export default function CommunityOverviewPage({
+export default async function CommunityOverviewPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  return <CommunityOverviewPageClient params={params} />;
+  const { initialUser, initialMemberships } = await loadHubAuthSeed();
+  return (
+    <CommunityOverviewPageClient
+      params={params}
+      initialUser={initialUser}
+      initialMemberships={initialMemberships}
+    />
+  );
 }
