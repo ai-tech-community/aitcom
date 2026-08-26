@@ -3,7 +3,7 @@
 import { betterAuth } from "better-auth";
 import { createEmailVerificationToken } from "better-auth/api";
 import { memoryAdapter } from "better-auth/adapters/memory";
-import { nextCookies, toNextJsHandler } from "better-auth/next-js";
+import { toNextJsHandler } from "better-auth/next-js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -62,7 +62,6 @@ type CreateVerifyAuthOptions = {
   onMail?: (url: string) => void;
   enroll?: (session: { userId: string }) => Promise<void>;
   productionCookieDomain?: boolean;
-  withNextCookies?: boolean;
 };
 
 async function createVerifyAuth(options: CreateVerifyAuthOptions = {}) {
@@ -114,7 +113,6 @@ async function createVerifyAuth(options: CreateVerifyAuthOptions = {}) {
           },
         }
       : {}),
-    ...(options.withNextCookies ? { plugins: [nextCookies()] } : {}),
   });
 
   return { auth, store, sessionCreates };
@@ -189,7 +187,6 @@ describe("verify-email prefetch then human click", () => {
       {
         enroll,
         productionCookieDomain: true,
-        withNextCookies: true,
       },
     );
     const { GET } = toNextJsHandler(auth.handler);
@@ -198,6 +195,7 @@ describe("verify-email prefetch then human click", () => {
     const prefetchCookie = sessionCookieLine(prefetch);
     expect(prefetchCookie).toContain(`Domain=${PRODUCTION_COOKIE_DOMAIN}`);
     expect(prefetchCookie).toMatch(/^__Secure-better-auth\.session_token=/);
+    enroll.mockClear();
 
     const human = await GET(new Request(mailedUrl));
     const humanCookie = sessionCookieLine(human);
@@ -299,7 +297,7 @@ describe("Better Auth already-verified leftover", () => {
     );
     expect(src).toContain('from "./sign-in-on-replayed-verify"');
     expect(src).toContain("createSignInOnReplayedVerification");
-    expect(src).toContain("enrollOnSessionCreated");
+    expect(src).toContain("enroll: enrollOnSessionCreated");
     expect(src).toContain("autoSignInAfterVerification: true");
   });
 
