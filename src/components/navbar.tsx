@@ -21,6 +21,10 @@ import { Menu, LogOut, ChevronDown } from "lucide-react";
 import { LanguageSwitcher } from "./language-switcher";
 import { cn } from "@/lib/utils";
 import { authClient } from "@/server/better-auth/client";
+import {
+  resolveHubAuthUser,
+  type HubAuthUser,
+} from "@/server/better-auth/hub-session";
 import { AitLogo } from "@/components/ait-logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { MessagesNavLink } from "@/components/inbox/messages-nav-link";
@@ -67,12 +71,17 @@ function initialsFrom(name?: string | null, email?: string | null) {
   return source.slice(0, 2).toUpperCase();
 }
 
-export function Navbar() {
+export function Navbar({
+  initialUser = null,
+}: {
+  initialUser?: HubAuthUser | null;
+}) {
   const t = useTranslations("nav");
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const { data: session } = authClient.useSession();
+  const user = resolveHubAuthUser(initialUser, session?.user);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -95,18 +104,18 @@ export function Navbar() {
         return;
       }
 
-      if (key === "D" && session?.user) {
+      if (key === "D" && user) {
         e.preventDefault();
         router.push("/dashboard");
-      } else if (key === "A" && session?.user) {
+      } else if (key === "A" && user) {
         e.preventDefault();
         router.push("/dashboard/agent");
-      } else if (key === "J" && !session?.user) {
+      } else if (key === "J" && !user) {
         e.preventDefault();
         router.push("/auth/signup");
       }
     },
-    [router, session],
+    [router, user],
   );
 
   useEffect(() => {
@@ -115,7 +124,6 @@ export function Navbar() {
   }, [handleKeyDown]);
 
   const overflowActive = overflowLinks.some((l) => pathname === l.href);
-  const user = session?.user;
 
   return (
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">

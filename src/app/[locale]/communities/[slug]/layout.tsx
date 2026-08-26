@@ -4,6 +4,8 @@ import { use } from "react";
 import { notFound } from "next/navigation";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useInitialAuthUser } from "@/components/auth/session-provider";
+import { resolveHubAuthUser } from "@/server/better-auth/hub-session";
 import { CommunityHeader } from "@/components/communities/community-header";
 import { CommunityNav } from "@/components/communities/community-nav";
 import { Spinner } from "@/components/ui/spinner";
@@ -17,13 +19,15 @@ export default function CommunityLayout({
 }) {
   const { slug } = use(params);
   const { data: session } = authClient.useSession();
+  const initialUser = useInitialAuthUser();
+  const user = resolveHubAuthUser(initialUser, session?.user);
 
   const { data: community, isLoading: communityLoading } =
     api.communities.getBySlug.useQuery({ slug });
 
   const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
     undefined,
-    { enabled: !!session?.user },
+    { enabled: !!user },
   );
 
   if (communityLoading) {

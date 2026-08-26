@@ -16,8 +16,11 @@ import { SpaceWindowProvider } from "@/components/communities/explore/space-wind
 import { SpaceWindowRoot } from "@/components/communities/explore/space-window-root";
 import { RulesProvider } from "@/components/community/rules-provider";
 import { AuthRequiredProvider } from "@/components/auth/auth-required-dialog";
+import { SessionProvider } from "@/components/auth/session-provider";
 import { ConfirmProvider } from "@/components/confirm-dialog";
 import { Analytics } from "@vercel/analytics/next";
+import { getSession } from "@/server/better-auth/server";
+import type { HubAuthUser } from "@/server/better-auth/hub-session";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://aitcommunity.org"),
@@ -65,6 +68,15 @@ export default async function LocaleLayout({
     default: Record<string, unknown>;
   };
   const messages = messagesModule.default;
+  const session = await getSession();
+  const initialUser: HubAuthUser | null = session?.user
+    ? {
+        id: session.user.id,
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image,
+      }
+    : null;
 
   return (
     <html lang={locale} className={`${geist.variable} ${geistMono.variable}`}>
@@ -77,18 +89,20 @@ export default async function LocaleLayout({
             <RulesProvider>
               <AuthRequiredProvider>
                 <ConfirmProvider>
-                  <Navbar />
-                  <InboxProvider>
-                    <SpaceWindowProvider>
-                      <main className="to-background flex-1 bg-linear-to-b from-orange-50/60 via-amber-50/30">
-                        {children}
-                      </main>
-                      <Footer />
-                      <InboxRoot />
-                      <SpaceWindowRoot />
-                    </SpaceWindowProvider>
-                  </InboxProvider>
-                  <Toaster position="bottom-right" offset={60} />
+                  <SessionProvider initialUser={initialUser}>
+                    <Navbar initialUser={initialUser} />
+                    <InboxProvider>
+                      <SpaceWindowProvider>
+                        <main className="to-background flex-1 bg-linear-to-b from-orange-50/60 via-amber-50/30">
+                          {children}
+                        </main>
+                        <Footer />
+                        <InboxRoot />
+                        <SpaceWindowRoot />
+                      </SpaceWindowProvider>
+                    </InboxProvider>
+                    <Toaster position="bottom-right" offset={60} />
+                  </SessionProvider>
                 </ConfirmProvider>
               </AuthRequiredProvider>
             </RulesProvider>

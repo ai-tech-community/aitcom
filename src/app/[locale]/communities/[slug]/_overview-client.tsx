@@ -3,22 +3,29 @@
 import { use } from "react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import {
+  resolveHubAuthUser,
+  type HubAuthUser,
+} from "@/server/better-auth/hub-session";
 import { FeedPage } from "@/components/communities/feed/feed-page";
 import { Activity } from "lucide-react";
 
 export function CommunityOverviewPageClient({
   params,
+  initialUser,
 }: {
   params: Promise<{ slug: string }>;
+  initialUser: HubAuthUser | null;
 }) {
   const { slug } = use(params);
   const { data: session } = authClient.useSession();
+  const user = resolveHubAuthUser(initialUser, session?.user);
 
   const { data: community } = api.communities.getBySlug.useQuery({ slug });
 
   const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
     undefined,
-    { enabled: !!session?.user },
+    { enabled: !!user },
   );
 
   const membership = myCommunities?.find((c) => c.slug === slug);
@@ -71,7 +78,7 @@ export function CommunityOverviewPageClient({
         slug={slug}
         communityDescription={community?.description}
         memberRole={memberRole}
-        currentUserId={session?.user?.id}
+        currentUserId={user?.id}
         feedPostPolicy={community?.feedPostPolicy ?? "all_members"}
       />
     </>

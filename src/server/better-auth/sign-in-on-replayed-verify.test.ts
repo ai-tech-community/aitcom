@@ -35,15 +35,93 @@ function hasSessionCookie(res: Response): boolean {
   );
 }
 
-function cookieHeaderFromSetCookie(res: Response): string {
-  const parts =
+/**
+ * Cookie header the way a browser builds it after a verify 302:
+ * name=value only, Domain/Path/Secure/__Secure- honored, values decoded.
+ * Isolated `auth.api.getSession({ cookie })` is not this walk.
+ */
+function browserCookieHeaderFromSetCookie(
+  res: Response,
+  requestUrl: string,
+): string {
+  const request = new URL(requestUrl);
+  const lines =
     typeof res.headers.getSetCookie === "function"
       ? res.headers.getSetCookie()
       : [];
-  return parts
-    .map((cookie) => cookie.split(";")[0]?.trim())
-    .filter(Boolean)
+
+  return lines
+    .flatMap((line) => {
+      const parts = line.split(";").map((part) => part.trim());
+      const nv = parts[0];
+      if (!nv) return [];
+      const eq = nv.indexOf("=");
+      if (eq < 0) return [];
+      const name = nv.slice(0, eq);
+      let value = nv.slice(eq + 1);
+      try {
+        value = decodeURIComponent(value);
+      } catch {
+        /* keep raw */
+      }
+
+      const attrs = new Map<string, string>();
+      for (const part of parts.slice(1)) {
+        const sep = part.indexOf("=");
+        const key = (sep < 0 ? part : part.slice(0, sep)).toLowerCase();
+        const val = sep < 0 ? "" : part.slice(sep + 1);
+        attrs.set(key, val);
+      }
+
+      if (name.startsWith("__Secure-") && request.protocol !== "https:") {
+        return [];
+      }
+      if (attrs.has("secure") && request.protocol !== "https:") {
+        return [];
+      }
+      const domain = attrs.get("domain");
+      if (domain) {
+        const host = request.hostname;
+        const allowed = domain.replace(/^\./, "").toLowerCase();
+        if (host !== allowed && !host.endsWith(`.${allowed}`)) {
+          return [];
+        }
+      }
+      const path = attrs.get("path") ?? "/";
+      if (!request.pathname.startsWith(path)) {
+        return [];
+      }
+      return [`${name}=${value}`];
+    })
     .join("; ");
+}
+
+async function sessionFromHubGetSession(
+  GET: (request: Request) => Promise<Response>,
+  res: Response,
+) {
+  const cookie = browserCookieHeaderFromSetCookie(
+    res,
+    `${ORIGIN}/api/auth/get-session`,
+  );
+  expect(cookie).toMatch(/(?:__Secure-)?better-auth\.session_token=/);
+
+  const sessionRes = await GET(
+    new Request(`${ORIGIN}/api/auth/get-session`, {
+      headers: {
+        cookie,
+        origin: ORIGIN,
+        referer: `${ORIGIN}/en${HUB_COMMUNITY_PATH}`,
+      },
+    }),
+  );
+  expect(sessionRes.status).toBe(200);
+  const body: unknown = await sessionRes.json();
+  expect(body).toBeTruthy();
+  expect(body).toMatchObject({
+    user: { id: expect.any(String) },
+  });
+  return body as { user: { id: string } };
 }
 
 function redirectLocation(res: Response): string {
@@ -147,17 +225,6 @@ async function signUpAndCaptureVerifyUrl(
   return { ...created, mailedUrl };
 }
 
-async function sessionFromResponse(
-  auth: Awaited<ReturnType<typeof createVerifyAuth>>["auth"],
-  res: Response,
-) {
-  const cookie = cookieHeaderFromSetCookie(res);
-  expect(cookie).toMatch(/(?:__Secure-)?better-auth\.session_token=/);
-  return auth.api.getSession({
-    headers: new Headers({ cookie }),
-  });
-}
-
 describe("verify-email prefetch then human click", () => {
   it("signs in on the second GET of an already-used token and lands in Hub", async () => {
     const { auth, mailedUrl } = await signUpAndCaptureVerifyUrl();
@@ -168,8 +235,7 @@ describe("verify-email prefetch then human click", () => {
     expect(prefetch.status).toBeLessThan(400);
     expect(redirectLocation(prefetch)).toBe(HUB_COMMUNITY_PATH);
     expect(hasSessionCookie(prefetch)).toBe(true);
-    const prefetchSession = await sessionFromResponse(auth, prefetch);
-    expect(prefetchSession?.user.id).toBeTruthy();
+    const prefetchSession = await sessionFromHubGetSession(GET, prefetch);
 
     const human = await GET(new Request(mailedUrl));
     expect(human.status).toBeGreaterThanOrEqual(300);
@@ -177,8 +243,8 @@ describe("verify-email prefetch then human click", () => {
     expect(redirectLocation(human)).toBe(HUB_COMMUNITY_PATH);
     expect(redirectLocation(human)).not.toMatch(/[?&]error=/);
     expect(hasSessionCookie(human)).toBe(true);
-    const humanSession = await sessionFromResponse(auth, human);
-    expect(humanSession?.user.id).toBe(prefetchSession?.user.id);
+    const humanSession = await sessionFromHubGetSession(GET, human);
+    expect(humanSession.user.id).toBe(prefetchSession.user.id);
   });
 
   it("emits the same production cookie Hub getSession already reads", async () => {
@@ -206,12 +272,14 @@ describe("verify-email prefetch then human click", () => {
     expect(humanCookie).toContain("Secure");
     expect(humanCookie).toContain("SameSite=Lax");
 
-    const fromResponse = await sessionFromResponse(auth, human);
-    expect(fromResponse?.user.id).toBeTruthy();
+    const fromResponse = await sessionFromHubGetSession(GET, human);
     expect(sessionCreates.length).toBeGreaterThanOrEqual(2);
     expect(enroll).toHaveBeenCalledWith({
-      userId: fromResponse?.user.id,
+      userId: fromResponse.user.id,
     });
+
+    const prefetchSession = await sessionFromHubGetSession(GET, prefetch);
+    expect(prefetchSession.user.id).toBe(fromResponse.user.id);
   });
 
   it("does not mint a session for an invalid token", async () => {
@@ -224,6 +292,11 @@ describe("verify-email prefetch then human click", () => {
     expect(hasSessionCookie(res)).toBe(false);
     expect(redirectLocation(res)).toMatch(/error=invalid_token/);
     expect(enroll).not.toHaveBeenCalled();
+    const cookie = browserCookieHeaderFromSetCookie(
+      res,
+      `${ORIGIN}/api/auth/get-session`,
+    );
+    expect(cookie).not.toMatch(/(?:__Secure-)?better-auth\.session_token=/);
   });
 
   it("does not mint a session for an expired token", async () => {
