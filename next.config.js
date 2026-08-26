@@ -18,6 +18,16 @@ const config = {
   // ≥48 bytes ("TypeError: b.mask is not a function"). Keep these external so
   // Node loads them at runtime (native if present, JS fallback otherwise).
   serverExternalPackages: ["ws", "bufferutil", "utf-8-validate"],
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "aitcommunity.org" }],
+        destination: "https://www.aitcommunity.org/:path*",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {

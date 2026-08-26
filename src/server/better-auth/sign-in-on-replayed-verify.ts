@@ -2,6 +2,7 @@ import { createAuthMiddleware } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
 
 import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
+import { pinVerifyRedirectLocation } from "./base-url";
 
 type ReplayEnroll = (session: { userId: string }) => Promise<void>;
 
@@ -33,46 +34,58 @@ export function createSignInOnReplayedVerification(
 ) {
   return createAuthMiddleware(async (ctx) => {
     if (ctx.path !== "/verify-email") return;
-    if (responseAlreadyHasSession(ctx)) return;
     if (!isSuccessfulVerifyRedirect(ctx.context.returned)) return;
 
-    const token = readVerifyToken(ctx);
-    if (!token) return;
-
-    const payload = decodeJwtPayload(token);
-    if (!payload || typeof payload.email !== "string" || payload.updateTo) {
-      return;
-    }
-
-    const user = await ctx.context.internalAdapter.findUserByEmail(
-      payload.email,
+    const requestUrl = ctx.request?.url;
+    const returnedLocation =
+      ctx.context.returned && typeof ctx.context.returned === "object"
+        ? readLocation(ctx.context.returned)
+        : null;
+    const location = pinVerifyRedirectLocation(
+      returnedLocation ?? HUB_COMMUNITY_PATH,
+      requestUrl,
     );
-    if (!user?.user.emailVerified) return;
 
-    const session = await ctx.context.internalAdapter.createSession(
-      user.user.id,
-    );
-    if (!session) return;
+    if (!responseAlreadyHasSession(ctx)) {
+      const token = readVerifyToken(ctx);
+      if (!token) {
+        throw ctx.redirect(location);
+      }
 
-    if (options.enroll) {
-      await options.enroll({ userId: user.user.id }).catch(() => {
-        /* session.create.after / getMyCommunities also retry */
+      const payload = decodeJwtPayload(token);
+      if (!payload || typeof payload.email !== "string" || payload.updateTo) {
+        throw ctx.redirect(location);
+      }
+
+      const user = await ctx.context.internalAdapter.findUserByEmail(
+        payload.email,
+      );
+      if (!user?.user.emailVerified) {
+        throw ctx.redirect(location);
+      }
+
+      const session = await ctx.context.internalAdapter.createSession(
+        user.user.id,
+      );
+      if (!session) {
+        throw ctx.redirect(location);
+      }
+
+      if (options.enroll) {
+        await options.enroll({ userId: user.user.id }).catch(() => {
+          /* session.create.after / getMyCommunities also retry */
+        });
+      }
+
+      await setSessionCookie(ctx, {
+        session,
+        user: user.user,
       });
     }
 
-    await setSessionCookie(ctx, {
-      session,
-      user: user.user,
-    });
-
-    // First-verify sets the cookie and then throws this redirect so the
-    // 302 is built with Set-Cookie on the same headers object. #247
-    // appended a cookie after the already-verified 302 existed; Hub's
-    // getSession then treated the walker as signed-out.
-    const location =
-      ctx.context.returned && typeof ctx.context.returned === "object"
-        ? (readLocation(ctx.context.returned) ?? HUB_COMMUNITY_PATH)
-        : HUB_COMMUNITY_PATH;
+    // First-verify already set the cookie. Replay mints one above. Rebuild
+    // the 302 onto www so Better Auth baseURL / Vercel cannot send Hub to
+    // apex — Domain=aitcommunity.org is not enough on that hop.
     throw ctx.redirect(location);
   });
 }

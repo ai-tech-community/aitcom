@@ -21,6 +21,8 @@ import { ConfirmProvider } from "@/components/confirm-dialog";
 import { Analytics } from "@vercel/analytics/next";
 import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://aitcommunity.org"),
   title: {
