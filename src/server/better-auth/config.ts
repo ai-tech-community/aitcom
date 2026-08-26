@@ -32,7 +32,7 @@ import {
   isEmailVerificationRequired,
   sendVerificationEmail,
 } from "./send-verification-email";
-import { signInOnReplayedVerification } from "./sign-in-on-replayed-verify";
+import { createSignInOnReplayedVerification } from "./sign-in-on-replayed-verify";
 
 const linkedinCredentials = readLinkedinOAuthCredentials();
 
@@ -198,9 +198,12 @@ export const auth = betterAuth({
       }
     : {},
   // Prefetch burns the first verify GET. Better Auth then redirects the
-  // human click without a session; this hook mints one for that identity.
+  // human click without a session; this hook mints one and rebuilds the
+  // 302 with Set-Cookie the same way first-verify does.
   hooks: {
-    after: signInOnReplayedVerification,
+    after: createSignInOnReplayedVerification({
+      enroll: enrollOnSessionCreated,
+    }),
   },
   // Last plugin: Next.js cookies() for auth.api / Server Actions.
   // The verify-email GET goes through toNextJsHandler and sets the
