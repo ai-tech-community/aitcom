@@ -32,6 +32,7 @@ import {
   isEmailVerificationRequired,
   sendVerificationEmail,
 } from "./send-verification-email";
+import { signInOnReplayedVerification } from "./sign-in-on-replayed-verify";
 
 const linkedinCredentials = readLinkedinOAuthCredentials();
 
@@ -196,6 +197,11 @@ export const auth = betterAuth({
         },
       }
     : {},
+  // Prefetch burns the first verify GET. Better Auth then redirects the
+  // human click without a session; this hook mints one for that identity.
+  hooks: {
+    after: signInOnReplayedVerification,
+  },
   // Last plugin: Next.js cookies() for auth.api / Server Actions.
   // The verify-email GET goes through toNextJsHandler and sets the
   // session cookie itself once autoSignInAfterVerification is on.
