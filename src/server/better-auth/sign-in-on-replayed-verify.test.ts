@@ -96,6 +96,37 @@ function browserCookieHeaderFromSetCookie(
     .join("; ");
 }
 
+const WWW_HUB_DOCUMENT_URLS = [
+  `${ORIGIN}/en${HUB_COMMUNITY_PATH}`,
+  `${ORIGIN}${HUB_COMMUNITY_PATH}`,
+] as const;
+const APEX_HUB_DOCUMENT_URL = `https://aitcommunity.org/en${HUB_COMMUNITY_PATH}`;
+const WWW_HUB_REDIRECT = `${ORIGIN}${HUB_COMMUNITY_PATH}`;
+
+async function sessionFromHubDocument(
+  auth: {
+    api: { getSession: (opts: { headers: Headers }) => Promise<unknown> };
+  },
+  res: Response,
+  documentUrl: string,
+) {
+  const cookie = browserCookieHeaderFromSetCookie(res, documentUrl);
+  expect(cookie).toMatch(/(?:__Secure-)?better-auth\.session_token=/);
+
+  const session = await auth.api.getSession({
+    headers: new Headers({
+      cookie,
+      origin: new URL(documentUrl).origin,
+      referer: documentUrl,
+    }),
+  });
+  expect(session).toBeTruthy();
+  expect(session).toMatchObject({
+    user: { id: expect.any(String) },
+  });
+  return session as { user: { id: string } };
+}
+
 async function sessionFromHubGetSession(
   GET: (request: Request) => Promise<Response>,
   res: Response,
@@ -140,6 +171,7 @@ type CreateVerifyAuthOptions = {
   onMail?: (url: string) => void;
   enroll?: (session: { userId: string }) => Promise<void>;
   productionCookieDomain?: boolean;
+  authBaseURL?: string;
 };
 
 async function createVerifyAuth(options: CreateVerifyAuthOptions = {}) {
@@ -152,7 +184,7 @@ async function createVerifyAuth(options: CreateVerifyAuthOptions = {}) {
 
   const sessionCreates: Array<{ userId: string }> = [];
   const auth = betterAuth({
-    baseURL: ORIGIN,
+    baseURL: options.authBaseURL ?? ORIGIN,
     secret: SECRET,
     database: memoryAdapter(store),
     emailAndPassword: {
@@ -218,7 +250,7 @@ async function signUpAndCaptureVerifyUrl(
 
   expect(mailedUrl).toContain("/api/auth/verify-email");
   const parsed = new URL(mailedUrl);
-  expect(parsed.origin).toBe(ORIGIN);
+  expect(parsed.origin).toBe(options.authBaseURL ?? ORIGIN);
   expect(parsed.pathname).toBe("/api/auth/verify-email");
   expect(parsed.searchParams.get("token")).toBeTruthy();
   expect(parsed.searchParams.get("callbackURL")).toBe(HUB_COMMUNITY_PATH);
@@ -233,14 +265,15 @@ describe("verify-email prefetch then human click", () => {
     const prefetch = await GET(new Request(mailedUrl));
     expect(prefetch.status).toBeGreaterThanOrEqual(300);
     expect(prefetch.status).toBeLessThan(400);
-    expect(redirectLocation(prefetch)).toBe(HUB_COMMUNITY_PATH);
+    expect(redirectLocation(prefetch)).toBe(WWW_HUB_REDIRECT);
+    expect(redirectLocation(prefetch)).not.toBe(APEX_HUB_DOCUMENT_URL);
     expect(hasSessionCookie(prefetch)).toBe(true);
     const prefetchSession = await sessionFromHubGetSession(GET, prefetch);
 
     const human = await GET(new Request(mailedUrl));
     expect(human.status).toBeGreaterThanOrEqual(300);
     expect(human.status).toBeLessThan(400);
-    expect(redirectLocation(human)).toBe(HUB_COMMUNITY_PATH);
+    expect(redirectLocation(human)).toBe(WWW_HUB_REDIRECT);
     expect(redirectLocation(human)).not.toMatch(/[?&]error=/);
     expect(hasSessionCookie(human)).toBe(true);
     const humanSession = await sessionFromHubGetSession(GET, human);
@@ -280,6 +313,51 @@ describe("verify-email prefetch then human click", () => {
 
     const prefetchSession = await sessionFromHubGetSession(GET, prefetch);
     expect(prefetchSession.user.id).toBe(fromResponse.user.id);
+  });
+
+  it("keeps first-click and replay on www Hub, not apex, and the document getSession sees the cookie", async () => {
+    const apexAuth = await signUpAndCaptureVerifyUrl({
+      productionCookieDomain: true,
+      authBaseURL: "https://aitcommunity.org",
+    });
+    const wwwVerify = new URL(
+      `${new URL(apexAuth.mailedUrl).pathname}${new URL(apexAuth.mailedUrl).search}`,
+      ORIGIN,
+    ).toString();
+    const { GET } = toNextJsHandler(apexAuth.auth.handler);
+
+    const prefetch = await GET(new Request(wwwVerify));
+    expect(redirectLocation(prefetch)).toBe(WWW_HUB_REDIRECT);
+    expect(redirectLocation(prefetch)).not.toMatch(
+      /^https:\/\/aitcommunity\.org(?:\/|$)/,
+    );
+    expect(hasSessionCookie(prefetch)).toBe(true);
+
+    for (const documentUrl of WWW_HUB_DOCUMENT_URLS) {
+      const fromDocument = await sessionFromHubDocument(
+        apexAuth.auth,
+        prefetch,
+        documentUrl,
+      );
+      expect(fromDocument.user.id).toBeTruthy();
+    }
+
+    const human = await GET(new Request(wwwVerify));
+    expect(redirectLocation(human)).toBe(WWW_HUB_REDIRECT);
+    expect(redirectLocation(human)).not.toMatch(
+      /^https:\/\/aitcommunity\.org(?:\/|$)/,
+    );
+    const humanDocument = await sessionFromHubDocument(
+      apexAuth.auth,
+      human,
+      WWW_HUB_DOCUMENT_URLS[0],
+    );
+    const prefetchDocument = await sessionFromHubDocument(
+      apexAuth.auth,
+      prefetch,
+      WWW_HUB_DOCUMENT_URLS[0],
+    );
+    expect(humanDocument.user.id).toBe(prefetchDocument.user.id);
   });
 
   it("does not mint a session for an invalid token", async () => {
@@ -336,7 +414,7 @@ describe("verify-email prefetch then human click", () => {
     const res = await GET(new Request(url));
     expect(hasSessionCookie(res)).toBe(false);
     expect(redirectLocation(res)).not.toMatch(/[?&]error=/);
-    expect(redirectLocation(res)).toBe(HUB_COMMUNITY_PATH);
+    expect(redirectLocation(res)).toBe(WWW_HUB_REDIRECT);
     expect(enroll).not.toHaveBeenCalled();
   });
 });

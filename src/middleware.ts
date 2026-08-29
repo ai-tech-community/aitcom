@@ -2,12 +2,18 @@ import createMiddleware from "next-intl/middleware";
 import { type NextRequest, NextResponse } from "next/server";
 import { routing } from "./i18n/routing";
 import { getAuthAliasRedirect, getJoinDoorRedirect } from "./lib/join-path";
+import { getApexToWwwRedirectUrl } from "./server/better-auth/base-url";
 
 const intlMiddleware = createMiddleware(routing);
 
 const protectedPaths = ["/dashboard", "/invite"];
 
 export default function middleware(request: NextRequest) {
+  const apexToWww = getApexToWwwRedirectUrl(request.url);
+  if (apexToWww) {
+    return NextResponse.redirect(apexToWww, 307);
+  }
+
   const { pathname } = request.nextUrl;
 
   // Redirect old /community/* routes to /communities/ait/forum/*

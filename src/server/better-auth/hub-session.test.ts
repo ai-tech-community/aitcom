@@ -109,4 +109,38 @@ describe("Hub actually reads the verify cookie", () => {
     expect(src).toContain("getSession()");
     expect(src).toContain("listMyCommunities");
   });
+
+  it("pins Hub layout and page so a signed-out RSC cannot be cached", () => {
+    const localeLayout = readFileSync(
+      join(dir, "../../app/[locale]/layout.tsx"),
+      "utf8",
+    );
+    const hubPage = readFileSync(
+      join(dir, "../../app/[locale]/communities/[slug]/page.tsx"),
+      "utf8",
+    );
+    const hubLayout = readFileSync(
+      join(dir, "../../app/[locale]/communities/[slug]/layout.tsx"),
+      "utf8",
+    );
+    expect(localeLayout).toContain('dynamic = "force-dynamic"');
+    expect(hubPage).toContain('dynamic = "force-dynamic"');
+    expect(hubLayout).toContain('dynamic = "force-dynamic"');
+  });
+
+  it("verify leftover pin: www Location, apex hop, document getSession", () => {
+    const replay = readFileSync(
+      join(dir, "sign-in-on-replayed-verify.ts"),
+      "utf8",
+    );
+    const middleware = readFileSync(join(dir, "../../middleware.ts"), "utf8");
+    const nextConfig = readFileSync(
+      join(dir, "../../../next.config.js"),
+      "utf8",
+    );
+    expect(replay).toContain("pinVerifyRedirectLocation");
+    expect(middleware).toContain("getApexToWwwRedirectUrl");
+    expect(nextConfig).toContain("aitcommunity.org");
+    expect(nextConfig).toContain("www.aitcommunity.org");
+  });
 });

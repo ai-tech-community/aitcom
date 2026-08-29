@@ -69,11 +69,11 @@ export function resolveBetterAuthBaseUrl(env: AuthUrlEnv) {
     (value): value is string => Boolean(value),
   );
 
-  // Production deploys must never mint verify / OAuth URLs on a preview host.
-  // Preview deploys keep NODE_ENV=production, so key off VERCEL_ENV.
+  // Production deploys must never mint verify / OAuth URLs on a preview host
+  // or the apex. #246 allowed an explicit apex BETTER_AUTH_URL; verify then
+  // ran on www (canonical email) and ctx.redirect landed Hub on apex.
   if (env.VERCEL_ENV === "production") {
-    const production = candidates.find((value) => isProductionAppOrigin(value));
-    return production ?? CANONICAL_PRODUCTION_ORIGIN;
+    return CANONICAL_PRODUCTION_ORIGIN;
   }
 
   return candidates[0] ?? "http://localhost:3000";
@@ -163,7 +163,7 @@ export function canonicalizeVerificationUrl(url: string, env: AuthUrlEnv) {
 
   if (
     env.VERCEL_ENV === "production" &&
-    !isProductionAppOrigin(parsed.origin)
+    parsed.origin !== CANONICAL_PRODUCTION_ORIGIN
   ) {
     parsed = new URL(
       `${parsed.pathname}${parsed.search}`,
@@ -176,4 +176,45 @@ export function canonicalizeVerificationUrl(url: string, env: AuthUrlEnv) {
     parsed.searchParams.set("callbackURL", sanitizeVerifyCallbackUrl(callback));
   }
   return parsed.toString();
+}
+
+/**
+ * Verify 302 Location. A relative `/communities/ait` should stay on the
+ * verify host, but production (Better Auth baseURL / Vercel primary domain)
+ * has been sending Hub to apex. Always emit an absolute www URL when the
+ * request is already on www/apex so the Set-Cookie host matches Hub.
+ * Preview stays relative.
+ */
+export function pinVerifyRedirectLocation(
+  location: string | null | undefined,
+  requestUrl?: string,
+) {
+  const path = sanitizeVerifyCallbackUrl(location ?? "");
+  if (isApexUrl(location) || isProductionAppOrigin(requestUrl)) {
+    return `${CANONICAL_PRODUCTION_ORIGIN}${path}`;
+  }
+  return path;
+}
+
+/** Document-request safety net: leftover apex Hub hops back to www. */
+export function getApexToWwwRedirectUrl(requestUrl: string) {
+  let url: URL;
+  try {
+    url = new URL(requestUrl);
+  } catch {
+    return null;
+  }
+  if (url.hostname !== "aitcommunity.org") return null;
+  url.hostname = "www.aitcommunity.org";
+  url.protocol = "https:";
+  return url.toString();
+}
+
+function isApexUrl(value?: string | null) {
+  if (!value?.startsWith("http")) return false;
+  try {
+    return new URL(value).hostname === "aitcommunity.org";
+  } catch {
+    return false;
+  }
 }

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   CANONICAL_PRODUCTION_ORIGIN,
   canonicalizeVerificationUrl,
+  getApexToWwwRedirectUrl,
+  pinVerifyRedirectLocation,
   resolveBetterAuthBaseUrl,
   resolveSessionCookieDomain,
   resolveTrustedOrigins,
@@ -52,21 +54,21 @@ describe("resolveBetterAuthBaseUrl", () => {
     ).toBe(CANONICAL_PRODUCTION_ORIGIN);
   });
 
-  it("keeps an explicit production apex or www URL on Vercel production", () => {
+  it("pins Vercel production to www even when BETTER_AUTH_URL is apex", () => {
     expect(
       resolveBetterAuthBaseUrl({
         BETTER_AUTH_URL: "https://aitcommunity.org",
         NODE_ENV: "production",
         VERCEL_ENV: "production",
       }),
-    ).toBe("https://aitcommunity.org");
+    ).toBe(CANONICAL_PRODUCTION_ORIGIN);
     expect(
       resolveBetterAuthBaseUrl({
         BETTER_AUTH_URL: "https://www.aitcommunity.org",
         NODE_ENV: "production",
         VERCEL_ENV: "production",
       }),
-    ).toBe("https://www.aitcommunity.org");
+    ).toBe(CANONICAL_PRODUCTION_ORIGIN);
   });
 
   it("does not use a Vercel preview host as the production fallback", () => {
@@ -241,5 +243,66 @@ describe("canonicalizeVerificationUrl", () => {
     expect(sanitizeVerifyCallbackUrl("https://www.aitcommunity.org/")).toBe(
       HUB_COMMUNITY_PATH,
     );
+  });
+
+  it("rewrites an apex verify link to www on production", () => {
+    const apexVerify =
+      "https://aitcommunity.org/api/auth/verify-email?token=qa-token&callbackURL=%2Fcommunities%2Fait";
+    const canonical = canonicalizeVerificationUrl(apexVerify, {
+      NODE_ENV: "production",
+      VERCEL_ENV: "production",
+    });
+    const parsed = new URL(canonical);
+    expect(parsed.origin).toBe(CANONICAL_PRODUCTION_ORIGIN);
+    expect(parsed.pathname).toBe("/api/auth/verify-email");
+    expect(parsed.searchParams.get("callbackURL")).toBe(HUB_COMMUNITY_PATH);
+  });
+});
+
+describe("pinVerifyRedirectLocation", () => {
+  it("emits an absolute www Hub URL after a www verify so Vercel cannot send Hub to apex", () => {
+    expect(
+      pinVerifyRedirectLocation(
+        HUB_COMMUNITY_PATH,
+        "https://www.aitcommunity.org/api/auth/verify-email?token=qa",
+      ),
+    ).toBe(`${CANONICAL_PRODUCTION_ORIGIN}${HUB_COMMUNITY_PATH}`);
+    expect(
+      pinVerifyRedirectLocation(
+        "https://aitcommunity.org/communities/ait",
+        "https://www.aitcommunity.org/api/auth/verify-email?token=qa",
+      ),
+    ).toBe(`${CANONICAL_PRODUCTION_ORIGIN}${HUB_COMMUNITY_PATH}`);
+    expect(
+      pinVerifyRedirectLocation(
+        "/en/communities/ait",
+        "https://www.aitcommunity.org/api/auth/verify-email?token=qa",
+      ),
+    ).toBe(`${CANONICAL_PRODUCTION_ORIGIN}/en/communities/ait`);
+  });
+
+  it("keeps a preview verify on the preview host", () => {
+    expect(
+      pinVerifyRedirectLocation(
+        HUB_COMMUNITY_PATH,
+        "https://aitcom-git-fix-verify-klevox.vercel.app/api/auth/verify-email?token=qa",
+      ),
+    ).toBe(HUB_COMMUNITY_PATH);
+  });
+});
+
+describe("getApexToWwwRedirectUrl", () => {
+  it("sends an apex Hub document to www and leaves www alone", () => {
+    expect(
+      getApexToWwwRedirectUrl("https://aitcommunity.org/en/communities/ait"),
+    ).toBe(`${CANONICAL_PRODUCTION_ORIGIN}/en/communities/ait`);
+    expect(
+      getApexToWwwRedirectUrl("https://aitcommunity.org/communities/ait"),
+    ).toBe(`${CANONICAL_PRODUCTION_ORIGIN}${HUB_COMMUNITY_PATH}`);
+    expect(
+      getApexToWwwRedirectUrl(
+        "https://www.aitcommunity.org/en/communities/ait",
+      ),
+    ).toBeNull();
   });
 });

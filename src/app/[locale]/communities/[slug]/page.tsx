@@ -3,6 +3,8 @@ import { api } from "@/trpc/server";
 import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 import { CommunityOverviewPageClient } from "./_overview-client";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: {
