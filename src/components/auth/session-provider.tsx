@@ -12,9 +12,9 @@ import type { HubAuthUser } from "@/server/better-auth/hub-session";
 
 const InitialUserContext = createContext<HubAuthUser | null>(null);
 const PageUserContext = createContext<HubAuthUser | null>(null);
-const PublishUserContext = createContext<(user: HubAuthUser | null) => void>(
-  () => {},
-);
+const PublishUserContext = createContext<
+  ((user: HubAuthUser | null) => void) | null
+>(null);
 
 export function SessionProvider({
   initialUser,
@@ -51,7 +51,7 @@ export function useInitialAuthUser() {
 export function usePublishDocumentAuthUser(user: HubAuthUser | null) {
   const publish = useContext(PublishUserContext);
   useLayoutEffect(() => {
-    if (user?.id) publish(user);
+    if (user?.id) publish?.(user);
   }, [publish, user]);
 }
 
