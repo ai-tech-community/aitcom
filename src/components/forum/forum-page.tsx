@@ -5,8 +5,11 @@ import { useTranslations } from "next-intl";
 import { Search, Plus } from "lucide-react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
-import { useInitialAuthUser } from "@/components/auth/session-provider";
-import { resolveHubAuthUser } from "@/server/better-auth/hub-session";
+import {
+  useInitialAuthUser,
+  usePageDocumentAuthUser,
+} from "@/components/auth/session-provider";
+import { documentAuthUser } from "@/server/better-auth/hub-session";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Link } from "@/i18n/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,7 +30,11 @@ interface ForumPageProps {
 export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
   const t = useTranslations("forum");
   const { data: session } = authClient.useSession();
-  const user = resolveHubAuthUser(useInitialAuthUser(), session?.user);
+  const user = documentAuthUser(
+    useInitialAuthUser(),
+    usePageDocumentAuthUser(),
+    session?.user,
+  );
   const { promptAuth } = useRequireAuth();
 
   const [category, setCategory] = useState<Category>("all");

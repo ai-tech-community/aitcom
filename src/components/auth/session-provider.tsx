@@ -11,6 +11,7 @@ import {
 import type { HubAuthUser } from "@/server/better-auth/hub-session";
 
 const InitialUserContext = createContext<HubAuthUser | null>(null);
+const PageUserContext = createContext<HubAuthUser | null>(null);
 const PublishUserContext = createContext<(user: HubAuthUser | null) => void>(
   () => {},
 );
@@ -52,4 +53,21 @@ export function usePublishDocumentAuthUser(user: HubAuthUser | null) {
   useLayoutEffect(() => {
     if (user?.id) publish(user);
   }, [publish, user]);
+}
+
+export function PageDocumentAuthProvider({
+  user,
+  children,
+}: {
+  user: HubAuthUser | null;
+  children: ReactNode;
+}) {
+  usePublishDocumentAuthUser(user);
+  return (
+    <PageUserContext.Provider value={user}>{children}</PageUserContext.Provider>
+  );
+}
+
+export function usePageDocumentAuthUser() {
+  return useContext(PageUserContext);
 }

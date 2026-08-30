@@ -696,15 +696,22 @@ describe("leftover after #251: first paint + header/forum + reload still signed-
     const first = await sessionFromJar(auth, firstCookies, documentUrl);
     expectHubSignedInPaint(first);
 
-    const lonelyGetSession = await GET(
+    const cookieHeader = firstCookies
+      .map((cookie) => `${cookie.name}=${cookie.value}`)
+      .join("; ");
+    const getSessionWithJar = await GET(
       new Request(`${ORIGIN}/api/auth/get-session`, {
-        headers: { origin: ORIGIN, referer: documentUrl },
+        headers: {
+          cookie: cookieHeader,
+          origin: ORIGIN,
+          referer: documentUrl,
+        },
       }),
     );
-    expect(lonelyGetSession.status).toBeLessThan(400);
+    expect(getSessionWithJar.status).toBeLessThan(400);
     const afterGetSession = applySetCookieToJar(
       jar,
-      lonelyGetSession,
+      getSessionWithJar,
       documentUrl,
     );
     const reload = await sessionFromJar(auth, afterGetSession, documentUrl);

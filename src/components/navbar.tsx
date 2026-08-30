@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { useInitialAuthUser } from "@/components/auth/session-provider";
 import { authClient } from "@/server/better-auth/client";
 import {
-  resolveHubAuthUser,
+  documentAuthUser,
   type HubAuthUser,
 } from "@/server/better-auth/hub-session";
 import { AitLogo } from "@/components/ait-logo";
@@ -82,10 +82,8 @@ export function Navbar({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const { data: session } = authClient.useSession();
-  const user = resolveHubAuthUser(
-    useInitialAuthUser() ?? initialUser,
-    session?.user,
-  );
+  const publishedUser = useInitialAuthUser();
+  const user = documentAuthUser(initialUser, publishedUser, session?.user);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

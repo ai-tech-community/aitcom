@@ -6,8 +6,11 @@ import { useRouter, Link } from "@/i18n/navigation";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
-import { useInitialAuthUser } from "@/components/auth/session-provider";
-import { resolveHubAuthUser } from "@/server/better-auth/hub-session";
+import {
+  useInitialAuthUser,
+  usePageDocumentAuthUser,
+} from "@/components/auth/session-provider";
+import { documentAuthUser } from "@/server/better-auth/hub-session";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
@@ -22,7 +25,11 @@ export function CreateThreadForm() {
   const searchParams = useSearchParams();
   const communitySlug = searchParams.get("community") ?? undefined;
   const { data: session } = authClient.useSession();
-  const user = resolveHubAuthUser(useInitialAuthUser(), session?.user);
+  const user = documentAuthUser(
+    useInitialAuthUser(),
+    usePageDocumentAuthUser(),
+    session?.user,
+  );
   const { promptAuth } = useRequireAuth();
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);

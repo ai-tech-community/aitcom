@@ -3,8 +3,11 @@
 import { use } from "react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
-import { useInitialAuthUser } from "@/components/auth/session-provider";
-import { resolveHubAuthUser } from "@/server/better-auth/hub-session";
+import {
+  useInitialAuthUser,
+  usePageDocumentAuthUser,
+} from "@/components/auth/session-provider";
+import { documentAuthUser } from "@/server/better-auth/hub-session";
 import { ForumPage } from "@/components/forum/forum-page";
 
 export default function CommunityForumPage({
@@ -14,7 +17,11 @@ export default function CommunityForumPage({
 }) {
   const { slug } = use(params);
   const { data: session } = authClient.useSession();
-  const user = resolveHubAuthUser(useInitialAuthUser(), session?.user);
+  const user = documentAuthUser(
+    useInitialAuthUser(),
+    usePageDocumentAuthUser(),
+    session?.user,
+  );
 
   const { data: myCommunities } = api.communities.getMyCommunities.useQuery(
     undefined,

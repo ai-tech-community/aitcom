@@ -96,18 +96,19 @@ describe("Hub actually reads the verify cookie", () => {
       ),
       "utf8",
     );
-    expect(overview).toContain("resolveHubAuthUser");
+    expect(overview).toContain("documentAuthUser");
     expect(overview).toContain("memberRoleForSlug");
     expect(overview).toContain("initialMemberships");
     expect(layout).toContain("loadHubAuthSeed");
     expect(layout).toContain("initialMemberships");
-    expect(shell).toContain("resolveHubAuthUser");
+    expect(shell).toContain("documentAuthUser");
+    expect(shell).toContain("PageDocumentAuthProvider");
     expect(shell).toContain("initialMemberships");
   });
 
   it("navbar JOIN uses the same document-request user as Hub", () => {
     const src = readFileSync(join(dir, "../../components/navbar.tsx"), "utf8");
-    expect(src).toContain("resolveHubAuthUser");
+    expect(src).toContain("documentAuthUser");
     expect(src).toContain("useInitialAuthUser");
     expect(src).toContain("initialUser");
   });
@@ -173,12 +174,15 @@ describe("Hub actually reads the verify cookie", () => {
       join(dir, "../../app/[locale]/communities/[slug]/forum/page.tsx"),
       "utf8",
     );
-    expect(forumPage).toContain("resolveHubAuthUser");
+    expect(forumPage).toContain("documentAuthUser");
     expect(forumPage).toContain("useInitialAuthUser");
-    expect(createThread).toContain("resolveHubAuthUser");
+    expect(forumPage).toContain("usePageDocumentAuthUser");
+    expect(createThread).toContain("documentAuthUser");
     expect(createThread).toContain("useInitialAuthUser");
-    expect(communityForum).toContain("resolveHubAuthUser");
+    expect(createThread).toContain("usePageDocumentAuthUser");
+    expect(communityForum).toContain("documentAuthUser");
     expect(communityForum).toContain("useInitialAuthUser");
+    expect(communityForum).toContain("usePageDocumentAuthUser");
   });
 });
 
@@ -218,7 +222,9 @@ describe("leftover after #251: first paint header/forum + reload", () => {
       "utf8",
     );
     expect(provider).toContain("usePublishDocumentAuthUser");
-    expect(shell).toContain("usePublishDocumentAuthUser");
+    expect(provider).toContain("PageDocumentAuthProvider");
+    expect(shell).toContain("PageDocumentAuthProvider");
+    expect(shell).toContain("documentAuthUser");
   });
 
   it("password sign-in refreshes the document so locale layout is not leftover guest", () => {

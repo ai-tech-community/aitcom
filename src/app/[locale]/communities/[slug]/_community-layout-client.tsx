@@ -3,12 +3,12 @@
 import { use } from "react";
 import { notFound } from "next/navigation";
 import { api } from "@/trpc/react";
-import { usePublishDocumentAuthUser } from "@/components/auth/session-provider";
+import { PageDocumentAuthProvider } from "@/components/auth/session-provider";
 import { authClient } from "@/server/better-auth/client";
 import {
+  documentAuthUser,
   membershipStatusForSlug,
   memberRoleForSlug,
-  resolveHubAuthUser,
   type HubAuthUser,
   type HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
@@ -29,8 +29,7 @@ export function CommunityLayoutClient({
 }) {
   const { slug } = use(params);
   const { data: session } = authClient.useSession();
-  usePublishDocumentAuthUser(initialUser);
-  const user = resolveHubAuthUser(initialUser, session?.user);
+  const user = documentAuthUser(null, initialUser, session?.user);
 
   const { data: community, isLoading: communityLoading } =
     api.communities.getBySlug.useQuery({ slug });
@@ -42,9 +41,11 @@ export function CommunityLayoutClient({
 
   if (communityLoading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Spinner className="size-8" />
-      </div>
+      <PageDocumentAuthProvider user={initialUser}>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <Spinner className="size-8" />
+        </div>
+      </PageDocumentAuthProvider>
     );
   }
 
@@ -57,16 +58,18 @@ export function CommunityLayoutClient({
   const memberRole = memberRoleForSlug(memberships, slug);
 
   return (
-    <div className="flex flex-col">
-      <CommunityHeader
-        community={community}
-        membershipStatus={membershipStatus}
-        memberRole={memberRole}
-      />
-      <CommunityNav slug={slug} memberRole={memberRole} />
-      <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-        {children}
+    <PageDocumentAuthProvider user={initialUser}>
+      <div className="flex flex-col">
+        <CommunityHeader
+          community={community}
+          membershipStatus={membershipStatus}
+          memberRole={memberRole}
+        />
+        <CommunityNav slug={slug} memberRole={memberRole} />
+        <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+          {children}
+        </div>
       </div>
-    </div>
+    </PageDocumentAuthProvider>
   );
 }
