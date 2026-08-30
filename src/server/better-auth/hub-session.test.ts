@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
+  documentAuthUser,
   hubDocumentPaint,
   memberRoleForSlug,
   membershipStatusForSlug,
@@ -27,6 +28,11 @@ describe("resolveHubAuthUser", () => {
   it("prefers the client user once GET /get-session returns one", () => {
     const client = { ...SOREN, name: "Soren" };
     expect(resolveHubAuthUser(SOREN, client)).toEqual(client);
+  });
+
+  it("does not let a signed-out useSession object overwrite the document user", () => {
+    expect(resolveHubAuthUser(SOREN, { id: "" })).toEqual(SOREN);
+    expect(resolveHubAuthUser(SOREN, {} as { id: string })).toEqual(SOREN);
   });
 
   it("stays signed-out when neither reader has a user", () => {
@@ -102,6 +108,7 @@ describe("Hub actually reads the verify cookie", () => {
   it("navbar JOIN uses the same document-request user as Hub", () => {
     const src = readFileSync(join(dir, "../../components/navbar.tsx"), "utf8");
     expect(src).toContain("resolveHubAuthUser");
+    expect(src).toContain("useInitialAuthUser");
     expect(src).toContain("initialUser");
   });
 
@@ -172,6 +179,60 @@ describe("Hub actually reads the verify cookie", () => {
     expect(createThread).toContain("useInitialAuthUser");
     expect(communityForum).toContain("resolveHubAuthUser");
     expect(communityForum).toContain("useInitialAuthUser");
+  });
+});
+
+describe("leftover after #251: first paint header/forum + reload", () => {
+  const dir = dirname(fileURLToPath(import.meta.url));
+  const memberships = [
+    { slug: "ait", status: "active" as const, role: "member" as const },
+  ];
+
+  it("first paint: page seed Member keeps header off JOIN and forum off Sign in to post", () => {
+    const user = documentAuthUser(null, SOREN, null);
+    expect(user).toEqual(SOREN);
+    expect(hubDocumentPaint(user, memberships)).toEqual({
+      navbarJoin: false,
+      feedSignIn: false,
+      forumSignInToPost: false,
+      communityJoin: false,
+    });
+  });
+
+  it("reload: locale and page both signed-in stays signed-in", () => {
+    const user = documentAuthUser(SOREN, SOREN, null);
+    expect(hubDocumentPaint(user, memberships).navbarJoin).toBe(false);
+    expect(hubDocumentPaint(user, memberships).forumSignInToPost).toBe(false);
+  });
+
+  it("community layout publishes the document seed so navbar and forum match Hub", () => {
+    const provider = readFileSync(
+      join(dir, "../../components/auth/session-provider.tsx"),
+      "utf8",
+    );
+    const shell = readFileSync(
+      join(
+        dir,
+        "../../app/[locale]/communities/[slug]/_community-layout-client.tsx",
+      ),
+      "utf8",
+    );
+    expect(provider).toContain("usePublishDocumentAuthUser");
+    expect(shell).toContain("usePublishDocumentAuthUser");
+  });
+
+  it("password sign-in refreshes the document so locale layout is not leftover guest", () => {
+    const src = readFileSync(
+      join(dir, "../../app/[locale]/auth/signin/signin-form.tsx"),
+      "utf8",
+    );
+    expect(src).toContain("router.refresh");
+  });
+
+  it("auth client stays on the current host so preview stays relative and www does not hop", () => {
+    const src = readFileSync(join(dir, "client.ts"), "utf8");
+    expect(src).toContain("window.location.origin");
+    expect(src).not.toContain("BETTER_AUTH_URL");
   });
 });
 

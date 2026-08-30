@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, LogOut, ChevronDown } from "lucide-react";
 import { LanguageSwitcher } from "./language-switcher";
 import { cn } from "@/lib/utils";
+import { useInitialAuthUser } from "@/components/auth/session-provider";
 import { authClient } from "@/server/better-auth/client";
 import {
   resolveHubAuthUser,
@@ -81,7 +82,10 @@ export function Navbar({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const { data: session } = authClient.useSession();
-  const user = resolveHubAuthUser(initialUser, session?.user);
+  const user = resolveHubAuthUser(
+    useInitialAuthUser() ?? initialUser,
+    session?.user,
+  );
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

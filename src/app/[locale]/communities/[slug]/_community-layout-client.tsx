@@ -3,6 +3,7 @@
 import { use } from "react";
 import { notFound } from "next/navigation";
 import { api } from "@/trpc/react";
+import { usePublishDocumentAuthUser } from "@/components/auth/session-provider";
 import { authClient } from "@/server/better-auth/client";
 import {
   membershipStatusForSlug,
@@ -28,6 +29,7 @@ export function CommunityLayoutClient({
 }) {
   const { slug } = use(params);
   const { data: session } = authClient.useSession();
+  usePublishDocumentAuthUser(initialUser);
   const user = resolveHubAuthUser(initialUser, session?.user);
 
   const { data: community, isLoading: communityLoading } =
