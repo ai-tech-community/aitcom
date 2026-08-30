@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { Search, Plus } from "lucide-react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
+import { useInitialAuthUser } from "@/components/auth/session-provider";
+import { resolveHubAuthUser } from "@/server/better-auth/hub-session";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Link } from "@/i18n/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +27,7 @@ interface ForumPageProps {
 export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
   const t = useTranslations("forum");
   const { data: session } = authClient.useSession();
+  const user = resolveHubAuthUser(useInitialAuthUser(), session?.user);
   const { promptAuth } = useRequireAuth();
 
   const [category, setCategory] = useState<Category>("all");
@@ -104,7 +107,7 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
             className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/30 w-full rounded-md border py-2 pr-3 pl-9 font-mono text-xs focus:ring-1 focus:outline-none"
           />
         </div>
-        {session?.user ? (
+        {user ? (
           <Link
             href={
               communitySlug

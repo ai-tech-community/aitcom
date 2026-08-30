@@ -1,7 +1,13 @@
-import { auth } from ".";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { cache } from "react";
 
-export const getSession = cache(async () =>
-  auth.api.getSession({ headers: await headers() }),
-);
+import { auth } from ".";
+import { headersForDocumentAuth } from "./document-auth-headers";
+
+export const getSession = cache(async () => {
+  const incoming = await headers();
+  const store = await cookies();
+  return auth.api.getSession({
+    headers: headersForDocumentAuth(incoming, store.getAll()),
+  });
+});

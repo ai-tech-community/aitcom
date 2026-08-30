@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
+  hubDocumentPaint,
   memberRoleForSlug,
   membershipStatusForSlug,
   resolveHubAuthUser,
@@ -142,5 +143,57 @@ describe("Hub actually reads the verify cookie", () => {
     expect(middleware).toContain("getApexToWwwRedirectUrl");
     expect(nextConfig).toContain("aitcommunity.org");
     expect(nextConfig).toContain("www.aitcommunity.org");
+  });
+
+  it("Hub document getSession merges cookies() onto headers that omitted Cookie", () => {
+    const src = readFileSync(join(dir, "server.ts"), "utf8");
+    expect(src).toContain("cookies()");
+    expect(src).toContain("headersForDocumentAuth");
+    const seed = readFileSync(join(dir, "hub-session-server.ts"), "utf8");
+    expect(seed).toContain("getSession()");
+  });
+
+  it("forum uses the document-request user so Sign in to post is not JOIN leftover", () => {
+    const forumPage = readFileSync(
+      join(dir, "../../components/forum/forum-page.tsx"),
+      "utf8",
+    );
+    const createThread = readFileSync(
+      join(dir, "../../components/forum/create-thread-form.tsx"),
+      "utf8",
+    );
+    const communityForum = readFileSync(
+      join(dir, "../../app/[locale]/communities/[slug]/forum/page.tsx"),
+      "utf8",
+    );
+    expect(forumPage).toContain("resolveHubAuthUser");
+    expect(forumPage).toContain("useInitialAuthUser");
+    expect(createThread).toContain("resolveHubAuthUser");
+    expect(createThread).toContain("useInitialAuthUser");
+    expect(communityForum).toContain("resolveHubAuthUser");
+    expect(communityForum).toContain("useInitialAuthUser");
+  });
+});
+
+describe("hubDocumentPaint", () => {
+  it("hides JOIN and sign-in copy when the document getSession returned a user", () => {
+    const memberships = [
+      { slug: "ait", status: "active" as const, role: "member" as const },
+    ];
+    expect(hubDocumentPaint(SOREN, memberships)).toEqual({
+      navbarJoin: false,
+      feedSignIn: false,
+      forumSignInToPost: false,
+      communityJoin: false,
+    });
+  });
+
+  it("keeps JOIN and sign-in copy when the document getSession missed the cookie", () => {
+    expect(hubDocumentPaint(null, [])).toEqual({
+      navbarJoin: true,
+      feedSignIn: true,
+      forumSignInToPost: true,
+      communityJoin: false,
+    });
   });
 });

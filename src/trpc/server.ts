@@ -1,9 +1,10 @@
 import "server-only";
 
 import { createHydrationHelpers } from "@trpc/react-query/rsc";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { cache } from "react";
 
+import { headersForDocumentAuth } from "@/server/better-auth/document-auth-headers";
 import { createCaller, type AppRouter } from "@/server/api/root";
 import { createTRPCContext } from "@/server/api/trpc";
 import { createQueryClient } from "./query-client";
@@ -13,7 +14,10 @@ import { createQueryClient } from "./query-client";
  * handling a tRPC call from a React Server Component.
  */
 const createContext = cache(async () => {
-  const heads = new Headers(await headers());
+  const heads = headersForDocumentAuth(
+    await headers(),
+    (await cookies()).getAll(),
+  );
   heads.set("x-trpc-source", "rsc");
 
   return createTRPCContext({
