@@ -11,6 +11,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
 import { PRODUCTION_COOKIE_DOMAIN } from "./base-url";
+import { headersForDocumentAuth } from "./document-auth-headers";
+import { hubDocumentPaint, toHubAuthUser } from "./hub-session";
 
 import {
   createSignInOnReplayedVerification,
@@ -102,6 +104,62 @@ const WWW_HUB_DOCUMENT_URLS = [
 ] as const;
 const APEX_HUB_DOCUMENT_URL = `https://aitcommunity.org/en${HUB_COMMUNITY_PATH}`;
 const WWW_HUB_REDIRECT = `${ORIGIN}${HUB_COMMUNITY_PATH}`;
+
+function documentCookiesFromSetCookie(res: Response, documentUrl: string) {
+  const cookie = browserCookieHeaderFromSetCookie(res, documentUrl);
+  if (!cookie) return [];
+  return cookie.split("; ").flatMap((part) => {
+    const eq = part.indexOf("=");
+    if (eq < 0) return [];
+    return [{ name: part.slice(0, eq), value: part.slice(eq + 1) }];
+  });
+}
+
+/**
+ * Leftover after #250: Cookie is written, Hub stays on www, but `headers()`
+ * on the Hub document can omit Cookie. Isolated GET /get-session with the
+ * cookie already on Headers is not this walk.
+ */
+async function sessionFromHubDocumentCookies(
+  auth: {
+    api: { getSession: (opts: { headers: Headers }) => Promise<unknown> };
+  },
+  res: Response,
+  documentUrl: string,
+) {
+  const documentCookies = documentCookiesFromSetCookie(res, documentUrl);
+  expect(documentCookies.some((c) => c.name.includes("session_token"))).toBe(
+    true,
+  );
+
+  const incoming = new Headers({
+    origin: new URL(documentUrl).origin,
+    referer: documentUrl,
+  });
+  expect(incoming.get("cookie")).toBeNull();
+
+  const session = await auth.api.getSession({
+    headers: headersForDocumentAuth(incoming, documentCookies),
+  });
+  expect(session).toBeTruthy();
+  expect(session).toMatchObject({
+    user: { id: expect.any(String) },
+  });
+  return session as { user: { id: string; name?: string | null } };
+}
+
+function expectHubSignedInPaint(session: { user: { id: string } }) {
+  const user = toHubAuthUser(session.user);
+  const paint = hubDocumentPaint(user, [
+    { slug: "ait", status: "active", role: "member" },
+  ]);
+  expect(paint).toEqual({
+    navbarJoin: false,
+    feedSignIn: false,
+    forumSignInToPost: false,
+    communityJoin: false,
+  });
+}
 
 async function sessionFromHubDocument(
   auth: {
@@ -462,5 +520,101 @@ describe("Better Auth already-verified leftover", () => {
     );
     const mint = src.slice(src.indexOf("setSessionCookie"), src.length);
     expect(mint).toContain("throw ctx.redirect(location)");
+  });
+});
+
+describe("leftover after #250: Hub document cookies() reach getSession", () => {
+  it("first-click and burned token: www cookie on document cookies() signs Hub in, not JOIN", async () => {
+    const { auth, mailedUrl } = await signUpAndCaptureVerifyUrl({
+      productionCookieDomain: true,
+    });
+    const { GET } = toNextJsHandler(auth.handler);
+
+    const prefetch = await GET(new Request(mailedUrl));
+    expect(redirectLocation(prefetch)).toBe(WWW_HUB_REDIRECT);
+    expect(redirectLocation(prefetch)).not.toMatch(
+      /^https:\/\/aitcommunity\.org(?:\/|$)/,
+    );
+    const prefetchCookie = sessionCookieLine(prefetch);
+    expect(prefetchCookie).toMatch(/^__Secure-better-auth\.session_token=/);
+    expect(prefetchCookie).toContain(`Domain=${PRODUCTION_COOKIE_DOMAIN}`);
+
+    for (const documentUrl of WWW_HUB_DOCUMENT_URLS) {
+      const session = await sessionFromHubDocumentCookies(
+        auth,
+        prefetch,
+        documentUrl,
+      );
+      expectHubSignedInPaint(session);
+    }
+
+    const human = await GET(new Request(mailedUrl));
+    expect(redirectLocation(human)).toBe(WWW_HUB_REDIRECT);
+    const humanSession = await sessionFromHubDocumentCookies(
+      auth,
+      human,
+      WWW_HUB_DOCUMENT_URLS[0],
+    );
+    const prefetchSession = await sessionFromHubDocumentCookies(
+      auth,
+      prefetch,
+      WWW_HUB_DOCUMENT_URLS[0],
+    );
+    expect(humanSession.user.id).toBe(prefetchSession.user.id);
+    expectHubSignedInPaint(humanSession);
+  });
+
+  it("password sign-in: www cookie on document cookies() signs Hub in, not JOIN", async () => {
+    const { auth, mailedUrl } = await signUpAndCaptureVerifyUrl({
+      productionCookieDomain: true,
+    });
+    const { GET, POST } = toNextJsHandler(auth.handler);
+    await GET(new Request(mailedUrl));
+
+    const signIn = await POST(
+      new Request(`${ORIGIN}/api/auth/sign-in/email`, {
+        method: "POST",
+        headers: {
+          origin: ORIGIN,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: "soren.prefetch.verify@example.com",
+          password: "a-secure-password-123",
+        }),
+      }),
+    );
+    expect(signIn.status).toBeLessThan(400);
+    expect(hasSessionCookie(signIn)).toBe(true);
+    const cookie = sessionCookieLine(signIn);
+    expect(cookie).toMatch(/^__Secure-better-auth\.session_token=/);
+    expect(cookie).toContain(`Domain=${PRODUCTION_COOKIE_DOMAIN}`);
+
+    const session = await sessionFromHubDocumentCookies(
+      auth,
+      signIn,
+      WWW_HUB_DOCUMENT_URLS[0],
+    );
+    expectHubSignedInPaint(session);
+  });
+
+  it("invalid / expired / change-email still do not put a session on the Hub document", async () => {
+    const { auth } = await createVerifyAuth();
+    const { GET } = toNextJsHandler(auth.handler);
+    const invalid = await GET(
+      new Request(
+        `${ORIGIN}/api/auth/verify-email?token=not-a-jwt&callbackURL=${encodeURIComponent(HUB_COMMUNITY_PATH)}`,
+      ),
+    );
+    expect(hasSessionCookie(invalid)).toBe(false);
+    expect(
+      documentCookiesFromSetCookie(invalid, WWW_HUB_DOCUMENT_URLS[0]),
+    ).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: expect.stringMatching(/session_token/),
+        }),
+      ]),
+    );
   });
 });

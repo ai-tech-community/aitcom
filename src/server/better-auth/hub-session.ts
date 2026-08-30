@@ -33,9 +33,9 @@ export function toHubAuthUser(
 
 /**
  * Hub and the navbar decide signed-in from `useSession` (GET /get-session).
- * After verify, the document request already has the Set-Cookie; the client
- * fetch can still miss it. Prefer the client user when present, otherwise
- * keep the server user from that document request.
+ * After verify / password sign-in the document already has the Set-Cookie;
+ * `headers()` can still omit it. Prefer the client user when present,
+ * otherwise keep the server user from that document request (`cookies()`).
  *
  * Navbar sign-out reloads the document so this does not keep a stale user.
  */
@@ -67,4 +67,22 @@ export function membershipStatusForSlug(
     return row.status;
   }
   return null;
+}
+
+/**
+ * Hub leftover paint after verify / password sign-in. JOIN and the feed /
+ * forum sign-in copy are all `!user` — not a missing `ait` membership.
+ */
+export function hubDocumentPaint(
+  user: HubAuthUser | null | undefined,
+  memberships: HubMembershipSeed[] | null | undefined,
+  slug = "ait",
+) {
+  const signedIn = Boolean(user?.id);
+  return {
+    navbarJoin: !signedIn,
+    feedSignIn: !signedIn,
+    forumSignInToPost: !signedIn,
+    communityJoin: signedIn && !memberRoleForSlug(memberships, slug),
+  };
 }
