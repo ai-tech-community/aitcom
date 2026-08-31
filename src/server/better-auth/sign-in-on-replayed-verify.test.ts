@@ -104,6 +104,14 @@ const WWW_HUB_DOCUMENT_URLS = [
 ] as const;
 const APEX_HUB_DOCUMENT_URL = `https://aitcommunity.org/en${HUB_COMMUNITY_PATH}`;
 const WWW_HUB_REDIRECT = `${ORIGIN}${HUB_COMMUNITY_PATH}`;
+const WWW_LOCALE_HUB = `${ORIGIN}/en${HUB_COMMUNITY_PATH}`;
+
+function expectWwwHubLocation(location: string, hubUrl = WWW_LOCALE_HUB) {
+  expect(location).toBe(hubUrl);
+  expect(location.startsWith("https://www.aitcommunity.org/")).toBe(true);
+  expect(location).not.toMatch(/^https:\/\/aitcommunity\.org(?:\/|$)/);
+  expect(location.startsWith("/")).toBe(false);
+}
 
 function documentCookiesFromSetCookie(res: Response, documentUrl: string) {
   const cookie = browserCookieHeaderFromSetCookie(res, documentUrl);
@@ -586,6 +594,7 @@ describe("leftover after #250: Hub document cookies() reach getSession", () => {
     );
     expect(signIn.status).toBeLessThan(400);
     expect(hasSessionCookie(signIn)).toBe(true);
+    expectWwwHubLocation(redirectLocation(signIn), WWW_HUB_REDIRECT);
     const cookie = sessionCookieLine(signIn);
     expect(cookie).toMatch(/^__Secure-better-auth\.session_token=/);
     expect(cookie).toContain(`Domain=${PRODUCTION_COOKIE_DOMAIN}`);
@@ -717,9 +726,7 @@ describe("leftover after #251: first paint + header/forum + reload still signed-
     const reload = await sessionFromJar(auth, afterGetSession, documentUrl);
     expect(reload.user.id).toBe(first.user.id);
     expectHubSignedInPaint(reload);
-    expect(redirectLocation(signIn)).not.toMatch(
-      /^https:\/\/aitcommunity\.org(?:\/|$)/,
-    );
+    expectWwwHubLocation(redirectLocation(signIn), WWW_HUB_REDIRECT);
   });
 
   it("first-click and burned token: reload still signed-in, not JOIN", async () => {
@@ -743,5 +750,91 @@ describe("leftover after #251: first paint + header/forum + reload still signed-
     const reload = await sessionFromJar(auth, afterHuman, documentUrl);
     expect(reload.user.id).toBe(first.user.id);
     expectHubSignedInPaint(reload);
+  });
+});
+
+describe("leftover after #252: www password sign-in must land on www Hub, never apex", () => {
+  it("www password sign-in 302s to www Hub, never apex, and the cookie signs the www document in", async () => {
+    const apexAuth = await signUpAndCaptureVerifyUrl({
+      productionCookieDomain: true,
+      authBaseURL: "https://aitcommunity.org",
+    });
+    const { GET, POST } = toNextJsHandler(apexAuth.auth.handler);
+    await GET(new Request(apexAuth.mailedUrl));
+
+    const signIn = await POST(
+      new Request(`${ORIGIN}/api/auth/sign-in/email`, {
+        method: "POST",
+        headers: {
+          origin: ORIGIN,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: "soren.prefetch.verify@example.com",
+          password: "a-secure-password-123",
+          callbackURL: `/en${HUB_COMMUNITY_PATH}`,
+        }),
+      }),
+    );
+    expect(signIn.status).toBeGreaterThanOrEqual(300);
+    expect(signIn.status).toBeLessThan(400);
+    expectWwwHubLocation(redirectLocation(signIn));
+    expect(hasSessionCookie(signIn)).toBe(true);
+    const cookie = sessionCookieLine(signIn);
+    expect(cookie).toMatch(/^__Secure-better-auth\.session_token=/);
+    expect(cookie).toContain(`Domain=${PRODUCTION_COOKIE_DOMAIN}`);
+
+    const session = await sessionFromHubDocumentCookies(
+      apexAuth.auth,
+      signIn,
+      WWW_LOCALE_HUB,
+    );
+    expectHubSignedInPaint(session);
+    expect(new URL(redirectLocation(signIn)).origin).toBe(ORIGIN);
+  });
+
+  it("verify first-click and burned token stay on www Hub, never apex", async () => {
+    const apexAuth = await signUpAndCaptureVerifyUrl({
+      productionCookieDomain: true,
+      authBaseURL: "https://aitcommunity.org",
+    });
+    const wwwVerify = new URL(
+      `${new URL(apexAuth.mailedUrl).pathname}${new URL(apexAuth.mailedUrl).search}`,
+      ORIGIN,
+    ).toString();
+    const { GET } = toNextJsHandler(apexAuth.auth.handler);
+
+    const prefetch = await GET(new Request(wwwVerify));
+    expectWwwHubLocation(redirectLocation(prefetch), WWW_HUB_REDIRECT);
+    expect(hasSessionCookie(prefetch)).toBe(true);
+    expectHubSignedInPaint(
+      await sessionFromHubDocumentCookies(
+        apexAuth.auth,
+        prefetch,
+        WWW_HUB_DOCUMENT_URLS[0],
+      ),
+    );
+
+    const human = await GET(new Request(wwwVerify));
+    expectWwwHubLocation(redirectLocation(human), WWW_HUB_REDIRECT);
+    expectHubSignedInPaint(
+      await sessionFromHubDocumentCookies(
+        apexAuth.auth,
+        human,
+        WWW_HUB_DOCUMENT_URLS[0],
+      ),
+    );
+  });
+
+  it("invalid / expired / change-email still do not sign in", async () => {
+    const { auth } = await createVerifyAuth();
+    const { GET } = toNextJsHandler(auth.handler);
+    const invalid = await GET(
+      new Request(
+        `${ORIGIN}/api/auth/verify-email?token=not-a-jwt&callbackURL=${encodeURIComponent(`/en${HUB_COMMUNITY_PATH}`)}`,
+      ),
+    );
+    expect(hasSessionCookie(invalid)).toBe(false);
+    expect(redirectLocation(invalid)).toMatch(/error=invalid_token/);
   });
 });

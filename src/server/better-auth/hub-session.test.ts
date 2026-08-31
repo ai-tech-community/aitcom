@@ -233,6 +233,17 @@ describe("leftover after #251: first paint header/forum + reload", () => {
       "utf8",
     );
     expect(src).toContain("router.refresh");
+    expect(src).toContain("pinVerifyRedirectLocation");
+    expect(src).toContain("callbackURL");
+  });
+
+  it("password sign-in leftover pin: www Location, never apex", () => {
+    const replay = readFileSync(
+      join(dir, "sign-in-on-replayed-verify.ts"),
+      "utf8",
+    );
+    expect(replay).toContain("pinVerifyRedirectLocation");
+    expect(replay).toContain("/sign-in/email");
   });
 
   it("auth client stays on the current host so preview stays relative and www does not hop", () => {

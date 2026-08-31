@@ -289,6 +289,33 @@ describe("pinVerifyRedirectLocation", () => {
       ),
     ).toBe(HUB_COMMUNITY_PATH);
   });
+
+  it("pins a www password sign-in callback to www Hub, never apex", () => {
+    expect(
+      pinVerifyRedirectLocation(
+        "/en/communities/ait",
+        "https://www.aitcommunity.org/api/auth/sign-in/email",
+      ),
+    ).toBe(`${CANONICAL_PRODUCTION_ORIGIN}/en/communities/ait`);
+    expect(
+      pinVerifyRedirectLocation(
+        "/en/communities/ait",
+        "https://aitcommunity.org/api/auth/sign-in/email",
+      ),
+    ).toBe(`${CANONICAL_PRODUCTION_ORIGIN}/en/communities/ait`);
+    expect(
+      pinVerifyRedirectLocation(
+        "https://aitcommunity.org/en/communities/ait",
+        "https://www.aitcommunity.org/en/auth/signin",
+      ),
+    ).toBe(`${CANONICAL_PRODUCTION_ORIGIN}/en/communities/ait`);
+    expect(
+      pinVerifyRedirectLocation(
+        "/en/communities/ait",
+        "https://aitcom-git-fix-verify-klevox.vercel.app/en/auth/signin",
+      ),
+    ).toBe("/en/communities/ait");
+  });
 });
 
 describe("getApexToWwwRedirectUrl", () => {

@@ -119,9 +119,55 @@ describe("SignInForm EMAIL_NOT_VERIFIED", () => {
     fireEvent.click(screen.getByRole("button", { name: "signIn" }));
 
     await waitFor(() => {
+      expect(mockSignInEmail).toHaveBeenCalledWith({
+        email: "ada@example.com",
+        password: "password12",
+        callbackURL: "/en/communities/ait",
+      });
       expect(mockPush).toHaveBeenCalledWith("/en/communities/ait");
     });
     expect(mockRefresh).toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalledWith("/");
+  });
+
+  it("www password sign-in navigates to www Hub, never apex", async () => {
+    const wwwOrigin = "https://www.aitcommunity.org";
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: {
+        origin: wwwOrigin,
+        href: `${wwwOrigin}/en/auth/signin`,
+        assign,
+      },
+    });
+    mockSignInEmail.mockResolvedValue({ error: null });
+
+    render(<SignInForm linkedinEnabled={false} />);
+
+    fireEvent.change(screen.getByLabelText("EMAIL"), {
+      target: { value: "ada@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("PASSWORD"), {
+      target: { value: "password12" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "signIn" }));
+
+    const wwwHub = `${wwwOrigin}/en/communities/ait`;
+    await waitFor(() => {
+      expect(mockSignInEmail).toHaveBeenCalledWith({
+        email: "ada@example.com",
+        password: "password12",
+        callbackURL: wwwHub,
+      });
+      expect(assign).toHaveBeenCalledWith(wwwHub);
+    });
+    expect(assign).not.toHaveBeenCalledWith(
+      "https://aitcommunity.org/en/communities/ait",
+    );
+    expect(mockPush).not.toHaveBeenCalledWith("/en/communities/ait");
+    expect(mockPush).not.toHaveBeenCalledWith(
+      "https://aitcommunity.org/en/communities/ait",
+    );
   });
 });
