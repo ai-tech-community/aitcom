@@ -81,6 +81,7 @@ import * as migration_20260713a_audience_interests_backfill from "./20260713a_au
 import * as migration_20260817a_social_identity from "./20260817a_social_identity";
 import * as migration_20260820a_draft_stuck_test_challenge from "./20260820a_draft_stuck_test_challenge";
 import * as migration_20260821a_member_hidden_from_public from "./20260821a_member_hidden_from_public";
+import * as migration_20260831a_hub_dm_mail from "./20260831a_hub_dm_mail";
 
 export const migrations = [
   {
@@ -497,5 +498,10 @@ export const migrations = [
     up: migration_20260821a_member_hidden_from_public.up,
     down: migration_20260821a_member_hidden_from_public.down,
     name: "20260821a_member_hidden_from_public",
+  },
+  {
+    up: migration_20260831a_hub_dm_mail.up,
+    down: migration_20260831a_hub_dm_mail.down,
+    name: "20260831a_hub_dm_mail",
   },
 ];

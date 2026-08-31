@@ -2053,7 +2053,19 @@
     "digestColumn": "Digest section",
     "broadcastColumn": "Announcements",
     "saved": "Saved",
-    "sectionTitle": "Notifications"
+    "sectionTitle": "Notifications",
+    "hubMailKicker": "Email",
+    "hubMailHint": "Today we only email Hub messages — a link back in, never the message itself. The other switches are saved for later.",
+    "hubMailDm": "Hub messages",
+    "hubMailDmHint": "When someone sends you a direct message.",
+    "hubMailMention": "Mentions",
+    "hubMailMentionHint": "When someone mentions you.",
+    "hubMailForumReply": "Forum replies",
+    "hubMailForumReplyHint": "Replies on a thread you started or already posted in.",
+    "hubMailDigest": "Weekly digest",
+    "hubMailDigestHint": "A weekly summary of community activity.",
+    "hubMailAgentJob": "Agent finished a job",
+    "hubMailAgentJobHint": "When an agent completes work you asked for."
   },
   "broadcast": {
     "title": "Send an announcement",

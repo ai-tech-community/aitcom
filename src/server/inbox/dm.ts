@@ -7,6 +7,7 @@ import {
   messages,
 } from "@/server/db/schema";
 import { publishInboxEvent } from "@/server/inbox/publish";
+import { notifyUnreadHubDmForRecipient } from "@/server/notifications/hub-dm-mail";
 
 type DB = typeof _db;
 
@@ -65,5 +66,9 @@ export async function sendDirectMessage(
   const event = { kind: "message", conversationId, message } as const;
   void publishInboxEvent(toUserId, event);
   void publishInboxEvent(fromUserId, event);
+  void notifyUnreadHubDmForRecipient(db, {
+    recipientUserId: toUserId,
+    conversationId,
+  });
   return conversationId;
 }

@@ -2,8 +2,15 @@ import { z } from "zod";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import { notificationOptouts } from "@/server/db/schema";
+import { hubMailPrefs, notificationOptouts } from "@/server/db/schema";
 import { resolvePrefs, type OptoutRow } from "@/server/notifications/prefs";
+import {
+  DEFAULT_HUB_MAIL_PREFS,
+  HUB_MAIL_CASES,
+  resolveHubMailPrefs,
+} from "@/server/notifications/hub-mail-prefs";
+
+const hubMailCaseSchema = z.enum(HUB_MAIL_CASES);
 
 export const notificationPrefsRouter = createTRPCRouter({
   /** All opt-out rows for the current user, plus the resolved view. */
@@ -16,11 +23,24 @@ export const notificationPrefsRouter = createTRPCRouter({
       .from(notificationOptouts)
       .where(eq(notificationOptouts.userId, ctx.session.user.id));
 
+    const [hubRow] = await ctx.db
+      .select({
+        dm: hubMailPrefs.dm,
+        mention: hubMailPrefs.mention,
+        forumReply: hubMailPrefs.forumReply,
+        digest: hubMailPrefs.digest,
+        agentJob: hubMailPrefs.agentJob,
+      })
+      .from(hubMailPrefs)
+      .where(eq(hubMailPrefs.userId, ctx.session.user.id))
+      .limit(1);
+
     const resolved = resolvePrefs(rows as OptoutRow[]);
     return {
       globalDigestOptOut: resolved.globalDigestOptOut,
       digestOptOutCommunityIds: [...resolved.digestOptOutCommunityIds],
       broadcastOptOutCommunityIds: [...resolved.broadcastOptOutCommunityIds],
+      hubMail: resolveHubMailPrefs(hubRow ?? null),
     };
   }),
 
@@ -74,6 +94,30 @@ export const notificationPrefsRouter = createTRPCRouter({
       } else {
         await ctx.db.delete(notificationOptouts).where(match);
       }
+      return { ok: true };
+    }),
+
+  /** Toggle one Hub notification-mail case. Only DM mail sends in this first cut. */
+  setHubMail: protectedProcedure
+    .input(
+      z.object({
+        case: hubMailCaseSchema,
+        enabled: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      await ctx.db
+        .insert(hubMailPrefs)
+        .values({
+          userId,
+          ...DEFAULT_HUB_MAIL_PREFS,
+          [input.case]: input.enabled,
+        })
+        .onConflictDoUpdate({
+          target: hubMailPrefs.userId,
+          set: { [input.case]: input.enabled },
+        });
       return { ok: true };
     }),
 });

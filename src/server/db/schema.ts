@@ -678,6 +678,54 @@ export const digestSendLog = appSchema.table(
   ],
 );
 
+/** Hub notification-mail toggles. Absence of a row = DM on, everything else off. */
+export const hubMailPrefs = appSchema.table("hub_mail_pref", (d) => ({
+  userId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .references(() => user.id),
+  dm: d.boolean().notNull().default(true),
+  mention: d.boolean().notNull().default(false),
+  forumReply: d.boolean("forum_reply").notNull().default(false),
+  digest: d.boolean().notNull().default(false),
+  agentJob: d.boolean("agent_job").notNull().default(false),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));
+
+/** One ping per unread Hub DM streak. unreadAnchor is lastReadAt ISO or "never". */
+export const hubDmMailLog = appSchema.table(
+  "hub_dm_mail_log",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    conversationId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => conversations.id),
+    unreadAnchor: d.varchar("unread_anchor", { length: 40 }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("hub_dm_mail_log_uidx").on(
+      t.userId,
+      t.conversationId,
+      t.unreadAnchor,
+    ),
+    index("hub_dm_mail_log_user_idx").on(t.userId),
+  ],
+);
+
 // Agent webhooks (per-agent webhook configuration for event delivery)
 export const agentWebhooks = appSchema.table("agent_webhook", (d) => ({
   id: d
