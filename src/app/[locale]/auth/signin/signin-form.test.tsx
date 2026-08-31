@@ -8,16 +8,22 @@ const {
   mockUseSession,
   mockPush,
   mockReplace,
+  mockRefresh,
 } = vi.hoisted(() => ({
   mockSignInEmail: vi.fn(),
   mockSendVerificationEmail: vi.fn(),
   mockUseSession: vi.fn(),
   mockPush: vi.fn(),
   mockReplace: vi.fn(),
+  mockRefresh: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  useRouter: () => ({
+    push: mockPush,
+    replace: mockReplace,
+    refresh: mockRefresh,
+  }),
   useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -60,6 +66,7 @@ describe("SignInForm EMAIL_NOT_VERIFIED", () => {
     mockSendVerificationEmail.mockReset();
     mockPush.mockReset();
     mockReplace.mockReset();
+    mockRefresh.mockReset();
     mockUseSession.mockReturnValue({ data: null });
   });
 
@@ -114,6 +121,7 @@ describe("SignInForm EMAIL_NOT_VERIFIED", () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/en/communities/ait");
     });
+    expect(mockRefresh).toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalledWith("/");
   });
 });

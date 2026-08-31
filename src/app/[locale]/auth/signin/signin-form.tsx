@@ -54,6 +54,7 @@ export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
       return;
     }
     router.push(target);
+    router.refresh();
   }
 
   async function handleResendVerification() {

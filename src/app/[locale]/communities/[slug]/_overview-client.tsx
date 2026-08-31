@@ -4,8 +4,8 @@ import { use } from "react";
 import { api } from "@/trpc/react";
 import { authClient } from "@/server/better-auth/client";
 import {
+  documentAuthUser,
   memberRoleForSlug,
-  resolveHubAuthUser,
   type HubAuthUser,
   type HubMembershipSeed,
 } from "@/server/better-auth/hub-session";
@@ -23,7 +23,7 @@ export function CommunityOverviewPageClient({
 }) {
   const { slug } = use(params);
   const { data: session } = authClient.useSession();
-  const user = resolveHubAuthUser(initialUser, session?.user);
+  const user = documentAuthUser(null, initialUser, session?.user);
 
   const { data: community } = api.communities.getBySlug.useQuery({ slug });
 

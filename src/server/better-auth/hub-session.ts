@@ -43,7 +43,22 @@ export function resolveHubAuthUser(
   serverUser: HubAuthUser | null | undefined,
   clientUser: HubAuthUser | null | undefined,
 ): HubAuthUser | null {
-  return clientUser ?? serverUser ?? null;
+  const client = clientUser?.id ? clientUser : null;
+  return client ?? serverUser ?? null;
+}
+
+/**
+ * First paint after password sign-in: Hub page/layout re-reads cookies()
+ * (Member + composer) while the locale layout is still the guest seed
+ * (JOIN / Sign in to post). useSession is empty. Prefer the page seed so
+ * header, Hub body, and forum match. Reload re-runs both readers.
+ */
+export function documentAuthUser(
+  localeUser: HubAuthUser | null | undefined,
+  pageUser: HubAuthUser | null | undefined,
+  clientUser: HubAuthUser | null | undefined,
+): HubAuthUser | null {
+  return resolveHubAuthUser(pageUser ?? localeUser ?? null, clientUser);
 }
 
 export function memberRoleForSlug(

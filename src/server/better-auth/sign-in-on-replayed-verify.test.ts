@@ -618,3 +618,130 @@ describe("leftover after #250: Hub document cookies() reach getSession", () => {
     );
   });
 });
+
+describe("leftover after #251: first paint + header/forum + reload still signed-in", () => {
+  function expectPersistableWwwSessionCookie(line: string | undefined) {
+    expect(line).toMatch(/^__Secure-better-auth\.session_token=/);
+    expect(line).toContain(`Domain=${PRODUCTION_COOKIE_DOMAIN}`);
+    expect(line).toContain("Path=/");
+    expect(line).toContain("HttpOnly");
+    expect(line).toContain("Secure");
+    expect(line).toContain("SameSite=Lax");
+    expect(line).not.toMatch(/Partitioned/i);
+  }
+
+  function applySetCookieToJar(
+    jar: Map<string, string>,
+    res: Response,
+    documentUrl: string,
+  ) {
+    for (const cookie of documentCookiesFromSetCookie(res, documentUrl)) {
+      if (!cookie.value || /Max-Age=0/i.test(sessionCookieHeader(res))) {
+        jar.delete(cookie.name);
+        continue;
+      }
+      jar.set(cookie.name, cookie.value);
+    }
+    return [...jar.entries()].map(([name, value]) => ({ name, value }));
+  }
+
+  async function sessionFromJar(
+    auth: {
+      api: { getSession: (opts: { headers: Headers }) => Promise<unknown> };
+    },
+    jar: { name: string; value: string }[],
+    documentUrl: string,
+  ) {
+    expect(jar.some((c) => c.name.includes("session_token") && c.value)).toBe(
+      true,
+    );
+    const incoming = new Headers({
+      origin: new URL(documentUrl).origin,
+      referer: documentUrl,
+    });
+    expect(incoming.get("cookie")).toBeNull();
+    const session = await auth.api.getSession({
+      headers: headersForDocumentAuth(incoming, jar),
+    });
+    expect(session).toMatchObject({ user: { id: expect.any(String) } });
+    return session as { user: { id: string } };
+  }
+
+  it("password sign-in: first Hub document and reload stay signed-in on www", async () => {
+    const { auth, mailedUrl } = await signUpAndCaptureVerifyUrl({
+      productionCookieDomain: true,
+    });
+    const { GET, POST } = toNextJsHandler(auth.handler);
+    await GET(new Request(mailedUrl));
+
+    const signIn = await POST(
+      new Request(`${ORIGIN}/api/auth/sign-in/email`, {
+        method: "POST",
+        headers: {
+          origin: ORIGIN,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: "soren.prefetch.verify@example.com",
+          password: "a-secure-password-123",
+        }),
+      }),
+    );
+    expect(signIn.status).toBeLessThan(400);
+    expectPersistableWwwSessionCookie(sessionCookieLine(signIn));
+
+    const documentUrl = WWW_HUB_DOCUMENT_URLS[0];
+    const jar = new Map<string, string>();
+    const firstCookies = applySetCookieToJar(jar, signIn, documentUrl);
+    const first = await sessionFromJar(auth, firstCookies, documentUrl);
+    expectHubSignedInPaint(first);
+
+    const cookieHeader = firstCookies
+      .map((cookie) => `${cookie.name}=${cookie.value}`)
+      .join("; ");
+    const getSessionWithJar = await GET(
+      new Request(`${ORIGIN}/api/auth/get-session`, {
+        headers: {
+          cookie: cookieHeader,
+          origin: ORIGIN,
+          referer: documentUrl,
+        },
+      }),
+    );
+    expect(getSessionWithJar.status).toBeLessThan(400);
+    const afterGetSession = applySetCookieToJar(
+      jar,
+      getSessionWithJar,
+      documentUrl,
+    );
+    const reload = await sessionFromJar(auth, afterGetSession, documentUrl);
+    expect(reload.user.id).toBe(first.user.id);
+    expectHubSignedInPaint(reload);
+    expect(redirectLocation(signIn)).not.toMatch(
+      /^https:\/\/aitcommunity\.org(?:\/|$)/,
+    );
+  });
+
+  it("first-click and burned token: reload still signed-in, not JOIN", async () => {
+    const { auth, mailedUrl } = await signUpAndCaptureVerifyUrl({
+      productionCookieDomain: true,
+    });
+    const { GET } = toNextJsHandler(auth.handler);
+    const documentUrl = WWW_HUB_DOCUMENT_URLS[0];
+
+    const prefetch = await GET(new Request(mailedUrl));
+    expect(redirectLocation(prefetch)).toBe(WWW_HUB_REDIRECT);
+    expectPersistableWwwSessionCookie(sessionCookieLine(prefetch));
+    const jar = new Map<string, string>();
+    const firstCookies = applySetCookieToJar(jar, prefetch, documentUrl);
+    const first = await sessionFromJar(auth, firstCookies, documentUrl);
+    expectHubSignedInPaint(first);
+
+    const human = await GET(new Request(mailedUrl));
+    expect(redirectLocation(human)).toBe(WWW_HUB_REDIRECT);
+    const afterHuman = applySetCookieToJar(jar, human, documentUrl);
+    const reload = await sessionFromJar(auth, afterHuman, documentUrl);
+    expect(reload.user.id).toBe(first.user.id);
+    expectHubSignedInPaint(reload);
+  });
+});
