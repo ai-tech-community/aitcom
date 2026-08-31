@@ -10,10 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SocialOAuthButtons } from "@/components/auth/social-oauth-buttons";
 import { authClient } from "@/server/better-auth/client";
+import { pinVerifyRedirectLocation } from "@/server/better-auth/base-url";
 import { getPostAuthRedirect } from "@/lib/auth-redirect";
 import { getHubCommunityPath } from "@/lib/join-path";
 import { isEmailNotVerifiedError } from "@/lib/auth-errors";
 import { toast } from "sonner";
+
+function pinPostAuthTarget(target: string) {
+  if (typeof window === "undefined") return target;
+  return pinVerifyRedirectLocation(target, window.location.href);
+}
 
 export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
   const t = useTranslations("auth");
@@ -28,21 +34,25 @@ export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
   const [needsVerification, setNeedsVerification] = useState(false);
 
   // Target is a full, locale-prefixed path — push with the plain router so the
-  // locale isn't prefixed twice. See lib/auth-redirect.
+  // locale isn't prefixed twice. See lib/auth-redirect. On www/apex, pin to
+  // absolute www so Vercel primary-domain cannot send Hub to apex.
   const target = getPostAuthRedirect(params, getHubCommunityPath(locale));
+  const pinnedTarget = pinPostAuthTarget(target);
 
   // Already signed in (e.g. landed here via a stale link) → skip the form.
   useEffect(() => {
-    if (session.data?.user) router.replace(target);
-  }, [session.data?.user, target, router]);
+    if (session.data?.user) router.replace(pinnedTarget);
+  }, [session.data?.user, pinnedTarget, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setNeedsVerification(false);
+    const landing = pinPostAuthTarget(target);
     const { error } = await authClient.signIn.email({
       email,
       password,
+      callbackURL: landing,
     });
     setLoading(false);
     if (error) {
@@ -50,10 +60,18 @@ export function SignInForm({ linkedinEnabled }: { linkedinEnabled: boolean }) {
         setNeedsVerification(true);
         return;
       }
-      toast.error(error.message ?? "Sign in failed");
+      // A 302 to www Hub can surface as a parse error after Set-Cookie.
+      // Better Auth credential failures still have a code — keep those here.
+      if (error.code) {
+        toast.error(error.message ?? "Sign in failed");
+        return;
+      }
+    }
+    if (landing.startsWith("https://")) {
+      window.location.assign(landing);
       return;
     }
-    router.push(target);
+    router.push(landing);
     router.refresh();
   }
 
