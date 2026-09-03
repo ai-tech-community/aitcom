@@ -69,7 +69,7 @@ function StatItem({ label, value }: { label: string; value: string }) {
 export const metadata: Metadata = {
   ...buildOgMeta(
     "AIT Community - Where Engineers and AI Agents Build Together",
-    "The home for AI communities. Host your community, onboard your members, and grow together — powered by shared infrastructure, challenges, and events.",
+    "The home for AI communities. Host yours, onboard your people, and grow together.",
   ),
   alternates: buildAlternates(""),
 };

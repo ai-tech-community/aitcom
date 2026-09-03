@@ -65,6 +65,7 @@ describe("FeaturedCommunities", () => {
     expect(
       screen.getByRole("link", { name: /official AIT \(AI Tech\) community/ }),
     ).toHaveAttribute("href", "/communities/ait");
+    expect(screen.getByRole("heading", { name: /title/i })).toBeInTheDocument();
   });
 
   it("uses the same max-w-6xl page shell as Events / Discover", () => {
@@ -127,17 +128,16 @@ describe("FeaturedCommunities", () => {
       />,
     );
 
-    expect(screen.queryByRole("link", { name: /^Demo$/ })).toBeNull();
-    expect(screen.queryByRole("link", { name: /Tester/ })).toBeNull();
-    expect(screen.queryByRole("link", { name: /MLOps Amsterdam/ })).toBeNull();
+    expect(screen.queryByText("Demo")).toBeNull();
+    expect(screen.queryByText("Tester")).toBeNull();
+    expect(screen.queryByText("MLOps Amsterdam")).toBeNull();
     expect(
       screen.getAllByRole("link").map((a) => a.getAttribute("href")),
-    ).toEqual(
-      expect.arrayContaining([
-        "/communities/ait-community-netherlands",
-        "/communities/xxx-ai",
-        "/communities/ait",
-      ]),
-    );
+    ).toEqual([
+      "/communities/ait-community-netherlands",
+      "/communities/xxx-ai",
+      "/communities/ait",
+      "/communities",
+    ]);
   });
 });

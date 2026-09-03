@@ -32,7 +32,7 @@ export function FeaturedCommunities({
           >
             <div className="flex items-center gap-3">
               {community.logoUrl ? (
-                <Avatar size="default" className="rounded-md">
+                <Avatar size="default" className="size-9 rounded-md">
                   <AvatarImage src={community.logoUrl} alt="" />
                   <AvatarFallback>{getInitials(community.name)}</AvatarFallback>
                 </Avatar>

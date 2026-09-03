@@ -9,6 +9,7 @@ import { HUB_SLUG } from "./hub";
 import {
   FEATURED_COMMUNITY_SLUGS,
   NEVER_FEATURE_SLUGS,
+  asMemberCount,
   pickFeaturedCommunities,
 } from "./featured";
 
@@ -50,6 +51,13 @@ describe("pickFeaturedCommunities", () => {
       "xxx-ai",
       "ait",
     ]);
+  });
+
+  it("coerces postgres count strings to a non-negative integer", () => {
+    expect(asMemberCount("42")).toBe(42);
+    expect(asMemberCount(18.9)).toBe(18);
+    expect(asMemberCount("nope")).toBe(0);
+    expect(asMemberCount(-3)).toBe(0);
   });
 
   it("omits a featured slug when it is missing from live data", () => {
