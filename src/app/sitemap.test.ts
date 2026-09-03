@@ -47,9 +47,7 @@ beforeEach(() => {
 describe("sitemap cache policy", () => {
   it("uses hourly ISR instead of force-dynamic", () => {
     expect(sitemapModule.revalidate).toBe(3600);
-    expect(
-      (sitemapModule as { dynamic?: string }).dynamic,
-    ).toBeUndefined();
+    expect((sitemapModule as { dynamic?: string }).dynamic).toBeUndefined();
   });
 });
 
@@ -154,9 +152,7 @@ describe("buildSitemapEntries", () => {
     expect(urls).toContain("https://aitcommunity.org/en/");
     expect(urls).toContain("https://aitcommunity.org/en/events");
     expect(
-      urls.filter((url) =>
-        /\/en\/(events|blog|community)\/.+/.test(url),
-      ),
+      urls.filter((url) => /\/en\/(events|blog|community)\/.+/.test(url)),
     ).toEqual([]);
     expect(entries).toHaveLength(STATIC_PATHS.length);
     expect(console.error).toHaveBeenCalledWith(

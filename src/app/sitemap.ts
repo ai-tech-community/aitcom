@@ -30,14 +30,7 @@ type SitemapDoc = {
   updatedAt?: string | Date | null;
 };
 
-type SitemapFinder = {
-  find: (args: {
-    collection: string;
-    where?: unknown;
-    limit?: number;
-    depth?: number;
-  }) => Promise<{ docs: SitemapDoc[] }>;
-};
+type SitemapClient = Pick<Awaited<ReturnType<typeof getPayloadClient>>, "find">;
 
 function safeDate(value: string | Date | null | undefined): Date {
   if (value == null || value === "") return new Date();
@@ -74,11 +67,11 @@ function docsFromSettled(
 }
 
 export async function buildSitemapEntries(
-  getClient: () => Promise<SitemapFinder> = getPayloadClient,
+  getClient: () => Promise<SitemapClient> = getPayloadClient,
 ): Promise<MetadataRoute.Sitemap> {
   const staticEntries = STATIC_PAGES.map((path) => localeEntries(path));
 
-  let payload: SitemapFinder;
+  let payload: SitemapClient;
   try {
     payload = await getClient();
   } catch (error) {
@@ -89,8 +82,8 @@ export async function buildSitemapEntries(
     return staticEntries;
   }
 
-  const [eventsResult, articlesResult, threadsResult] = await Promise.allSettled(
-    [
+  const [eventsResult, articlesResult, threadsResult] =
+    await Promise.allSettled([
       payload.find({
         collection: "events",
         where: {
@@ -115,8 +108,7 @@ export async function buildSitemapEntries(
         limit: 1000,
         depth: 0,
       }),
-    ],
-  );
+    ]);
 
   const eventEntries = docsFromSettled(eventsResult, "events").map((event) =>
     localeEntries(`/events/${event.slug}`, safeDate(event.updatedAt)),
