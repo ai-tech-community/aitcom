@@ -36,6 +36,7 @@ export type DeployEnv = {
   DATABASE_URL?: string;
   SKIP_DB_MIGRATE?: string;
   DB_APPLY_ON_DEPLOY?: string;
+  DB_APPLY_ON_PREVIEW?: string;
 };
 
 export type DeployApplyDecision = {
@@ -102,6 +103,9 @@ export function shouldApplyOnDeploy(env: DeployEnv): DeployApplyDecision {
 
   const onVercel = env.VERCEL === "1";
   const forced = isTruthyFlag(env.DB_APPLY_ON_DEPLOY);
+  const vercelEnv = env.VERCEL_ENV ?? "deploy";
+  const isProduction = vercelEnv === "production";
+  const isPreview = onVercel && !isProduction;
 
   if (!onVercel && !forced) {
     return {
@@ -111,8 +115,17 @@ export function shouldApplyOnDeploy(env: DeployEnv): DeployApplyDecision {
     };
   }
 
+  if (isPreview && !isTruthyFlag(env.DB_APPLY_ON_PREVIEW)) {
+    return {
+      apply: false,
+      fatal: false,
+      reason:
+        "preview skipped (set DB_APPLY_ON_PREVIEW=1 only for an isolated preview DB)",
+    };
+  }
+
   if (!env.DATABASE_URL) {
-    if (env.VERCEL_ENV === "production") {
+    if (isProduction) {
       return {
         apply: false,
         fatal: true,
@@ -131,7 +144,6 @@ export function shouldApplyOnDeploy(env: DeployEnv): DeployApplyDecision {
     return { apply: true, fatal: false, reason: "DB_APPLY_ON_DEPLOY" };
   }
 
-  const vercelEnv = env.VERCEL_ENV ?? "deploy";
   return { apply: true, fatal: false, reason: `Vercel ${vercelEnv}` };
 }
 

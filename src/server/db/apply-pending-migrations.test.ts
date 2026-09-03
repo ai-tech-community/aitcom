@@ -123,12 +123,28 @@ describe("shouldApplyOnDeploy", () => {
     });
   });
 
-  it("applies on Vercel preview when DATABASE_URL is set", () => {
+  it("skips Vercel preview by default even when DATABASE_URL is set", () => {
+    expect(
+      shouldApplyOnDeploy({
+        VERCEL: "1",
+        VERCEL_ENV: "preview",
+        DATABASE_URL: "postgresql://user:pass@ep-prod.neon.tech/neondb",
+      }),
+    ).toEqual({
+      apply: false,
+      fatal: false,
+      reason:
+        "preview skipped (set DB_APPLY_ON_PREVIEW=1 only for an isolated preview DB)",
+    });
+  });
+
+  it("applies on Vercel preview when DB_APPLY_ON_PREVIEW is set", () => {
     expect(
       shouldApplyOnDeploy({
         VERCEL: "1",
         VERCEL_ENV: "preview",
         DATABASE_URL: "postgresql://user:pass@ep-preview.neon.tech/neondb",
+        DB_APPLY_ON_PREVIEW: "1",
       }),
     ).toEqual({
       apply: true,
@@ -151,11 +167,12 @@ describe("shouldApplyOnDeploy", () => {
     });
   });
 
-  it("skips preview when DATABASE_URL is missing", () => {
+  it("skips opted-in preview when DATABASE_URL is missing", () => {
     expect(
       shouldApplyOnDeploy({
         VERCEL: "1",
         VERCEL_ENV: "preview",
+        DB_APPLY_ON_PREVIEW: "1",
       }),
     ).toEqual({
       apply: false,

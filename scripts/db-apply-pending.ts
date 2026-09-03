@@ -64,15 +64,26 @@ const store: ApplyPendingStore = {
 };
 
 try {
-  const result = await applyPendingMigrations(listed, store, { dryRun });
+  // Serialize concurrent deploys (preview+prod, overlapping production
+  // builds) so two apply loops cannot both treat the same name as pending.
+  await db.execute(
+    sql.raw(`select pg_advisory_lock(hashtext('aitcom.db-apply-pending'))`),
+  );
+  try {
+    const result = await applyPendingMigrations(listed, store, { dryRun });
 
-  if (result.status === "applied" || result.status === "dry-run") {
-    console.log(
-      `${result.pending.length} pending migration(s):`,
-      result.pending,
+    if (result.status === "applied" || result.status === "dry-run") {
+      console.log(
+        `${result.pending.length} pending migration(s):`,
+        result.pending,
+      );
+    }
+    console.log(formatApplyPendingLog(result));
+  } finally {
+    await db.execute(
+      sql.raw(`select pg_advisory_unlock(hashtext('aitcom.db-apply-pending'))`),
     );
   }
-  console.log(formatApplyPendingLog(result));
 } finally {
   await pool.end();
 }
