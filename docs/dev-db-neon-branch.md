@@ -66,7 +66,17 @@ neonctl branches reset dev-verify --project-id <PROJECT_ID>   # re-clone from pr
 neonctl branches delete dev-verify --project-id <PROJECT_ID>  # remove when done
 ```
 
-## Production apply (unchanged, deliberate)
+## Production apply
 
-Production migrations still go through `pnpm db:apply` (`.env`) — run it **only** in the
-same window as the code deploy that needs the schema, never ahead of it.
+Vercel **production** applies pending Payload/app migrations automatically
+during `pnpm build` via `scripts/db-apply-on-deploy.ts` →
+`scripts/db-apply-pending.ts`. That is the same idempotent applier as
+`pnpm db:apply`: only unrecorded `src/migrations` `up()` functions run, then
+a row is inserted into `payload_migrations`. Already-applied names are a
+no-op. Preview deploys skip this step unless `DB_APPLY_ON_PREVIEW=1` and
+Preview `DATABASE_URL` is an isolated branch — do not point that flag at
+the production endpoint (`ep-ancient-poetry-aieo7394`).
+
+Manual `pnpm db:apply` (`.env`) is still valid for an emergency or a local
+operator window, but it is no longer required for a normal production deploy.
+Do not apply a new migration to production ahead of the code that needs it.

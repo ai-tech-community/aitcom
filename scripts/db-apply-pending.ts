@@ -2,14 +2,13 @@
  * Apply any migrations not yet recorded in `payload_migrations`, then record
  * them — without the destructive `payload migrate` dev-mode prompt.
  *
- * Use this for local dev DBs that were partly built via push, where
- * `payload migrate` refuses to run cleanly. It ONLY runs the `up()` of
- * *unrecorded* migrations (so already-applied ones are never re-run) and the
- * repo's migrations are additive (CREATE/ALTER ... IF NOT EXISTS), so this is
- * idempotent and non-destructive. Production keeps using `payload migrate`.
+ * Local:  pnpm db:apply / pnpm db:apply --dry-run
+ * Deploy: scripts/db-apply-on-deploy.ts (Vercel `pnpm build` when VERCEL=1)
  *
- * Run with:  tsx --env-file=.env scripts/db-apply-pending.ts
- *            tsx --env-file=.env scripts/db-apply-pending.ts --dry-run
+ * It ONLY runs the `up()` of *unrecorded* migrations (already-applied ones,
+ * including `20260831a_hub_dm_mail` after the #254 leftover, are never re-run).
+ * Repo migrations are additive (CREATE/ALTER ... IF NOT EXISTS), so this is
+ * idempotent and non-destructive.
  */
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
@@ -17,6 +16,11 @@ import { sql } from "drizzle-orm";
 import ws from "ws";
 
 import { migrations } from "@/migrations";
+import {
+  applyPendingMigrations,
+  formatApplyPendingLog,
+  type ApplyPendingStore,
+} from "../src/server/db/apply-pending-migrations";
 
 neonConfig.webSocketConstructor = ws;
 
@@ -27,45 +31,58 @@ if (!url) throw new Error("DATABASE_URL is not set");
 const pool = new Pool({ connectionString: url });
 const db = drizzle(pool);
 
-try {
-  const appliedRes = await db.execute(
-    sql.raw(`select name, batch from payload_migrations`),
-  );
-  const applied = new Set(
-    appliedRes.rows.map((r) => (r as { name: string }).name),
-  );
-  const maxBatch = appliedRes.rows.reduce(
-    (m, r) => Math.max(m, Number((r as { batch: string }).batch) || 0),
-    0,
-  );
+const listed = migrations.map((migration) => ({
+  name: migration.name,
+  up: async () => {
+    await migration.up({ db } as unknown as Parameters<typeof migration.up>[0]);
+  },
+}));
 
-  const pending = migrations.filter((m) => !applied.has(m.name));
-  if (pending.length === 0) {
-    console.log("Up to date — no pending migrations.");
-  } else {
-    console.log(
-      `${pending.length} pending migration(s):`,
-      pending.map((m) => m.name),
+const store: ApplyPendingStore = {
+  async listApplied() {
+    const appliedRes = await db.execute(
+      sql.raw(`select name, batch from payload_migrations`),
     );
-    if (dryRun) {
-      console.log("--dry-run: not applying.");
-    } else {
-      const batch = String(maxBatch + 1);
-      for (const m of pending) {
-        console.log(`  applying ${m.name} ...`);
-        await m.up({ db } as unknown as Parameters<typeof m.up>[0]);
-        await db.execute(
-          sql.raw(
-            `insert into payload_migrations (name, batch, created_at, updated_at)
-             select '${m.name}', '${batch}', now(), now()
-             where not exists (select 1 from payload_migrations where name = '${m.name}')`,
-          ),
-        );
-      }
+    return appliedRes.rows.map((row) => ({
+      name: String((row as { name: string }).name),
+      batch: (row as { batch: string | number | null }).batch,
+    }));
+  },
+  async runUp(migration) {
+    console.log(`  applying ${migration.name} ...`);
+    await migration.up(undefined);
+  },
+  async record(name, batch) {
+    await db.execute(sql`
+      insert into payload_migrations (name, batch, created_at, updated_at)
+      select ${name}, ${batch}, now(), now()
+      where not exists (
+        select 1 from payload_migrations where name = ${name}
+      )
+    `);
+  },
+};
+
+try {
+  // Serialize concurrent deploys (preview+prod, overlapping production
+  // builds) so two apply loops cannot both treat the same name as pending.
+  await db.execute(
+    sql.raw(`select pg_advisory_lock(hashtext('aitcom.db-apply-pending'))`),
+  );
+  try {
+    const result = await applyPendingMigrations(listed, store, { dryRun });
+
+    if (result.status === "applied" || result.status === "dry-run") {
       console.log(
-        `Applied + recorded ${pending.length} migration(s) as batch ${batch}.`,
+        `${result.pending.length} pending migration(s):`,
+        result.pending,
       );
     }
+    console.log(formatApplyPendingLog(result));
+  } finally {
+    await db.execute(
+      sql.raw(`select pg_advisory_unlock(hashtext('aitcom.db-apply-pending'))`),
+    );
   }
 } finally {
   await pool.end();

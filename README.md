@@ -245,7 +245,8 @@ docs/adr/                   # Architecture Decision Records
 | `pnpm format:check` | Check code formatting |
 | `pnpm format:write` | Format code with Prettier |
 | `pnpm db:generate` | Generate Drizzle migrations |
-| `pnpm db:migrate` | Run database migrations |
+| `pnpm db:apply` | Apply pending Payload/app migrations (`src/migrations`) |
+| `pnpm db:migrate` | Run vestigial Drizzle-kit migrations (do not use for new schema) |
 | `pnpm db:push` | Push schema to database |
 | `pnpm db:seed` | Seed a local database (dev user, root Hub, demo content) |
 | `pnpm db:studio` | Open Drizzle Studio |
@@ -255,8 +256,12 @@ docs/adr/                   # Architecture Decision Records
 This project is designed for deployment on [Vercel](https://vercel.com/) with [Neon](https://neon.tech/) as the database provider:
 
 1. Connect your repository to Vercel
-2. Set all required environment variables in the Vercel dashboard
-3. Deploy — Vercel will auto-detect the Next.js configuration
+2. Set all required environment variables in the Vercel dashboard (including `DATABASE_URL` on Production)
+3. Deploy — Vercel runs `pnpm build`, which applies any Payload/app migrations not yet recorded in `payload_migrations` and then runs `next build`
+
+The migrate step runs on Vercel **production** (`VERCEL=1` and `VERCEL_ENV=production`). Local `pnpm build` and GitHub CI skip it. Already-applied migrations are a no-op, including names recorded after a hand-applied leftover such as `20260831a_hub_dm_mail` from [#254](https://github.com/ai-tech-community/aitcom/pull/254). Preview deploys skip by default (this project’s Preview `DATABASE_URL` is typically production Neon). Set `DB_APPLY_ON_PREVIEW=1` only when Preview points at an isolated branch. Escape hatch: `SKIP_DB_MIGRATE=1`.
+
+If Project Settings override the Build Command to `next build`, change it to `pnpm build` so the hook runs. `vercel.json` also sets `buildCommand` to `pnpm build`.
 
 ## Contributing
 
