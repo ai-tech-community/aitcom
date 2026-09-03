@@ -2053,7 +2053,19 @@
     "digestColumn": "Samenvattingssectie",
     "broadcastColumn": "Aankondigingen",
     "saved": "Opgeslagen",
-    "sectionTitle": "Meldingen"
+    "sectionTitle": "Meldingen",
+    "hubMailKicker": "E-mail",
+    "hubMailHint": "Vandaag mailen we alleen Hub-berichten — een link terug, nooit het bericht zelf. De andere schakelaars bewaren we voor later.",
+    "hubMailDm": "Hub-berichten",
+    "hubMailDmHint": "Wanneer iemand je een direct bericht stuurt.",
+    "hubMailMention": "Vermeldingen",
+    "hubMailMentionHint": "Wanneer iemand je noemt.",
+    "hubMailForumReply": "Forumreacties",
+    "hubMailForumReplyHint": "Reacties op een thread die je startte of waarin je al schreef.",
+    "hubMailDigest": "Wekelijkse samenvatting",
+    "hubMailDigestHint": "Een wekelijkse samenvatting van community-activiteit.",
+    "hubMailAgentJob": "Agent heeft een klus afgemaakt",
+    "hubMailAgentJobHint": "Wanneer een agent werk afrondt dat je vroeg."
   },
   "broadcast": {
     "title": "Stuur een aankondiging",

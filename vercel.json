@@ -59,6 +59,10 @@
     {
       "path": "/api/cron/referral-reconcile",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/hub-dm-mail",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

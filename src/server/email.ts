@@ -8,6 +8,11 @@ import {
   REGISTRATION_CONFIRMATION_TEMPLATE_KEY,
 } from "@/server/email-template";
 import { STAFF_INVITE_TTL_DAYS } from "@/server/hackathon/staff-invite";
+import {
+  hubDmMailCopy,
+  renderHubDmPingHtml,
+  type HubMailLocale,
+} from "@/server/notifications/hub-dm-mail-copy";
 
 let resendInstance: Resend | null = null;
 
@@ -351,6 +356,23 @@ export async function sendChallengeSubmissionConfirmation(
       </div>
     `,
   });
+}
+
+/** Link-only Hub DM ping. Never interpolates the message or invite copy. */
+export async function sendHubDmPingEmail(
+  to: string,
+  opts: { locale: HubMailLocale; hubUrl: string },
+) {
+  const resend = getResend();
+  if (!resend) return false;
+  const copy = hubDmMailCopy(opts.locale);
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: copy.subject,
+    html: renderHubDmPingHtml(opts.locale, opts.hubUrl),
+  });
+  return true;
 }
 
 /** Send the consolidated weekly Hub digest. */

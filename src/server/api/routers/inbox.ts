@@ -29,6 +29,11 @@ import { dispatchEventImmediately } from "@/server/agent/dispatch-immediate";
 import { resolveProducerTrust } from "@/lib/chat/trust";
 import type { UiResource } from "@/lib/chat/types";
 import { runUiTool } from "@/server/inbox/ui-tools";
+import { isHubDmConversation } from "@/server/notifications/hub-mail-prefs";
+import {
+  localeFromCookieHeader,
+  notifyUnreadHubDmForRecipient,
+} from "@/server/notifications/hub-dm-mail";
 
 const uiResourceSchema = z.object({
   uri: z.string().startsWith("ui://"),
@@ -661,6 +666,13 @@ export const inboxRouter = createTRPCRouter({
           conversationId: input.conversationId,
           message,
         });
+        if (isHubDmConversation(conversationType)) {
+          void notifyUnreadHubDmForRecipient(ctx.db, {
+            recipientUserId: recipient.userId,
+            conversationId: input.conversationId,
+            locale: localeFromCookieHeader(ctx.headers.get("cookie")),
+          });
+        }
       }
       void publishInboxEvent(userId, {
         kind: "message",
