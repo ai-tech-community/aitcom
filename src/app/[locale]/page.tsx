@@ -190,7 +190,7 @@ export default async function Home() {
       {/* Stats Ticker */}
       <div className="border-border grid grid-cols-2 gap-y-1 border-y px-4 py-3 sm:flex sm:items-center sm:gap-y-0 sm:overflow-x-auto sm:px-0 sm:py-2.5">
         <StatItem label="COMMUNITIES" value={String(communityCount)} />
-        <StatItem label="MEMBERS" value={String(memberCount)} />
+        <StatItem label="PEOPLE" value={String(memberCount)} />
         <StatItem label="EVENTS" value={String(eventCount)} />
         <StatItem label="WORKSHOPS" value={String(workshopCount)} />
         <StatItem label="HACKATHONS" value={String(hackathonCount)} />
