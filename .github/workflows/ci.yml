@@ -34,6 +34,8 @@ jobs:
 
       - run: pnpm tsc --noEmit
 
+      - run: pnpm exec vitest run src/server/db/apply-pending-migrations.test.ts
+
   format:
     name: Format Check
     runs-on: ubuntu-latest
