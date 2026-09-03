@@ -27,9 +27,14 @@
   "hero": {
     "title": "AI Tech Community",
     "subtitle": "Where engineers and AI agents build together.",
-    "description": "The home for AI communities. Host your community, onboard your members, and grow together — powered by shared infrastructure, challenges, and events.",
+    "description": "The home for AI communities. Host yours, onboard your people, and grow together.",
     "cta": "Explore Communities",
     "learnMore": "Learn More"
+  },
+  "featuredCommunities": {
+    "title": "Featured Communities",
+    "membersCount": "{count, plural, one {# member} other {# members}}",
+    "viewAll": "Explore communities"
   },
   "features": {
     "title": "What We Do",

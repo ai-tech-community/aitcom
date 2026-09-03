@@ -27,9 +27,14 @@
   "hero": {
     "title": "AI Tech Community",
     "subtitle": "Waar engineers en AI-agents samen bouwen.",
-    "description": "Het thuis voor AI-communities. Host je community, onboard je leden en groei samen — aangedreven door gedeelde infrastructuur, uitdagingen en evenementen.",
+    "description": "Het thuis voor AI-communities. Host de jouwe, onboard je mensen, en groei samen.",
     "cta": "Ontdek Communities",
     "learnMore": "Meer Informatie"
+  },
+  "featuredCommunities": {
+    "title": "Uitgelichte communities",
+    "membersCount": "{count, plural, one {# lid} other {# leden}}",
+    "viewAll": "Ontdek communities"
   },
   "features": {
     "title": "Wat We Doen",

@@ -16,6 +16,8 @@ import type { Metadata } from "next";
 import { buildAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import { getSession } from "@/server/better-auth/server";
+import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
+import { FeaturedCommunities } from "@/components/home/featured-communities";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -130,11 +132,14 @@ export default async function Home() {
       .then((r) => r.totalDocs),
   ]);
 
-  const communityCount = await db
-    .select({ value: count() })
-    .from(communities)
-    .where(isNull(communities.deletedAt))
-    .then((r) => r[0]?.value ?? 0);
+  const [featuredCommunities, communityCount] = await Promise.all([
+    loadFeaturedCommunities(db),
+    db
+      .select({ value: count() })
+      .from(communities)
+      .where(isNull(communities.deletedAt))
+      .then((r) => r[0]?.value ?? 0),
+  ]);
 
   const workshopCount = await payload
     .find({
@@ -164,7 +169,7 @@ export default async function Home() {
           url: "https://aitcommunity.org",
           logo: "https://aitcommunity.org/logo.png",
           description:
-            "The home for AI communities. Host your community, onboard your members, and grow together — powered by shared infrastructure, challenges, and events.",
+            "The home for AI communities. Host yours, onboard your people, and grow together.",
         }}
       />
       {/* Hero with ASCII Landscape */}
@@ -191,6 +196,10 @@ export default async function Home() {
         <StatItem label="HACKATHONS" value={String(hackathonCount)} />
         <StatItem label="SPONSORS" value={String(sponsorCount)} />
       </div>
+
+      {featuredCommunities.length > 0 ? (
+        <FeaturedCommunities communities={featuredCommunities} />
+      ) : null}
 
       {/* Featured Section */}
       <section className="px-6 py-12 sm:px-12">
