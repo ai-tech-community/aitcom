@@ -42,7 +42,9 @@ export async function loadFeaturedCommunities(
     })
     .from(communities)
     .leftJoin(memberCountSq, eq(communities.id, memberCountSq.communityId))
-    .where(and(inArray(communities.slug, slugs), isNull(communities.deletedAt)));
+    .where(
+      and(inArray(communities.slug, slugs), isNull(communities.deletedAt)),
+    );
 
   return pickFeaturedCommunities(rows);
 }
