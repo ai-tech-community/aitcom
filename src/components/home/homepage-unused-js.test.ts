@@ -33,12 +33,14 @@ describe("locale homepage unused-JS splits", () => {
     expect(featureModals).not.toMatch(
       /^import\s+\{[^}]*BuildingModal[^}]*\}\s+from/m,
     );
+    expect(featureModals).toContain("mountedModals.has(feat.key)");
   });
 
   it("loads RulesModal behind next/dynamic so the locale shell stays light", () => {
     const rules = src("../community/rules-provider.tsx");
     expect(rules).toContain("next/dynamic");
     expect(rules).not.toMatch(/^import\s+\{[^}]*RulesModal[^}]*\}\s+from/m);
+    expect(rules).toContain("{mounted ?");
   });
 
   it("keeps guest navbar free of notification and messages modules", () => {
@@ -50,5 +52,7 @@ describe("locale homepage unused-JS splits", () => {
     expect(navbar).not.toMatch(
       /^import\s+\{[^}]*MessagesNavLink[^}]*\}\s+from/m,
     );
+    expect(navbar).toContain("{user && <MessagesNavLink />}");
+    expect(navbar).toContain("{user && <NotificationBell />}");
   });
 });

@@ -20,7 +20,7 @@ import { SessionChrome } from "./session-chrome";
 const USER = { id: "ada", name: "Ada Lovelace" };
 
 describe("SessionChrome", () => {
-  it("does not load inbox or space-window chunks for a guest", () => {
+  it("does not mount inbox or space-window chrome for a guest", () => {
     render(
       <SessionProvider initialUser={null}>
         <SessionChrome />
