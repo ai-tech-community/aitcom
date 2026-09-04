@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import {
@@ -27,8 +28,15 @@ import {
   type HubAuthUser,
 } from "@/server/better-auth/hub-session";
 import { AitLogo } from "@/components/ait-logo";
-import { NotificationBell } from "@/components/notifications/notification-bell";
-import { MessagesNavLink } from "@/components/inbox/messages-nav-link";
+
+const NotificationBell = dynamic(() =>
+  import("@/components/notifications/notification-bell").then(
+    (m) => m.NotificationBell,
+  ),
+);
+const MessagesNavLink = dynamic(() =>
+  import("@/components/inbox/messages-nav-link").then((m) => m.MessagesNavLink),
+);
 
 // Source of truth for the IA split — see ADR-0010.
 // New top-level destinations default to `primary: false` unless they are a

@@ -1,5 +1,3 @@
-"use client";
-
 interface HeroTitleProps {
   greeting: string;
   title: string;

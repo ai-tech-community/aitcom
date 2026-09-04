@@ -11,9 +11,8 @@ import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { Toaster } from "sonner";
 import { InboxProvider } from "@/components/inbox/inbox-provider";
-import { InboxRoot } from "@/components/inbox/inbox-root";
 import { SpaceWindowProvider } from "@/components/communities/explore/space-window-provider";
-import { SpaceWindowRoot } from "@/components/communities/explore/space-window-root";
+import { SessionChrome } from "@/components/session-chrome";
 import { RulesProvider } from "@/components/community/rules-provider";
 import { AuthRequiredProvider } from "@/components/auth/auth-required-dialog";
 import { SessionProvider } from "@/components/auth/session-provider";
@@ -90,8 +89,7 @@ export default async function LocaleLayout({
                           {children}
                         </main>
                         <Footer />
-                        <InboxRoot />
-                        <SpaceWindowRoot />
+                        <SessionChrome initialUser={initialUser} />
                       </SpaceWindowProvider>
                     </InboxProvider>
                     <Toaster position="bottom-right" offset={60} />
