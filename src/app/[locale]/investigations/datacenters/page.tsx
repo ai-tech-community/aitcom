@@ -162,13 +162,21 @@ export default async function DatacentersPage({ searchParams }: PageProps) {
       </section>
 
       <section>
-        <div className="mb-3 flex items-baseline justify-between">
+        <div className="mb-3 flex items-baseline justify-between gap-3">
           <h2 className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
             Anomalies that warrant review
           </h2>
-          <span className="text-muted-foreground text-xs">
-            descriptive flags · not editorial claims
-          </span>
+          <div className="flex items-baseline gap-3">
+            <Link
+              href="/investigations/datacenters/method"
+              className="text-muted-foreground text-xs hover:underline"
+            >
+              How we flag
+            </Link>
+            <span className="text-muted-foreground text-xs">
+              descriptive flags · not editorial claims
+            </span>
+          </div>
         </div>
         <RedFlagsPanel flags={dash.redFlags} phase5={phase5} />
       </section>
