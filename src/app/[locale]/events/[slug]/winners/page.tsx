@@ -10,7 +10,7 @@ import {
 import { splitPodium, prizeRecipients } from "@/server/hackathon/winners";
 import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
 import { hubTabStates } from "@/server/hackathon/hub-tabs";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { Link } from "@/i18n/navigation";
 import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +37,7 @@ export async function generateMetadata({
     title,
     description,
     ...buildOgMeta(title, description),
-    alternates: buildAlternates(`/events/${slug}/winners`),
+    alternates: await localeAlternates(`/events/${slug}/winners`),
   };
 }
 

@@ -11,7 +11,7 @@ import {
 import { submittedProjects } from "@/server/hackathon/gallery";
 import { getHubViewerContext } from "@/server/hackathon/hub-viewer";
 import { hubTabStates } from "@/server/hackathon/hub-tabs";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { LockedTabPanel } from "@/components/hackathon/hub/locked-tab-panel";
 import { SectionLabel } from "@/components/ui/section-label";
 import {
@@ -38,7 +38,7 @@ export async function generateMetadata({
     title,
     description,
     ...buildOgMeta(title, description),
-    alternates: buildAlternates(`/events/${slug}/projects`),
+    alternates: await localeAlternates(`/events/${slug}/projects`),
   };
 }
 

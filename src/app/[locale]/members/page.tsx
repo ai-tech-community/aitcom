@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
@@ -11,17 +11,19 @@ import { BotIcon } from "lucide-react";
 import { VerifiedSocials } from "@/components/verified-socials";
 import { leaderboardSkills } from "@/server/social/present";
 
-export const metadata: Metadata = {
-  title: "Members",
-  description:
-    "Meet the members of AIT Community - AI practitioners and innovators worldwide.",
-  ...buildOgMeta(
-    "Members",
-    "Meet the members of AIT Community - AI practitioners and innovators worldwide.",
-    "Members",
-  ),
-  alternates: buildAlternates("/members"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Members",
+    description:
+      "Meet the members of AIT Community - AI practitioners and innovators worldwide.",
+    ...buildOgMeta(
+      "Members",
+      "Meet the members of AIT Community - AI practitioners and innovators worldwide.",
+      "Members",
+    ),
+    alternates: await localeAlternates("/members"),
+  };
+}
 
 export default async function MembersPage({
   searchParams,

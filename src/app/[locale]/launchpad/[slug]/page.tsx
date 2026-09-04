@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getPayloadClient } from "@/server/payload";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { LaunchpadDetail } from "@/components/launchpad/launchpad-detail";
 
 export async function generateMetadata({
@@ -30,7 +30,7 @@ export async function generateMetadata({
       `${project.title} — a ${project.stage} stage project on AIT Community Launchpad`,
       "Launchpad",
     ),
-    alternates: buildAlternates(`/launchpad/${slug}`),
+    alternates: await localeAlternates(`/launchpad/${slug}`),
   };
 }
 

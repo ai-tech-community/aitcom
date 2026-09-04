@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { TRPCError } from "@trpc/server";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,7 @@ export async function generateMetadata({
       title,
       description: desc,
       ...buildOgMeta(title, desc, "Supplier"),
-      alternates: buildAlternates(`/investigations/suppliers/${slug}`),
+      alternates: await localeAlternates(`/investigations/suppliers/${slug}`),
     };
   } catch {
     return { title: "Supplier not found" };

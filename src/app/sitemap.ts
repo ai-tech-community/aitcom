@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { absoluteLocaleUrl } from "@/lib/metadata";
 import { getPayloadClient } from "@/server/payload";
 
 // Time-based ISR instead of force-dynamic: a sitemap does not need to be
@@ -8,8 +9,6 @@ import { getPayloadClient } from "@/server/payload";
 // `x-vercel-cache: MISS` + `max-age=0`). Any transient pg/Neon error
 // then 500'd the whole route because nothing was caught.
 export const revalidate = 3600;
-
-const BASE_URL = "https://aitcommunity.org";
 
 const STATIC_PAGES = [
   "",
@@ -43,14 +42,13 @@ function localeEntries(
   path: string,
   lastModified?: Date,
 ): MetadataRoute.Sitemap[number] {
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
   return {
-    url: `${BASE_URL}/en${cleanPath}`,
+    url: absoluteLocaleUrl("en", path),
     lastModified: lastModified ?? new Date(),
     alternates: {
       languages: {
-        en: `${BASE_URL}/en${cleanPath}`,
-        nl: `${BASE_URL}/nl${cleanPath}`,
+        en: absoluteLocaleUrl("en", path),
+        nl: absoluteLocaleUrl("nl", path),
       },
     },
   };

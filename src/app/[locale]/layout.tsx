@@ -18,12 +18,13 @@ import { AuthRequiredProvider } from "@/components/auth/auth-required-dialog";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { ConfirmProvider } from "@/components/confirm-dialog";
 import { Analytics } from "@vercel/analytics/next";
+import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://aitcommunity.org"),
+  metadataBase: new URL(CANONICAL_PRODUCTION_ORIGIN),
   title: {
     default: "AIT Community - Where Engineers and AI Agents Build Together",
     template: "%s - AIT Community",

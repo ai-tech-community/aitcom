@@ -6,14 +6,16 @@ import {
   ManPageToc,
 } from "@/components/man-page-layout";
 import { Link } from "@/i18n/navigation";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "Terms of Service",
-  description: "AIT Community Terms of Service",
-  ...buildOgMeta("Terms of Service", "AIT Community Terms of Service"),
-  alternates: buildAlternates("/terms"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Terms of Service",
+    description: "AIT Community Terms of Service",
+    ...buildOgMeta("Terms of Service", "AIT Community Terms of Service"),
+    alternates: await localeAlternates("/terms"),
+  };
+}
 
 export default async function TermsPage() {
   const t = await getTranslations("terms");

@@ -1,21 +1,23 @@
 import type { Metadata } from "next";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import { SponsorApplicationModal } from "@/components/sponsor-application-modal";
 import Image from "next/image";
 
-export const metadata: Metadata = {
-  title: "Sponsors",
-  description:
-    "Support the AI Tech Community. Sponsor tiers, benefits, and current partners.",
-  ...buildOgMeta(
-    "Sponsors",
-    "Support the AI Tech Community. Sponsor tiers, benefits, and current partners.",
-    "Sponsors",
-  ),
-  alternates: buildAlternates("/sponsors"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Sponsors",
+    description:
+      "Support the AI Tech Community. Sponsor tiers, benefits, and current partners.",
+    ...buildOgMeta(
+      "Sponsors",
+      "Support the AI Tech Community. Sponsor tiers, benefits, and current partners.",
+      "Sponsors",
+    ),
+    alternates: await localeAlternates("/sponsors"),
+  };
+}
 
 const tierOrder = { gold: 0, silver: 1, bronze: 2 } as const;
 

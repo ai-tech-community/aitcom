@@ -10,7 +10,7 @@ import { EventRegisterButton } from "@/components/event-register-button";
 import { EventAttendees } from "@/components/event-attendees";
 import { EventShareRow } from "@/components/event-share-row";
 import { LexicalRenderer } from "@/lib/lexical";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import {
   EVENT_FOCUS_LABELS,
@@ -130,7 +130,7 @@ export async function generateMetadata({
       description,
       `${typeLabel} · ${formatDate(event.date)} · ${event.location}`,
     ),
-    alternates: buildAlternates(`/events/${slug}`),
+    alternates: await localeAlternates(`/events/${slug}`),
   };
 }
 

@@ -1,20 +1,22 @@
 import type { Metadata } from "next";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { MissionDialog } from "@/components/datacenters/mission-dialog";
 
-export const metadata: Metadata = {
-  title: "Investigations",
-  description:
-    "Community-driven investigations into the AI economy — datacenter ecosystems, supply chains, energy deals, and the companies behind them.",
-  ...buildOgMeta(
-    "Investigations",
-    "Community-driven investigations into the AI economy.",
-    "Investigations",
-  ),
-  alternates: buildAlternates("/investigations"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Investigations",
+    description:
+      "Community-driven investigations into the AI economy — datacenter ecosystems, supply chains, energy deals, and the companies behind them.",
+    ...buildOgMeta(
+      "Investigations",
+      "Community-driven investigations into the AI economy.",
+      "Investigations",
+    ),
+    alternates: await localeAlternates("/investigations"),
+  };
+}
 
 export const revalidate = 300;
 

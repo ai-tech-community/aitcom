@@ -30,12 +30,12 @@ function urlsOf(entries: Awaited<ReturnType<typeof buildSitemapEntries>>) {
 }
 
 function localeFor(path: string) {
-  const cleanPath = path === "/" ? "/" : path;
+  const suffix = path === "/" ? "" : path;
   return {
-    url: `https://aitcommunity.org/en${cleanPath === "/" ? "/" : cleanPath}`,
+    url: `https://www.aitcommunity.org/en${suffix}`,
     languages: {
-      en: `https://aitcommunity.org/en${cleanPath === "/" ? "/" : cleanPath}`,
-      nl: `https://aitcommunity.org/nl${cleanPath === "/" ? "/" : cleanPath}`,
+      en: `https://www.aitcommunity.org/en${suffix}`,
+      nl: `https://www.aitcommunity.org/nl${suffix}`,
     },
   };
 }
@@ -86,16 +86,17 @@ describe("buildSitemapEntries", () => {
       expect(entry?.alternates?.languages).toEqual(loc.languages);
     }
 
-    expect(urls).toContain("https://aitcommunity.org/en/events/ai-night");
-    expect(urls).toContain("https://aitcommunity.org/en/blog/hello");
-    expect(urls).toContain("https://aitcommunity.org/en/community/intro");
+    expect(urls).toContain("https://www.aitcommunity.org/en/events/ai-night");
+    expect(urls).toContain("https://www.aitcommunity.org/en/blog/hello");
+    expect(urls).toContain("https://www.aitcommunity.org/en/community/intro");
     expect(
       entries.find(
-        (item) => item.url === "https://aitcommunity.org/en/events/ai-night",
+        (item) =>
+          item.url === "https://www.aitcommunity.org/en/events/ai-night",
       )?.alternates?.languages,
     ).toEqual({
-      en: "https://aitcommunity.org/en/events/ai-night",
-      nl: "https://aitcommunity.org/nl/events/ai-night",
+      en: "https://www.aitcommunity.org/en/events/ai-night",
+      nl: "https://www.aitcommunity.org/nl/events/ai-night",
     });
 
     const eventQuery = find.mock.calls.find(
@@ -134,10 +135,12 @@ describe("buildSitemapEntries", () => {
     const entries = await buildSitemapEntries();
     const urls = urlsOf(entries);
 
-    expect(urls).toContain("https://aitcommunity.org/en/blog/hello");
-    expect(urls).toContain("https://aitcommunity.org/en/community/intro");
-    expect(urls).not.toContain("https://aitcommunity.org/en/events/ai-night");
-    expect(urls).toContain("https://aitcommunity.org/en/");
+    expect(urls).toContain("https://www.aitcommunity.org/en/blog/hello");
+    expect(urls).toContain("https://www.aitcommunity.org/en/community/intro");
+    expect(urls).not.toContain(
+      "https://www.aitcommunity.org/en/events/ai-night",
+    );
+    expect(urls).toContain("https://www.aitcommunity.org/en");
     expect(console.error).toHaveBeenCalledWith(
       "[sitemap] events query failed",
       expect.any(Error),
@@ -150,8 +153,8 @@ describe("buildSitemapEntries", () => {
     const entries = await buildSitemapEntries();
     const urls = urlsOf(entries);
 
-    expect(urls).toContain("https://aitcommunity.org/en/");
-    expect(urls).toContain("https://aitcommunity.org/en/events");
+    expect(urls).toContain("https://www.aitcommunity.org/en");
+    expect(urls).toContain("https://www.aitcommunity.org/en/events");
     expect(
       urls.filter((url) => /\/en\/(events|blog|community)\/.+/.test(url)),
     ).toEqual([]);
@@ -175,7 +178,7 @@ describe("buildSitemapEntries", () => {
 
     const entries = await buildSitemapEntries();
     const event = entries.find(
-      (item) => item.url === "https://aitcommunity.org/en/events/broken",
+      (item) => item.url === "https://www.aitcommunity.org/en/events/broken",
     );
     expect(event).toBeDefined();
     expect(event?.lastModified).toBeInstanceOf(Date);

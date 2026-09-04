@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import {
   DatacentersMap,
   type MapDatacenter,
@@ -19,17 +19,19 @@ import { RedFlagsPanel } from "@/components/datacenters/red-flags-panel";
 import { RelationshipGraphLoader } from "@/components/datacenters/relationship-graph-loader";
 import { MissionDialog } from "@/components/datacenters/mission-dialog";
 
-export const metadata: Metadata = {
-  title: "AI Datacenters",
-  description:
-    "Community-tracked AI datacenter ecosystem — locations, operators, capacity, power, water, suppliers.",
-  ...buildOgMeta(
-    "AI Datacenters",
-    "Community-tracked AI datacenter ecosystem — locations, operators, capacity, power, water, suppliers.",
-    "Datacenters",
-  ),
-  alternates: buildAlternates("/investigations/datacenters"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "AI Datacenters",
+    description:
+      "Community-tracked AI datacenter ecosystem — locations, operators, capacity, power, water, suppliers.",
+    ...buildOgMeta(
+      "AI Datacenters",
+      "Community-tracked AI datacenter ecosystem — locations, operators, capacity, power, water, suppliers.",
+      "Datacenters",
+    ),
+    alternates: await localeAlternates("/investigations/datacenters"),
+  };
+}
 
 export const revalidate = 300;
 

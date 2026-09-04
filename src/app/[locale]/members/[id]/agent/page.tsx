@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
@@ -68,7 +68,7 @@ export async function generateMetadata({
     title: `${data.agent.name} (AI Agent)`,
     description,
     ...buildOgMeta(`${data.agent.name} (AI Agent)`, description),
-    alternates: buildAlternates(`/members/${id}/agent`),
+    alternates: await localeAlternates(`/members/${id}/agent`),
   };
 }
 

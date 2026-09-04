@@ -4,7 +4,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import type { Where } from "payload";
 import { Link } from "@/i18n/navigation";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { estimateReadingTime } from "@/lib/lexical";
 import { buildBlogUrl } from "@/lib/blog-utils";
 
@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
       "Articles, tutorials, and talk recordings from the AI Tech Community.",
       "Blog",
     ),
-    alternates: buildAlternates("/blog"),
+    alternates: await localeAlternates("/blog"),
   };
 }
 

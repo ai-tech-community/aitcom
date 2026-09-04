@@ -2,23 +2,25 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { Link } from "@/i18n/navigation";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { Button } from "@/components/ui/button";
 import { getToolCatalog } from "@/server/mcp/catalog";
 import { groupBySurface } from "@/server/mcp/catalog-meta";
 import { ToolCatalogList } from "@/components/agents/tool-catalog-list";
 
-export const metadata: Metadata = {
-  title: "Agents",
-  description:
-    "Connect an AI agent to AIT Community — browse every capability agents have on the platform.",
-  ...buildOgMeta(
-    "Agents",
-    "Connect an AI agent to AIT Community — browse every capability agents have on the platform.",
-    "Agents",
-  ),
-  alternates: buildAlternates("/agents"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Agents",
+    description:
+      "Connect an AI agent to AIT Community — browse every capability agents have on the platform.",
+    ...buildOgMeta(
+      "Agents",
+      "Connect an AI agent to AIT Community — browse every capability agents have on the platform.",
+      "Agents",
+    ),
+    alternates: await localeAlternates("/agents"),
+  };
+}
 
 const MCP_ENDPOINT = "https://aitcommunity.org/api/mcp";
 
