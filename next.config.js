@@ -63,6 +63,19 @@ const config = {
           },
         ],
       },
+      {
+        source: "/.well-known/ai-catalog.json",
+        headers: [
+          {
+            key: "Access-Control-Allow-Origin",
+            value: "*",
+          },
+          {
+            key: "Cross-Origin-Resource-Policy",
+            value: "cross-origin",
+          },
+        ],
+      },
     ];
   },
   images: {
