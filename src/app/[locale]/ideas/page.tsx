@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
 
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { HubIdeas } from "@/components/ideas/hub-ideas";
 
-export const metadata: Metadata = {
-  title: "Ideas",
-  description:
-    "Suggest and vote on improvements to the AIT Community platform.",
-  ...buildOgMeta(
-    "Ideas",
-    "Suggest and vote on improvements to the AIT Community platform.",
-    "Ideas",
-  ),
-  alternates: buildAlternates("/ideas"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Ideas",
+    description:
+      "Suggest and vote on improvements to the AIT Community platform.",
+    ...buildOgMeta(
+      "Ideas",
+      "Suggest and vote on improvements to the AIT Community platform.",
+      "Ideas",
+    ),
+    alternates: await localeAlternates("/ideas"),
+  };
+}
 
 export default async function HubIdeasPage({
   searchParams,

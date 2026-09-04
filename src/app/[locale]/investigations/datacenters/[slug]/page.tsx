@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { TRPCError } from "@trpc/server";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { getSession } from "@/server/better-auth/server";
 import { AddSupplierDialog } from "@/components/datacenters/add-supplier-dialog";
 import { SubmitFindingDialog } from "@/components/datacenters/submit-finding-dialog";
@@ -35,7 +35,7 @@ export async function generateMetadata({
       title,
       description: desc,
       ...buildOgMeta(title, desc, "Datacenter"),
-      alternates: buildAlternates(`/investigations/datacenters/${slug}`),
+      alternates: await localeAlternates(`/investigations/datacenters/${slug}`),
     };
   } catch {
     return { title: "Datacenter not found" };

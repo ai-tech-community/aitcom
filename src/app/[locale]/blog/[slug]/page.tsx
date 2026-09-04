@@ -11,7 +11,7 @@ import {
   extractHeadings,
   estimateReadingTime,
 } from "@/lib/lexical";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import { getSession } from "@/server/better-auth/server";
 import { ArticleComments } from "@/components/blog/article-comments";
@@ -58,7 +58,7 @@ export async function generateMetadata({
     title: article.title,
     description,
     ...buildOgMeta(article.title, description, tags.join(" · ") || "Blog"),
-    alternates: buildAlternates(`/blog/${slug}`),
+    alternates: await localeAlternates(`/blog/${slug}`),
   };
 }
 

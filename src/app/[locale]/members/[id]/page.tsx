@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { api } from "@/trpc/server";
 import { notFound } from "next/navigation";
@@ -32,7 +32,7 @@ export async function generateMetadata({
     title: data.profile.displayName,
     description,
     ...buildOgMeta(data.profile.displayName, description),
-    alternates: buildAlternates(`/members/${id}`),
+    alternates: await localeAlternates(`/members/${id}`),
   };
 }
 

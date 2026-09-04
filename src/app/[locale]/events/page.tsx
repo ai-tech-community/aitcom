@@ -7,7 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { db } from "@/server/db";
 import { communities } from "@/server/db/schema";
 import { inArray } from "drizzle-orm";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import {
   EVENT_FORMAT_LABELS,
   EVENT_FORMAT_OPTIONS,
@@ -27,17 +27,19 @@ import { getVisitorLocation } from "@/lib/visitor-location";
 import { haversineDistanceKm, formatDistance } from "@/lib/geo";
 import { formatEventTimeRange } from "@/lib/event-time";
 
-export const metadata: Metadata = {
-  title: "Events",
-  description:
-    "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community.",
-  ...buildOgMeta(
-    "Events",
-    "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community.",
-    "Events",
-  ),
-  alternates: buildAlternates("/events"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Events",
+    description:
+      "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community.",
+    ...buildOgMeta(
+      "Events",
+      "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community.",
+      "Events",
+    ),
+    alternates: await localeAlternates("/events"),
+  };
+}
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);

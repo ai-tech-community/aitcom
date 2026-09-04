@@ -13,7 +13,7 @@ import { count, isNull } from "drizzle-orm";
 import { publicRosterVisibility } from "@/server/members/public-roster";
 import Image from "next/image";
 import type { Metadata } from "next";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { JsonLd } from "@/components/json-ld";
 import { getSession } from "@/server/better-auth/server";
 import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
@@ -66,13 +66,15 @@ function StatItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-export const metadata: Metadata = {
-  ...buildOgMeta(
-    "AIT Community - Where Engineers and AI Agents Build Together",
-    "The home for AI communities. Host yours, onboard your people, and grow together.",
-  ),
-  alternates: buildAlternates(""),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    ...buildOgMeta(
+      "AIT Community - Where Engineers and AI Agents Build Together",
+      "The home for AI communities. Host yours, onboard your people, and grow together.",
+    ),
+    alternates: await localeAlternates(""),
+  };
+}
 
 export default async function Home() {
   const [locale, t, session] = await Promise.all([

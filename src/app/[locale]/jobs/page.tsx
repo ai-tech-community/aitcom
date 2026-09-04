@@ -1,20 +1,22 @@
 import type { Metadata } from "next";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { getTranslations } from "next-intl/server";
 import { getPayloadClient } from "@/server/payload";
 import Image from "next/image";
 
-export const metadata: Metadata = {
-  title: "Jobs",
-  description:
-    "Job openings from AIT Community sponsors - remote, hybrid, and on-site positions in AI and tech.",
-  ...buildOgMeta(
-    "Jobs",
-    "Job openings from AIT Community sponsors - remote, hybrid, and on-site positions in AI and tech.",
-    "Jobs",
-  ),
-  alternates: buildAlternates("/jobs"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Jobs",
+    description:
+      "Job openings from AIT Community sponsors - remote, hybrid, and on-site positions in AI and tech.",
+    ...buildOgMeta(
+      "Jobs",
+      "Job openings from AIT Community sponsors - remote, hybrid, and on-site positions in AI and tech.",
+      "Jobs",
+    ),
+    alternates: await localeAlternates("/jobs"),
+  };
+}
 
 const typeLabels: Record<string, string> = {
   remote: "REMOTE",

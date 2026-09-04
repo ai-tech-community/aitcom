@@ -6,14 +6,16 @@ import {
   ManPageToc,
 } from "@/components/man-page-layout";
 import { Link } from "@/i18n/navigation";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description: "AIT Community Privacy Policy",
-  ...buildOgMeta("Privacy Policy", "AIT Community Privacy Policy"),
-  alternates: buildAlternates("/privacy"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Privacy Policy",
+    description: "AIT Community Privacy Policy",
+    ...buildOgMeta("Privacy Policy", "AIT Community Privacy Policy"),
+    alternates: await localeAlternates("/privacy"),
+  };
+}
 
 export default async function PrivacyPage() {
   const t = await getTranslations("privacy");

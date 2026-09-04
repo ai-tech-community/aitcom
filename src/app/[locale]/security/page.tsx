@@ -6,17 +6,19 @@ import {
   ManPageToc,
 } from "@/components/man-page-layout";
 import { Link } from "@/i18n/navigation";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "Security & Transparency",
-  description: "AIT Community security and transparency overview",
-  ...buildOgMeta(
-    "Security & Transparency",
-    "How AIT handles platform transparency and security boundaries",
-  ),
-  alternates: buildAlternates("/security"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Security & Transparency",
+    description: "AIT Community security and transparency overview",
+    ...buildOgMeta(
+      "Security & Transparency",
+      "How AIT handles platform transparency and security boundaries",
+    ),
+    alternates: await localeAlternates("/security"),
+  };
+}
 
 export default async function SecurityPage() {
   const t = await getTranslations("security");

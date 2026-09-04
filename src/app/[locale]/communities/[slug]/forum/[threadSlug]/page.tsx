@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getPayloadClient } from "@/server/payload";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { CommunityThreadDetail } from "@/components/forum/community-thread-detail";
 import { db } from "@/server/db";
 import { communities } from "@/server/db/schema";
@@ -47,7 +47,9 @@ export async function generateMetadata({
     title: `${thread.title} — Forum — AIT`,
     description: `${thread.title} — AIT Community Forum`,
     ...buildOgMeta(thread.title, `${thread.title} — AIT Community Forum`),
-    alternates: buildAlternates(`/communities/${slug}/forum/${threadSlug}`),
+    alternates: await localeAlternates(
+      `/communities/${slug}/forum/${threadSlug}`,
+    ),
   };
 }
 

@@ -15,7 +15,7 @@ import { groupBySurface, type CatalogGroup } from "@/server/mcp/catalog-meta";
 import { filterAgentTabGroups } from "@/server/hackathon/agent-tab-surfaces";
 import { ToolCatalogList } from "@/components/agents/tool-catalog-list";
 import { Link } from "@/i18n/navigation";
-import { buildAlternates, buildOgMeta } from "@/lib/metadata";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SectionLabel } from "@/components/ui/section-label";
 
@@ -40,7 +40,7 @@ export async function generateMetadata({
     title,
     description,
     ...buildOgMeta(title, description),
-    alternates: buildAlternates(`/events/${slug}/agents`),
+    alternates: await localeAlternates(`/events/${slug}/agents`),
   };
 }
 
