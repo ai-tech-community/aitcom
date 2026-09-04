@@ -1,14 +1,22 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ArrowUpRight, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BuildingModal } from "@/components/community/building-modal";
 import { AsciiBuildScene } from "@/components/ascii-build-scene";
 import { AsciiCompeteScene } from "@/components/ascii-compete-scene";
 import { AsciiConnectScene } from "@/components/ascii-connect-scene";
+
+const BuildingModal = dynamic(
+  () =>
+    import("@/components/community/building-modal").then(
+      (m) => m.BuildingModal,
+    ),
+  { ssr: false },
+);
 
 type ModalKey = "build" | "compete" | "connect";
 
@@ -24,14 +32,24 @@ const FEATURES: {
 
 export function FeatureModals() {
   const [openModals, setOpenModals] = useState<Set<ModalKey>>(new Set());
+  const [mountedModals, setMountedModals] = useState<Set<ModalKey>>(new Set());
   const t = useTranslations("features");
 
   const openModal = useCallback((key: ModalKey) => {
+    setMountedModals((prev) => new Set(prev).add(key));
     setOpenModals((prev) => new Set(prev).add(key));
   }, []);
 
   const closeModal = useCallback((key: ModalKey) => {
     setOpenModals((prev) => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
+  const unmountModal = useCallback((key: ModalKey) => {
+    setMountedModals((prev) => {
       const next = new Set(prev);
       next.delete(key);
       return next;
@@ -73,17 +91,20 @@ export function FeatureModals() {
         ))}
       </div>
 
-      {/* Modals */}
-      {FEATURES.map((feat) => (
-        <FeatureModal
-          key={feat.key}
-          featureKey={feat.key}
-          href={feat.href}
-          isOpen={openModals.has(feat.key)}
-          onClose={() => closeModal(feat.key)}
-          windowIndex={openList.indexOf(feat.key)}
-        />
-      ))}
+      {/* Modals — mount only after the first open so framer-motion stays out of the guest homepage graph */}
+      {FEATURES.map((feat) =>
+        mountedModals.has(feat.key) ? (
+          <FeatureModal
+            key={feat.key}
+            featureKey={feat.key}
+            href={feat.href}
+            isOpen={openModals.has(feat.key)}
+            onClose={() => closeModal(feat.key)}
+            onExitComplete={() => unmountModal(feat.key)}
+            windowIndex={openList.indexOf(feat.key)}
+          />
+        ) : null,
+      )}
     </>
   );
 }
@@ -93,12 +114,14 @@ function FeatureModal({
   href,
   isOpen,
   onClose,
+  onExitComplete,
   windowIndex,
 }: {
   featureKey: ModalKey;
   href: "/dashboard/agent" | "/challenges" | "/community";
   isOpen: boolean;
   onClose: () => void;
+  onExitComplete: () => void;
   windowIndex: number;
 }) {
   const t = useTranslations("features");
@@ -116,6 +139,7 @@ function FeatureModal({
     <BuildingModal
       isOpen={isOpen}
       onClose={onClose}
+      onExitComplete={onExitComplete}
       title={title}
       subtitle={subtitle}
       windowIndex={windowIndex}
