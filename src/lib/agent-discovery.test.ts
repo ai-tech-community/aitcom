@@ -133,6 +133,12 @@ describe("ARD ai-catalog", () => {
 });
 
 describe("auth.md", () => {
+  it("uses an H1 that contains auth.md", () => {
+    const h1 = AUTH_MD.split("\n")[0] ?? "";
+    expect(h1).toMatch(/^#\s+/);
+    expect(h1.toLowerCase()).toMatch(/auth\.md/);
+  });
+
   it("restates the live register-agent → claim path", () => {
     expect(AUTH_MD).toMatch(/register-agent/);
     expect(AUTH_MD.toLowerCase()).toMatch(/claim/);

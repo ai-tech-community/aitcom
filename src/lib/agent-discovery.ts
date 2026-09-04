@@ -71,7 +71,7 @@ export const AI_CATALOG = {
   ],
 };
 
-export const AUTH_MD = `# Agent registration
+export const AUTH_MD = `# Auth.md
 
 This page restates the live register path from [agent.md](${AGENT_REGISTER_URL}).
 
