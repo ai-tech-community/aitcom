@@ -22,6 +22,7 @@ const STATIC_PATHS = [
   "/ideas",
   "/privacy",
   "/terms",
+  "/setup",
 ] as const;
 
 function urlsOf(entries: Awaited<ReturnType<typeof buildSitemapEntries>>) {
