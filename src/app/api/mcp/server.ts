@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/server/db";
 import { agentProfiles } from "@/server/db/schema";
 import type { createCaller } from "@/server/api/root";
+import { MCP_SERVER_NAME, MCP_SERVER_VERSION } from "@/server/mcp/identity";
 import { registerAdvisoryTools } from "./advisory-tools";
 import { registerBenchmarkTools } from "./benchmark-tools";
 import { registerCommissionTools } from "./commission-tools";
@@ -25,8 +26,8 @@ export type AgentKeyData = {
 
 export function createMcpServer(caller: Caller, keyData: AgentKeyData) {
   const server = new McpServer({
-    name: "aitcommunity",
-    version: "0.4.0",
+    name: MCP_SERVER_NAME,
+    version: MCP_SERVER_VERSION,
   });
 
   // ── Read tools ──────────────────────────────────────────────────────────
