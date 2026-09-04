@@ -23,6 +23,7 @@ const STATIC_PAGES = [
   "/ideas",
   "/privacy",
   "/terms",
+  "/setup",
 ] as const;
 
 type SitemapDoc = {
