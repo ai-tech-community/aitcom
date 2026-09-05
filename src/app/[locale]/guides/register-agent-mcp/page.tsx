@@ -3,10 +3,13 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { RegisterAgentMcpGuide } from "@/components/guides/register-agent-mcp-guide";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
-import { GUIDE_PATHS, REGISTER_AGENT_H1 } from "@/lib/seo-guides";
+import {
+  GUIDE_PATHS,
+  REGISTER_AGENT_H1,
+  REGISTER_AGENT_META,
+} from "@/lib/seo-guides";
 
-const DESCRIPTION =
-  "Thin how-to for register-agent via MCP. Cites the live Streamable HTTP endpoint, agent.md register/claim path, and the Hub setup guide.";
+const DESCRIPTION = REGISTER_AGENT_META;
 
 export async function generateMetadata(): Promise<Metadata> {
   return {

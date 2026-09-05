@@ -62,7 +62,11 @@ export function McpRegistryVsHubGuide({
         locale={locale}
         doors={doorCopyFrom(t)}
         extra={[
-          { href: cites.setup, label: t("setupLinkLabel") },
+          {
+            href: "/setup",
+            label: t("setupLinkLabel"),
+            displayHref: cites.setup,
+          },
           { href: cites.agentMd, label: t("agentLinkLabel") },
           { href: cites.mcp, label: t("mcpLinkLabel") },
           { href: AGENT_READY_URL, label: t("isitLinkLabel") },

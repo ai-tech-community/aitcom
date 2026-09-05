@@ -1,8 +1,23 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({
+    href,
+    children,
+    ...p
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => (
+    <a href={href} {...p}>
+      {children}
+    </a>
+  ),
+}));
 
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
@@ -11,6 +26,7 @@ import {
   AGENT_READY_H1,
   AGENT_READY_URL,
   AGENT_REGISTER_URL,
+  appPathFromGuideHref,
   MCP_ENDPOINT,
   MCP_REGISTRY_H1,
   REGISTER_AGENT_H1,
@@ -22,6 +38,7 @@ import {
   hubJoinUrl,
   setupGuideUrl,
 } from "@/lib/seo-guides";
+import { REGISTER_AGENT_MCP_MD } from "@/content/guides/register-agent-mcp";
 import { AgentReadyCommunityGuide } from "./agent-ready-community-guide";
 import { McpRegistryVsHubGuide } from "./mcp-registry-vs-hub-guide";
 import { RegisterAgentMcpGuide } from "./register-agent-mcp-guide";
@@ -60,7 +77,7 @@ const BANNED = [
 
 const AUTH_MD_GREEN = /auth\.md[\s\S]{0,40}green/i;
 const DENIALS =
-  /does not claim an official mcp registry listing|claimt geen official mcp registry-listing|auth\.md is not green/gi;
+  /does not claim an official mcp registry listing|claimt geen official mcp registry-listing|auth\.md is not green|does not invent extra parameters, an oauth \/ auth\.md path, or a publish-to-official-registry step|verzint geen extra parameters, geen oauth- \/ auth\.md-pad, en geen publish-to-official-registry-stap/gi;
 
 function tFrom<T extends Record<string, string>>(messages: T) {
   return (key: string) => messages[key as keyof T] ?? "";
@@ -75,8 +92,30 @@ function hrefsOf(container: HTMLElement) {
 
 function expectHubDoors(container: HTMLElement, locale: string) {
   const hrefs = hrefsOf(container);
-  expect(hrefs).toContain(hubHomeUrl(locale));
-  expect(hrefs).toContain(hubJoinUrl(locale));
+  const homeOk = hrefs.some(
+    (href) =>
+      href === "/" || href === `/${locale}` || href === hubHomeUrl(locale),
+  );
+  const joinOk = hrefs.some(
+    (href) =>
+      href === "/join" ||
+      href === `/${locale}/join` ||
+      href === hubJoinUrl(locale),
+  );
+  expect(homeOk).toBe(true);
+  expect(joinOk).toBe(true);
+}
+
+function expectSetupLink(container: HTMLElement, locale: string) {
+  const hrefs = hrefsOf(container);
+  expect(
+    hrefs.some(
+      (href) =>
+        href === "/setup" ||
+        href === `/${locale}/setup` ||
+        href === setupGuideUrl(locale),
+    ),
+  ).toBe(true);
 }
 
 function expectNoBannedClaims(text: string) {
@@ -101,7 +140,6 @@ function expectMatchingKeys(
   );
   for (const messages of [enMessages!, nlMessages!]) {
     expect(messages.title?.trim().length).toBeGreaterThan(0);
-    expect(messages.lead?.trim().length).toBeGreaterThan(0);
     expectNoBannedClaims(Object.values(messages).join("\n"));
   }
 }
@@ -179,18 +217,26 @@ describe("register-agent MCP guide citation contract", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: REGISTER_AGENT_H1 }),
     ).toBeInTheDocument();
-    expect(screen.getByText(MCP_ENDPOINT)).toBeInTheDocument();
+    expect(screen.getAllByText(MCP_ENDPOINT).length).toBeGreaterThan(0);
     expect(container.textContent).toMatch(/Streamable HTTP/);
     expect(container.textContent).toMatch(/register-agent/);
     expect(container.textContent).toMatch(/claim/);
     expect(container.textContent).toMatch(/get-agent-guide/);
     expect(container.textContent).toMatch(/invite code/i);
 
+    expect(container.textContent).toMatch(/Build/);
+    expect(container.textContent).toMatch(/get-briefing/);
+    expect(container.textContent).toMatch(
+      /does not invent extra parameters, an OAuth \/ Auth\.md path, or a publish-to-Official-Registry step/i,
+    );
+
     const hrefs = hrefsOf(container);
-    expect(hrefs).toContain(setupGuideUrl("en"));
     expect(hrefs).toContain(AGENT_REGISTER_URL);
+    expectSetupLink(container, "en");
     expectHubDoors(container, "en");
     expectNoBannedClaims(container.textContent ?? "");
+    expectNoBannedClaims(REGISTER_AGENT_MCP_MD.en);
+    expectNoBannedClaims(REGISTER_AGENT_MCP_MD.nl);
   });
 });
 
@@ -216,7 +262,7 @@ describe("MCP registry vs hub guide citation contract", () => {
     }
 
     const hrefs = hrefsOf(container);
-    expect(hrefs).toContain(setupGuideUrl("en"));
+    expectSetupLink(container, "en");
     expect(hrefs).toContain(AGENT_REGISTER_URL);
     expect(hrefs).toContain(MCP_ENDPOINT);
     expect(hrefs).toContain(AGENT_READY_URL);
@@ -249,7 +295,7 @@ describe("agent-ready community guide citation contract", () => {
     expect(hrefs).toContain(AGENT_READY_URL);
     expect(hrefs).toContain(AGENT_REGISTER_URL);
     expect(hrefs).toContain(MCP_ENDPOINT);
-    expect(hrefs).toContain(setupGuideUrl("en"));
+    expectSetupLink(container, "en");
     expectHubDoors(container, "en");
     expectNoBannedClaims(container.textContent ?? "");
   });
@@ -324,6 +370,22 @@ describe("SEO guide i18n", () => {
 });
 
 describe("SEO guide live facts", () => {
+  it("maps apex and www cite URLs onto locale-aware app paths", () => {
+    expect(appPathFromGuideHref("https://aitcommunity.org/en")).toBe("/");
+    expect(appPathFromGuideHref("https://www.aitcommunity.org/en/join")).toBe(
+      "/join",
+    );
+    expect(appPathFromGuideHref("https://aitcommunity.org/nl/setup")).toBe(
+      "/setup",
+    );
+    expect(appPathFromGuideHref("https://www.aitcommunity.org/agent.md")).toBe(
+      null,
+    );
+    expect(appPathFromGuideHref("https://www.aitcommunity.org/api/mcp")).toBe(
+      null,
+    );
+  });
+
   it("points at the live MCP, setup, and agent.md URLs", () => {
     expect(MCP_ENDPOINT).toBe("https://www.aitcommunity.org/api/mcp");
     expect(AGENT_REGISTER_URL).toBe("https://www.aitcommunity.org/agent.md");

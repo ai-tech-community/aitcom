@@ -72,7 +72,11 @@ export function AgentReadyCommunityGuide({
           { href: AGENT_READY_URL, label: t("isitLinkLabel") },
           { href: cites.agentMd, label: t("agentLinkLabel") },
           { href: cites.mcp, label: t("mcpLinkLabel") },
-          { href: cites.setup, label: t("setupLinkLabel") },
+          {
+            href: "/setup",
+            label: t("setupLinkLabel"),
+            displayHref: cites.setup,
+          },
         ]}
       />
     </GuideShell>

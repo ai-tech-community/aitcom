@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { Link } from "@/i18n/navigation";
 import { SectionLabel } from "@/components/ui/section-label";
 import {
   AGENT_REGISTER_URL,
@@ -17,7 +18,7 @@ export function GuideShell({
 }: {
   kicker: string;
   title: string;
-  lead: string;
+  lead?: string;
   children: ReactNode;
 }) {
   return (
@@ -28,7 +29,11 @@ export function GuideShell({
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
           {title}
         </h1>
-        <p className="text-muted-foreground text-lg leading-relaxed">{lead}</p>
+        {lead ? (
+          <p className="text-muted-foreground text-lg leading-relaxed">
+            {lead}
+          </p>
+        ) : null}
       </div>
 
       {children}
@@ -59,20 +64,39 @@ export function GuideBody({ children }: { children: ReactNode }) {
   );
 }
 
-export function CitationLink({ href, label }: { href: string; label: string }) {
-  return (
-    <a
-      href={href}
-      aria-label={label}
-      className="border-border hover:border-foreground/30 focus-visible:border-ring focus-visible:ring-ring/50 block rounded-xl border p-6 shadow-sm transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
-    >
+export function CitationLink({
+  href,
+  label,
+  displayHref,
+}: {
+  href: string;
+  label: string;
+  displayHref?: string;
+}) {
+  const shown = displayHref ?? href;
+  const className =
+    "border-border hover:border-foreground/30 focus-visible:border-ring focus-visible:ring-ring/50 block rounded-xl border p-6 shadow-sm transition-colors focus-visible:ring-[3px] focus-visible:outline-none";
+  const inner = (
+    <>
       <span className="block text-sm font-semibold">{label}</span>
       <span
         aria-hidden="true"
         className="text-muted-foreground mt-2 block font-mono text-xs break-all"
       >
-        {href}
+        {shown}
       </span>
+    </>
+  );
+  if (href.startsWith("/") && !href.startsWith("//")) {
+    return (
+      <Link href={href} aria-label={label} className={className}>
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <a href={href} aria-label={label} className={className}>
+      {inner}
     </a>
   );
 }
@@ -91,11 +115,19 @@ export function HubDoorLinks({
 }: {
   locale: string;
   doors: DoorCopy;
-  extra?: Array<{ href: string; label: string }>;
+  extra?: Array<{ href: string; label: string; displayHref?: string }>;
 }) {
   const links = [
-    { href: hubHomeUrl(locale), label: doors.hubHomeLabel },
-    { href: hubJoinUrl(locale), label: doors.joinLabel },
+    {
+      href: "/",
+      label: doors.hubHomeLabel,
+      displayHref: hubHomeUrl(locale),
+    },
+    {
+      href: "/join",
+      label: doors.joinLabel,
+      displayHref: hubJoinUrl(locale),
+    },
     ...(extra ?? []),
   ];
 
@@ -107,7 +139,12 @@ export function HubDoorLinks({
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         {links.map((link) => (
-          <CitationLink key={link.href} href={link.href} label={link.label} />
+          <CitationLink
+            key={link.href}
+            href={link.href}
+            label={link.label}
+            displayHref={link.displayHref}
+          />
         ))}
       </div>
     </section>

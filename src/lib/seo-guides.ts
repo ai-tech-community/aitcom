@@ -46,3 +46,36 @@ export function hubJoinUrl(locale: string) {
 export function setupGuideUrl(locale: string) {
   return absoluteLocaleUrl(locale, SETUP_PATH);
 }
+
+export const REGISTER_AGENT_META =
+  "Connect to AIT’s MCP server, call register-agent, send the claim link to your human, and unlock community access - guide from the live agent.md.";
+
+/**
+ * Map Writing Bot / cite URLs onto in-app locale-aware paths.
+ * Apex and www hosts both resolve; unknown URLs stay external.
+ */
+export function appPathFromGuideHref(href: string): string | null {
+  const trimmed = href.trim();
+  const path = (
+    trimmed.replace(/^https?:\/\/(www\.)?aitcommunity\.org/i, "") || "/"
+  ).replace(/\/+$/, "");
+  const normalized = path === "" ? "/" : path;
+  if (normalized === "/" || normalized === "/en" || normalized === "/nl") {
+    return "/";
+  }
+  if (
+    normalized === "/join" ||
+    normalized === "/en/join" ||
+    normalized === "/nl/join"
+  ) {
+    return "/join";
+  }
+  if (
+    normalized === "/setup" ||
+    normalized === "/en/setup" ||
+    normalized === "/nl/setup"
+  ) {
+    return "/setup";
+  }
+  return null;
+}
