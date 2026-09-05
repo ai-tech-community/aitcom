@@ -38,7 +38,10 @@ import {
   hubJoinUrl,
   setupGuideUrl,
 } from "@/lib/seo-guides";
+import { AGENT_READY_COMMUNITY_MD } from "@/content/guides/agent-ready-community";
+import { MCP_REGISTRY_VS_HUB_MD } from "@/content/guides/mcp-registry-vs-community-hub";
 import { REGISTER_AGENT_MCP_MD } from "@/content/guides/register-agent-mcp";
+import { WORLD_SUMMIT_EVENT_MD } from "@/content/guides/world-summit-event";
 import { AgentReadyCommunityGuide } from "./agent-ready-community-guide";
 import { McpRegistryVsHubGuide } from "./mcp-registry-vs-hub-guide";
 import { RegisterAgentMcpGuide } from "./register-agent-mcp-guide";
@@ -77,7 +80,7 @@ const BANNED = [
 
 const AUTH_MD_GREEN = /auth\.md[\s\S]{0,40}green/i;
 const DENIALS =
-  /does not claim an official mcp registry listing|claimt geen official mcp registry-listing|auth\.md is not green|does not invent extra parameters, an oauth \/ auth\.md path, or a publish-to-official-registry step|verzint geen extra parameters, geen oauth- \/ auth\.md-pad, en geen publish-to-official-registry-stap/gi;
+  /does not claim an official mcp registry listing|claimt geen official mcp registry-listing|auth\.md is not green|auth\.md is red|auth\.md is rood|register for the summit|does not register you for world summit|registreert je \*\*niet\*\* voor world summit|member counts(?:,|\s)|ledenaantallen|does not invent extra parameters, an oauth \/ auth\.md path, or a publish-to-official-registry step|verzint geen extra parameters, geen oauth- \/ auth\.md-pad, en geen publish-to-official-registry-stap/gi;
 
 function tFrom<T extends Record<string, string>>(messages: T) {
   return (key: string) => messages[key as keyof T] ?? "";
@@ -125,7 +128,9 @@ function expectNoBannedClaims(text: string) {
   }
   const authGreen = AUTH_MD_GREEN.exec(text);
   if (authGreen) {
-    expect(authGreen[0].toLowerCase()).toMatch(/not green|isn['’]t green/);
+    expect(authGreen[0].toLowerCase()).toMatch(
+      /not green|isn['’]t green|is red|niet groen|is rood/,
+    );
   }
 }
 
@@ -256,18 +261,17 @@ describe("MCP registry vs hub guide citation contract", () => {
     expect(container.textContent).toMatch(/tools to install/i);
     expect(container.textContent).toMatch(/belong/i);
     expect(container.textContent).toMatch(/does not claim/i);
-    expect(container.textContent).toMatch(/Auth\.md is not green/i);
-    for (const green of AGENT_READY_GREENS) {
-      expect(container.textContent).toContain(green);
-    }
+    expect(container.textContent).toContain(MCP_ENDPOINT);
+    expect(container.textContent).not.toMatch(/Auth\.md is not green/i);
 
     const hrefs = hrefsOf(container);
     expectSetupLink(container, "en");
     expect(hrefs).toContain(AGENT_REGISTER_URL);
-    expect(hrefs).toContain(MCP_ENDPOINT);
     expect(hrefs).toContain(AGENT_READY_URL);
     expectHubDoors(container, "en");
     expectNoBannedClaims(container.textContent ?? "");
+    expectNoBannedClaims(MCP_REGISTRY_VS_HUB_MD.en);
+    expectNoBannedClaims(MCP_REGISTRY_VS_HUB_MD.nl);
   });
 });
 
@@ -285,8 +289,9 @@ describe("agent-ready community guide citation contract", () => {
       screen.getByRole("heading", { level: 1, name: AGENT_READY_H1 }),
     ).toBeInTheDocument();
     expect(container.textContent).toContain(AGENT_READY_URL);
-    expect(container.textContent).toMatch(/Auth\.md is not green/i);
-    expect(container.textContent).toMatch(/not a fifth green/i);
+    expect(container.textContent).toMatch(/Auth\.md is red/i);
+    expect(container.textContent).toMatch(/No fifth green/i);
+    expect(container.textContent).toContain(MCP_ENDPOINT);
     for (const green of AGENT_READY_GREENS) {
       expect(container.textContent).toContain(green);
     }
@@ -294,10 +299,11 @@ describe("agent-ready community guide citation contract", () => {
     const hrefs = hrefsOf(container);
     expect(hrefs).toContain(AGENT_READY_URL);
     expect(hrefs).toContain(AGENT_REGISTER_URL);
-    expect(hrefs).toContain(MCP_ENDPOINT);
     expectSetupLink(container, "en");
     expectHubDoors(container, "en");
     expectNoBannedClaims(container.textContent ?? "");
+    expectNoBannedClaims(AGENT_READY_COMMUNITY_MD.en);
+    expectNoBannedClaims(AGENT_READY_COMMUNITY_MD.nl);
   });
 });
 
@@ -314,10 +320,14 @@ describe("World Summit event page citation contract", () => {
     expect(container.textContent).toContain(WORLD_SUMMIT_DATES);
     expect(container.textContent).toContain(WORLD_SUMMIT_VENUE);
     expect(container.textContent).toMatch(
-      /not (?:registration for|summit registration)/i,
+      /does not register you for World Summit/i,
     );
+    expect(container.textContent).toMatch(/Hub sign-up only/i);
+    expectSetupLink(container, "en");
     expectHubDoors(container, "en");
     expectNoBannedClaims(container.textContent ?? "");
+    expectNoBannedClaims(WORLD_SUMMIT_EVENT_MD.en);
+    expectNoBannedClaims(WORLD_SUMMIT_EVENT_MD.nl);
   });
 });
 
@@ -384,6 +394,26 @@ describe("SEO guide live facts", () => {
     expect(appPathFromGuideHref("https://www.aitcommunity.org/api/mcp")).toBe(
       null,
     );
+    expect(
+      appPathFromGuideHref(
+        "https://aitcommunity.org/en/guides/register-agent-mcp",
+      ),
+    ).toBe("/guides/register-agent-mcp");
+    expect(
+      appPathFromGuideHref(
+        "https://aitcommunity.org/nl/guides/mcp-registry-vs-community-hub",
+      ),
+    ).toBe("/guides/mcp-registry-vs-community-hub");
+    expect(
+      appPathFromGuideHref(
+        "https://www.aitcommunity.org/en/guides/agent-ready-community",
+      ),
+    ).toBe("/guides/agent-ready-community");
+    expect(
+      appPathFromGuideHref(
+        "https://aitcommunity.org/en/events/world-summit-ai-amsterdam-2026",
+      ),
+    ).toBe("/events/world-summit-ai-amsterdam-2026");
   });
 
   it("points at the live MCP, setup, and agent.md URLs", () => {

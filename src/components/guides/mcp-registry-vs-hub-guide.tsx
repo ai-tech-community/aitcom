@@ -1,33 +1,9 @@
-import { AGENT_READY_GREENS, AGENT_READY_URL } from "@/lib/seo-guides";
+import { MCP_REGISTRY_VS_HUB_MD } from "@/content/guides/mcp-registry-vs-community-hub";
 
-import {
-  GuideBody,
-  GuideSection,
-  GuideShell,
-  HubDoorLinks,
-  doorCopyFrom,
-  liveCiteHrefs,
-} from "./guide-shell";
+import { GuideMarkdown } from "./guide-markdown";
+import { GuideShell } from "./guide-shell";
 
-export type McpRegistryVsHubKey =
-  | "kicker"
-  | "title"
-  | "lead"
-  | "registryTitle"
-  | "registryBody"
-  | "hubTitle"
-  | "hubBody"
-  | "liveTitle"
-  | "liveBody"
-  | "authNote"
-  | "doorsTitle"
-  | "doorsLead"
-  | "hubHomeLabel"
-  | "joinLabel"
-  | "setupLinkLabel"
-  | "agentLinkLabel"
-  | "mcpLinkLabel"
-  | "isitLinkLabel";
+export type McpRegistryVsHubKey = "kicker" | "title";
 
 export function McpRegistryVsHubGuide({
   locale,
@@ -36,42 +12,12 @@ export function McpRegistryVsHubGuide({
   locale: string;
   t: (key: McpRegistryVsHubKey) => string;
 }) {
-  const cites = liveCiteHrefs(locale);
+  const markdown =
+    locale === "nl" ? MCP_REGISTRY_VS_HUB_MD.nl : MCP_REGISTRY_VS_HUB_MD.en;
 
   return (
-    <GuideShell kicker={t("kicker")} title={t("title")} lead={t("lead")}>
-      <GuideSection label={t("registryTitle")} first>
-        <GuideBody>{t("registryBody")}</GuideBody>
-      </GuideSection>
-
-      <GuideSection label={t("hubTitle")}>
-        <GuideBody>{t("hubBody")}</GuideBody>
-      </GuideSection>
-
-      <GuideSection label={t("liveTitle")}>
-        <GuideBody>{t("liveBody")}</GuideBody>
-        <ul className="text-muted-foreground list-inside list-disc space-y-1.5 text-sm leading-relaxed">
-          {AGENT_READY_GREENS.map((green) => (
-            <li key={green}>{green}</li>
-          ))}
-        </ul>
-        <GuideBody>{t("authNote")}</GuideBody>
-      </GuideSection>
-
-      <HubDoorLinks
-        locale={locale}
-        doors={doorCopyFrom(t)}
-        extra={[
-          {
-            href: "/setup",
-            label: t("setupLinkLabel"),
-            displayHref: cites.setup,
-          },
-          { href: cites.agentMd, label: t("agentLinkLabel") },
-          { href: cites.mcp, label: t("mcpLinkLabel") },
-          { href: AGENT_READY_URL, label: t("isitLinkLabel") },
-        ]}
-      />
+    <GuideShell kicker={t("kicker")} title={t("title")}>
+      <GuideMarkdown>{markdown}</GuideMarkdown>
     </GuideShell>
   );
 }

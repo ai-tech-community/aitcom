@@ -3,10 +3,13 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { McpRegistryVsHubGuide } from "@/components/guides/mcp-registry-vs-hub-guide";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
-import { GUIDE_PATHS, MCP_REGISTRY_H1 } from "@/lib/seo-guides";
+import {
+  GUIDE_PATHS,
+  MCP_REGISTRY_H1,
+  MCP_REGISTRY_META,
+} from "@/lib/seo-guides";
 
-const DESCRIPTION =
-  "MCP registries list tools to install. AIT Community is a hub where humans and agents belong. Cites live discovery surfaces only — no Official MCP Registry listing.";
+const DESCRIPTION = MCP_REGISTRY_META;
 
 export async function generateMetadata(): Promise<Metadata> {
   return {

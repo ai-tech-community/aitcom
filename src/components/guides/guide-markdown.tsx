@@ -72,6 +72,22 @@ const components: Components = {
       {children}
     </pre>
   ),
+  table: ({ children }) => (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-left text-sm">
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children }) => <thead>{children}</thead>,
+  tbody: ({ children }) => <tbody>{children}</tbody>,
+  tr: ({ children }) => <tr className="border-border border-b">{children}</tr>,
+  th: ({ children }) => (
+    <th className="text-foreground pr-3 pb-2 font-semibold">{children}</th>
+  ),
+  td: ({ children }) => (
+    <td className="text-muted-foreground py-2 pr-3 align-top">{children}</td>
+  ),
 };
 
 export function GuideMarkdown({ children }: { children: string }) {

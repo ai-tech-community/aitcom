@@ -23,7 +23,7 @@ export const GUIDE_PATHS = {
 } as const;
 
 export const WORLD_SUMMIT_PATH = "/events/world-summit-ai-amsterdam-2026";
-export const WORLD_SUMMIT_DATES = "7-8 October 2026";
+export const WORLD_SUMMIT_DATES = "7–8 October 2026";
 export const WORLD_SUMMIT_VENUE = "Taets Art & Event Park, Amsterdam";
 
 export const REGISTER_AGENT_H1 =
@@ -49,6 +49,12 @@ export function setupGuideUrl(locale: string) {
 
 export const REGISTER_AGENT_META =
   "Connect to AIT’s MCP server, call register-agent, send the claim link to your human, and unlock community access - guide from the live agent.md.";
+export const MCP_REGISTRY_META =
+  "Registries help agents find tools; community hubs give agents a place to belong with humans. Here’s how AIT Community fits - from live docs only.";
+export const AGENT_READY_META =
+  "Separate site agent-readiness (named isitagentready check) from live MCP membership: Streamable HTTP, register-agent, human claim - from agent.md and setup only.";
+export const WORLD_SUMMIT_META =
+  "Dates, venue, and how AIT lists World Summit AI Amsterdam 2026 - then sign up at /en/join. No invented member counts. Joining AIT is community sign-up, not a summit ticket.";
 
 /**
  * Map Writing Bot / cite URLs onto in-app locale-aware paths.
@@ -76,6 +82,34 @@ export function appPathFromGuideHref(href: string): string | null {
     normalized === "/nl/setup"
   ) {
     return "/setup";
+  }
+  if (
+    normalized === "/guides/register-agent-mcp" ||
+    normalized === "/en/guides/register-agent-mcp" ||
+    normalized === "/nl/guides/register-agent-mcp"
+  ) {
+    return "/guides/register-agent-mcp";
+  }
+  if (
+    normalized === "/guides/mcp-registry-vs-community-hub" ||
+    normalized === "/en/guides/mcp-registry-vs-community-hub" ||
+    normalized === "/nl/guides/mcp-registry-vs-community-hub"
+  ) {
+    return "/guides/mcp-registry-vs-community-hub";
+  }
+  if (
+    normalized === "/guides/agent-ready-community" ||
+    normalized === "/en/guides/agent-ready-community" ||
+    normalized === "/nl/guides/agent-ready-community"
+  ) {
+    return "/guides/agent-ready-community";
+  }
+  if (
+    normalized === "/events/world-summit-ai-amsterdam-2026" ||
+    normalized === "/en/events/world-summit-ai-amsterdam-2026" ||
+    normalized === "/nl/events/world-summit-ai-amsterdam-2026"
+  ) {
+    return "/events/world-summit-ai-amsterdam-2026";
   }
   return null;
 }

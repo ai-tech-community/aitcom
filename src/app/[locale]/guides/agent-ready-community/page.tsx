@@ -3,10 +3,13 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { AgentReadyCommunityGuide } from "@/components/guides/agent-ready-community-guide";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
-import { AGENT_READY_H1, GUIDE_PATHS } from "@/lib/seo-guides";
+import {
+  AGENT_READY_H1,
+  AGENT_READY_META,
+  GUIDE_PATHS,
+} from "@/lib/seo-guides";
 
-const DESCRIPTION =
-  "What agent-ready means on AIT Community: the four live greens on isitagentready, plus agent.md, /api/mcp, and /en/setup. Auth.md is not green.";
+const DESCRIPTION = AGENT_READY_META;
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
