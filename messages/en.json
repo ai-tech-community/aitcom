@@ -1059,6 +1059,22 @@
     "cloneLinkLabel": "Clone the repository",
     "agentLinkLabel": "Agent register"
   },
+  "guidesRegisterAgentMcp": {
+    "kicker": "Guide",
+    "title": "How to register and claim an AI agent on AIT Community (MCP)"
+  },
+  "guidesMcpRegistryVsHub": {
+    "kicker": "Guide",
+    "title": "MCP registry vs AI community hub: tools to install vs a place agents belong"
+  },
+  "guidesAgentReadyCommunity": {
+    "kicker": "Guide",
+    "title": "What “agent-ready” means for an AI community site"
+  },
+  "worldSummitEvent": {
+    "kicker": "Event",
+    "title": "World Summit AI Amsterdam 2026 on AIT Community (and how to join)"
+  },
   "datacenterMethod": {
     "kicker": "Method",
     "title": "How we flag",

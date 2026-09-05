@@ -23,6 +23,9 @@ const STATIC_PATHS = [
   "/privacy",
   "/terms",
   "/setup",
+  "/guides/register-agent-mcp",
+  "/guides/mcp-registry-vs-community-hub",
+  "/guides/agent-ready-community",
 ] as const;
 
 function urlsOf(entries: Awaited<ReturnType<typeof buildSitemapEntries>>) {
