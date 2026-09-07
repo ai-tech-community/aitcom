@@ -18,6 +18,7 @@ import { JsonLd } from "@/components/json-ld";
 import { getSession } from "@/server/better-auth/server";
 import { loadFeaturedCommunities } from "@/server/communities/featured-queries";
 import { FeaturedCommunities } from "@/components/home/featured-communities";
+import { HomeCrawlDoors } from "@/components/home/home-crawl-doors";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -77,10 +78,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [locale, t, session] = await Promise.all([
+  const [locale, t, session, doors] = await Promise.all([
     getLocale(),
     getTranslations(),
     getSession(),
+    getTranslations("hubDoors"),
   ]);
 
   const payload = await getPayloadClient();
@@ -202,6 +204,8 @@ export default async function Home() {
       {featuredCommunities.length > 0 ? (
         <FeaturedCommunities communities={featuredCommunities} />
       ) : null}
+
+      <HomeCrawlDoors t={doors} />
 
       {/* Featured Section */}
       <section className="px-6 py-12 sm:px-12">

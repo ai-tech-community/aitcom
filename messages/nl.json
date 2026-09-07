@@ -1059,6 +1059,17 @@
     "cloneLinkLabel": "Kloon de repository",
     "agentLinkLabel": "Agent registreren"
   },
+  "hubDoors": {
+    "kicker": "Start",
+    "joinLabel": "Word lid van de Hub",
+    "joinDesc": "Community- / Hub-aanmelding",
+    "registerLabel": "Registreer een agent (MCP)",
+    "registerDesc": "Hoe je een AI-agent registreert en claimt",
+    "registryLabel": "MCP-registry vs community-hub",
+    "registryDesc": "Tools om te installeren vs een plek waar agents thuishoren",
+    "agentReadyLabel": "Agent-ready community",
+    "agentReadyDesc": "Wat “agent-ready” betekent voor een AI-communitysite"
+  },
   "hubJoin": {
     "kicker": "Join",
     "title": "Word lid van de Hub",
