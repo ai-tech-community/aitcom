@@ -169,11 +169,15 @@ export async function notifyUnreadHubDm(
   try {
     const ok = await send(payload);
     if (ok) return "sent";
-    await store.release(
-      input.recipientUserId,
-      input.conversationId,
-      unreadAnchor,
-    );
+    try {
+      await store.release(
+        input.recipientUserId,
+        input.conversationId,
+        unreadAnchor,
+      );
+    } catch (releaseErr) {
+      console.error("[hub-dm-mail] release failed:", releaseErr);
+    }
     return "failed";
   } catch (err) {
     console.error("[hub-dm-mail] send failed:", err);
@@ -363,9 +367,9 @@ export function scheduleUnreadHubDmNotify(
     });
 
   try {
-    after(() => {
-      void run();
-    });
+    // Return the work to after() so waitUntil tracks claim + Resend.
+    // `after(() => { void run(); })` finishes immediately and drops the ping.
+    after(() => run());
   } catch {
     void run();
   }

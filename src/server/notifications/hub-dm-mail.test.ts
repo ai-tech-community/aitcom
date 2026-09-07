@@ -4,6 +4,10 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("next/server", () => ({
+  after: vi.fn(),
+}));
+
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 import {
   DEFAULT_HUB_MAIL_PREFS,
@@ -21,6 +25,7 @@ import {
   notifyUnreadHubDm,
   pinHubConversationUrl,
   renderHubDmPingHtml,
+  scheduleUnreadHubDmNotify,
   type HubDmMailStore,
   type UnreadHubDm,
 } from "./hub-dm-mail";
@@ -310,12 +315,29 @@ describe("unread anchor", () => {
 describe("Hub DM mail must outlive the serverless response", () => {
   const root = dirname(fileURLToPath(import.meta.url));
 
+  it("hands after() the notify promise so waitUntil tracks claim + send", async () => {
+    const { after } = await import("next/server");
+    const scheduled: unknown[] = [];
+    vi.mocked(after).mockImplementationOnce((fn: () => unknown) => {
+      scheduled.push(fn());
+    });
+
+    scheduleUnreadHubDmNotify({} as never, {
+      recipientUserId: "member-1",
+      conversationId: "conv-42",
+    });
+
+    expect(scheduled).toHaveLength(1);
+    expect(scheduled[0]).toBeInstanceOf(Promise);
+    await Promise.resolve(scheduled[0]).catch(() => undefined);
+  });
+
   it("schedules inbox + sendDirectMessage pings through after(), not a bare void", () => {
     const impl = readFileSync(join(root, "hub-dm-mail.ts"), "utf8");
     const inbox = readFileSync(join(root, "../api/routers/inbox.ts"), "utf8");
     const dm = readFileSync(join(root, "../inbox/dm.ts"), "utf8");
     expect(impl).toContain("export function scheduleUnreadHubDmNotify");
-    expect(impl).toContain("after(() =>");
+    expect(impl).toMatch(/after\(\(\) => run\(\)\)/);
     expect(inbox).toContain("scheduleUnreadHubDmNotify");
     expect(dm).toContain("scheduleUnreadHubDmNotify");
     expect(inbox).not.toMatch(/void notifyUnreadHubDmForRecipient\s*\(/);
