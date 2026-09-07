@@ -318,8 +318,8 @@ describe("Hub DM mail must outlive the serverless response", () => {
   it("hands after() the notify promise so waitUntil tracks claim + send", async () => {
     const { after } = await import("next/server");
     const scheduled: unknown[] = [];
-    vi.mocked(after).mockImplementationOnce((fn: () => unknown) => {
-      scheduled.push(fn());
+    vi.mocked(after).mockImplementationOnce((task) => {
+      scheduled.push(typeof task === "function" ? task() : task);
     });
 
     scheduleUnreadHubDmNotify({} as never, {
