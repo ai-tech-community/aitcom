@@ -1,4 +1,5 @@
 import { and, eq, or, sql } from "drizzle-orm";
+import { after } from "next/server";
 
 import type { db as DbInstance } from "@/server/db";
 import {
@@ -55,6 +56,12 @@ export type HubDmMailStore = {
     conversationId: string,
     unreadAnchor: string,
   ): Promise<boolean>;
+  /** Drop a claim that never sent so cron / the next DM can retry. */
+  release(
+    userId: string,
+    conversationId: string,
+    unreadAnchor: string,
+  ): Promise<void>;
   listUnreadDms(): Promise<UnreadHubDm[]>;
 };
 
@@ -161,9 +168,28 @@ export async function notifyUnreadHubDm(
 
   try {
     const ok = await send(payload);
-    return ok ? "sent" : "failed";
+    if (ok) return "sent";
+    try {
+      await store.release(
+        input.recipientUserId,
+        input.conversationId,
+        unreadAnchor,
+      );
+    } catch (releaseErr) {
+      console.error("[hub-dm-mail] release failed:", releaseErr);
+    }
+    return "failed";
   } catch (err) {
     console.error("[hub-dm-mail] send failed:", err);
+    try {
+      await store.release(
+        input.recipientUserId,
+        input.conversationId,
+        unreadAnchor,
+      );
+    } catch (releaseErr) {
+      console.error("[hub-dm-mail] release failed:", releaseErr);
+    }
     return "failed";
   }
 }
@@ -246,6 +272,18 @@ export function createDbHubDmMailStore(db: DB): HubDmMailStore {
       return inserted.length > 0;
     },
 
+    async release(userId, conversationId, unreadAnchor) {
+      await db
+        .delete(hubDmMailLog)
+        .where(
+          and(
+            eq(hubDmMailLog.userId, userId),
+            eq(hubDmMailLog.conversationId, conversationId),
+            eq(hubDmMailLog.unreadAnchor, unreadAnchor),
+          ),
+        );
+    },
+
     async listUnreadDms() {
       return db
         .select({
@@ -297,6 +335,43 @@ export async function notifyUnreadHubDmForRecipient(
   } catch (err) {
     console.error("[hub-dm-mail] notify failed:", err);
     return "failed";
+  }
+}
+
+/**
+ * Keep the #254 ping alive after the tRPC / route response returns.
+ * A bare `void notify…` is dropped when Vercel freezes the isolate — that is
+ * why warm Hub DMs after 2026-09-03 produced no `hub_dm_mail_log` rows.
+ * Mirrors inbox webhook dispatch (`after()` + catch when no request scope).
+ */
+export function scheduleUnreadHubDmNotify(
+  db: DB,
+  input: {
+    recipientUserId: string;
+    conversationId: string;
+    locale?: HubMailLocale;
+  },
+): void {
+  const run = () =>
+    notifyUnreadHubDmForRecipient(db, input).then((result) => {
+      if (result === "failed") {
+        console.error("[hub-dm-mail] scheduled notify failed", {
+          conversationId: input.conversationId,
+        });
+      } else if (result === "sent") {
+        console.info("[hub-dm-mail] scheduled notify sent", {
+          conversationId: input.conversationId,
+        });
+      }
+      return result;
+    });
+
+  try {
+    // Return the work to after() so waitUntil tracks claim + Resend.
+    // `after(() => { void run(); })` finishes immediately and drops the ping.
+    after(() => run());
+  } catch {
+    void run();
   }
 }
 

@@ -4,6 +4,10 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("next/server", () => ({
+  after: vi.fn(),
+}));
+
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 import {
   DEFAULT_HUB_MAIL_PREFS,
@@ -21,6 +25,7 @@ import {
   notifyUnreadHubDm,
   pinHubConversationUrl,
   renderHubDmPingHtml,
+  scheduleUnreadHubDmNotify,
   type HubDmMailStore,
   type UnreadHubDm,
 } from "./hub-dm-mail";
@@ -54,6 +59,10 @@ function memoryStore(init?: {
       claimSet.add(key);
       claims.push(key);
       return true;
+    },
+    async release(userId, conversationId, unreadAnchor) {
+      const key = `${userId}:${conversationId}:${unreadAnchor}`;
+      claimSet.delete(key);
     },
     async listUnreadDms() {
       return init?.unread ?? [];
@@ -169,6 +178,38 @@ describe("hub DM ping mail", () => {
     expect(send).toHaveBeenCalledOnce();
   });
 
+  it("releases the claim when send fails so the next unread pass can land", async () => {
+    const store = memoryStore();
+    const send = vi
+      .fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const input = {
+      recipientUserId: "member-1",
+      conversationId: "conv-42",
+    } as const;
+
+    expect(await notifyUnreadHubDm(store, input, send)).toBe("failed");
+    expect(await notifyUnreadHubDm(store, input, send)).toBe("sent");
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("releases the claim when send throws so a Resend blip cannot kill the streak", async () => {
+    const store = memoryStore();
+    const send = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("resend down"))
+      .mockResolvedValueOnce(true);
+    const input = {
+      recipientUserId: "member-1",
+      conversationId: "conv-42",
+    } as const;
+
+    expect(await notifyUnreadHubDm(store, input, send)).toBe("failed");
+    expect(await notifyUnreadHubDm(store, input, send)).toBe("sent");
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
   it("renders EN and NL copy without a message body slot", () => {
     const en = hubDmMailCopy("en");
     const nl = hubDmMailCopy("nl");
@@ -268,6 +309,39 @@ describe("unread anchor", () => {
     const readAt = new Date("2026-08-31T12:00:00.000Z");
     expect(unreadAnchorKey(readAt)).toBe(readAt.toISOString());
     expect(unreadAnchorKey(readAt)).not.toBe(unreadAnchorKey(null));
+  });
+});
+
+describe("Hub DM mail must outlive the serverless response", () => {
+  const root = dirname(fileURLToPath(import.meta.url));
+
+  it("hands after() the notify promise so waitUntil tracks claim + send", async () => {
+    const { after } = await import("next/server");
+    const scheduled: unknown[] = [];
+    vi.mocked(after).mockImplementationOnce((task) => {
+      scheduled.push(typeof task === "function" ? task() : task);
+    });
+
+    scheduleUnreadHubDmNotify({} as never, {
+      recipientUserId: "member-1",
+      conversationId: "conv-42",
+    });
+
+    expect(scheduled).toHaveLength(1);
+    expect(scheduled[0]).toBeInstanceOf(Promise);
+    await Promise.resolve(scheduled[0]).catch(() => undefined);
+  });
+
+  it("schedules inbox + sendDirectMessage pings through after(), not a bare void", () => {
+    const impl = readFileSync(join(root, "hub-dm-mail.ts"), "utf8");
+    const inbox = readFileSync(join(root, "../api/routers/inbox.ts"), "utf8");
+    const dm = readFileSync(join(root, "../inbox/dm.ts"), "utf8");
+    expect(impl).toContain("export function scheduleUnreadHubDmNotify");
+    expect(impl).toMatch(/after\(\(\) => run\(\)\)/);
+    expect(inbox).toContain("scheduleUnreadHubDmNotify");
+    expect(dm).toContain("scheduleUnreadHubDmNotify");
+    expect(inbox).not.toMatch(/void notifyUnreadHubDmForRecipient\s*\(/);
+    expect(dm).not.toMatch(/void notifyUnreadHubDmForRecipient\s*\(/);
   });
 });
 
