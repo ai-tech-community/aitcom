@@ -32,7 +32,7 @@ import { runUiTool } from "@/server/inbox/ui-tools";
 import { isHubDmConversation } from "@/server/notifications/hub-mail-prefs";
 import {
   localeFromCookieHeader,
-  notifyUnreadHubDmForRecipient,
+  scheduleUnreadHubDmNotify,
 } from "@/server/notifications/hub-dm-mail";
 
 const uiResourceSchema = z.object({
@@ -667,7 +667,7 @@ export const inboxRouter = createTRPCRouter({
           message,
         });
         if (isHubDmConversation(conversationType)) {
-          void notifyUnreadHubDmForRecipient(ctx.db, {
+          scheduleUnreadHubDmNotify(ctx.db, {
             recipientUserId: recipient.userId,
             conversationId: input.conversationId,
             locale: localeFromCookieHeader(ctx.headers.get("cookie")),

@@ -18,6 +18,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await backfillUnreadHubDmMailFromDb(db);
-  return NextResponse.json({ success: true, ...result });
+  try {
+    const result = await backfillUnreadHubDmMailFromDb(db);
+    return NextResponse.json({ success: true, ...result });
+  } catch (err) {
+    console.error("[hub-dm-mail] cron failed:", err);
+    return NextResponse.json(
+      { success: false, error: String(err) },
+      { status: 500 },
+    );
+  }
 }
