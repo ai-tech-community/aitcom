@@ -6,15 +6,11 @@ import { getJoinSignupHref } from "@/lib/join-path";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("hubJoin");
   return {
-    title: "Join the Hub",
-    description:
-      "Create an AIT Community account. Community / Hub sign-up only — it does not register you for World Summit AI Amsterdam.",
-    ...buildOgMeta(
-      "Join the Hub",
-      "Create an AIT Community account. Community / Hub sign-up only — it does not register you for World Summit AI Amsterdam.",
-      "Join",
-    ),
+    title: t("title"),
+    description: t("lead"),
+    ...buildOgMeta(t("title"), t("lead"), t("kicker")),
     alternates: await localeAlternates("/join"),
   };
 }
