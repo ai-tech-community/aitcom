@@ -45,25 +45,29 @@ export function getAuthAliasRedirect(
 }
 
 /**
- * `/join` is the human entry: guests start signup, members land in Hub.
- * Invite codes stay on `/join/:code` → `/invite/:code`.
+ * `/join` is the indexable Hub door. Guests stay on the page (200).
+ * Signed-in members go to Hub. Invite codes stay on `/join/:code` →
+ * `/invite/:code`. The signup form itself stays under `/auth/`.
  */
 export function getJoinPageRedirect(args: {
   hasSession: boolean;
   locale: string;
-}): string {
+}): string | null {
   if (args.hasSession) return getHubCommunityPath(args.locale);
-  return `/${args.locale}/auth/signup`;
+  return null;
+}
+
+/** Locale-free signup path for the join-door CTA. Preserves invite query. */
+export function getJoinSignupHref(search = ""): string {
+  return `/auth/signup${search}`;
 }
 
 /**
  * Locale-prefixed public join door: `/en/join`, `/nl/join`.
  *
- * Bare `/join` is left for next-intl so it can prefix `en` or `nl` from
- * the cookie / Accept-Language (same hop prod already does). After that
- * prefix, middleware resolves the door so the request does not depend on
- * `join/page.tsx` being in the route table. `/join/:code` stays an invite
- * alias.
+ * Guests are not redirected — the page is the indexable door. Signed-in
+ * members still hop to Hub. Bare `/join` is left for next-intl so it can
+ * prefix `en` or `nl`. `/join/:code` stays an invite alias.
  */
 export function getJoinDoorRedirect(
   pathname: string,
@@ -76,7 +80,8 @@ export function getJoinDoorRedirect(
   const pathWithoutLocale = pathname.slice(locale.length + 1) || "/";
   const joinDoor = pathWithoutLocale.replace(/\/+$/, "") || "/";
   if (joinDoor !== "/join") return null;
-  return `${getJoinPageRedirect({ hasSession, locale })}${search}`;
+  const dest = getJoinPageRedirect({ hasSession, locale });
+  return dest ? `${dest}${search}` : null;
 }
 
 /** First-session bring-an-agent card: Hub members who have not brought one in. */

@@ -37,8 +37,8 @@ export default function middleware(request: NextRequest) {
     request.cookies.get("better-auth.session_token") ??
     request.cookies.get("__Secure-better-auth.session_token");
 
-  // Prefixed /en/join and /nl/join: resolve here so the door does not
-  // depend on join/page.tsx. Bare /join falls through to next-intl.
+  // Signed-in /en/join and /nl/join: hop to Hub. Guests fall through to
+  // the indexable join page. Bare /join is prefixed by next-intl.
   const joinDoor = getJoinDoorRedirect(
     pathname,
     Boolean(sessionToken),

@@ -8,6 +8,7 @@ import {
   getAuthAliasRedirect,
   getJoinDoorRedirect,
   getJoinPageRedirect,
+  getJoinSignupHref,
   isMarketingHomePath,
   resolveAuthAlias,
   shouldShowFirstSessionPath,
@@ -31,10 +32,8 @@ describe("join path landing", () => {
     expect(isMarketingHomePath("/en/communities")).toBe(false);
   });
 
-  it("sends /join guests to signup and members to Hub", () => {
-    expect(getJoinPageRedirect({ hasSession: false, locale: "en" })).toBe(
-      "/en/auth/signup",
-    );
+  it("keeps /join guests on the indexable door and sends members to Hub", () => {
+    expect(getJoinPageRedirect({ hasSession: false, locale: "en" })).toBeNull();
     expect(getJoinPageRedirect({ hasSession: true, locale: "nl" })).toBe(
       "/nl/communities/ait",
     );
@@ -55,13 +54,18 @@ describe("join path landing", () => {
     expect(getAuthAliasRedirect("/en/auth/signup")).toBeNull();
   });
 
-  it("resolves /en/join and /nl/join as the public door", () => {
-    expect(getJoinDoorRedirect("/en/join", false)).toBe("/en/auth/signup");
-    expect(getJoinDoorRedirect("/nl/join", false)).toBe("/nl/auth/signup");
+  it("does not 307 guests off /en/join or /nl/join", () => {
+    expect(getJoinDoorRedirect("/en/join", false)).toBeNull();
+    expect(getJoinDoorRedirect("/nl/join", false)).toBeNull();
+    expect(getJoinDoorRedirect("/en/join", false, "?code=abc")).toBeNull();
+    expect(getJoinDoorRedirect("/en/join/", false)).toBeNull();
+  });
+
+  it("still sends signed-in members from the join door to Hub", () => {
     expect(getJoinDoorRedirect("/en/join", true)).toBe("/en/communities/ait");
     expect(getJoinDoorRedirect("/nl/join", true)).toBe("/nl/communities/ait");
-    expect(getJoinDoorRedirect("/en/join", false, "?code=abc")).toBe(
-      "/en/auth/signup?code=abc",
+    expect(getJoinDoorRedirect("/en/join", true, "?utm=x")).toBe(
+      "/en/communities/ait?utm=x",
     );
   });
 
@@ -76,7 +80,12 @@ describe("join path landing", () => {
     expect(getJoinDoorRedirect("/join/abc", true)).toBeNull();
     expect(getJoinDoorRedirect("/en/signup", false)).toBeNull();
     expect(getJoinDoorRedirect("/en/communities/ait", false)).toBeNull();
-    expect(getJoinDoorRedirect("/en/join/", false)).toBe("/en/auth/signup");
+    expect(getJoinDoorRedirect("/en/join/", false)).toBeNull();
+  });
+
+  it("points the join CTA at the existing /auth/signup flow", () => {
+    expect(getJoinSignupHref()).toBe("/auth/signup");
+    expect(getJoinSignupHref("?code=abc")).toBe("/auth/signup?code=abc");
   });
 
   it("shows the first-session agent path only for Hub members without an agent", () => {
