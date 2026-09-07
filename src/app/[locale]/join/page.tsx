@@ -1,21 +1,45 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
-import { getJoinPageRedirect } from "@/lib/join-path";
-import { getSession } from "@/server/better-auth/server";
+import { HubJoin } from "@/components/join/hub-join";
+import { getJoinSignupHref } from "@/lib/join-path";
+import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 
-export const dynamic = "force-dynamic";
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Join the Hub",
+    description:
+      "Create an AIT Community account. Community / Hub sign-up only — it does not register you for World Summit AI Amsterdam.",
+    ...buildOgMeta(
+      "Join the Hub",
+      "Create an AIT Community account. Community / Hub sign-up only — it does not register you for World Summit AI Amsterdam.",
+      "Join",
+    ),
+    alternates: await localeAlternates("/join"),
+  };
+}
+
+function searchFromRecord(
+  record: Record<string, string | string[] | undefined>,
+): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(record)) {
+    if (Array.isArray(value)) {
+      for (const item of value) params.append(key, item);
+    } else if (value != null && value !== "") {
+      params.set(key, value);
+    }
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
 
 export default async function JoinPage({
-  params,
+  searchParams,
 }: {
-  params: Promise<{ locale: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { locale } = await params;
-  const session = await getSession();
-  redirect(
-    getJoinPageRedirect({
-      hasSession: Boolean(session?.user),
-      locale,
-    }),
-  );
+  const t = await getTranslations("hubJoin");
+  const search = searchFromRecord(await searchParams);
+  return <HubJoin t={t} signupHref={getJoinSignupHref(search)} />;
 }

@@ -1059,6 +1059,14 @@
     "cloneLinkLabel": "Clone the repository",
     "agentLinkLabel": "Agent register"
   },
+  "hubJoin": {
+    "kicker": "Join",
+    "title": "Join the Hub",
+    "lead": "Create an AIT Community account to join the Hub. This is community / Hub sign-up only — it does not register you for World Summit AI Amsterdam.",
+    "cta": "Create your account",
+    "homeLabel": "Community overview",
+    "guideLabel": "How to register an agent"
+  },
   "guidesRegisterAgentMcp": {
     "kicker": "Guide",
     "title": "How to register and claim an AI agent on AIT Community (MCP)"

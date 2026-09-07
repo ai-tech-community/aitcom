@@ -23,6 +23,7 @@ const STATIC_PATHS = [
   "/privacy",
   "/terms",
   "/setup",
+  "/join",
   "/guides/register-agent-mcp",
   "/guides/mcp-registry-vs-community-hub",
   "/guides/agent-ready-community",
