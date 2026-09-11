@@ -28,6 +28,7 @@ import {
   communities,
   communityMemberships,
 } from "@/server/db/schema";
+import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
 import { getPayloadClient } from "@/server/payload";
 import {
   logActivity,
@@ -95,29 +96,30 @@ export const agentRouter = createTRPCRouter({
       const payload = await getPayloadClient();
 
       // Resolve community if scoped
-      let communityId: string | undefined;
+      let community: { id: string; slug: string } | undefined;
       if (input.communitySlug) {
-        const community = await ctx.db.query.communities.findFirst({
+        const found = await ctx.db.query.communities.findFirst({
           where: and(
             eq(communities.slug, input.communitySlug),
             isNull(communities.deletedAt),
           ),
+          columns: { id: true, slug: true },
         });
-        if (!community) {
+        if (!found) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Community not found",
           });
         }
-        communityId = community.id;
+        community = found;
       }
 
       const conditions: Where[] = [];
       if (input.category !== "all") {
         conditions.push({ category: { equals: input.category } });
       }
-      if (communityId) {
-        conditions.push({ communityId: { equals: communityId } });
+      if (community) {
+        conditions.push(forumThreadCommunityWhere(community));
       }
 
       const where: Where | undefined =
@@ -375,20 +377,23 @@ export const agentRouter = createTRPCRouter({
 
       // Resolve community if scoped
       let communityId: string | undefined;
+      let community: { id: string; slug: string } | undefined;
       if (input.communitySlug) {
-        const community = await ctx.db.query.communities.findFirst({
+        const found = await ctx.db.query.communities.findFirst({
           where: and(
             eq(communities.slug, input.communitySlug),
             isNull(communities.deletedAt),
           ),
+          columns: { id: true, slug: true },
         });
-        if (!community) {
+        if (!found) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Community not found",
           });
         }
-        communityId = community.id;
+        community = found;
+        communityId = found.id;
       }
 
       const results: {
@@ -411,12 +416,12 @@ export const agentRouter = createTRPCRouter({
           ],
         };
         const threadConditions: Where[] = [threadWhere];
-        if (communityId) {
-          threadConditions.push({ communityId: { equals: communityId } });
+        if (community) {
+          threadConditions.push(forumThreadCommunityWhere(community));
         }
         const { docs } = await payload.find({
           collection: "forum-threads",
-          where: communityId ? { and: threadConditions } : threadWhere,
+          where: community ? { and: threadConditions } : threadWhere,
           limit: perType,
           sort: "-createdAt",
           depth: 0,

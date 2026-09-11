@@ -14,7 +14,7 @@ const STATIC_PATHS = [
   "/",
   "/events",
   "/blog",
-  "/community",
+  "/communities/ait/forum",
   "/members",
   "/sponsors",
   "/jobs",
@@ -71,7 +71,19 @@ describe("buildSitemapEntries", () => {
       }
       if (collection === "forum-threads") {
         return {
-          docs: [{ slug: "intro", updatedAt: "2026-04-03T12:00:00.000Z" }],
+          docs: [
+            { slug: "intro", updatedAt: "2026-04-03T12:00:00.000Z" },
+            {
+              slug: "welcome-start-here-hub-join-guides-1788790840883",
+              communityId: null,
+              updatedAt: "2026-09-07T14:20:40.897Z",
+            },
+            {
+              slug: "tesst-1780215061668",
+              communityId: "nl-community-id",
+              updatedAt: "2026-04-04T12:00:00.000Z",
+            },
+          ],
         };
       }
       throw new Error(`unexpected collection ${collection}`);
@@ -80,7 +92,10 @@ describe("buildSitemapEntries", () => {
       find,
     } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
 
-    const entries = await buildSitemapEntries();
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map([["nl-community-id", "ait-community-netherlands"]]),
+    );
     const urls = urlsOf(entries);
 
     for (const path of STATIC_PATHS) {
@@ -92,7 +107,19 @@ describe("buildSitemapEntries", () => {
 
     expect(urls).toContain("https://www.aitcommunity.org/en/events/ai-night");
     expect(urls).toContain("https://www.aitcommunity.org/en/blog/hello");
-    expect(urls).toContain("https://www.aitcommunity.org/en/community/intro");
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/communities/ait/forum/intro",
+    );
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/communities/ait/forum/welcome-start-here-hub-join-guides-1788790840883",
+    );
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/communities/ait-community-netherlands/forum/tesst-1780215061668",
+    );
+    expect(urls).not.toContain(
+      "https://www.aitcommunity.org/en/community/intro",
+    );
+    expect(urls).not.toContain("https://www.aitcommunity.org/en/community");
     expect(
       entries.find(
         (item) =>
@@ -136,11 +163,17 @@ describe("buildSitemapEntries", () => {
       find,
     } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
 
-    const entries = await buildSitemapEntries();
+    const entries = await buildSitemapEntries(undefined, async () => new Map());
     const urls = urlsOf(entries);
 
     expect(urls).toContain("https://www.aitcommunity.org/en/blog/hello");
-    expect(urls).toContain("https://www.aitcommunity.org/en/community/intro");
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/communities/ait/forum/intro",
+    );
+    expect(urls).not.toContain(
+      "https://www.aitcommunity.org/en/community/intro",
+    );
+    expect(urls).not.toContain("https://www.aitcommunity.org/en/community");
     expect(urls).not.toContain(
       "https://www.aitcommunity.org/en/events/ai-night",
     );
@@ -154,13 +187,18 @@ describe("buildSitemapEntries", () => {
   it("returns static pages when payload init fails", async () => {
     mockGetPayloadClient.mockRejectedValue(new Error("too many clients"));
 
-    const entries = await buildSitemapEntries();
+    const entries = await buildSitemapEntries(undefined, async () => new Map());
     const urls = urlsOf(entries);
 
     expect(urls).toContain("https://www.aitcommunity.org/en");
     expect(urls).toContain("https://www.aitcommunity.org/en/events");
     expect(
-      urls.filter((url) => /\/en\/(events|blog|community)\/.+/.test(url)),
+      urls.filter(
+        (url) =>
+          /\/en\/(events|blog)\/.+/.test(url) ||
+          /\/en\/community\/.+/.test(url) ||
+          /\/en\/communities\/[^/]+\/forum\/.+/.test(url),
+      ),
     ).toEqual([]);
     expect(entries).toHaveLength(STATIC_PATHS.length);
     expect(console.error).toHaveBeenCalledWith(
@@ -180,7 +218,7 @@ describe("buildSitemapEntries", () => {
       find,
     } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
 
-    const entries = await buildSitemapEntries();
+    const entries = await buildSitemapEntries(undefined, async () => new Map());
     const event = entries.find(
       (item) => item.url === "https://www.aitcommunity.org/en/events/broken",
     );

@@ -1,5 +1,9 @@
 import type { MetadataRoute } from "next";
 import { absoluteLocaleUrl } from "@/lib/metadata";
+import {
+  HUB_FORUM_PATH,
+  forumThreadSitemapPath,
+} from "@/server/communities/forum-scope";
 import { getPayloadClient } from "@/server/payload";
 
 // Time-based ISR instead of force-dynamic: a sitemap does not need to be
@@ -14,7 +18,7 @@ const STATIC_PAGES = [
   "",
   "/events",
   "/blog",
-  "/community",
+  HUB_FORUM_PATH,
   "/members",
   "/sponsors",
   "/jobs",
@@ -31,6 +35,7 @@ const STATIC_PAGES = [
 
 type SitemapDoc = {
   slug?: string | null;
+  communityId?: string | null;
   updatedAt?: string | Date | null;
 };
 
@@ -69,8 +74,29 @@ function docsFromSettled(
   return [];
 }
 
+async function defaultCommunitySlugById(): Promise<
+  ReadonlyMap<string, string>
+> {
+  try {
+    const { isNull } = await import("drizzle-orm");
+    const { db } = await import("@/server/db");
+    const { communities } = await import("@/server/db/schema");
+    const rows = await db
+      .select({ id: communities.id, slug: communities.slug })
+      .from(communities)
+      .where(isNull(communities.deletedAt));
+    return new Map(rows.map((row) => [row.id, row.slug]));
+  } catch (error) {
+    console.error("[sitemap] community slug lookup failed", error);
+    return new Map();
+  }
+}
+
 export async function buildSitemapEntries(
   getClient: () => Promise<SitemapClient> = getPayloadClient,
+  getCommunitySlugById: () => Promise<
+    ReadonlyMap<string, string>
+  > = defaultCommunitySlugById,
 ): Promise<MetadataRoute.Sitemap> {
   const staticEntries = STATIC_PAGES.map((path) => localeEntries(path));
 
@@ -120,9 +146,18 @@ export async function buildSitemapEntries(
     (article) =>
       localeEntries(`/blog/${article.slug}`, safeDate(article.updatedAt)),
   );
-  const threadEntries = docsFromSettled(threadsResult, "forum-threads").map(
-    (thread) =>
-      localeEntries(`/community/${thread.slug}`, safeDate(thread.updatedAt)),
+  let communitySlugById: ReadonlyMap<string, string> = new Map();
+  try {
+    communitySlugById = await getCommunitySlugById();
+  } catch (error) {
+    console.error("[sitemap] community slug lookup failed", error);
+  }
+
+  const threadEntries = docsFromSettled(threadsResult, "forum-threads").flatMap(
+    (thread) => {
+      const path = forumThreadSitemapPath(thread, communitySlugById);
+      return path ? [localeEntries(path, safeDate(thread.updatedAt))] : [];
+    },
   );
 
   return [
