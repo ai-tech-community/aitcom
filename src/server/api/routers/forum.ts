@@ -23,6 +23,7 @@ import {
   payloadWriteMessage,
 } from "@/server/payload-numeric";
 import { IDEA_CATEGORIES } from "@/lib/idea-categories";
+import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
 import { buildIdeasWhere } from "./ideas-filter";
 
 async function requireRulesAcceptance(userId: string, communityId?: string) {
@@ -397,7 +398,12 @@ export const forumRouter = createTRPCRouter({
           columns: { id: true },
         });
         if (community) {
-          conditions.push({ communityId: { equals: community.id } });
+          conditions.push(
+            forumThreadCommunityWhere({
+              id: community.id,
+              slug: input.communitySlug,
+            }),
+          );
         }
       }
 

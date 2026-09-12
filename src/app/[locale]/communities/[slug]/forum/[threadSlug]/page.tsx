@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getPayloadClient } from "@/server/payload";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { CommunityThreadDetail } from "@/components/forum/community-thread-detail";
+import { forumThreadMatchesCommunity } from "@/server/communities/forum-scope";
 import { db } from "@/server/db";
 import { communities } from "@/server/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
@@ -23,16 +24,21 @@ async function findThreadInCommunity(
   const payload = await getPayloadClient();
   const { docs } = await payload.find({
     collection: "forum-threads",
-    where: {
-      and: [
-        { slug: { equals: threadSlug } },
-        { communityId: { equals: community.id } },
-      ],
-    },
+    where: { slug: { equals: threadSlug } },
     limit: 1,
     depth: 0,
   });
-  return docs[0] ?? null;
+  const thread = docs[0];
+  if (
+    !thread ||
+    !forumThreadMatchesCommunity(thread.communityId, {
+      id: community.id,
+      slug: communitySlug,
+    })
+  ) {
+    return null;
+  }
+  return thread;
 }
 
 export async function generateMetadata({

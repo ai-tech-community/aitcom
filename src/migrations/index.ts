@@ -82,6 +82,7 @@ import * as migration_20260817a_social_identity from "./20260817a_social_identit
 import * as migration_20260820a_draft_stuck_test_challenge from "./20260820a_draft_stuck_test_challenge";
 import * as migration_20260821a_member_hidden_from_public from "./20260821a_member_hidden_from_public";
 import * as migration_20260831a_hub_dm_mail from "./20260831a_hub_dm_mail";
+import * as migration_20260911a_backfill_hub_forum_community_id from "./20260911a_backfill_hub_forum_community_id";
 
 export const migrations = [
   {
@@ -503,5 +504,10 @@ export const migrations = [
     up: migration_20260831a_hub_dm_mail.up,
     down: migration_20260831a_hub_dm_mail.down,
     name: "20260831a_hub_dm_mail",
+  },
+  {
+    up: migration_20260911a_backfill_hub_forum_community_id.up,
+    down: migration_20260911a_backfill_hub_forum_community_id.down,
+    name: "20260911a_backfill_hub_forum_community_id",
   },
 ];
