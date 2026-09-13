@@ -225,7 +225,16 @@ describe("Awesome AI OSS page citation contract", () => {
     );
 
     expect(screen.getByPlaceholderText("Search projects…")).toBeInTheDocument();
-    expect(screen.getByText("Sign in to submit or vote")).toBeInTheDocument();
+    expect(screen.getAllByText("Filter by category").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Newest first").length).toBeGreaterThan(0);
+    const signIn = screen.getByRole("link", {
+      name: "Sign in to submit or vote",
+    });
+    expect(signIn).toHaveAttribute(
+      "href",
+      "/en/auth/signin?redirect=/en/investigations/awesome-ai-oss",
+    );
+    expect(signIn.getAttribute("href")).not.toMatch(/join/i);
     expect(screen.queryByText("Submit a project")).not.toBeInTheDocument();
     expect(screen.queryByText("Most voted")).not.toBeInTheDocument();
 
@@ -325,11 +334,86 @@ describe("Awesome AI OSS site integration", () => {
     );
   });
 
+  it("uses Writing Bot Phase 2 strings verbatim", () => {
+    const copy = en.investigationsAwesomeAiOss;
+    expect(copy.searchPlaceholder).toBe("Search projects…");
+    expect(copy.filterLabel).toBe("Filter by category");
+    expect(copy.sortNewest).toBe("Newest first");
+    expect(copy.sortVoted).toBe("Most voted");
+    expect(copy.submitProject).toBe("Submit a project");
+    expect(copy.signInCta).toBe("Sign in to submit or vote");
+    expect(copy.empty).toBe(
+      "No projects match. Try another category or clear search.",
+    );
+    expect(copy.openRepo).toBe("Open repo");
+    expect(copy.vote).toBe("Vote");
+    expect(copy.voted).toBe("Voted");
+    expect(copy.removeVote).toBe("Remove vote");
+    expect(copy.signInToVote).toBe("Sign in to vote");
+    expect(copy.voteTooltip).toBe("One vote per member");
+    expect(copy.save).toBe("Save");
+    expect(copy.submitTitle).toBe("Submit a project");
+    expect(copy.submitHelp).toBe(
+      "Suggest a live open-source project for AIT builders. Submissions are reviewed before they appear on the public list.",
+    );
+    expect(copy.fieldName).toBe("Project name");
+    expect(copy.fieldRepo).toBe("Repository URL");
+    expect(copy.fieldCategory).toBe("Category");
+    expect(copy.fieldBlurb).toBe("One-line blurb");
+    expect(copy.fieldBlurbHint).toBe("What it is and when to open it");
+    expect(copy.fieldNote).toBe("Your note for reviewers");
+    expect(copy.submitForReview).toBe("Submit for review");
+    expect(copy.cancel).toBe("Cancel");
+    expect(copy.submitSuccess).toBe(
+      "Submitted. We’ll list it after review - no public score until it’s approved.",
+    );
+    expect(copy.urlError).toBe("Use a live GitHub or GitLab repo URL.");
+    expect(copy.duplicateError).toBe(
+      "That repo is already submitted or listed.",
+    );
+    expect(copy.queueTitle).toBe("Awaiting review");
+    expect(copy.approveList).toBe("Approve & list");
+    expect(copy.reject).toBe("Reject");
+    expect(AWESOME_CATEGORY_LABELS.protocols.en).toBe("Protocols & SDKs");
+    expect(AWESOME_CATEGORY_LABELS.runtimes.en).toBe("MCP servers & runtimes");
+    expect(AWESOME_CATEGORY_LABELS.frameworks.en).toBe("Agent frameworks");
+    expect(AWESOME_CATEGORY_LABELS.models.en).toBe("Open models & serving");
+    expect(AWESOME_CATEGORY_LABELS.other.en).toBe("Other");
+  });
+
+  it("keeps the hard /en/join CTA only on the curated Investigations page", () => {
+    const joinNeedle = /aitcommunity\.org\/en\/join|AWESOME_AI_OSS_JOIN_HREF/;
+    const curatedPage = readFileSync(
+      join(dir, "awesome-ai-oss-page.tsx"),
+      "utf8",
+    );
+    expect(curatedPage).toContain("AWESOME_AI_OSS_JOIN_HREF");
+
+    const siblings = [
+      join(dir, "awesome-ai-oss-directory.tsx"),
+      join(dir, "awesome-ai-oss-card.tsx"),
+      join(dir, "awesome-ai-oss-submit-dialog.tsx"),
+      join(dir, "awesome-ai-oss-review-queue.tsx"),
+      REVIEW_FILE,
+      PAGE_FILE,
+    ];
+    for (const file of siblings) {
+      expect(readFileSync(file, "utf8")).not.toMatch(joinNeedle);
+    }
+
+    const route = readFileSync(PAGE_FILE, "utf8");
+    expect(route).toContain("/auth/signin?redirect=");
+    expect(route).toContain("AWESOME_AI_OSS_PATH");
+    expect(route).not.toMatch(/join/i);
+  });
+
   it("exposes a noindex People review path", () => {
     expect(existsSync(REVIEW_FILE)).toBe(true);
     const src = readFileSync(REVIEW_FILE, "utf8");
     expect(src).toContain("robots: { index: false, follow: false }");
     expect(src).toContain("userIsHubOperator");
+    expect(src).toContain("/auth/signin?redirect=");
+    expect(src).not.toMatch(/join/i);
     const queue = readFileSync(
       join(dir, "awesome-ai-oss-review-queue.tsx"),
       "utf8",

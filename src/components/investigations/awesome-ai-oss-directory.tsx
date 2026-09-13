@@ -132,7 +132,7 @@ export function AwesomeAiOssDirectory({
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="all">{t("filterAll")}</SelectItem>
+                  <SelectItem value="all">{t("filterLabel")}</SelectItem>
                   {AWESOME_CATEGORY_IDS.map((id) => (
                     <SelectItem key={id} value={id}>
                       {AWESOME_CATEGORY_LABELS[id][locale]}
