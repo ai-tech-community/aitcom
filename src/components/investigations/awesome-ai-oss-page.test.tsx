@@ -4,6 +4,33 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
+import en from "../../../messages/en.json";
+import nl from "../../../messages/nl.json";
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/en/investigations/awesome-ai-oss",
+  useRouter: () => ({ replace: vi.fn() }),
+}));
+
+vi.mock("next-intl", () => ({
+  useTranslations: () => (key: string) =>
+    (en.investigationsAwesomeAiOss as Record<string, string>)[key] ?? key,
+}));
+
+vi.mock("@/trpc/react", () => ({
+  api: {
+    useUtils: () => ({
+      awesomeAiOss: { sessionState: { invalidate: vi.fn() } },
+    }),
+    awesomeAiOss: {
+      sessionState: { useQuery: () => ({ data: undefined }) },
+      vote: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      save: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      submit: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+    },
+  },
+}));
+
 vi.mock("@/i18n/navigation", () => ({
   Link: ({
     href,
@@ -19,21 +46,28 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
-import en from "../../../messages/en.json";
-import nl from "../../../messages/nl.json";
 import {
   AWESOME_AI_OSS_H1,
   AWESOME_AI_OSS_JOIN_HREF,
   AWESOME_AI_OSS_PATH,
   AWESOME_AI_OSS_REPOS,
+  AWESOME_AI_OSS_REVIEW_PATH,
+  AWESOME_CATEGORY_LABELS,
+  curatedPublicCards,
 } from "@/lib/investigations/awesome-ai-oss";
 import { GUIDE_PATHS, JOIN_PATH, appPathFromGuideHref } from "@/lib/seo-guides";
 import { HOME_CRAWL_DOORS } from "@/components/home/home-crawl-doors";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { AwesomeAiOssPage } from "./awesome-ai-oss-page";
+import { AwesomeAiOssCard } from "./awesome-ai-oss-card";
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const appLocale = join(dir, "../../app/[locale]");
 const PAGE_FILE = join(appLocale, "investigations/awesome-ai-oss/page.tsx");
+const REVIEW_FILE = join(
+  appLocale,
+  "investigations/awesome-ai-oss/review/page.tsx",
+);
 const INDEX_FILE = join(appLocale, "investigations/page.tsx");
 const SITEMAP_FILE = join(dir, "../../app/sitemap.ts");
 const SITEMAP_TEST_FILE = join(dir, "../../app/sitemap.test.ts");
@@ -91,12 +125,13 @@ function expectNoBannedClaims(text: string) {
   }
 }
 
-function expectNoSubmitVote(text: string, hrefs: Array<string | null>) {
-  expect(text).not.toMatch(/\bsubmit\b/i);
-  expect(text).not.toMatch(/\binzenden\b/i);
-  expect(text).not.toMatch(/\bvote\b/i);
-  expect(text).not.toMatch(/\bstem\b/i);
-  expect(hrefs.join("\n")).not.toMatch(/submit|vote/i);
+function expectAnonymousVoteLock(container: HTMLElement) {
+  expect(container.querySelector("[data-awesome-vote-count]")).toBeNull();
+  expect(container.textContent).not.toMatch(/★/);
+  expect(
+    screen.queryByRole("button", { name: /^Vote$|^Voted$/i }),
+  ).not.toBeInTheDocument();
+  expect(container.textContent).not.toMatch(/Most voted/);
 }
 
 describe("Awesome AI OSS investigation route", () => {
@@ -111,6 +146,8 @@ describe("Awesome AI OSS investigation route", () => {
     expect(src).toContain("AWESOME_AI_OSS_PATH");
     expect(src).toContain("localeAlternates");
     expect(src).toContain("AwesomeAiOssPage");
+    expect(src).toContain("parseAwesomeDirectoryQuery");
+    expect(src).toContain("robots: { index: true, follow: true }");
   });
 });
 
@@ -169,43 +206,40 @@ describe("Awesome AI OSS page citation contract", () => {
       "https://www.aitcommunity.org/en/join",
     );
     expect(hrefs).not.toContain("/guides/awesome-ai-oss");
+    expect(hrefs.some((href) => href === "/en/join")).toBe(false);
 
     for (const href of EXPECTED_HREFS) {
       expect(hrefs).toContain(href);
     }
 
     expect(container.querySelector("form")).toBeNull();
-    expectNoSubmitVote(container.textContent ?? "", hrefs);
     expectNoBannedClaims(container.textContent ?? "");
     expectNoBannedClaims(
       Object.values(en.investigationsAwesomeAiOss).join("\n"),
     );
   });
 
-  it("renders category H2s and one line per repo", () => {
+  it("renders the card grid, Writing Bot chrome, and category tags", () => {
     const { container } = render(
       <AwesomeAiOssPage locale="en" t={tFrom(en.investigationsAwesomeAiOss)} />,
     );
 
-    expect(
-      screen.getByRole("heading", { name: /Protocols & SDKs/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /MCP servers & agent runtimes/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /Agent frameworks/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /Open models & serving/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /^GitLab$/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Search projects…")).toBeInTheDocument();
+    expect(screen.getByText("Sign in to submit or vote")).toBeInTheDocument();
+    expect(screen.queryByText("Submit a project")).not.toBeInTheDocument();
+    expect(screen.queryByText("Most voted")).not.toBeInTheDocument();
+
+    for (const label of Object.values(AWESOME_CATEGORY_LABELS).map(
+      (entry) => entry.en,
+    )) {
+      expect(container.textContent).toContain(label);
+    }
 
     expect(container.textContent).toMatch(/reference MCP servers/i);
     expect(container.textContent).toMatch(/GitLab AI Gateway/i);
     expect(container.textContent).toMatch(/GitLab application/i);
+    expect(container.textContent).toMatch(/Added: November 25, 2024/);
+    expectAnonymousVoteLock(container);
   });
 });
 
@@ -215,6 +249,12 @@ describe("Awesome AI OSS i18n", () => {
     const nlKeys = Object.keys(nl.investigationsAwesomeAiOss).sort();
     expect(nlKeys).toEqual(enKeys);
     expect(en.investigationsAwesomeAiOss.title).toBe(AWESOME_AI_OSS_H1);
+    expect(en.investigationsAwesomeAiOss.searchPlaceholder).toBe(
+      "Search projects…",
+    );
+    expect(en.investigationsAwesomeAiOss.submitSuccess).toBe(
+      "Submitted. We’ll list it after review - no public score until it’s approved.",
+    );
 
     for (const messages of [
       en.investigationsAwesomeAiOss,
@@ -238,17 +278,18 @@ describe("Awesome AI OSS i18n", () => {
       expect(hrefs).toContain(href);
     }
     expect(container.textContent).toMatch(/geen summit-ticket/i);
-    expectNoSubmitVote(container.textContent ?? "", hrefs);
+    expectAnonymousVoteLock(container);
     expectNoBannedClaims(container.textContent ?? "");
   });
 });
 
 describe("Awesome AI OSS site integration", () => {
-  it("is in the sitemap static pages", () => {
+  it("is in the sitemap static pages and pending review is not", () => {
     const sitemap = readFileSync(SITEMAP_FILE, "utf8");
     const sitemapTest = readFileSync(SITEMAP_TEST_FILE, "utf8");
     expect(sitemap).toContain(AWESOME_AI_OSS_PATH);
     expect(sitemapTest).toContain(AWESOME_AI_OSS_PATH);
+    expect(sitemap).not.toContain(AWESOME_AI_OSS_REVIEW_PATH);
   });
 
   it("is hard-linked from /en crawl doors and the Investigations index", () => {
@@ -282,5 +323,72 @@ describe("Awesome AI OSS site integration", () => {
     expect(AWESOME_AI_OSS_JOIN_HREF).toBe(
       `https://www.aitcommunity.org/en${JOIN_PATH}`,
     );
+  });
+
+  it("exposes a noindex People review path", () => {
+    expect(existsSync(REVIEW_FILE)).toBe(true);
+    const src = readFileSync(REVIEW_FILE, "utf8");
+    expect(src).toContain("robots: { index: false, follow: false }");
+    expect(src).toContain("userIsHubOperator");
+    const queue = readFileSync(
+      join(dir, "awesome-ai-oss-review-queue.tsx"),
+      "utf8",
+    );
+    expect(queue).toContain("approveList");
+    expect(queue).toContain("reject");
+  });
+});
+
+describe("Awesome AI OSS card vote lock", () => {
+  it("never prints vote counts or stars on an anonymous card", () => {
+    const card = curatedPublicCards()[0]!;
+    const { container } = render(
+      <AwesomeAiOssCard
+        card={card}
+        locale="en"
+        signedIn={false}
+        copy={{
+          openRepo: "Open repo",
+          vote: "Vote",
+          voted: "Voted",
+          removeVote: "Remove vote",
+          voteTooltip: "One vote per member",
+          save: "Save",
+          saved: "Saved",
+        }}
+      />,
+    );
+    expect(container.querySelector("[data-awesome-vote-count]")).toBeNull();
+    expect(container.textContent).not.toMatch(/★/);
+    expect(container.textContent).not.toMatch(/\bVote\b/);
+    expect(screen.getByRole("link", { name: "Open repo" })).toHaveAttribute(
+      "href",
+      card.repoUrl,
+    );
+  });
+
+  it("shows Vote/Voted after a session but still hides counts until they arrive", () => {
+    const card = curatedPublicCards()[0]!;
+    const { container } = render(
+      <TooltipProvider>
+        <AwesomeAiOssCard
+          card={card}
+          locale="en"
+          signedIn
+          session={{ voted: false }}
+          copy={{
+            openRepo: "Open repo",
+            vote: "Vote",
+            voted: "Voted",
+            removeVote: "Remove vote",
+            voteTooltip: "One vote per member",
+            save: "Save",
+            saved: "Saved",
+          }}
+        />
+      </TooltipProvider>,
+    );
+    expect(screen.getByRole("button", { name: "Vote" })).toBeInTheDocument();
+    expect(container.querySelector("[data-awesome-vote-count]")).toBeNull();
   });
 });

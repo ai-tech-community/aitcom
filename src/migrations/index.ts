@@ -83,6 +83,7 @@ import * as migration_20260820a_draft_stuck_test_challenge from "./20260820a_dra
 import * as migration_20260821a_member_hidden_from_public from "./20260821a_member_hidden_from_public";
 import * as migration_20260831a_hub_dm_mail from "./20260831a_hub_dm_mail";
 import * as migration_20260911a_backfill_hub_forum_community_id from "./20260911a_backfill_hub_forum_community_id";
+import * as migration_20260913a_awesome_ai_oss from "./20260913a_awesome_ai_oss";
 
 export const migrations = [
   {
@@ -509,5 +510,10 @@ export const migrations = [
     up: migration_20260911a_backfill_hub_forum_community_id.up,
     down: migration_20260911a_backfill_hub_forum_community_id.down,
     name: "20260911a_backfill_hub_forum_community_id",
+  },
+  {
+    up: migration_20260913a_awesome_ai_oss.up,
+    down: migration_20260913a_awesome_ai_oss.down,
+    name: "20260913a_awesome_ai_oss",
   },
 ];

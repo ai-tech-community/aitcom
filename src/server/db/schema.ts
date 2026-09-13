@@ -3995,3 +3995,156 @@ export const datacenterFindingRelations = relations(
     }),
   }),
 );
+
+// ── Awesome AI OSS (Investigations directory) ───────────────
+export const awesomeAiOssProjects = appSchema.table(
+  "awesome_ai_oss_project",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: d.text().notNull(),
+    repoUrl: d.text().notNull(),
+    repoHost: d.varchar({ length: 16 }).notNull().$type<"github" | "gitlab">(),
+    category: d
+      .varchar({ length: 32 })
+      .notNull()
+      .$type<"protocols" | "runtimes" | "frameworks" | "models" | "other">(),
+    blurbEn: d.text().notNull(),
+    blurbNl: d.text().notNull(),
+    status: d
+      .varchar({ length: 16 })
+      .notNull()
+      .default("pending")
+      .$type<"pending" | "approved" | "rejected">(),
+    source: d
+      .varchar({ length: 16 })
+      .notNull()
+      .default("member")
+      .$type<"curated" | "member">(),
+    addedOn: d.date(),
+    reviewerNote: d.text(),
+    rejectionReason: d.text(),
+    submittedByUserId: d.varchar({ length: 255 }).references(() => user.id),
+    reviewedByUserId: d.varchar({ length: 255 }).references(() => user.id),
+    reviewedAt: d.timestamp({ withTimezone: true }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("awesome_ai_oss_project_repo_url_idx").on(t.repoUrl),
+    index("awesome_ai_oss_project_status_idx").on(t.status),
+    index("awesome_ai_oss_project_category_idx").on(t.category),
+    index("awesome_ai_oss_project_added_on_idx").on(t.addedOn),
+  ],
+);
+
+export const awesomeAiOssVotes = appSchema.table(
+  "awesome_ai_oss_vote",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    projectId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => awesomeAiOssProjects.id, { onDelete: "cascade" }),
+    voterId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("awesome_ai_oss_vote_project_voter_idx").on(
+      t.projectId,
+      t.voterId,
+    ),
+    index("awesome_ai_oss_vote_project_idx").on(t.projectId),
+  ],
+);
+
+export const awesomeAiOssSaves = appSchema.table(
+  "awesome_ai_oss_save",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    projectId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => awesomeAiOssProjects.id, { onDelete: "cascade" }),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("awesome_ai_oss_save_project_user_idx").on(
+      t.projectId,
+      t.userId,
+    ),
+  ],
+);
+
+export const awesomeAiOssProjectRelations = relations(
+  awesomeAiOssProjects,
+  ({ one, many }) => ({
+    submittedBy: one(user, {
+      fields: [awesomeAiOssProjects.submittedByUserId],
+      references: [user.id],
+      relationName: "awesome_ai_oss_submitter",
+    }),
+    reviewedBy: one(user, {
+      fields: [awesomeAiOssProjects.reviewedByUserId],
+      references: [user.id],
+      relationName: "awesome_ai_oss_reviewer",
+    }),
+    votes: many(awesomeAiOssVotes),
+    saves: many(awesomeAiOssSaves),
+  }),
+);
+
+export const awesomeAiOssVoteRelations = relations(
+  awesomeAiOssVotes,
+  ({ one }) => ({
+    project: one(awesomeAiOssProjects, {
+      fields: [awesomeAiOssVotes.projectId],
+      references: [awesomeAiOssProjects.id],
+    }),
+    voter: one(user, {
+      fields: [awesomeAiOssVotes.voterId],
+      references: [user.id],
+    }),
+  }),
+);
+
+export const awesomeAiOssSaveRelations = relations(
+  awesomeAiOssSaves,
+  ({ one }) => ({
+    project: one(awesomeAiOssProjects, {
+      fields: [awesomeAiOssSaves.projectId],
+      references: [awesomeAiOssProjects.id],
+    }),
+    user: one(user, {
+      fields: [awesomeAiOssSaves.userId],
+      references: [user.id],
+    }),
+  }),
+);
