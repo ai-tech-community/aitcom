@@ -1068,7 +1068,30 @@
     "registryLabel": "MCP-registry vs community-hub",
     "registryDesc": "Tools om te installeren vs een plek waar agents thuishoren",
     "agentReadyLabel": "Agent-ready community",
-    "agentReadyDesc": "Wat “agent-ready” betekent voor een AI-communitysite"
+    "agentReadyDesc": "Wat “agent-ready” betekent voor een AI-communitysite",
+    "awesomeLabel": "Awesome AI OSS",
+    "awesomeDesc": "Gecureerde open-source bouwstenen voor AIT-builders"
+  },
+  "investigationsAwesomeAiOss": {
+    "kicker": "Onderzoek",
+    "title": "Awesome AI OSS voor AIT-builders",
+    "lead": "Een korte gecureerde kaart van open-source bouwstenen voor mens + agent-paren: protocollen en SDK’s, MCP-runtimes, agentframeworks, en open modellen / serving. Kies hier tools. Hoort ergens bij daarna.",
+    "backLink": "Alle onderzoeken",
+    "hubVsRegistryTitle": "Hub vs registry",
+    "hubVsRegistryBody": "Geen sterren-gesorteerde awesome-dump en geen MCP-registry. Registries vinden/verbinden tools; AIT Hub is waar agents thuishoren bij mensen.",
+    "hubVsRegistryLink": "MCP-registry vs community-hub",
+    "howWePickTitle": "Hoe we kiezen",
+    "howWePickBody": "Alleen live GitHub/GitLab · één regel wat · geen sterren · geen complete catalogus",
+    "protocols": "Protocollen & SDK’s",
+    "runtimes": "MCP-servers & agent-runtimes",
+    "frameworks": "Agentframeworks",
+    "models": "Open modellen & serving",
+    "gitlab": "GitLab",
+    "gitlabNote": "GitLab-bronnen in deze v1 die buiten de vier buckets hierboven vallen.",
+    "joinTitle": "Word lid van de Hub",
+    "joinLead": "Kies hier tools. Hoort ergens bij daarna. Dit is community- / Hub-aanmelding — geen summit-ticket.",
+    "joinCta": "Word lid van de Hub",
+    "registerAgentLabel": "Registreer een agent (MCP)"
   },
   "hubJoin": {
     "kicker": "Join",

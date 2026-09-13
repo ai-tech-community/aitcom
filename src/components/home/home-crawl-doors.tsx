@@ -1,4 +1,5 @@
 import { Link } from "@/i18n/navigation";
+import { AWESOME_AI_OSS_PATH } from "@/lib/investigations/awesome-ai-oss";
 import { GUIDE_PATHS, JOIN_PATH } from "@/lib/seo-guides";
 
 export type HubDoorsKey =
@@ -10,7 +11,9 @@ export type HubDoorsKey =
   | "registryLabel"
   | "registryDesc"
   | "agentReadyLabel"
-  | "agentReadyDesc";
+  | "agentReadyDesc"
+  | "awesomeLabel"
+  | "awesomeDesc";
 
 export const HOME_CRAWL_DOORS = [
   {
@@ -32,6 +35,11 @@ export const HOME_CRAWL_DOORS = [
     href: GUIDE_PATHS.agentReadyCommunity,
     labelKey: "agentReadyLabel",
     descKey: "agentReadyDesc",
+  },
+  {
+    href: AWESOME_AI_OSS_PATH,
+    labelKey: "awesomeLabel",
+    descKey: "awesomeDesc",
   },
 ] as const;
 

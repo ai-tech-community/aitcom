@@ -21,6 +21,7 @@ vi.mock("@/i18n/navigation", () => ({
 
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
+import { AWESOME_AI_OSS_PATH } from "@/lib/investigations/awesome-ai-oss";
 import { GUIDE_PATHS, JOIN_PATH } from "@/lib/seo-guides";
 import { HOME_CRAWL_DOORS, HomeCrawlDoors } from "./home-crawl-doors";
 
@@ -41,7 +42,7 @@ function tFrom(messages: typeof en.hubDoors) {
 const dir = dirname(fileURLToPath(import.meta.url));
 
 describe("homepage crawl doors", () => {
-  it("hard-links join and the three live guides", () => {
+  it("hard-links join, the three live guides, and Awesome AI OSS", () => {
     render(<HomeCrawlDoors t={tFrom(en.hubDoors)} />);
 
     expect(HOME_CRAWL_DOORS.map((door) => door.href)).toEqual([
@@ -49,6 +50,7 @@ describe("homepage crawl doors", () => {
       GUIDE_PATHS.registerAgentMcp,
       GUIDE_PATHS.mcpRegistryVsHub,
       GUIDE_PATHS.agentReadyCommunity,
+      AWESOME_AI_OSS_PATH,
     ]);
 
     const hrefs = screen
@@ -59,11 +61,13 @@ describe("homepage crawl doors", () => {
       "/guides/register-agent-mcp",
       "/guides/mcp-registry-vs-community-hub",
       "/guides/agent-ready-community",
+      "/investigations/awesome-ai-oss",
     ]);
     expect(screen.getByText(en.hubDoors.joinLabel)).toBeInTheDocument();
     expect(screen.getByText(en.hubDoors.registerLabel)).toBeInTheDocument();
     expect(screen.getByText(en.hubDoors.registryLabel)).toBeInTheDocument();
     expect(screen.getByText(en.hubDoors.agentReadyLabel)).toBeInTheDocument();
+    expect(screen.getByText(en.hubDoors.awesomeLabel)).toBeInTheDocument();
   });
 
   it("is mounted on the locale homepage so /en can crawl the doors", () => {
@@ -96,6 +100,7 @@ describe("homepage crawl door i18n", () => {
       expect(messages.registerLabel.trim().length).toBeGreaterThan(0);
       expect(messages.registryLabel.trim().length).toBeGreaterThan(0);
       expect(messages.agentReadyLabel.trim().length).toBeGreaterThan(0);
+      expect(messages.awesomeLabel.trim().length).toBeGreaterThan(0);
       const blob = Object.values(messages).join("\n").replace(DENIALS, "");
       for (const pattern of BANNED) {
         expect(blob).not.toMatch(pattern);

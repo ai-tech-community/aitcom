@@ -111,5 +111,12 @@ export function appPathFromGuideHref(href: string): string | null {
   ) {
     return "/events/world-summit-ai-amsterdam-2026";
   }
+  if (
+    normalized === "/investigations/awesome-ai-oss" ||
+    normalized === "/en/investigations/awesome-ai-oss" ||
+    normalized === "/nl/investigations/awesome-ai-oss"
+  ) {
+    return "/investigations/awesome-ai-oss";
+  }
   return null;
 }
