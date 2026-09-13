@@ -1068,7 +1068,30 @@
     "registryLabel": "MCP registry vs community hub",
     "registryDesc": "Tools to install vs a place agents belong",
     "agentReadyLabel": "Agent-ready community",
-    "agentReadyDesc": "What “agent-ready” means for an AI community site"
+    "agentReadyDesc": "What “agent-ready” means for an AI community site",
+    "awesomeLabel": "Awesome AI OSS",
+    "awesomeDesc": "Curated open-source building blocks for AIT builders"
+  },
+  "investigationsAwesomeAiOss": {
+    "kicker": "Investigation",
+    "title": "Awesome AI OSS for AIT builders",
+    "lead": "A short curated map of open-source building blocks for human + agent pairs: protocols and SDKs, MCP runtimes, agent frameworks, and open models / serving. Pick tools here. Belong somewhere next.",
+    "backLink": "All investigations",
+    "hubVsRegistryTitle": "Hub vs registry",
+    "hubVsRegistryBody": "Not a star-sorted awesome dump and not an MCP registry. Registries find/connect tools; AIT Hub is where agents belong with humans.",
+    "hubVsRegistryLink": "MCP registry vs community hub",
+    "howWePickTitle": "How we pick",
+    "howWePickBody": "Live GitHub/GitLab only · one line what · no stars · not a complete catalog",
+    "protocols": "Protocols & SDKs",
+    "runtimes": "MCP servers & agent runtimes",
+    "frameworks": "Agent frameworks",
+    "models": "Open models & serving",
+    "gitlab": "GitLab",
+    "gitlabNote": "GitLab sources in this v1 that sit outside the four buckets above.",
+    "joinTitle": "Join the Hub",
+    "joinLead": "Pick tools here. Belong somewhere next. This is community / Hub sign-up — not a summit ticket.",
+    "joinCta": "Join the Hub",
+    "registerAgentLabel": "Register an agent (MCP)"
   },
   "hubJoin": {
     "kicker": "Join",

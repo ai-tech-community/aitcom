@@ -414,6 +414,11 @@ describe("SEO guide live facts", () => {
         "https://aitcommunity.org/en/events/world-summit-ai-amsterdam-2026",
       ),
     ).toBe("/events/world-summit-ai-amsterdam-2026");
+    expect(
+      appPathFromGuideHref(
+        "https://www.aitcommunity.org/en/investigations/awesome-ai-oss",
+      ),
+    ).toBe("/investigations/awesome-ai-oss");
   });
 
   it("points at the live MCP, setup, and agent.md URLs", () => {
