@@ -113,7 +113,7 @@ export function AwesomeAiOssPage({
           {t("joinLead")}
         </p>
         <div className="pt-2">
-          <Button asChild>
+          <Button asChild variant="outline">
             <a href={AWESOME_AI_OSS_JOIN_HREF}>{t("joinCta")}</a>
           </Button>
         </div>
