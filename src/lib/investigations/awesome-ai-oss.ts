@@ -1,5 +1,6 @@
 import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "./awesome-ai-oss-seeds-chunk-1";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_2 } from "./awesome-ai-oss-seeds-chunk-2";
+import { AWESOME_AI_OSS_SEEDS_CHUNK_3 } from "./awesome-ai-oss-seeds-chunk-3";
 
 export const AWESOME_AI_OSS_PATH = "/investigations/awesome-ai-oss";
 
@@ -23,6 +24,10 @@ export type AwesomeCategoryId =
   | "frameworks"
   | "rag"
   | "models"
+  | "rag-memory"
+  | "agent-uis"
+  | "agent-tools"
+  | "eval-observability"
   | "other";
 
 export type AwesomeProjectStatus = "pending" | "approved" | "rejected";
@@ -66,6 +71,10 @@ export const AWESOME_CATEGORY_IDS = [
   "frameworks",
   "rag",
   "models",
+  "rag-memory",
+  "agent-uis",
+  "agent-tools",
+  "eval-observability",
   "other",
 ] as const satisfies readonly AwesomeCategoryId[];
 
@@ -82,14 +91,24 @@ export const AWESOME_CATEGORY_LABELS: Record<
   frameworks: { en: "Agent frameworks", nl: "Agentframeworks" },
   rag: { en: "RAG & memory", nl: "RAG & geheugen" },
   models: { en: "Open models & serving", nl: "Open modellen & serving" },
+  "rag-memory": { en: "RAG & memory", nl: "RAG & geheugen" },
+  "agent-uis": { en: "Agent UIs & chat", nl: "Agent-UI’s & chat" },
+  "agent-tools": {
+    en: "Agent tools & crawlers",
+    nl: "Agenttools & crawlers",
+  },
+  "eval-observability": {
+    en: "Eval & observability",
+    nl: "Eval & observatie",
+  },
   other: { en: "Other", nl: "Overig" },
 };
 
 /**
- * Curated seeds (v1 15 + chunk 1 + chunk 2 GitHub), approved and listed.
+ * Curated seeds (v1 15 + chunk 1 + chunk 2 + chunk 3 GitHub), approved and listed.
  * `addedOn` is a frozen GitHub/GitLab created date — not a popularity signal.
  */
-export const AWESOME_AI_OSS_SEEDS_V1 = [
+export const AWESOME_AI_OSS_SEEDS_V1: readonly AwesomeSeed[] = [
   {
     id: "curated-mcp-servers",
     name: "modelcontextprotocol/servers",
@@ -261,6 +280,7 @@ export const AWESOME_AI_OSS_SEEDS: readonly AwesomeSeed[] = [
   ...AWESOME_AI_OSS_SEEDS_V1,
   ...AWESOME_AI_OSS_SEEDS_CHUNK_1,
   ...AWESOME_AI_OSS_SEEDS_CHUNK_2,
+  ...AWESOME_AI_OSS_SEEDS_CHUNK_3,
 ];
 
 export const AWESOME_AI_OSS_REPOS: readonly AwesomeRepo[] =

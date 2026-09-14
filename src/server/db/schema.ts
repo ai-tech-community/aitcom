@@ -4012,7 +4012,16 @@ export const awesomeAiOssProjects = appSchema.table(
       .varchar({ length: 32 })
       .notNull()
       .$type<
-        "protocols" | "runtimes" | "frameworks" | "rag" | "models" | "other"
+        | "protocols"
+        | "runtimes"
+        | "frameworks"
+        | "rag"
+        | "models"
+        | "rag-memory"
+        | "agent-uis"
+        | "agent-tools"
+        | "eval-observability"
+        | "other"
       >(),
     blurbEn: d.text().notNull(),
     blurbNl: d.text().notNull(),
