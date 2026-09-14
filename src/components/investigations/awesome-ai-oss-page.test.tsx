@@ -213,13 +213,14 @@ function renderAwesomePage(page = 1, locale: "en" | "nl" = "en") {
   );
 }
 
-function hrefsAcrossPages(locale: "en" | "nl" = "en") {
-  const { totalPages } = paginateAwesomeCards(newestCards(), 1);
-  const hrefs = new Set<string | null>();
+function crawlableRepoHrefs() {
+  const cards = newestCards();
+  const { totalPages } = paginateAwesomeCards(cards, 1);
+  const hrefs = new Set<string>();
   for (let page = 1; page <= totalPages; page++) {
-    const { container } = renderAwesomePage(page, locale);
-    for (const href of hrefsOf(container)) hrefs.add(href);
-    cleanup();
+    for (const card of paginateAwesomeCards(cards, page).items) {
+      hrefs.add(card.repoUrl);
+    }
   }
   return hrefs;
 }
@@ -342,10 +343,17 @@ describe("Awesome AI OSS page citation contract", () => {
       Object.values(en.investigationsAwesomeAiOss).join("\n"),
     );
 
-    const crawlable = hrefsAcrossPages("en");
+    const crawlable = crawlableRepoHrefs();
     for (const href of EXPECTED_HREFS) {
       expect(crawlable.has(href)).toBe(true);
     }
+    const later = newestCards()[AWESOME_AI_OSS_PAGE_SIZE]!;
+    cleanup();
+    const page2 = renderAwesomePage(2);
+    expect(hrefsOf(page2.container)).toContain(later.repoUrl);
+    expect(hrefsOf(page2.container)).toContain(
+      buildAwesomeDirectoryPath({ page: 1 }),
+    );
   });
 
   it("renders the card grid, Writing Bot chrome, and category tags", () => {
@@ -478,9 +486,8 @@ describe("Awesome AI OSS i18n", () => {
     expectAnonymousVoteLock(container);
     expectNoBannedClaims(container.textContent ?? "");
 
-    const crawlable = hrefsAcrossPages("nl");
     for (const href of EXPECTED_HREFS) {
-      expect(crawlable.has(href)).toBe(true);
+      expect(crawlableRepoHrefs().has(href)).toBe(true);
     }
   });
 });
