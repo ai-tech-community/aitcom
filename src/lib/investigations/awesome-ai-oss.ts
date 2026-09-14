@@ -1,3 +1,5 @@
+import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "./awesome-ai-oss-seeds-chunk-1";
+
 export const AWESOME_AI_OSS_PATH = "/investigations/awesome-ai-oss";
 
 export const AWESOME_AI_OSS_REVIEW_PATH =
@@ -83,7 +85,7 @@ export const AWESOME_CATEGORY_LABELS: Record<
  * Curated v1 seeds (12 GitHub + 3 GitLab), approved and listed.
  * `addedOn` is a frozen ship / first-public date — not a popularity signal.
  */
-export const AWESOME_AI_OSS_SEEDS: readonly AwesomeSeed[] = [
+export const AWESOME_AI_OSS_SEEDS_V1 = [
   {
     id: "curated-mcp-servers",
     name: "modelcontextprotocol/servers",
@@ -249,7 +251,12 @@ export const AWESOME_AI_OSS_SEEDS: readonly AwesomeSeed[] = [
       nl: "GitLab-applicatie",
     },
   },
-] as const;
+] as const satisfies readonly AwesomeSeed[];
+
+export const AWESOME_AI_OSS_SEEDS: readonly AwesomeSeed[] = [
+  ...AWESOME_AI_OSS_SEEDS_V1,
+  ...AWESOME_AI_OSS_SEEDS_CHUNK_1,
+];
 
 export const AWESOME_AI_OSS_REPOS: readonly AwesomeRepo[] =
   AWESOME_AI_OSS_SEEDS.map(({ href, name, blurb }) => ({ href, name, blurb }));
