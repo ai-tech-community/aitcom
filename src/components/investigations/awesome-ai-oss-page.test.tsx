@@ -326,6 +326,15 @@ describe("Awesome AI OSS page citation contract", () => {
     expect(container.textContent).toMatch(/GitLab AI Gateway/i);
     expect(container.textContent).toMatch(/GitLab application/i);
     expect(container.textContent).toMatch(/Added: November 25, 2024/);
+    expect(container.textContent).toContain("sqlite-vec");
+    expect(container.textContent).toContain("Langfuse");
+    expect(container.textContent).toContain("LibreChat");
+    expect(hrefsOf(container)).toContain(
+      "https://github.com/asg017/sqlite-vec",
+    );
+    expect(hrefsOf(container)).not.toEqual(
+      expect.arrayContaining(["https://github.com/jlowin/fastmcp"]),
+    );
     expectAnonymousVoteLock(container);
   });
 });
