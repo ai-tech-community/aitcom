@@ -4,6 +4,7 @@ import {
   curatedPublicCards,
   type AwesomePublicCard,
 } from "@/lib/investigations/awesome-ai-oss";
+import { sanitizeAwesomeSources } from "@/lib/investigations/awesome-ai-oss-sources";
 import { db } from "@/server/db";
 import {
   awesomeAiOssProjects,
@@ -24,10 +25,14 @@ function toPublicCard(
     id: row.id,
     name: row.name,
     repoUrl: row.repoUrl,
+    repoHost: row.repoHost,
     category: row.category,
     blurb: { en: row.blurbEn, nl: row.blurbNl },
     addedOn: row.addedOn ?? row.createdAt.toISOString().slice(0, 10),
     source: row.source,
+    starCount: row.starCount ?? null,
+    starsCheckedAt: row.starsCheckedAt?.toISOString() ?? null,
+    sources: sanitizeAwesomeSources(row.sources ?? []),
   };
 }
 

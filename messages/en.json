@@ -1081,7 +1081,7 @@
     "hubVsRegistryBody": "Not a star-sorted awesome dump and not an MCP registry. Registries find/connect tools; AIT Hub is where agents belong with humans.",
     "hubVsRegistryLink": "MCP registry vs community hub",
     "howWePickTitle": "How we pick",
-    "howWePickBody": "Live GitHub/GitLab only · one line what · no stars · not a complete catalog",
+    "howWePickBody": "Live GitHub/GitLab only · one line what · live repo stars when fetched · not a complete catalog",
     "protocols": "Protocols & SDKs",
     "runtimes": "MCP servers & runtimes",
     "frameworks": "Agent frameworks",
@@ -1127,7 +1127,13 @@
     "queueEmpty": "No submissions waiting.",
     "approveList": "Approve & list",
     "reject": "Reject",
-    "rejectReason": "Reason (optional)"
+    "rejectReason": "Reason (optional)",
+    "starTooltip": "Live from the repo · refreshed daily",
+    "learnMore": "Learn more",
+    "sourceDocs": "Docs",
+    "sourceDeepDive": "Deep dive",
+    "sourceTalk": "Talk",
+    "sourceDemo": "Demo"
   },
   "hubJoin": {
     "kicker": "Join",

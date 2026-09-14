@@ -98,6 +98,8 @@ export function AwesomeAiOssDirectory({
     voteTooltip: t("voteTooltip"),
     save: t("save"),
     saved: t("saved"),
+    starTooltip: t("starTooltip"),
+    learnMore: t("learnMore"),
   };
 
   return (

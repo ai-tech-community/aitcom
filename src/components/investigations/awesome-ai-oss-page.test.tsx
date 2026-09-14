@@ -94,7 +94,7 @@ const BANNED = [
 ];
 
 const DENIALS =
-  /does not register you for World Summit|registreert je niet voor World Summit|not a summit ticket|geen summit-ticket|no stars|geen sterren|not a complete catalog|geen complete catalogus|not a star-sorted/gi;
+  /does not register you for World Summit|registreert je niet voor World Summit|not a summit ticket|geen summit-ticket|no stars|geen sterren|live repo stars when fetched|live-reposterren wanneer opgehaald|not a complete catalog|geen complete catalogus|not a star-sorted|★ \d/gi;
 
 const V1_HREFS = [
   "https://github.com/modelcontextprotocol/servers",
@@ -197,7 +197,6 @@ function expectNoBannedClaims(text: string) {
 
 function expectAnonymousVoteLock(container: HTMLElement) {
   expect(container.querySelector("[data-awesome-vote-count]")).toBeNull();
-  expect(container.textContent).not.toMatch(/★/);
   expect(
     screen.queryByRole("button", { name: /^Vote$|^Voted$/i }),
   ).not.toBeInTheDocument();
@@ -277,7 +276,7 @@ describe("Awesome AI OSS page citation contract", () => {
       /Registries find\/connect tools; AIT Hub is where agents belong with humans/,
     );
     expect(container.textContent).toMatch(/live GitHub\/GitLab only/i);
-    expect(container.textContent).toMatch(/no stars/i);
+    expect(container.textContent).toMatch(/live repo stars when fetched/i);
     expect(container.textContent).toMatch(/not a complete catalog/i);
     expect(container.textContent).toMatch(/not a summit ticket/i);
 
@@ -496,6 +495,12 @@ describe("Awesome AI OSS site integration", () => {
     expect(copy.queueTitle).toBe("Awaiting review");
     expect(copy.approveList).toBe("Approve & list");
     expect(copy.reject).toBe("Reject");
+    expect(copy.starTooltip).toBe("Live from the repo · refreshed daily");
+    expect(copy.learnMore).toBe("Learn more");
+    expect(copy.sourceDocs).toBe("Docs");
+    expect(copy.sourceDeepDive).toBe("Deep dive");
+    expect(copy.sourceTalk).toBe("Talk");
+    expect(copy.sourceDemo).toBe("Demo");
     expect(AWESOME_CATEGORY_LABELS.protocols.en).toBe("Protocols & SDKs");
     expect(AWESOME_CATEGORY_LABELS.runtimes.en).toBe("MCP servers & runtimes");
     expect(AWESOME_CATEGORY_LABELS.frameworks.en).toBe("Agent frameworks");
@@ -573,6 +578,7 @@ describe("Awesome AI OSS card vote lock", () => {
       />,
     );
     expect(container.querySelector("[data-awesome-vote-count]")).toBeNull();
+    expect(container.querySelector("[data-awesome-star-count]")).toBeNull();
     expect(container.textContent).not.toMatch(/★/);
     expect(container.textContent).not.toMatch(/\bVote\b/);
     expect(screen.getByRole("link", { name: "Open repo" })).toHaveAttribute(
@@ -604,5 +610,77 @@ describe("Awesome AI OSS card vote lock", () => {
     );
     expect(screen.getByRole("button", { name: "Vote" })).toBeInTheDocument();
     expect(container.querySelector("[data-awesome-vote-count]")).toBeNull();
+  });
+
+  it("prints live GH/GL stars and Learn more only when fetched/verified", () => {
+    const base = curatedPublicCards()[0]!;
+    const fresh = {
+      ...base,
+      starCount: 12_400,
+      starsCheckedAt: new Date().toISOString(),
+      sources: [
+        { kind: "docs" as const, href: "https://docs.vllm.ai" },
+        { kind: "demo" as const, href: "https://ollama.com" },
+      ],
+    };
+    const { container } = render(
+      <TooltipProvider>
+        <AwesomeAiOssCard
+          card={fresh}
+          locale="en"
+          signedIn={false}
+          copy={{
+            openRepo: "Open repo",
+            vote: "Vote",
+            voted: "Voted",
+            removeVote: "Remove vote",
+            voteTooltip: "One vote per member",
+            save: "Save",
+            saved: "Saved",
+          }}
+        />
+      </TooltipProvider>,
+    );
+    expect(
+      container.querySelector("[data-awesome-star-count]")?.textContent,
+    ).toBe("★ 12.4k on GitHub");
+    expect(container.textContent).toContain("Learn more");
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute(
+      "href",
+      "https://docs.vllm.ai",
+    );
+    expect(screen.getByRole("link", { name: "Demo" })).toHaveAttribute(
+      "href",
+      "https://ollama.com",
+    );
+    expect(container.querySelector("[data-awesome-vote-count]")).toBeNull();
+  });
+
+  it("omits ★ 0, stale counts, and an empty Learn more section", () => {
+    const base = curatedPublicCards()[0]!;
+    const { container } = render(
+      <AwesomeAiOssCard
+        card={{
+          ...base,
+          starCount: 0,
+          starsCheckedAt: new Date().toISOString(),
+          sources: [],
+        }}
+        locale="en"
+        signedIn={false}
+        copy={{
+          openRepo: "Open repo",
+          vote: "Vote",
+          voted: "Voted",
+          removeVote: "Remove vote",
+          voteTooltip: "One vote per member",
+          save: "Save",
+          saved: "Saved",
+        }}
+      />,
+    );
+    expect(container.querySelector("[data-awesome-star-count]")).toBeNull();
+    expect(container.textContent).not.toMatch(/★ 0/);
+    expect(container.textContent).not.toContain("Learn more");
   });
 });

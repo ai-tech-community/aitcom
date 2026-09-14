@@ -1,5 +1,6 @@
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
+import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
 import { AwesomeAiOssDirectory } from "@/components/investigations/awesome-ai-oss-directory";
 import {
@@ -9,6 +10,7 @@ import {
   type AwesomeLocale,
   type AwesomePublicCard,
 } from "@/lib/investigations/awesome-ai-oss";
+import { awesomeDirectoryJsonLd } from "@/lib/investigations/awesome-ai-oss-jsonld";
 import { GUIDE_PATHS } from "@/lib/seo-guides";
 
 export type AwesomeAiOssKey =
@@ -32,7 +34,9 @@ export type AwesomeAiOssKey =
   | "joinTitle"
   | "joinLead"
   | "joinCta"
-  | "registerAgentLabel";
+  | "registerAgentLabel"
+  | "starTooltip"
+  | "learnMore";
 
 export function AwesomeAiOssPage({
   locale,
@@ -55,6 +59,7 @@ export function AwesomeAiOssPage({
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+      <JsonLd data={awesomeDirectoryJsonLd(projects)} />
       <nav className="text-muted-foreground text-xs">
         <Link
           href="/investigations"
