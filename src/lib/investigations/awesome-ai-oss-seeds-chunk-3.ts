@@ -9,7 +9,7 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_3: readonly AwesomeSeed[] = [
     id: "curated-sqlite-vec",
     name: "sqlite-vec",
     href: "https://github.com/asg017/sqlite-vec",
-    category: "rag-memory",
+    category: "rag",
     addedOn: "2024-04-20",
     blurb: {
       en: "Vector search extension for SQLite",
@@ -20,7 +20,7 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_3: readonly AwesomeSeed[] = [
     id: "curated-unstructured",
     name: "Unstructured",
     href: "https://github.com/Unstructured-IO/unstructured",
-    category: "rag-memory",
+    category: "rag",
     addedOn: "2022-09-26",
     blurb: {
       en: "ETL that turns unstructured documents into LLM-ready data",
@@ -31,7 +31,7 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_3: readonly AwesomeSeed[] = [
     id: "curated-docling",
     name: "Docling",
     href: "https://github.com/docling-project/docling",
-    category: "rag-memory",
+    category: "rag",
     addedOn: "2024-07-09",
     blurb: {
       en: "Document conversion toolkit for PDFs and office files",
@@ -42,7 +42,7 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_3: readonly AwesomeSeed[] = [
     id: "curated-markitdown",
     name: "MarkItDown",
     href: "https://github.com/microsoft/markitdown",
-    category: "rag-memory",
+    category: "rag",
     addedOn: "2024-11-13",
     blurb: {
       en: "Converts files and office documents to Markdown for LLM pipelines",
@@ -53,7 +53,7 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_3: readonly AwesomeSeed[] = [
     id: "curated-mineru",
     name: "MinerU",
     href: "https://github.com/opendatalab/MinerU",
-    category: "rag-memory",
+    category: "rag",
     addedOn: "2024-02-29",
     blurb: {
       en: "Parses complex PDFs/Office docs into LLM-ready Markdown/JSON",
@@ -64,7 +64,7 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_3: readonly AwesomeSeed[] = [
     id: "curated-sentence-transformers",
     name: "sentence-transformers",
     href: "https://github.com/huggingface/sentence-transformers",
-    category: "rag-memory",
+    category: "rag",
     addedOn: "2019-07-24",
     blurb: {
       en: "Embeddings, retrieval, and reranking for semantic search and RAG",
@@ -75,7 +75,7 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_3: readonly AwesomeSeed[] = [
     id: "curated-llamaindex",
     name: "LlamaIndex",
     href: "https://github.com/run-llama/llama_index",
-    category: "rag-memory",
+    category: "rag",
     addedOn: "2022-11-02",
     blurb: {
       en: "Data framework for connecting LLMs to private data and building RAG",

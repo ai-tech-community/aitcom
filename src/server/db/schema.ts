@@ -4017,7 +4017,7 @@ export const awesomeAiOssProjects = appSchema.table(
         | "frameworks"
         | "rag"
         | "models"
-        | "rag-memory"
+        | "rag"
         | "agent-uis"
         | "agent-tools"
         | "eval-observability"

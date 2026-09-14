@@ -601,15 +601,10 @@ describe("Awesome AI OSS seeds", () => {
     ).toEqual(new Set(CHUNK3_HREFS));
     expect(
       AWESOME_CATEGORY_IDS.some((id) =>
-        [
-          "rag-memory",
-          "agent-uis",
-          "agent-tools",
-          "eval-observability",
-        ].includes(id),
+        ["rag", "agent-uis", "agent-tools", "eval-observability"].includes(id),
       ),
     ).toBe(true);
-    expect(AWESOME_CATEGORY_LABELS["rag-memory"]?.en).toBe("RAG & memory");
+    expect(AWESOME_CATEGORY_LABELS.rag?.en).toBe("RAG & memory");
     expect(AWESOME_CATEGORY_LABELS["agent-uis"]?.en).toBe("Agent UIs & chat");
     expect(AWESOME_CATEGORY_LABELS["agent-tools"]?.en).toBe(
       "Agent tools & crawlers",
@@ -625,7 +620,7 @@ describe("Awesome AI OSS seeds", () => {
       counts[seed.category] = (counts[seed.category] ?? 0) + 1;
       return counts;
     }, {});
-    expect(byCategory["rag-memory"]).toBe(7);
+    expect(byCategory.rag).toBe(7);
     expect(byCategory["agent-uis"]).toBe(6);
     expect(byCategory["agent-tools"]).toBe(8);
     expect(byCategory["eval-observability"]).toBe(11);
