@@ -24,7 +24,6 @@ export type AwesomeCategoryId =
   | "frameworks"
   | "rag"
   | "models"
-  | "rag"
   | "agent-uis"
   | "agent-tools"
   | "eval-observability"
@@ -71,7 +70,6 @@ export const AWESOME_CATEGORY_IDS = [
   "frameworks",
   "rag",
   "models",
-  "rag",
   "agent-uis",
   "agent-tools",
   "eval-observability",
@@ -91,7 +89,6 @@ export const AWESOME_CATEGORY_LABELS: Record<
   frameworks: { en: "Agent frameworks", nl: "Agentframeworks" },
   rag: { en: "RAG & memory", nl: "RAG & geheugen" },
   models: { en: "Open models & serving", nl: "Open modellen & serving" },
-  rag: { en: "RAG & memory", nl: "RAG & geheugen" },
   "agent-uis": { en: "Agent UIs & chat", nl: "Agent-UI’s & chat" },
   "agent-tools": {
     en: "Agent tools & crawlers",

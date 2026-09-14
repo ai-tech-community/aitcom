@@ -466,7 +466,6 @@ describe("Awesome AI OSS site integration", () => {
     expect(AWESOME_CATEGORY_LABELS.frameworks.en).toBe("Agent frameworks");
     expect(AWESOME_CATEGORY_LABELS.rag.en).toBe("RAG & memory");
     expect(AWESOME_CATEGORY_LABELS.models.en).toBe("Open models & serving");
-    expect(AWESOME_CATEGORY_LABELS.rag.en).toBe("RAG & memory");
     expect(AWESOME_CATEGORY_LABELS["agent-uis"].en).toBe("Agent UIs & chat");
     expect(AWESOME_CATEGORY_LABELS["agent-tools"].en).toBe(
       "Agent tools & crawlers",

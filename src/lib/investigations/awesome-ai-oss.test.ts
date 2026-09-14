@@ -561,7 +561,16 @@ describe("Awesome AI OSS seeds", () => {
       urls.some((href) => href.toLowerCase().includes("jlowin/fastmcp")),
     ).toBe(false);
     expect(new Set(urls.map((href) => href.toLowerCase())).size).toBe(165);
-    expect(cards.filter((card) => card.category === "rag")).toHaveLength(18);
+    expect(
+      cards.filter(
+        (card) =>
+          card.category === "rag" &&
+          CHUNK2_REPO_URLS.includes(
+            card.repoUrl as (typeof CHUNK2_REPO_URLS)[number],
+          ),
+      ),
+    ).toHaveLength(18);
+    expect(cards.filter((card) => card.category === "rag")).toHaveLength(25);
     expect(
       cards.find(
         (card) =>
