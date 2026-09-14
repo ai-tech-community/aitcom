@@ -1,10 +1,13 @@
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
+import { AwesomeAiOssDirectory } from "@/components/investigations/awesome-ai-oss-directory";
 import {
-  AWESOME_AI_OSS_CATEGORIES,
   AWESOME_AI_OSS_JOIN_HREF,
+  curatedPublicCards,
+  type AwesomeDirectoryQuery,
   type AwesomeLocale,
+  type AwesomePublicCard,
 } from "@/lib/investigations/awesome-ai-oss";
 import { GUIDE_PATHS } from "@/lib/seo-guides";
 
@@ -22,6 +25,7 @@ export type AwesomeAiOssKey =
   | "runtimes"
   | "frameworks"
   | "models"
+  | "other"
   | "gitlab"
   | "gitlabNote"
   | "joinTitle"
@@ -32,9 +36,19 @@ export type AwesomeAiOssKey =
 export function AwesomeAiOssPage({
   locale,
   t,
+  projects = curatedPublicCards(),
+  signedIn = false,
+  isModerator = false,
+  query = { q: "", category: "all", sort: "newest" },
+  signInHref = "/en/auth/signin?redirect=/en/investigations/awesome-ai-oss",
 }: {
   locale: string;
   t: (key: AwesomeAiOssKey) => string;
+  projects?: AwesomePublicCard[];
+  signedIn?: boolean;
+  isModerator?: boolean;
+  query?: AwesomeDirectoryQuery;
+  signInHref?: string;
 }) {
   const copyLocale: AwesomeLocale = locale === "nl" ? "nl" : "en";
 
@@ -82,33 +96,16 @@ export function AwesomeAiOssPage({
         </p>
       </section>
 
-      {AWESOME_AI_OSS_CATEGORIES.map((category) => (
-        <section key={category.id} className="mt-12 max-w-2xl space-y-4">
-          <SectionLabel>{t(category.headingKey)}</SectionLabel>
-          {category.id === "gitlab" ? (
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              {t("gitlabNote")}
-            </p>
-          ) : null}
-          <ul className="flex flex-col gap-3">
-            {category.repos.map((repo) => (
-              <li key={repo.href}>
-                <a
-                  href={repo.href}
-                  className="border-border hover:border-foreground/30 focus-visible:border-ring focus-visible:ring-ring/50 block rounded-xl border p-6 shadow-sm transition-colors focus-visible:ring-[3px] focus-visible:outline-none"
-                >
-                  <span className="block font-mono text-sm font-medium break-all">
-                    {repo.name}
-                  </span>
-                  <span className="text-muted-foreground mt-2 block text-sm leading-relaxed">
-                    {repo.blurb[copyLocale]}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      <section className="mt-12">
+        <AwesomeAiOssDirectory
+          projects={projects}
+          signedIn={signedIn}
+          isModerator={isModerator}
+          locale={copyLocale}
+          initialQuery={query}
+          signInHref={signInHref}
+        />
+      </section>
 
       <section className="mt-16 max-w-2xl space-y-4">
         <SectionLabel>{t("joinTitle")}</SectionLabel>
@@ -116,7 +113,7 @@ export function AwesomeAiOssPage({
           {t("joinLead")}
         </p>
         <div className="pt-2">
-          <Button asChild>
+          <Button asChild variant="outline">
             <a href={AWESOME_AI_OSS_JOIN_HREF}>{t("joinCta")}</a>
           </Button>
         </div>
