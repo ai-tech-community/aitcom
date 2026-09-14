@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -18,12 +18,15 @@ import {
 } from "@/components/ui/select";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AwesomeAiOssCard } from "@/components/investigations/awesome-ai-oss-card";
+import { AwesomeAiOssPagination } from "@/components/investigations/awesome-ai-oss-pagination";
 import { AwesomeAiOssSubmitDialog } from "@/components/investigations/awesome-ai-oss-submit-dialog";
 import {
   AWESOME_AI_OSS_REVIEW_PATH,
   AWESOME_CATEGORY_IDS,
   AWESOME_CATEGORY_LABELS,
   applyAwesomeDirectoryQuery,
+  buildAwesomeDirectoryPath,
+  paginateAwesomeCards,
   parseAwesomeDirectoryQuery,
   type AwesomeCategoryId,
   type AwesomeDirectoryQuery,
@@ -57,6 +60,14 @@ export function AwesomeAiOssDirectory({
     parseAwesomeDirectoryQuery(initialQuery, signedIn),
   );
 
+  useEffect(() => {
+    setQuery((current) =>
+      current.page === initialQuery.page
+        ? current
+        : { ...current, page: initialQuery.page },
+    );
+  }, [initialQuery.page]);
+
   const sessionQuery = api.awesomeAiOss.sessionState.useQuery(undefined, {
     enabled: signedIn,
   });
@@ -74,19 +85,32 @@ export function AwesomeAiOssDirectory({
   });
 
   const voteCounts = signedIn ? sessionQuery.data?.voteCounts : undefined;
-  const visible = useMemo(
+  const filtered = useMemo(
     () => applyAwesomeDirectoryQuery(projects, query, locale, voteCounts),
     [projects, query, locale, voteCounts],
   );
+  const pagination = useMemo(
+    () => paginateAwesomeCards(filtered, query.page),
+    [filtered, query.page],
+  );
+  const visible = pagination.items;
 
   function replaceQuery(next: Partial<AwesomeDirectoryQuery>) {
-    const merged = parseAwesomeDirectoryQuery({ ...query, ...next }, signedIn);
+    const filterChanged =
+      next.q !== undefined ||
+      next.category !== undefined ||
+      next.sort !== undefined;
+    const merged = parseAwesomeDirectoryQuery(
+      {
+        ...query,
+        ...next,
+        page: next.page ?? (filterChanged ? 1 : query.page),
+      },
+      signedIn,
+    );
     setQuery(merged);
-    const params = new URLSearchParams();
-    if (merged.q.trim()) params.set("q", merged.q.trim());
-    if (merged.category !== "all") params.set("category", merged.category);
-    if (signedIn && merged.sort === "voted") params.set("sort", "voted");
-    const qs = params.toString();
+    const path = buildAwesomeDirectoryPath(merged, { signedIn });
+    const qs = path.includes("?") ? path.slice(path.indexOf("?") + 1) : "";
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
 
@@ -194,7 +218,7 @@ export function AwesomeAiOssDirectory({
         ) : (
           <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {visible.map((card) => (
-              <li key={card.id}>
+              <li key={card.id} id={card.id}>
                 <AwesomeAiOssCard
                   card={card}
                   locale={locale}
@@ -216,6 +240,15 @@ export function AwesomeAiOssDirectory({
             ))}
           </ul>
         )}
+
+        <AwesomeAiOssPagination
+          query={{ ...query, page: pagination.page }}
+          totalPages={pagination.totalPages}
+          signedIn={signedIn}
+          prevLabel={t("paginationPrev")}
+          nextLabel={t("paginationNext")}
+          navLabel={t("paginationLabel")}
+        />
       </div>
 
       {signedIn ? (

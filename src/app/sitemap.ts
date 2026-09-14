@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { awesomeDirectorySitemapPaths } from "@/lib/investigations/awesome-ai-oss";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import {
   HUB_FORUM_PATH,
@@ -93,13 +94,36 @@ async function defaultCommunitySlugById(): Promise<
   }
 }
 
+async function defaultAwesomePagePaths(): Promise<string[]> {
+  try {
+    const { listApprovedPublicCards } =
+      await import("@/server/awesome-ai-oss/queries");
+    const cards = await listApprovedPublicCards();
+    return awesomeDirectorySitemapPaths(cards.length);
+  } catch (error) {
+    console.error("[sitemap] awesome directory page lookup failed", error);
+    return [];
+  }
+}
+
 export async function buildSitemapEntries(
   getClient: () => Promise<SitemapClient> = getPayloadClient,
   getCommunitySlugById: () => Promise<
     ReadonlyMap<string, string>
   > = defaultCommunitySlugById,
+  getAwesomePagePaths: () => Promise<string[]> = defaultAwesomePagePaths,
 ): Promise<MetadataRoute.Sitemap> {
-  const staticEntries = STATIC_PAGES.map((path) => localeEntries(path));
+  let awesomePagePaths: string[] = [];
+  try {
+    awesomePagePaths = await getAwesomePagePaths();
+  } catch (error) {
+    console.error("[sitemap] awesome directory page lookup failed", error);
+  }
+
+  const staticEntries = [
+    ...STATIC_PAGES.map((path) => localeEntries(path)),
+    ...awesomePagePaths.map((path) => localeEntries(path)),
+  ];
 
   let payload: SitemapClient;
   try {

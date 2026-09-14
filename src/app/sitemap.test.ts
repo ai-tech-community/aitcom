@@ -96,6 +96,7 @@ describe("buildSitemapEntries", () => {
     const entries = await buildSitemapEntries(
       undefined,
       async () => new Map([["nl-community-id", "ait-community-netherlands"]]),
+      async () => [],
     );
     const urls = urlsOf(entries);
 
@@ -164,7 +165,11 @@ describe("buildSitemapEntries", () => {
       find,
     } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
 
-    const entries = await buildSitemapEntries(undefined, async () => new Map());
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+    );
     const urls = urlsOf(entries);
 
     expect(urls).toContain("https://www.aitcommunity.org/en/blog/hello");
@@ -188,7 +193,11 @@ describe("buildSitemapEntries", () => {
   it("returns static pages when payload init fails", async () => {
     mockGetPayloadClient.mockRejectedValue(new Error("too many clients"));
 
-    const entries = await buildSitemapEntries(undefined, async () => new Map());
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+    );
     const urls = urlsOf(entries);
 
     expect(urls).toContain("https://www.aitcommunity.org/en");
@@ -219,12 +228,47 @@ describe("buildSitemapEntries", () => {
       find,
     } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
 
-    const entries = await buildSitemapEntries(undefined, async () => new Map());
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+    );
     const event = entries.find(
       (item) => item.url === "https://www.aitcommunity.org/en/events/broken",
     );
     expect(event).toBeDefined();
     expect(event?.lastModified).toBeInstanceOf(Date);
     expect(Number.isNaN((event?.lastModified as Date).getTime())).toBe(false);
+  });
+
+  it("includes later Awesome AI OSS directory pages with locale alternates", async () => {
+    mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [
+        "/investigations/awesome-ai-oss?page=2",
+        "/investigations/awesome-ai-oss?page=3",
+      ],
+    );
+    const urls = urlsOf(entries);
+
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/investigations/awesome-ai-oss?page=2",
+    );
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/investigations/awesome-ai-oss?page=3",
+    );
+    expect(
+      entries.find(
+        (item) =>
+          item.url ===
+          "https://www.aitcommunity.org/en/investigations/awesome-ai-oss?page=2",
+      )?.alternates?.languages,
+    ).toEqual({
+      en: "https://www.aitcommunity.org/en/investigations/awesome-ai-oss?page=2",
+      nl: "https://www.aitcommunity.org/nl/investigations/awesome-ai-oss?page=2",
+    });
   });
 });

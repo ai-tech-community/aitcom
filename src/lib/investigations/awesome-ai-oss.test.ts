@@ -4,13 +4,20 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   AWESOME_AI_OSS_BLURB_MAX,
+  AWESOME_AI_OSS_PAGE_SIZE,
+  AWESOME_AI_OSS_PATH,
   AWESOME_AI_OSS_SEEDS,
   AWESOME_AI_OSS_SEEDS_V1,
   AWESOME_CATEGORY_IDS,
   AWESOME_CATEGORY_LABELS,
   applyAwesomeDirectoryQuery,
+  awesomeDirectoryCanonicalPath,
+  awesomeDirectoryPageNumbers,
+  awesomeDirectorySitemapPaths,
+  buildAwesomeDirectoryPath,
   curatedPublicCards,
   formatAwesomeAddedDate,
+  paginateAwesomeCards,
   parseAwesomeDirectoryQuery,
 } from "./awesome-ai-oss";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "./awesome-ai-oss-seeds-chunk-1";
@@ -1105,11 +1112,12 @@ describe("Awesome AI OSS seeds", () => {
 });
 
 describe("parseAwesomeDirectoryQuery", () => {
-  it("defaults to newest and all categories", () => {
+  it("defaults to newest, all categories, and page 1", () => {
     expect(parseAwesomeDirectoryQuery({}, false)).toEqual({
       q: "",
       category: "all",
       sort: "newest",
+      page: 1,
     });
   });
 
@@ -1123,10 +1131,18 @@ describe("parseAwesomeDirectoryQuery", () => {
       q: "",
       category: "runtimes",
       sort: "newest",
+      page: 1,
     });
     expect(parseAwesomeDirectoryQuery({ sort: "voted" }, true).sort).toBe(
       "voted",
     );
+  });
+
+  it("parses a positive page and falls back for invalid values", () => {
+    expect(parseAwesomeDirectoryQuery({ page: "3" }, false).page).toBe(3);
+    expect(parseAwesomeDirectoryQuery({ page: "0" }, false).page).toBe(1);
+    expect(parseAwesomeDirectoryQuery({ page: "nope" }, false).page).toBe(1);
+    expect(parseAwesomeDirectoryQuery({ page: ["2"] }, false).page).toBe(2);
   });
 });
 
@@ -1176,5 +1192,123 @@ describe("formatAwesomeAddedDate", () => {
     expect(formatAwesomeAddedDate("2024-11-25", "en")).toBe(
       "Added: November 25, 2024",
     );
+  });
+});
+
+describe("Awesome AI OSS crawlable pagination", () => {
+  const cards = curatedPublicCards();
+
+  it("uses a page size in the 24–48 range and splits the live catalog", () => {
+    expect(AWESOME_AI_OSS_PAGE_SIZE).toBeGreaterThanOrEqual(24);
+    expect(AWESOME_AI_OSS_PAGE_SIZE).toBeLessThanOrEqual(48);
+    expect(cards.length).toBeGreaterThan(AWESOME_AI_OSS_PAGE_SIZE);
+
+    const first = paginateAwesomeCards(cards, 1);
+    expect(first.items).toHaveLength(AWESOME_AI_OSS_PAGE_SIZE);
+    expect(first.page).toBe(1);
+    expect(first.total).toBe(cards.length);
+    expect(first.totalPages).toBe(
+      Math.ceil(cards.length / AWESOME_AI_OSS_PAGE_SIZE),
+    );
+    expect(first.items).toEqual(cards.slice(0, AWESOME_AI_OSS_PAGE_SIZE));
+
+    const second = paginateAwesomeCards(cards, 2);
+    expect(second.page).toBe(2);
+    expect(second.items[0]).toEqual(cards[AWESOME_AI_OSS_PAGE_SIZE]);
+    expect(second.items).toEqual(
+      cards.slice(AWESOME_AI_OSS_PAGE_SIZE, AWESOME_AI_OSS_PAGE_SIZE * 2),
+    );
+    expect(second.items).not.toEqual(first.items);
+  });
+
+  it("clamps an oversized page to the last page", () => {
+    const last = paginateAwesomeCards(cards, 999);
+    expect(last.page).toBe(last.totalPages);
+    expect(last.items.length).toBeGreaterThan(0);
+    expect(last.items.length).toBeLessThanOrEqual(AWESOME_AI_OSS_PAGE_SIZE);
+  });
+
+  it("builds filter query URLs and omits page=1", () => {
+    expect(buildAwesomeDirectoryPath({})).toBe(AWESOME_AI_OSS_PATH);
+    expect(buildAwesomeDirectoryPath({ page: 1 })).toBe(AWESOME_AI_OSS_PATH);
+    expect(buildAwesomeDirectoryPath({ page: 2 })).toBe(
+      `${AWESOME_AI_OSS_PATH}?page=2`,
+    );
+    expect(
+      buildAwesomeDirectoryPath({ q: "vllm", category: "models", page: 3 }),
+    ).toBe(`${AWESOME_AI_OSS_PATH}?q=vllm&category=models&page=3`);
+    expect(
+      buildAwesomeDirectoryPath({ sort: "voted" }, { signedIn: false }),
+    ).toBe(AWESOME_AI_OSS_PATH);
+    expect(
+      buildAwesomeDirectoryPath({ sort: "voted" }, { signedIn: true }),
+    ).toBe(`${AWESOME_AI_OSS_PATH}?sort=voted`);
+  });
+
+  it("keeps the curated URL canonical for filters and self-canonical for later pages", () => {
+    expect(
+      awesomeDirectoryCanonicalPath({
+        q: "",
+        category: "all",
+        sort: "newest",
+        page: 1,
+      }),
+    ).toBe(AWESOME_AI_OSS_PATH);
+    expect(
+      awesomeDirectoryCanonicalPath({
+        q: "",
+        category: "all",
+        sort: "newest",
+        page: 2,
+      }),
+    ).toBe(`${AWESOME_AI_OSS_PATH}?page=2`);
+    expect(
+      awesomeDirectoryCanonicalPath({
+        q: "vllm",
+        category: "all",
+        sort: "newest",
+        page: 2,
+      }),
+    ).toBe(AWESOME_AI_OSS_PATH);
+    expect(
+      awesomeDirectoryCanonicalPath({
+        q: "",
+        category: "protocols",
+        sort: "newest",
+        page: 1,
+      }),
+    ).toBe(AWESOME_AI_OSS_PATH);
+    expect(
+      awesomeDirectoryCanonicalPath({
+        q: "",
+        category: "all",
+        sort: "voted",
+        page: 1,
+      }),
+    ).toBe(AWESOME_AI_OSS_PATH);
+  });
+
+  it("lists later unfiltered pages for the sitemap", () => {
+    const paths = awesomeDirectorySitemapPaths(cards.length);
+    expect(paths[0]).toBe(`${AWESOME_AI_OSS_PATH}?page=2`);
+    expect(paths).toHaveLength(
+      Math.ceil(cards.length / AWESOME_AI_OSS_PAGE_SIZE) - 1,
+    );
+    expect(paths).not.toContain(AWESOME_AI_OSS_PATH);
+    expect(awesomeDirectorySitemapPaths(AWESOME_AI_OSS_PAGE_SIZE)).toEqual([]);
+  });
+
+  it("windows numbered page links around the current page", () => {
+    expect(awesomeDirectoryPageNumbers(1, 8)).toEqual([1, 2, "gap", 8]);
+    expect(awesomeDirectoryPageNumbers(4, 8)).toEqual([
+      1,
+      "gap",
+      3,
+      4,
+      5,
+      "gap",
+      8,
+    ]);
+    expect(awesomeDirectoryPageNumbers(8, 8)).toEqual([1, "gap", 7, 8]);
   });
 });
