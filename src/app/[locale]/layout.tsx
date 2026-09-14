@@ -2,6 +2,7 @@ import "@/styles/globals.css";
 
 import { type Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 
@@ -73,6 +74,13 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} className={`${geist.variable} ${geistMono.variable}`}>
+      <head>
+        <Script
+          src="https://analytics.ahrefs.com/analytics.js"
+          data-key="oeVpx7mDaVnimLgu0ewixg"
+          strategy="afterInteractive"
+        />
+      </head>
       <body
         className="bg-background text-foreground flex min-h-screen flex-col antialiased"
         suppressHydrationWarning
