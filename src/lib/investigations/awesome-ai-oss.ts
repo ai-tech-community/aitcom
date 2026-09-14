@@ -25,6 +25,9 @@ export const AWESOME_AI_OSS_JOIN_HREF = "https://www.aitcommunity.org/en/join";
 
 export const AWESOME_AI_OSS_BLURB_MAX = 160;
 
+/** Cards per crawlable directory page. Fits the 3-column grid (24–48). */
+export const AWESOME_AI_OSS_PAGE_SIZE = 36;
+
 export type AwesomeLocale = "en" | "nl";
 
 export type AwesomeCategoryId =
@@ -74,10 +77,14 @@ export type AwesomePublicCard = {
   sources: AwesomeSource[];
 };
 
-export type AwesomeDirectoryQuery = {
+export type AwesomeDirectoryFilters = {
   q: string;
   category: AwesomeCategoryId | "all";
   sort: AwesomeSort;
+};
+
+export type AwesomeDirectoryQuery = AwesomeDirectoryFilters & {
+  page: number;
 };
 
 export const AWESOME_CATEGORY_IDS = [
@@ -362,11 +369,19 @@ export function isAwesomeCategoryId(
   );
 }
 
+export function parseAwesomePage(value: string | string[] | undefined): number {
+  const raw = firstParam(value);
+  if (!raw) return 1;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed >= 1 ? parsed : 1;
+}
+
 export function parseAwesomeDirectoryQuery(
   raw: {
     q?: string | string[];
     category?: string | string[];
     sort?: string | string[];
+    page?: string | string[] | number;
   },
   signedIn: boolean,
 ): AwesomeDirectoryQuery {
@@ -376,12 +391,18 @@ export function parseAwesomeDirectoryQuery(
   const sortRaw = firstParam(raw.sort);
   const sort: AwesomeSort =
     signedIn && sortRaw === "voted" ? "voted" : "newest";
-  return { q, category, sort };
+  const page =
+    typeof raw.page === "number"
+      ? raw.page >= 1 && Number.isFinite(raw.page)
+        ? Math.floor(raw.page)
+        : 1
+      : parseAwesomePage(raw.page);
+  return { q, category, sort, page };
 }
 
 export function applyAwesomeDirectoryQuery(
   cards: readonly AwesomePublicCard[],
-  query: AwesomeDirectoryQuery,
+  query: AwesomeDirectoryFilters,
   locale: AwesomeLocale,
   voteCounts?: Readonly<Record<string, number>>,
 ): AwesomePublicCard[] {
@@ -426,4 +447,98 @@ function compareNewest(a: AwesomePublicCard, b: AwesomePublicCard) {
 function firstParam(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) return value[0];
   return value;
+}
+
+export function paginateAwesomeCards<T>(
+  cards: readonly T[],
+  page: number,
+  pageSize: number = AWESOME_AI_OSS_PAGE_SIZE,
+): {
+  items: T[];
+  page: number;
+  totalPages: number;
+  total: number;
+  pageSize: number;
+} {
+  const total = cards.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * pageSize;
+  return {
+    items: cards.slice(start, start + pageSize),
+    page: safePage,
+    totalPages,
+    total,
+    pageSize,
+  };
+}
+
+export function buildAwesomeDirectoryPath(
+  query: Partial<AwesomeDirectoryQuery> = {},
+  options: { signedIn?: boolean } = {},
+): string {
+  const parsed = parseAwesomeDirectoryQuery(query, Boolean(options.signedIn));
+  const params = new URLSearchParams();
+  if (parsed.q.trim()) params.set("q", parsed.q.trim());
+  if (parsed.category !== "all") params.set("category", parsed.category);
+  if (options.signedIn && parsed.sort === "voted") params.set("sort", "voted");
+  if (parsed.page > 1) params.set("page", String(parsed.page));
+  const qs = params.toString();
+  return qs ? `${AWESOME_AI_OSS_PATH}?${qs}` : AWESOME_AI_OSS_PATH;
+}
+
+export function awesomeDirectoryHasFilters(
+  query: AwesomeDirectoryQuery,
+): boolean {
+  return (
+    query.q.trim().length > 0 ||
+    query.category !== "all" ||
+    query.sort === "voted"
+  );
+}
+
+export function awesomeDirectoryCanonicalPath(
+  query: AwesomeDirectoryQuery,
+): string {
+  if (awesomeDirectoryHasFilters(query)) {
+    return AWESOME_AI_OSS_PATH;
+  }
+  if (query.page > 1) {
+    return `${AWESOME_AI_OSS_PATH}?page=${query.page}`;
+  }
+  return AWESOME_AI_OSS_PATH;
+}
+
+export function awesomeDirectorySitemapPaths(
+  totalCards: number,
+  pageSize: number = AWESOME_AI_OSS_PAGE_SIZE,
+): string[] {
+  const totalPages = Math.max(1, Math.ceil(totalCards / pageSize) || 1);
+  const paths: string[] = [];
+  for (let page = 2; page <= totalPages; page++) {
+    paths.push(`${AWESOME_AI_OSS_PATH}?page=${page}`);
+  }
+  return paths;
+}
+
+export function awesomeDirectoryPageNumbers(
+  currentPage: number,
+  totalPages: number,
+): Array<number | "gap"> {
+  const pages: Array<number | "gap"> = [];
+  const push = (value: number | "gap") => {
+    if (pages[pages.length - 1] !== value) pages.push(value);
+  };
+  for (let i = 1; i <= totalPages; i++) {
+    if (
+      i === 1 ||
+      i === totalPages ||
+      (i >= currentPage - 1 && i <= currentPage + 1)
+    ) {
+      push(i);
+    } else {
+      push("gap");
+    }
+  }
+  return pages;
 }

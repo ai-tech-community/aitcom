@@ -1133,7 +1133,10 @@
     "sourceDocs": "Docs",
     "sourceDeepDive": "Deep dive",
     "sourceTalk": "Talk",
-    "sourceDemo": "Demo"
+    "sourceDemo": "Demo",
+    "paginationPrev": "Vorige",
+    "paginationNext": "Volgende",
+    "paginationLabel": "Directorypagina’s"
   },
   "hubJoin": {
     "kicker": "Join",

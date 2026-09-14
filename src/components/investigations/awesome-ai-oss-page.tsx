@@ -44,7 +44,7 @@ export function AwesomeAiOssPage({
   projects = curatedPublicCards(),
   signedIn = false,
   isModerator = false,
-  query = { q: "", category: "all", sort: "newest" },
+  query = { q: "", category: "all", sort: "newest", page: 1 },
   signInHref = "/en/auth/signin?redirect=/en/investigations/awesome-ai-oss",
 }: {
   locale: string;

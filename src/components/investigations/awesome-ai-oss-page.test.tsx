@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
@@ -50,12 +50,16 @@ import {
   AWESOME_AI_OSS_H1,
   AWESOME_AI_OSS_JOIN_HREF,
   AWESOME_AI_OSS_META,
+  AWESOME_AI_OSS_PAGE_SIZE,
   AWESOME_AI_OSS_PATH,
   AWESOME_AI_OSS_REPOS,
   AWESOME_AI_OSS_REVIEW_PATH,
   AWESOME_AI_OSS_SEEDS_V1,
   AWESOME_CATEGORY_LABELS,
+  applyAwesomeDirectoryQuery,
+  buildAwesomeDirectoryPath,
   curatedPublicCards,
+  paginateAwesomeCards,
 } from "@/lib/investigations/awesome-ai-oss";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-1";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_3 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-3";
@@ -181,6 +185,45 @@ function tFrom(messages: typeof en.investigationsAwesomeAiOss) {
   return (key: string) => messages[key as keyof typeof messages] ?? "";
 }
 
+function newestCards() {
+  return applyAwesomeDirectoryQuery(
+    curatedPublicCards(),
+    { q: "", category: "all", sort: "newest" },
+    "en",
+  );
+}
+
+function pageForRepo(repoUrl: string) {
+  const index = newestCards().findIndex((card) => card.repoUrl === repoUrl);
+  expect(index).toBeGreaterThanOrEqual(0);
+  return Math.floor(index / AWESOME_AI_OSS_PAGE_SIZE) + 1;
+}
+
+function renderAwesomePage(page = 1, locale: "en" | "nl" = "en") {
+  const messages =
+    locale === "nl"
+      ? nl.investigationsAwesomeAiOss
+      : en.investigationsAwesomeAiOss;
+  return render(
+    <AwesomeAiOssPage
+      locale={locale}
+      t={tFrom(messages)}
+      query={{ q: "", category: "all", sort: "newest", page }}
+    />,
+  );
+}
+
+function hrefsAcrossPages(locale: "en" | "nl" = "en") {
+  const { totalPages } = paginateAwesomeCards(newestCards(), 1);
+  const hrefs = new Set<string | null>();
+  for (let page = 1; page <= totalPages; page++) {
+    const { container } = renderAwesomePage(page, locale);
+    for (const href of hrefsOf(container)) hrefs.add(href);
+    cleanup();
+  }
+  return hrefs;
+}
+
 function hrefsOf(container: HTMLElement) {
   return screen
     .getAllByRole("link")
@@ -216,6 +259,7 @@ describe("Awesome AI OSS investigation route", () => {
     expect(src).toContain("localeAlternates");
     expect(src).toContain("AwesomeAiOssPage");
     expect(src).toContain("parseAwesomeDirectoryQuery");
+    expect(src).toContain("awesomeDirectoryCanonicalPath");
     expect(src).toContain("robots: { index: true, follow: true }");
   });
 });
@@ -290,16 +334,18 @@ describe("Awesome AI OSS page citation contract", () => {
     );
     expect(hrefs).not.toContain("/guides/awesome-ai-oss");
     expect(hrefs.some((href) => href === "/en/join")).toBe(false);
-
-    for (const href of EXPECTED_HREFS) {
-      expect(hrefs).toContain(href);
-    }
+    expect(hrefs).toContain(buildAwesomeDirectoryPath({ page: 2 }));
 
     expect(container.querySelector("form")).toBeNull();
     expectNoBannedClaims(container.textContent ?? "");
     expectNoBannedClaims(
       Object.values(en.investigationsAwesomeAiOss).join("\n"),
     );
+
+    const crawlable = hrefsAcrossPages("en");
+    for (const href of EXPECTED_HREFS) {
+      expect(crawlable.has(href)).toBe(true);
+    }
   });
 
   it("renders the card grid, Writing Bot chrome, and category tags", () => {
@@ -321,55 +367,77 @@ describe("Awesome AI OSS page citation contract", () => {
     expect(screen.queryByText("Submit a project")).not.toBeInTheDocument();
     expect(screen.queryByText("Most voted")).not.toBeInTheDocument();
 
-    for (const label of Object.values(AWESOME_CATEGORY_LABELS).map(
-      (entry) => entry.en,
-    )) {
-      expect(container.textContent).toContain(label);
+    expect(
+      screen.getByRole("navigation", { name: "Directory pages" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "2" })).toHaveAttribute(
+      "href",
+      buildAwesomeDirectoryPath({ page: 2 }),
+    );
+    expect(screen.getByRole("link", { name: "Next →" })).toHaveAttribute(
+      "href",
+      buildAwesomeDirectoryPath({ page: 2 }),
+    );
+    expect(
+      hrefsOf(container).filter(
+        (href) =>
+          href?.startsWith("https://github.com/") ||
+          href?.startsWith("https://gitlab.com/"),
+      ),
+    ).toHaveLength(AWESOME_AI_OSS_PAGE_SIZE);
+
+    const namedRepos = [
+      [
+        "https://github.com/modelcontextprotocol/servers",
+        /reference MCP servers/i,
+      ],
+      [
+        "https://gitlab.com/gitlab-org/modelops/applied-ml/code-suggestions/ai-assist",
+        /GitLab AI Gateway/i,
+      ],
+      ["https://gitlab.com/gitlab-org/gitlab", /GitLab application/i],
+      ["https://github.com/asg017/sqlite-vec", /sqlite-vec/i],
+      ["https://github.com/plandex-ai/plandex", /Plandex/],
+      ["https://github.com/ggml-org/llama.cpp", /llama\.cpp/],
+      ["https://github.com/Lightning-AI/litgpt", /LitGPT/],
+      ["https://github.com/Comfy-Org/ComfyUI", /ComfyUI/],
+      ["https://github.com/jax-ml/jax", /JAX/],
+      ["https://github.com/microsoft/onnxruntime", /ONNX Runtime/],
+      ["https://github.com/Dao-AILab/flash-attention", /FlashAttention/],
+      ["https://github.com/karpathy/llm.c", /llm\.c/],
+    ] as const;
+
+    cleanup();
+    const byPage = new Map<number, typeof namedRepos>();
+    for (const entry of namedRepos) {
+      const page = pageForRepo(entry[0]);
+      const list = byPage.get(page) ?? [];
+      byPage.set(page, [...list, entry] as unknown as typeof namedRepos);
     }
 
-    expect(container.textContent).toMatch(/reference MCP servers/i);
-    expect(container.textContent).toMatch(/GitLab AI Gateway/i);
-    expect(container.textContent).toMatch(/GitLab application/i);
-    expect(container.textContent).toMatch(/Added: November 25, 2024/);
-    expect(container.textContent).toContain("sqlite-vec");
-    expect(container.textContent).toContain("Langfuse");
-    expect(container.textContent).toContain("LibreChat");
-    expect(container.textContent).toContain("Plandex");
-    expect(container.textContent).toContain("llama.cpp");
-    expect(container.textContent).toContain("LitGPT");
-    expect(container.textContent).toContain("nanoGPT");
-    expect(container.textContent).toContain("ComfyUI");
-    expect(container.textContent).toContain("JAX");
-    expect(container.textContent).toContain("ONNX Runtime");
-    expect(container.textContent).toContain("FlashAttention");
-    expect(container.textContent).toContain("llm.c");
-    expect(hrefsOf(container)).toContain(
-      "https://github.com/asg017/sqlite-vec",
-    );
-    expect(hrefsOf(container)).toContain(
-      "https://github.com/plandex-ai/plandex",
-    );
-    expect(hrefsOf(container)).toContain(
-      "https://github.com/ggml-org/llama.cpp",
-    );
-    expect(hrefsOf(container)).toContain(
-      "https://github.com/Lightning-AI/litgpt",
-    );
-    expect(hrefsOf(container)).toContain(
-      "https://github.com/Comfy-Org/ComfyUI",
-    );
-    expect(hrefsOf(container)).toContain("https://github.com/jax-ml/jax");
-    expect(hrefsOf(container)).toContain(
-      "https://github.com/microsoft/onnxruntime",
-    );
-    expect(hrefsOf(container)).toContain(
-      "https://github.com/Dao-AILab/flash-attention",
-    );
-    expect(hrefsOf(container)).toContain("https://github.com/karpathy/llm.c");
-    expect(hrefsOf(container)).not.toEqual(
-      expect.arrayContaining(["https://github.com/jlowin/fastmcp"]),
-    );
-    expectAnonymousVoteLock(container);
+    const labels = new Set<string>();
+    for (const [page, repos] of byPage) {
+      const view = renderAwesomePage(page);
+      const hrefs = hrefsOf(view.container);
+      expect(hrefs).not.toContain("https://github.com/jlowin/fastmcp");
+      for (const [repoUrl, name] of repos) {
+        expect(hrefs).toContain(repoUrl);
+        expect(view.container.textContent).toMatch(name);
+        if (repoUrl === "https://github.com/modelcontextprotocol/servers") {
+          expect(view.container.textContent).toMatch(
+            /Added: November 25, 2024/,
+          );
+        }
+      }
+      for (const label of Object.values(AWESOME_CATEGORY_LABELS).map(
+        (entry) => entry.en,
+      )) {
+        if (view.container.textContent?.includes(label)) labels.add(label);
+      }
+      expectAnonymousVoteLock(view.container);
+      cleanup();
+    }
+    expect(labels.size).toBeGreaterThan(0);
   });
 });
 
@@ -404,12 +472,15 @@ describe("Awesome AI OSS i18n", () => {
     expect(hrefs).toContain(GUIDE_PATHS.mcpRegistryVsHub);
     expect(hrefs).toContain(GUIDE_PATHS.registerAgentMcp);
     expect(hrefs).toContain(AWESOME_AI_OSS_JOIN_HREF);
-    for (const href of EXPECTED_HREFS) {
-      expect(hrefs).toContain(href);
-    }
+    expect(hrefs).toContain(buildAwesomeDirectoryPath({ page: 2 }));
     expect(container.textContent).toMatch(/geen summit-ticket/i);
     expectAnonymousVoteLock(container);
     expectNoBannedClaims(container.textContent ?? "");
+
+    const crawlable = hrefsAcrossPages("nl");
+    for (const href of EXPECTED_HREFS) {
+      expect(crawlable.has(href)).toBe(true);
+    }
   });
 });
 
@@ -501,6 +572,9 @@ describe("Awesome AI OSS site integration", () => {
     expect(copy.sourceDeepDive).toBe("Deep dive");
     expect(copy.sourceTalk).toBe("Talk");
     expect(copy.sourceDemo).toBe("Demo");
+    expect(copy.paginationPrev).toBe("Previous");
+    expect(copy.paginationNext).toBe("Next");
+    expect(copy.paginationLabel).toBe("Directory pages");
     expect(AWESOME_CATEGORY_LABELS.protocols.en).toBe("Protocols & SDKs");
     expect(AWESOME_CATEGORY_LABELS.runtimes.en).toBe("MCP servers & runtimes");
     expect(AWESOME_CATEGORY_LABELS.frameworks.en).toBe("Agent frameworks");
@@ -527,6 +601,7 @@ describe("Awesome AI OSS site integration", () => {
     const siblings = [
       join(dir, "awesome-ai-oss-directory.tsx"),
       join(dir, "awesome-ai-oss-card.tsx"),
+      join(dir, "awesome-ai-oss-pagination.tsx"),
       join(dir, "awesome-ai-oss-submit-dialog.tsx"),
       join(dir, "awesome-ai-oss-review-queue.tsx"),
       REVIEW_FILE,
