@@ -92,7 +92,7 @@ const BANNED = [
 const DENIALS =
   /does not register you for World Summit|registreert je niet voor World Summit|not a summit ticket|geen summit-ticket|no stars|geen sterren|not a complete catalog|geen complete catalogus|not a star-sorted/gi;
 
-const EXPECTED_HREFS = [
+const V1_HREFS = [
   "https://github.com/modelcontextprotocol/servers",
   "https://github.com/modelcontextprotocol/python-sdk",
   "https://github.com/modelcontextprotocol/typescript-sdk",
@@ -108,6 +108,65 @@ const EXPECTED_HREFS = [
   "https://github.com/google/A2A",
   "https://gitlab.com/gitlab-org/modelops/applied-ml/code-suggestions/ai-assist",
   "https://gitlab.com/gitlab-org/gitlab",
+] as const;
+
+const CHUNK2_HREFS = [
+  "https://github.com/makenotion/notion-mcp-server",
+  "https://github.com/devhub/devhub-cms-mcp",
+  "https://github.com/heroku/heroku-mcp-server",
+  "https://github.com/baidu-maps/mcp",
+  "https://github.com/solana-foundation/solana-dev-mcp",
+  "https://github.com/bankless/onchain-mcp",
+  "https://github.com/comet-ml/opik-mcp",
+  "https://github.com/dynatrace-oss/dynatrace-mcp",
+  "https://github.com/grafana/mcp-grafana",
+  "https://github.com/hashicorp/terraform-mcp-server",
+  "https://github.com/aquasecurity/trivy-mcp",
+  "https://github.com/huggingface/hf-mcp-server",
+  "https://github.com/smithery-ai/cli",
+  "https://github.com/mcpdotdirect/template-mcp-server",
+  "https://github.com/cyanheads/atlas-mcp-server",
+  "https://github.com/doobidoo/mcp-memory-service",
+  "https://github.com/evalstate/mcp-miro",
+  "https://github.com/ahujasid/blender-mcp",
+  "https://github.com/MarkusPfundstein/mcp-obsidian",
+  "https://github.com/pierrebrunelle/mcp-server-openai",
+  "https://github.com/agno-agi/agno",
+  "https://github.com/pydantic/pydantic-ai",
+  "https://github.com/567-labs/instructor",
+  "https://github.com/dottxt-ai/outlines",
+  "https://github.com/stanfordnlp/dspy",
+  "https://github.com/guidance-ai/guidance",
+  "https://github.com/yoheinakajima/babyagi",
+  "https://github.com/FoundationAgents/MetaGPT",
+  "https://github.com/OpenBMB/ChatDev",
+  "https://github.com/OpenHands/OpenHands",
+  "https://github.com/SWE-agent/SWE-agent",
+  "https://github.com/superagent-ai/superagent",
+  "https://github.com/deepset-ai/haystack",
+  "https://github.com/neuml/txtai",
+  "https://github.com/zylon-ai/private-gpt",
+  "https://github.com/The-Vibe-Company/quivr",
+  "https://github.com/infiniflow/ragflow",
+  "https://github.com/HKUDS/LightRAG",
+  "https://github.com/microsoft/graphrag",
+  "https://github.com/mem0ai/mem0",
+  "https://github.com/getzep/graphiti",
+  "https://github.com/letta-ai/letta",
+  "https://github.com/topoteretes/cognee",
+  "https://github.com/qdrant/qdrant",
+  "https://github.com/milvus-io/milvus",
+  "https://github.com/weaviate/weaviate",
+  "https://github.com/chroma-core/chroma",
+  "https://github.com/lancedb/lancedb",
+  "https://github.com/pgvector/pgvector",
+  "https://github.com/facebookresearch/faiss",
+] as const;
+
+const EXPECTED_HREFS = [
+  ...V1_HREFS,
+  ...AWESOME_AI_OSS_SEEDS_CHUNK_1.map((seed) => seed.href),
+  ...CHUNK2_HREFS,
 ] as const;
 
 function tFrom(messages: typeof en.investigationsAwesomeAiOss) {
@@ -155,20 +214,19 @@ describe("Awesome AI OSS investigation route", () => {
 });
 
 describe("Awesome AI OSS catalog", () => {
-  it("keeps the locked v1 15 and lists chunk 1 GitHub seeds", () => {
+  it("keeps the locked v1 15 and lists chunk 1 and chunk 2 GitHub seeds", () => {
     expect(AWESOME_AI_OSS_SEEDS_V1.map((seed) => seed.href)).toEqual([
-      ...EXPECTED_HREFS,
+      ...V1_HREFS,
     ]);
-    expect(AWESOME_AI_OSS_REPOS).toHaveLength(65);
+    expect(AWESOME_AI_OSS_REPOS).toHaveLength(115);
     expect(AWESOME_AI_OSS_REPOS.map((repo) => repo.href)).toEqual([
       ...EXPECTED_HREFS,
-      ...AWESOME_AI_OSS_SEEDS_CHUNK_1.map((seed) => seed.href),
     ]);
     expect(
       AWESOME_AI_OSS_REPOS.filter((repo) =>
         repo.href.startsWith("https://github.com/"),
       ),
-    ).toHaveLength(62);
+    ).toHaveLength(112);
     expect(
       AWESOME_AI_OSS_REPOS.filter((repo) =>
         repo.href.startsWith("https://gitlab.com/"),
@@ -177,6 +235,11 @@ describe("Awesome AI OSS catalog", () => {
     expect(AWESOME_AI_OSS_REPOS.map((repo) => repo.href)).not.toContain(
       "https://github.com/jlowin/fastmcp",
     );
+    expect(
+      AWESOME_AI_OSS_REPOS.some((repo) =>
+        repo.href.toLowerCase().includes("jlowin/fastmcp"),
+      ),
+    ).toBe(false);
     for (const repo of AWESOME_AI_OSS_REPOS) {
       expect(repo.blurb.en.trim().length).toBeGreaterThan(0);
       expect(repo.blurb.nl.trim().length).toBeGreaterThan(0);
@@ -390,6 +453,7 @@ describe("Awesome AI OSS site integration", () => {
     expect(AWESOME_CATEGORY_LABELS.protocols.en).toBe("Protocols & SDKs");
     expect(AWESOME_CATEGORY_LABELS.runtimes.en).toBe("MCP servers & runtimes");
     expect(AWESOME_CATEGORY_LABELS.frameworks.en).toBe("Agent frameworks");
+    expect(AWESOME_CATEGORY_LABELS.rag.en).toBe("RAG & memory");
     expect(AWESOME_CATEGORY_LABELS.models.en).toBe("Open models & serving");
     expect(AWESOME_CATEGORY_LABELS.other.en).toBe("Other");
   });

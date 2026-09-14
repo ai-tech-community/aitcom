@@ -1,4 +1,5 @@
 import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "./awesome-ai-oss-seeds-chunk-1";
+import { AWESOME_AI_OSS_SEEDS_CHUNK_2 } from "./awesome-ai-oss-seeds-chunk-2";
 
 export const AWESOME_AI_OSS_PATH = "/investigations/awesome-ai-oss";
 
@@ -20,6 +21,7 @@ export type AwesomeCategoryId =
   | "protocols"
   | "runtimes"
   | "frameworks"
+  | "rag"
   | "models"
   | "other";
 
@@ -62,6 +64,7 @@ export const AWESOME_CATEGORY_IDS = [
   "protocols",
   "runtimes",
   "frameworks",
+  "rag",
   "models",
   "other",
 ] as const satisfies readonly AwesomeCategoryId[];
@@ -77,13 +80,14 @@ export const AWESOME_CATEGORY_LABELS: Record<
     nl: "MCP-servers & runtimes",
   },
   frameworks: { en: "Agent frameworks", nl: "Agentframeworks" },
+  rag: { en: "RAG & memory", nl: "RAG & geheugen" },
   models: { en: "Open models & serving", nl: "Open modellen & serving" },
   other: { en: "Other", nl: "Overig" },
 };
 
 /**
- * Curated v1 seeds (12 GitHub + 3 GitLab), approved and listed.
- * `addedOn` is a frozen ship / first-public date — not a popularity signal.
+ * Curated seeds (v1 15 + chunk 1 + chunk 2 GitHub), approved and listed.
+ * `addedOn` is a frozen GitHub/GitLab created date — not a popularity signal.
  */
 export const AWESOME_AI_OSS_SEEDS_V1 = [
   {
@@ -256,6 +260,7 @@ export const AWESOME_AI_OSS_SEEDS_V1 = [
 export const AWESOME_AI_OSS_SEEDS: readonly AwesomeSeed[] = [
   ...AWESOME_AI_OSS_SEEDS_V1,
   ...AWESOME_AI_OSS_SEEDS_CHUNK_1,
+  ...AWESOME_AI_OSS_SEEDS_CHUNK_2,
 ];
 
 export const AWESOME_AI_OSS_REPOS: readonly AwesomeRepo[] =

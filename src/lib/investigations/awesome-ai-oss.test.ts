@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  AWESOME_AI_OSS_BLURB_MAX,
   AWESOME_AI_OSS_SEEDS,
   AWESOME_AI_OSS_SEEDS_V1,
   applyAwesomeDirectoryQuery,
@@ -323,6 +324,77 @@ const CHUNK_1_EXPECTED = [
   },
 ] as const;
 
+const V1_REPO_URLS = [
+  "https://github.com/modelcontextprotocol/servers",
+  "https://github.com/modelcontextprotocol/python-sdk",
+  "https://github.com/modelcontextprotocol/typescript-sdk",
+  "https://github.com/PrefectHQ/fastmcp",
+  "https://github.com/lastmile-ai/mcp-agent",
+  "https://gitlab.com/gitlab-org/ai/lazy-mcp",
+  "https://github.com/openai/openai-agents-python",
+  "https://github.com/microsoft/agent-framework",
+  "https://github.com/langchain-ai/langgraph",
+  "https://github.com/huggingface/transformers",
+  "https://github.com/vllm-project/vllm",
+  "https://github.com/ollama/ollama",
+  "https://github.com/google/A2A",
+  "https://gitlab.com/gitlab-org/modelops/applied-ml/code-suggestions/ai-assist",
+  "https://gitlab.com/gitlab-org/gitlab",
+] as const;
+
+const CHUNK2_REPO_URLS = [
+  "https://github.com/makenotion/notion-mcp-server",
+  "https://github.com/devhub/devhub-cms-mcp",
+  "https://github.com/heroku/heroku-mcp-server",
+  "https://github.com/baidu-maps/mcp",
+  "https://github.com/solana-foundation/solana-dev-mcp",
+  "https://github.com/bankless/onchain-mcp",
+  "https://github.com/comet-ml/opik-mcp",
+  "https://github.com/dynatrace-oss/dynatrace-mcp",
+  "https://github.com/grafana/mcp-grafana",
+  "https://github.com/hashicorp/terraform-mcp-server",
+  "https://github.com/aquasecurity/trivy-mcp",
+  "https://github.com/huggingface/hf-mcp-server",
+  "https://github.com/smithery-ai/cli",
+  "https://github.com/mcpdotdirect/template-mcp-server",
+  "https://github.com/cyanheads/atlas-mcp-server",
+  "https://github.com/doobidoo/mcp-memory-service",
+  "https://github.com/evalstate/mcp-miro",
+  "https://github.com/ahujasid/blender-mcp",
+  "https://github.com/MarkusPfundstein/mcp-obsidian",
+  "https://github.com/pierrebrunelle/mcp-server-openai",
+  "https://github.com/agno-agi/agno",
+  "https://github.com/pydantic/pydantic-ai",
+  "https://github.com/567-labs/instructor",
+  "https://github.com/dottxt-ai/outlines",
+  "https://github.com/stanfordnlp/dspy",
+  "https://github.com/guidance-ai/guidance",
+  "https://github.com/yoheinakajima/babyagi",
+  "https://github.com/FoundationAgents/MetaGPT",
+  "https://github.com/OpenBMB/ChatDev",
+  "https://github.com/OpenHands/OpenHands",
+  "https://github.com/SWE-agent/SWE-agent",
+  "https://github.com/superagent-ai/superagent",
+  "https://github.com/deepset-ai/haystack",
+  "https://github.com/neuml/txtai",
+  "https://github.com/zylon-ai/private-gpt",
+  "https://github.com/The-Vibe-Company/quivr",
+  "https://github.com/infiniflow/ragflow",
+  "https://github.com/HKUDS/LightRAG",
+  "https://github.com/microsoft/graphrag",
+  "https://github.com/mem0ai/mem0",
+  "https://github.com/getzep/graphiti",
+  "https://github.com/letta-ai/letta",
+  "https://github.com/topoteretes/cognee",
+  "https://github.com/qdrant/qdrant",
+  "https://github.com/milvus-io/milvus",
+  "https://github.com/weaviate/weaviate",
+  "https://github.com/chroma-core/chroma",
+  "https://github.com/lancedb/lancedb",
+  "https://github.com/pgvector/pgvector",
+  "https://github.com/facebookresearch/faiss",
+] as const;
+
 describe("Awesome AI OSS seeds", () => {
   it("keeps the locked 15 curated repos with frozen added dates", () => {
     expect(AWESOME_AI_OSS_SEEDS_V1).toHaveLength(15);
@@ -331,6 +403,11 @@ describe("Awesome AI OSS seeds", () => {
         seed.href.includes("github.com"),
       ),
     ).toHaveLength(12);
+    const cards = curatedPublicCards();
+    const urls = cards.map((card) => card.repoUrl);
+    for (const href of V1_REPO_URLS) {
+      expect(urls).toContain(href);
+    }
     expect(
       AWESOME_AI_OSS_SEEDS_V1.filter((seed) =>
         seed.href.includes("gitlab.com"),
@@ -339,7 +416,12 @@ describe("Awesome AI OSS seeds", () => {
     expect(new Set(AWESOME_AI_OSS_SEEDS_V1.map((seed) => seed.id)).size).toBe(
       15,
     );
+    expect(new Set(cards.map((card) => card.id)).size).toBe(cards.length);
     for (const seed of AWESOME_AI_OSS_SEEDS_V1) {
+      expect(seed.addedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(seed.blurb.en.length).toBeGreaterThan(0);
+    }
+    for (const seed of AWESOME_AI_OSS_SEEDS) {
       expect(seed.addedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(seed.blurb.en.length).toBeGreaterThan(0);
     }
@@ -348,8 +430,8 @@ describe("Awesome AI OSS seeds", () => {
   it("adds chunk 1 as 50 approved GitHub seeds without aliases or invented counts", () => {
     expect(CHUNK_1_EXPECTED).toHaveLength(50);
     expect(AWESOME_AI_OSS_SEEDS_CHUNK_1).toHaveLength(50);
-    expect(AWESOME_AI_OSS_SEEDS).toHaveLength(65);
-    expect(curatedPublicCards()).toHaveLength(65);
+    expect(AWESOME_AI_OSS_SEEDS).toHaveLength(115);
+    expect(curatedPublicCards()).toHaveLength(115);
 
     const v1Urls = new Set<string>(
       AWESOME_AI_OSS_SEEDS_V1.map((seed) => seed.href),
@@ -383,9 +465,9 @@ describe("Awesome AI OSS seeds", () => {
       expect(["protocols", "runtimes"]).toContain(seed.category);
     }
 
-    expect(new Set(AWESOME_AI_OSS_SEEDS.map((seed) => seed.id)).size).toBe(65);
+    expect(new Set(AWESOME_AI_OSS_SEEDS.map((seed) => seed.id)).size).toBe(115);
     expect(new Set(AWESOME_AI_OSS_SEEDS.map((seed) => seed.href)).size).toBe(
-      65,
+      115,
     );
   });
 
@@ -398,6 +480,53 @@ describe("Awesome AI OSS seeds", () => {
     expect(CHUNK_1_MIGRATION).not.toMatch(/\bstargazers\b/);
     expect(CHUNK_1_MIGRATION).not.toMatch(/\bstars?\b/i);
     expect(CHUNK_1_MIGRATION).toContain("awesome_ai_oss_project");
+  });
+
+  it("adds chunk 2 as 50 live GitHub curated seeds without jlowin/fastmcp", () => {
+    const cards = curatedPublicCards();
+    const urls = cards.map((card) => card.repoUrl);
+    expect(cards).toHaveLength(115);
+    expect(
+      cards.filter((card) => card.repoUrl.includes("github.com")),
+    ).toHaveLength(112);
+    for (const href of CHUNK2_REPO_URLS) {
+      expect(urls).toContain(href);
+    }
+    expect(
+      urls.some((href) => href.toLowerCase().includes("jlowin/fastmcp")),
+    ).toBe(false);
+    expect(new Set(urls.map((href) => href.toLowerCase())).size).toBe(115);
+    expect(cards.filter((card) => card.category === "rag")).toHaveLength(18);
+    expect(
+      cards.find(
+        (card) =>
+          card.repoUrl ===
+          "https://github.com/mcpdotdirect/template-mcp-server",
+      )?.category,
+    ).toBe("protocols");
+    for (const seed of AWESOME_AI_OSS_SEEDS) {
+      expect(seed.blurb.en.length).toBeLessThanOrEqual(
+        AWESOME_AI_OSS_BLURB_MAX,
+      );
+      expect(seed.blurb.nl.length).toBeLessThanOrEqual(
+        AWESOME_AI_OSS_BLURB_MAX,
+      );
+      expect(seed.blurb.en).not.toMatch(/\bstars?\b/i);
+      expect(seed.blurb.nl).not.toMatch(/sterren/i);
+    }
+
+    const migration = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../migrations/20260914a_awesome_ai_oss_seeds_chunk_2.ts",
+      ),
+      "utf8",
+    );
+    expect(migration).toContain('ON CONFLICT ("repo_url") DO NOTHING');
+    expect(migration).not.toMatch(/jlowin\/fastmcp/i);
+    for (const href of CHUNK2_REPO_URLS) {
+      expect(migration).toContain(href);
+    }
   });
 });
 

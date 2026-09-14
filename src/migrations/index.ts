@@ -85,6 +85,7 @@ import * as migration_20260831a_hub_dm_mail from "./20260831a_hub_dm_mail";
 import * as migration_20260911a_backfill_hub_forum_community_id from "./20260911a_backfill_hub_forum_community_id";
 import * as migration_20260913a_awesome_ai_oss from "./20260913a_awesome_ai_oss";
 import * as migration_20260914a_awesome_ai_oss_seeds_chunk_1 from "./20260914a_awesome_ai_oss_seeds_chunk_1";
+import * as migration_20260914a_awesome_ai_oss_seeds_chunk_2 from "./20260914a_awesome_ai_oss_seeds_chunk_2";
 
 export const migrations = [
   {
@@ -521,5 +522,10 @@ export const migrations = [
     up: migration_20260914a_awesome_ai_oss_seeds_chunk_1.up,
     down: migration_20260914a_awesome_ai_oss_seeds_chunk_1.down,
     name: "20260914a_awesome_ai_oss_seeds_chunk_1",
+  },
+  {
+    up: migration_20260914a_awesome_ai_oss_seeds_chunk_2.up,
+    down: migration_20260914a_awesome_ai_oss_seeds_chunk_2.down,
+    name: "20260914a_awesome_ai_oss_seeds_chunk_2",
   },
 ];
