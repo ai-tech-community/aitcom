@@ -948,6 +948,16 @@ describe("Awesome AI OSS seeds", () => {
         (seed) => seed.href === "https://github.com/mlc-ai/web-llm",
       )?.id,
     ).not.toBe("curated-mlc-llm");
+    expect(
+      AWESOME_AI_OSS_SEEDS_CHUNK_5.find(
+        (seed) => seed.href === "https://github.com/OpenBMB/MiniCPM-V",
+      )?.name,
+    ).toBe("MiniCPM-V");
+    expect(
+      AWESOME_AI_OSS_SEEDS_CHUNK_5.find(
+        (seed) => seed.href === "https://github.com/QwenLM/Qwen3",
+      )?.name,
+    ).toBe("Qwen3");
   });
 
   it("keeps the additive chunk-5 migration in lockstep with the seed list", () => {

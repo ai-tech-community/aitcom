@@ -29,13 +29,13 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_5: readonly AwesomeSeed[] = [
   },
   {
     id: "curated-minicpm-o",
-    name: "MiniCPM-o",
+    name: "MiniCPM-V",
     href: "https://github.com/OpenBMB/MiniCPM-V",
     category: "models",
     addedOn: "2024-01-29",
     blurb: {
-      en: "Omni multimodal open model family from OpenBMB",
-      nl: "Omni multimodale open-modelfamilie van OpenBMB",
+      en: "OpenBMB MiniCPM vision-language and omni model family",
+      nl: "OpenBMB MiniCPM vision-language- en omni-modelfamilie",
     },
   },
   {
@@ -238,13 +238,13 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_5: readonly AwesomeSeed[] = [
   },
   {
     id: "curated-qwen25",
-    name: "Qwen2.5",
+    name: "Qwen3",
     href: "https://github.com/QwenLM/Qwen3",
     category: "models",
     addedOn: "2024-02-05",
     blurb: {
-      en: "Qwen2.5 open LLM family from Alibaba",
-      nl: "Qwen2.5 open LLM-familie van Alibaba",
+      en: "Qwen3 open LLM family from Alibaba",
+      nl: "Qwen3 open LLM-familie van Alibaba",
     },
   },
   {
