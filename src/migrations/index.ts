@@ -87,6 +87,7 @@ import * as migration_20260913a_awesome_ai_oss from "./20260913a_awesome_ai_oss"
 import * as migration_20260914a_awesome_ai_oss_seeds_chunk_1 from "./20260914a_awesome_ai_oss_seeds_chunk_1";
 import * as migration_20260914a_awesome_ai_oss_seeds_chunk_2 from "./20260914a_awesome_ai_oss_seeds_chunk_2";
 import * as migration_20260914c_awesome_ai_oss_seeds_chunk_3 from "./20260914c_awesome_ai_oss_seeds_chunk_3";
+import * as migration_20260914d_awesome_ai_oss_seeds_chunk_4 from "./20260914d_awesome_ai_oss_seeds_chunk_4";
 
 export const migrations = [
   {
@@ -533,5 +534,10 @@ export const migrations = [
     up: migration_20260914c_awesome_ai_oss_seeds_chunk_3.up,
     down: migration_20260914c_awesome_ai_oss_seeds_chunk_3.down,
     name: "20260914c_awesome_ai_oss_seeds_chunk_3",
+  },
+  {
+    up: migration_20260914d_awesome_ai_oss_seeds_chunk_4.up,
+    down: migration_20260914d_awesome_ai_oss_seeds_chunk_4.down,
+    name: "20260914d_awesome_ai_oss_seeds_chunk_4",
   },
 ];
