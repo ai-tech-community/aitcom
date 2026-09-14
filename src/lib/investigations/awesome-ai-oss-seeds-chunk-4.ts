@@ -393,7 +393,7 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_4: readonly AwesomeSeed[] = [
   {
     id: "curated-whisper-cpp",
     name: "whisper.cpp",
-    href: "https://github.com/ggerganov/whisper.cpp",
+    href: "https://github.com/ggml-org/whisper.cpp",
     category: "models",
     addedOn: "2022-09-25",
     blurb: {
@@ -459,7 +459,7 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_4: readonly AwesomeSeed[] = [
   {
     id: "curated-axolotl",
     name: "Axolotl",
-    href: "https://github.com/OpenAccess-AI-Collective/axolotl",
+    href: "https://github.com/axolotl-ai-cloud/axolotl",
     category: "models",
     addedOn: "2023-04-14",
     blurb: {
@@ -547,7 +547,7 @@ export const AWESOME_AI_OSS_SEEDS_CHUNK_4: readonly AwesomeSeed[] = [
   {
     id: "curated-deepspeed",
     name: "DeepSpeed",
-    href: "https://github.com/microsoft/DeepSpeed",
+    href: "https://github.com/deepspeedai/DeepSpeed",
     category: "models",
     addedOn: "2020-01-23",
     blurb: {

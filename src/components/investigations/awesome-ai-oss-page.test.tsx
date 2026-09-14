@@ -372,7 +372,7 @@ describe("Awesome AI OSS i18n", () => {
     }
   });
 
-  it("keeps Hub≠registry, Join, and the 15 repos on the Dutch page", () => {
+  it("keeps Hub≠registry, Join, and the curated repos on the Dutch page", () => {
     const { container } = render(
       <AwesomeAiOssPage locale="nl" t={tFrom(nl.investigationsAwesomeAiOss)} />,
     );

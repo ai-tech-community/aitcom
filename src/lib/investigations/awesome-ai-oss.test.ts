@@ -488,13 +488,13 @@ const CHUNK4_HREFS = [
   "https://github.com/openlit/openlit",
   "https://github.com/ProtectAI/llm-guard",
   "https://github.com/ggml-org/llama.cpp",
-  "https://github.com/ggerganov/whisper.cpp",
+  "https://github.com/ggml-org/whisper.cpp",
   "https://github.com/mlc-ai/mlc-llm",
   "https://github.com/huggingface/text-generation-inference",
   "https://github.com/NVIDIA/TensorRT-LLM",
   "https://github.com/sgl-project/sglang",
   "https://github.com/PaddlePaddle/PaddleNLP",
-  "https://github.com/OpenAccess-AI-Collective/axolotl",
+  "https://github.com/axolotl-ai-cloud/axolotl",
   "https://github.com/unslothai/unsloth",
   "https://github.com/huggingface/peft",
   "https://github.com/huggingface/trl",
@@ -502,7 +502,7 @@ const CHUNK4_HREFS = [
   "https://github.com/huggingface/diffusers",
   "https://github.com/huggingface/tokenizers",
   "https://github.com/EleutherAI/gpt-neox",
-  "https://github.com/microsoft/DeepSpeed",
+  "https://github.com/deepspeedai/DeepSpeed",
 ] as const;
 
 describe("Awesome AI OSS seeds", () => {
