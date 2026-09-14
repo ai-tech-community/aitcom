@@ -2,6 +2,7 @@ import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "./awesome-ai-oss-seeds-chunk-1";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_2 } from "./awesome-ai-oss-seeds-chunk-2";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_3 } from "./awesome-ai-oss-seeds-chunk-3";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_4 } from "./awesome-ai-oss-seeds-chunk-4";
+import { AWESOME_AI_OSS_SEEDS_CHUNK_5 } from "./awesome-ai-oss-seeds-chunk-5";
 
 export const AWESOME_AI_OSS_PATH = "/investigations/awesome-ai-oss";
 
@@ -103,7 +104,7 @@ export const AWESOME_CATEGORY_LABELS: Record<
 };
 
 /**
- * Curated seeds (v1 15 + chunk 1 + chunk 2 + chunk 3 + chunk 4 GitHub), approved and listed.
+ * Curated seeds (v1 15 + chunk 1 + chunk 2 + chunk 3 + chunk 4 + chunk 5 GitHub), approved and listed.
  * `addedOn` is a frozen GitHub/GitLab created date — not a popularity signal.
  */
 export const AWESOME_AI_OSS_SEEDS_V1: readonly AwesomeSeed[] = [
@@ -280,6 +281,7 @@ export const AWESOME_AI_OSS_SEEDS: readonly AwesomeSeed[] = [
   ...AWESOME_AI_OSS_SEEDS_CHUNK_2,
   ...AWESOME_AI_OSS_SEEDS_CHUNK_3,
   ...AWESOME_AI_OSS_SEEDS_CHUNK_4,
+  ...AWESOME_AI_OSS_SEEDS_CHUNK_5,
 ];
 
 export const AWESOME_AI_OSS_REPOS: readonly AwesomeRepo[] =
