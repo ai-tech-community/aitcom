@@ -61,6 +61,7 @@ import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "@/lib/investigations/awesome-ai-os
 import { AWESOME_AI_OSS_SEEDS_CHUNK_3 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-3";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_4 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-4";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_5 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-5";
+import { AWESOME_AI_OSS_SEEDS_CHUNK_6 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-6";
 import { GUIDE_PATHS, JOIN_PATH, appPathFromGuideHref } from "@/lib/seo-guides";
 import { HOME_CRAWL_DOORS } from "@/components/home/home-crawl-doors";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -173,6 +174,7 @@ const EXPECTED_HREFS = [
   ...AWESOME_AI_OSS_SEEDS_CHUNK_3.map((seed) => seed.href),
   ...AWESOME_AI_OSS_SEEDS_CHUNK_4.map((seed) => seed.href),
   ...AWESOME_AI_OSS_SEEDS_CHUNK_5.map((seed) => seed.href),
+  ...AWESOME_AI_OSS_SEEDS_CHUNK_6.map((seed) => seed.href),
 ] as const;
 
 function tFrom(messages: typeof en.investigationsAwesomeAiOss) {
@@ -220,11 +222,11 @@ describe("Awesome AI OSS investigation route", () => {
 });
 
 describe("Awesome AI OSS catalog", () => {
-  it("keeps the locked v1 15 and lists chunk 1–5 GitHub seeds", () => {
+  it("keeps the locked v1 15 and lists chunk 1–6 GitHub seeds", () => {
     expect(AWESOME_AI_OSS_SEEDS_V1.map((seed) => seed.href)).toEqual([
       ...V1_HREFS,
     ]);
-    expect(AWESOME_AI_OSS_REPOS).toHaveLength(265);
+    expect(AWESOME_AI_OSS_REPOS).toHaveLength(278);
     expect(AWESOME_AI_OSS_REPOS.map((repo) => repo.href)).toEqual([
       ...EXPECTED_HREFS,
     ]);
@@ -232,7 +234,7 @@ describe("Awesome AI OSS catalog", () => {
       AWESOME_AI_OSS_REPOS.filter((repo) =>
         repo.href.startsWith("https://github.com/"),
       ),
-    ).toHaveLength(262);
+    ).toHaveLength(275);
     expect(
       AWESOME_AI_OSS_REPOS.filter((repo) =>
         repo.href.startsWith("https://gitlab.com/"),
@@ -338,6 +340,10 @@ describe("Awesome AI OSS page citation contract", () => {
     expect(container.textContent).toContain("LitGPT");
     expect(container.textContent).toContain("nanoGPT");
     expect(container.textContent).toContain("ComfyUI");
+    expect(container.textContent).toContain("JAX");
+    expect(container.textContent).toContain("ONNX Runtime");
+    expect(container.textContent).toContain("FlashAttention");
+    expect(container.textContent).toContain("llm.c");
     expect(hrefsOf(container)).toContain(
       "https://github.com/asg017/sqlite-vec",
     );
@@ -353,6 +359,14 @@ describe("Awesome AI OSS page citation contract", () => {
     expect(hrefsOf(container)).toContain(
       "https://github.com/Comfy-Org/ComfyUI",
     );
+    expect(hrefsOf(container)).toContain("https://github.com/jax-ml/jax");
+    expect(hrefsOf(container)).toContain(
+      "https://github.com/microsoft/onnxruntime",
+    );
+    expect(hrefsOf(container)).toContain(
+      "https://github.com/Dao-AILab/flash-attention",
+    );
+    expect(hrefsOf(container)).toContain("https://github.com/karpathy/llm.c");
     expect(hrefsOf(container)).not.toEqual(
       expect.arrayContaining(["https://github.com/jlowin/fastmcp"]),
     );
