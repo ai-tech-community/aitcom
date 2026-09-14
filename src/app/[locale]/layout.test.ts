@@ -10,7 +10,8 @@ describe("locale document head", () => {
   it("loads Ahrefs Web Analytics once with the production data-key", () => {
     expect(layout).toContain('from "next/script"');
     expect(layout).toContain('src="https://analytics.ahrefs.com/analytics.js"');
-    expect(layout).toContain('data-key="oeVpx7mDaVnimLgu0ewixg"');
+    expect(layout).toContain('strategy="beforeInteractive"');
+    expect(layout.match(/data-key="oeVpx7mDaVnimLgu0ewixg"/g)).toHaveLength(1);
     expect(layout.match(/analytics\.ahrefs\.com\/analytics\.js/g)).toHaveLength(
       1,
     );

@@ -78,7 +78,7 @@ export default async function LocaleLayout({
         <Script
           src="https://analytics.ahrefs.com/analytics.js"
           data-key="oeVpx7mDaVnimLgu0ewixg"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
         />
       </head>
       <body
