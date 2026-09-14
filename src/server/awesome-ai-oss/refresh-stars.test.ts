@@ -10,7 +10,12 @@ describe("refreshAwesomeStarCounts", () => {
       checkedAt: Date;
     }> = [];
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
       if (url.includes("api.github.com/graphql")) {
         return new Response(
           JSON.stringify({
