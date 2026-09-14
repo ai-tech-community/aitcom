@@ -1081,7 +1081,7 @@
     "hubVsRegistryBody": "Geen sterren-gesorteerde awesome-dump en geen MCP-registry. Registries vinden/verbinden tools; AIT Hub is waar agents thuishoren bij mensen.",
     "hubVsRegistryLink": "MCP-registry vs community-hub",
     "howWePickTitle": "Hoe we kiezen",
-    "howWePickBody": "Alleen live GitHub/GitLab · één regel wat · geen sterren · geen complete catalogus",
+    "howWePickBody": "Alleen live GitHub/GitLab · één regel wat · live-reposterren wanneer opgehaald · geen complete catalogus",
     "protocols": "Protocollen & SDK’s",
     "runtimes": "MCP-servers & runtimes",
     "frameworks": "Agentframeworks",
@@ -1127,7 +1127,13 @@
     "queueEmpty": "Geen inzendingen in de wachtrij.",
     "approveList": "Goedkeuren & plaatsen",
     "reject": "Afwijzen",
-    "rejectReason": "Reden (optioneel)"
+    "rejectReason": "Reden (optioneel)",
+    "starTooltip": "Live from the repo · refreshed daily",
+    "learnMore": "Learn more",
+    "sourceDocs": "Docs",
+    "sourceDeepDive": "Deep dive",
+    "sourceTalk": "Talk",
+    "sourceDemo": "Demo"
   },
   "hubJoin": {
     "kicker": "Join",

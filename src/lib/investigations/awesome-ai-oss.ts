@@ -4,6 +4,12 @@ import { AWESOME_AI_OSS_SEEDS_CHUNK_3 } from "./awesome-ai-oss-seeds-chunk-3";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_4 } from "./awesome-ai-oss-seeds-chunk-4";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_5 } from "./awesome-ai-oss-seeds-chunk-5";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_6 } from "./awesome-ai-oss-seeds-chunk-6";
+import {
+  AWESOME_AI_OSS_CURATED_SOURCES,
+  sanitizeAwesomeSources,
+  type AwesomeSource,
+} from "./awesome-ai-oss-sources";
+import { parseAwesomeRepoUrl } from "./awesome-ai-oss-url";
 
 export const AWESOME_AI_OSS_PATH = "/investigations/awesome-ai-oss";
 
@@ -51,14 +57,21 @@ export type AwesomeSeed = AwesomeRepo & {
   addedOn: string;
 };
 
+export type AwesomeRepoHost = "github" | "gitlab";
+
 export type AwesomePublicCard = {
   id: string;
   name: string;
   repoUrl: string;
+  repoHost: AwesomeRepoHost;
   category: AwesomeCategoryId;
   blurb: Record<AwesomeLocale, string>;
   addedOn: string;
   source: AwesomeProjectSource;
+  /** Live GH/GL count only. Null until a fetch succeeds — never invented. */
+  starCount: number | null;
+  starsCheckedAt: string | null;
+  sources: AwesomeSource[];
 };
 
 export type AwesomeDirectoryQuery = {
@@ -305,15 +318,28 @@ export const AWESOME_AI_OSS_CATEGORIES: readonly AwesomeCategory[] =
   }));
 
 export function curatedPublicCards(): AwesomePublicCard[] {
-  return AWESOME_AI_OSS_SEEDS.map((seed) => ({
-    id: seed.id,
-    name: seed.name,
-    repoUrl: seed.href,
-    category: seed.category,
-    blurb: seed.blurb,
-    addedOn: seed.addedOn,
-    source: "curated",
-  }));
+  return AWESOME_AI_OSS_SEEDS.map((seed) => {
+    const parsed = parseAwesomeRepoUrl(seed.href);
+    return {
+      id: seed.id,
+      name: seed.name,
+      repoUrl: seed.href,
+      repoHost: parsed.ok
+        ? parsed.value.host
+        : seed.href.includes("gitlab.com")
+          ? "gitlab"
+          : "github",
+      category: seed.category,
+      blurb: seed.blurb,
+      addedOn: seed.addedOn,
+      source: "curated",
+      starCount: null,
+      starsCheckedAt: null,
+      sources: sanitizeAwesomeSources(
+        AWESOME_AI_OSS_CURATED_SOURCES[seed.id] ?? [],
+      ),
+    };
+  });
 }
 
 export function formatAwesomeAddedDate(

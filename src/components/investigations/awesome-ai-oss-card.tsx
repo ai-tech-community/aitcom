@@ -19,6 +19,15 @@ import {
   type AwesomeLocale,
   type AwesomePublicCard,
 } from "@/lib/investigations/awesome-ai-oss";
+import {
+  AWESOME_LEARN_MORE,
+  AWESOME_SOURCE_LABELS,
+  displayAwesomeSources,
+} from "@/lib/investigations/awesome-ai-oss-sources";
+import {
+  AWESOME_STAR_TOOLTIP,
+  visibleAwesomeStarLine,
+} from "@/lib/investigations/awesome-ai-oss-stars";
 
 export type AwesomeCardSession = {
   voteCount?: number;
@@ -47,12 +56,18 @@ export function AwesomeAiOssCard({
     voteTooltip: string;
     save: string;
     saved: string;
+    starTooltip?: string;
+    learnMore?: string;
   };
   onVote?: (projectId: string) => void;
   onSave?: (projectId: string) => void;
 }) {
   const blurb = card.blurb[locale] || card.blurb.en;
   const showCounts = signedIn && typeof session?.voteCount === "number";
+  const starLine = visibleAwesomeStarLine(card);
+  const sources = displayAwesomeSources(card.sources);
+  const starTooltip = copy.starTooltip ?? AWESOME_STAR_TOOLTIP;
+  const learnMore = copy.learnMore ?? AWESOME_LEARN_MORE;
 
   return (
     <Card className="h-full">
@@ -63,10 +78,43 @@ export function AwesomeAiOssCard({
         <CardTitle className="text-base">{card.name}</CardTitle>
         <CardDescription>{blurb}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
         <p className="text-muted-foreground font-mono text-xs">
           {formatAwesomeAddedDate(card.addedOn, locale)}
         </p>
+        {starLine ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <p
+                data-awesome-star-count=""
+                title={starTooltip}
+                tabIndex={0}
+                className="text-muted-foreground font-mono text-xs"
+              >
+                {starLine}
+              </p>
+            </TooltipTrigger>
+            <TooltipContent>{starTooltip}</TooltipContent>
+          </Tooltip>
+        ) : null}
+        {sources.length > 0 ? (
+          <div>
+            <p className="text-foreground text-sm font-medium">{learnMore}</p>
+            <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+              {sources.map((source) => (
+                <li key={`${source.kind}-${source.href}`}>
+                  <a
+                    href={source.href}
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
+                  >
+                    {AWESOME_SOURCE_LABELS[source.kind]}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </CardContent>
       <CardFooter className="flex flex-wrap items-center gap-2">
         {signedIn ? (

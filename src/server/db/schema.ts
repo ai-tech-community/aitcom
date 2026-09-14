@@ -4035,6 +4035,9 @@ export const awesomeAiOssProjects = appSchema.table(
       .default("member")
       .$type<"curated" | "member">(),
     addedOn: d.date(),
+    starCount: d.integer(),
+    starsCheckedAt: d.timestamp({ withTimezone: true }),
+    sources: d.json().$type<{ kind: string; href: string }[]>().default([]),
     reviewerNote: d.text(),
     rejectionReason: d.text(),
     submittedByUserId: d.varchar({ length: 255 }).references(() => user.id),
