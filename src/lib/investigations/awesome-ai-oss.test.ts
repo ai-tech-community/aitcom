@@ -16,6 +16,7 @@ import {
 import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "./awesome-ai-oss-seeds-chunk-1";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_3 } from "./awesome-ai-oss-seeds-chunk-3";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_4 } from "./awesome-ai-oss-seeds-chunk-4";
+import { AWESOME_AI_OSS_SEEDS_CHUNK_5 } from "./awesome-ai-oss-seeds-chunk-5";
 
 const CHUNK_1_MIGRATION = readFileSync(
   join(
@@ -505,6 +506,59 @@ const CHUNK4_HREFS = [
   "https://github.com/deepspeedai/DeepSpeed",
 ] as const;
 
+const CHUNK5_HREFS = [
+  "https://github.com/Lightning-AI/litgpt",
+  "https://github.com/karpathy/nanoGPT",
+  "https://github.com/OpenBMB/MiniCPM-V",
+  "https://github.com/abetlen/llama-cpp-python",
+  "https://github.com/mozilla-ai/llamafile",
+  "https://github.com/mudler/LocalAI",
+  "https://github.com/oobabooga/textgen",
+  "https://github.com/LostRuins/koboldcpp",
+  "https://github.com/theroyallab/tabbyAPI",
+  "https://github.com/turboderp-org/exllamav2",
+  "https://github.com/EleutherAI/lm-evaluation-harness",
+  "https://github.com/open-compass/opencompass",
+  "https://github.com/stanford-crfm/helm",
+  "https://github.com/UKGovernmentBEIS/inspect_ai",
+  "https://github.com/openai/evals",
+  "https://github.com/allenai/OLMo",
+  "https://github.com/allenai/dolma",
+  "https://github.com/meta-llama/llama",
+  "https://github.com/google-deepmind/gemma",
+  "https://github.com/mistralai/mistral-inference",
+  "https://github.com/mistralai/mistral-common",
+  "https://github.com/QwenLM/Qwen3",
+  "https://github.com/QwenLM/Qwen",
+  "https://github.com/zai-org/ChatGLM3",
+  "https://github.com/InternLM/InternLM",
+  "https://github.com/01-ai/Yi",
+  "https://github.com/mosaicml/llm-foundry",
+  "https://github.com/databrickslabs/dolly",
+  "https://github.com/lm-sys/FastChat",
+  "https://github.com/mlc-ai/web-llm",
+  "https://github.com/ml-explore/mlx",
+  "https://github.com/ml-explore/mlx-examples",
+  "https://github.com/huggingface/candle",
+  "https://github.com/meta-pytorch/torchtune",
+  "https://github.com/pytorch/torchtitan",
+  "https://github.com/NVIDIA-NeMo/Speech",
+  "https://github.com/openvinotoolkit/openvino",
+  "https://github.com/intel/intel-extension-for-transformers",
+  "https://github.com/bigcode-project/starcoder2",
+  "https://github.com/salesforce/CodeGen",
+  "https://github.com/Stability-AI/StableLM",
+  "https://github.com/togethercomputer/RedPajama-Data",
+  "https://github.com/OpenGVLab/InternVL",
+  "https://github.com/haotian-liu/LLaVA",
+  "https://github.com/openai/whisper",
+  "https://github.com/coqui-ai/TTS",
+  "https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI",
+  "https://github.com/AUTOMATIC1111/stable-diffusion-webui",
+  "https://github.com/Comfy-Org/ComfyUI",
+  "https://github.com/invoke-ai/InvokeAI",
+] as const;
+
 describe("Awesome AI OSS seeds", () => {
   it("keeps the locked 15 curated repos with frozen added dates", () => {
     expect(AWESOME_AI_OSS_SEEDS_V1).toHaveLength(15);
@@ -539,18 +593,18 @@ describe("Awesome AI OSS seeds", () => {
         /\bstars?\b|★|sterren/i,
       );
     }
-    expect(new Set(cards.map((card) => card.repoUrl)).size).toBe(215);
-    expect(cards).toHaveLength(215);
+    expect(new Set(cards.map((card) => card.repoUrl)).size).toBe(265);
+    expect(cards).toHaveLength(265);
     expect(
       cards.filter((card) => card.repoUrl.includes("github.com")),
-    ).toHaveLength(212);
+    ).toHaveLength(262);
   });
 
   it("adds chunk 1 as 50 approved GitHub seeds without aliases or invented counts", () => {
     expect(CHUNK_1_EXPECTED).toHaveLength(50);
     expect(AWESOME_AI_OSS_SEEDS_CHUNK_1).toHaveLength(50);
-    expect(AWESOME_AI_OSS_SEEDS).toHaveLength(215);
-    expect(curatedPublicCards()).toHaveLength(215);
+    expect(AWESOME_AI_OSS_SEEDS).toHaveLength(265);
+    expect(curatedPublicCards()).toHaveLength(265);
 
     const v1Urls = new Set<string>(
       AWESOME_AI_OSS_SEEDS_V1.map((seed) => seed.href),
@@ -584,9 +638,9 @@ describe("Awesome AI OSS seeds", () => {
       expect(["protocols", "runtimes"]).toContain(seed.category);
     }
 
-    expect(new Set(AWESOME_AI_OSS_SEEDS.map((seed) => seed.id)).size).toBe(215);
+    expect(new Set(AWESOME_AI_OSS_SEEDS.map((seed) => seed.id)).size).toBe(265);
     expect(new Set(AWESOME_AI_OSS_SEEDS.map((seed) => seed.href)).size).toBe(
-      215,
+      265,
     );
   });
 
@@ -604,17 +658,17 @@ describe("Awesome AI OSS seeds", () => {
   it("adds chunk 2 as 50 live GitHub curated seeds without jlowin/fastmcp", () => {
     const cards = curatedPublicCards();
     const urls = cards.map((card) => card.repoUrl);
-    expect(cards).toHaveLength(215);
+    expect(cards).toHaveLength(265);
     expect(
       cards.filter((card) => card.repoUrl.includes("github.com")),
-    ).toHaveLength(212);
+    ).toHaveLength(262);
     for (const href of CHUNK2_REPO_URLS) {
       expect(urls).toContain(href);
     }
     expect(
       urls.some((href) => href.toLowerCase().includes("jlowin/fastmcp")),
     ).toBe(false);
-    expect(new Set(urls.map((href) => href.toLowerCase())).size).toBe(215);
+    expect(new Set(urls.map((href) => href.toLowerCase())).size).toBe(265);
     expect(
       cards.filter(
         (card) =>
@@ -729,8 +783,8 @@ describe("Awesome AI OSS seeds", () => {
     expect(
       new Set(AWESOME_AI_OSS_SEEDS_CHUNK_4.map((seed) => seed.href)),
     ).toEqual(new Set(CHUNK4_HREFS));
-    expect(AWESOME_AI_OSS_SEEDS).toHaveLength(215);
-    expect(curatedPublicCards()).toHaveLength(215);
+    expect(AWESOME_AI_OSS_SEEDS).toHaveLength(265);
+    expect(curatedPublicCards()).toHaveLength(265);
 
     const priorUrls = new Set(
       AWESOME_AI_OSS_SEEDS.filter(
@@ -814,6 +868,118 @@ describe("Awesome AI OSS seeds", () => {
       expect(migration).toContain(seed.addedOn);
     }
     for (const href of CHUNK4_HREFS) {
+      expect(migration).toContain(href);
+    }
+  });
+
+  it("lists chunk 5 as 50 live GitHub curated cards without slug collisions", () => {
+    expect(CHUNK5_HREFS).toHaveLength(50);
+    expect(AWESOME_AI_OSS_SEEDS_CHUNK_5).toHaveLength(50);
+    expect(
+      new Set(AWESOME_AI_OSS_SEEDS_CHUNK_5.map((seed) => seed.href)),
+    ).toEqual(new Set(CHUNK5_HREFS));
+    expect(AWESOME_AI_OSS_SEEDS).toHaveLength(265);
+    expect(curatedPublicCards()).toHaveLength(265);
+
+    const priorUrls = new Set(
+      AWESOME_AI_OSS_SEEDS.filter(
+        (seed) =>
+          !CHUNK5_HREFS.includes(seed.href as (typeof CHUNK5_HREFS)[number]),
+      ).map((seed) => seed.href.toLowerCase()),
+    );
+    const priorIds = new Set(
+      AWESOME_AI_OSS_SEEDS.filter(
+        (seed) =>
+          !CHUNK5_HREFS.includes(seed.href as (typeof CHUNK5_HREFS)[number]),
+      ).map((seed) => seed.id),
+    );
+    for (const seed of AWESOME_AI_OSS_SEEDS_CHUNK_5) {
+      expect(seed.href.startsWith("https://github.com/")).toBe(true);
+      expect(seed.href.toLowerCase()).not.toContain("jlowin/fastmcp");
+      expect(priorUrls.has(seed.href.toLowerCase())).toBe(false);
+      expect(priorIds.has(seed.id)).toBe(false);
+      expect(seed.id.startsWith("curated-")).toBe(true);
+      expect(seed.addedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(seed.blurb.en.length).toBeLessThanOrEqual(
+        AWESOME_AI_OSS_BLURB_MAX,
+      );
+      expect(seed.blurb.nl.length).toBeLessThanOrEqual(
+        AWESOME_AI_OSS_BLURB_MAX,
+      );
+      expect(seed.blurb.nl.trim().length).toBeGreaterThan(0);
+      expect(`${seed.blurb.en}\n${seed.blurb.nl}`).not.toMatch(
+        /\b(stars?|★|largest|sterren)\b/i,
+      );
+    }
+
+    const byCategory = AWESOME_AI_OSS_SEEDS_CHUNK_5.reduce<
+      Record<string, number>
+    >((counts, seed) => {
+      counts[seed.category] = (counts[seed.category] ?? 0) + 1;
+      return counts;
+    }, {});
+    expect(byCategory.models).toBe(45);
+    expect(byCategory["eval-observability"]).toBe(5);
+
+    expect(
+      curatedPublicCards()
+        .filter((card) =>
+          CHUNK5_HREFS.includes(card.repoUrl as (typeof CHUNK5_HREFS)[number]),
+        )
+        .every((card) => card.source === "curated"),
+    ).toBe(true);
+    expect(
+      AWESOME_AI_OSS_SEEDS_CHUNK_5.find(
+        (seed) => seed.href === "https://github.com/abetlen/llama-cpp-python",
+      )?.id,
+    ).not.toBe("curated-llama-cpp");
+    expect(
+      AWESOME_AI_OSS_SEEDS_CHUNK_5.find(
+        (seed) => seed.href === "https://github.com/openai/whisper",
+      )?.id,
+    ).not.toBe("curated-whisper-cpp");
+    expect(
+      AWESOME_AI_OSS_SEEDS_CHUNK_5.find(
+        (seed) => seed.href === "https://github.com/theroyallab/tabbyAPI",
+      )?.id,
+    ).not.toBe("curated-tabby");
+    expect(
+      AWESOME_AI_OSS_SEEDS_CHUNK_5.find(
+        (seed) => seed.href === "https://github.com/mlc-ai/web-llm",
+      )?.id,
+    ).not.toBe("curated-mlc-llm");
+    expect(
+      AWESOME_AI_OSS_SEEDS_CHUNK_5.find(
+        (seed) => seed.href === "https://github.com/OpenBMB/MiniCPM-V",
+      )?.name,
+    ).toBe("MiniCPM-V");
+    expect(
+      AWESOME_AI_OSS_SEEDS_CHUNK_5.find(
+        (seed) => seed.href === "https://github.com/QwenLM/Qwen3",
+      )?.name,
+    ).toBe("Qwen3");
+  });
+
+  it("keeps the additive chunk-5 migration in lockstep with the seed list", () => {
+    const migration = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../migrations/20260914e_awesome_ai_oss_seeds_chunk_5.ts",
+      ),
+      "utf8",
+    );
+    expect(migration).toContain('ON CONFLICT ("repo_url") DO NOTHING');
+    expect(migration).toContain("'approved'");
+    expect(migration).toContain("'curated'");
+    expect(migration).toContain("awesome_ai_oss_project");
+    expect(migration).not.toMatch(/jlowin\/fastmcp/i);
+    expect(migration).not.toMatch(/\bstars?\b|★/);
+    for (const seed of AWESOME_AI_OSS_SEEDS_CHUNK_5) {
+      expect(migration).toContain(seed.id);
+      expect(migration).toContain(seed.href);
+      expect(migration).toContain(seed.addedOn);
+    }
+    for (const href of CHUNK5_HREFS) {
       expect(migration).toContain(href);
     }
   });
