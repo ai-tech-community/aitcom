@@ -24,6 +24,7 @@ export type AwesomeAiOssKey =
   | "protocols"
   | "runtimes"
   | "frameworks"
+  | "rag"
   | "models"
   | "other"
   | "gitlab"

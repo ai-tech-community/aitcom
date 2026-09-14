@@ -1085,6 +1085,7 @@
     "protocols": "Protocollen & SDK’s",
     "runtimes": "MCP-servers & runtimes",
     "frameworks": "Agentframeworks",
+    "rag": "RAG & geheugen",
     "models": "Open modellen & serving",
     "other": "Overig",
     "gitlab": "GitLab",

@@ -4011,7 +4011,9 @@ export const awesomeAiOssProjects = appSchema.table(
     category: d
       .varchar({ length: 32 })
       .notNull()
-      .$type<"protocols" | "runtimes" | "frameworks" | "models" | "other">(),
+      .$type<
+        "protocols" | "runtimes" | "frameworks" | "rag" | "models" | "other"
+      >(),
     blurbEn: d.text().notNull(),
     blurbNl: d.text().notNull(),
     status: d
