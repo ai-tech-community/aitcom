@@ -381,8 +381,9 @@ describe("Awesome AI OSS page citation contract", () => {
     expect(
       hrefsOf(container).filter(
         (href) =>
-          href?.startsWith("https://github.com/") ||
-          href?.startsWith("https://gitlab.com/"),
+          href != null &&
+          (href.startsWith("https://github.com/") ||
+            href.startsWith("https://gitlab.com/")),
       ),
     ).toHaveLength(AWESOME_AI_OSS_PAGE_SIZE);
 
