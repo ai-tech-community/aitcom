@@ -58,6 +58,7 @@ import {
   curatedPublicCards,
 } from "@/lib/investigations/awesome-ai-oss";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-1";
+import { AWESOME_AI_OSS_SEEDS_CHUNK_3 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-3";
 import { GUIDE_PATHS, JOIN_PATH, appPathFromGuideHref } from "@/lib/seo-guides";
 import { HOME_CRAWL_DOORS } from "@/components/home/home-crawl-doors";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -167,6 +168,7 @@ const EXPECTED_HREFS = [
   ...V1_HREFS,
   ...AWESOME_AI_OSS_SEEDS_CHUNK_1.map((seed) => seed.href),
   ...CHUNK2_HREFS,
+  ...AWESOME_AI_OSS_SEEDS_CHUNK_3.map((seed) => seed.href),
 ] as const;
 
 function tFrom(messages: typeof en.investigationsAwesomeAiOss) {
@@ -214,11 +216,11 @@ describe("Awesome AI OSS investigation route", () => {
 });
 
 describe("Awesome AI OSS catalog", () => {
-  it("keeps the locked v1 15 and lists chunk 1 and chunk 2 GitHub seeds", () => {
+  it("keeps the locked v1 15 and lists chunk 1, chunk 2, and chunk 3 GitHub seeds", () => {
     expect(AWESOME_AI_OSS_SEEDS_V1.map((seed) => seed.href)).toEqual([
       ...V1_HREFS,
     ]);
-    expect(AWESOME_AI_OSS_REPOS).toHaveLength(115);
+    expect(AWESOME_AI_OSS_REPOS).toHaveLength(165);
     expect(AWESOME_AI_OSS_REPOS.map((repo) => repo.href)).toEqual([
       ...EXPECTED_HREFS,
     ]);
@@ -226,7 +228,7 @@ describe("Awesome AI OSS catalog", () => {
       AWESOME_AI_OSS_REPOS.filter((repo) =>
         repo.href.startsWith("https://github.com/"),
       ),
-    ).toHaveLength(112);
+    ).toHaveLength(162);
     expect(
       AWESOME_AI_OSS_REPOS.filter((repo) =>
         repo.href.startsWith("https://gitlab.com/"),
@@ -324,6 +326,15 @@ describe("Awesome AI OSS page citation contract", () => {
     expect(container.textContent).toMatch(/GitLab AI Gateway/i);
     expect(container.textContent).toMatch(/GitLab application/i);
     expect(container.textContent).toMatch(/Added: November 25, 2024/);
+    expect(container.textContent).toContain("sqlite-vec");
+    expect(container.textContent).toContain("Langfuse");
+    expect(container.textContent).toContain("LibreChat");
+    expect(hrefsOf(container)).toContain(
+      "https://github.com/asg017/sqlite-vec",
+    );
+    expect(hrefsOf(container)).not.toEqual(
+      expect.arrayContaining(["https://github.com/jlowin/fastmcp"]),
+    );
     expectAnonymousVoteLock(container);
   });
 });
@@ -455,6 +466,13 @@ describe("Awesome AI OSS site integration", () => {
     expect(AWESOME_CATEGORY_LABELS.frameworks.en).toBe("Agent frameworks");
     expect(AWESOME_CATEGORY_LABELS.rag.en).toBe("RAG & memory");
     expect(AWESOME_CATEGORY_LABELS.models.en).toBe("Open models & serving");
+    expect(AWESOME_CATEGORY_LABELS["agent-uis"].en).toBe("Agent UIs & chat");
+    expect(AWESOME_CATEGORY_LABELS["agent-tools"].en).toBe(
+      "Agent tools & crawlers",
+    );
+    expect(AWESOME_CATEGORY_LABELS["eval-observability"].en).toBe(
+      "Eval & observability",
+    );
     expect(AWESOME_CATEGORY_LABELS.other.en).toBe("Other");
   });
 
