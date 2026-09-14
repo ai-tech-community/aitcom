@@ -49,12 +49,15 @@ vi.mock("@/i18n/navigation", () => ({
 import {
   AWESOME_AI_OSS_H1,
   AWESOME_AI_OSS_JOIN_HREF,
+  AWESOME_AI_OSS_META,
   AWESOME_AI_OSS_PATH,
   AWESOME_AI_OSS_REPOS,
   AWESOME_AI_OSS_REVIEW_PATH,
+  AWESOME_AI_OSS_SEEDS_V1,
   AWESOME_CATEGORY_LABELS,
   curatedPublicCards,
 } from "@/lib/investigations/awesome-ai-oss";
+import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-1";
 import { GUIDE_PATHS, JOIN_PATH, appPathFromGuideHref } from "@/lib/seo-guides";
 import { HOME_CRAWL_DOORS } from "@/components/home/home-crawl-doors";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -152,26 +155,36 @@ describe("Awesome AI OSS investigation route", () => {
 });
 
 describe("Awesome AI OSS catalog", () => {
-  it("lists exactly 12 GitHub + 3 GitLab repos with locked URLs", () => {
-    expect(AWESOME_AI_OSS_REPOS).toHaveLength(15);
+  it("keeps the locked v1 15 and lists chunk 1 GitHub seeds", () => {
+    expect(AWESOME_AI_OSS_SEEDS_V1.map((seed) => seed.href)).toEqual([
+      ...EXPECTED_HREFS,
+    ]);
+    expect(AWESOME_AI_OSS_REPOS).toHaveLength(65);
     expect(AWESOME_AI_OSS_REPOS.map((repo) => repo.href)).toEqual([
       ...EXPECTED_HREFS,
+      ...AWESOME_AI_OSS_SEEDS_CHUNK_1.map((seed) => seed.href),
     ]);
     expect(
       AWESOME_AI_OSS_REPOS.filter((repo) =>
         repo.href.startsWith("https://github.com/"),
       ),
-    ).toHaveLength(12);
+    ).toHaveLength(62);
     expect(
       AWESOME_AI_OSS_REPOS.filter((repo) =>
         repo.href.startsWith("https://gitlab.com/"),
       ),
     ).toHaveLength(3);
+    expect(AWESOME_AI_OSS_REPOS.map((repo) => repo.href)).not.toContain(
+      "https://github.com/jlowin/fastmcp",
+    );
     for (const repo of AWESOME_AI_OSS_REPOS) {
       expect(repo.blurb.en.trim().length).toBeGreaterThan(0);
       expect(repo.blurb.nl.trim().length).toBeGreaterThan(0);
       expectNoBannedClaims(`${repo.blurb.en}\n${repo.blurb.nl}`);
     }
+    expect(AWESOME_AI_OSS_META).toBe(
+      "A short curated map of open-source building blocks for human + agent pairs. Live GitHub and GitLab only. Not a registry and not a star-sorted dump.",
+    );
   });
 });
 
