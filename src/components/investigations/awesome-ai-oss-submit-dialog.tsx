@@ -140,7 +140,7 @@ export function AwesomeAiOssSubmitDialog({
               type="url"
               required
               value={repoUrl}
-              aria-invalid={Boolean(urlError || duplicateError)}
+              aria-invalid={Boolean(urlError ?? duplicateError)}
               onChange={(event) => {
                 setRepoUrl(event.target.value);
                 setUrlError(null);

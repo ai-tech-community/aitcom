@@ -83,7 +83,7 @@ export const awesomeAiOssRouter = createTRPCRouter({
               blurbNl: input.blurb,
               status: "pending",
               source: "member",
-              reviewerNote: input.reviewerNote || null,
+              reviewerNote: input.reviewerNote ?? null,
               rejectionReason: null,
               submittedByUserId: ctx.session.user.id,
               reviewedByUserId: null,
@@ -111,7 +111,7 @@ export const awesomeAiOssRouter = createTRPCRouter({
           blurbNl: input.blurb,
           status: "pending",
           source: "member",
-          reviewerNote: input.reviewerNote || null,
+          reviewerNote: input.reviewerNote ?? null,
           submittedByUserId: ctx.session.user.id,
         })
         .returning({ id: awesomeAiOssProjects.id });
@@ -247,7 +247,7 @@ export const awesomeAiOssRouter = createTRPCRouter({
         .update(awesomeAiOssProjects)
         .set({
           status: "rejected",
-          rejectionReason: input.reason || null,
+          rejectionReason: input.reason ?? null,
           reviewedByUserId: ctx.session.user.id,
           reviewedAt: new Date(),
         })

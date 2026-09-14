@@ -103,7 +103,7 @@ export function AwesomeAiOssReviewQueue({ locale }: { locale: AwesomeLocale }) {
                     moderate.mutate({
                       projectId: item.id,
                       action: "reject",
-                      reason: reasons[item.id]?.trim() || undefined,
+                      reason: reasons[item.id]?.trim() ?? undefined,
                     })
                   }
                   disabled={moderate.isPending}
