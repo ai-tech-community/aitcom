@@ -232,7 +232,7 @@ describe("Awesome AI OSS catalog", () => {
       AWESOME_AI_OSS_REPOS.filter((repo) =>
         repo.href.startsWith("https://github.com/"),
       ),
-      ).toHaveLength(262);
+    ).toHaveLength(262);
     expect(
       AWESOME_AI_OSS_REPOS.filter((repo) =>
         repo.href.startsWith("https://gitlab.com/"),
@@ -350,7 +350,9 @@ describe("Awesome AI OSS page citation contract", () => {
     expect(hrefsOf(container)).toContain(
       "https://github.com/Lightning-AI/litgpt",
     );
-    expect(hrefsOf(container)).toContain("https://github.com/Comfy-Org/ComfyUI");
+    expect(hrefsOf(container)).toContain(
+      "https://github.com/Comfy-Org/ComfyUI",
+    );
     expect(hrefsOf(container)).not.toEqual(
       expect.arrayContaining(["https://github.com/jlowin/fastmcp"]),
     );
