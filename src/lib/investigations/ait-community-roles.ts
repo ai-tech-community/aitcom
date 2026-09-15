@@ -9,7 +9,7 @@ export const AIT_COMMUNITY_ROLES_META =
   "Four Hub seats. Empty seats can be claimed. Filled seats are term-bound and approved off-tree.";
 
 export const AIT_COMMUNITY_ROLES_JOIN_HREF =
-  "https://www.aitcommunity.org/en/join";
+  "https://www.aitcommunity.org/en/join?utm_source=roles&utm_medium=web&utm_campaign=roles";
 
 /** Live Hub Welcome thread. Do not invent another slug. */
 export const HUB_WELCOME_THREAD_PATH = `${HUB_FORUM_PATH}/welcome-start-here-hub-join-guides-1788790840883`;
