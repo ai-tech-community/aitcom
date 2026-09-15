@@ -446,13 +446,12 @@ describe("directory query", () => {
     ).toBe(
       `${STARTUPS_PATH}?region=Toronto%2C+Canada&status=ipo&hiring=1&sort=category&page=2`,
     );
-    expect(parseStartupDirectoryQuery({ exit: "ipo" })).toMatchObject({
-      status: "ipo",
-    });
-    expect(buildStartupDirectoryPath({ exit: "ipo" })).toBe(
+    const legacyExit = parseStartupDirectoryQuery({ exit: "ipo" });
+    expect(legacyExit.status).toBe("ipo");
+    expect(buildStartupDirectoryPath(legacyExit)).toBe(
       `${STARTUPS_PATH}?status=ipo`,
     );
-    expect(buildStartupDirectoryPath({ exit: "ipo" })).not.toContain("exit=");
+    expect(buildStartupDirectoryPath(legacyExit)).not.toContain("exit=");
   });
 
   it("emits crawlable ?page= sitemap paths once the directory is past ~50 rows", () => {
