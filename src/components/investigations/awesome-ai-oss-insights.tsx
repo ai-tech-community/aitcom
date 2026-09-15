@@ -71,37 +71,21 @@ export function AwesomeAiOssInsights({
         />
       </InsightBlock>
 
-      {stats.starDistribution && stats.topLiveStars ? (
-        <>
-          <InsightBlock
-            title={copy.starDistributionTitle}
-            caption={copy.chartCaption}
-            columns={[copy.liveStarColumn, copy.countColumn]}
-            rows={stats.starDistribution.map((row) => [
-              row.label,
-              String(row.count),
-            ])}
-          >
-            <AwesomeStarDistributionChart
-              data={stats.starDistribution}
-              label={copy.starDistributionTitle}
-            />
-          </InsightBlock>
-          <InsightBlock
-            title={copy.topStarsTitle}
-            caption={copy.chartCaption}
-            columns={[copy.projectColumn, copy.liveStarColumn]}
-            rows={stats.topLiveStars.map((row) => [
-              row.name,
-              String(row.starCount),
-            ])}
-          >
-            <AwesomeTopLiveStarsChart
-              data={stats.topLiveStars}
-              label={copy.topStarsTitle}
-            />
-          </InsightBlock>
-        </>
+      {stats.starDistribution ? (
+        <InsightBlock
+          title={copy.starDistributionTitle}
+          caption={copy.chartCaption}
+          columns={[copy.liveStarColumn, copy.countColumn]}
+          rows={stats.starDistribution.map((row) => [
+            row.label,
+            String(row.count),
+          ])}
+        >
+          <AwesomeStarDistributionChart
+            data={stats.starDistribution}
+            label={copy.starDistributionTitle}
+          />
+        </InsightBlock>
       ) : (
         <p
           data-awesome-stars-omitted
@@ -110,6 +94,23 @@ export function AwesomeAiOssInsights({
           {copy.starsOmitted}
         </p>
       )}
+
+      {stats.topLiveStars ? (
+        <InsightBlock
+          title={copy.topStarsTitle}
+          caption={copy.chartCaption}
+          columns={[copy.projectColumn, copy.liveStarColumn]}
+          rows={stats.topLiveStars.map((row) => [
+            row.name,
+            String(row.starCount),
+          ])}
+        >
+          <AwesomeTopLiveStarsChart
+            data={stats.topLiveStars}
+            label={copy.topStarsTitle}
+          />
+        </InsightBlock>
+      ) : null}
     </div>
   );
 }

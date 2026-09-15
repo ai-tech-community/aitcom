@@ -9,7 +9,6 @@ import {
 } from "./awesome-ai-oss";
 import {
   AWESOME_INSIGHTS_CAPTION,
-  AWESOME_INSIGHTS_MIN_LIVE_STARS,
   buildAwesomeInsights,
   formatInsightMonth,
   isAwesomeInsightsTab,
@@ -96,36 +95,17 @@ describe("buildAwesomeInsights", () => {
     expect(nov2024?.label).toBe(formatInsightMonth("2024-11", "en"));
   });
 
-  it("never uses Hub votes and omits star charts without enough live fetches", () => {
+  it("never uses Hub votes and omits star charts when no stars were checked", () => {
     const stats = buildAwesomeInsights(cards, "en", now);
     expect(cards.every((card) => card.starCount == null)).toBe(true);
     expect(stats.liveStarCount).toBe(0);
     expect(stats.starDistribution).toBeNull();
     expect(stats.topLiveStars).toBeNull();
     expect(JSON.stringify(stats)).not.toMatch(/vote/i);
-    expect(AWESOME_INSIGHTS_MIN_LIVE_STARS).toBe(10);
   });
 
-  it("omits star charts when fetched rows are below the live threshold", () => {
-    const partial = [
-      ...withLiveStars(cards, AWESOME_INSIGHTS_MIN_LIVE_STARS - 1),
-      ...cards.slice(AWESOME_INSIGHTS_MIN_LIVE_STARS - 1),
-    ];
-    const stats = buildAwesomeInsights(partial, "en", now);
-    expect(stats.liveStarCount).toBe(AWESOME_INSIGHTS_MIN_LIVE_STARS - 1);
-    expect(stats.starDistribution).toBeNull();
-    expect(stats.topLiveStars).toBeNull();
-    expect(
-      liveAwesomeStarCards(partial, now).some((card) => card.starCount === 0),
-    ).toBe(false);
-  });
-
-  it("shows star charts only from fresh positive star_count rows", () => {
-    const live = withLiveStars(
-      cards,
-      AWESOME_INSIGHTS_MIN_LIVE_STARS,
-      now.toISOString(),
-    );
+  it("ships star charts from any checked live star_count and ignores ★0 / unchecked", () => {
+    const live = withLiveStars(cards, 12, now.toISOString());
     const withZeros = [
       ...live,
       {
@@ -140,20 +120,38 @@ describe("buildAwesomeInsights", () => {
       },
     ];
     const stats = buildAwesomeInsights(withZeros, "en", now);
-    expect(stats.liveStarCount).toBe(AWESOME_INSIGHTS_MIN_LIVE_STARS);
+    expect(stats.liveStarCount).toBe(12);
     expect(stats.starDistribution).not.toBeNull();
     expect(stats.topLiveStars).not.toBeNull();
     expect(stats.topLiveStars).toHaveLength(10);
-    expect(stats.topLiveStars?.[0]?.starCount).toBe(500);
+    expect(stats.topLiveStars?.[0]?.starCount).toBe(600);
     expect(stats.topLiveStars?.every((row) => row.starCount > 0)).toBe(true);
     expect(
       stats.starDistribution?.reduce((sum, row) => sum + row.count, 0),
-    ).toBe(AWESOME_INSIGHTS_MIN_LIVE_STARS);
+    ).toBe(12);
     expect(
       stats.starDistribution?.find((row) => row.id === "1-99")?.count,
     ).toBe(1);
     expect(
       stats.starDistribution?.find((row) => row.id === "100-999")?.count,
-    ).toBe(9);
+    ).toBe(11);
+    expect(
+      liveAwesomeStarCards(withZeros, now).some((card) => card.starCount === 0),
+    ).toBe(false);
+  });
+
+  it("shows star charts as soon as one fetched positive count exists", () => {
+    const partial = [...withLiveStars(cards, 1), ...cards.slice(1)];
+    const stats = buildAwesomeInsights(partial, "en", now);
+    expect(stats.liveStarCount).toBe(1);
+    expect(stats.starDistribution).not.toBeNull();
+    expect(stats.topLiveStars).toEqual([
+      {
+        id: cards[0]!.id,
+        name: cards[0]!.name,
+        starCount: 50,
+        repoHost: cards[0]!.repoHost,
+      },
+    ]);
   });
 });

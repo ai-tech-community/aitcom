@@ -8,9 +8,6 @@ import {
 } from "./awesome-ai-oss";
 import { visibleAwesomeStarLine } from "./awesome-ai-oss-stars";
 
-/** Enough fetched, fresh, positive star_count rows to show star charts. */
-export const AWESOME_INSIGHTS_MIN_LIVE_STARS = 10;
-
 export const AWESOME_INSIGHTS_CAPTION =
   "from our curated list · refreshed daily";
 
@@ -146,7 +143,6 @@ export function buildAwesomeInsights(
     }));
 
   const live = liveAwesomeStarCards(cards, now);
-  const enough = live.length >= AWESOME_INSIGHTS_MIN_LIVE_STARS;
 
   return {
     total: cards.length,
@@ -154,8 +150,8 @@ export function buildAwesomeInsights(
     hostMix,
     addedOverTime,
     liveStarCount: live.length,
-    starDistribution: enough ? starDistribution(live) : null,
-    topLiveStars: enough ? topLiveStars(live) : null,
+    starDistribution: live.length > 0 ? starDistribution(live) : null,
+    topLiveStars: live.length > 0 ? topLiveStars(live) : null,
   };
 }
 

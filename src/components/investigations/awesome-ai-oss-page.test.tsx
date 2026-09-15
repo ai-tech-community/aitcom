@@ -862,4 +862,35 @@ describe("Awesome AI OSS Insights tab", () => {
     expect(hrefsOf(container)).toContain(AWESOME_AI_OSS_PATH);
     expectNoBannedClaims(container.textContent ?? "");
   });
+
+  it("renders star distribution and Top 10 from fetched star_count only", () => {
+    const checkedAt = new Date().toISOString();
+    const projects = curatedPublicCards().map((card, index) => ({
+      ...card,
+      starCount: (index + 1) * 40,
+      starsCheckedAt: checkedAt,
+    }));
+    const { container } = render(
+      <AwesomeAiOssPage
+        locale="en"
+        t={tFrom(en.investigationsAwesomeAiOss)}
+        tab="insights"
+        projects={projects}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Live star_count distribution" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Top 10 by live star_count" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("chart-stars")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-top")).toBeInTheDocument();
+    expect(container.querySelector("[data-awesome-stars-omitted]")).toBeNull();
+    expect(container.textContent).toContain(projects.at(-1)!.name);
+    expect(container.textContent).toContain(String(projects.length * 40));
+    expect(container.textContent).not.toMatch(/★ 0/);
+    expectNoBannedClaims(container.textContent ?? "");
+  });
 });
