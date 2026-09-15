@@ -30,11 +30,13 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AitCommunityRolesPageRoute() {
   const t = await getTranslations("investigationsAitCommunityRoles");
   const session = await getSession();
+  const promoteJoin = shouldPromoteJoin(toHubAuthUser(session?.user));
   return (
     <AitCommunityRolesPage
       t={t}
       seats={resolveSeats()}
-      promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
+      promoteJoin={promoteJoin}
+      emptySeatCta={promoteJoin ? t("claimCta") : t("requestCta")}
     />
   );
 }

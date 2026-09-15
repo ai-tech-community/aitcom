@@ -42,11 +42,15 @@ export function AitCommunityRolesPage({
   t,
   seats,
   promoteJoin = true,
+  emptySeatCta,
 }: {
   t: (key: AitCommunityRolesKey, values?: { days: number }) => string;
   seats: ResolvedSeat[];
   promoteJoin?: boolean;
+  emptySeatCta?: string;
 }) {
+  const seatCta =
+    emptySeatCta ?? (promoteJoin ? t("claimCta") : t("requestCta"));
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-16 sm:px-12">
       <SectionLabel as="div">{t("kicker")}</SectionLabel>
@@ -86,9 +90,9 @@ export function AitCommunityRolesPage({
             {seat.empty ? (
               <Button asChild variant="outline">
                 {promoteJoin ? (
-                  <a href={AIT_COMMUNITY_ROLES_JOIN_HREF}>{t("claimCta")}</a>
+                  <a href={AIT_COMMUNITY_ROLES_JOIN_HREF}>{seatCta}</a>
                 ) : (
-                  <Link href={HUB_WELCOME_THREAD_PATH}>{t("requestCta")}</Link>
+                  <Link href={HUB_WELCOME_THREAD_PATH}>{seatCta}</Link>
                 )}
               </Button>
             ) : (
