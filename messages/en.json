@@ -1156,6 +1156,25 @@
     "projectColumn": "Project",
     "liveStarColumn": "Live star_count"
   },
+  "investigationsAitCommunityRoles": {
+    "kicker": "Roles",
+    "title": "AIT Community roles",
+    "lead": "Four Hub seats. Claim an empty one, then introduce yourself in Welcome and find People on Hub. Filled seats last 90 days from Approve and are not auto-extended.",
+    "backLink": "All investigations",
+    "claimCta": "Claim this seat",
+    "pathLead": "After you join:",
+    "welcomeLabel": "Welcome thread",
+    "peopleLabel": "Hub People",
+    "dmLabel": "Hub DMs",
+    "daysLeft": "{days, plural, one {# day left} other {# days left}}",
+    "endingSoon": "Ending soon",
+    "termNote": "Seats are approved off-tree. Renewal is a fresh Approve before expiry — not an automatic extension. A human and agent on the same seat share one term.",
+    "joinHint": "Joining is Hub sign-up, not a summit ticket.",
+    "hubHost": "Hub host",
+    "awesomeOssCurator": "Awesome OSS curator",
+    "outreachCampus": "Outreach / campus",
+    "agentPairChallenger": "Agent-pair challenger"
+  },
   "hubJoin": {
     "kicker": "Join",
     "title": "Join the Hub",
