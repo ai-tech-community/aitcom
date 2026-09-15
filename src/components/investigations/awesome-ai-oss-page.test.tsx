@@ -903,11 +903,12 @@ describe("Awesome AI OSS Insights tab", () => {
     expect(directory.container.textContent).not.toContain(
       en.investigationsAwesomeAiOss.joinCta,
     );
-    expect(
-      screen.getByRole("link", {
-        name: en.investigationsAwesomeAiOss.hubCta,
-      }),
-    ).toHaveAttribute("href", HUB_OPEN_HREF);
+    expect(en.investigationsAwesomeAiOss.hubCta).toBe("Open Hub");
+    expect(screen.getByRole("link", { name: "Open Hub" })).toHaveAttribute(
+      "href",
+      HUB_OPEN_HREF,
+    );
+    expect(screen.queryByRole("link", { name: /join/i })).toBeNull();
     directory.unmount();
 
     const insights = render(
@@ -922,11 +923,11 @@ describe("Awesome AI OSS Insights tab", () => {
     expect(insights.container.textContent).not.toContain(
       en.investigationsAwesomeAiOss.joinCta,
     );
-    expect(
-      screen.getByRole("link", {
-        name: en.investigationsAwesomeAiOss.hubCta,
-      }),
-    ).toHaveAttribute("href", HUB_OPEN_HREF);
+    expect(screen.getByRole("link", { name: "Open Hub" })).toHaveAttribute(
+      "href",
+      HUB_OPEN_HREF,
+    );
+    expect(screen.queryByRole("link", { name: /join/i })).toBeNull();
   });
 
   it("wires Directory and Insights to the same per-request getSession source Startups uses", () => {

@@ -167,9 +167,12 @@ describe("PublicEventsPage", () => {
       /community sign-up|event ticket|Join the Hub/i,
     );
     expect(container.textContent).toContain(en.publicEvents.memberLead);
-    expect(
-      screen.getByRole("link", { name: en.publicEvents.hubCta }),
-    ).toHaveAttribute("href", PUBLIC_EVENTS_HUB_HREF);
+    expect(en.publicEvents.hubCta).toBe("Open Hub");
+    expect(screen.getByRole("link", { name: "Open Hub" })).toHaveAttribute(
+      "href",
+      PUBLIC_EVENTS_HUB_HREF,
+    );
+    expect(screen.queryByRole("link", { name: /join/i })).toBeNull();
   });
 
   it("wires Events to the same per-request getSession source Startups uses", () => {

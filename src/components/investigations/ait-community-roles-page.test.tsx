@@ -234,6 +234,7 @@ describe("AIT Community roles page", () => {
     expect(
       screen.queryByRole("link", { name: "Claim this seat" }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /join/i })).toBeNull();
     const requests = screen.getAllByRole("link", { name: "Request this seat" });
     expect(requests).toHaveLength(3);
     for (const request of requests) {
