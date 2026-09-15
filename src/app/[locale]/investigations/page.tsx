@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
 import { AWESOME_AI_OSS_PATH } from "@/lib/investigations/awesome-ai-oss";
-import { STARTUPS_PATH } from "@/lib/investigations/startups";
+import { STARTUPS_H1, STARTUPS_PATH } from "@/lib/investigations/startups";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { MissionDialog } from "@/components/datacenters/mission-dialog";
 
@@ -107,7 +107,7 @@ export default async function InvestigationsPage() {
         >
           <div className="flex items-start justify-between">
             <div>
-              <h2 className="text-xl font-semibold">AI startups</h2>
+              <h2 className="text-xl font-semibold">{STARTUPS_H1}</h2>
               <p className="text-muted-foreground mt-1 text-sm">
                 Companies that materially enable AI. Listed after a verified
                 homepage and sources — not a size or price scorecard.

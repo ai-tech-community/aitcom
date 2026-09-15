@@ -4,6 +4,10 @@ Public directory + Insights. **Live rows live in Neon.** The app reads the
 database on each request (`force-dynamic`). Staff inserts after deploy show
 up without a redeploy. UI components do not bake a company list.
 
+H1 is **AI startups worth watching**. Source links use Docs · Deep dive ·
+Talk · News, or a sourced publication title (Wikipedia, TechCrunch). Never
+bare `1` / `2` / `3`.
+
 ## Who counts
 
 Companies that materially enable AI: models · agents · AI infra · robotics ·

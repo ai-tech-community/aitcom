@@ -8,7 +8,7 @@ export const STARTUPS_PATH = "/investigations/startups";
 
 export const STARTUPS_INSIGHTS_PATH = "/investigations/startups/insights";
 
-export const STARTUPS_H1 = "AI startups";
+export const STARTUPS_H1 = "AI startups worth watching";
 
 export const STARTUPS_META =
   "Companies that materially enable AI — models, agents, AI infra, robotics, energy, and verticals. Homepage and sources verified. Not a size or price scorecard.";
@@ -343,40 +343,90 @@ export function displayStartupFounders(
   return sanitizeStartupFounders(founders);
 }
 
-/** Visible `<a>` label from the URL itself — never a fabricated metric. */
+export type StartupCiteKind = "docs" | "deep-dive" | "talk" | "news";
+
+export const STARTUP_CITE_KIND_IDS = [
+  "docs",
+  "deep-dive",
+  "talk",
+  "news",
+] as const satisfies readonly StartupCiteKind[];
+
+export const STARTUP_CITE_KIND_LABELS: Record<
+  StartupCiteKind,
+  Record<StartupLocale, string>
+> = {
+  docs: { en: "Docs", nl: "Docs" },
+  "deep-dive": { en: "Deep dive", nl: "Deep dive" },
+  talk: { en: "Talk", nl: "Talk" },
+  news: { en: "News", nl: "Nieuws" },
+};
+
+const SOURCED_PUBLICATION_TITLES: Record<string, string> = {
+  "techcrunch.com": "TechCrunch",
+  "datacenterdynamics.com": "Data Center Dynamics",
+};
+
+function startupSourceHost(
+  href: string,
+): { host: string; path: string } | null {
+  try {
+    const url = new URL(href);
+    return {
+      host: url.hostname.replace(/^www\./, "").toLowerCase(),
+      path: url.pathname.replace(/\/+$/, "").toLowerCase(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Publication name from the host only — never an invented article title. */
+export function sourcedStartupSourceTitle(href: string): string | null {
+  const parsed = startupSourceHost(href);
+  if (!parsed) return null;
+  if (
+    parsed.host === "wikipedia.org" ||
+    parsed.host.endsWith(".wikipedia.org")
+  ) {
+    return "Wikipedia";
+  }
+  return SOURCED_PUBLICATION_TITLES[parsed.host] ?? null;
+}
+
+export function startupCiteKind(href: string): StartupCiteKind {
+  const parsed = startupSourceHost(href);
+  if (!parsed) return "docs";
+  const { host, path } = parsed;
+  if (
+    host === "youtube.com" ||
+    host === "youtu.be" ||
+    host === "vimeo.com" ||
+    /\/(talks?|keynote|podcast|webinar|watch)(?:\/|$)/.test(path)
+  ) {
+    return "talk";
+  }
+  if (/\/(newsroom|news|press|press-releases|in-the-news)(?:\/|$)/.test(path)) {
+    return "news";
+  }
+  if (/\/(blog|research|papers|analysis|post)(?:\/|$)/.test(path)) {
+    return "deep-dive";
+  }
+  return "docs";
+}
+
+/**
+ * Visible `<a>` label: sourced publication title when the host is known,
+ * otherwise Docs · Deep dive · Talk · News. Never a bare 1/2/3.
+ */
 export function startupSourceLabel(
   href: string,
   locale: StartupLocale = "en",
 ): string {
-  try {
-    const url = new URL(href);
-    const host = url.hostname.replace(/^www\./, "").toLowerCase();
-    if (host === "en.wikipedia.org" || host.endsWith(".wikipedia.org")) {
-      return "Wikipedia";
-    }
-    if (host === "techcrunch.com") return "TechCrunch";
-    const path = url.pathname.replace(/\/+$/, "").toLowerCase();
-    if (
-      path.endsWith("/about") ||
-      path.endsWith("/about-us") ||
-      /\/company(?:\/|$)/.test(path)
-    ) {
-      return locale === "nl" ? "Over" : "About";
-    }
-    if (
-      path.includes("/blog") ||
-      path.includes("/newsroom") ||
-      path.includes("/news")
-    ) {
-      return "Blog";
-    }
-    if (path.includes("/press")) {
-      return locale === "nl" ? "Pers" : "Press";
-    }
-    return host;
-  } catch {
-    return href;
-  }
+  return (
+    sourcedStartupSourceTitle(href) ??
+    STARTUP_CITE_KIND_LABELS[startupCiteKind(href)][locale]
+  );
 }
 
 function isUsableCoord(lat: number | null, lng: number | null): boolean {

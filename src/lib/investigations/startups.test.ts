@@ -61,7 +61,7 @@ describe("startups investigation contract", () => {
   it("lives under /investigations/startups with a dedicated insights path", () => {
     expect(STARTUPS_PATH).toBe("/investigations/startups");
     expect(STARTUPS_INSIGHTS_PATH).toBe("/investigations/startups/insights");
-    expect(STARTUPS_H1).toBe("AI startups");
+    expect(STARTUPS_H1).toBe("AI startups worth watching");
     expect(STARTUPS_META).toMatch(/homepage and sources verified/i);
     expect(STARTUPS_META).not.toMatch(BANNED_METRIC);
   });
@@ -133,19 +133,37 @@ describe("homepage and sources", () => {
     ]);
   });
 
-  it("labels sources from the URL so links stay crawlable", () => {
+  it("labels sources as Docs · Deep dive · Talk · News, or a sourced title", () => {
     expect(startupSourceLabel("https://en.wikipedia.org/wiki/Anthropic")).toBe(
       "Wikipedia",
     );
     expect(startupSourceLabel("https://techcrunch.com/tag/anthropic/")).toBe(
       "TechCrunch",
     );
-    expect(startupSourceLabel("https://cohere.com/about")).toBe("About");
-    expect(startupSourceLabel("https://cohere.com/about", "nl")).toBe("Over");
-    expect(startupSourceLabel("https://weaviate.io/blog")).toBe("Blog");
-    expect(startupSourceLabel("https://obscure.example/path")).toBe(
-      "obscure.example",
+    expect(
+      startupSourceLabel(
+        "https://www.datacenterdynamics.com/en/analysis/in-perfect-harmony-how-emerald-ai-is-turning-data-centers-into-flexible-grid-assets/",
+      ),
+    ).toBe("Data Center Dynamics");
+    expect(startupSourceLabel("https://cohere.com/about")).toBe("Docs");
+    expect(startupSourceLabel("https://cohere.com/about", "nl")).toBe("Docs");
+    expect(startupSourceLabel("https://weaviate.io/blog")).toBe("Deep dive");
+    expect(startupSourceLabel("https://www.crusoe.ai/resources/newsroom")).toBe(
+      "News",
     );
+    expect(startupSourceLabel("https://www.youtube.com/watch?v=abc")).toBe(
+      "Talk",
+    );
+    expect(startupSourceLabel("https://obscure.example/path")).toBe("Docs");
+    for (const href of [
+      "https://en.wikipedia.org/wiki/Anthropic",
+      "https://cohere.com/about",
+      "https://weaviate.io/blog",
+      "https://www.crusoe.ai/resources/newsroom",
+      "https://obscure.example/path",
+    ]) {
+      expect(startupSourceLabel(href)).not.toMatch(/^[123]$/);
+    }
   });
 });
 

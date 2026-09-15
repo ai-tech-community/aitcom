@@ -210,7 +210,7 @@ describe("StartupsPage", () => {
     expect(container.querySelector("img")).toBeNull();
     expect(hrefsOf(container)).toContain("https://fixture.example");
     expect(hrefsOf(container)).toContain("https://fixture.example/about");
-    expect(screen.getByRole("link", { name: "About" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute(
       "href",
       "https://fixture.example/about",
     );
