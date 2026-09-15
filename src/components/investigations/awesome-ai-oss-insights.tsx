@@ -136,7 +136,7 @@ function InsightBlock({
         </h2>
         <p className="text-muted-foreground text-sm">{caption}</p>
       </div>
-      <div className="overflow-x-auto">
+      <div className="max-h-72 max-w-xl overflow-auto">
         <table className="w-full min-w-56 text-sm">
           <caption className="sr-only">{title}</caption>
           <thead>
