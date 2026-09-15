@@ -113,7 +113,7 @@ const BANNED = [
 ];
 
 const DENIALS =
-  /does not register you for World Summit|registreert je niet voor World Summit|not a summit ticket|geen summit-ticket|no stars|geen sterren|live repo stars when fetched|live-reposterren wanneer opgehaald|not a complete catalog|geen complete catalogus|not a star-sorted|★ \d/gi;
+  /does not register you for World Summit|registreert je niet voor World Summit|not a summit ticket|geen summit-ticket|no stars|geen sterren|live repo stars when fetched|live-reposterren wanneer opgehaald|not a complete catalog|geen complete catalogus|not a star-sorted|Star distribution|Top by stars|★ \d/gi;
 
 const V1_HREFS = [
   "https://github.com/modelcontextprotocol/servers",
@@ -630,6 +630,8 @@ describe("Awesome AI OSS site integration", () => {
     expect(copy.categoryMixTitle).toBe("Category mix");
     expect(copy.hostMixTitle).toBe("GitHub vs GitLab");
     expect(copy.addedOverTimeTitle).toBe("Added over time");
+    expect(copy.starDistributionTitle).toBe("Star distribution");
+    expect(copy.topStarsTitle).toBe("Top by stars");
     expect(copy.chartCaption).toBe(AWESOME_INSIGHTS_CAPTION);
     expect(copy.starsOmitted).toMatch(/live repo stars when fetched/i);
     expect(AWESOME_CATEGORY_LABELS.protocols.en).toBe("Protocols & SDKs");
@@ -902,10 +904,10 @@ describe("Awesome AI OSS Insights tab", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Live star_count distribution" }),
+      screen.getByRole("heading", { name: "Star distribution" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Top 10 by live star_count" }),
+      screen.getByRole("heading", { name: "Top by stars" }),
     ).toBeInTheDocument();
     expect(screen.getByTestId("chart-stars")).toBeInTheDocument();
     expect(screen.getByTestId("chart-top")).toBeInTheDocument();
