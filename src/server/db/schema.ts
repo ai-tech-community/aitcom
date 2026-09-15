@@ -4161,3 +4161,27 @@ export const awesomeAiOssSaveRelations = relations(
     }),
   }),
 );
+
+/** Thin public /events list. No attendance / RSVP fields — never invent counts. */
+export const curatedPublicEvents = appSchema.table(
+  "curated_public_event",
+  (d) => ({
+    id: d.varchar({ length: 255 }).notNull().primaryKey(),
+    title: d.text().notNull(),
+    date: d.date().notNull(),
+    online: d.boolean().notNull().default(false),
+    city: d.text(),
+    url: d.text().notNull(),
+    whyEn: d.text().notNull(),
+    whyNl: d.text().notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("curated_public_event_url_idx").on(t.url),
+    index("curated_public_event_date_idx").on(t.date),
+  ],
+);

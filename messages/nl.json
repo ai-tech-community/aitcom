@@ -1195,6 +1195,15 @@
     "kicker": "Gids",
     "title": "Wat “agent-ready” betekent voor een AI-communitysite"
   },
+  "publicEvents": {
+    "kicker": "Evenementen",
+    "title": "AI-evenementen",
+    "lead": "Publieke AI-events die we voor bouwers lijsten: datum, stad of online, en de officiële pagina. Word lid van de Hub — community-aanmelding, geen eventticket.",
+    "joinCta": "Word lid van de Hub",
+    "empty": "Nog geen events op de lijst. Events uit de AIT-room landen hier.",
+    "eventPage": "Officiële eventpagina",
+    "online": "Online"
+  },
   "worldSummitEvent": {
     "kicker": "Event",
     "title": "World Summit AI Amsterdam 2026 op AIT Community (en hoe je meedoet)"
