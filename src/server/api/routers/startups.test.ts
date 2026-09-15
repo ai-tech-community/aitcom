@@ -52,6 +52,11 @@ describe("startups router locks", () => {
     expect(src).toContain("founders");
     expect(src).toContain("exitStatus");
     expect(src).toContain("jobsUrl");
+    expect(src).toContain("logo_url");
+    expect(src).toContain("jobs_url");
+    expect(src).toContain("exit_acquirer");
+    expect(src).toContain("exit_year");
+    expect(src).toContain("pulseExitAlias");
     expect(STARTUPS_HOMEPAGE_ERROR).toMatch(/homepage URL/i);
     expect(STARTUPS_DUPLICATE_ERROR).toMatch(/already/i);
     expect(STARTUPS_EXIT_ERROR).toMatch(/acquired, IPO, or shutdown/i);

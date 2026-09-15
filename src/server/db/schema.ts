@@ -4201,7 +4201,8 @@ export const startups = appSchema.table(
       .varchar({ length: 16 })
       .$type<"acquired" | "ipo" | "shutdown">(),
     acquirer: d.text(),
-    exitOn: d.date(),
+    /** Sourced year (`2024`) or date (`YYYY-MM-DD`). Never invent a day. */
+    exitOn: d.text(),
     jobsUrl: d.text(),
     status: d
       .varchar({ length: 16 })

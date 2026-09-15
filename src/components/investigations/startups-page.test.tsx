@@ -528,6 +528,9 @@ describe("Startups site integration", () => {
     );
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/v1 seed/i);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/people graph/i);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/enriched/i);
+    expect(readFileSync(FIXTURE, "utf8")).toContain("jobs_url");
+    expect(readFileSync(FIXTURE, "utf8")).toContain('"status": "ipo"');
     expect(readFileSync(SOFT_OMIT_MIGRATION_FILE, "utf8")).toContain(
       "jobs_url",
     );

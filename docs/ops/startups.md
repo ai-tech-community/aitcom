@@ -15,11 +15,17 @@ Fixed taxonomy (store as `ai-infra` when Pulse says `AI infra`):
 
 ## v1 seed (20/20)
 
-Ops Pass 2026-09-15. Migration `20260915c_startups_v1_seeds` inserts these
-twenty Pulse-verified rows (homepage 200 + 1–3 sources). Blank region/stage
-are stored null and soft-omitted. Logos soft-omit if missing or they fail to
-load. Founders, exit, and jobs_url stay blank on v1 — Pulse did not pass
-those fields. No invented size, price, or people-graph figures.
+Ops Pass 2026-09-15, enriched the same day. Migration
+`20260915c_startups_v1_seeds` inserts the twenty Pulse-verified rows
+(homepage 200 + 1–3 sources). `20260915e_startups_v1_enriched` writes
+Ops-passed founders / exit / jobs_url onto those rows. Blank region/stage
+stay null and soft-omitted. Logos soft-omit if missing or they fail to
+load.
+
+Enriched batch 1: jobs_url 20/20 (careers 200). Founders 17/20 — soft-omit
+Weaviate, Apptronik, Skild. Exits: Oklo `ipo` / 2024; Cursor `acquired` /
+2026, acquirer SpaceX. **Never invent a people graph or who-works-where.**
+No invented size or price figures.
 
 Ship list: Figure AI · Agility Robotics · Apptronik · 1X Technologies ·
 Physical Intelligence · Skild AI · Crusoe · Aalo Atomics · Oklo · Emerald AI ·
@@ -30,10 +36,11 @@ Weaviate · Fireworks AI · Perplexity · Cursor (Anysphere).
 Midjourney · ElevenLabs · Runway · Scale AI · Glean · Sierra · Factory ·
 Cognition.
 
-Source of truth for the twenty rows:
-[`src/lib/investigations/startups-v1-seeds.ts`](../../src/lib/investigations/startups-v1-seeds.ts).
-Same payload for API retries:
+Canonical insert payload (post-merge API / admin Neon retries):
 [`fixtures/startups-batch1-payload.json`](fixtures/startups-batch1-payload.json).
+Stable ids live in
+[`src/lib/investigations/startups-v1-seeds.ts`](../../src/lib/investigations/startups-v1-seeds.ts)
+— UI components do not bake this list.
 
 ## Insert API (staff / Hub operator)
 
@@ -49,7 +56,8 @@ tRPC router `startups`, Hub owner/admin only:
 | `startups.updateStartup`  | Edit an existing row                      |
 | `startups.listApproved`   | Public read (also what the page uses)     |
 
-Row shape (Pulse-compatible):
+Row shape — Pulse fixture aliases are accepted (`logo_url`, `jobs_url`,
+`status` as the sourced exit, `exit_acquirer`, `exit_year`):
 
 ```json
 {
@@ -62,14 +70,12 @@ Row shape (Pulse-compatible):
   ],
   "region": null,
   "stage": null,
-  "logoUrl": null,
-  "lat": null,
-  "lng": null,
-  "founders": [],
-  "exitStatus": null,
-  "acquirer": null,
-  "exitOn": null,
-  "jobsUrl": null
+  "logo_url": null,
+  "founders": [{ "name": "Ada Example", "url": null }],
+  "status": null,
+  "exit_acquirer": null,
+  "exit_year": null,
+  "jobs_url": "https://example.com/careers"
 }
 ```
 
@@ -81,10 +87,11 @@ Rules:
 - `founders` is sourced-only `{ name, url? }[]`. Blank name rows drop. Max 8.
   Leave `[]` when Pulse did not pass names. **Never invent a people graph or
   who-works-where.** Ops will Fail invent.
-- `exitStatus` is sourced-only `acquired` | `ipo` | `shutdown`. Optional
-  `acquirer` and `exitOn` (`YYYY-MM-DD`) only when that exit is sourced.
-  Blank = soft-omit (no badge). Listing `status` (`pending|approved|rejected`)
-  is a different field — do not collide.
+- Pulse `status` / `exitStatus` is sourced-only `acquired` | `ipo` |
+  `shutdown`. Optional `exit_acquirer` / `acquirer` and `exit_year` /
+  `exitOn` (`YYYY` or `YYYY-MM-DD`) only when that exit is sourced. Do not
+  invent 1 January. Blank = soft-omit (no badge). Listing
+  `pending|approved|rejected` is a different field — do not collide.
 - `jobsUrl` only when Ops confirmed the careers page returns **HTTP 200**.
   Same contract as homepage: confirm at insert, no live fetch on render.
   Blank or non-200 = soft-omit (no Open jobs CTA).
@@ -97,26 +104,11 @@ Rules:
 - Do not send size, price, attendance, or growth figures. Those fields do not
   exist.
 
-Map Pulse `logo_url` → `logoUrl` and `jobs_url` → `jobsUrl` when calling
-`createStartups`. Example:
+The fixture is the insert payload. `createStartups` accepts Pulse field
+names:
 
 ```ts
-await caller.startups.createStartups({
-  rows: payload.seeds.map((row) => ({
-    name: row.name,
-    homepage: row.homepage,
-    category: row.category,
-    sources: row.sources,
-    region: row.region,
-    stage: row.stage,
-    logoUrl: row.logo_url,
-    founders: row.founders ?? [],
-    exitStatus: row.exit_status ?? null,
-    acquirer: row.acquirer ?? null,
-    exitOn: row.exit_on ?? null,
-    jobsUrl: row.jobs_url ?? null,
-  })),
-});
+await caller.startups.createStartups({ rows: payload.seeds });
 ```
 
 Staff can also add or edit a single row from the Directory when signed in as a

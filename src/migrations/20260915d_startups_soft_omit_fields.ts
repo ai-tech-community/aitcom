@@ -9,7 +9,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       ADD COLUMN IF NOT EXISTS "founders" jsonb NOT NULL DEFAULT '[]'::jsonb,
       ADD COLUMN IF NOT EXISTS "exit_status" varchar(16),
       ADD COLUMN IF NOT EXISTS "acquirer" text,
-      ADD COLUMN IF NOT EXISTS "exit_on" date,
+      ADD COLUMN IF NOT EXISTS "exit_on" text,
       ADD COLUMN IF NOT EXISTS "jobs_url" text;
   `);
 }

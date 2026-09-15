@@ -16,6 +16,7 @@ import {
   paginateStartupCards,
   parseStartupCategory,
   parseStartupDirectoryQuery,
+  mapPulseStartupWrite,
   parseStartupExitOn,
   parseStartupExitStatus,
   presentText,
@@ -181,8 +182,49 @@ describe("soft-omit helpers", () => {
     expect(parseStartupExitStatus("")).toBeNull();
     expect(parseStartupExitStatus("stealth unicorn")).toBeNull();
     expect(parseStartupExitOn("2024-06-01")).toBe("2024-06-01");
+    expect(parseStartupExitOn("2024")).toBe("2024");
+    expect(parseStartupExitOn("2026")).toBe("2026");
     expect(parseStartupExitOn("June 2024")).toBeNull();
     expect(parseStartupExitOn("")).toBeNull();
+  });
+
+  it("maps Pulse fixture aliases without inventing people or a day", () => {
+    const mapped = mapPulseStartupWrite({
+      name: "Cursor (Anysphere)",
+      homepage: "https://cursor.com/",
+      category: "agents",
+      sources: ["https://cursor.com/about"],
+      logo_url: "https://cursor.com/og.png",
+      founders: [{ name: "Michael Truell", url: null }],
+      status: "acquired",
+      exit_acquirer: "SpaceX",
+      exit_year: 2026,
+      jobs_url: "https://cursor.com/careers",
+    });
+    expect(mapped.exitStatus).toBe("acquired");
+    expect(mapped.acquirer).toBe("SpaceX");
+    expect(mapped.exitOn).toBe("2026");
+    expect(mapped.jobsUrl).toBe("https://cursor.com/careers");
+    expect(mapped.founders).toEqual([{ name: "Michael Truell", url: null }]);
+    expect(mapped.logoUrl).toBe("https://cursor.com/og.png");
+    expect(
+      mapPulseStartupWrite({
+        name: "Weaviate",
+        homepage: "https://weaviate.io/",
+        category: "AI infra",
+        sources: ["https://weaviate.io/company/"],
+        founders: null,
+        status: "approved",
+        exit_year: null,
+        jobs_url: "https://weaviate.io/company/careers",
+      }),
+    ).toMatchObject({
+      founders: [],
+      exitStatus: null,
+      acquirer: null,
+      exitOn: null,
+      category: "ai-infra",
+    });
   });
 
   it("pins city/HQ or region centroid and lists unknown with no pin", () => {

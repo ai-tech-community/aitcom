@@ -15,6 +15,7 @@ import {
   parseStartupCategory,
   parseStartupExitOn,
   parseStartupExitStatus,
+  pulseExitAlias,
   resolveStartupPinCoords,
   sanitizeStartupFounders,
   sanitizeStartupSources,
@@ -44,7 +45,28 @@ const optionalBlank = z
     return value.length > 0 ? value : null;
   });
 
-const createStartupInput = z.object({
+function flattenPulseStartupRow(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const row = raw as Record<string, unknown>;
+  const exitYear = row.exitOn ?? row.exit_year;
+  const exitOn =
+    typeof exitYear === "string" || typeof exitYear === "number"
+      ? String(exitYear)
+      : null;
+  return {
+    ...row,
+    logoUrl: row.logoUrl ?? row.logo_url ?? null,
+    jobsUrl: row.jobsUrl ?? row.jobs_url ?? null,
+    exitStatus:
+      row.exitStatus ??
+      pulseExitAlias(typeof row.status === "string" ? row.status : null),
+    acquirer: row.acquirer ?? row.exit_acquirer ?? null,
+    exitOn,
+    founders: Array.isArray(row.founders) ? row.founders : [],
+  };
+}
+
+const createStartupFields = z.object({
   name: z.string().trim().min(1).max(STARTUPS_NAME_MAX),
   homepage: z.string().trim().min(1).max(500),
   category: z.string().trim().min(1).max(32),
@@ -69,7 +91,19 @@ const createStartupInput = z.object({
   jobsUrl: optionalBlank,
 });
 
-type CreateStartupInput = z.infer<typeof createStartupInput>;
+const createStartupInput = z.preprocess(
+  flattenPulseStartupRow,
+  createStartupFields,
+);
+
+const updateStartupInput = z.preprocess(
+  flattenPulseStartupRow,
+  createStartupFields.extend({
+    id: z.string().trim().min(1),
+  }),
+);
+
+type CreateStartupInput = z.infer<typeof createStartupFields>;
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
@@ -231,11 +265,7 @@ export const startupsRouter = createTRPCRouter({
     }),
 
   updateStartup: protectedProcedure
-    .input(
-      createStartupInput.extend({
-        id: z.string().trim().min(1),
-      }),
-    )
+    .input(updateStartupInput)
     .mutation(async ({ ctx, input }) => {
       await requireHubOperator(ctx);
       const existing = await findStartupById(input.id);

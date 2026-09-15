@@ -148,16 +148,41 @@ describe("Startups v1 Ops-Passed seeds", () => {
     expect(
       cards.filter((card) => card.lat == null && card.lng == null),
     ).toHaveLength(18);
+  });
+
+  it("applies Ops-passed founders, exits, and jobs_url; soft-omits the rest", () => {
+    const cards = startupsV1PublicCards();
+    const byName = new Map(cards.map((card) => [card.name, card]));
+
+    expect(cards.filter((card) => card.founders.length > 0)).toHaveLength(17);
     expect(
-      cards.every(
-        (card) =>
-          card.founders.length === 0 &&
-          card.exitStatus == null &&
-          card.acquirer == null &&
-          card.exitOn == null &&
-          card.jobsUrl == null,
+      ["Weaviate", "Apptronik", "Skild AI"].map(
+        (name) => byName.get(name)?.founders,
       ),
-    ).toBe(true);
+    ).toEqual([[], [], []]);
+    expect(cards.every((card) => card.founders.length <= 8)).toBe(true);
+    expect(byName.get("Anthropic")?.founders).toHaveLength(8);
+
+    expect(byName.get("Oklo")).toMatchObject({
+      exitStatus: "ipo",
+      acquirer: null,
+      exitOn: "2024",
+    });
+    expect(byName.get("Cursor (Anysphere)")).toMatchObject({
+      exitStatus: "acquired",
+      acquirer: "SpaceX",
+      exitOn: "2026",
+    });
+    expect(
+      cards.filter((card) => card.exitStatus != null).map((card) => card.name),
+    ).toEqual(["Oklo", "Cursor (Anysphere)"]);
+
+    expect(cards.every((card) => card.jobsUrl != null)).toBe(true);
+    expect(byName.get("Weaviate")?.jobsUrl).toBe(
+      "https://weaviate.io/company/careers",
+    );
+    expect(JSON.stringify(cards)).not.toMatch(BANNED_METRIC);
+    expect(JSON.stringify(cards)).not.toMatch(/who-works-where|people graph/i);
   });
 
   it("feeds Insights from listed seed rows only", () => {
@@ -203,8 +228,15 @@ describe("Startups v1 seed migration", () => {
     expect(migration).toContain("ON CONFLICT");
     expect(index).toContain("20260915c_startups_v1_seeds");
     expect(index).toMatch(
-      /20260915b_startups[\s\S]*20260915c_startups_v1_seeds/,
+      /20260915b_startups[\s\S]*20260915c_startups_v1_seeds[\s\S]*20260915d_startups_soft_omit_fields[\s\S]*20260915e_startups_v1_enriched/,
     );
+    const enrich = readFileSync(
+      join(root, "migrations/20260915e_startups_v1_enriched.ts"),
+      "utf8",
+    );
+    expect(enrich).toMatch(/UPDATE "app"\."startup"/);
+    expect(enrich).toContain("STARTUPS_V1_SEEDS");
+    expect(enrich).not.toMatch(/INSERT INTO/i);
     for (const overflow of OVERFLOW_NAMES) {
       expect(migration).not.toContain(overflow);
     }

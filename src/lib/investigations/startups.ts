@@ -229,11 +229,62 @@ export function isStartupExitStatus(
 }
 
 export function parseStartupExitOn(
-  value: string | null | undefined,
+  value: string | number | null | undefined,
 ): string | null {
-  const trimmed = value?.trim() ?? "";
+  const trimmed = value == null ? "" : String(value).trim();
   if (!trimmed) return null;
+  if (/^\d{4}$/.test(trimmed)) return trimmed;
   return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null;
+}
+
+export type PulseStartupRow = {
+  name: string;
+  homepage: string;
+  category: string;
+  sources: readonly string[];
+  region?: string | null;
+  stage?: string | null;
+  logo_url?: string | null;
+  logoUrl?: string | null;
+  founders?: readonly { name?: string | null; url?: string | null }[] | null;
+  status?: string | null;
+  exitStatus?: string | null;
+  exit_acquirer?: string | null;
+  acquirer?: string | null;
+  exit_year?: string | number | null;
+  exitOn?: string | number | null;
+  jobs_url?: string | null;
+  jobsUrl?: string | null;
+};
+
+/** Pulse `status` is the sourced exit, not listing pending|approved|rejected. */
+export function pulseExitAlias(
+  value: string | null | undefined,
+): StartupExitStatus | null {
+  return parseStartupExitStatus(value);
+}
+
+export function mapPulseStartupWrite(row: PulseStartupRow) {
+  const exitStatus =
+    parseStartupExitStatus(row.exitStatus) ?? pulseExitAlias(row.status);
+  const logoRaw = presentText(row.logoUrl) ?? presentText(row.logo_url);
+  const jobsRaw = presentText(row.jobsUrl) ?? presentText(row.jobs_url);
+  return {
+    name: row.name,
+    homepage: normalizeStartupHomepage(row.homepage),
+    category: parseStartupCategory(row.category),
+    sources: sanitizeStartupSources(row.sources),
+    region: presentText(row.region),
+    stage: presentText(row.stage),
+    logoUrl: logoRaw ? normalizeStartupHomepage(logoRaw) : null,
+    founders: sanitizeStartupFounders(row.founders),
+    exitStatus,
+    acquirer: exitStatus
+      ? (presentText(row.acquirer) ?? presentText(row.exit_acquirer))
+      : null,
+    exitOn: exitStatus ? parseStartupExitOn(row.exitOn ?? row.exit_year) : null,
+    jobsUrl: jobsRaw ? normalizeStartupHomepage(jobsRaw) : null,
+  };
 }
 
 export function sanitizeStartupFounders(
