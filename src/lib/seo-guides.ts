@@ -127,5 +127,19 @@ export function appPathFromGuideHref(href: string): string | null {
   if (awesomeRoot) {
     return "/investigations/awesome-ai-oss";
   }
+  const startupsRoot =
+    pathOnly === "/investigations/startups" ||
+    pathOnly === "/en/investigations/startups" ||
+    pathOnly === "/nl/investigations/startups";
+  const startupsInsights =
+    pathOnly === "/investigations/startups/insights" ||
+    pathOnly === "/en/investigations/startups/insights" ||
+    pathOnly === "/nl/investigations/startups/insights";
+  if (startupsInsights || (startupsRoot && params.get("tab") === "insights")) {
+    return "/investigations/startups/insights";
+  }
+  if (startupsRoot) {
+    return "/investigations/startups";
+  }
   return null;
 }

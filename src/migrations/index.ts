@@ -92,6 +92,8 @@ import * as migration_20260914e_awesome_ai_oss_seeds_chunk_5 from "./20260914e_a
 import * as migration_20260914f_awesome_ai_oss_seeds_chunk_6 from "./20260914f_awesome_ai_oss_seeds_chunk_6";
 import * as migration_20260914g_awesome_ai_oss_phase_3 from "./20260914g_awesome_ai_oss_phase_3";
 import * as migration_20260915a_curated_public_events from "./20260915a_curated_public_events";
+import * as migration_20260915b_startups from "./20260915b_startups";
+import * as migration_20260915c_startups_v1_seeds from "./20260915c_startups_v1_seeds";
 
 export const migrations = [
   {
@@ -563,5 +565,15 @@ export const migrations = [
     up: migration_20260915a_curated_public_events.up,
     down: migration_20260915a_curated_public_events.down,
     name: "20260915a_curated_public_events",
+  },
+  {
+    up: migration_20260915b_startups.up,
+    down: migration_20260915b_startups.down,
+    name: "20260915b_startups",
+  },
+  {
+    up: migration_20260915c_startups_v1_seeds.up,
+    down: migration_20260915c_startups_v1_seeds.down,
+    name: "20260915c_startups_v1_seeds",
   },
 ];

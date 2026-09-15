@@ -45,6 +45,7 @@ import { linksRouter } from "@/server/api/routers/links";
 import { classroomsRouter } from "@/server/api/routers/classrooms";
 import { spacesRouter } from "@/server/api/routers/spaces";
 import { awesomeAiOssRouter } from "@/server/api/routers/awesome-ai-oss";
+import { startupsRouter } from "@/server/api/routers/startups";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -100,6 +101,7 @@ export const appRouter = createTRPCRouter({
   classrooms: classroomsRouter,
   spaces: spacesRouter,
   awesomeAiOss: awesomeAiOssRouter,
+  startups: startupsRouter,
 });
 
 // export type definition of API

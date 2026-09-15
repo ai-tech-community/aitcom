@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { awesomeDirectorySitemapPaths } from "@/lib/investigations/awesome-ai-oss";
+import { startupDirectorySitemapPaths } from "@/lib/investigations/startups";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import {
   HUB_FORUM_PATH,
@@ -34,6 +35,8 @@ const STATIC_PAGES = [
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
+  "/investigations/startups",
+  "/investigations/startups/insights",
   "/roles",
 ] as const;
 
@@ -108,12 +111,25 @@ async function defaultAwesomePagePaths(): Promise<string[]> {
   }
 }
 
+async function defaultStartupPagePaths(): Promise<string[]> {
+  try {
+    const { listApprovedPublicStartups } =
+      await import("@/server/startups/queries");
+    const cards = await listApprovedPublicStartups();
+    return startupDirectorySitemapPaths(cards.length);
+  } catch (error) {
+    console.error("[sitemap] startups directory page lookup failed", error);
+    return [];
+  }
+}
+
 export async function buildSitemapEntries(
   getClient: () => Promise<SitemapClient> = getPayloadClient,
   getCommunitySlugById: () => Promise<
     ReadonlyMap<string, string>
   > = defaultCommunitySlugById,
   getAwesomePagePaths: () => Promise<string[]> = defaultAwesomePagePaths,
+  getStartupPagePaths: () => Promise<string[]> = defaultStartupPagePaths,
 ): Promise<MetadataRoute.Sitemap> {
   let awesomePagePaths: string[] = [];
   try {
@@ -121,10 +137,17 @@ export async function buildSitemapEntries(
   } catch (error) {
     console.error("[sitemap] awesome directory page lookup failed", error);
   }
+  let startupPagePaths: string[] = [];
+  try {
+    startupPagePaths = await getStartupPagePaths();
+  } catch (error) {
+    console.error("[sitemap] startups directory page lookup failed", error);
+  }
 
   const staticEntries = [
     ...STATIC_PAGES.map((path) => localeEntries(path)),
     ...awesomePagePaths.map((path) => localeEntries(path)),
+    ...startupPagePaths.map((path) => localeEntries(path)),
   ];
 
   let payload: SitemapClient;
