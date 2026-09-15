@@ -33,6 +33,7 @@ const STATIC_PAGES = [
   "/guides/mcp-registry-vs-community-hub",
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
+  "/investigations/awesome-ai-oss/insights",
 ] as const;
 
 type SitemapDoc = {
