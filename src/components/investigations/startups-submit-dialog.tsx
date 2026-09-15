@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ export function StartupsSubmitDialog({
   const [logoUrl, setLogoUrl] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
+  const router = useRouter();
   const utils = api.useUtils();
 
   useEffect(() => {
@@ -102,6 +104,7 @@ export function StartupsSubmitDialog({
     onSuccess: async () => {
       toast.success(copy.success);
       await utils.startups.listApproved.invalidate();
+      router.refresh();
       reset();
       onOpenChange(false);
     },
@@ -112,6 +115,7 @@ export function StartupsSubmitDialog({
     onSuccess: async () => {
       toast.success(copy.updateSuccess);
       await utils.startups.listApproved.invalidate();
+      router.refresh();
       reset();
       onOpenChange(false);
     },

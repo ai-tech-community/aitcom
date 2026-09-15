@@ -89,6 +89,8 @@ const SEED_MIGRATION_FILE = join(
 );
 const SEED_MODULE = join(dir, "../../lib/investigations/startups-v1-seeds.ts");
 const QUERIES_FILE = join(dir, "../../server/startups/queries.ts");
+const PAGINATION_FILE = join(dir, "startups-pagination.tsx");
+const SUBMIT_FILE = join(dir, "startups-submit-dialog.tsx");
 const OPS_DOC = join(dir, "../../../docs/ops/startups.md");
 const FIXTURE = join(
   dir,
@@ -380,6 +382,29 @@ describe("Startups site integration", () => {
       /createStartup|createStartups/,
     );
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/v1 seed/i);
+  });
+
+  it("SSR-reads Neon, paginates with crawlable ?page= links, and sitemaps from the live count", () => {
+    const page = readFileSync(PAGE_FILE, "utf8");
+    const insights = readFileSync(INSIGHTS_FILE, "utf8");
+    const queries = readFileSync(QUERIES_FILE, "utf8");
+    const sitemap = readFileSync(SITEMAP_FILE, "utf8");
+    const pagination = readFileSync(PAGINATION_FILE, "utf8");
+    const submit = readFileSync(SUBMIT_FILE, "utf8");
+
+    expect(page).toContain("listApprovedPublicStartups");
+    expect(page).toContain('dynamic = "force-dynamic"');
+    expect(insights).toContain("listApprovedPublicStartups");
+    expect(insights).toContain('dynamic = "force-dynamic"');
+    expect(queries).not.toMatch(/unstable_cache|revalidateTag/);
+    expect(submit).toContain("router.refresh()");
+
+    expect(pagination).toContain("buildStartupDirectoryPath");
+    expect(pagination).toContain("<Link");
+    expect(pagination).not.toMatch(/onClick=\{[^}]*page/);
+
+    expect(sitemap).toContain("listApprovedPublicStartups");
+    expect(sitemap).toContain("startupDirectorySitemapPaths(cards.length)");
   });
 
   it("does not bake Pulse company names into UI components or queries", () => {

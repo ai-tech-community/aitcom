@@ -51,6 +51,7 @@ describe("startups router locks", () => {
     expect(queries).toContain("listApprovedPublicStartups");
     expect(queries).toMatch(/return \[\]/);
     expect(queries).not.toMatch(/curatedPublic|SEEDS|seedCards/);
+    expect(queries).not.toMatch(/unstable_cache|revalidateTag/);
     expect(queries).not.toMatch(BAKED_COMPANIES);
   });
 
