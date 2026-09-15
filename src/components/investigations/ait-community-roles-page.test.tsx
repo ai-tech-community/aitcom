@@ -262,6 +262,9 @@ describe("AIT Community roles page", () => {
     expect(src).toContain("getSession");
     expect(src).toContain("shouldPromoteJoin(toHubAuthUser(session?.user))");
     expect(src).toContain("promoteJoin");
+    expect(src).toContain('t("requestCta")');
+    expect(src).toContain('t("claimCta")');
+    expect(src).toContain("emptySeatCta");
     expect(src).not.toMatch(/export const revalidate/);
   });
 
@@ -275,6 +278,12 @@ describe("AIT Community roles page", () => {
     expect(en.investigationsAitCommunityRoles.claimCta).toBe("Claim this seat");
     expect(en.investigationsAitCommunityRoles.requestCta).toBe(
       "Request this seat",
+    );
+    expect(nl.investigationsAitCommunityRoles.requestCta).toBe(
+      "Vraag deze zetel aan",
+    );
+    expect(nl.investigationsAitCommunityRoles.claimCta).toBe(
+      "Claim deze zetel",
     );
     expect(en.nav.roles).toBe("Roles");
     expect(nl.nav.roles).toBe("Rollen");
