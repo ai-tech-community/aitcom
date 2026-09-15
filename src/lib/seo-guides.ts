@@ -111,11 +111,20 @@ export function appPathFromGuideHref(href: string): string | null {
   ) {
     return "/events/world-summit-ai-amsterdam-2026";
   }
-  if (
-    normalized === "/investigations/awesome-ai-oss" ||
-    normalized === "/en/investigations/awesome-ai-oss" ||
-    normalized === "/nl/investigations/awesome-ai-oss"
-  ) {
+  const [pathOnly, query = ""] = normalized.split("?");
+  const params = new URLSearchParams(query);
+  const awesomeRoot =
+    pathOnly === "/investigations/awesome-ai-oss" ||
+    pathOnly === "/en/investigations/awesome-ai-oss" ||
+    pathOnly === "/nl/investigations/awesome-ai-oss";
+  const awesomeInsights =
+    pathOnly === "/investigations/awesome-ai-oss/insights" ||
+    pathOnly === "/en/investigations/awesome-ai-oss/insights" ||
+    pathOnly === "/nl/investigations/awesome-ai-oss/insights";
+  if (awesomeInsights || (awesomeRoot && params.get("tab") === "insights")) {
+    return "/investigations/awesome-ai-oss/insights";
+  }
+  if (awesomeRoot) {
     return "/investigations/awesome-ai-oss";
   }
   return null;
