@@ -51,6 +51,8 @@ vi.mock("@/i18n/navigation", () => ({
 vi.mock("./startups-insights-charts", () => ({
   StartupCategoryMixChart: () => <div data-testid="chart-category" />,
   StartupRegionMixChart: () => <div data-testid="chart-region" />,
+  StartupStageMixChart: () => <div data-testid="chart-stage" />,
+  StartupSourcesCoverageChart: () => <div data-testid="chart-sources" />,
   StartupAddedOverTimeChart: () => <div data-testid="chart-added" />,
 }));
 
@@ -189,6 +191,46 @@ describe("StartupsPage", () => {
     expect(screen.getByTestId("startups-map")).toBeInTheDocument();
     expect(container.querySelector("img")).toBeNull();
     expect(hrefsOf(container)).toContain("https://fixture.example");
+    expect(hrefsOf(container)).toContain("https://fixture.example/about");
+    expect(screen.getByRole("link", { name: "About" })).toHaveAttribute(
+      "href",
+      "https://fixture.example/about",
+    );
+  });
+
+  it("uses Writing Bot chrome: slim deck, search, category, Newest", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[FIXTURE_CARD]}
+      />,
+    );
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: STARTUPS_H1,
+    });
+    expect(heading.className).toMatch(/text-2xl/);
+    expect(heading.className).not.toMatch(/text-5xl/);
+    expect(container.textContent).toContain(en.investigationsStartups.lead);
+    expect(container.textContent).toContain(en.investigationsStartups.lead2);
+    expect(
+      screen.getByPlaceholderText("Search companies…"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Filter by category").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Newest first").length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: "Directory" })).toHaveAttribute(
+      "href",
+      STARTUPS_PATH,
+    );
+    expect(screen.getByRole("link", { name: "Insights" })).toHaveAttribute(
+      "href",
+      STARTUPS_INSIGHTS_PATH,
+    );
+    expect(screen.getByRole("link", { name: "Open homepage" })).toHaveAttribute(
+      "href",
+      "https://fixture.example",
+    );
   });
 
   it("pins a sourced city/region with no stored coords, and skips unknown", () => {
@@ -289,13 +331,54 @@ describe("Startups Insights tab", () => {
     ];
     expect(
       tiles.map((tile) => tile.getAttribute("data-startups-insight-tile")),
-    ).toEqual(["added-over-time", "category-mix", "region-mix"]);
+    ).toEqual([
+      "added-over-time",
+      "category-mix",
+      "region-mix",
+      "stage-mix",
+      "sources-coverage",
+    ]);
     expect(tiles[0]).toHaveClass("md:col-span-2");
-    for (const tile of tiles) {
-      expect(
-        tile.querySelector("[data-startups-insight-table] table"),
-      ).not.toBeNull();
-    }
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Added over time" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Category" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Region" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Stage" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Sources coverage" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Directory" })).toHaveAttribute(
+      "href",
+      STARTUPS_PATH,
+    );
+    const chartTiles = tiles.filter(
+      (tile) =>
+        tile.querySelector("[data-startups-insight-table] table") != null,
+    );
+    expect(
+      chartTiles.map((tile) => tile.getAttribute("data-startups-insight-tile")),
+    ).toEqual([
+      "added-over-time",
+      "category-mix",
+      "region-mix",
+      "sources-coverage",
+    ]);
+    const stageTile = tiles.find(
+      (tile) => tile.getAttribute("data-startups-insight-tile") === "stage-mix",
+    );
+    expect(stageTile?.hasAttribute("data-startups-insight-omitted")).toBe(true);
+    expect(
+      stageTile?.querySelector("[data-startups-insight-table]"),
+    ).toBeNull();
+    expect(screen.queryByTestId("chart-stage")).not.toBeInTheDocument();
+    expect(screen.getByTestId("chart-sources")).toBeInTheDocument();
     expect(container.textContent).toContain(STARTUPS_INSIGHTS_CAPTION);
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
   });

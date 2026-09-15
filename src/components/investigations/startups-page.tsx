@@ -29,13 +29,21 @@ export type StartupsKey =
   | "tabDirectory"
   | "tabInsights"
   | "tabNav"
+  | "lead2"
+  | "insightsLead2"
   | "categoryMixTitle"
   | "regionMixTitle"
+  | "stageMixTitle"
+  | "sourcesCoverageTitle"
   | "addedOverTimeTitle"
   | "chartCaption"
   | "regionOmitted"
+  | "stageOmitted"
+  | "sourcesOmitted"
   | "categoryColumn"
   | "regionColumn"
+  | "stageColumn"
+  | "sourcesColumn"
   | "monthColumn"
   | "countColumn"
   | "empty"
@@ -46,7 +54,7 @@ export function StartupsPage({
   t,
   companies = [],
   isModerator = false,
-  query = { q: "", category: "all", page: 1 },
+  query = { q: "", category: "all", sort: "newest", page: 1 },
   tab = "directory",
   insights,
 }: {
@@ -82,12 +90,15 @@ export function StartupsPage({
         {t("kicker")}
       </SectionLabel>
 
-      <div className="mt-8 max-w-2xl space-y-3">
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+      <div className="mt-6 flex max-w-2xl flex-col gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           {isInsights ? t("insightsTitle") : t("title")}
         </h1>
-        <p className="text-muted-foreground text-lg leading-relaxed">
+        <p className="text-muted-foreground text-base leading-relaxed">
           {isInsights ? t("insightsLead") : t("lead")}
+        </p>
+        <p className="text-muted-foreground text-base leading-relaxed">
+          {isInsights ? t("insightsLead2") : t("lead2")}
         </p>
       </div>
 
@@ -110,11 +121,17 @@ export function StartupsPage({
             copy={{
               categoryMixTitle: t("categoryMixTitle"),
               regionMixTitle: t("regionMixTitle"),
+              stageMixTitle: t("stageMixTitle"),
+              sourcesCoverageTitle: t("sourcesCoverageTitle"),
               addedOverTimeTitle: t("addedOverTimeTitle"),
               chartCaption: t("chartCaption"),
               regionOmitted: t("regionOmitted"),
+              stageOmitted: t("stageOmitted"),
+              sourcesOmitted: t("sourcesOmitted"),
               categoryColumn: t("categoryColumn"),
               regionColumn: t("regionColumn"),
+              stageColumn: t("stageColumn"),
+              sourcesColumn: t("sourcesColumn"),
               monthColumn: t("monthColumn"),
               countColumn: t("countColumn"),
               empty: t("empty"),

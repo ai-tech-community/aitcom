@@ -167,6 +167,13 @@ describe("Startups v1 Ops-Passed seeds", () => {
       { region: "New York, US", count: 1 },
       { region: "Toronto, Canada", count: 1 },
     ]);
+    expect(stats.stageMix).toBeNull();
+    expect(
+      stats.sourcesCoverage?.map((row) => [row.sources, row.count]),
+    ).toEqual([
+      [2, 6],
+      [3, 14],
+    ]);
     expect(stats.addedOverTime).toEqual([
       { month: "2026-09", label: "Sep 2026", count: 20 },
     ]);

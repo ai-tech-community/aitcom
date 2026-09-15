@@ -5,6 +5,8 @@ import {
   StartupAddedOverTimeChart,
   StartupCategoryMixChart,
   StartupRegionMixChart,
+  StartupSourcesCoverageChart,
+  StartupStageMixChart,
 } from "@/components/investigations/startups-insights-charts";
 import type { StartupsInsightsStats } from "@/lib/investigations/startups-insights";
 import { cn } from "@/lib/utils";
@@ -12,11 +14,17 @@ import { cn } from "@/lib/utils";
 export type StartupsInsightsCopy = {
   categoryMixTitle: string;
   regionMixTitle: string;
+  stageMixTitle: string;
+  sourcesCoverageTitle: string;
   addedOverTimeTitle: string;
   chartCaption: string;
   regionOmitted: string;
+  stageOmitted: string;
+  sourcesOmitted: string;
   categoryColumn: string;
   regionColumn: string;
+  stageColumn: string;
+  sourcesColumn: string;
   monthColumn: string;
   countColumn: string;
   empty: string;
@@ -84,14 +92,88 @@ export function StartupsInsights({
           />
         </InsightTile>
       ) : (
-        <p
-          data-startups-region-omitted
-          className="text-muted-foreground text-sm leading-relaxed md:col-span-2"
+        <OmittedTile
+          tile="region-mix"
+          title={copy.regionMixTitle}
+          message={copy.regionOmitted}
+        />
+      )}
+
+      {stats.stageMix ? (
+        <InsightTile
+          tile="stage-mix"
+          title={copy.stageMixTitle}
+          caption={copy.chartCaption}
+          columns={[copy.stageColumn, copy.countColumn]}
+          rows={stats.stageMix.map((row) => [row.stage, String(row.count)])}
         >
-          {copy.regionOmitted}
-        </p>
+          <StartupStageMixChart
+            data={stats.stageMix}
+            label={copy.stageMixTitle}
+          />
+        </InsightTile>
+      ) : (
+        <OmittedTile
+          tile="stage-mix"
+          title={copy.stageMixTitle}
+          message={copy.stageOmitted}
+        />
+      )}
+
+      {stats.sourcesCoverage ? (
+        <InsightTile
+          tile="sources-coverage"
+          title={copy.sourcesCoverageTitle}
+          caption={copy.chartCaption}
+          columns={[copy.sourcesColumn, copy.countColumn]}
+          rows={stats.sourcesCoverage.map((row) => [
+            row.label,
+            String(row.count),
+          ])}
+        >
+          <StartupSourcesCoverageChart
+            data={stats.sourcesCoverage}
+            label={copy.sourcesCoverageTitle}
+          />
+        </InsightTile>
+      ) : (
+        <OmittedTile
+          tile="sources-coverage"
+          title={copy.sourcesCoverageTitle}
+          message={copy.sourcesOmitted}
+        />
       )}
     </div>
+  );
+}
+
+function OmittedTile({
+  tile,
+  title,
+  message,
+}: {
+  tile: string;
+  title: string;
+  message: string;
+}) {
+  const headingId = `${tile}-omitted`;
+  return (
+    <section
+      data-startups-insight-tile={tile}
+      data-startups-insight-omitted=""
+      aria-labelledby={headingId}
+      className="bg-card text-card-foreground flex flex-col gap-4 self-stretch rounded-xl border p-6 shadow-sm"
+    >
+      <h2 id={headingId} className="text-lg font-semibold tracking-tight">
+        {title}
+      </h2>
+      <p
+        data-startups-insight-omitted-copy=""
+        className="text-muted-foreground text-sm leading-relaxed"
+      >
+        {message}
+      </p>
+    </section>
   );
 }
 
@@ -122,7 +204,7 @@ function InsightTile({
         wide && "md:col-span-2",
       )}
     >
-      <div className="space-y-1">
+      <div className="flex flex-col gap-1">
         <h2 id={headingId} className="text-lg font-semibold tracking-tight">
           {title}
         </h2>

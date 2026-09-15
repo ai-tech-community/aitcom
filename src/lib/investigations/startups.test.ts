@@ -12,6 +12,7 @@ import {
   buildStartupDirectoryPath,
   displayStartupSources,
   normalizeStartupHomepage,
+  startupSourceLabel,
   paginateStartupCards,
   parseStartupCategory,
   parseStartupDirectoryQuery,
@@ -121,6 +122,21 @@ describe("homepage and sources", () => {
       "https://a.example",
     ]);
   });
+
+  it("labels sources from the URL so links stay crawlable", () => {
+    expect(startupSourceLabel("https://en.wikipedia.org/wiki/Anthropic")).toBe(
+      "Wikipedia",
+    );
+    expect(startupSourceLabel("https://techcrunch.com/tag/anthropic/")).toBe(
+      "TechCrunch",
+    );
+    expect(startupSourceLabel("https://cohere.com/about")).toBe("About");
+    expect(startupSourceLabel("https://cohere.com/about", "nl")).toBe("Over");
+    expect(startupSourceLabel("https://weaviate.io/blog")).toBe("Blog");
+    expect(startupSourceLabel("https://obscure.example/path")).toBe(
+      "obscure.example",
+    );
+  });
 });
 
 describe("soft-omit helpers", () => {
@@ -205,7 +221,12 @@ describe("directory query", () => {
       category: "models",
       page: "3",
     });
-    expect(query).toEqual({ q: "alpha", category: "models", page: 3 });
+    expect(query).toEqual({
+      q: "alpha",
+      category: "models",
+      sort: "newest",
+      page: 3,
+    });
     expect(startupDirectoryCanonicalPath(query)).toBe(STARTUPS_PATH);
     expect(buildStartupDirectoryPath({ page: 2 })).toBe(
       `${STARTUPS_PATH}?page=2`,

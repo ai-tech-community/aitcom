@@ -102,9 +102,10 @@ Hub operator (`Add a company`).
 
 ## Insights
 
-`/en/investigations/startups/insights` aggregates **listed Neon rows only**
-(category mix, region mix from non-blank region, listed-over-time). CSS bento
-+ HTML table fallback. No invented metrics.
+`/en/investigations/startups/insights` aggregates **listed Neon rows only**.
+Bento hero: Added over time. 2×2: Category / Region / Stage / Sources
+coverage. HTML table under each chart. Blank region/stage omit the chart
+(no fake empty series). Directory ↔ Insights are hard links.
 
 ## Crawl / SEO
 

@@ -16,7 +16,7 @@ export const STARTUPS_META =
 export const STARTUPS_INSIGHTS_H1 = "AI startups insights";
 
 export const STARTUPS_INSIGHTS_META =
-  "Category mix, region mix, and when companies were listed — from the live directory only. Blank region, stage, and logo stay omitted.";
+  "Added over time, plus category, region, stage, and source coverage — from the live directory only. Blank region and stage stay omitted.";
 
 export const STARTUPS_JOIN_HREF =
   "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=investigations&utm_campaign=startups";
@@ -67,9 +67,12 @@ export type StartupPublicCard = {
   listedOn: string;
 };
 
+export type StartupSort = "newest";
+
 export type StartupDirectoryFilters = {
   q: string;
   category: StartupCategoryId | "all";
+  sort?: StartupSort;
 };
 
 export type StartupDirectoryQuery = StartupDirectoryFilters & {
@@ -175,6 +178,42 @@ export function displayStartupSources(
   return clean.length >= 1 && clean.length <= 3 ? clean : [];
 }
 
+/** Visible `<a>` label from the URL itself — never a fabricated metric. */
+export function startupSourceLabel(
+  href: string,
+  locale: StartupLocale = "en",
+): string {
+  try {
+    const url = new URL(href);
+    const host = url.hostname.replace(/^www\./, "").toLowerCase();
+    if (host === "en.wikipedia.org" || host.endsWith(".wikipedia.org")) {
+      return "Wikipedia";
+    }
+    if (host === "techcrunch.com") return "TechCrunch";
+    const path = url.pathname.replace(/\/+$/, "").toLowerCase();
+    if (
+      path.endsWith("/about") ||
+      path.endsWith("/about-us") ||
+      /\/company(?:\/|$)/.test(path)
+    ) {
+      return locale === "nl" ? "Over" : "About";
+    }
+    if (
+      path.includes("/blog") ||
+      path.includes("/newsroom") ||
+      path.includes("/news")
+    ) {
+      return "Blog";
+    }
+    if (path.includes("/press")) {
+      return locale === "nl" ? "Pers" : "Press";
+    }
+    return host;
+  } catch {
+    return href;
+  }
+}
+
 function isUsableCoord(lat: number | null, lng: number | null): boolean {
   if (typeof lat !== "number" || typeof lng !== "number") return false;
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
@@ -251,17 +290,19 @@ export function parseStartupPage(value: string | string[] | undefined): number {
 export function parseStartupDirectoryQuery(raw: {
   q?: string | string[];
   category?: string | string[];
+  sort?: string | string[];
   page?: string | string[] | number;
 }): StartupDirectoryQuery {
   const q = firstParam(raw.q)?.trim() ?? "";
   const category = parseStartupCategory(firstParam(raw.category)) ?? "all";
+  const sort: StartupSort = "newest";
   const page =
     typeof raw.page === "number"
       ? raw.page >= 1 && Number.isFinite(raw.page)
         ? Math.floor(raw.page)
         : 1
       : parseStartupPage(raw.page);
-  return { q, category, page };
+  return { q, category, sort, page };
 }
 
 export function applyStartupDirectoryQuery(

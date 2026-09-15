@@ -12,6 +12,7 @@ import {
   STARTUP_CATEGORY_LABELS,
   displayStartupSources,
   formatStartupListedDate,
+  startupSourceLabel,
   presentText,
   type StartupLocale,
   type StartupPublicCard,
@@ -54,6 +55,9 @@ export function StartupsCard({
               width={40}
               height={40}
               className="border-border size-10 rounded-md border object-cover"
+              onError={(event) => {
+                event.currentTarget.style.display = "none";
+              }}
             />
           ) : null}
         </div>
@@ -73,14 +77,14 @@ export function StartupsCard({
               {copy.sources}
             </p>
             <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-              {sources.map((href, index) => (
+              {sources.map((href) => (
                 <li key={href}>
                   <a
                     href={href}
                     rel="noopener noreferrer"
                     className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
                   >
-                    {index + 1}
+                    {startupSourceLabel(href, locale)}
                   </a>
                 </li>
               ))}

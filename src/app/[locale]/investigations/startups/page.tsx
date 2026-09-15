@@ -32,6 +32,7 @@ interface PageProps {
   searchParams: Promise<{
     q?: string;
     category?: string;
+    sort?: string;
     page?: string;
     tab?: string;
   }>;

@@ -32,6 +32,7 @@ import {
   type StartupDirectoryQuery,
   type StartupLocale,
   type StartupPublicCard,
+  type StartupSort,
 } from "@/lib/investigations/startups";
 
 export function StartupsDirectory({
@@ -73,7 +74,10 @@ export function StartupsDirectory({
   const pins = useMemo(() => startupMapPins(filtered), [filtered]);
 
   function replaceQuery(next: Partial<StartupDirectoryQuery>) {
-    const filterChanged = next.q !== undefined || next.category !== undefined;
+    const filterChanged =
+      next.q !== undefined ||
+      next.category !== undefined ||
+      next.sort !== undefined;
     const merged = parseStartupDirectoryQuery({
       ...query,
       ...next,
@@ -125,6 +129,26 @@ export function StartupsDirectory({
                     {STARTUP_CATEGORY_LABELS[id][locale]}
                   </SelectItem>
                 ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="startup-sort" className="sr-only">
+            {t("sortNewest")}
+          </Label>
+          <Select
+            value={query.sort ?? "newest"}
+            onValueChange={(value) =>
+              replaceQuery({ sort: value as StartupSort })
+            }
+          >
+            <SelectTrigger id="startup-sort" className="w-full min-w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="newest">{t("sortNewest")}</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>
