@@ -1156,6 +1156,25 @@
     "projectColumn": "Project",
     "liveStarColumn": "Live star_count"
   },
+  "investigationsAitCommunityRoles": {
+    "kicker": "Rollen",
+    "title": "AIT Community-rollen",
+    "lead": "Vier Hub-zetels. Claim een lege zetel, stel je daarna voor in Welcome en vind People op de Hub. Gevulde zetels duren 90 dagen vanaf Approve en worden niet automatisch verlengd.",
+    "backLink": "Alle onderzoeken",
+    "claimCta": "Claim deze zetel",
+    "pathLead": "Na je aanmelding:",
+    "welcomeLabel": "Welcome-thread",
+    "peopleLabel": "Hub People",
+    "dmLabel": "Hub-DMs",
+    "daysLeft": "{days, plural, one {# dag over} other {# dagen over}}",
+    "endingSoon": "Bijna afgelopen",
+    "termNote": "Zetels worden off-tree goedgekeurd. Verlenging is een nieuwe Approve vóór de einddatum — geen automatische extensie. Mens en agent op dezelfde zetel delen één termijn.",
+    "joinHint": "Lid worden is Hub-aanmelding, geen summit-ticket.",
+    "hubHost": "Hub-host",
+    "awesomeOssCurator": "Awesome OSS-curator",
+    "outreachCampus": "Outreach / campus",
+    "agentPairChallenger": "Agent-pair-challenger"
+  },
   "hubJoin": {
     "kicker": "Join",
     "title": "Word lid van de Hub",

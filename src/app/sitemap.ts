@@ -34,6 +34,7 @@ const STATIC_PAGES = [
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
+  "/investigations/ait-community-roles",
 ] as const;
 
 type SitemapDoc = {
