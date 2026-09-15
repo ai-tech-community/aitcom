@@ -46,16 +46,12 @@ const PAGE_FILE = join(
 const INDEX_FILE = join(dir, "../../app/[locale]/investigations/page.tsx");
 const SITEMAP_FILE = join(dir, "../../app/sitemap.ts");
 
-function interpolate(
-  template: string,
-  values?: { days?: number },
-): string {
+function interpolate(template: string, values?: { days?: number }): string {
   if (values?.days == null) return template;
   const days = values.days;
   return template.replace(
     /\{days, plural, one \{# ([^}]+)\} other \{# ([^}]+)\}\}/,
-    (_match, one, other) =>
-      days === 1 ? `1 ${one}` : `${days} ${other}`,
+    (_match, one, other) => (days === 1 ? `1 ${one}` : `${days} ${other}`),
   );
 }
 
@@ -113,7 +109,9 @@ describe("AIT Community roles page", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: AIT_COMMUNITY_ROLES_H1 }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Hub host" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Hub host" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "Awesome OSS curator" }),
     ).toBeInTheDocument();
@@ -201,20 +199,20 @@ describe("AIT Community roles page", () => {
     expect(screen.getByText("14 days left")).toBeInTheDocument();
     expect(screen.getByText("Ending soon")).toBeInTheDocument();
     expect(container.querySelector('[data-variant="warning"]')).not.toBeNull();
-    expect(
-      container.querySelector('[data-variant="destructive"]'),
-    ).toBeNull();
+    expect(container.querySelector('[data-variant="destructive"]')).toBeNull();
     expect(screen.queryByText("0 days left")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Claim this seat" })).toHaveLength(
-      3,
-    );
+    expect(
+      screen.getAllByRole("link", { name: "Claim this seat" }),
+    ).toHaveLength(3);
   });
 
   it("has matching EN and NL keys without invented headcount", () => {
     const enKeys = Object.keys(en.investigationsAitCommunityRoles).sort();
     const nlKeys = Object.keys(nl.investigationsAitCommunityRoles).sort();
     expect(nlKeys).toEqual(enKeys);
-    expect(en.investigationsAitCommunityRoles.title).toBe(AIT_COMMUNITY_ROLES_H1);
+    expect(en.investigationsAitCommunityRoles.title).toBe(
+      AIT_COMMUNITY_ROLES_H1,
+    );
     expect(en.investigationsAitCommunityRoles.claimCta).toBe("Claim this seat");
 
     for (const messages of [

@@ -15,11 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: AIT_COMMUNITY_ROLES_H1,
     description: AIT_COMMUNITY_ROLES_META,
     robots: { index: true, follow: true },
-    ...buildOgMeta(
-      AIT_COMMUNITY_ROLES_H1,
-      AIT_COMMUNITY_ROLES_META,
-      "Roles",
-    ),
+    ...buildOgMeta(AIT_COMMUNITY_ROLES_H1, AIT_COMMUNITY_ROLES_META, "Roles"),
     alternates: await localeAlternates(AIT_COMMUNITY_ROLES_PATH),
   };
 }

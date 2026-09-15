@@ -69,7 +69,8 @@ export function termEndsAtFromApprove(
   return addUtcDays(approvedAt, days);
 }
 
-export const OUTREACH_TERM_ENDS_AT = termEndsAtFromApprove(OUTREACH_APPROVED_AT);
+export const OUTREACH_TERM_ENDS_AT =
+  termEndsAtFromApprove(OUTREACH_APPROVED_AT);
 
 export const AIT_COMMUNITY_ROLE_SEATS: readonly SeatRecord[] = [
   {

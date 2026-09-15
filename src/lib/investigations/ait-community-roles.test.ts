@@ -57,9 +57,9 @@ describe("AIT Community roles seat map", () => {
   });
 
   it("fills Outreach / campus with Reese Quinn only — no invented names", () => {
-    const names = AIT_COMMUNITY_ROLE_SEATS.map((seat) => seat.holderName).filter(
-      Boolean,
-    );
+    const names = AIT_COMMUNITY_ROLE_SEATS.map(
+      (seat) => seat.holderName,
+    ).filter(Boolean);
     expect(names).toEqual(["Reese Quinn"]);
 
     const outreach = resolveSeat(
@@ -78,7 +78,9 @@ describe("AIT Community roles seat map", () => {
     const blob = JSON.stringify(AIT_COMMUNITY_ROLE_SEATS);
     expect(blob).not.toMatch(/Greg/i);
     expect(
-      AIT_COMMUNITY_ROLE_SEATS.some((seat) => /Greg/i.test(seat.holderName ?? "")),
+      AIT_COMMUNITY_ROLE_SEATS.some((seat) =>
+        /Greg/i.test(seat.holderName ?? ""),
+      ),
     ).toBe(false);
   });
 });
@@ -160,7 +162,9 @@ describe("seat terms", () => {
 
 describe("roles claim paths", () => {
   it("uses the hard www Join door and existing Welcome / Hub People paths", () => {
-    expect(AIT_COMMUNITY_ROLES_PATH).toBe("/investigations/ait-community-roles");
+    expect(AIT_COMMUNITY_ROLES_PATH).toBe(
+      "/investigations/ait-community-roles",
+    );
     expect(AIT_COMMUNITY_ROLES_JOIN_HREF).toBe(
       "https://www.aitcommunity.org/en/join",
     );
