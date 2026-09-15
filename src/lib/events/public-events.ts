@@ -1,5 +1,5 @@
+import { HUB_OPEN_HREF } from "@/lib/join-path";
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
-import { HUB_FORUM_PATH } from "@/server/communities/forum-scope";
 
 export const PUBLIC_EVENTS_PATH = "/events";
 
@@ -12,7 +12,7 @@ export const PUBLIC_EVENTS_JOIN_HREF =
   "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=events&utm_campaign=ai-events";
 
 /** Signed-in Hub members open the existing Hub forum — not Join. */
-export const PUBLIC_EVENTS_HUB_HREF = HUB_FORUM_PATH;
+export const PUBLIC_EVENTS_HUB_HREF = HUB_OPEN_HREF;
 
 export const PUBLIC_EVENTS_WHY_MAX = 140;
 

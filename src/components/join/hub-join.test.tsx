@@ -21,7 +21,7 @@ vi.mock("@/i18n/navigation", () => ({
 
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
-import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
+import { HUB_OPEN_HREF } from "@/lib/join-path";
 import { GUIDE_PATHS } from "@/lib/seo-guides";
 import { HubJoin } from "./hub-join";
 
@@ -41,6 +41,12 @@ const DENIALS =
 
 function tFrom(messages: typeof en.hubJoin) {
   return (key: string) => messages[key as keyof typeof messages];
+}
+
+function hrefsOf(container: HTMLElement) {
+  return [...container.querySelectorAll("a")].map((node) =>
+    node.getAttribute("href"),
+  );
 }
 
 describe("hub join door", () => {
@@ -83,8 +89,8 @@ describe("hub join door", () => {
     ).toHaveAttribute("href", GUIDE_PATHS.registerAgentMcp);
   });
 
-  it("swaps the signup CTA to Hub for signed-in members", () => {
-    render(
+  it("swaps the signup CTA to Open Hub for signed-in members", () => {
+    const { container } = render(
       <HubJoin
         t={tFrom(en.hubJoin)}
         signupHref="/auth/signup"
@@ -95,9 +101,17 @@ describe("hub join door", () => {
     expect(
       screen.queryByRole("link", { name: en.hubJoin.cta }),
     ).not.toBeInTheDocument();
+    expect(container.textContent).not.toContain(en.hubJoin.title);
+    expect(container.textContent).not.toMatch(/Join the Hub/i);
+    expect(hrefsOf(container).some((href) => href?.includes("/join"))).toBe(
+      false,
+    );
     expect(
       screen.getByRole("link", { name: en.hubJoin.hubCta }),
-    ).toHaveAttribute("href", HUB_COMMUNITY_PATH);
+    ).toHaveAttribute("href", HUB_OPEN_HREF);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      en.hubJoin.memberTitle,
+    );
   });
 
   it("does not invent week activity, member counts, or summit tickets", () => {

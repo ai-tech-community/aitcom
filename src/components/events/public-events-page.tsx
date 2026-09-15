@@ -1,9 +1,7 @@
-import { Link } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
+import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
 import {
-  PUBLIC_EVENTS_HUB_HREF,
   PUBLIC_EVENTS_JOIN_HREF,
   publicEventPlace,
   publicEventsJsonLd,
@@ -50,13 +48,12 @@ export function PublicEventsPage({
       </div>
 
       <div className="mt-8">
-        <Button asChild>
-          {promoteJoin ? (
-            <a href={PUBLIC_EVENTS_JOIN_HREF}>{t("joinCta")}</a>
-          ) : (
-            <Link href={PUBLIC_EVENTS_HUB_HREF}>{t("hubCta")}</Link>
-          )}
-        </Button>
+        <PromoteJoinCta
+          promoteJoin={promoteJoin}
+          guestHref={PUBLIC_EVENTS_JOIN_HREF}
+          guestLabel={t("joinCta")}
+          hubLabel={t("hubCta")}
+        />
       </div>
 
       {events.length === 0 ? (

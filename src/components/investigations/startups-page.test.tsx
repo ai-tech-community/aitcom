@@ -451,7 +451,7 @@ describe("Startups Insights tab", () => {
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
   });
 
-  it("hides Directory and Insights Join CTAs for signed-in Hub members", () => {
+  it("swaps Directory and Insights Join to Open Hub for signed-in Hub members", () => {
     const directory = render(
       <StartupsPage
         locale="en"
@@ -464,6 +464,9 @@ describe("Startups Insights tab", () => {
     expect(directory.container.textContent).not.toContain(
       en.investigationsStartups.joinCta,
     );
+    expect(
+      screen.getByRole("link", { name: en.investigationsStartups.hubCta }),
+    ).toHaveAttribute("href", HUB_OPEN_HREF);
     directory.unmount();
 
     const insights = render(
@@ -479,6 +482,9 @@ describe("Startups Insights tab", () => {
     expect(insights.container.textContent).not.toContain(
       en.investigationsStartups.joinCta,
     );
+    expect(
+      screen.getByRole("link", { name: en.investigationsStartups.hubCta }),
+    ).toHaveAttribute("href", HUB_OPEN_HREF);
   });
 });
 
