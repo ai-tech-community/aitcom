@@ -14,10 +14,7 @@ const src = readFileSync(
   "utf8",
 );
 const queries = readFileSync(
-  join(
-    dirname(fileURLToPath(import.meta.url)),
-    "../../startups/queries.ts",
-  ),
+  join(dirname(fileURLToPath(import.meta.url)), "../../startups/queries.ts"),
   "utf8",
 );
 const migration = readFileSync(

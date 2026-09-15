@@ -142,12 +142,12 @@ describe("Startups v1 Ops-Passed seeds", () => {
       "New York, US",
       "Toronto, Canada",
     ]);
-    expect(pins.every((pin) => !/street|avenue|road/i.test(pin.region ?? ""))).toBe(
-      true,
-    );
-    expect(cards.filter((card) => card.lat == null && card.lng == null)).toHaveLength(
-      18,
-    );
+    expect(
+      pins.every((pin) => !/street|avenue|road/i.test(pin.region ?? "")),
+    ).toBe(true);
+    expect(
+      cards.filter((card) => card.lat == null && card.lng == null),
+    ).toHaveLength(18);
   });
 
   it("feeds Insights from listed seed rows only", () => {

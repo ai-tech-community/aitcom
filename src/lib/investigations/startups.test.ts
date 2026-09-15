@@ -223,7 +223,9 @@ describe("directory query", () => {
       `${STARTUPS_PATH}?page=3`,
     ]);
     const page = paginateStartupCards(
-      Array.from({ length: 51 }, (_, index) => sampleCard({ id: `n-${index}` })),
+      Array.from({ length: 51 }, (_, index) =>
+        sampleCard({ id: `n-${index}` }),
+      ),
       1,
     );
     expect(page.totalPages).toBe(3);

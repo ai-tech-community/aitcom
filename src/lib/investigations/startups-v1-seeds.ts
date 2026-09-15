@@ -55,10 +55,12 @@ function sourcesOf(hrefs: readonly string[]): string[] {
   return sources;
 }
 
-function seed(row: Omit<StartupV1Seed, "listedOn" | "homepage" | "sources"> & {
-  homepage: string;
-  sources: readonly string[];
-}): StartupV1Seed {
+function seed(
+  row: Omit<StartupV1Seed, "listedOn" | "homepage" | "sources"> & {
+    homepage: string;
+    sources: readonly string[];
+  },
+): StartupV1Seed {
   return {
     ...row,
     homepage: homepage(row.homepage),
@@ -238,7 +240,8 @@ export const STARTUPS_V1_SEEDS: readonly StartupV1Seed[] = [
     ],
     region: null,
     stage: null,
-    logoUrl: "https://mistral.ai/cms-media/api/media/file/OG-mistral-main_1x.jpg",
+    logoUrl:
+      "https://mistral.ai/cms-media/api/media/file/OG-mistral-main_1x.jpg",
   }),
   seed({
     id: "startup-cohere",
@@ -362,7 +365,9 @@ export const STARTUPS_V1_SEEDS: readonly StartupV1Seed[] = [
 const overflowHomepages = new Set<string>(STARTUPS_V1_OVERFLOW_HOMEPAGES);
 for (const row of STARTUPS_V1_SEEDS) {
   if (overflowHomepages.has(row.homepage)) {
-    throw new Error(`Startups v1 seed includes overflow homepage ${row.homepage}`);
+    throw new Error(
+      `Startups v1 seed includes overflow homepage ${row.homepage}`,
+    );
   }
 }
 
