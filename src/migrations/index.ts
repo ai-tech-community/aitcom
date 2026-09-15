@@ -96,6 +96,7 @@ import * as migration_20260915b_startups from "./20260915b_startups";
 import * as migration_20260915c_startups_v1_seeds from "./20260915c_startups_v1_seeds";
 import * as migration_20260915d_startups_soft_omit_fields from "./20260915d_startups_soft_omit_fields";
 import * as migration_20260915e_startups_v1_enriched from "./20260915e_startups_v1_enriched";
+import * as migration_20260915f_startups_v1_polish from "./20260915f_startups_v1_polish";
 
 export const migrations = [
   {
@@ -587,5 +588,10 @@ export const migrations = [
     up: migration_20260915e_startups_v1_enriched.up,
     down: migration_20260915e_startups_v1_enriched.down,
     name: "20260915e_startups_v1_enriched",
+  },
+  {
+    up: migration_20260915f_startups_v1_polish.up,
+    down: migration_20260915f_startups_v1_polish.down,
+    name: "20260915f_startups_v1_polish",
   },
 ];

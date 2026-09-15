@@ -114,9 +114,14 @@ export function StartupsSubmitDialog({
       setLogoUrl(editing.logoUrl ?? "");
       setFoundersText(
         editing.founders
-          .map((founder) =>
-            founder.url ? `${founder.name} | ${founder.url}` : founder.name,
-          )
+          .map((founder) => {
+            const parts = [founder.name];
+            if (founder.url || founder.imageUrl) {
+              parts.push(founder.url ?? "");
+            }
+            if (founder.imageUrl) parts.push(founder.imageUrl);
+            return parts.join(" | ");
+          })
           .join("\n"),
       );
       setExitStatus(editing.exitStatus ?? "");
@@ -212,8 +217,14 @@ export function StartupsSubmitDialog({
         .map((line) => line.trim())
         .filter(Boolean)
         .map((line) => {
-          const [name, url] = line.split("|").map((part) => part.trim());
-          return { name: name ?? "", url: url ?? null };
+          const [name, url, imageUrl] = line
+            .split("|")
+            .map((part) => part.trim());
+          return {
+            name: name ?? "",
+            url: url ?? null,
+            imageUrl: imageUrl ?? null,
+          };
         }),
       exitStatus: exitStatus || null,
       acquirer: acquirer.trim() || null,

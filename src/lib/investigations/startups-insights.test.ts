@@ -84,7 +84,7 @@ describe("buildStartupInsights", () => {
       ["models", 2],
       ["energy", 1],
     ]);
-    expect(stats.regionMix).toEqual([{ region: "Toronto, Canada", count: 1 }]);
+    expect(stats.regionMix).toBeNull();
     expect(stats.stageMix).toBeNull();
     expect(stats.sourcesCoverage).toEqual([
       { sources: 1, label: "1 source", count: 3 },
@@ -113,5 +113,38 @@ describe("buildStartupInsights", () => {
       { sources: 1, label: "1 source", count: 1 },
       { sources: 2, label: "2 sources", count: 1 },
     ]);
+  });
+
+  it("soft-omits region mix until five distinct sourced regions exist", () => {
+    const four = buildStartupInsights(
+      [
+        card({ id: "a", region: "Toronto, Canada" }),
+        card({ id: "b", region: "New York, US" }),
+        card({ id: "c", region: "Paris, France" }),
+        card({ id: "d", region: "Berlin, Germany" }),
+        card({ id: "e", region: null }),
+      ],
+      "en",
+    );
+    expect(four.regionMix).toBeNull();
+
+    const five = buildStartupInsights(
+      [
+        card({ id: "a", region: "Toronto, Canada" }),
+        card({ id: "b", region: "New York, US" }),
+        card({ id: "c", region: "Paris, France" }),
+        card({ id: "d", region: "Berlin, Germany" }),
+        card({ id: "e", region: "Tokyo, Japan" }),
+      ],
+      "en",
+    );
+    expect(five.regionMix?.map((row) => row.region)).toEqual([
+      "Berlin, Germany",
+      "New York, US",
+      "Paris, France",
+      "Tokyo, Japan",
+      "Toronto, Canada",
+    ]);
+    expect(five.regionMix?.every((row) => row.count > 0)).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { awesomeDirectorySitemapPaths } from "@/lib/investigations/awesome-ai-oss";
-import { startupDirectorySitemapPaths } from "@/lib/investigations/startups";
+import { startupInvestigationSitemapPaths } from "@/lib/investigations/startups";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import {
   HUB_FORUM_PATH,
@@ -35,8 +35,6 @@ const STATIC_PAGES = [
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
-  "/investigations/startups",
-  "/investigations/startups/insights",
   "/roles",
 ] as const;
 
@@ -116,7 +114,7 @@ async function defaultStartupPagePaths(): Promise<string[]> {
     const { listApprovedPublicStartups } =
       await import("@/server/startups/queries");
     const cards = await listApprovedPublicStartups();
-    return startupDirectorySitemapPaths(cards.length);
+    return startupInvestigationSitemapPaths(cards.length);
   } catch (error) {
     console.error("[sitemap] startups directory page lookup failed", error);
     return [];

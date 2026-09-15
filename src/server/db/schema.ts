@@ -4193,7 +4193,9 @@ export const startups = appSchema.table(
     logoUrl: d.text(),
     founders: d
       .json()
-      .$type<Array<{ name: string; url: string | null }>>()
+      .$type<
+        Array<{ name: string; url: string | null; imageUrl: string | null }>
+      >()
       .notNull()
       .default([]),
     /** Sourced exit only. Distinct from listing `status` pending|approved|rejected. */

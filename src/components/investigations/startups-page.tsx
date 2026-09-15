@@ -142,6 +142,7 @@ export function StartupsPage({
               monthColumn: t("monthColumn"),
               countColumn: t("countColumn"),
               empty: t("empty"),
+              emptyHelp: t("emptyHelp"),
             }}
           />
         ) : (
