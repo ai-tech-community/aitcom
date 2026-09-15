@@ -6,6 +6,7 @@ import {
   STARTUPS_INSIGHTS_H1,
   STARTUPS_INSIGHTS_META,
   STARTUPS_INSIGHTS_PATH,
+  startupsPublicRobots,
   type StartupLocale,
 } from "@/lib/investigations/startups";
 import { buildStartupInsights } from "@/lib/investigations/startups-insights";
@@ -21,10 +22,11 @@ import { listApprovedPublicStartups } from "@/server/startups/queries";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
+  const companies = await listApprovedPublicStartups();
   return {
     title: STARTUPS_INSIGHTS_H1,
     description: STARTUPS_INSIGHTS_META,
-    robots: { index: true, follow: true },
+    robots: startupsPublicRobots(companies.length),
     ...buildOgMeta(
       STARTUPS_INSIGHTS_H1,
       STARTUPS_INSIGHTS_META,

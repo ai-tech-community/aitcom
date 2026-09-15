@@ -8,14 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { StartupsFounders } from "@/components/investigations/startups-founders";
 import {
   STARTUP_CATEGORY_LABELS,
-  STARTUP_EXIT_STATUS_LABELS,
   displayStartupFounders,
-  displayStartupSources,
+  displayStartupSourceChips,
+  formatStartupExitBadge,
   formatStartupListedDate,
   presentText,
-  startupSourceLabel,
   type StartupLocale,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
@@ -42,24 +42,22 @@ export function StartupsCard({
   const region = presentText(card.region);
   const stage = presentText(card.stage);
   const logoUrl = presentText(card.logoUrl);
-  const sources = displayStartupSources(card.sources);
+  const chips = displayStartupSourceChips(card.sources, locale);
   const founders = displayStartupFounders(card.founders);
-  const exitStatus = card.exitStatus;
-  const acquirer = presentText(card.acquirer);
-  const exitOn = presentText(card.exitOn);
+  const exitBadge = formatStartupExitBadge(card, locale);
   const jobsUrl = presentText(card.jobsUrl);
 
   return (
     <Card className="h-full" data-startup-card={card.id}>
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             <Badge variant="secondary">
               {STARTUP_CATEGORY_LABELS[card.category][locale]}
             </Badge>
-            {exitStatus ? (
-              <Badge data-startup-exit={exitStatus}>
-                {STARTUP_EXIT_STATUS_LABELS[exitStatus][locale]}
+            {exitBadge ? (
+              <Badge data-startup-exit={card.exitStatus ?? ""}>
+                {exitBadge}
               </Badge>
             ) : null}
           </div>
@@ -80,59 +78,33 @@ export function StartupsCard({
         <CardTitle className="text-base">{card.name}</CardTitle>
         {stage ? <CardDescription>{stage}</CardDescription> : null}
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="flex flex-col gap-3">
         <p className="text-muted-foreground font-mono text-xs">
           {formatStartupListedDate(card.listedOn, locale)}
         </p>
         {region ? (
           <p className="text-muted-foreground text-sm">{region}</p>
         ) : null}
-        {exitStatus && (acquirer || exitOn) ? (
-          <p className="text-muted-foreground font-mono text-xs">
-            {[acquirer, exitOn].filter(Boolean).join(" · ")}
-          </p>
-        ) : null}
         {founders.length > 0 ? (
-          <div data-startup-founders="">
-            <p className="text-foreground text-sm font-medium">
-              {copy.founders}
-            </p>
-            <ul className="mt-1 flex flex-col gap-1">
-              {founders.map((founder) => (
-                <li key={`${founder.name}-${founder.url ?? ""}`}>
-                  {founder.url ? (
-                    <a
-                      href={founder.url}
-                      rel="noopener noreferrer"
-                      className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
-                    >
-                      {founder.name}
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground text-sm">
-                      {founder.name}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
+          <StartupsFounders founders={founders} label={copy.founders} />
         ) : null}
-        {sources.length > 0 ? (
-          <div>
+        {chips.length > 0 ? (
+          <div className="flex flex-col gap-2">
             <p className="text-foreground text-sm font-medium">
               {copy.sources}
             </p>
-            <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
-              {sources.map((href) => (
-                <li key={href}>
-                  <a
-                    href={href}
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
-                  >
-                    {startupSourceLabel(href, locale)}
-                  </a>
+            <ul className="flex flex-wrap gap-1.5">
+              {chips.map((chip) => (
+                <li key={chip.href}>
+                  <Badge asChild variant="outline">
+                    <a
+                      href={chip.href}
+                      rel="noopener noreferrer"
+                      data-startup-source-chip={chip.label}
+                    >
+                      {chip.label}
+                    </a>
+                  </Badge>
                 </li>
               ))}
             </ul>

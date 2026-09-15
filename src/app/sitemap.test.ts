@@ -29,8 +29,6 @@ const STATIC_PATHS = [
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
-  "/investigations/startups",
-  "/investigations/startups/insights",
   "/roles",
 ] as const;
 
@@ -243,6 +241,45 @@ describe("buildSitemapEntries", () => {
     expect(event).toBeDefined();
     expect(event?.lastModified).toBeInstanceOf(Date);
     expect(Number.isNaN((event?.lastModified as Date).getTime())).toBe(false);
+  });
+
+  it("keeps Startups Directory and Insights out of the sitemap until 3000 verified rows", async () => {
+    mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
+
+    const omitted = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [],
+    );
+    const omittedUrls = urlsOf(omitted);
+    expect(omittedUrls).not.toContain(
+      "https://www.aitcommunity.org/en/investigations/startups",
+    );
+    expect(omittedUrls).not.toContain(
+      "https://www.aitcommunity.org/en/investigations/startups/insights",
+    );
+
+    const indexed = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [
+        "/investigations/startups",
+        "/investigations/startups/insights",
+        "/investigations/startups?page=2",
+      ],
+    );
+    const indexedUrls = urlsOf(indexed);
+    expect(indexedUrls).toContain(
+      "https://www.aitcommunity.org/en/investigations/startups",
+    );
+    expect(indexedUrls).toContain(
+      "https://www.aitcommunity.org/en/investigations/startups/insights",
+    );
+    expect(indexedUrls).toContain(
+      "https://www.aitcommunity.org/en/investigations/startups?page=2",
+    );
   });
 
   it("includes later Startups directory pages from the live Neon row count", async () => {

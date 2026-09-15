@@ -88,9 +88,11 @@ Rules:
 - Homepage must be a live `http(s)` URL (Ops confirms 200 before insert).
 - Sources: **1–3** URLs.
 - `region`, `stage`, `logoUrl`, `lat`, `lng` may be null. The UI soft-omits blanks.
-- `founders` is sourced-only `{ name, url? }[]`. Blank name rows drop. Max 8.
-  Leave `[]` when Pulse did not pass names. **Never invent a people graph or
-  who-works-where.** Ops will Fail invent.
+- `founders` is sourced-only `{ name, url?, imageUrl? }[]`. Blank name rows
+  drop. Max 8. Leave `[]` when Pulse did not pass names. Photo URL only when
+  sourced — UI uses initials otherwise and **never invents a face or stock
+  photo**. **Never invent a people graph or who-works-where.** Ops will Fail
+  invent. Source chips must have unique labels (never `News`/`News`).
 - Pulse `status` / `exitStatus` is sourced-only `acquired` | `ipo` |
   `shutdown`. Optional `exit_acquirer` / `acquirer` and `exit_year` /
   `exitOn` (`YYYY` or `YYYY-MM-DD`) only when that exit is sourced. Do not
@@ -122,8 +124,9 @@ Hub operator (`Add a company`).
 
 `/en/investigations/startups/insights` aggregates **listed Neon rows only**.
 Bento hero: Added over time. 2×2: Category / Region / Stage / Sources
-coverage. HTML table under each chart. Blank region/stage omit the chart
-(no fake empty series). Directory ↔ Insights are hard links.
+coverage. HTML table under each chart. Blank stage omits the chart (no
+fake empty series). **Region mix is soft-omitted until ≥5 distinct sourced
+regions** — never invent region zeros. Directory ↔ Insights are hard links.
 
 ## Join chrome
 
@@ -151,6 +154,11 @@ the active filters.
 - Directory and Insights are `force-dynamic` and server-read Neon on each
   request. New API rows appear in SSR without a redeploy.
 - Directory pages after page 1 use crawlable `?page=` links (`STARTUPS_PAGE_SIZE`
-  is 24, so a list past ~50 rows is page 3).
-- The sitemap includes `/investigations/startups`, `/insights`, and later
-  `?page=` paths from the live approved row count.
+  is 24, so a list past ~50 rows is page 3). Pagination must stay crawlable
+  **before** any indexable flip.
+- **Staging index gate:** while the verified (approved) row count is **< 3000**,
+  Directory + Insights send `noindex,follow` and stay **out of the sitemap**
+  (including `?page=`). The code auto-flips robots + sitemap when the live
+  count is **≥ 3000**. That flip is a crawl switch only — **Writing Bot + Ops
+  Pass are still required before claiming a public Investigation Pass.** Do
+  not invent a Pass flag; do not treat the count gate as a public Pass.

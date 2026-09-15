@@ -28,6 +28,7 @@ export type StartupsInsightsCopy = {
   monthColumn: string;
   countColumn: string;
   empty: string;
+  emptyHelp?: string;
 };
 
 export function StartupsInsights({
@@ -40,7 +41,7 @@ export function StartupsInsights({
   if (stats.total === 0) {
     return (
       <div data-startups-insights-empty="">
-        <EmptyState title={copy.empty} />
+        <EmptyState title={copy.empty} description={copy.emptyHelp} />
       </div>
     );
   }
