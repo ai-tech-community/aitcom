@@ -1,8 +1,8 @@
 # Startups investigation (`/en/investigations/startups`)
 
-Public directory + Insights. **Live rows live in Neon.** This repo ships the
-schema, the staff insert API, and the empty UI. Ops Passes are homepage 200 +
-1–3 sources + a listed category — inserted through the API, not GitHub diffs.
+Public directory + Insights. **Live rows live in Neon.** The app reads the
+database on each request (`force-dynamic`). Staff inserts after deploy show
+up without a redeploy. UI components do not bake a company list.
 
 ## Who counts
 
@@ -13,15 +13,31 @@ Fixed taxonomy (store as `ai-infra` when Pulse says `AI infra`):
 
 `models` · `agents` · `ai-infra` · `robotics` · `energy` · `vertical` · `other`
 
-## What this PR does **not** do
+## v1 seed (20/20)
 
-- No JSX / TS seed arrays of companies
-- No migration `INSERT` of company rows
-- No PR-per-batch. Batch 1 and the daily 30 go through the insert API.
+Ops Pass 2026-09-15. Migration `20260915c_startups_v1_seeds` inserts these
+twenty Pulse-verified rows (homepage 200 + 1–3 sources). Blank region/stage
+are stored null and soft-omitted. Logos soft-omit if missing or they fail to
+load. No invented size or price figures.
 
-Empty Neon → soft empty state on Directory and Insights. That is correct.
+Ship list: Figure AI · Agility Robotics · Apptronik · 1X Technologies ·
+Physical Intelligence · Skild AI · Crusoe · Aalo Atomics · Oklo · Emerald AI ·
+Anthropic · Mistral AI · Cohere · Hugging Face · LangChain · Pinecone ·
+Weaviate · Fireworks AI · Perplexity · Cursor (Anysphere).
+
+**Out of v1** (Pulse overflow — do not insert): Together AI · Replicate ·
+Midjourney · ElevenLabs · Runway · Scale AI · Glean · Sierra · Factory ·
+Cognition.
+
+Source of truth for the twenty rows:
+[`src/lib/investigations/startups-v1-seeds.ts`](../../src/lib/investigations/startups-v1-seeds.ts).
+Same payload for API retries:
+[`fixtures/startups-batch1-payload.json`](fixtures/startups-batch1-payload.json).
 
 ## Insert API (staff / Hub operator)
+
+Later batches (daily 30, overflow when Ops-passed) go through the staff API,
+not a new seed migration.
 
 tRPC router `startups`, Hub owner/admin only:
 
@@ -65,9 +81,6 @@ Rules:
 - Do not send size, price, attendance, or growth figures. Those fields do not
   exist.
 
-Example payload for a first batch (not loaded by the app):
-[`fixtures/startups-batch1-payload.json`](fixtures/startups-batch1-payload.json).
-
 Map Pulse `logo_url` → `logoUrl` when calling `createStartups`. Example:
 
 ```ts
@@ -91,5 +104,13 @@ Hub operator (`Add a company`).
 
 `/en/investigations/startups/insights` aggregates **listed Neon rows only**
 (category mix, region mix from non-blank region, listed-over-time). CSS bento
++ HTML table fallback. No invented metrics.
 
-- HTML table fallback. No invented metrics.
+## Crawl / SEO
+
+- Directory and Insights are `force-dynamic` and server-read Neon on each
+  request. New API rows appear in SSR without a redeploy.
+- Directory pages after page 1 use crawlable `?page=` links (`STARTUPS_PAGE_SIZE`
+  is 24, so a list past ~50 rows is page 3).
+- The sitemap includes `/investigations/startups`, `/insights`, and later
+  `?page=` paths from the live approved row count.

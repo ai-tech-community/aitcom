@@ -12,11 +12,13 @@ import {
   buildStartupDirectoryPath,
   displayStartupSources,
   normalizeStartupHomepage,
+  paginateStartupCards,
   parseStartupCategory,
   parseStartupDirectoryQuery,
   presentText,
   sanitizeStartupSources,
   startupDirectoryCanonicalPath,
+  startupDirectorySitemapPaths,
   startupMapPins,
   startupsDirectoryJsonLd,
   verifiedStartupPin,
@@ -208,6 +210,24 @@ describe("directory query", () => {
     expect(buildStartupDirectoryPath({ page: 2 })).toBe(
       `${STARTUPS_PATH}?page=2`,
     );
+  });
+
+  it("emits crawlable ?page= sitemap paths once the directory is past ~50 rows", () => {
+    expect(startupDirectorySitemapPaths(20)).toEqual([]);
+    expect(startupDirectorySitemapPaths(24)).toEqual([]);
+    expect(startupDirectorySitemapPaths(25)).toEqual([
+      `${STARTUPS_PATH}?page=2`,
+    ]);
+    expect(startupDirectorySitemapPaths(50)).toEqual([
+      `${STARTUPS_PATH}?page=2`,
+      `${STARTUPS_PATH}?page=3`,
+    ]);
+    const page = paginateStartupCards(
+      Array.from({ length: 51 }, (_, index) => sampleCard({ id: `n-${index}` })),
+      1,
+    );
+    expect(page.totalPages).toBe(3);
+    expect(page.items).toHaveLength(24);
   });
 });
 

@@ -256,5 +256,5 @@
     }
   ],
   "count": 20,
-  "note": "verified 2026-09-15; no invent metrics. Ops insert example only — not imported by the app."
+  "note": "verified 2026-09-15; no invent metrics. Same 20 rows as the Neon v1 seed. Pulse overflow stays out."
 }

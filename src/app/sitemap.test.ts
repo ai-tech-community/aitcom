@@ -245,6 +245,38 @@ describe("buildSitemapEntries", () => {
     expect(Number.isNaN((event?.lastModified as Date).getTime())).toBe(false);
   });
 
+  it("includes later Startups directory pages from the live Neon row count", async () => {
+    mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [
+        "/investigations/startups?page=2",
+        "/investigations/startups?page=3",
+      ],
+    );
+    const urls = urlsOf(entries);
+
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/investigations/startups?page=2",
+    );
+    expect(urls).toContain(
+      "https://www.aitcommunity.org/en/investigations/startups?page=3",
+    );
+    expect(
+      entries.find(
+        (item) =>
+          item.url ===
+          "https://www.aitcommunity.org/en/investigations/startups?page=2",
+      )?.alternates?.languages,
+    ).toEqual({
+      en: "https://www.aitcommunity.org/en/investigations/startups?page=2",
+      nl: "https://www.aitcommunity.org/nl/investigations/startups?page=2",
+    });
+  });
+
   it("includes later Awesome AI OSS directory pages with locale alternates", async () => {
     mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
 

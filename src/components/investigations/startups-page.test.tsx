@@ -83,6 +83,12 @@ const INDEX_FILE = join(appLocale, "investigations/page.tsx");
 const SITEMAP_FILE = join(dir, "../../app/sitemap.ts");
 const SITEMAP_TEST_FILE = join(dir, "../../app/sitemap.test.ts");
 const MIGRATION_FILE = join(dir, "../../migrations/20260915b_startups.ts");
+const SEED_MIGRATION_FILE = join(
+  dir,
+  "../../migrations/20260915c_startups_v1_seeds.ts",
+);
+const SEED_MODULE = join(dir, "../../lib/investigations/startups-v1-seeds.ts");
+const QUERIES_FILE = join(dir, "../../server/startups/queries.ts");
 const OPS_DOC = join(dir, "../../../docs/ops/startups.md");
 const FIXTURE = join(
   dir,
@@ -135,11 +141,15 @@ describe("Startups investigation route", () => {
     expect(src).toContain("STARTUPS_PATH");
     expect(src).toContain("localeAlternates");
     expect(src).toContain("listApprovedPublicStartups");
+    expect(src).toContain('dynamic = "force-dynamic"');
     expect(src).toContain("isStartupInsightsTab");
     expect(src).toContain("robots: { index: true, follow: true }");
     const insights = readFileSync(INSIGHTS_FILE, "utf8");
     expect(insights).toContain("buildStartupInsights");
+    expect(insights).toContain("listApprovedPublicStartups");
+    expect(insights).toContain('dynamic = "force-dynamic"');
     expect(insights).toContain('tab="insights"');
+    expect(readFileSync(QUERIES_FILE, "utf8")).not.toMatch(BAKED_COMPANIES);
   });
 });
 
@@ -203,6 +213,27 @@ describe("StartupsPage", () => {
       />,
     );
     expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
+  });
+
+  it("renders crawlable ?page= links when the directory is past ~50 rows", () => {
+    const companies = Array.from({ length: 51 }, (_, index) => ({
+      ...FIXTURE_CARD,
+      id: `page-card-${index}`,
+      name: `Fixture Co ${index + 1}`,
+      homepage: `https://fixture-${index}.example`,
+    }));
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={companies}
+        query={{ q: "", category: "all", page: 1 }}
+      />,
+    );
+    const hrefs = hrefsOf(container);
+    expect(hrefs).toContain("/investigations/startups?page=2");
+    expect(hrefs).toContain("/investigations/startups?page=3");
+    expect(container.querySelectorAll("[data-startup-card]")).toHaveLength(24);
   });
 
   it("keeps Dutch copy on the same investigation path", () => {
@@ -337,22 +368,27 @@ describe("Startups site integration", () => {
     expect(STARTUPS_JOIN_HREF).toContain("utm_campaign=startups");
   });
 
-  it("has a schema-only migration and an ops insert path", () => {
+  it("has a schema migration plus a v1 seed INSERT, and keeps the staff insert API", () => {
     expect(existsSync(MIGRATION_FILE)).toBe(true);
     expect(readFileSync(MIGRATION_FILE, "utf8")).not.toMatch(/INSERT INTO/i);
+    expect(existsSync(SEED_MIGRATION_FILE)).toBe(true);
+    expect(existsSync(SEED_MODULE)).toBe(true);
+    expect(readFileSync(SEED_MIGRATION_FILE, "utf8")).toMatch(/INSERT INTO/i);
     expect(existsSync(OPS_DOC)).toBe(true);
     expect(existsSync(FIXTURE)).toBe(true);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(
       /createStartup|createStartups/,
     );
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/v1 seed/i);
   });
 
-  it("does not bake Pulse company names into UI components", () => {
+  it("does not bake Pulse company names into UI components or queries", () => {
     for (const file of [
       ...componentSources(),
       PAGE_FILE,
       INSIGHTS_FILE,
       MIGRATION_FILE,
+      QUERIES_FILE,
     ]) {
       expect(readFileSync(file, "utf8")).not.toMatch(BAKED_COMPANIES);
     }

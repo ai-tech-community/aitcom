@@ -26,6 +26,8 @@ import { userIsHubOperator } from "@/server/awesome-ai-oss/operator";
 import { getSession } from "@/server/better-auth/server";
 import { listApprovedPublicStartups } from "@/server/startups/queries";
 
+export const dynamic = "force-dynamic";
+
 interface PageProps {
   searchParams: Promise<{
     q?: string;

@@ -14,6 +14,8 @@ import { userIsHubOperator } from "@/server/awesome-ai-oss/operator";
 import { getSession } from "@/server/better-auth/server";
 import { listApprovedPublicStartups } from "@/server/startups/queries";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: STARTUPS_INSIGHTS_H1,
