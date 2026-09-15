@@ -9,8 +9,13 @@ import {
   resolveSeats,
 } from "@/lib/investigations/ait-community-roles";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
-import { shouldPromoteJoin } from "@/server/better-auth/hub-session";
-import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
+import {
+  shouldPromoteJoin,
+  toHubAuthUser,
+} from "@/server/better-auth/hub-session";
+import { getSession } from "@/server/better-auth/server";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -24,12 +29,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function AitCommunityRolesPageRoute() {
   const t = await getTranslations("investigationsAitCommunityRoles");
-  const { initialUser } = await loadHubAuthSeed();
+  const session = await getSession();
   return (
     <AitCommunityRolesPage
       t={t}
       seats={resolveSeats()}
-      promoteJoin={shouldPromoteJoin(initialUser)}
+      promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
     />
   );
 }

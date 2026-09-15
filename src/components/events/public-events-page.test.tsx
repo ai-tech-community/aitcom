@@ -172,11 +172,13 @@ describe("PublicEventsPage", () => {
     ).toHaveAttribute("href", PUBLIC_EVENTS_HUB_HREF);
   });
 
-  it("wires Events to the shared promote-Join helper and Hub session seed", () => {
+  it("wires Events to the same per-request getSession source Startups uses", () => {
     const src = readFileSync(PAGE_FILE, "utf8");
-    expect(src).toContain("loadHubAuthSeed");
-    expect(src).toContain("shouldPromoteJoin");
+    expect(src).toContain('dynamic = "force-dynamic"');
+    expect(src).toContain("getSession");
+    expect(src).toContain("shouldPromoteJoin(toHubAuthUser(session?.user))");
     expect(src).toContain("promoteJoin");
+    expect(src).not.toMatch(/export const revalidate/);
   });
 });
 

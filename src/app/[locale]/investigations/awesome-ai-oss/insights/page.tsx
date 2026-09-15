@@ -13,7 +13,13 @@ import { buildAwesomeInsights } from "@/lib/investigations/awesome-ai-oss-insigh
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { listApprovedPublicCards } from "@/server/awesome-ai-oss/queries";
 import { userIsHubOperator } from "@/server/awesome-ai-oss/operator";
+import {
+  shouldPromoteJoin,
+  toHubAuthUser,
+} from "@/server/better-auth/hub-session";
 import { getSession } from "@/server/better-auth/server";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -52,6 +58,7 @@ export default async function AwesomeAiOssInsightsPage() {
       signInHref={signInHref}
       tab="insights"
       insights={insights}
+      promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
     />
   );
 }

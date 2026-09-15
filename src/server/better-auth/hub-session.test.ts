@@ -255,6 +255,8 @@ describe("leftover after #251: first paint header/forum + reload", () => {
 });
 
 describe("shouldPromoteJoin", () => {
+  const dir = dirname(fileURLToPath(import.meta.url));
+
   it("promotes the hard Join door for guests and hides it for signed-in Hub members", () => {
     expect(shouldPromoteJoin(null)).toBe(true);
     expect(shouldPromoteJoin(undefined)).toBe(true);
@@ -270,6 +272,34 @@ describe("shouldPromoteJoin", () => {
         { slug: "ait", status: "active", role: "member" },
       ]).navbarJoin,
     );
+  });
+
+  it("Roles/Events/Awesome read promoteJoin from the same per-request getSession as Startups", () => {
+    const app = join(dir, "../../app/[locale]");
+    const startups = readFileSync(
+      join(app, "investigations/startups/page.tsx"),
+      "utf8",
+    );
+    expect(startups).toContain('dynamic = "force-dynamic"');
+    expect(startups).toContain(
+      "shouldPromoteJoin(toHubAuthUser(session?.user))",
+    );
+
+    const pages = [
+      readFileSync(join(app, "roles/page.tsx"), "utf8"),
+      readFileSync(join(app, "events/page.tsx"), "utf8"),
+      readFileSync(join(app, "investigations/awesome-ai-oss/page.tsx"), "utf8"),
+      readFileSync(
+        join(app, "investigations/awesome-ai-oss/insights/page.tsx"),
+        "utf8",
+      ),
+    ];
+    for (const src of pages) {
+      expect(src).toContain('dynamic = "force-dynamic"');
+      expect(src).toContain("getSession");
+      expect(src).toContain("shouldPromoteJoin(toHubAuthUser(session?.user))");
+      expect(src).not.toMatch(/export const revalidate/);
+    }
   });
 });
 
