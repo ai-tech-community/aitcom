@@ -167,14 +167,17 @@ describe("Startups investigation route", () => {
     expect(src).toContain('dynamic = "force-dynamic"');
     expect(src).toContain("isStartupInsightsTab");
     expect(src).toContain("startupsPublicRobots");
-    expect(src).not.toContain("robots: { index: true, follow: true }");
+    expect(src).not.toContain("robots: { index: false");
+    expect(
+      existsSync(join(appLocale, "investigations/startups/layout.tsx")),
+    ).toBe(false);
     const insights = readFileSync(INSIGHTS_FILE, "utf8");
     expect(insights).toContain("buildStartupInsights");
     expect(insights).toContain("listApprovedPublicStartups");
     expect(insights).toContain("startupsPublicRobots");
     expect(insights).toContain('dynamic = "force-dynamic"');
     expect(insights).toContain('tab="insights"');
-    expect(insights).not.toContain("robots: { index: true, follow: true }");
+    expect(insights).not.toContain("robots: { index: false");
     expect(readFileSync(QUERIES_FILE, "utf8")).not.toMatch(BAKED_COMPANIES);
   });
 });
@@ -211,7 +214,9 @@ describe("StartupsPage", () => {
     expect(container.textContent).toContain("Fixture Co");
     expect(container.textContent).toContain("Toronto, Canada");
     expect(screen.getByTestId("startups-map")).toBeInTheDocument();
-    expect(container.querySelector("img")).toBeNull();
+    expect(
+      container.querySelector("img:not([data-startup-source-favicon])"),
+    ).toBeNull();
     expect(hrefsOf(container)).toContain("https://fixture.example");
     expect(hrefsOf(container)).toContain("https://fixture.example/about");
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute(
@@ -423,6 +428,71 @@ describe("Startups Insights tab", () => {
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
   });
 
+  it("omits a Region table even if a Toronto/NY stub mix is passed in", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        tab="insights"
+        companies={[FIXTURE_CARD]}
+        insights={{
+          total: 2,
+          categoryMix: [{ id: "models", label: "Models", count: 2 }],
+          regionMix: [
+            { region: "Toronto, Canada", count: 1 },
+            { region: "New York, US", count: 1 },
+          ],
+          stageMix: null,
+          sourcesCoverage: [{ sources: 1, label: "1 source", count: 2 }],
+          addedOverTime: [{ month: "2026-09", label: "Sep 2026", count: 2 }],
+        }}
+      />,
+    );
+    const regionTile = [
+      ...container.querySelectorAll("[data-startups-insight-tile]"),
+    ].find(
+      (tile) =>
+        tile.getAttribute("data-startups-insight-tile") === "region-mix",
+    );
+    expect(regionTile?.hasAttribute("data-startups-insight-omitted")).toBe(
+      true,
+    );
+    expect(
+      regionTile?.querySelector("[data-startups-insight-table]"),
+    ).toBeNull();
+    expect(screen.queryByTestId("chart-region")).not.toBeInTheDocument();
+    expect(container.textContent).not.toContain("Toronto, Canada");
+    expect(container.textContent).not.toContain("New York, US");
+    expect(container.textContent).toContain(
+      en.investigationsStartups.regionOmitted,
+    );
+
+    const nlView = render(
+      <StartupsPage
+        locale="nl"
+        t={tFrom(nl.investigationsStartups)}
+        tab="insights"
+        companies={[FIXTURE_CARD]}
+        insights={{
+          total: 2,
+          categoryMix: [{ id: "models", label: "Models", count: 2 }],
+          regionMix: [
+            { region: "Toronto, Canada", count: 1 },
+            { region: "New York, US", count: 1 },
+          ],
+          stageMix: null,
+          sourcesCoverage: [{ sources: 1, label: "1 bron", count: 2 }],
+          addedOverTime: [{ month: "2026-09", label: "sep 2026", count: 2 }],
+        }}
+      />,
+    );
+    expect(nlView.container.textContent).toContain(
+      nl.investigationsStartups.regionOmitted,
+    );
+    expect(nlView.container.textContent).not.toContain("Toronto, Canada");
+    nlView.unmount();
+  });
+
   it("swaps Directory and Insights Join to Open Hub for signed-in Hub members", () => {
     const directory = render(
       <StartupsPage
@@ -470,7 +540,9 @@ describe("Startups card soft-omit", () => {
         copy={CARD_COPY}
       />,
     );
-    expect(container.querySelector("img")).toBeNull();
+    expect(
+      container.querySelector("img:not([data-startup-source-favicon])"),
+    ).toBeNull();
     expect(container.textContent).not.toContain("Toronto, Canada");
     expect(container.querySelector("[data-startup-exit]")).toBeNull();
     expect(container.querySelector("[data-startup-founders]")).toBeNull();
@@ -494,6 +566,7 @@ describe("Startups card soft-omit", () => {
               imageUrl: "https://ada.example/ada.jpg",
             },
             { name: "No Url", url: null, imageUrl: null },
+            { name: "   ", url: "https://blank.example", imageUrl: null },
           ],
           exitStatus: "acquired",
           acquirer: "Example Corp",
@@ -512,11 +585,28 @@ describe("Startups card soft-omit", () => {
     expect(
       container.querySelector("[data-slot='avatar-group']"),
     ).not.toBeNull();
-    expect(screen.getByRole("link", { name: "Ada Example" })).toHaveAttribute(
-      "href",
-      "https://ada.example",
-    );
+    const adaLinks = screen.getAllByRole("link", { name: "Ada Example" });
+    expect(adaLinks.length).toBeGreaterThanOrEqual(2);
+    expect(
+      adaLinks.every(
+        (node) => node.getAttribute("href") === "https://ada.example",
+      ),
+    ).toBe(true);
+    expect(
+      container.querySelector(
+        "[data-startup-founder-hover='https://ada.example']",
+      ),
+    ).toHaveAttribute("title", "Ada Example");
+    expect(
+      container.querySelector("[data-startup-founder-ssr]"),
+    ).not.toBeNull();
+    expect(
+      container.querySelector(
+        "[data-startup-founder-profile='https://ada.example']",
+      )?.textContent,
+    ).toBe("Ada Example");
     expect(container.textContent).toContain("No Url");
+    expect(container.textContent).not.toContain("blank.example");
     expect(
       container.querySelector(
         "[data-startup-founder-photo='https://ada.example/ada.jpg']",
@@ -574,6 +664,38 @@ describe("Startups card soft-omit", () => {
       chips.map((node) => node.getAttribute("data-startup-source-chip")),
     ).toEqual(["News", "Wikipedia"]);
     expect(container.textContent).not.toMatch(/\b[123]\b/);
+    expect(
+      container
+        .querySelector("[data-startup-source-favicon]")
+        ?.getAttribute("data-startup-source-favicon"),
+    ).toBe("https://fixture.example/favicon.ico");
+
+    const tech = render(
+      <StartupsCard
+        card={{
+          ...FIXTURE_CARD,
+          sources: [
+            "https://techcrunch.com/2024/01/skild-one",
+            "https://techcrunch.com/2024/06/skild-two",
+            "https://techcrunch.com/2025/01/skild-three",
+          ],
+        }}
+        locale="en"
+        isModerator={false}
+        copy={CARD_COPY}
+      />,
+    );
+    expect(
+      [...tech.container.querySelectorAll("[data-startup-source-chip]")].map(
+        (node) => node.getAttribute("data-startup-source-chip"),
+      ),
+    ).toEqual(["TechCrunch"]);
+    expect(
+      tech.container
+        .querySelector("[data-startup-source-favicon]")
+        ?.getAttribute("data-startup-source-favicon"),
+    ).toBe("https://techcrunch.com/favicon.ico");
+    tech.unmount();
   });
 
   it("renders the Cursor joining-spacex chip and Acquired·SpaceX·2026 badge from fixture data", () => {
@@ -671,7 +793,8 @@ describe("Startups site integration", () => {
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/enriched/i);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/3000/);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Writing Bot/);
-    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/noindex/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/promo-only/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Do \*\*not\*\* noindex/);
     expect(readFileSync(FIXTURE, "utf8")).toContain("jobs_url");
     expect(readFileSync(FIXTURE, "utf8")).toContain('"status": "ipo"');
     expect(readFileSync(SOFT_OMIT_MIGRATION_FILE, "utf8")).toContain(
@@ -708,7 +831,8 @@ describe("Startups site integration", () => {
 
     expect(sitemap).toContain("listApprovedPublicStartups");
     expect(sitemap).toContain("startupInvestigationSitemapPaths(cards.length)");
-    expect(sitemap).not.toContain('"/investigations/startups",');
+    expect(sitemap).toContain('"/investigations/startups"');
+    expect(sitemap).not.toContain("filterUnlistedStartupSitemapEntries");
   });
 
   it("does not bake Pulse company names into UI components or queries", () => {

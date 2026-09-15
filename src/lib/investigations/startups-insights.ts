@@ -81,6 +81,17 @@ function sourcesCoverageLabel(count: 1 | 2 | 3, locale: StartupLocale): string {
   return count === 1 ? "1 source" : `${count} sources`;
 }
 
+/** Render-time gate: never show a Region table with fewer than five places. */
+export function showStartupRegionMix(
+  regionMix: StartupsInsightsRegionRow[] | null | undefined,
+): regionMix is StartupsInsightsRegionRow[] {
+  return (
+    Array.isArray(regionMix) &&
+    regionMix.length >= STARTUPS_REGION_INSIGHTS_MIN &&
+    regionMix.every((row) => row.count > 0)
+  );
+}
+
 export function buildStartupInsights(
   cards: readonly StartupPublicCard[],
   locale: StartupLocale,
@@ -127,14 +138,12 @@ export function buildStartupInsights(
     }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 
-  const regionMix =
-    regionCounts.size < STARTUPS_REGION_INSIGHTS_MIN
-      ? null
-      : [...regionCounts.entries()]
-          .map(([region, count]) => ({ region, count }))
-          .sort(
-            (a, b) => b.count - a.count || a.region.localeCompare(b.region),
-          );
+  const countedRegions = [...regionCounts.entries()]
+    .map(([region, count]) => ({ region, count }))
+    .sort((a, b) => b.count - a.count || a.region.localeCompare(b.region));
+  const regionMix = showStartupRegionMix(countedRegions)
+    ? countedRegions
+    : null;
 
   const addedOverTime = [...monthCounts.entries()]
     .sort(([left], [right]) => left.localeCompare(right))

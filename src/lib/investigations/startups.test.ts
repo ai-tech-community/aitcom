@@ -29,6 +29,7 @@ import {
   startupDirectorySitemapPaths,
   startupInvestigationSitemapPaths,
   startupMapPins,
+  startupSourceFaviconUrl,
   startupsDirectoryJsonLd,
   startupsPublicIndexable,
   startupsPublicRobots,
@@ -165,6 +166,17 @@ describe("homepage and sources", () => {
     expect(startupSourceLabel("https://cursor.com/blog/joining-spacex")).toBe(
       "Cursor: Joining SpaceX",
     );
+    expect(
+      startupSourceLabel("https://www.cursor.com/blog/joining-spacex/"),
+    ).toBe("Cursor: Joining SpaceX");
+    expect(
+      startupSourceLabel(
+        "https://cursor.com/blog/joining-spacex?utm_source=ops",
+      ),
+    ).toBe("Cursor: Joining SpaceX");
+    expect(
+      startupSourceLabel("https://cursor.com/blog/joining-spacex", "nl"),
+    ).toBe("Cursor: Joining SpaceX");
     for (const href of [
       "https://en.wikipedia.org/wiki/Anthropic",
       "https://cohere.com/about",
@@ -200,6 +212,55 @@ describe("homepage and sources", () => {
         "en",
       ).map((chip) => chip.label),
     ).toEqual(["Docs", "Cursor: Joining SpaceX", "Wikipedia"]);
+    expect(
+      displayStartupSourceChips(
+        [
+          "https://techcrunch.com/2024/01/skild-one",
+          "https://techcrunch.com/2024/06/skild-two",
+          "https://techcrunch.com/2025/01/skild-three",
+        ],
+        "en",
+      ),
+    ).toEqual([
+      {
+        href: "https://techcrunch.com/2024/01/skild-one",
+        label: "TechCrunch",
+      },
+    ]);
+  });
+
+  it("keeps the Production Cursor sources URL as the Joining SpaceX chip", () => {
+    const sources = [
+      "https://en.wikipedia.org/wiki/Cursor_(code_editor)",
+      "https://cursor.com/about",
+      "https://cursor.com/blog/joining-spacex",
+    ];
+    expect(
+      displayStartupSourceChips(sources, "en").find(
+        (chip) => chip.href === "https://cursor.com/blog/joining-spacex",
+      ),
+    ).toEqual({
+      href: "https://cursor.com/blog/joining-spacex",
+      label: "Cursor: Joining SpaceX",
+    });
+  });
+
+  it("builds favicon URLs from the real source host only", () => {
+    expect(
+      startupSourceFaviconUrl("https://cursor.com/blog/joining-spacex"),
+    ).toBe("https://cursor.com/favicon.ico");
+    expect(
+      startupSourceFaviconUrl(
+        "https://en.wikipedia.org/wiki/Cursor_(code_editor)",
+      ),
+    ).toBe("https://en.wikipedia.org/favicon.ico");
+    expect(
+      startupSourceFaviconUrl("https://techcrunch.com/2024/01/skild"),
+    ).toBe("https://techcrunch.com/favicon.ico");
+    expect(startupSourceFaviconUrl("not-a-url")).toBeNull();
+    expect(
+      startupSourceFaviconUrl("https://cursor.com/blog/joining-spacex"),
+    ).not.toMatch(/google\.com\/s2|duckduckgo|gstatic/i);
   });
 });
 
@@ -566,10 +627,19 @@ describe("directory query", () => {
     expect(startupsPublicIndexable(20)).toBe(false);
     expect(startupsPublicIndexable(2999)).toBe(false);
     expect(startupsPublicIndexable(3000)).toBe(true);
-    expect(startupsPublicRobots(20)).toEqual({ index: false, follow: true });
+    expect(startupsPublicRobots(20)).toEqual({ index: true, follow: true });
+    expect(startupsPublicRobots(2999)).toEqual({ index: true, follow: true });
     expect(startupsPublicRobots(3000)).toEqual({ index: true, follow: true });
-    expect(startupInvestigationSitemapPaths(20)).toEqual([]);
-    expect(startupInvestigationSitemapPaths(51)).toEqual([]);
+    expect(startupInvestigationSitemapPaths(20)).toEqual([
+      STARTUPS_PATH,
+      STARTUPS_INSIGHTS_PATH,
+    ]);
+    expect(startupInvestigationSitemapPaths(51)).toEqual([
+      STARTUPS_PATH,
+      STARTUPS_INSIGHTS_PATH,
+      `${STARTUPS_PATH}?page=2`,
+      `${STARTUPS_PATH}?page=3`,
+    ]);
     expect(startupInvestigationSitemapPaths(3000)).toEqual([
       STARTUPS_PATH,
       STARTUPS_INSIGHTS_PATH,

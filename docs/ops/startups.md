@@ -140,25 +140,28 @@ to Open Hub (`/communities/ait/forum`). Same leftover rule as navbar JOIN
 Crawlable query params on `/investigations/startups`. Pagination links keep
 the active filters.
 
-| Param | Values | Notes |
-| ----- | ------ | ----- |
-| `category` | taxonomy id | same as before |
-| `region` | sourced region string | only listed, non-blank regions |
-| `stage` | sourced stage string | blank stage does not match |
-| `status` | `active` `acquired` `ipo` `shutdown` | blank/null exit → **active** for the filter only. Cards still omit the badge. Not listing pending/approved. |
-| `hiring` | `1` | has a sourced `jobs_url` |
-| `sort` | `newest` (default) `name` `category` | `newest` is omitted from the URL |
+| Param      | Values                               | Notes                                                                                                       |
+| ---------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `category` | taxonomy id                          | same as before                                                                                              |
+| `region`   | sourced region string                | only listed, non-blank regions                                                                              |
+| `stage`    | sourced stage string                 | blank stage does not match                                                                                  |
+| `status`   | `active` `acquired` `ipo` `shutdown` | blank/null exit → **active** for the filter only. Cards still omit the badge. Not listing pending/approved. |
+| `hiring`   | `1`                                  | has a sourced `jobs_url`                                                                                    |
+| `sort`     | `newest` (default) `name` `category` | `newest` is omitted from the URL                                                                            |
 
 ## Crawl / SEO
 
 - Directory and Insights are `force-dynamic` and server-read Neon on each
   request. New API rows appear in SSR without a redeploy.
 - Directory pages after page 1 use crawlable `?page=` links (`STARTUPS_PAGE_SIZE`
-  is 24, so a list past ~50 rows is page 3). Pagination must stay crawlable
-  **before** any indexable flip.
-- **Staging index gate:** while the verified (approved) row count is **< 3000**,
-  Directory + Insights send `noindex,follow` and stay **out of the sitemap**
-  (including `?page=`). The code auto-flips robots + sitemap when the live
-  count is **≥ 3000**. That flip is a crawl switch only — **Writing Bot + Ops
-  Pass are still required before claiming a public Investigation Pass.** Do
-  not invent a Pass flag; do not treat the count gate as a public Pass.
+  is 24, so a list past ~50 rows is page 3). Pagination stays crawlable.
+- **Crawl is open:** Directory + Insights send `index,follow` and stay **in
+  the sitemap** (including `?page=`). Do **not** noindex or drop these paths
+  based on verified count. **≥3000 is promo-only** (no LinkedIn / newsletter /
+  Hub push until then) — not a crawl gate and **not** a public Investigation
+  Pass. Writing Bot + Ops Pass are still required before claiming Pass. Do
+  not invent a Pass flag.
+- Cursor chip `Cursor: Joining SpaceX` is the sourced
+  `https://cursor.com/blog/joining-spacex` URL (migration
+  `20260915f_startups_v1_polish`). UI reads `sources[]` from Neon — do not
+  seed that label in JSX.

@@ -8,7 +8,10 @@ import {
   StartupSourcesCoverageChart,
   StartupStageMixChart,
 } from "@/components/investigations/startups-insights-charts";
-import type { StartupsInsightsStats } from "@/lib/investigations/startups-insights";
+import {
+  showStartupRegionMix,
+  type StartupsInsightsStats,
+} from "@/lib/investigations/startups-insights";
 import { cn } from "@/lib/utils";
 
 export type StartupsInsightsCopy = {
@@ -79,7 +82,7 @@ export function StartupsInsights({
         />
       </InsightTile>
 
-      {stats.regionMix ? (
+      {showStartupRegionMix(stats.regionMix) ? (
         <InsightTile
           tile="region-mix"
           title={copy.regionMixTitle}

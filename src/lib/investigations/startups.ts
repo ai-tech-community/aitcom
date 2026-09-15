@@ -62,6 +62,7 @@ export type StartupFounder = {
   imageUrl: string | null;
 };
 
+/** Promo-only lock (LinkedIn / newsletter / Hub push). Not a crawl gate. */
 export const STARTUPS_PUBLIC_INDEX_MIN = 3000;
 
 export const STARTUPS_FOUNDERS_SHOWN = 3;
@@ -432,6 +433,11 @@ function startupSourceHost(
   }
 }
 
+function isCursorJoiningSpacexSource(host: string, path: string): boolean {
+  const cursorHost = host === "cursor.com" || host.endsWith(".cursor.com");
+  return cursorHost && path === "/blog/joining-spacex";
+}
+
 /** Publication name from the host only — never an invented article title. */
 export function sourcedStartupSourceTitle(href: string): string | null {
   const parsed = startupSourceHost(href);
@@ -441,6 +447,9 @@ export function sourcedStartupSourceTitle(href: string): string | null {
     parsed.host.endsWith(".wikipedia.org")
   ) {
     return "Wikipedia";
+  }
+  if (isCursorJoiningSpacexSource(parsed.host, parsed.path)) {
+    return "Cursor: Joining SpaceX";
   }
   const article = SOURCED_ARTICLE_TITLES[`${parsed.host}${parsed.path}`];
   if (article) return article;
@@ -461,8 +470,9 @@ export function displayStartupSourceChips(
   const seen = new Set<string>();
   for (const href of displayStartupSources(sources)) {
     const label = startupSourceLabel(href, locale);
-    if (seen.has(label)) continue;
-    seen.add(label);
+    const key = label.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
     chips.push({ href, label });
   }
   return chips;
@@ -796,38 +806,46 @@ export function startupDirectorySitemapPaths(
   return paths;
 }
 
+/** Promo-ready at ≥3000. Crawl/index is always on — this is not robots. */
 export function startupsPublicIndexable(verifiedCount: number): boolean {
   return (
     Number.isFinite(verifiedCount) && verifiedCount >= STARTUPS_PUBLIC_INDEX_MIN
   );
 }
 
-/** Staging gate: noindex,follow until ≥3000 verified rows. Follow stays on. */
-export function startupsPublicRobots(verifiedCount: number): {
-  index: boolean;
-  follow: boolean;
+/** Directory + Insights are crawlable now. Count does not change robots. */
+export function startupsPublicRobots(_verifiedCount?: number): {
+  index: true;
+  follow: true;
 } {
-  return {
-    index: startupsPublicIndexable(verifiedCount),
-    follow: true,
-  };
+  return { index: true, follow: true };
 }
 
 /**
- * Directory + Insights + crawlable ?page= — only when the verified count
- * clears the public index gate. Pagination links still exist on the page
- * below the gate; they just stay out of the sitemap until then.
+ * Directory + Insights + crawlable ?page=. Always listed — ≥3000 is
+ * promo-only, not a sitemap gate.
  */
 export function startupInvestigationSitemapPaths(
   verifiedCount: number,
   pageSize: number = STARTUPS_PAGE_SIZE,
 ): string[] {
-  if (!startupsPublicIndexable(verifiedCount)) return [];
   return [
     STARTUPS_PATH,
     STARTUPS_INSIGHTS_PATH,
     ...startupDirectorySitemapPaths(verifiedCount, pageSize),
   ];
+}
+
+/** Same-origin favicon for a sourced URL. Soft-omit if the host is unusable. */
+export function startupSourceFaviconUrl(href: string): string | null {
+  try {
+    const url = new URL(href);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (!url.hostname.includes(".")) return null;
+    return `${url.protocol}//${url.host}/favicon.ico`;
+  } catch {
+    return null;
+  }
 }
 
 export function startupDirectoryPageNumbers(
