@@ -162,9 +162,7 @@ describe("seat terms", () => {
 
 describe("roles claim paths", () => {
   it("uses the hard www Join door and existing Welcome / Hub People paths", () => {
-    expect(AIT_COMMUNITY_ROLES_PATH).toBe(
-      "/investigations/ait-community-roles",
-    );
+    expect(AIT_COMMUNITY_ROLES_PATH).toBe("/roles");
     expect(AIT_COMMUNITY_ROLES_JOIN_HREF).toBe(
       "https://www.aitcommunity.org/en/join",
     );
