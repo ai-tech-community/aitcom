@@ -110,11 +110,9 @@ describe("Startups v1 Ops-Passed seeds", () => {
       expect(JSON.stringify(row)).not.toMatch(BANNED_METRIC);
     }
 
-    const byName = Object.fromEntries(
-      STARTUPS_V1_SEEDS.map((row) => [row.name, row]),
-    );
-    expect(byName.Cohere.region).toBe("Toronto, Canada");
-    expect(byName.Pinecone.region).toBe("New York, US");
+    const byName = new Map(STARTUPS_V1_SEEDS.map((row) => [row.name, row]));
+    expect(byName.get("Cohere")?.region).toBe("Toronto, Canada");
+    expect(byName.get("Pinecone")?.region).toBe("New York, US");
     expect(
       STARTUPS_V1_SEEDS.filter((row) => row.region != null).map(
         (row) => row.name,
