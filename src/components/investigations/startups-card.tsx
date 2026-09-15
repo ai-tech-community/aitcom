@@ -69,7 +69,9 @@ export function StartupsCard({
         ) : null}
         {sources.length > 0 ? (
           <div>
-            <p className="text-foreground text-sm font-medium">{copy.sources}</p>
+            <p className="text-foreground text-sm font-medium">
+              {copy.sources}
+            </p>
             <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
               {sources.map((href, index) => (
                 <li key={href}>

@@ -8,9 +8,7 @@ import {
 import { db } from "@/server/db";
 import { startups } from "@/server/db/schema";
 
-function toPublicCard(
-  row: typeof startups.$inferSelect,
-): StartupPublicCard {
+function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
   return {
     id: row.id,
     name: row.name,

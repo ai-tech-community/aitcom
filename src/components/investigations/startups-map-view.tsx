@@ -51,11 +51,7 @@ export function StartupsMapView({ pins }: { pins: StartupMapPin[] }) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         {pins.map((pin) => (
-          <Marker
-            key={pin.id}
-            position={[pin.lat, pin.lng]}
-            icon={markerIcon}
-          >
+          <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={markerIcon}>
             <Popup>
               <a
                 href={pin.homepage}
@@ -65,7 +61,9 @@ export function StartupsMapView({ pins }: { pins: StartupMapPin[] }) {
                 {pin.name}
               </a>
               {pin.region ? (
-                <div className="mt-1 text-xs text-neutral-600">{pin.region}</div>
+                <div className="mt-1 text-xs text-neutral-600">
+                  {pin.region}
+                </div>
               ) : null}
             </Popup>
           </Marker>

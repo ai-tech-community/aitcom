@@ -12,9 +12,7 @@ import {
   isStartupInsightsTab,
 } from "./startups-insights";
 
-function card(
-  overrides: Partial<StartupPublicCard> = {},
-): StartupPublicCard {
+function card(overrides: Partial<StartupPublicCard> = {}): StartupPublicCard {
   return {
     id: "fixture",
     name: "Fixture Co",

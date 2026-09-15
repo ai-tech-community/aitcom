@@ -219,9 +219,7 @@ export function StartupsSubmitDialog({
             <Label htmlFor="startup-category">{copy.fieldCategory}</Label>
             <Select
               value={category}
-              onValueChange={(value) =>
-                setCategory(value as StartupCategoryId)
-              }
+              onValueChange={(value) => setCategory(value as StartupCategoryId)}
             >
               <SelectTrigger id="startup-category" className="w-full">
                 <SelectValue />

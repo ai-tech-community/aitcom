@@ -187,7 +187,10 @@ describe("StartupsPage", () => {
       nl.investigationsStartups.title,
     );
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
-    expect(container.textContent).toContain(nl.investigationsStartups.empty);
+    expect(container.textContent).toContain(nl.investigationsStartups.lead);
+    expect(container.textContent).toContain(
+      nl.investigationsStartups.howWeList,
+    );
   });
 });
 
@@ -219,16 +222,20 @@ describe("Startups Insights tab", () => {
         companies={[FIXTURE_CARD]}
       />,
     );
-    expect(container.querySelector("[data-startups-insights-bento]")).not.toBeNull();
+    expect(
+      container.querySelector("[data-startups-insights-bento]"),
+    ).not.toBeNull();
     const tiles = [
       ...container.querySelectorAll("[data-startups-insight-tile]"),
     ];
-    expect(tiles.map((tile) => tile.getAttribute("data-startups-insight-tile"))).toEqual(
-      ["added-over-time", "category-mix", "region-mix"],
-    );
+    expect(
+      tiles.map((tile) => tile.getAttribute("data-startups-insight-tile")),
+    ).toEqual(["added-over-time", "category-mix", "region-mix"]);
     expect(tiles[0]).toHaveClass("md:col-span-2");
     for (const tile of tiles) {
-      expect(tile.querySelector("[data-startups-insight-table] table")).not.toBeNull();
+      expect(
+        tile.querySelector("[data-startups-insight-table] table"),
+      ).not.toBeNull();
     }
     expect(container.textContent).toContain(STARTUPS_INSIGHTS_CAPTION);
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
@@ -261,7 +268,9 @@ describe("Startups i18n", () => {
       Object.keys(en.investigationsStartups).sort(),
     );
     expect(en.investigationsStartups.title).toBe(STARTUPS_H1);
-    expect(en.investigationsStartups.chartCaption).toBe(STARTUPS_INSIGHTS_CAPTION);
+    expect(en.investigationsStartups.chartCaption).toBe(
+      STARTUPS_INSIGHTS_CAPTION,
+    );
     expect(Object.values(en.investigationsStartups).join("\n")).not.toMatch(
       BANNED,
     );
@@ -274,7 +283,9 @@ describe("Startups i18n", () => {
 describe("Startups site integration", () => {
   it("is in the sitemap and investigations index", () => {
     expect(readFileSync(SITEMAP_FILE, "utf8")).toContain(STARTUPS_PATH);
-    expect(readFileSync(SITEMAP_FILE, "utf8")).toContain(STARTUPS_INSIGHTS_PATH);
+    expect(readFileSync(SITEMAP_FILE, "utf8")).toContain(
+      STARTUPS_INSIGHTS_PATH,
+    );
     expect(readFileSync(SITEMAP_TEST_FILE, "utf8")).toContain(STARTUPS_PATH);
     expect(readFileSync(INDEX_FILE, "utf8")).toContain(STARTUPS_PATH);
   });
@@ -305,7 +316,9 @@ describe("Startups site integration", () => {
     expect(readFileSync(MIGRATION_FILE, "utf8")).not.toMatch(/INSERT INTO/i);
     expect(existsSync(OPS_DOC)).toBe(true);
     expect(existsSync(FIXTURE)).toBe(true);
-    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/createStartup|createStartups/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(
+      /createStartup|createStartups/,
+    );
   });
 
   it("does not bake Pulse company names into UI components", () => {

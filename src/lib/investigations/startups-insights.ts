@@ -7,8 +7,7 @@ import {
   type StartupPublicCard,
 } from "./startups";
 
-export const STARTUPS_INSIGHTS_CAPTION =
-  "from listed companies · Neon only";
+export const STARTUPS_INSIGHTS_CAPTION = "from listed companies · Neon only";
 
 export type StartupsInsightsCategoryRow = {
   id: StartupCategoryId;
@@ -97,7 +96,9 @@ export function buildStartupInsights(
       ? null
       : [...regionCounts.entries()]
           .map(([region, count]) => ({ region, count }))
-          .sort((a, b) => b.count - a.count || a.region.localeCompare(b.region));
+          .sort(
+            (a, b) => b.count - a.count || a.region.localeCompare(b.region),
+          );
 
   const addedOverTime = [...monthCounts.entries()]
     .sort(([left], [right]) => left.localeCompare(right))

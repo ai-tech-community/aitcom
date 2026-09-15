@@ -25,12 +25,12 @@ Empty Neon → soft empty state on Directory and Insights. That is correct.
 
 tRPC router `startups`, Hub owner/admin only:
 
-| Procedure | Purpose |
-|-----------|---------|
-| `startups.createStartup` | One Ops-passed row |
+| Procedure                 | Purpose                                   |
+| ------------------------- | ----------------------------------------- |
+| `startups.createStartup`  | One Ops-passed row                        |
 | `startups.createStartups` | Batch, max 30 rows (`STARTUPS_BATCH_MAX`) |
-| `startups.updateStartup` | Edit an existing row |
-| `startups.listApproved` | Public read (also what the page uses) |
+| `startups.updateStartup`  | Edit an existing row                      |
+| `startups.listApproved`   | Public read (also what the page uses)     |
 
 Row shape (Pulse-compatible):
 
@@ -87,4 +87,5 @@ Hub operator (`Add a company`).
 
 `/en/investigations/startups/insights` aggregates **listed Neon rows only**
 (category mix, region mix from non-blank region, listed-over-time). CSS bento
-+ HTML table fallback. No invented metrics.
+
+- HTML table fallback. No invented metrics.

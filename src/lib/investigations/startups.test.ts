@@ -23,7 +23,8 @@ import {
   type StartupPublicCard,
 } from "./startups";
 
-const BANNED_METRIC = /valuation|headcount|attendance|unicorn|employees|\bARR\b|largest|growth rate/i;
+const BANNED_METRIC =
+  /valuation|headcount|attendance|unicorn|employees|\bARR\b|largest|growth rate/i;
 
 function sampleCard(
   overrides: Partial<StartupPublicCard> = {},
@@ -172,11 +173,7 @@ describe("directory query", () => {
     );
     expect(filtered.map((card) => card.id)).toEqual(["b"]);
     expect(
-      applyStartupDirectoryQuery(
-        cards,
-        { q: "", category: "robotics" },
-        "en",
-      ),
+      applyStartupDirectoryQuery(cards, { q: "", category: "robotics" }, "en"),
     ).toEqual([]);
   });
 

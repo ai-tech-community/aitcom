@@ -39,8 +39,10 @@ describe("startups router locks", () => {
     expect(src).toContain("updateStartup");
     expect(src).toContain("listApprovedPublicStartups");
     expect(src).toContain("STARTUPS_BATCH_MAX");
-    expect(src).toContain(STARTUPS_HOMEPAGE_ERROR);
-    expect(src).toContain(STARTUPS_DUPLICATE_ERROR);
+    expect(src).toContain("STARTUPS_HOMEPAGE_ERROR");
+    expect(src).toContain("STARTUPS_DUPLICATE_ERROR");
+    expect(STARTUPS_HOMEPAGE_ERROR).toMatch(/homepage URL/i);
+    expect(STARTUPS_DUPLICATE_ERROR).toMatch(/already/i);
     expect(STARTUPS_BATCH_MAX).toBe(30);
     expect(src).not.toMatch(BAKED_COMPANIES);
   });

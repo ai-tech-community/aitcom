@@ -17,8 +17,7 @@ export const STARTUPS_INSIGHTS_META =
 export const STARTUPS_JOIN_HREF =
   "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=investigations&utm_campaign=startups";
 
-export const STARTUPS_HOMEPAGE_ERROR =
-  "Use a live http(s) homepage URL.";
+export const STARTUPS_HOMEPAGE_ERROR = "Use a live http(s) homepage URL.";
 
 export const STARTUPS_SOURCES_ERROR =
   "Add 1–3 source URLs (homepage 200 plus cited pages).";
@@ -117,9 +116,7 @@ const CATEGORY_ALIASES: Record<string, StartupCategoryId> = {
   other: "other",
 };
 
-export function presentText(
-  value: string | null | undefined,
-): string | null {
+export function presentText(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? "";
   return trimmed.length > 0 ? trimmed : null;
 }
@@ -144,7 +141,7 @@ export function normalizeStartupHomepage(href: string): string | null {
     if (!url.hostname.includes(".")) return null;
     url.hash = "";
     const path =
-      url.pathname.length > 1 ? url.pathname.replace(/\/+$/, "") : url.pathname;
+      url.pathname.length > 1 ? url.pathname.replace(/\/+$/, "") : "";
     return `${url.protocol}//${url.host}${path}${url.search}`;
   } catch {
     return null;
@@ -221,9 +218,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
   return value;
 }
 
-export function parseStartupPage(
-  value: string | string[] | undefined,
-): number {
+export function parseStartupPage(value: string | string[] | undefined): number {
   const raw = firstParam(value);
   if (!raw) return 1;
   const parsed = Number.parseInt(raw, 10);
