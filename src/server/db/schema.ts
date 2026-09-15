@@ -4162,6 +4162,69 @@ export const awesomeAiOssSaveRelations = relations(
   }),
 );
 
+/** Startups investigation. No valuation / headcount / attendance — never invent metrics. */
+export const startups = appSchema.table(
+  "startup",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: d.text().notNull(),
+    homepage: d.text().notNull(),
+    category: d
+      .varchar({ length: 32 })
+      .notNull()
+      .$type<
+        | "models"
+        | "agents"
+        | "ai-infra"
+        | "robotics"
+        | "energy"
+        | "vertical"
+        | "other"
+      >(),
+    sources: d.json().$type<string[]>().notNull().default([]),
+    region: d.text(),
+    lat: d.doublePrecision(),
+    lng: d.doublePrecision(),
+    stage: d.text(),
+    logoUrl: d.text(),
+    status: d
+      .varchar({ length: 16 })
+      .notNull()
+      .default("approved")
+      .$type<"pending" | "approved" | "rejected">(),
+    source: d
+      .varchar({ length: 16 })
+      .notNull()
+      .default("staff")
+      .$type<"staff">(),
+    listedOn: d.date().notNull(),
+    submittedByUserId: d.varchar({ length: 255 }).references(() => user.id),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("startup_homepage_idx").on(t.homepage),
+    index("startup_status_idx").on(t.status),
+    index("startup_category_idx").on(t.category),
+    index("startup_listed_on_idx").on(t.listedOn),
+  ],
+);
+
+export const startupsRelations = relations(startups, ({ one }) => ({
+  submittedBy: one(user, {
+    fields: [startups.submittedByUserId],
+    references: [user.id],
+    relationName: "startup_submitter",
+  }),
+}));
+
 /** Thin public /events list. No attendance / RSVP fields — never invent counts. */
 export const curatedPublicEvents = appSchema.table(
   "curated_public_event",
