@@ -62,7 +62,16 @@ function flattenPulseStartupRow(raw: unknown): unknown {
       pulseExitAlias(typeof row.status === "string" ? row.status : null),
     acquirer: row.acquirer ?? row.exit_acquirer ?? null,
     exitOn,
-    founders: Array.isArray(row.founders) ? row.founders : [],
+    founders: Array.isArray(row.founders)
+      ? row.founders.map((founder) => {
+          if (!founder || typeof founder !== "object") return founder;
+          const item = founder as Record<string, unknown>;
+          return {
+            ...item,
+            imageUrl: item.imageUrl ?? item.image_url ?? item.photo_url ?? null,
+          };
+        })
+      : [],
   };
 }
 
@@ -81,6 +90,9 @@ const createStartupFields = z.object({
       z.object({
         name: z.string().trim().max(160),
         url: optionalBlank,
+        imageUrl: optionalBlank,
+        image_url: optionalBlank,
+        photo_url: optionalBlank,
       }),
     )
     .max(8)

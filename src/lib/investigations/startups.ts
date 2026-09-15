@@ -16,7 +16,7 @@ export const STARTUPS_META =
 export const STARTUPS_INSIGHTS_H1 = "AI startups insights";
 
 export const STARTUPS_INSIGHTS_META =
-  "Added over time, plus category, region, stage, and source coverage — from the live directory only. Blank region and stage stay omitted.";
+  "Added over time, plus category, region, stage, and source coverage — from the live directory only. Blank stage stays omitted. Region mix waits until five distinct sourced regions are listed.";
 
 export const STARTUPS_JOIN_HREF =
   "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=investigations&utm_campaign=startups";
@@ -58,7 +58,13 @@ export type StartupExitStatus = "acquired" | "ipo" | "shutdown";
 export type StartupFounder = {
   name: string;
   url: string | null;
+  /** Sourced photo only. Soft-omit — never invent a face or stock image. */
+  imageUrl: string | null;
 };
+
+export const STARTUPS_PUBLIC_INDEX_MIN = 3000;
+
+export const STARTUPS_FOUNDERS_SHOWN = 3;
 
 export type StartupPublicCard = {
   id: string;
@@ -276,7 +282,15 @@ export type PulseStartupRow = {
   stage?: string | null;
   logo_url?: string | null;
   logoUrl?: string | null;
-  founders?: readonly { name?: string | null; url?: string | null }[] | null;
+  founders?:
+    | readonly {
+        name?: string | null;
+        url?: string | null;
+        imageUrl?: string | null;
+        image_url?: string | null;
+        photo_url?: string | null;
+      }[]
+    | null;
   status?: string | null;
   exitStatus?: string | null;
   exit_acquirer?: string | null;
@@ -317,30 +331,62 @@ export function mapPulseStartupWrite(row: PulseStartupRow) {
   };
 }
 
+export type StartupFounderInput = {
+  name?: string | null;
+  url?: string | null;
+  imageUrl?: string | null;
+  image_url?: string | null;
+  photo_url?: string | null;
+};
+
 export function sanitizeStartupFounders(
-  founders:
-    | readonly { name?: string | null; url?: string | null }[]
-    | null
-    | undefined,
+  founders: readonly StartupFounderInput[] | null | undefined,
 ): StartupFounder[] {
   const clean: StartupFounder[] = [];
   for (const raw of founders ?? []) {
     const name = presentText(raw?.name);
     if (!name) continue;
     const url = raw?.url ? normalizeStartupHomepage(raw.url) : null;
-    clean.push({ name, url });
+    const imageRaw =
+      presentText(raw?.imageUrl) ??
+      presentText(raw?.image_url) ??
+      presentText(raw?.photo_url);
+    const imageUrl = imageRaw ? normalizeStartupHomepage(imageRaw) : null;
+    clean.push({ name, url, imageUrl });
     if (clean.length === STARTUPS_FOUNDERS_MAX) break;
   }
   return clean;
 }
 
 export function displayStartupFounders(
-  founders:
-    | readonly { name?: string | null; url?: string | null }[]
-    | null
-    | undefined,
+  founders: readonly StartupFounderInput[] | null | undefined,
 ): StartupFounder[] {
   return sanitizeStartupFounders(founders);
+}
+
+export function startupFounderInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) {
+    return parts[0]!.slice(0, 1).toUpperCase();
+  }
+  return `${parts[0]![0]}${parts[parts.length - 1]![0]}`.toUpperCase();
+}
+
+export function formatStartupExitBadge(
+  card: Pick<StartupPublicCard, "exitStatus" | "acquirer" | "exitOn">,
+  locale: StartupLocale = "en",
+): string | null {
+  if (!card.exitStatus) return null;
+  const parts = [STARTUP_EXIT_STATUS_LABELS[card.exitStatus][locale]];
+  const acquirer = presentText(card.acquirer);
+  const exitOn = presentText(card.exitOn);
+  if (acquirer) parts.push(acquirer);
+  if (exitOn) {
+    const year = /^(\d{4})(?:-\d{2}-\d{2})?$/.exec(exitOn);
+    parts.push(year ? year[1]! : exitOn);
+  }
+  return parts.join("·");
 }
 
 export type StartupCiteKind = "docs" | "deep-dive" | "talk" | "news";
@@ -367,6 +413,11 @@ const SOURCED_PUBLICATION_TITLES: Record<string, string> = {
   "datacenterdynamics.com": "Data Center Dynamics",
 };
 
+/** Sourced article titles keyed by host + path. Never invent a headline. */
+const SOURCED_ARTICLE_TITLES: Record<string, string> = {
+  "cursor.com/blog/joining-spacex": "Cursor: Joining SpaceX",
+};
+
 function startupSourceHost(
   href: string,
 ): { host: string; path: string } | null {
@@ -391,7 +442,30 @@ export function sourcedStartupSourceTitle(href: string): string | null {
   ) {
     return "Wikipedia";
   }
+  const article = SOURCED_ARTICLE_TITLES[`${parsed.host}${parsed.path}`];
+  if (article) return article;
   return SOURCED_PUBLICATION_TITLES[parsed.host] ?? null;
+}
+
+export type StartupSourceChip = {
+  href: string;
+  label: string;
+};
+
+/** Unique visible labels only — never News/News. First sourced label wins. */
+export function displayStartupSourceChips(
+  sources: readonly string[] | null | undefined,
+  locale: StartupLocale = "en",
+): StartupSourceChip[] {
+  const chips: StartupSourceChip[] = [];
+  const seen = new Set<string>();
+  for (const href of displayStartupSources(sources)) {
+    const label = startupSourceLabel(href, locale);
+    if (seen.has(label)) continue;
+    seen.add(label);
+    chips.push({ href, label });
+  }
+  return chips;
 }
 
 export function startupCiteKind(href: string): StartupCiteKind {
@@ -722,6 +796,40 @@ export function startupDirectorySitemapPaths(
   return paths;
 }
 
+export function startupsPublicIndexable(verifiedCount: number): boolean {
+  return (
+    Number.isFinite(verifiedCount) && verifiedCount >= STARTUPS_PUBLIC_INDEX_MIN
+  );
+}
+
+/** Staging gate: noindex,follow until ≥3000 verified rows. Follow stays on. */
+export function startupsPublicRobots(verifiedCount: number): {
+  index: boolean;
+  follow: boolean;
+} {
+  return {
+    index: startupsPublicIndexable(verifiedCount),
+    follow: true,
+  };
+}
+
+/**
+ * Directory + Insights + crawlable ?page= — only when the verified count
+ * clears the public index gate. Pagination links still exist on the page
+ * below the gate; they just stay out of the sitemap until then.
+ */
+export function startupInvestigationSitemapPaths(
+  verifiedCount: number,
+  pageSize: number = STARTUPS_PAGE_SIZE,
+): string[] {
+  if (!startupsPublicIndexable(verifiedCount)) return [];
+  return [
+    STARTUPS_PATH,
+    STARTUPS_INSIGHTS_PATH,
+    ...startupDirectorySitemapPaths(verifiedCount, pageSize),
+  ];
+}
+
 export function startupDirectoryPageNumbers(
   currentPage: number,
   totalPages: number,
@@ -759,6 +867,7 @@ export function startupsDirectoryJsonLd(
       };
       const sources = displayStartupSources(card.sources);
       if (sources.length > 0) item.sameAs = sources;
+      // Organization only — never Person nodes or invented founder images.
       return {
         "@type": "ListItem",
         position: index + 1,

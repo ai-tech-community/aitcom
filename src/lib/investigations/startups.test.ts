@@ -10,8 +10,11 @@ import {
   STARTUP_CATEGORY_IDS,
   applyStartupDirectoryQuery,
   buildStartupDirectoryPath,
+  displayStartupSourceChips,
   displayStartupSources,
+  formatStartupExitBadge,
   normalizeStartupHomepage,
+  startupFounderInitials,
   startupSourceLabel,
   paginateStartupCards,
   parseStartupCategory,
@@ -24,8 +27,12 @@ import {
   sanitizeStartupSources,
   startupDirectoryCanonicalPath,
   startupDirectorySitemapPaths,
+  startupInvestigationSitemapPaths,
   startupMapPins,
   startupsDirectoryJsonLd,
+  startupsPublicIndexable,
+  startupsPublicRobots,
+  STARTUPS_PUBLIC_INDEX_MIN,
   verifiedStartupPin,
   type StartupPublicCard,
 } from "./startups";
@@ -155,6 +162,9 @@ describe("homepage and sources", () => {
       "Talk",
     );
     expect(startupSourceLabel("https://obscure.example/path")).toBe("Docs");
+    expect(startupSourceLabel("https://cursor.com/blog/joining-spacex")).toBe(
+      "Cursor: Joining SpaceX",
+    );
     for (const href of [
       "https://en.wikipedia.org/wiki/Anthropic",
       "https://cohere.com/about",
@@ -164,6 +174,32 @@ describe("homepage and sources", () => {
     ]) {
       expect(startupSourceLabel(href)).not.toMatch(/^[123]$/);
     }
+  });
+
+  it("dedupes source chip labels so News never appears twice", () => {
+    expect(
+      displayStartupSourceChips(
+        [
+          "https://example.com/news/one",
+          "https://example.com/news/two",
+          "https://en.wikipedia.org/wiki/Example",
+        ],
+        "en",
+      ),
+    ).toEqual([
+      { href: "https://example.com/news/one", label: "News" },
+      { href: "https://en.wikipedia.org/wiki/Example", label: "Wikipedia" },
+    ]);
+    expect(
+      displayStartupSourceChips(
+        [
+          "https://cursor.com/about",
+          "https://cursor.com/blog/joining-spacex",
+          "https://en.wikipedia.org/wiki/Cursor_(code_editor)",
+        ],
+        "en",
+      ).map((chip) => chip.label),
+    ).toEqual(["Docs", "Cursor: Joining SpaceX", "Wikipedia"]);
   });
 });
 
@@ -178,16 +214,58 @@ describe("soft-omit helpers", () => {
     expect(sanitizeStartupFounders(null)).toEqual([]);
     expect(
       sanitizeStartupFounders([{ name: "  " }, { name: "Ada", url: "" }]),
-    ).toEqual([{ name: "Ada", url: null }]);
+    ).toEqual([{ name: "Ada", url: null, imageUrl: null }]);
     expect(
       sanitizeStartupFounders([
         { name: "Ada", url: "https://ada.example/about" },
         { name: "Ada", url: "javascript:alert(1)" },
       ]),
     ).toEqual([
-      { name: "Ada", url: "https://ada.example/about" },
-      { name: "Ada", url: null },
+      { name: "Ada", url: "https://ada.example/about", imageUrl: null },
+      { name: "Ada", url: null, imageUrl: null },
     ]);
+    expect(
+      sanitizeStartupFounders([
+        {
+          name: "Ada",
+          photo_url: "https://ada.example/ada.jpg",
+        },
+        {
+          name: "Invented Face",
+          imageUrl: "javascript:alert(1)",
+        },
+      ]),
+    ).toEqual([
+      {
+        name: "Ada",
+        url: null,
+        imageUrl: "https://ada.example/ada.jpg",
+      },
+      { name: "Invented Face", url: null, imageUrl: null },
+    ]);
+    expect(startupFounderInitials("Michael Truell")).toBe("MT");
+    expect(startupFounderInitials("Ada")).toBe("A");
+    expect(
+      formatStartupExitBadge({
+        exitStatus: "acquired",
+        acquirer: "SpaceX",
+        exitOn: "2026",
+      }),
+    ).toBe("Acquired·SpaceX·2026");
+    expect(
+      formatStartupExitBadge({
+        exitStatus: "ipo",
+        acquirer: null,
+        exitOn: "2024",
+      }),
+    ).toBe("IPO·2024");
+    expect(
+      formatStartupExitBadge({
+        exitStatus: null,
+        acquirer: "SpaceX",
+        exitOn: "2026",
+      }),
+    ).toBeNull();
     expect(
       sanitizeStartupFounders(
         Array.from({ length: 12 }, (_, index) => ({
@@ -224,7 +302,9 @@ describe("soft-omit helpers", () => {
     expect(mapped.acquirer).toBe("SpaceX");
     expect(mapped.exitOn).toBe("2026");
     expect(mapped.jobsUrl).toBe("https://cursor.com/careers");
-    expect(mapped.founders).toEqual([{ name: "Michael Truell", url: null }]);
+    expect(mapped.founders).toEqual([
+      { name: "Michael Truell", url: null, imageUrl: null },
+    ]);
     expect(mapped.logoUrl).toBe("https://cursor.com/og.png");
     expect(
       mapPulseStartupWrite({
@@ -482,6 +562,19 @@ describe("directory query", () => {
       `${STARTUPS_PATH}?page=2`,
       `${STARTUPS_PATH}?page=3`,
     ]);
+    expect(STARTUPS_PUBLIC_INDEX_MIN).toBe(3000);
+    expect(startupsPublicIndexable(20)).toBe(false);
+    expect(startupsPublicIndexable(2999)).toBe(false);
+    expect(startupsPublicIndexable(3000)).toBe(true);
+    expect(startupsPublicRobots(20)).toEqual({ index: false, follow: true });
+    expect(startupsPublicRobots(3000)).toEqual({ index: true, follow: true });
+    expect(startupInvestigationSitemapPaths(20)).toEqual([]);
+    expect(startupInvestigationSitemapPaths(51)).toEqual([]);
+    expect(startupInvestigationSitemapPaths(3000)).toEqual([
+      STARTUPS_PATH,
+      STARTUPS_INSIGHTS_PATH,
+      ...startupDirectorySitemapPaths(3000),
+    ]);
     const page = paginateStartupCards(
       Array.from({ length: 51 }, (_, index) =>
         sampleCard({ id: `n-${index}` }),
@@ -498,5 +591,23 @@ describe("json-ld", () => {
     const data = startupsDirectoryJsonLd([sampleCard()]);
     expect(data["@type"]).toBe("ItemList");
     expect(JSON.stringify(data)).not.toMatch(BANNED_METRIC);
+    expect(JSON.stringify(data)).not.toMatch(
+      /"@type":"Person"|founder.*image/i,
+    );
+    const withFounderPhoto = startupsDirectoryJsonLd([
+      sampleCard({
+        founders: [
+          {
+            name: "Ada Example",
+            url: "https://ada.example",
+            imageUrl: "https://ada.example/ada.jpg",
+          },
+        ],
+      }),
+    ]);
+    expect(JSON.stringify(withFounderPhoto)).not.toContain(
+      "https://ada.example/ada.jpg",
+    );
+    expect(JSON.stringify(withFounderPhoto)).not.toContain("Person");
   });
 });

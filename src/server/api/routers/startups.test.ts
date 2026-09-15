@@ -56,6 +56,8 @@ describe("startups router locks", () => {
     expect(src).toContain("jobs_url");
     expect(src).toContain("exit_acquirer");
     expect(src).toContain("exit_year");
+    expect(src).toContain("imageUrl");
+    expect(src).toContain("photo_url");
     expect(src).toContain("pulseExitAlias");
     expect(STARTUPS_HOMEPAGE_ERROR).toMatch(/homepage URL/i);
     expect(STARTUPS_DUPLICATE_ERROR).toMatch(/already/i);

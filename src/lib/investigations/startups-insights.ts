@@ -9,6 +9,9 @@ import {
 
 export const STARTUPS_INSIGHTS_CAPTION = "from listed companies · Neon only";
 
+/** Soft-omit the Region tile until this many distinct sourced regions exist. */
+export const STARTUPS_REGION_INSIGHTS_MIN = 5;
+
 export type StartupsInsightsCategoryRow = {
   id: StartupCategoryId;
   label: string;
@@ -125,7 +128,7 @@ export function buildStartupInsights(
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 
   const regionMix =
-    regionCounts.size === 0
+    regionCounts.size < STARTUPS_REGION_INSIGHTS_MIN
       ? null
       : [...regionCounts.entries()]
           .map(([region, count]) => ({ region, count }))

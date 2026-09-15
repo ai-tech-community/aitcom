@@ -13,6 +13,7 @@ import {
   parseStartupDirectoryQuery,
   startupDirectoryCanonicalPath,
   startupDirectoryHasFilters,
+  startupsPublicRobots,
   type StartupLocale,
 } from "@/lib/investigations/startups";
 import { isStartupInsightsTab } from "@/lib/investigations/startups-insights";
@@ -52,16 +53,18 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const locale = await getLocale();
   const raw = await searchParams;
+  const companies = await listApprovedPublicStartups();
+  const robots = startupsPublicRobots(companies.length);
   if (isStartupInsightsTab(raw.tab)) {
     return {
       title: STARTUPS_H1,
-      robots: { index: true, follow: true },
+      robots,
       alternates: await localeAlternates(STARTUPS_INSIGHTS_PATH),
     };
   }
   const query = parseStartupDirectoryQuery(raw);
   const filtered = applyStartupDirectoryQuery(
-    await listApprovedPublicStartups(),
+    companies,
     query,
     (locale === "nl" ? "nl" : "en") as StartupLocale,
   );
@@ -104,7 +107,7 @@ export async function generateMetadata({
   return {
     title: STARTUPS_H1,
     description: STARTUPS_META,
-    robots: { index: true, follow: true },
+    robots,
     ...buildOgMeta(STARTUPS_H1, STARTUPS_META, "Investigation"),
     alternates: await localeAlternates(
       canonicalPath.startsWith(STARTUPS_PATH) ? canonicalPath : STARTUPS_PATH,

@@ -13,7 +13,9 @@ import {
 import { buildStartupInsights } from "./startups-insights";
 import {
   applyStartupDirectoryQuery,
+  displayStartupSourceChips,
   displayStartupSources,
+  formatStartupExitBadge,
   normalizeStartupHomepage,
   parseStartupCategory,
   presentText,
@@ -174,6 +176,22 @@ describe("Startups v1 Ops-Passed seeds", () => {
       acquirer: "SpaceX",
       exitOn: "2026",
     });
+    expect(byName.get("Cursor (Anysphere)")?.sources).toContain(
+      "https://cursor.com/blog/joining-spacex",
+    );
+    expect(
+      displayStartupSourceChips(
+        byName.get("Cursor (Anysphere)")?.sources,
+        "en",
+      ).some(
+        (chip) =>
+          chip.label === "Cursor: Joining SpaceX" &&
+          chip.href === "https://cursor.com/blog/joining-spacex",
+      ),
+    ).toBe(true);
+    expect(
+      formatStartupExitBadge(byName.get("Cursor (Anysphere)")!, "en"),
+    ).toBe("Acquired·SpaceX·2026");
     expect(
       cards.filter((card) => card.exitStatus != null).map((card) => card.name),
     ).toEqual(["Oklo", "Cursor (Anysphere)"]);
@@ -220,10 +238,7 @@ describe("Startups v1 Ops-Passed seeds", () => {
       agents: 1,
       vertical: 1,
     });
-    expect(stats.regionMix).toEqual([
-      { region: "New York, US", count: 1 },
-      { region: "Toronto, Canada", count: 1 },
-    ]);
+    expect(stats.regionMix).toBeNull();
     expect(stats.stageMix).toBeNull();
     expect(
       stats.sourcesCoverage?.map((row) => [row.sources, row.count]),
@@ -250,7 +265,7 @@ describe("Startups v1 seed migration", () => {
     expect(migration).toContain("ON CONFLICT");
     expect(index).toContain("20260915c_startups_v1_seeds");
     expect(index).toMatch(
-      /20260915b_startups[\s\S]*20260915c_startups_v1_seeds[\s\S]*20260915d_startups_soft_omit_fields[\s\S]*20260915e_startups_v1_enriched/,
+      /20260915b_startups[\s\S]*20260915c_startups_v1_seeds[\s\S]*20260915d_startups_soft_omit_fields[\s\S]*20260915e_startups_v1_enriched[\s\S]*20260915f_startups_v1_polish/,
     );
     const enrich = readFileSync(
       join(root, "migrations/20260915e_startups_v1_enriched.ts"),
