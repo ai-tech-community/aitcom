@@ -29,6 +29,8 @@ const STATIC_PATHS = [
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
+  "/investigations/startups",
+  "/investigations/startups/insights",
   "/roles",
 ] as const;
 
@@ -243,20 +245,20 @@ describe("buildSitemapEntries", () => {
     expect(Number.isNaN((event?.lastModified as Date).getTime())).toBe(false);
   });
 
-  it("keeps Startups Directory and Insights out of the sitemap until 3000 verified rows", async () => {
+  it("includes Startups Directory and Insights even below the promo count", async () => {
     mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
 
-    const omitted = await buildSitemapEntries(
+    const staticOnly = await buildSitemapEntries(
       undefined,
       async () => new Map(),
       async () => [],
       async () => [],
     );
-    const omittedUrls = urlsOf(omitted);
-    expect(omittedUrls).not.toContain(
+    const staticUrls = urlsOf(staticOnly);
+    expect(staticUrls).toContain(
       "https://www.aitcommunity.org/en/investigations/startups",
     );
-    expect(omittedUrls).not.toContain(
+    expect(staticUrls).toContain(
       "https://www.aitcommunity.org/en/investigations/startups/insights",
     );
 
@@ -280,36 +282,12 @@ describe("buildSitemapEntries", () => {
     expect(indexedUrls).toContain(
       "https://www.aitcommunity.org/en/investigations/startups?page=2",
     );
-  });
-
-  it("strips leaked Startups paths when the live gate lists none", async () => {
-    mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
-
-    const { filterUnlistedStartupSitemapEntries } =
-      await import("@/lib/investigations/startups");
-    const leaked = filterUnlistedStartupSitemapEntries(
-      [
-        { url: "https://www.aitcommunity.org/en/blog" },
-        { url: "https://www.aitcommunity.org/en/investigations/startups" },
-        {
-          url: "https://www.aitcommunity.org/nl/investigations/startups/insights",
-        },
-      ],
-      [],
-    );
-    expect(leaked.map((entry) => entry.url)).toEqual([
-      "https://www.aitcommunity.org/en/blog",
-    ]);
-
-    const omitted = await buildSitemapEntries(
-      undefined,
-      async () => new Map(),
-      async () => [],
-      async () => [],
-    );
     expect(
-      urlsOf(omitted).some((url) => url.includes("/investigations/startups")),
-    ).toBe(false);
+      indexedUrls.filter(
+        (url) =>
+          url === "https://www.aitcommunity.org/en/investigations/startups",
+      ),
+    ).toHaveLength(1);
   });
 
   it("includes later Startups directory pages from the live Neon row count", async () => {

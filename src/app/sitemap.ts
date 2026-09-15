@@ -1,9 +1,6 @@
 import type { MetadataRoute } from "next";
 import { awesomeDirectorySitemapPaths } from "@/lib/investigations/awesome-ai-oss";
-import {
-  filterUnlistedStartupSitemapEntries,
-  startupInvestigationSitemapPaths,
-} from "@/lib/investigations/startups";
+import { startupInvestigationSitemapPaths } from "@/lib/investigations/startups";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import {
   HUB_FORUM_PATH,
@@ -38,6 +35,8 @@ const STATIC_PAGES = [
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
+  "/investigations/startups",
+  "/investigations/startups/insights",
   "/roles",
 ] as const;
 
@@ -69,6 +68,17 @@ function localeEntries(
       },
     },
   };
+}
+
+function uniqueLocaleEntries(paths: readonly string[]): MetadataRoute.Sitemap {
+  const seen = new Set<string>();
+  const entries: MetadataRoute.Sitemap = [];
+  for (const path of paths) {
+    if (seen.has(path)) continue;
+    seen.add(path);
+    entries.push(localeEntries(path));
+  }
+  return entries;
 }
 
 function docsFromSettled(
@@ -120,7 +130,7 @@ async function defaultStartupPagePaths(): Promise<string[]> {
     return startupInvestigationSitemapPaths(cards.length);
   } catch (error) {
     console.error("[sitemap] startups directory page lookup failed", error);
-    return [];
+    return startupInvestigationSitemapPaths(0);
   }
 }
 
@@ -143,16 +153,14 @@ export async function buildSitemapEntries(
     startupPagePaths = await getStartupPagePaths();
   } catch (error) {
     console.error("[sitemap] startups directory page lookup failed", error);
+    startupPagePaths = startupInvestigationSitemapPaths(0);
   }
 
-  const staticEntries = filterUnlistedStartupSitemapEntries(
-    [
-      ...STATIC_PAGES.map((path) => localeEntries(path)),
-      ...awesomePagePaths.map((path) => localeEntries(path)),
-      ...startupPagePaths.map((path) => localeEntries(path)),
-    ],
-    startupPagePaths,
-  );
+  const staticEntries = uniqueLocaleEntries([
+    ...STATIC_PAGES,
+    ...awesomePagePaths,
+    ...startupPagePaths,
+  ]);
 
   let payload: SitemapClient;
   try {
@@ -214,10 +222,12 @@ export async function buildSitemapEntries(
     },
   );
 
-  return filterUnlistedStartupSitemapEntries(
-    [...staticEntries, ...eventEntries, ...articleEntries, ...threadEntries],
-    startupPagePaths,
-  );
+  return [
+    ...staticEntries,
+    ...eventEntries,
+    ...articleEntries,
+    ...threadEntries,
+  ];
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

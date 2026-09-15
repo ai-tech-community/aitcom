@@ -40,7 +40,7 @@ export function StartupsFounders({
             data-startup-founder-photo={founder.imageUrl ?? undefined}
           >
             {founder.imageUrl ? (
-              <AvatarImage src={founder.imageUrl} alt="" />
+              <AvatarImage src={founder.imageUrl} alt={founder.name} />
             ) : null}
             <AvatarFallback>
               {startupFounderInitials(founder.name)}
@@ -53,13 +53,20 @@ export function StartupsFounders({
           </AvatarGroupCount>
         ) : null}
       </AvatarGroup>
-      <ul className="flex flex-wrap gap-x-3 gap-y-1">
+      <ul
+        data-startup-founder-ssr=""
+        className="flex flex-wrap gap-x-3 gap-y-1"
+      >
         {sourced.map((founder) => (
-          <li key={`${founder.name}-${founder.url ?? ""}`}>
+          <li
+            key={`${founder.name}-${founder.url ?? ""}`}
+            data-startup-founder-name={founder.name}
+          >
             {founder.url ? (
               <a
                 href={founder.url}
                 rel="noopener noreferrer"
+                data-startup-founder-profile={founder.url}
                 className="text-muted-foreground hover:text-foreground text-sm underline-offset-4 hover:underline"
               >
                 {founder.name}

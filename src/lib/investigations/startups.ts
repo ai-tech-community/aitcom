@@ -62,6 +62,7 @@ export type StartupFounder = {
   imageUrl: string | null;
 };
 
+/** Promo-only lock (LinkedIn / newsletter / Hub push). Not a crawl gate. */
 export const STARTUPS_PUBLIC_INDEX_MIN = 3000;
 
 export const STARTUPS_FOUNDERS_SHOWN = 3;
@@ -805,33 +806,29 @@ export function startupDirectorySitemapPaths(
   return paths;
 }
 
+/** Promo-ready at ≥3000. Crawl/index is always on — this is not robots. */
 export function startupsPublicIndexable(verifiedCount: number): boolean {
   return (
     Number.isFinite(verifiedCount) && verifiedCount >= STARTUPS_PUBLIC_INDEX_MIN
   );
 }
 
-/** Staging gate: noindex,follow until ≥3000 verified rows. Follow stays on. */
-export function startupsPublicRobots(verifiedCount: number): {
-  index: boolean;
-  follow: boolean;
+/** Directory + Insights are crawlable now. Count does not change robots. */
+export function startupsPublicRobots(_verifiedCount?: number): {
+  index: true;
+  follow: true;
 } {
-  return {
-    index: startupsPublicIndexable(verifiedCount),
-    follow: true,
-  };
+  return { index: true, follow: true };
 }
 
 /**
- * Directory + Insights + crawlable ?page= — only when the verified count
- * clears the public index gate. Pagination links still exist on the page
- * below the gate; they just stay out of the sitemap until then.
+ * Directory + Insights + crawlable ?page=. Always listed — ≥3000 is
+ * promo-only, not a sitemap gate.
  */
 export function startupInvestigationSitemapPaths(
   verifiedCount: number,
   pageSize: number = STARTUPS_PAGE_SIZE,
 ): string[] {
-  if (!startupsPublicIndexable(verifiedCount)) return [];
   return [
     STARTUPS_PATH,
     STARTUPS_INSIGHTS_PATH,
@@ -839,23 +836,16 @@ export function startupInvestigationSitemapPaths(
   ];
 }
 
-export function isStartupInvestigationSitemapUrl(url: string): boolean {
-  return url.includes("/investigations/startups");
-}
-
-/**
- * Drop Directory / Insights / ?page= sitemap rows unless the live gate
- * listed them. Guards a stale ISR body or a leaked STATIC_PAGES path
- * while verified count is still under 3000.
- */
-export function filterUnlistedStartupSitemapEntries<T extends { url: string }>(
-  entries: readonly T[],
-  listedStartupPaths: readonly string[],
-): T[] {
-  if (listedStartupPaths.length > 0) return [...entries];
-  return entries.filter(
-    (entry) => !isStartupInvestigationSitemapUrl(entry.url),
-  );
+/** Same-origin favicon for a sourced URL. Soft-omit if the host is unusable. */
+export function startupSourceFaviconUrl(href: string): string | null {
+  try {
+    const url = new URL(href);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    if (!url.hostname.includes(".")) return null;
+    return `${url.protocol}//${url.host}/favicon.ico`;
+  } catch {
+    return null;
+  }
 }
 
 export function startupDirectoryPageNumbers(

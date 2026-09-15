@@ -16,6 +16,7 @@ import {
   formatStartupExitBadge,
   formatStartupListedDate,
   presentText,
+  startupSourceFaviconUrl,
   type StartupLocale,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
@@ -101,7 +102,9 @@ export function StartupsCard({
                       href={chip.href}
                       rel="noopener noreferrer"
                       data-startup-source-chip={chip.label}
+                      className="inline-flex items-center gap-1.5"
                     >
+                      <SourceChipFavicon href={chip.href} />
                       {chip.label}
                     </a>
                   </Badge>
@@ -136,5 +139,24 @@ export function StartupsCard({
         ) : null}
       </CardFooter>
     </Card>
+  );
+}
+
+function SourceChipFavicon({ href }: { href: string }) {
+  const src = startupSourceFaviconUrl(href);
+  if (!src) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      width={12}
+      height={12}
+      data-startup-source-favicon={src}
+      className="size-3 rounded-sm"
+      onError={(event) => {
+        event.currentTarget.style.display = "none";
+      }}
+    />
   );
 }
