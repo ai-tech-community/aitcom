@@ -4,6 +4,8 @@ import { getTranslations } from "next-intl/server";
 import { HubJoin } from "@/components/join/hub-join";
 import { getJoinSignupHref } from "@/lib/join-path";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
+import { shouldPromoteJoin } from "@/server/better-auth/hub-session";
+import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("hubJoin");
@@ -37,5 +39,12 @@ export default async function JoinPage({
 }) {
   const t = await getTranslations("hubJoin");
   const search = searchFromRecord(await searchParams);
-  return <HubJoin t={t} signupHref={getJoinSignupHref(search)} />;
+  const { initialUser } = await loadHubAuthSeed();
+  return (
+    <HubJoin
+      t={t}
+      signupHref={getJoinSignupHref(search)}
+      promoteJoin={shouldPromoteJoin(initialUser)}
+    />
+  );
 }

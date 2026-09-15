@@ -450,6 +450,36 @@ describe("Startups Insights tab", () => {
     expect(container.textContent).toContain(STARTUPS_INSIGHTS_CAPTION);
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
   });
+
+  it("hides Directory and Insights Join CTAs for signed-in Hub members", () => {
+    const directory = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[FIXTURE_CARD]}
+        promoteJoin={false}
+      />,
+    );
+    expect(hrefsOf(directory.container)).not.toContain(STARTUPS_JOIN_HREF);
+    expect(directory.container.textContent).not.toContain(
+      en.investigationsStartups.joinCta,
+    );
+    directory.unmount();
+
+    const insights = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        tab="insights"
+        companies={[FIXTURE_CARD]}
+        promoteJoin={false}
+      />,
+    );
+    expect(hrefsOf(insights.container)).not.toContain(STARTUPS_JOIN_HREF);
+    expect(insights.container.textContent).not.toContain(
+      en.investigationsStartups.joinCta,
+    );
+  });
 });
 
 describe("Startups card soft-omit", () => {

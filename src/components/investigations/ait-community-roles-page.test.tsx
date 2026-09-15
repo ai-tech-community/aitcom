@@ -217,6 +217,47 @@ describe("AIT Community roles page", () => {
     ).toHaveLength(3);
   });
 
+  it("swaps empty-seat Claim off the hard Join door for signed-in Hub members", () => {
+    const seats = resolveSeats(undefined, new Date(OUTREACH_APPROVED_AT));
+    const { container } = render(
+      <AitCommunityRolesPage
+        t={tFrom(en.investigationsAitCommunityRoles)}
+        seats={seats}
+        promoteJoin={false}
+      />,
+    );
+
+    expect(hrefsOf(container)).not.toContain(AIT_COMMUNITY_ROLES_JOIN_HREF);
+    const claims = screen.getAllByRole("link", { name: "Claim this seat" });
+    expect(claims).toHaveLength(3);
+    for (const claim of claims) {
+      expect(claim).toHaveAttribute("href", HUB_WELCOME_THREAD_PATH);
+    }
+    expect(hrefsOf(container)).toContain(HUB_WELCOME_THREAD_PATH);
+    expect(hrefsOf(container)).toContain(HUB_PEOPLE_PATH);
+    expect(hrefsOf(container)).toContain(HUB_DM_PATH);
+    expect(container.textContent).not.toContain(
+      en.investigationsAitCommunityRoles.pathLead,
+    );
+    expect(container.textContent).not.toContain(
+      en.investigationsAitCommunityRoles.joinHint,
+    );
+    expect(container.textContent).not.toMatch(/After you join|Joining is Hub/i);
+    expect(container.textContent).toContain(
+      en.investigationsAitCommunityRoles.memberPathLead,
+    );
+    expect(container.textContent).toContain(
+      en.investigationsAitCommunityRoles.memberHint,
+    );
+  });
+
+  it("wires Roles to the shared promote-Join helper and Hub session seed", () => {
+    const src = readFileSync(PAGE_FILE, "utf8");
+    expect(src).toContain("loadHubAuthSeed");
+    expect(src).toContain("shouldPromoteJoin");
+    expect(src).toContain("promoteJoin");
+  });
+
   it("has matching EN and NL keys without invented headcount", () => {
     const enKeys = Object.keys(en.investigationsAitCommunityRoles).sort();
     const nlKeys = Object.keys(nl.investigationsAitCommunityRoles).sort();

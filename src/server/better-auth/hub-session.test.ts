@@ -254,6 +254,25 @@ describe("leftover after #251: first paint header/forum + reload", () => {
   });
 });
 
+describe("shouldPromoteJoin", () => {
+  it("promotes the hard Join door for guests and hides it for signed-in Hub members", () => {
+    expect(shouldPromoteJoin(null)).toBe(true);
+    expect(shouldPromoteJoin(undefined)).toBe(true);
+    expect(shouldPromoteJoin({ id: "" })).toBe(true);
+    expect(shouldPromoteJoin(SOREN)).toBe(false);
+    expect(shouldPromoteJoin(toHubAuthUser(SOREN))).toBe(false);
+  });
+
+  it("uses the same leftover rule as navbar JOIN", () => {
+    expect(shouldPromoteJoin(null)).toBe(hubDocumentPaint(null, []).navbarJoin);
+    expect(shouldPromoteJoin(SOREN)).toBe(
+      hubDocumentPaint(SOREN, [
+        { slug: "ait", status: "active", role: "member" },
+      ]).navbarJoin,
+    );
+  });
+});
+
 describe("hubDocumentPaint", () => {
   it("hides JOIN and sign-in copy when the document getSession returned a user", () => {
     const memberships = [

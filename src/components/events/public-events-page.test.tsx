@@ -1,13 +1,29 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+
+vi.mock("@/i18n/navigation", () => ({
+  Link: ({
+    href,
+    children,
+    ...p
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => (
+    <a href={href} {...p}>
+      {children}
+    </a>
+  ),
+}));
 
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
 import {
   PUBLIC_EVENTS_H1,
+  PUBLIC_EVENTS_HUB_HREF,
   PUBLIC_EVENTS_JOIN_HREF,
   PUBLIC_EVENTS_META,
   PUBLIC_EVENTS_PATH,
@@ -120,6 +136,45 @@ describe("PublicEventsPage", () => {
     );
     expect(container.textContent).toContain(SAMPLE.why.nl);
     expect(hrefsOf(container)).toContain(PUBLIC_EVENTS_JOIN_HREF);
+  });
+
+  it("swaps Join to Open Hub for signed-in Hub members and keeps UTMs for guests", () => {
+    const guest = render(
+      <PublicEventsPage
+        locale="en"
+        t={tFrom(en.publicEvents)}
+        events={[SAMPLE]}
+      />,
+    );
+    expect(hrefsOf(guest.container)).toContain(PUBLIC_EVENTS_JOIN_HREF);
+    expect(guest.container.textContent).toContain(en.publicEvents.lead);
+    expect(guest.container.textContent).toMatch(/community sign-up/);
+    guest.unmount();
+
+    const { container } = render(
+      <PublicEventsPage
+        locale="en"
+        t={tFrom(en.publicEvents)}
+        events={[SAMPLE]}
+        promoteJoin={false}
+      />,
+    );
+    expect(hrefsOf(container)).not.toContain(PUBLIC_EVENTS_JOIN_HREF);
+    expect(container.textContent).not.toContain(en.publicEvents.joinCta);
+    expect(container.textContent).not.toMatch(
+      /community sign-up|event ticket|Join the Hub/i,
+    );
+    expect(container.textContent).toContain(en.publicEvents.memberLead);
+    expect(
+      screen.getByRole("link", { name: en.publicEvents.hubCta }),
+    ).toHaveAttribute("href", PUBLIC_EVENTS_HUB_HREF);
+  });
+
+  it("wires Events to the shared promote-Join helper and Hub session seed", () => {
+    const src = readFileSync(PAGE_FILE, "utf8");
+    expect(src).toContain("loadHubAuthSeed");
+    expect(src).toContain("shouldPromoteJoin");
+    expect(src).toContain("promoteJoin");
   });
 });
 

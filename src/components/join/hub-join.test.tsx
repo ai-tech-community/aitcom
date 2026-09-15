@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
@@ -18,6 +21,7 @@ vi.mock("@/i18n/navigation", () => ({
 
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
+import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
 import { GUIDE_PATHS } from "@/lib/seo-guides";
 import { HubJoin } from "./hub-join";
 
@@ -79,6 +83,23 @@ describe("hub join door", () => {
     ).toHaveAttribute("href", GUIDE_PATHS.registerAgentMcp);
   });
 
+  it("swaps the signup CTA to Hub for signed-in members", () => {
+    render(
+      <HubJoin
+        t={tFrom(en.hubJoin)}
+        signupHref="/auth/signup"
+        promoteJoin={false}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("link", { name: en.hubJoin.cta }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: en.hubJoin.hubCta }),
+    ).toHaveAttribute("href", HUB_COMMUNITY_PATH);
+  });
+
   it("does not invent week activity, member counts, or summit tickets", () => {
     const { container } = render(
       <HubJoin t={tFrom(en.hubJoin)} signupHref="/auth/signup" />,
@@ -87,6 +108,21 @@ describe("hub join door", () => {
     for (const pattern of BANNED) {
       expect(text).not.toMatch(pattern);
     }
+  });
+});
+
+describe("hub join route", () => {
+  it("wires /join to the shared promote-Join helper and Hub session seed", () => {
+    const src = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../app/[locale]/join/page.tsx",
+      ),
+      "utf8",
+    );
+    expect(src).toContain("loadHubAuthSeed");
+    expect(src).toContain("shouldPromoteJoin");
+    expect(src).toContain("promoteJoin");
   });
 });
 

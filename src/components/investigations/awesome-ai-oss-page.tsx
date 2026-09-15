@@ -68,6 +68,7 @@ export function AwesomeAiOssPage({
   t,
   projects = curatedPublicCards(),
   signedIn = false,
+  promoteJoin = !signedIn,
   isModerator = false,
   query = { q: "", category: "all", sort: "newest", page: 1 },
   signInHref = "/en/auth/signin?redirect=/en/investigations/awesome-ai-oss",
@@ -78,6 +79,7 @@ export function AwesomeAiOssPage({
   t: (key: AwesomeAiOssKey) => string;
   projects?: AwesomePublicCard[];
   signedIn?: boolean;
+  promoteJoin?: boolean;
   isModerator?: boolean;
   query?: AwesomeDirectoryQuery;
   signInHref?: string;
@@ -122,9 +124,11 @@ export function AwesomeAiOssPage({
           insightsLabel={t("tabInsights")}
           navLabel={t("tabNav")}
         />
-        <Button asChild variant={isInsights ? "default" : "outline"}>
-          <a href={AWESOME_AI_OSS_JOIN_HREF}>{t("joinCta")}</a>
-        </Button>
+        {promoteJoin ? (
+          <Button asChild variant={isInsights ? "default" : "outline"}>
+            <a href={AWESOME_AI_OSS_JOIN_HREF}>{t("joinCta")}</a>
+          </Button>
+        ) : null}
       </div>
 
       <section className="mt-10">

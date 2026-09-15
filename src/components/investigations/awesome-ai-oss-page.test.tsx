@@ -887,6 +887,36 @@ describe("Awesome AI OSS Insights tab", () => {
     expectNoBannedClaims(container.textContent ?? "");
   });
 
+  it("hides the hard Join CTA for signed-in Hub members on Directory and Insights", () => {
+    const directory = render(
+      <AwesomeAiOssPage
+        locale="en"
+        t={tFrom(en.investigationsAwesomeAiOss)}
+        signedIn
+      />,
+    );
+    expect(hrefsOf(directory.container)).not.toContain(
+      AWESOME_AI_OSS_JOIN_HREF,
+    );
+    expect(directory.container.textContent).not.toContain(
+      en.investigationsAwesomeAiOss.joinCta,
+    );
+    directory.unmount();
+
+    const insights = render(
+      <AwesomeAiOssPage
+        locale="en"
+        t={tFrom(en.investigationsAwesomeAiOss)}
+        signedIn
+        tab="insights"
+      />,
+    );
+    expect(hrefsOf(insights.container)).not.toContain(AWESOME_AI_OSS_JOIN_HREF);
+    expect(insights.container.textContent).not.toContain(
+      en.investigationsAwesomeAiOss.joinCta,
+    );
+  });
+
   it("renders star distribution and Top 10 from fetched star_count only", () => {
     const checkedAt = new Date().toISOString();
     const projects = curatedPublicCards().map((card, index) => ({

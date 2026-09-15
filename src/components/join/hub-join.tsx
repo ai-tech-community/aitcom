@@ -1,6 +1,7 @@
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { SectionLabel } from "@/components/ui/section-label";
+import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
 import { GUIDE_PATHS } from "@/lib/seo-guides";
 
 export type HubJoinKey =
@@ -8,15 +9,18 @@ export type HubJoinKey =
   | "title"
   | "lead"
   | "cta"
+  | "hubCta"
   | "homeLabel"
   | "guideLabel";
 
 export function HubJoin({
   t,
   signupHref,
+  promoteJoin = true,
 }: {
   t: (key: HubJoinKey) => string;
   signupHref: string;
+  promoteJoin?: boolean;
 }) {
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -31,7 +35,11 @@ export function HubJoin({
         </p>
         <div className="pt-2">
           <Button asChild>
-            <Link href={signupHref}>{t("cta")}</Link>
+            {promoteJoin ? (
+              <Link href={signupHref}>{t("cta")}</Link>
+            ) : (
+              <Link href={HUB_COMMUNITY_PATH}>{t("hubCta")}</Link>
+            )}
           </Button>
         </div>
         <p className="text-muted-foreground text-sm leading-relaxed">
