@@ -849,6 +849,28 @@ describe("Awesome AI OSS Insights tab", () => {
     expect(container.textContent).toMatch(
       /from our curated list · refreshed daily/,
     );
+    expect(
+      container.querySelector("[data-awesome-insights-bento]"),
+    ).toBeInTheDocument();
+    const tiles = [
+      ...container.querySelectorAll("[data-awesome-insight-tile]"),
+    ];
+    expect(
+      tiles.map((tile) => tile.getAttribute("data-awesome-insight-tile")),
+    ).toEqual(["added-over-time", "category-mix", "host-mix"]);
+    expect(tiles[0]).toHaveClass("md:col-span-2");
+    for (const tile of tiles) {
+      const chart = tile.querySelector("[data-testid^='chart-']");
+      const table = tile.querySelector("[data-awesome-insight-table] table");
+      expect(chart).not.toBeNull();
+      expect(table).not.toBeNull();
+      expect(
+        Boolean(
+          chart!.compareDocumentPosition(table!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ).toBe(true);
+    }
     expect(screen.getByTestId("chart-category")).toBeInTheDocument();
     expect(screen.getByTestId("chart-host")).toBeInTheDocument();
     expect(screen.getByTestId("chart-added")).toBeInTheDocument();
@@ -887,6 +909,20 @@ describe("Awesome AI OSS Insights tab", () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId("chart-stars")).toBeInTheDocument();
     expect(screen.getByTestId("chart-top")).toBeInTheDocument();
+    expect(
+      [...container.querySelectorAll("[data-awesome-insight-tile]")].map(
+        (tile) => tile.getAttribute("data-awesome-insight-tile"),
+      ),
+    ).toEqual([
+      "added-over-time",
+      "category-mix",
+      "host-mix",
+      "star-distribution",
+      "top-stars",
+    ]);
+    expect(
+      container.querySelectorAll("[data-awesome-insight-tile] table"),
+    ).toHaveLength(5);
     expect(container.querySelector("[data-awesome-stars-omitted]")).toBeNull();
     expect(container.textContent).toContain(projects.at(-1)!.name);
     expect(container.textContent).toContain(String(projects.length * 40));

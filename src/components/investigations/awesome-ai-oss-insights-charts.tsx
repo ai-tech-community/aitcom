@@ -18,6 +18,7 @@ import type {
   AwesomeInsightsStarBucketRow,
   AwesomeInsightsTopStarRow,
 } from "@/lib/investigations/awesome-ai-oss-insights";
+import { cn } from "@/lib/utils";
 
 const CHART_COLORS = [
   "var(--chart-1)",
@@ -30,12 +31,14 @@ const CHART_COLORS = [
 function ChartFrame({
   children,
   label,
+  className,
 }: {
   children: React.ReactNode;
   label: string;
+  className?: string;
 }) {
   return (
-    <div className="h-64 w-full" role="img" aria-label={label}>
+    <div className={cn("h-64 w-full", className)} role="img" aria-label={label}>
       <ResponsiveContainer width="100%" height="100%">
         {children}
       </ResponsiveContainer>
@@ -115,12 +118,14 @@ export function AwesomeHostMixChart({
 export function AwesomeAddedOverTimeChart({
   data,
   label,
+  className,
 }: {
   data: AwesomeInsightsMonthRow[];
   label: string;
+  className?: string;
 }) {
   return (
-    <ChartFrame label={label}>
+    <ChartFrame label={label} className={className}>
       <BarChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
         <CartesianGrid vertical={false} stroke="var(--border)" />
         <XAxis
