@@ -167,14 +167,17 @@ describe("Startups investigation route", () => {
     expect(src).toContain('dynamic = "force-dynamic"');
     expect(src).toContain("isStartupInsightsTab");
     expect(src).toContain("startupsPublicRobots");
-    expect(src).not.toContain("robots: { index: false");
+    expect(src).not.toContain("robots: { index: true, follow: true }");
+    const layoutFile = join(appLocale, "investigations/startups/layout.tsx");
+    expect(existsSync(layoutFile)).toBe(true);
+    expect(readFileSync(layoutFile, "utf8")).toContain("index: false");
     const insights = readFileSync(INSIGHTS_FILE, "utf8");
     expect(insights).toContain("buildStartupInsights");
     expect(insights).toContain("listApprovedPublicStartups");
     expect(insights).toContain("startupsPublicRobots");
     expect(insights).toContain('dynamic = "force-dynamic"');
     expect(insights).toContain('tab="insights"');
-    expect(insights).not.toContain("robots: { index: false");
+    expect(insights).not.toContain("robots: { index: true, follow: true }");
     expect(readFileSync(QUERIES_FILE, "utf8")).not.toMatch(BAKED_COMPANIES);
   });
 });
@@ -582,10 +585,18 @@ describe("Startups card soft-omit", () => {
     expect(
       container.querySelector("[data-slot='avatar-group']"),
     ).not.toBeNull();
-    expect(screen.getByRole("link", { name: "Ada Example" })).toHaveAttribute(
-      "href",
-      "https://ada.example",
-    );
+    const adaLinks = screen.getAllByRole("link", { name: "Ada Example" });
+    expect(adaLinks.length).toBeGreaterThanOrEqual(2);
+    expect(
+      adaLinks.every(
+        (node) => node.getAttribute("href") === "https://ada.example",
+      ),
+    ).toBe(true);
+    expect(
+      container.querySelector(
+        "[data-startup-founder-hover='https://ada.example']",
+      ),
+    ).toHaveAttribute("title", "Ada Example");
     expect(
       container.querySelector("[data-startup-founder-ssr]"),
     ).not.toBeNull();
@@ -782,8 +793,8 @@ describe("Startups site integration", () => {
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/enriched/i);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/3000/);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Writing Bot/);
-    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/promo-only/);
-    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Do \*\*not\*\* noindex/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/noindex/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/3000/);
     expect(readFileSync(FIXTURE, "utf8")).toContain("jobs_url");
     expect(readFileSync(FIXTURE, "utf8")).toContain('"status": "ipo"');
     expect(readFileSync(SOFT_OMIT_MIGRATION_FILE, "utf8")).toContain(
@@ -820,8 +831,8 @@ describe("Startups site integration", () => {
 
     expect(sitemap).toContain("listApprovedPublicStartups");
     expect(sitemap).toContain("startupInvestigationSitemapPaths(cards.length)");
-    expect(sitemap).toContain('"/investigations/startups"');
-    expect(sitemap).not.toContain("filterUnlistedStartupSitemapEntries");
+    expect(sitemap).toContain("filterUnlistedStartupSitemapEntries");
+    expect(sitemap).not.toContain('"/investigations/startups",');
   });
 
   it("does not bake Pulse company names into UI components or queries", () => {

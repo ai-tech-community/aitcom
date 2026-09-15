@@ -31,22 +31,40 @@ export function StartupsFounders({
     <div data-startup-founders="" className="flex flex-col gap-2">
       <p className="text-foreground text-sm font-medium">{label}</p>
       <AvatarGroup aria-label={label}>
-        {shown.map((founder) => (
-          <Avatar
-            key={`${founder.name}-${founder.url ?? ""}`}
-            size="sm"
-            className="cursor-default"
-            aria-label={founder.name}
-            data-startup-founder-photo={founder.imageUrl ?? undefined}
-          >
-            {founder.imageUrl ? (
-              <AvatarImage src={founder.imageUrl} alt={founder.name} />
-            ) : null}
-            <AvatarFallback>
-              {startupFounderInitials(founder.name)}
-            </AvatarFallback>
-          </Avatar>
-        ))}
+        {shown.map((founder) => {
+          const avatar = (
+            <Avatar
+              size="sm"
+              className={founder.url ? "cursor-pointer" : "cursor-default"}
+              aria-label={founder.name}
+              title={founder.name}
+              data-startup-founder-photo={founder.imageUrl ?? undefined}
+            >
+              {founder.imageUrl ? (
+                <AvatarImage src={founder.imageUrl} alt={founder.name} />
+              ) : null}
+              <AvatarFallback>
+                {startupFounderInitials(founder.name)}
+              </AvatarFallback>
+            </Avatar>
+          );
+          return founder.url ? (
+            <a
+              key={`${founder.name}-${founder.url}`}
+              href={founder.url}
+              rel="noopener noreferrer"
+              title={founder.name}
+              data-startup-founder-hover={founder.url}
+              aria-label={founder.name}
+            >
+              {avatar}
+            </a>
+          ) : (
+            <span key={`${founder.name}-`} title={founder.name}>
+              {avatar}
+            </span>
+          );
+        })}
         {overflow > 0 ? (
           <AvatarGroupCount aria-label={`+${overflow}`}>
             +{overflow}

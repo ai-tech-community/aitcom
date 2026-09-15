@@ -62,7 +62,7 @@ export type StartupFounder = {
   imageUrl: string | null;
 };
 
-/** Promo-only lock (LinkedIn / newsletter / Hub push). Not a crawl gate. */
+/** Crawl + promo lock. Robots/sitemap stay closed until this verified count. */
 export const STARTUPS_PUBLIC_INDEX_MIN = 3000;
 
 export const STARTUPS_FOUNDERS_SHOWN = 3;
@@ -806,34 +806,55 @@ export function startupDirectorySitemapPaths(
   return paths;
 }
 
-/** Promo-ready at ≥3000. Crawl/index is always on — this is not robots. */
 export function startupsPublicIndexable(verifiedCount: number): boolean {
   return (
     Number.isFinite(verifiedCount) && verifiedCount >= STARTUPS_PUBLIC_INDEX_MIN
   );
 }
 
-/** Directory + Insights are crawlable now. Count does not change robots. */
-export function startupsPublicRobots(_verifiedCount?: number): {
-  index: true;
-  follow: true;
+/** Staging gate: noindex,follow until ≥3000 verified rows. Follow stays on. */
+export function startupsPublicRobots(verifiedCount: number): {
+  index: boolean;
+  follow: boolean;
 } {
-  return { index: true, follow: true };
+  return {
+    index: startupsPublicIndexable(verifiedCount),
+    follow: true,
+  };
 }
 
 /**
- * Directory + Insights + crawlable ?page=. Always listed — ≥3000 is
- * promo-only, not a sitemap gate.
+ * Directory + Insights + crawlable ?page= — only when the verified count
+ * clears the public index gate.
  */
 export function startupInvestigationSitemapPaths(
   verifiedCount: number,
   pageSize: number = STARTUPS_PAGE_SIZE,
 ): string[] {
+  if (!startupsPublicIndexable(verifiedCount)) return [];
   return [
     STARTUPS_PATH,
     STARTUPS_INSIGHTS_PATH,
     ...startupDirectorySitemapPaths(verifiedCount, pageSize),
   ];
+}
+
+export function isStartupInvestigationSitemapUrl(url: string): boolean {
+  return url.includes("/investigations/startups");
+}
+
+/**
+ * Drop Directory / Insights / ?page= unless the live gate listed them.
+ * Guards a stale ISR body or a leaked STATIC_PAGES path while count < 3000.
+ */
+export function filterUnlistedStartupSitemapEntries<T extends { url: string }>(
+  entries: readonly T[],
+  listedStartupPaths: readonly string[],
+): T[] {
+  if (listedStartupPaths.length > 0) return [...entries];
+  return entries.filter(
+    (entry) => !isStartupInvestigationSitemapUrl(entry.url),
+  );
 }
 
 /** Same-origin favicon for a sourced URL. Soft-omit if the host is unusable. */

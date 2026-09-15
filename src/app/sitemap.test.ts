@@ -29,8 +29,6 @@ const STATIC_PATHS = [
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
-  "/investigations/startups",
-  "/investigations/startups/insights",
   "/roles",
 ] as const;
 
@@ -245,20 +243,20 @@ describe("buildSitemapEntries", () => {
     expect(Number.isNaN((event?.lastModified as Date).getTime())).toBe(false);
   });
 
-  it("includes Startups Directory and Insights even below the promo count", async () => {
+  it("keeps Startups Directory and Insights out of the sitemap until 3000 verified rows", async () => {
     mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
 
-    const staticOnly = await buildSitemapEntries(
+    const omitted = await buildSitemapEntries(
       undefined,
       async () => new Map(),
       async () => [],
       async () => [],
     );
-    const staticUrls = urlsOf(staticOnly);
-    expect(staticUrls).toContain(
+    const omittedUrls = urlsOf(omitted);
+    expect(omittedUrls).not.toContain(
       "https://www.aitcommunity.org/en/investigations/startups",
     );
-    expect(staticUrls).toContain(
+    expect(omittedUrls).not.toContain(
       "https://www.aitcommunity.org/en/investigations/startups/insights",
     );
 
