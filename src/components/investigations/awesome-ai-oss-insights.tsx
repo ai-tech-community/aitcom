@@ -151,7 +151,7 @@ function InsightTile({
       data-awesome-insight-tile={tile}
       aria-labelledby={headingId}
       className={cn(
-        "bg-card text-card-foreground flex h-full flex-col gap-4 rounded-xl border p-6 shadow-sm",
+        "bg-card text-card-foreground flex flex-col gap-4 self-stretch rounded-xl border p-6 shadow-sm",
         wide && "md:col-span-2",
       )}
     >
