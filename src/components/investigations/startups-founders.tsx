@@ -8,12 +8,11 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import {
+  STARTUPS_FOUNDERS_SHOWN,
   displayStartupFounders,
   startupFounderInitials,
   type StartupFounder,
 } from "@/lib/investigations/startups";
-
-const SHOWN = 3;
 
 export function StartupsFounders({
   founders,
@@ -25,7 +24,7 @@ export function StartupsFounders({
   const sourced = displayStartupFounders(founders);
   if (sourced.length === 0) return null;
 
-  const shown = sourced.slice(0, SHOWN);
+  const shown = sourced.slice(0, STARTUPS_FOUNDERS_SHOWN);
   const overflow = sourced.length - shown.length;
 
   return (
