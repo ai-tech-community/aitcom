@@ -121,6 +121,13 @@ Bento hero: Added over time. 2×2: Category / Region / Stage / Sources
 coverage. HTML table under each chart. Blank region/stage omit the chart
 (no fake empty series). Directory ↔ Insights are hard links.
 
+## Join chrome
+
+Guests see the hard www `/en/join` door plus investigation UTMs. Signed-in
+Hub members never see Join — `shouldPromoteJoin()` / `PromoteJoinCta` swap
+to Open Hub (`/communities/ait/forum`). Same leftover rule as navbar JOIN
+(`!user`).
+
 ## Directory filters
 
 Crawlable query params on `/investigations/startups`. Pagination links keep
@@ -131,7 +138,7 @@ the active filters.
 | `category` | taxonomy id | same as before |
 | `region` | sourced region string | only listed, non-blank regions |
 | `stage` | sourced stage string | blank stage does not match |
-| `exit` | `active` `acquired` `ipo` `shutdown` | blank/null exit → **active** for the filter only. Cards still omit the badge. |
+| `status` | `active` `acquired` `ipo` `shutdown` | blank/null exit → **active** for the filter only. Cards still omit the badge. Not listing pending/approved. |
 | `hiring` | `1` | has a sourced `jobs_url` |
 | `sort` | `newest` (default) `name` `category` | `newest` is omitted from the URL |
 

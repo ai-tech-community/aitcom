@@ -122,7 +122,7 @@ export type StartupDirectoryFilters = {
   category: StartupCategoryId | "all";
   region?: string;
   stage?: string;
-  exit?: StartupExitFilter | "all";
+  status?: StartupExitFilter | "all";
   hiring?: StartupHiringFilter;
   sort?: StartupSort;
 };
@@ -497,6 +497,7 @@ export function parseStartupDirectoryQuery(raw: {
   category?: string | string[];
   region?: string | string[];
   stage?: string | string[];
+  status?: string | string[];
   exit?: string | string[];
   hiring?: string | string[];
   sort?: string | string[];
@@ -506,7 +507,9 @@ export function parseStartupDirectoryQuery(raw: {
   const category = parseStartupCategory(firstParam(raw.category)) ?? "all";
   const region = presentText(firstParam(raw.region)) ?? "all";
   const stage = presentText(firstParam(raw.stage)) ?? "all";
-  const exit = parseStartupExitFilter(firstParam(raw.exit));
+  const status = parseStartupExitFilter(
+    firstParam(raw.status) ?? firstParam(raw.exit),
+  );
   const hiring = parseStartupHiringFilter(firstParam(raw.hiring));
   const sort = parseStartupSort(firstParam(raw.sort));
   const page =
@@ -515,7 +518,7 @@ export function parseStartupDirectoryQuery(raw: {
         ? Math.floor(raw.page)
         : 1
       : parseStartupPage(raw.page);
-  return { q, category, region, stage, exit, hiring, sort, page };
+  return { q, category, region, stage, status, hiring, sort, page };
 }
 
 export function applyStartupDirectoryQuery(
@@ -526,7 +529,7 @@ export function applyStartupDirectoryQuery(
   const needle = query.q.trim().toLowerCase();
   const region = presentText(query.region === "all" ? null : query.region);
   const stage = presentText(query.stage === "all" ? null : query.stage);
-  const exit = query.exit && query.exit !== "all" ? query.exit : "all";
+  const status = query.status && query.status !== "all" ? query.status : "all";
   const hiring = query.hiring === "hiring" ? "hiring" : "all";
   const sort = query.sort ?? "newest";
   const filtered = cards.filter((card) => {
@@ -535,7 +538,7 @@ export function applyStartupDirectoryQuery(
     }
     if (region && presentText(card.region) !== region) return false;
     if (stage && presentText(card.stage) !== stage) return false;
-    if (exit !== "all" && startupExitBucket(card) !== exit) return false;
+    if (status !== "all" && startupExitBucket(card) !== status) return false;
     if (hiring === "hiring" && !presentText(card.jobsUrl)) return false;
     if (!needle) return true;
     const haystack = [
@@ -625,7 +628,9 @@ export function buildStartupDirectoryPath(
     params.set("region", parsed.region);
   }
   if (parsed.stage && parsed.stage !== "all") params.set("stage", parsed.stage);
-  if (parsed.exit && parsed.exit !== "all") params.set("exit", parsed.exit);
+  if (parsed.status && parsed.status !== "all") {
+    params.set("status", parsed.status);
+  }
   if (parsed.hiring === "hiring") params.set("hiring", "1");
   if (parsed.sort && parsed.sort !== "newest") params.set("sort", parsed.sort);
   if (parsed.page > 1) params.set("page", String(parsed.page));
@@ -641,7 +646,7 @@ export function startupDirectoryHasFilters(
     query.category !== "all" ||
     (query.region != null && query.region !== "all") ||
     (query.stage != null && query.stage !== "all") ||
-    (query.exit != null && query.exit !== "all") ||
+    (query.status != null && query.status !== "all") ||
     query.hiring === "hiring" ||
     (query.sort != null && query.sort !== "newest")
   );

@@ -104,7 +104,7 @@ export function StartupsDirectory({
       next.category !== undefined ||
       next.region !== undefined ||
       next.stage !== undefined ||
-      next.exit !== undefined ||
+      next.status !== undefined ||
       next.hiring !== undefined ||
       next.sort !== undefined;
     const merged = parseStartupDirectoryQuery({
@@ -251,18 +251,18 @@ export function StartupsDirectory({
             </Select>
           </div>
           <div className="flex min-w-44 flex-1 flex-col gap-2">
-            <Label htmlFor="startup-exit" className="sr-only">
+            <Label htmlFor="startup-status" className="sr-only">
               {t("filterExit")}
             </Label>
             <Select
-              value={query.exit ?? "all"}
+              value={query.status ?? "all"}
               onValueChange={(value) =>
                 replaceQuery({
-                  exit: value as StartupExitFilter | "all",
+                  status: value as StartupExitFilter | "all",
                 })
               }
             >
-              <SelectTrigger id="startup-exit" className="w-full">
+              <SelectTrigger id="startup-status" className="w-full">
                 <SelectValue placeholder={t("filterExit")} />
               </SelectTrigger>
               <SelectContent>

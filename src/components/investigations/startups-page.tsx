@@ -1,5 +1,5 @@
 import { Link } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
+import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
 import { StartupsDirectory } from "@/components/investigations/startups-directory";
@@ -25,6 +25,7 @@ export type StartupsKey =
   | "insightsLead"
   | "backLink"
   | "joinCta"
+  | "hubCta"
   | "howWeList"
   | "tabDirectory"
   | "tabInsights"
@@ -111,11 +112,13 @@ export function StartupsPage({
           insightsLabel={t("tabInsights")}
           navLabel={t("tabNav")}
         />
-        {promoteJoin ? (
-          <Button asChild variant={isInsights ? "default" : "outline"}>
-            <a href={STARTUPS_JOIN_HREF}>{t("joinCta")}</a>
-          </Button>
-        ) : null}
+        <PromoteJoinCta
+          promoteJoin={promoteJoin}
+          guestHref={STARTUPS_JOIN_HREF}
+          guestLabel={t("joinCta")}
+          hubLabel={t("hubCta")}
+          variant={isInsights ? "default" : "outline"}
+        />
       </div>
 
       <section className="mt-10">

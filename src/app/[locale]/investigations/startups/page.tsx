@@ -38,6 +38,7 @@ interface PageProps {
     category?: string;
     region?: string;
     stage?: string;
+    status?: string;
     exit?: string;
     hiring?: string;
     sort?: string;

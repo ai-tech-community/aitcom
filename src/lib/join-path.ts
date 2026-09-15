@@ -1,7 +1,11 @@
+import { HUB_FORUM_PATH } from "@/server/communities/forum-scope";
 import { HUB_SLUG } from "@/server/communities/hub";
 
 /** Locale-free Hub community path. Middleware prefixes `/en` or `/nl`. */
 export const HUB_COMMUNITY_PATH = `/communities/${HUB_SLUG}`;
+
+/** Signed-in chrome: Open Hub (forum). Never the /en/join door. */
+export const HUB_OPEN_HREF = HUB_FORUM_PATH;
 
 const AUTH_ALIASES: Record<string, "/auth/signup" | "/auth/signin"> = {
   "/signup": "/auth/signup",

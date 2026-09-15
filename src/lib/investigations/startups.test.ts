@@ -76,6 +76,7 @@ describe("startups investigation contract", () => {
     expect(url.searchParams.get("utm_source")).toBe("aitcom");
     expect(url.searchParams.get("utm_medium")).toBe("investigations");
     expect(url.searchParams.get("utm_campaign")).toBe("startups");
+    expect(url.pathname).not.toContain("forum");
   });
 
   it("locks the fixed taxonomy and a 30-row API batch cap", () => {
@@ -345,14 +346,14 @@ describe("directory query", () => {
     expect(
       applyStartupDirectoryQuery(
         cards,
-        { q: "", category: "all", exit: "active" },
+        { q: "", category: "all", status: "active" },
         "en",
       ).map((card) => card.id),
     ).toEqual(["toronto", "quiet"]);
     expect(
       applyStartupDirectoryQuery(
         cards,
-        { q: "", category: "all", exit: "ipo" },
+        { q: "", category: "all", status: "ipo" },
         "en",
       ).map((card) => card.id),
     ).toEqual(["oklo"]);
@@ -415,7 +416,7 @@ describe("directory query", () => {
       category: "models",
       region: "Toronto, Canada",
       stage: "Seed",
-      exit: "active",
+      status: "active",
       hiring: "1",
       sort: "name",
       page: "3",
@@ -425,7 +426,7 @@ describe("directory query", () => {
       category: "models",
       region: "Toronto, Canada",
       stage: "Seed",
-      exit: "active",
+      status: "active",
       hiring: "hiring",
       sort: "name",
       page: 3,
@@ -437,14 +438,21 @@ describe("directory query", () => {
     expect(
       buildStartupDirectoryPath({
         region: "Toronto, Canada",
-        exit: "ipo",
+        status: "ipo",
         hiring: "hiring",
         sort: "category",
         page: 2,
       }),
     ).toBe(
-      `${STARTUPS_PATH}?region=Toronto%2C+Canada&exit=ipo&hiring=1&sort=category&page=2`,
+      `${STARTUPS_PATH}?region=Toronto%2C+Canada&status=ipo&hiring=1&sort=category&page=2`,
     );
+    expect(parseStartupDirectoryQuery({ exit: "ipo" })).toMatchObject({
+      status: "ipo",
+    });
+    expect(buildStartupDirectoryPath({ exit: "ipo" })).toBe(
+      `${STARTUPS_PATH}?status=ipo`,
+    );
+    expect(buildStartupDirectoryPath({ exit: "ipo" })).not.toContain("exit=");
   });
 
   it("emits crawlable ?page= sitemap paths once the directory is past ~50 rows", () => {

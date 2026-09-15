@@ -4,6 +4,7 @@ import { HUB_SLUG } from "@/server/communities/hub";
 
 import {
   HUB_COMMUNITY_PATH,
+  HUB_OPEN_HREF,
   getHubCommunityPath,
   getAuthAliasRedirect,
   getJoinDoorRedirect,
@@ -20,6 +21,8 @@ describe("join path landing", () => {
     expect(HUB_COMMUNITY_PATH).not.toBe("/");
     expect(getHubCommunityPath("en")).toBe("/en/communities/ait");
     expect(getHubCommunityPath("nl")).toBe("/nl/communities/ait");
+    expect(HUB_OPEN_HREF).toBe("/communities/ait/forum");
+    expect(HUB_OPEN_HREF).not.toContain("/join");
   });
 
   it("treats locale roots as the marketing homepage", () => {

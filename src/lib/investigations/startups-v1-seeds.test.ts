@@ -194,14 +194,14 @@ describe("Startups v1 Ops-Passed seeds", () => {
     expect(
       applyStartupDirectoryQuery(
         cards,
-        { q: "", category: "all", exit: "active" },
+        { q: "", category: "all", status: "active" },
         "en",
       ),
     ).toHaveLength(18);
     expect(
       applyStartupDirectoryQuery(
         cards,
-        { q: "", category: "all", exit: "ipo" },
+        { q: "", category: "all", status: "ipo" },
         "en",
       ).map((card) => card.name),
     ).toEqual(["Oklo"]);

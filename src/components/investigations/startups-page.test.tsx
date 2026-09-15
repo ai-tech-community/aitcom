@@ -69,6 +69,7 @@ import {
   STARTUPS_PATH,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
+import { HUB_OPEN_HREF } from "@/lib/join-path";
 import { STARTUPS_INSIGHTS_CAPTION } from "@/lib/investigations/startups-insights";
 import { appPathFromGuideHref, JOIN_PATH } from "@/lib/seo-guides";
 import { StartupsPage } from "./startups-page";
@@ -243,6 +244,8 @@ describe("StartupsPage", () => {
     expect(screen.getAllByText("Filter by category").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Filter by region").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Filter by stage").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Filter by exit").length).toBeGreaterThan(0);
+    expect(container.querySelector("#startup-status")).not.toBeNull();
     expect(screen.getAllByText("All listings").length).toBeGreaterThan(0);
     expect(screen.getAllByText("All companies").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Newest first").length).toBeGreaterThan(0);
@@ -309,7 +312,7 @@ describe("StartupsPage", () => {
     expect(container.querySelectorAll("[data-startup-card]")).toHaveLength(24);
   });
 
-  it("hides Directory and Insights Join CTAs for signed-in Hub members", () => {
+  it("swaps Directory and Insights Join to Open Hub for signed-in Hub members", () => {
     const directory = render(
       <StartupsPage
         locale="en"
@@ -322,6 +325,9 @@ describe("StartupsPage", () => {
     expect(directory.container.textContent).not.toContain(
       en.investigationsStartups.joinCta,
     );
+    expect(
+      screen.getByRole("link", { name: en.investigationsStartups.hubCta }),
+    ).toHaveAttribute("href", HUB_OPEN_HREF);
     directory.unmount();
 
     const insights = render(
@@ -337,6 +343,9 @@ describe("StartupsPage", () => {
     expect(insights.container.textContent).not.toContain(
       en.investigationsStartups.joinCta,
     );
+    expect(
+      screen.getByRole("link", { name: en.investigationsStartups.hubCta }),
+    ).toHaveAttribute("href", HUB_OPEN_HREF);
   });
 
   it("keeps Dutch copy on the same investigation path", () => {
@@ -583,6 +592,7 @@ describe("Startups site integration", () => {
     expect(page).toContain("listApprovedPublicStartups");
     expect(page).toContain('dynamic = "force-dynamic"');
     expect(page).toContain("shouldPromoteJoin");
+    expect(page).toContain("status?:");
     expect(page).toContain("region");
     expect(page).toContain("hiring");
     expect(insights).toContain("listApprovedPublicStartups");
