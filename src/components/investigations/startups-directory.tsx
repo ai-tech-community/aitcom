@@ -183,7 +183,9 @@ export function StartupsDirectory({
                 isModerator={isModerator}
                 copy={{
                   openHomepage: t("openHomepage"),
+                  openJobs: t("openJobs"),
                   sources: t("sources"),
+                  founders: t("founders"),
                   edit: t("edit"),
                 }}
                 onEdit={(next) => {
@@ -227,6 +229,13 @@ export function StartupsDirectory({
             fieldLng: t("fieldLng"),
             fieldStage: t("fieldStage"),
             fieldLogo: t("fieldLogo"),
+            fieldFounders: t("fieldFounders"),
+            fieldFoundersHint: t("fieldFoundersHint"),
+            fieldExit: t("fieldExit"),
+            fieldExitNone: t("fieldExitNone"),
+            fieldAcquirer: t("fieldAcquirer"),
+            fieldExitOn: t("fieldExitOn"),
+            fieldJobs: t("fieldJobs"),
             submit: t("submit"),
             save: t("save"),
             cancel: t("cancel"),

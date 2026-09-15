@@ -27,11 +27,16 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   STARTUP_CATEGORY_IDS,
   STARTUP_CATEGORY_LABELS,
+  STARTUP_EXIT_STATUS_IDS,
+  STARTUP_EXIT_STATUS_LABELS,
   STARTUPS_CATEGORY_ERROR,
   STARTUPS_DUPLICATE_ERROR,
+  STARTUPS_EXIT_ERROR,
   STARTUPS_HOMEPAGE_ERROR,
+  STARTUPS_JOBS_URL_ERROR,
   STARTUPS_SOURCES_ERROR,
   type StartupCategoryId,
+  type StartupExitStatus,
   type StartupLocale,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
@@ -62,6 +67,13 @@ export function StartupsSubmitDialog({
     fieldLng: string;
     fieldStage: string;
     fieldLogo: string;
+    fieldFounders: string;
+    fieldFoundersHint: string;
+    fieldExit: string;
+    fieldExitNone: string;
+    fieldAcquirer: string;
+    fieldExitOn: string;
+    fieldJobs: string;
     submit: string;
     save: string;
     cancel: string;
@@ -78,6 +90,11 @@ export function StartupsSubmitDialog({
   const [lng, setLng] = useState("");
   const [stage, setStage] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
+  const [foundersText, setFoundersText] = useState("");
+  const [exitStatus, setExitStatus] = useState<StartupExitStatus | "">("");
+  const [acquirer, setAcquirer] = useState("");
+  const [exitOn, setExitOn] = useState("");
+  const [jobsUrl, setJobsUrl] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
   const router = useRouter();
@@ -95,6 +112,17 @@ export function StartupsSubmitDialog({
       setLng(editing.lng != null ? String(editing.lng) : "");
       setStage(editing.stage ?? "");
       setLogoUrl(editing.logoUrl ?? "");
+      setFoundersText(
+        editing.founders
+          .map((founder) =>
+            founder.url ? `${founder.name} | ${founder.url}` : founder.name,
+          )
+          .join("\n"),
+      );
+      setExitStatus(editing.exitStatus ?? "");
+      setAcquirer(editing.acquirer ?? "");
+      setExitOn(editing.exitOn ?? "");
+      setJobsUrl(editing.jobsUrl ?? "");
     } else {
       reset();
     }
@@ -127,7 +155,9 @@ export function StartupsSubmitDialog({
       error.message === STARTUPS_HOMEPAGE_ERROR ||
       error.message === STARTUPS_DUPLICATE_ERROR ||
       error.message === STARTUPS_SOURCES_ERROR ||
-      error.message === STARTUPS_CATEGORY_ERROR
+      error.message === STARTUPS_CATEGORY_ERROR ||
+      error.message === STARTUPS_EXIT_ERROR ||
+      error.message === STARTUPS_JOBS_URL_ERROR
     ) {
       setFormError(error.message);
       return;
@@ -145,6 +175,11 @@ export function StartupsSubmitDialog({
     setLng("");
     setStage("");
     setLogoUrl("");
+    setFoundersText("");
+    setExitStatus("");
+    setAcquirer("");
+    setExitOn("");
+    setJobsUrl("");
     setFormError(null);
   }
 
@@ -172,6 +207,18 @@ export function StartupsSubmitDialog({
       lng: parsedOptionalNumber(lng),
       stage: stage.trim() || null,
       logoUrl: logoUrl.trim() || null,
+      founders: foundersText
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const [name, url] = line.split("|").map((part) => part.trim());
+          return { name: name ?? "", url: url || null };
+        }),
+      exitStatus: exitStatus || null,
+      acquirer: acquirer.trim() || null,
+      exitOn: exitOn.trim() || null,
+      jobsUrl: jobsUrl.trim() || null,
     };
     if (editing) {
       update.mutate({ id: editing.id, ...payload });
@@ -294,6 +341,72 @@ export function StartupsSubmitDialog({
               type="url"
               value={logoUrl}
               onChange={(event) => setLogoUrl(event.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="startup-founders">{copy.fieldFounders}</Label>
+            <Textarea
+              id="startup-founders"
+              value={foundersText}
+              onChange={(event) => setFoundersText(event.target.value)}
+            />
+            <p className="text-muted-foreground text-xs">
+              {copy.fieldFoundersHint}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="startup-exit">{copy.fieldExit}</Label>
+            <Select
+              value={exitStatus || "none"}
+              onValueChange={(value) =>
+                setExitStatus(
+                  value === "none" ? "" : (value as StartupExitStatus),
+                )
+              }
+            >
+              <SelectTrigger id="startup-exit" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="none">{copy.fieldExitNone}</SelectItem>
+                  {STARTUP_EXIT_STATUS_IDS.map((id) => (
+                    <SelectItem key={id} value={id}>
+                      {STARTUP_EXIT_STATUS_LABELS[id][locale]}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+          {exitStatus ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="startup-acquirer">{copy.fieldAcquirer}</Label>
+                <Input
+                  id="startup-acquirer"
+                  value={acquirer}
+                  onChange={(event) => setAcquirer(event.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="startup-exit-on">{copy.fieldExitOn}</Label>
+                <Input
+                  id="startup-exit-on"
+                  type="date"
+                  value={exitOn}
+                  onChange={(event) => setExitOn(event.target.value)}
+                />
+              </div>
+            </div>
+          ) : null}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="startup-jobs">{copy.fieldJobs}</Label>
+            <Input
+              id="startup-jobs"
+              type="url"
+              value={jobsUrl}
+              onChange={(event) => setJobsUrl(event.target.value)}
             />
           </div>
           {formError ? (

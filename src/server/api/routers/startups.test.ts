@@ -6,7 +6,9 @@ import { describe, expect, it } from "vitest";
 import {
   STARTUPS_BATCH_MAX,
   STARTUPS_DUPLICATE_ERROR,
+  STARTUPS_EXIT_ERROR,
   STARTUPS_HOMEPAGE_ERROR,
+  STARTUPS_JOBS_URL_ERROR,
 } from "@/lib/investigations/startups";
 
 const src = readFileSync(
@@ -24,6 +26,13 @@ const migration = readFileSync(
   ),
   "utf8",
 );
+const softOmit = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../migrations/20260915d_startups_soft_omit_fields.ts",
+  ),
+  "utf8",
+);
 
 const BAKED_COMPANIES =
   /Anthropic|Mistral AI|Hugging Face|Cohere|Perplexity|LangChain|Pinecone|Weaviate|Fireworks AI|Figure AI|Agility Robotics|Apptronik|1X Technologies|Physical Intelligence|Skild AI|Aalo Atomics|Emerald AI/;
@@ -38,8 +47,15 @@ describe("startups router locks", () => {
     expect(src).toContain("STARTUPS_BATCH_MAX");
     expect(src).toContain("STARTUPS_HOMEPAGE_ERROR");
     expect(src).toContain("STARTUPS_DUPLICATE_ERROR");
+    expect(src).toContain("STARTUPS_EXIT_ERROR");
+    expect(src).toContain("STARTUPS_JOBS_URL_ERROR");
+    expect(src).toContain("founders");
+    expect(src).toContain("exitStatus");
+    expect(src).toContain("jobsUrl");
     expect(STARTUPS_HOMEPAGE_ERROR).toMatch(/homepage URL/i);
     expect(STARTUPS_DUPLICATE_ERROR).toMatch(/already/i);
+    expect(STARTUPS_EXIT_ERROR).toMatch(/acquired, IPO, or shutdown/i);
+    expect(STARTUPS_JOBS_URL_ERROR).toMatch(/careers URL/i);
     expect(STARTUPS_BATCH_MAX).toBe(30);
     expect(src).not.toMatch(BAKED_COMPANIES);
   });
@@ -56,5 +72,15 @@ describe("startups router locks", () => {
     expect(migration).toContain('CREATE TABLE IF NOT EXISTS "app"."startup"');
     expect(migration).not.toMatch(/INSERT INTO/i);
     expect(migration).not.toMatch(BAKED_COMPANIES);
+  });
+
+  it("adds sourced-only founders, exit, and jobs columns without a people-graph backfill", () => {
+    expect(softOmit).toContain('"founders"');
+    expect(softOmit).toContain('"exit_status"');
+    expect(softOmit).toContain('"jobs_url"');
+    expect(softOmit).toMatch(/No people-graph backfill/);
+    expect(softOmit).not.toMatch(/INSERT INTO/i);
+    expect(queries).toContain("displayStartupFounders");
+    expect(queries).toContain("parseStartupExitStatus");
   });
 });

@@ -53,6 +53,13 @@ export type StartupStatus = "pending" | "approved" | "rejected";
 
 export type StartupSourceKind = "staff";
 
+export type StartupExitStatus = "acquired" | "ipo" | "shutdown";
+
+export type StartupFounder = {
+  name: string;
+  url: string | null;
+};
+
 export type StartupPublicCard = {
   id: string;
   name: string;
@@ -64,8 +71,36 @@ export type StartupPublicCard = {
   lng: number | null;
   stage: string | null;
   logoUrl: string | null;
+  founders: StartupFounder[];
+  exitStatus: StartupExitStatus | null;
+  acquirer: string | null;
+  exitOn: string | null;
+  jobsUrl: string | null;
   listedOn: string;
 };
+
+export const STARTUP_EXIT_STATUS_IDS = [
+  "acquired",
+  "ipo",
+  "shutdown",
+] as const satisfies readonly StartupExitStatus[];
+
+export const STARTUP_EXIT_STATUS_LABELS: Record<
+  StartupExitStatus,
+  Record<StartupLocale, string>
+> = {
+  acquired: { en: "Acquired", nl: "Overgenomen" },
+  ipo: { en: "IPO", nl: "Beursgang" },
+  shutdown: { en: "Shutdown", nl: "Gestopt" },
+};
+
+export const STARTUPS_FOUNDERS_MAX = 8;
+
+export const STARTUPS_EXIT_ERROR =
+  "Use a sourced exit only: acquired, IPO, or shutdown.";
+
+export const STARTUPS_JOBS_URL_ERROR =
+  "Use a live http(s) careers URL (Ops-confirmed 200) or leave blank.";
 
 export type StartupSort = "newest";
 
@@ -176,6 +211,55 @@ export function displayStartupSources(
 ): string[] {
   const clean = sanitizeStartupSources(sources);
   return clean.length >= 1 && clean.length <= 3 ? clean : [];
+}
+
+export function parseStartupExitStatus(
+  value: string | null | undefined,
+): StartupExitStatus | null {
+  if (value == null) return null;
+  const raw = value.trim().toLowerCase();
+  if (raw === "acquired" || raw === "ipo" || raw === "shutdown") return raw;
+  return null;
+}
+
+export function isStartupExitStatus(
+  value: string | null | undefined,
+): value is StartupExitStatus {
+  return parseStartupExitStatus(value) != null;
+}
+
+export function parseStartupExitOn(
+  value: string | null | undefined,
+): string | null {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null;
+}
+
+export function sanitizeStartupFounders(
+  founders:
+    | readonly { name?: string | null; url?: string | null }[]
+    | null
+    | undefined,
+): StartupFounder[] {
+  const clean: StartupFounder[] = [];
+  for (const raw of founders ?? []) {
+    const name = presentText(raw?.name);
+    if (!name) continue;
+    const url = raw?.url ? normalizeStartupHomepage(raw.url) : null;
+    clean.push({ name, url });
+    if (clean.length === STARTUPS_FOUNDERS_MAX) break;
+  }
+  return clean;
+}
+
+export function displayStartupFounders(
+  founders:
+    | readonly { name?: string | null; url?: string | null }[]
+    | null
+    | undefined,
+): StartupFounder[] {
+  return sanitizeStartupFounders(founders);
 }
 
 /** Visible `<a>` label from the URL itself — never a fabricated metric. */

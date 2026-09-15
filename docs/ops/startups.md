@@ -18,7 +18,8 @@ Fixed taxonomy (store as `ai-infra` when Pulse says `AI infra`):
 Ops Pass 2026-09-15. Migration `20260915c_startups_v1_seeds` inserts these
 twenty Pulse-verified rows (homepage 200 + 1–3 sources). Blank region/stage
 are stored null and soft-omitted. Logos soft-omit if missing or they fail to
-load. No invented size or price figures.
+load. Founders, exit, and jobs_url stay blank on v1 — Pulse did not pass
+those fields. No invented size, price, or people-graph figures.
 
 Ship list: Figure AI · Agility Robotics · Apptronik · 1X Technologies ·
 Physical Intelligence · Skild AI · Crusoe · Aalo Atomics · Oklo · Emerald AI ·
@@ -63,7 +64,12 @@ Row shape (Pulse-compatible):
   "stage": null,
   "logoUrl": null,
   "lat": null,
-  "lng": null
+  "lng": null,
+  "founders": [],
+  "exitStatus": null,
+  "acquirer": null,
+  "exitOn": null,
+  "jobsUrl": null
 }
 ```
 
@@ -72,6 +78,16 @@ Rules:
 - Homepage must be a live `http(s)` URL (Ops confirms 200 before insert).
 - Sources: **1–3** URLs.
 - `region`, `stage`, `logoUrl`, `lat`, `lng` may be null. The UI soft-omits blanks.
+- `founders` is sourced-only `{ name, url? }[]`. Blank name rows drop. Max 8.
+  Leave `[]` when Pulse did not pass names. **Never invent a people graph or
+  who-works-where.** Ops will Fail invent.
+- `exitStatus` is sourced-only `acquired` | `ipo` | `shutdown`. Optional
+  `acquirer` and `exitOn` (`YYYY-MM-DD`) only when that exit is sourced.
+  Blank = soft-omit (no badge). Listing `status` (`pending|approved|rejected`)
+  is a different field — do not collide.
+- `jobsUrl` only when Ops confirmed the careers page returns **HTTP 200**.
+  Same contract as homepage: confirm at insert, no live fetch on render.
+  Blank or non-200 = soft-omit (no Open jobs CTA).
 - Map pins (approximate is OK):
   - city/HQ coords (`lat`/`lng`) → pin near that place
   - region string only → pin at the **region/city centroid**
@@ -81,7 +97,8 @@ Rules:
 - Do not send size, price, attendance, or growth figures. Those fields do not
   exist.
 
-Map Pulse `logo_url` → `logoUrl` when calling `createStartups`. Example:
+Map Pulse `logo_url` → `logoUrl` and `jobs_url` → `jobsUrl` when calling
+`createStartups`. Example:
 
 ```ts
 await caller.startups.createStartups({
@@ -93,6 +110,11 @@ await caller.startups.createStartups({
     region: row.region,
     stage: row.stage,
     logoUrl: row.logo_url,
+    founders: row.founders ?? [],
+    exitStatus: row.exit_status ?? null,
+    acquirer: row.acquirer ?? null,
+    exitOn: row.exit_on ?? null,
+    jobsUrl: row.jobs_url ?? null,
   })),
 });
 ```

@@ -90,6 +90,10 @@ const SEED_MIGRATION_FILE = join(
   "../../migrations/20260915c_startups_v1_seeds.ts",
 );
 const SEED_MODULE = join(dir, "../../lib/investigations/startups-v1-seeds.ts");
+const SOFT_OMIT_MIGRATION_FILE = join(
+  dir,
+  "../../migrations/20260915d_startups_soft_omit_fields.ts",
+);
 const QUERIES_FILE = join(dir, "../../server/startups/queries.ts");
 const PAGINATION_FILE = join(dir, "startups-pagination.tsx");
 const SUBMIT_FILE = join(dir, "startups-submit-dialog.tsx");
@@ -116,7 +120,20 @@ const FIXTURE_CARD: StartupPublicCard = {
   lng: -79.38,
   stage: null,
   logoUrl: null,
+  founders: [],
+  exitStatus: null,
+  acquirer: null,
+  exitOn: null,
+  jobsUrl: null,
   listedOn: "2026-09-15",
+};
+
+const CARD_COPY = {
+  openHomepage: "Open homepage",
+  openJobs: "Open jobs",
+  sources: "Sources",
+  founders: "Founders",
+  edit: "Edit",
 };
 
 function tFrom(messages: typeof en.investigationsStartups) {
@@ -196,6 +213,12 @@ describe("StartupsPage", () => {
       "href",
       "https://fixture.example/about",
     );
+    expect(container.querySelector("[data-startup-exit]")).toBeNull();
+    expect(container.querySelector("[data-startup-founders]")).toBeNull();
+    expect(container.querySelector("[data-startup-jobs]")).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "Open jobs" }),
+    ).not.toBeInTheDocument();
   });
 
   it("uses Writing Bot chrome: slim deck, search, category, Newest", () => {
@@ -385,22 +408,60 @@ describe("Startups Insights tab", () => {
 });
 
 describe("Startups card soft-omit", () => {
-  it("hides logo, stage, and region when they are blank", () => {
+  it("hides logo, stage, region, founders, exit, and jobs when they are blank", () => {
     const { container } = render(
       <StartupsCard
         card={{ ...FIXTURE_CARD, region: null, lat: null, lng: null }}
         locale="en"
         isModerator={false}
-        copy={{
-          openHomepage: "Open homepage",
-          sources: "Sources",
-          edit: "Edit",
-        }}
+        copy={CARD_COPY}
       />,
     );
     expect(container.querySelector("img")).toBeNull();
     expect(container.textContent).not.toContain("Toronto, Canada");
+    expect(container.querySelector("[data-startup-exit]")).toBeNull();
+    expect(container.querySelector("[data-startup-founders]")).toBeNull();
+    expect(container.querySelector("[data-startup-jobs]")).toBeNull();
+    expect(screen.queryByText("Founders")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Open jobs" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("Edit")).not.toBeInTheDocument();
+  });
+
+  it("shows sourced founders, exit badge, and Open jobs only when present", () => {
+    const { container } = render(
+      <StartupsCard
+        card={{
+          ...FIXTURE_CARD,
+          founders: [
+            { name: "Ada Example", url: "https://ada.example" },
+            { name: "No Url", url: null },
+          ],
+          exitStatus: "acquired",
+          acquirer: "Example Corp",
+          exitOn: "2024-06-01",
+          jobsUrl: "https://fixture.example/careers",
+        }}
+        locale="en"
+        isModerator={false}
+        copy={CARD_COPY}
+      />,
+    );
+    expect(container.querySelector("[data-startup-exit]")?.textContent).toBe(
+      "Acquired",
+    );
+    expect(container.textContent).toContain("Example Corp · 2024-06-01");
+    expect(container.querySelector("[data-startup-founders]")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Ada Example" })).toHaveAttribute(
+      "href",
+      "https://ada.example",
+    );
+    expect(container.textContent).toContain("No Url");
+    expect(screen.getByRole("link", { name: "Open jobs" })).toHaveAttribute(
+      "href",
+      "https://fixture.example/careers",
+    );
   });
 });
 
@@ -457,6 +518,7 @@ describe("Startups site integration", () => {
     expect(existsSync(MIGRATION_FILE)).toBe(true);
     expect(readFileSync(MIGRATION_FILE, "utf8")).not.toMatch(/INSERT INTO/i);
     expect(existsSync(SEED_MIGRATION_FILE)).toBe(true);
+    expect(existsSync(SOFT_OMIT_MIGRATION_FILE)).toBe(true);
     expect(existsSync(SEED_MODULE)).toBe(true);
     expect(readFileSync(SEED_MIGRATION_FILE, "utf8")).toMatch(/INSERT INTO/i);
     expect(existsSync(OPS_DOC)).toBe(true);
@@ -465,6 +527,10 @@ describe("Startups site integration", () => {
       /createStartup|createStartups/,
     );
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/v1 seed/i);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/people graph/i);
+    expect(readFileSync(SOFT_OMIT_MIGRATION_FILE, "utf8")).toContain(
+      "jobs_url",
+    );
   });
 
   it("SSR-reads Neon, paginates with crawlable ?page= links, and sitemaps from the live count", () => {

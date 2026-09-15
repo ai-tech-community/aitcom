@@ -16,7 +16,10 @@ import {
   paginateStartupCards,
   parseStartupCategory,
   parseStartupDirectoryQuery,
+  parseStartupExitOn,
+  parseStartupExitStatus,
   presentText,
+  sanitizeStartupFounders,
   sanitizeStartupSources,
   startupDirectoryCanonicalPath,
   startupDirectorySitemapPaths,
@@ -43,6 +46,11 @@ function sampleCard(
     lng: null,
     stage: null,
     logoUrl: null,
+    founders: [],
+    exitStatus: null,
+    acquirer: null,
+    exitOn: null,
+    jobsUrl: null,
     listedOn: "2026-09-15",
     ...overrides,
   };
@@ -144,6 +152,37 @@ describe("soft-omit helpers", () => {
     expect(presentText(null)).toBeNull();
     expect(presentText("   ")).toBeNull();
     expect(presentText("Toronto, Canada")).toBe("Toronto, Canada");
+  });
+
+  it("keeps sourced founders and exits only; never invents a people graph", () => {
+    expect(sanitizeStartupFounders(null)).toEqual([]);
+    expect(
+      sanitizeStartupFounders([{ name: "  " }, { name: "Ada", url: "" }]),
+    ).toEqual([{ name: "Ada", url: null }]);
+    expect(
+      sanitizeStartupFounders([
+        { name: "Ada", url: "https://ada.example/about" },
+        { name: "Ada", url: "javascript:alert(1)" },
+      ]),
+    ).toEqual([
+      { name: "Ada", url: "https://ada.example/about" },
+      { name: "Ada", url: null },
+    ]);
+    expect(
+      sanitizeStartupFounders(
+        Array.from({ length: 12 }, (_, index) => ({
+          name: `Founder ${index}`,
+        })),
+      ),
+    ).toHaveLength(8);
+    expect(parseStartupExitStatus("acquired")).toBe("acquired");
+    expect(parseStartupExitStatus("IPO")).toBe("ipo");
+    expect(parseStartupExitStatus("shutdown")).toBe("shutdown");
+    expect(parseStartupExitStatus("")).toBeNull();
+    expect(parseStartupExitStatus("stealth unicorn")).toBeNull();
+    expect(parseStartupExitOn("2024-06-01")).toBe("2024-06-01");
+    expect(parseStartupExitOn("June 2024")).toBeNull();
+    expect(parseStartupExitOn("")).toBeNull();
   });
 
   it("pins city/HQ or region centroid and lists unknown with no pin", () => {

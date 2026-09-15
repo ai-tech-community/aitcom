@@ -1,8 +1,12 @@
 import { desc, eq } from "drizzle-orm";
 
 import {
+  displayStartupFounders,
   displayStartupSources,
+  parseStartupExitOn,
+  parseStartupExitStatus,
   presentText,
+  normalizeStartupHomepage,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
 import { db } from "@/server/db";
@@ -20,6 +24,11 @@ function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
     lng: row.lng ?? null,
     stage: presentText(row.stage),
     logoUrl: presentText(row.logoUrl),
+    founders: displayStartupFounders(row.founders),
+    exitStatus: parseStartupExitStatus(row.exitStatus),
+    acquirer: presentText(row.acquirer),
+    exitOn: parseStartupExitOn(row.exitOn),
+    jobsUrl: row.jobsUrl ? normalizeStartupHomepage(row.jobsUrl) : null,
     listedOn: row.listedOn,
   };
 }

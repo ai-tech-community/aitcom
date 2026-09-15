@@ -389,6 +389,11 @@ export function startupsV1PublicCards(): StartupPublicCard[] {
       lng: coords?.lng ?? null,
       stage: row.stage,
       logoUrl: row.logoUrl,
+      founders: [],
+      exitStatus: null,
+      acquirer: null,
+      exitOn: null,
+      jobsUrl: null,
       listedOn: row.listedOn,
     };
   });

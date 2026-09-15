@@ -148,6 +148,16 @@ describe("Startups v1 Ops-Passed seeds", () => {
     expect(
       cards.filter((card) => card.lat == null && card.lng == null),
     ).toHaveLength(18);
+    expect(
+      cards.every(
+        (card) =>
+          card.founders.length === 0 &&
+          card.exitStatus == null &&
+          card.acquirer == null &&
+          card.exitOn == null &&
+          card.jobsUrl == null,
+      ),
+    ).toBe(true);
   });
 
   it("feeds Insights from listed seed rows only", () => {

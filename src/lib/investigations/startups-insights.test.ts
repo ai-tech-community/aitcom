@@ -24,6 +24,11 @@ function card(overrides: Partial<StartupPublicCard> = {}): StartupPublicCard {
     lng: null,
     stage: null,
     logoUrl: null,
+    founders: [],
+    exitStatus: null,
+    acquirer: null,
+    exitOn: null,
+    jobsUrl: null,
     listedOn: "2026-09-15",
     ...overrides,
   };

@@ -6,12 +6,17 @@ import {
   STARTUPS_BATCH_MAX,
   STARTUPS_CATEGORY_ERROR,
   STARTUPS_DUPLICATE_ERROR,
+  STARTUPS_EXIT_ERROR,
   STARTUPS_HOMEPAGE_ERROR,
+  STARTUPS_JOBS_URL_ERROR,
   STARTUPS_NAME_MAX,
   STARTUPS_SOURCES_ERROR,
   normalizeStartupHomepage,
   parseStartupCategory,
+  parseStartupExitOn,
+  parseStartupExitStatus,
   resolveStartupPinCoords,
+  sanitizeStartupFounders,
   sanitizeStartupSources,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
@@ -49,6 +54,19 @@ const createStartupInput = z.object({
   lng: z.number().min(-180).max(180).nullable().optional(),
   stage: optionalBlank,
   logoUrl: optionalBlank,
+  founders: z
+    .array(
+      z.object({
+        name: z.string().trim().max(160),
+        url: optionalBlank,
+      }),
+    )
+    .max(8)
+    .optional(),
+  exitStatus: optionalBlank,
+  acquirer: optionalBlank,
+  exitOn: optionalBlank,
+  jobsUrl: optionalBlank,
 });
 
 type CreateStartupInput = z.infer<typeof createStartupInput>;
@@ -88,6 +106,23 @@ function parsedWriteFields(input: CreateStartupInput) {
     lat: input.lat ?? null,
     lng: input.lng ?? null,
   });
+  const founders = sanitizeStartupFounders(input.founders);
+  const rawExit = input.exitStatus?.trim() ?? "";
+  const exitStatus = rawExit ? parseStartupExitStatus(rawExit) : null;
+  if (rawExit && !exitStatus) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: STARTUPS_EXIT_ERROR,
+    });
+  }
+  const jobsRaw = input.jobsUrl?.trim() ?? "";
+  const jobsUrl = jobsRaw ? normalizeStartupHomepage(jobsRaw) : null;
+  if (jobsRaw && !jobsUrl) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: STARTUPS_JOBS_URL_ERROR,
+    });
+  }
 
   return {
     name: input.name,
@@ -99,6 +134,11 @@ function parsedWriteFields(input: CreateStartupInput) {
     lng: resolved?.lng ?? null,
     stage: input.stage ?? null,
     logoUrl,
+    founders,
+    exitStatus,
+    acquirer: exitStatus ? (input.acquirer ?? null) : null,
+    exitOn: exitStatus ? parseStartupExitOn(input.exitOn) : null,
+    jobsUrl,
   };
 }
 
