@@ -145,6 +145,9 @@ describe("AIT Community roles page", () => {
     const hrefs = hrefsOf(container);
     expect(hrefs).not.toContain("/investigations");
     expect(hrefs).not.toContain("/investigations/ait-community-roles");
+    expect(container.textContent).toContain(
+      en.investigationsAitCommunityRoles.pathLead,
+    );
     expect(hrefs).toContain(HUB_WELCOME_THREAD_PATH);
     expect(hrefs).toContain(HUB_PEOPLE_PATH);
     expect(hrefs).toContain(HUB_DM_PATH);
@@ -239,13 +242,11 @@ describe("AIT Community roles page", () => {
     expect(container.textContent).not.toContain(
       en.investigationsAitCommunityRoles.pathLead,
     );
+    expect(container.textContent).not.toContain("After you join");
     expect(container.textContent).not.toContain(
       en.investigationsAitCommunityRoles.joinHint,
     );
-    expect(container.textContent).not.toMatch(/After you join|Joining is Hub/i);
-    expect(container.textContent).toContain(
-      en.investigationsAitCommunityRoles.memberPathLead,
-    );
+    expect(container.textContent).not.toMatch(/Joining is Hub/i);
     expect(container.textContent).toContain(
       en.investigationsAitCommunityRoles.memberHint,
     );

@@ -24,7 +24,6 @@ export type AitCommunityRolesKey =
   | "endingSoon"
   | "termNote"
   | "joinHint"
-  | "memberPathLead"
   | "memberHint"
   | "hubHost"
   | "awesomeOssCurator"
@@ -107,7 +106,7 @@ export function AitCommunityRolesPage({
 
       <div className="text-muted-foreground flex max-w-2xl flex-col gap-2 text-sm leading-relaxed">
         <p>
-          {t(promoteJoin ? "pathLead" : "memberPathLead")}{" "}
+          {promoteJoin ? <>{t("pathLead")} </> : null}
           <Link
             href={HUB_WELCOME_THREAD_PATH}
             className="underline-offset-4 hover:underline"

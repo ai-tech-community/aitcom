@@ -148,7 +148,9 @@ describe("PublicEventsPage", () => {
     );
     expect(hrefsOf(guest.container)).toContain(PUBLIC_EVENTS_JOIN_HREF);
     expect(guest.container.textContent).toContain(en.publicEvents.lead);
-    expect(guest.container.textContent).toMatch(/community sign-up/);
+    expect(guest.container.textContent).toMatch(
+      /community sign-up, not an event ticket/,
+    );
     guest.unmount();
 
     const { container } = render(
