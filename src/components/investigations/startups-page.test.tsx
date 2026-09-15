@@ -592,11 +592,13 @@ describe("Startups site integration", () => {
     expect(page).toContain("listApprovedPublicStartups");
     expect(page).toContain('dynamic = "force-dynamic"');
     expect(page).toContain("shouldPromoteJoin");
+    expect(page).toContain("promoteJoin");
     expect(page).toContain("status?:");
     expect(page).toContain("region");
     expect(page).toContain("hiring");
     expect(insights).toContain("listApprovedPublicStartups");
     expect(insights).toContain("shouldPromoteJoin");
+    expect(insights).toContain("promoteJoin");
     expect(insights).toContain('dynamic = "force-dynamic"');
     expect(queries).not.toMatch(/unstable_cache|revalidateTag/);
     expect(submit).toContain("router.refresh()");
