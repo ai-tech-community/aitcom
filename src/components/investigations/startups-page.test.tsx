@@ -79,6 +79,7 @@ import { StartupsCard } from "./startups-card";
 const dir = dirname(fileURLToPath(import.meta.url));
 const appLocale = join(dir, "../../app/[locale]");
 const PAGE_FILE = join(appLocale, "investigations/startups/page.tsx");
+const LAYOUT_FILE = join(appLocale, "investigations/startups/layout.tsx");
 const INSIGHTS_FILE = join(
   appLocale,
   "investigations/startups/insights/page.tsx",
@@ -168,6 +169,11 @@ describe("Startups investigation route", () => {
     expect(src).toContain("isStartupInsightsTab");
     expect(src).toContain("startupsPublicRobots");
     expect(src).not.toContain("robots: { index: true, follow: true }");
+    expect(existsSync(LAYOUT_FILE)).toBe(true);
+    const layout = readFileSync(LAYOUT_FILE, "utf8");
+    expect(layout).toContain("index: false");
+    expect(layout).toContain("follow: true");
+    expect(layout).not.toContain("index: true");
     const insights = readFileSync(INSIGHTS_FILE, "utf8");
     expect(insights).toContain("buildStartupInsights");
     expect(insights).toContain("listApprovedPublicStartups");
@@ -423,6 +429,71 @@ describe("Startups Insights tab", () => {
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
   });
 
+  it("omits a Region table even if a Toronto/NY stub mix is passed in", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        tab="insights"
+        companies={[FIXTURE_CARD]}
+        insights={{
+          total: 2,
+          categoryMix: [{ id: "models", label: "Models", count: 2 }],
+          regionMix: [
+            { region: "Toronto, Canada", count: 1 },
+            { region: "New York, US", count: 1 },
+          ],
+          stageMix: null,
+          sourcesCoverage: [{ sources: 1, label: "1 source", count: 2 }],
+          addedOverTime: [{ month: "2026-09", label: "Sep 2026", count: 2 }],
+        }}
+      />,
+    );
+    const regionTile = [
+      ...container.querySelectorAll("[data-startups-insight-tile]"),
+    ].find(
+      (tile) =>
+        tile.getAttribute("data-startups-insight-tile") === "region-mix",
+    );
+    expect(regionTile?.hasAttribute("data-startups-insight-omitted")).toBe(
+      true,
+    );
+    expect(
+      regionTile?.querySelector("[data-startups-insight-table]"),
+    ).toBeNull();
+    expect(screen.queryByTestId("chart-region")).not.toBeInTheDocument();
+    expect(container.textContent).not.toContain("Toronto, Canada");
+    expect(container.textContent).not.toContain("New York, US");
+    expect(container.textContent).toContain(
+      en.investigationsStartups.regionOmitted,
+    );
+
+    const nlView = render(
+      <StartupsPage
+        locale="nl"
+        t={tFrom(nl.investigationsStartups)}
+        tab="insights"
+        companies={[FIXTURE_CARD]}
+        insights={{
+          total: 2,
+          categoryMix: [{ id: "models", label: "Models", count: 2 }],
+          regionMix: [
+            { region: "Toronto, Canada", count: 1 },
+            { region: "New York, US", count: 1 },
+          ],
+          stageMix: null,
+          sourcesCoverage: [{ sources: 1, label: "1 bron", count: 2 }],
+          addedOverTime: [{ month: "2026-09", label: "sep 2026", count: 2 }],
+        }}
+      />,
+    );
+    expect(nlView.container.textContent).toContain(
+      nl.investigationsStartups.regionOmitted,
+    );
+    expect(nlView.container.textContent).not.toContain("Toronto, Canada");
+    nlView.unmount();
+  });
+
   it("swaps Directory and Insights Join to Open Hub for signed-in Hub members", () => {
     const directory = render(
       <StartupsPage
@@ -574,6 +645,28 @@ describe("Startups card soft-omit", () => {
       chips.map((node) => node.getAttribute("data-startup-source-chip")),
     ).toEqual(["News", "Wikipedia"]);
     expect(container.textContent).not.toMatch(/\b[123]\b/);
+
+    const tech = render(
+      <StartupsCard
+        card={{
+          ...FIXTURE_CARD,
+          sources: [
+            "https://techcrunch.com/2024/01/skild-one",
+            "https://techcrunch.com/2024/06/skild-two",
+            "https://techcrunch.com/2025/01/skild-three",
+          ],
+        }}
+        locale="en"
+        isModerator={false}
+        copy={CARD_COPY}
+      />,
+    );
+    expect(
+      [...tech.container.querySelectorAll("[data-startup-source-chip]")].map(
+        (node) => node.getAttribute("data-startup-source-chip"),
+      ),
+    ).toEqual(["TechCrunch"]);
+    tech.unmount();
   });
 
   it("renders the Cursor joining-spacex chip and Acquired·SpaceX·2026 badge from fixture data", () => {
@@ -708,6 +801,7 @@ describe("Startups site integration", () => {
 
     expect(sitemap).toContain("listApprovedPublicStartups");
     expect(sitemap).toContain("startupInvestigationSitemapPaths(cards.length)");
+    expect(sitemap).toContain("filterUnlistedStartupSitemapEntries");
     expect(sitemap).not.toContain('"/investigations/startups",');
   });
 

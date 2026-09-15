@@ -282,6 +282,36 @@ describe("buildSitemapEntries", () => {
     );
   });
 
+  it("strips leaked Startups paths when the live gate lists none", async () => {
+    mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
+
+    const { filterUnlistedStartupSitemapEntries } =
+      await import("@/lib/investigations/startups");
+    const leaked = filterUnlistedStartupSitemapEntries(
+      [
+        { url: "https://www.aitcommunity.org/en/blog" },
+        { url: "https://www.aitcommunity.org/en/investigations/startups" },
+        {
+          url: "https://www.aitcommunity.org/nl/investigations/startups/insights",
+        },
+      ],
+      [],
+    );
+    expect(leaked.map((entry) => entry.url)).toEqual([
+      "https://www.aitcommunity.org/en/blog",
+    ]);
+
+    const omitted = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [],
+    );
+    expect(
+      urlsOf(omitted).some((url) => url.includes("/investigations/startups")),
+    ).toBe(false);
+  });
+
   it("includes later Startups directory pages from the live Neon row count", async () => {
     mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
 

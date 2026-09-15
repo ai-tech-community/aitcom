@@ -27,6 +27,7 @@ import {
   sanitizeStartupSources,
   startupDirectoryCanonicalPath,
   startupDirectorySitemapPaths,
+  filterUnlistedStartupSitemapEntries,
   startupInvestigationSitemapPaths,
   startupMapPins,
   startupsDirectoryJsonLd,
@@ -165,6 +166,17 @@ describe("homepage and sources", () => {
     expect(startupSourceLabel("https://cursor.com/blog/joining-spacex")).toBe(
       "Cursor: Joining SpaceX",
     );
+    expect(
+      startupSourceLabel("https://www.cursor.com/blog/joining-spacex/"),
+    ).toBe("Cursor: Joining SpaceX");
+    expect(
+      startupSourceLabel(
+        "https://cursor.com/blog/joining-spacex?utm_source=ops",
+      ),
+    ).toBe("Cursor: Joining SpaceX");
+    expect(
+      startupSourceLabel("https://cursor.com/blog/joining-spacex", "nl"),
+    ).toBe("Cursor: Joining SpaceX");
     for (const href of [
       "https://en.wikipedia.org/wiki/Anthropic",
       "https://cohere.com/about",
@@ -200,6 +212,37 @@ describe("homepage and sources", () => {
         "en",
       ).map((chip) => chip.label),
     ).toEqual(["Docs", "Cursor: Joining SpaceX", "Wikipedia"]);
+    expect(
+      displayStartupSourceChips(
+        [
+          "https://techcrunch.com/2024/01/skild-one",
+          "https://techcrunch.com/2024/06/skild-two",
+          "https://techcrunch.com/2025/01/skild-three",
+        ],
+        "en",
+      ),
+    ).toEqual([
+      {
+        href: "https://techcrunch.com/2024/01/skild-one",
+        label: "TechCrunch",
+      },
+    ]);
+  });
+
+  it("keeps the Production Cursor sources URL as the Joining SpaceX chip", () => {
+    const sources = [
+      "https://en.wikipedia.org/wiki/Cursor_(code_editor)",
+      "https://cursor.com/about",
+      "https://cursor.com/blog/joining-spacex",
+    ];
+    expect(
+      displayStartupSourceChips(sources, "en").find(
+        (chip) => chip.href === "https://cursor.com/blog/joining-spacex",
+      ),
+    ).toEqual({
+      href: "https://cursor.com/blog/joining-spacex",
+      label: "Cursor: Joining SpaceX",
+    });
   });
 });
 
@@ -575,6 +618,27 @@ describe("directory query", () => {
       STARTUPS_INSIGHTS_PATH,
       ...startupDirectorySitemapPaths(3000),
     ]);
+    expect(
+      filterUnlistedStartupSitemapEntries(
+        [
+          { url: "https://www.aitcommunity.org/en/events" },
+          { url: "https://www.aitcommunity.org/en/investigations/startups" },
+          {
+            url: "https://www.aitcommunity.org/en/investigations/startups/insights",
+          },
+          {
+            url: "https://www.aitcommunity.org/nl/investigations/startups?page=2",
+          },
+        ],
+        [],
+      ).map((entry) => entry.url),
+    ).toEqual(["https://www.aitcommunity.org/en/events"]);
+    expect(
+      filterUnlistedStartupSitemapEntries(
+        [{ url: "https://www.aitcommunity.org/en/investigations/startups" }],
+        [STARTUPS_PATH],
+      ),
+    ).toHaveLength(1);
     const page = paginateStartupCards(
       Array.from({ length: 51 }, (_, index) =>
         sampleCard({ id: `n-${index}` }),

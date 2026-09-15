@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { awesomeDirectorySitemapPaths } from "@/lib/investigations/awesome-ai-oss";
-import { startupInvestigationSitemapPaths } from "@/lib/investigations/startups";
+import {
+  filterUnlistedStartupSitemapEntries,
+  startupInvestigationSitemapPaths,
+} from "@/lib/investigations/startups";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import {
   HUB_FORUM_PATH,
@@ -142,11 +145,14 @@ export async function buildSitemapEntries(
     console.error("[sitemap] startups directory page lookup failed", error);
   }
 
-  const staticEntries = [
-    ...STATIC_PAGES.map((path) => localeEntries(path)),
-    ...awesomePagePaths.map((path) => localeEntries(path)),
-    ...startupPagePaths.map((path) => localeEntries(path)),
-  ];
+  const staticEntries = filterUnlistedStartupSitemapEntries(
+    [
+      ...STATIC_PAGES.map((path) => localeEntries(path)),
+      ...awesomePagePaths.map((path) => localeEntries(path)),
+      ...startupPagePaths.map((path) => localeEntries(path)),
+    ],
+    startupPagePaths,
+  );
 
   let payload: SitemapClient;
   try {
@@ -208,12 +214,10 @@ export async function buildSitemapEntries(
     },
   );
 
-  return [
-    ...staticEntries,
-    ...eventEntries,
-    ...articleEntries,
-    ...threadEntries,
-  ];
+  return filterUnlistedStartupSitemapEntries(
+    [...staticEntries, ...eventEntries, ...articleEntries, ...threadEntries],
+    startupPagePaths,
+  );
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

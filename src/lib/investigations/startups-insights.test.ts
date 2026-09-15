@@ -8,8 +8,10 @@ import {
 } from "./startups";
 import {
   STARTUPS_INSIGHTS_CAPTION,
+  STARTUPS_REGION_INSIGHTS_MIN,
   buildStartupInsights,
   isStartupInsightsTab,
+  showStartupRegionMix,
 } from "./startups-insights";
 
 function card(overrides: Partial<StartupPublicCard> = {}): StartupPublicCard {
@@ -146,5 +148,14 @@ describe("buildStartupInsights", () => {
       "Toronto, Canada",
     ]);
     expect(five.regionMix?.every((row) => row.count > 0)).toBe(true);
+    expect(STARTUPS_REGION_INSIGHTS_MIN).toBe(5);
+    expect(
+      showStartupRegionMix([
+        { region: "Toronto, Canada", count: 1 },
+        { region: "New York, US", count: 1 },
+      ]),
+    ).toBe(false);
+    expect(showStartupRegionMix(four.regionMix)).toBe(false);
+    expect(showStartupRegionMix(five.regionMix)).toBe(true);
   });
 });

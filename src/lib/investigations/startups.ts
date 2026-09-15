@@ -432,6 +432,11 @@ function startupSourceHost(
   }
 }
 
+function isCursorJoiningSpacexSource(host: string, path: string): boolean {
+  const cursorHost = host === "cursor.com" || host.endsWith(".cursor.com");
+  return cursorHost && path === "/blog/joining-spacex";
+}
+
 /** Publication name from the host only — never an invented article title. */
 export function sourcedStartupSourceTitle(href: string): string | null {
   const parsed = startupSourceHost(href);
@@ -441,6 +446,9 @@ export function sourcedStartupSourceTitle(href: string): string | null {
     parsed.host.endsWith(".wikipedia.org")
   ) {
     return "Wikipedia";
+  }
+  if (isCursorJoiningSpacexSource(parsed.host, parsed.path)) {
+    return "Cursor: Joining SpaceX";
   }
   const article = SOURCED_ARTICLE_TITLES[`${parsed.host}${parsed.path}`];
   if (article) return article;
@@ -461,8 +469,9 @@ export function displayStartupSourceChips(
   const seen = new Set<string>();
   for (const href of displayStartupSources(sources)) {
     const label = startupSourceLabel(href, locale);
-    if (seen.has(label)) continue;
-    seen.add(label);
+    const key = label.toLocaleLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
     chips.push({ href, label });
   }
   return chips;
@@ -828,6 +837,25 @@ export function startupInvestigationSitemapPaths(
     STARTUPS_INSIGHTS_PATH,
     ...startupDirectorySitemapPaths(verifiedCount, pageSize),
   ];
+}
+
+export function isStartupInvestigationSitemapUrl(url: string): boolean {
+  return url.includes("/investigations/startups");
+}
+
+/**
+ * Drop Directory / Insights / ?page= sitemap rows unless the live gate
+ * listed them. Guards a stale ISR body or a leaked STATIC_PAGES path
+ * while verified count is still under 3000.
+ */
+export function filterUnlistedStartupSitemapEntries<T extends { url: string }>(
+  entries: readonly T[],
+  listedStartupPaths: readonly string[],
+): T[] {
+  if (listedStartupPaths.length > 0) return [...entries];
+  return entries.filter(
+    (entry) => !isStartupInvestigationSitemapUrl(entry.url),
+  );
 }
 
 export function startupDirectoryPageNumbers(
