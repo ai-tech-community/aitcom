@@ -135,6 +135,9 @@ describe("AIT Community roles page", () => {
 
     const claims = screen.getAllByRole("link", { name: "Claim this seat" });
     expect(claims).toHaveLength(3);
+    expect(AIT_COMMUNITY_ROLES_JOIN_HREF).toBe(
+      "https://www.aitcommunity.org/en/join?utm_source=roles&utm_medium=web&utm_campaign=roles",
+    );
     for (const claim of claims) {
       expect(claim).toHaveAttribute("href", AIT_COMMUNITY_ROLES_JOIN_HREF);
     }

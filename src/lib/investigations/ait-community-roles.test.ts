@@ -161,11 +161,17 @@ describe("seat terms", () => {
 });
 
 describe("roles claim paths", () => {
-  it("uses the hard www Join door and existing Welcome / Hub People paths", () => {
+  it("uses the hard www Join door with roles UTMs and existing Welcome / Hub People paths", () => {
     expect(AIT_COMMUNITY_ROLES_PATH).toBe("/roles");
     expect(AIT_COMMUNITY_ROLES_JOIN_HREF).toBe(
-      "https://www.aitcommunity.org/en/join",
+      "https://www.aitcommunity.org/en/join?utm_source=roles&utm_medium=web&utm_campaign=roles",
     );
+    const url = new URL(AIT_COMMUNITY_ROLES_JOIN_HREF);
+    expect(url.origin).toBe("https://www.aitcommunity.org");
+    expect(url.pathname).toBe("/en/join");
+    expect(url.searchParams.get("utm_source")).toBe("roles");
+    expect(url.searchParams.get("utm_medium")).toBe("web");
+    expect(url.searchParams.get("utm_campaign")).toBe("roles");
     expect(HUB_WELCOME_THREAD_PATH).toBe(
       "/communities/ait/forum/welcome-start-here-hub-join-guides-1788790840883",
     );
