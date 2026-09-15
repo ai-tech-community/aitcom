@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { awesomeDirectorySitemapPaths } from "@/lib/investigations/awesome-ai-oss";
-import { startupInvestigationSitemapPaths } from "@/lib/investigations/startups";
+import { startupDirectorySitemapPaths } from "@/lib/investigations/startups";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import {
   HUB_FORUM_PATH,
@@ -124,13 +124,13 @@ async function defaultAwesomePagePaths(): Promise<string[]> {
 
 async function defaultStartupPagePaths(): Promise<string[]> {
   try {
-    const { listApprovedPublicStartups } =
+    const { countApprovedPublicStartups } =
       await import("@/server/startups/queries");
-    const cards = await listApprovedPublicStartups();
-    return startupInvestigationSitemapPaths(cards.length);
+    const listed = await countApprovedPublicStartups();
+    return startupDirectorySitemapPaths(listed);
   } catch (error) {
     console.error("[sitemap] startups directory page lookup failed", error);
-    return startupInvestigationSitemapPaths(0);
+    return [];
   }
 }
 
@@ -153,7 +153,7 @@ export async function buildSitemapEntries(
     startupPagePaths = await getStartupPagePaths();
   } catch (error) {
     console.error("[sitemap] startups directory page lookup failed", error);
-    startupPagePaths = startupInvestigationSitemapPaths(0);
+    startupPagePaths = [];
   }
 
   const staticEntries = uniqueLocaleEntries([

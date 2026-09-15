@@ -749,8 +749,8 @@ describe("Startups i18n", () => {
 describe("Startups site integration", () => {
   it("is in the sitemap and investigations index", () => {
     const sitemap = readFileSync(SITEMAP_FILE, "utf8");
-    expect(sitemap).toContain("startupInvestigationSitemapPaths");
-    expect(sitemap).toContain("listApprovedPublicStartups");
+    expect(sitemap).toContain("startupDirectorySitemapPaths");
+    expect(sitemap).toContain("countApprovedPublicStartups");
     expect(readFileSync(SITEMAP_TEST_FILE, "utf8")).toContain(STARTUPS_PATH);
     expect(readFileSync(INDEX_FILE, "utf8")).toContain(STARTUPS_PATH);
   });
@@ -829,9 +829,10 @@ describe("Startups site integration", () => {
     expect(pagination).toContain("<Link");
     expect(pagination).not.toMatch(/onClick=\{[^}]*page/);
 
-    expect(sitemap).toContain("listApprovedPublicStartups");
-    expect(sitemap).toContain("startupInvestigationSitemapPaths(cards.length)");
+    expect(sitemap).toContain("countApprovedPublicStartups");
+    expect(sitemap).toContain("startupDirectorySitemapPaths(listed)");
     expect(sitemap).toContain('"/investigations/startups"');
+    expect(sitemap).not.toContain("startupInvestigationSitemapPaths");
     expect(sitemap).not.toContain("filterUnlistedStartupSitemapEntries");
   });
 
