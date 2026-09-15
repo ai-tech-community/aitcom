@@ -16,6 +16,7 @@ export type AitCommunityRolesKey =
   | "title"
   | "lead"
   | "claimCta"
+  | "requestCta"
   | "pathLead"
   | "welcomeLabel"
   | "peopleLabel"
@@ -87,7 +88,7 @@ export function AitCommunityRolesPage({
                 {promoteJoin ? (
                   <a href={AIT_COMMUNITY_ROLES_JOIN_HREF}>{t("claimCta")}</a>
                 ) : (
-                  <Link href={HUB_WELCOME_THREAD_PATH}>{t("claimCta")}</Link>
+                  <Link href={HUB_WELCOME_THREAD_PATH}>{t("requestCta")}</Link>
                 )}
               </Button>
             ) : (

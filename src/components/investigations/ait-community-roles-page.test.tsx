@@ -231,10 +231,13 @@ describe("AIT Community roles page", () => {
     );
 
     expect(hrefsOf(container)).not.toContain(AIT_COMMUNITY_ROLES_JOIN_HREF);
-    const claims = screen.getAllByRole("link", { name: "Claim this seat" });
-    expect(claims).toHaveLength(3);
-    for (const claim of claims) {
-      expect(claim).toHaveAttribute("href", HUB_WELCOME_THREAD_PATH);
+    expect(
+      screen.queryByRole("link", { name: "Claim this seat" }),
+    ).not.toBeInTheDocument();
+    const requests = screen.getAllByRole("link", { name: "Request this seat" });
+    expect(requests).toHaveLength(3);
+    for (const request of requests) {
+      expect(request).toHaveAttribute("href", HUB_WELCOME_THREAD_PATH);
     }
     expect(hrefsOf(container)).toContain(HUB_WELCOME_THREAD_PATH);
     expect(hrefsOf(container)).toContain(HUB_PEOPLE_PATH);
@@ -269,6 +272,9 @@ describe("AIT Community roles page", () => {
       AIT_COMMUNITY_ROLES_H1,
     );
     expect(en.investigationsAitCommunityRoles.claimCta).toBe("Claim this seat");
+    expect(en.investigationsAitCommunityRoles.requestCta).toBe(
+      "Request this seat",
+    );
     expect(en.nav.roles).toBe("Roles");
     expect(nl.nav.roles).toBe("Rollen");
 

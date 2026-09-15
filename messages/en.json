@@ -1163,6 +1163,7 @@
     "title": "AIT Community roles",
     "lead": "Four Hub seats. Claim an empty one, then introduce yourself in Welcome and find People on Hub. Filled seats last 90 days from Approve and are not auto-extended.",
     "claimCta": "Claim this seat",
+    "requestCta": "Request this seat",
     "pathLead": "After you join:",
     "memberPathLead": "On Hub:",
     "welcomeLabel": "Welcome thread",
