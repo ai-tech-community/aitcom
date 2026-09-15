@@ -678,7 +678,8 @@ describe("Awesome AI OSS site integration", () => {
     const route = readFileSync(PAGE_FILE, "utf8");
     expect(route).toContain("/auth/signin?redirect=");
     expect(route).toContain("AWESOME_AI_OSS_PATH");
-    expect(route).not.toMatch(/join/i);
+    expect(route).not.toMatch(joinNeedle);
+    expect(route).toContain("shouldPromoteJoin");
   });
 
   it("exposes a noindex People review path", () => {
@@ -902,11 +903,12 @@ describe("Awesome AI OSS Insights tab", () => {
     expect(directory.container.textContent).not.toContain(
       en.investigationsAwesomeAiOss.joinCta,
     );
-    expect(
-      screen.getByRole("link", {
-        name: en.investigationsAwesomeAiOss.hubCta,
-      }),
-    ).toHaveAttribute("href", HUB_OPEN_HREF);
+    expect(en.investigationsAwesomeAiOss.hubCta).toBe("Open Hub");
+    expect(screen.getByRole("link", { name: "Open Hub" })).toHaveAttribute(
+      "href",
+      HUB_OPEN_HREF,
+    );
+    expect(screen.queryByRole("link", { name: /join/i })).toBeNull();
     directory.unmount();
 
     const insights = render(
@@ -921,11 +923,22 @@ describe("Awesome AI OSS Insights tab", () => {
     expect(insights.container.textContent).not.toContain(
       en.investigationsAwesomeAiOss.joinCta,
     );
-    expect(
-      screen.getByRole("link", {
-        name: en.investigationsAwesomeAiOss.hubCta,
-      }),
-    ).toHaveAttribute("href", HUB_OPEN_HREF);
+    expect(screen.getByRole("link", { name: "Open Hub" })).toHaveAttribute(
+      "href",
+      HUB_OPEN_HREF,
+    );
+    expect(screen.queryByRole("link", { name: /join/i })).toBeNull();
+  });
+
+  it("wires Directory and Insights to the same per-request getSession source Startups uses", () => {
+    for (const file of [PAGE_FILE, INSIGHTS_FILE]) {
+      const src = readFileSync(file, "utf8");
+      expect(src).toContain('dynamic = "force-dynamic"');
+      expect(src).toContain("getSession");
+      expect(src).toContain("shouldPromoteJoin(toHubAuthUser(session?.user))");
+      expect(src).toContain("promoteJoin");
+      expect(src).not.toMatch(/export const revalidate/);
+    }
   });
 
   it("renders star distribution and Top 10 from fetched star_count only", () => {

@@ -24,7 +24,13 @@ import {
 } from "@/lib/metadata";
 import { listApprovedPublicCards } from "@/server/awesome-ai-oss/queries";
 import { userIsHubOperator } from "@/server/awesome-ai-oss/operator";
+import {
+  shouldPromoteJoin,
+  toHubAuthUser,
+} from "@/server/better-auth/hub-session";
 import { getSession } from "@/server/better-auth/server";
+
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   searchParams: Promise<{
@@ -128,6 +134,7 @@ export default async function AwesomeAiOssInvestigationPage({
       isModerator={isModerator}
       query={query}
       signInHref={signInHref}
+      promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
     />
   );
 }

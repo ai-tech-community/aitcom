@@ -8,11 +8,14 @@ import {
   PUBLIC_EVENTS_PATH,
 } from "@/lib/events/public-events";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
-import { shouldPromoteJoin } from "@/server/better-auth/hub-session";
-import { loadHubAuthSeed } from "@/server/better-auth/hub-session-server";
+import {
+  shouldPromoteJoin,
+  toHubAuthUser,
+} from "@/server/better-auth/hub-session";
+import { getSession } from "@/server/better-auth/server";
 import { listPublicEventCards } from "@/server/events/public-events-queries";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
@@ -28,14 +31,14 @@ export default async function EventsPage() {
   const locale = await getLocale();
   const t = await getTranslations("publicEvents");
   const events = await listPublicEventCards(locale === "nl" ? "nl" : "en");
-  const { initialUser } = await loadHubAuthSeed();
+  const session = await getSession();
 
   return (
     <PublicEventsPage
       locale={locale}
       t={t}
       events={events}
-      promoteJoin={shouldPromoteJoin(initialUser)}
+      promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
     />
   );
 }
