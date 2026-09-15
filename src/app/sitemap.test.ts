@@ -29,7 +29,7 @@ const STATIC_PATHS = [
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
-  "/investigations/ait-community-roles",
+  "/roles",
 ] as const;
 
 function urlsOf(entries: Awaited<ReturnType<typeof buildSitemapEntries>>) {

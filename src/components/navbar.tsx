@@ -44,6 +44,7 @@ const MessagesNavLink = dynamic(() =>
 const navLinks = [
   { href: "/communities", key: "explore", shortcut: "C", primary: true },
   { href: "/events", key: "events", shortcut: "E", primary: true },
+  { href: "/roles", key: "roles", shortcut: "R", primary: true },
   { href: "/challenges", key: "challenges", shortcut: "G", primary: true },
   { href: "/launchpad", key: "launchpad", shortcut: "L", primary: true },
   { href: "/benchmark", key: "benchmark", shortcut: "K", primary: false },

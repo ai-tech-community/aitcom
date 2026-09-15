@@ -39,11 +39,13 @@ import {
 } from "./ait-community-roles-page";
 
 const dir = dirname(fileURLToPath(import.meta.url));
-const PAGE_FILE = join(
+const PAGE_FILE = join(dir, "../../app/[locale]/roles/page.tsx");
+const OLD_PAGE_FILE = join(
   dir,
   "../../app/[locale]/investigations/ait-community-roles/page.tsx",
 );
 const INDEX_FILE = join(dir, "../../app/[locale]/investigations/page.tsx");
+const NAV_FILE = join(dir, "../navbar.tsx");
 const SITEMAP_FILE = join(dir, "../../app/sitemap.ts");
 
 function interpolate(template: string, values?: { days?: number }): string {
@@ -75,11 +77,10 @@ const BANNED = [
 ];
 
 describe("AIT Community roles route", () => {
-  it("is an indexable SSR page under investigations with www canonical helpers", () => {
-    expect(AIT_COMMUNITY_ROLES_PATH).toBe(
-      "/investigations/ait-community-roles",
-    );
+  it("is an indexable top-level /roles page with www canonical helpers", () => {
+    expect(AIT_COMMUNITY_ROLES_PATH).toBe("/roles");
     expect(existsSync(PAGE_FILE)).toBe(true);
+    expect(existsSync(OLD_PAGE_FILE)).toBe(false);
     const src = readFileSync(PAGE_FILE, "utf8");
     expect(src).toContain("AIT_COMMUNITY_ROLES_PATH");
     expect(src).toContain("localeAlternates");
@@ -89,10 +90,16 @@ describe("AIT Community roles route", () => {
     expect(src).not.toContain("/review");
 
     const sitemap = readFileSync(SITEMAP_FILE, "utf8");
-    expect(sitemap).toContain(AIT_COMMUNITY_ROLES_PATH);
+    expect(sitemap).toContain('"/roles"');
+    expect(sitemap).not.toContain("/investigations/ait-community-roles");
 
     const index = readFileSync(INDEX_FILE, "utf8");
-    expect(index).toContain(AIT_COMMUNITY_ROLES_PATH);
+    expect(index).not.toContain("AIT_COMMUNITY_ROLES_PATH");
+    expect(index).not.toContain("/investigations/ait-community-roles");
+
+    const nav = readFileSync(NAV_FILE, "utf8");
+    expect(nav).toContain('href: "/roles"');
+    expect(nav).toMatch(/href: "\/roles",[\s\S]*?primary: true/);
   });
 });
 
@@ -133,7 +140,8 @@ describe("AIT Community roles page", () => {
     }
 
     const hrefs = hrefsOf(container);
-    expect(hrefs).toContain("/investigations");
+    expect(hrefs).not.toContain("/investigations");
+    expect(hrefs).not.toContain("/investigations/ait-community-roles");
     expect(hrefs).toContain(HUB_WELCOME_THREAD_PATH);
     expect(hrefs).toContain(HUB_PEOPLE_PATH);
     expect(hrefs).toContain(HUB_DM_PATH);
@@ -214,6 +222,8 @@ describe("AIT Community roles page", () => {
       AIT_COMMUNITY_ROLES_H1,
     );
     expect(en.investigationsAitCommunityRoles.claimCta).toBe("Claim this seat");
+    expect(en.nav.roles).toBe("Roles");
+    expect(nl.nav.roles).toBe("Rollen");
 
     for (const messages of [
       en.investigationsAitCommunityRoles,

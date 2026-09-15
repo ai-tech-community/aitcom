@@ -41,6 +41,12 @@ export function Footer() {
                   {tNav("events")}
                 </Link>
                 <Link
+                  href="/roles"
+                  className="hover:text-primary text-sm transition-colors"
+                >
+                  {tNav("roles")}
+                </Link>
+                <Link
                   href="/blog"
                   className="hover:text-primary text-sm transition-colors"
                 >
