@@ -11,6 +11,7 @@ import {
   STARTUPS_SOURCES_ERROR,
   normalizeStartupHomepage,
   parseStartupCategory,
+  resolveStartupPinCoords,
   sanitizeStartupSources,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
@@ -81,18 +82,21 @@ function parsedWriteFields(input: CreateStartupInput) {
   const logoUrl = input.logoUrl
     ? normalizeStartupHomepage(input.logoUrl)
     : null;
-  const lat = input.lat ?? null;
-  const lng = input.lng ?? null;
-  const hasPin = lat != null && lng != null;
+  const region = input.region ?? null;
+  const resolved = resolveStartupPinCoords({
+    region,
+    lat: input.lat ?? null,
+    lng: input.lng ?? null,
+  });
 
   return {
     name: input.name,
     homepage,
     category,
     sources,
-    region: input.region ?? null,
-    lat: hasPin ? lat : null,
-    lng: hasPin ? lng : null,
+    region,
+    lat: resolved?.lat ?? null,
+    lng: resolved?.lng ?? null,
     stage: input.stage ?? null,
     logoUrl,
   };

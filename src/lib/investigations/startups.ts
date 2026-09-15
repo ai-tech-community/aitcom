@@ -1,4 +1,8 @@
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
+import {
+  sourcedStartupPlaceLabel,
+  startupPlaceCentroid,
+} from "./startups-places";
 
 export const STARTUPS_PATH = "/investigations/startups";
 
@@ -78,6 +82,7 @@ export type StartupMapPin = {
   homepage: string;
   lat: number;
   lng: number;
+  /** Sourced city/region string only — never a fabricated street address. */
   region: string | null;
 };
 
@@ -170,24 +175,42 @@ export function displayStartupSources(
   return clean.length >= 1 && clean.length <= 3 ? clean : [];
 }
 
+function isUsableCoord(lat: number | null, lng: number | null): boolean {
+  if (typeof lat !== "number" || typeof lng !== "number") return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+}
+
+/**
+ * Approximate pins: city/HQ coords if stored, else region centroid.
+ * Unknown location → list only. Label is the sourced place string only.
+ */
+export function resolveStartupPinCoords(
+  card: Pick<StartupPublicCard, "region" | "lat" | "lng">,
+): { lat: number; lng: number } | null {
+  if (isUsableCoord(card.lat, card.lng)) {
+    return { lat: card.lat!, lng: card.lng! };
+  }
+  const centroid = startupPlaceCentroid(card.region);
+  if (!centroid) return null;
+  return { lat: centroid.lat, lng: centroid.lng };
+}
+
 export function verifiedStartupPin(
   card: Pick<
     StartupPublicCard,
     "id" | "name" | "homepage" | "region" | "lat" | "lng"
   >,
 ): StartupMapPin | null {
-  if (typeof card.lat !== "number" || typeof card.lng !== "number") return null;
-  if (!Number.isFinite(card.lat) || !Number.isFinite(card.lng)) return null;
-  if (card.lat < -90 || card.lat > 90 || card.lng < -180 || card.lng > 180) {
-    return null;
-  }
+  const coords = resolveStartupPinCoords(card);
+  if (!coords) return null;
   return {
     id: card.id,
     name: card.name,
     homepage: card.homepage,
-    lat: card.lat,
-    lng: card.lng,
-    region: presentText(card.region),
+    lat: coords.lat,
+    lng: coords.lng,
+    region: sourcedStartupPlaceLabel(card.region),
   };
 }
 

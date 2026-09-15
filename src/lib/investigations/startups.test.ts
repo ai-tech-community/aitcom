@@ -128,27 +128,47 @@ describe("soft-omit helpers", () => {
     expect(presentText("Toronto, Canada")).toBe("Toronto, Canada");
   });
 
-  it("pins only verified lat/lng and never invents coordinates", () => {
+  it("pins city/HQ or region centroid and lists unknown with no pin", () => {
     expect(verifiedStartupPin(sampleCard())).toBeNull();
     expect(
-      verifiedStartupPin(
-        sampleCard({ region: "Toronto, Canada", lat: null, lng: null }),
-      ),
+      verifiedStartupPin(sampleCard({ region: "Unknownville" })),
     ).toBeNull();
     expect(
-      verifiedStartupPin(sampleCard({ lat: 43.65, lng: -79.38 })),
-    ).toMatchObject({
+      verifiedStartupPin(sampleCard({ region: "123 Main Street, Toronto" })),
+    ).toBeNull();
+
+    const city = verifiedStartupPin(
+      sampleCard({ region: "Toronto, Canada", lat: null, lng: null }),
+    );
+    expect(city).toMatchObject({
+      lat: 43.6532,
+      lng: -79.3832,
+      region: "Toronto, Canada",
+    });
+    expect(city?.region).not.toMatch(/street|avenue|road/i);
+
+    const stored = verifiedStartupPin(
+      sampleCard({ lat: 43.65, lng: -79.38, region: "Toronto, Canada" }),
+    );
+    expect(stored).toMatchObject({
       lat: 43.65,
       lng: -79.38,
+      region: "Toronto, Canada",
     });
+
+    const coordsOnly = verifiedStartupPin(
+      sampleCard({ lat: 40.71, lng: -74.0, region: null }),
+    );
+    expect(coordsOnly).toMatchObject({ lat: 40.71, lng: -74.0, region: null });
+
     expect(
       startupMapPins([
         sampleCard(),
         sampleCard({
           id: "pinned",
-          lat: 40.71,
-          lng: -74.0,
           region: "New York, US",
+          lat: null,
+          lng: null,
         }),
       ]),
     ).toHaveLength(1);

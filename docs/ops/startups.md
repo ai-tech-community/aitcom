@@ -56,8 +56,12 @@ Rules:
 - Homepage must be a live `http(s)` URL (Ops confirms 200 before insert).
 - Sources: **1–3** URLs.
 - `region`, `stage`, `logoUrl`, `lat`, `lng` may be null. The UI soft-omits blanks.
-- Map pins render **only** when both `lat` and `lng` are verified numbers. Do
-  not invent coordinates from a city string.
+- Map pins (approximate is OK):
+  - city/HQ coords (`lat`/`lng`) → pin near that place
+  - region string only → pin at the **region/city centroid**
+  - unknown location (no region, no coords) → **list only, no pin**
+- Pin label is the **sourced place string only** (city/region as given). Never
+  invent a street address.
 - Do not send size, price, attendance, or growth figures. Those fields do not
   exist.
 

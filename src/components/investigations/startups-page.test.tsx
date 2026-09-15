@@ -163,7 +163,7 @@ describe("StartupsPage", () => {
     expect(screen.queryByText("Add a company")).not.toBeInTheDocument();
   });
 
-  it("renders listed cards, soft-omits blank logo/stage, and pins verified coords", () => {
+  it("renders listed cards, soft-omits blank logo/stage, and pins sourced places", () => {
     const { container } = render(
       <StartupsPage
         locale="en"
@@ -177,6 +177,32 @@ describe("StartupsPage", () => {
     expect(screen.getByTestId("startups-map")).toBeInTheDocument();
     expect(container.querySelector("img")).toBeNull();
     expect(hrefsOf(container)).toContain("https://fixture.example");
+  });
+
+  it("pins a sourced city/region with no stored coords, and skips unknown", () => {
+    const { rerender } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[
+          {
+            ...FIXTURE_CARD,
+            lat: null,
+            lng: null,
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByTestId("startups-map")).toBeInTheDocument();
+
+    rerender(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[{ ...FIXTURE_CARD, region: null, lat: null, lng: null }]}
+      />,
+    );
+    expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
   });
 
   it("keeps Dutch copy on the same investigation path", () => {
