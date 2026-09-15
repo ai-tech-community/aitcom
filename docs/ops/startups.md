@@ -121,6 +121,20 @@ Bento hero: Added over time. 2×2: Category / Region / Stage / Sources
 coverage. HTML table under each chart. Blank region/stage omit the chart
 (no fake empty series). Directory ↔ Insights are hard links.
 
+## Directory filters
+
+Crawlable query params on `/investigations/startups`. Pagination links keep
+the active filters.
+
+| Param | Values | Notes |
+| ----- | ------ | ----- |
+| `category` | taxonomy id | same as before |
+| `region` | sourced region string | only listed, non-blank regions |
+| `stage` | sourced stage string | blank stage does not match |
+| `exit` | `active` `acquired` `ipo` `shutdown` | blank/null exit → **active** for the filter only. Cards still omit the badge. |
+| `hiring` | `1` | has a sourced `jobs_url` |
+| `sort` | `newest` (default) `name` `category` | `newest` is omitted from the URL |
+
 ## Crawl / SEO
 
 - Directory and Insights are `force-dynamic` and server-read Neon on each

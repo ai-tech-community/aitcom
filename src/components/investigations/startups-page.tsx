@@ -57,6 +57,7 @@ export function StartupsPage({
   query = { q: "", category: "all", sort: "newest", page: 1 },
   tab = "directory",
   insights,
+  promoteJoin = true,
 }: {
   locale: string;
   t: (key: StartupsKey) => string;
@@ -65,6 +66,7 @@ export function StartupsPage({
   query?: StartupDirectoryQuery;
   tab?: "directory" | "insights";
   insights?: StartupsInsightsStats;
+  promoteJoin?: boolean;
 }) {
   const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
   const isInsights = tab === "insights";
@@ -109,9 +111,11 @@ export function StartupsPage({
           insightsLabel={t("tabInsights")}
           navLabel={t("tabNav")}
         />
-        <Button asChild variant={isInsights ? "default" : "outline"}>
-          <a href={STARTUPS_JOIN_HREF}>{t("joinCta")}</a>
-        </Button>
+        {promoteJoin ? (
+          <Button asChild variant={isInsights ? "default" : "outline"}>
+            <a href={STARTUPS_JOIN_HREF}>{t("joinCta")}</a>
+          </Button>
+        ) : null}
       </div>
 
       <section className="mt-10">

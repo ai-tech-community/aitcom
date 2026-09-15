@@ -241,7 +241,13 @@ describe("StartupsPage", () => {
       screen.getByPlaceholderText("Search companies…"),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Filter by category").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Filter by region").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Filter by stage").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("All listings").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("All companies").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Newest first").length).toBeGreaterThan(0);
+    expect(en.investigationsStartups.sortName).toBe("Name A–Z");
+    expect(en.investigationsStartups.sortCategory).toBe("Category");
     expect(screen.getByRole("link", { name: "Directory" })).toHaveAttribute(
       "href",
       STARTUPS_PATH,
@@ -301,6 +307,36 @@ describe("StartupsPage", () => {
     expect(hrefs).toContain("/investigations/startups?page=2");
     expect(hrefs).toContain("/investigations/startups?page=3");
     expect(container.querySelectorAll("[data-startup-card]")).toHaveLength(24);
+  });
+
+  it("hides Directory and Insights Join CTAs for signed-in Hub members", () => {
+    const directory = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[FIXTURE_CARD]}
+        promoteJoin={false}
+      />,
+    );
+    expect(hrefsOf(directory.container)).not.toContain(STARTUPS_JOIN_HREF);
+    expect(directory.container.textContent).not.toContain(
+      en.investigationsStartups.joinCta,
+    );
+    directory.unmount();
+
+    const insights = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        tab="insights"
+        companies={[FIXTURE_CARD]}
+        promoteJoin={false}
+      />,
+    );
+    expect(hrefsOf(insights.container)).not.toContain(STARTUPS_JOIN_HREF);
+    expect(insights.container.textContent).not.toContain(
+      en.investigationsStartups.joinCta,
+    );
   });
 
   it("keeps Dutch copy on the same investigation path", () => {
@@ -546,7 +582,11 @@ describe("Startups site integration", () => {
 
     expect(page).toContain("listApprovedPublicStartups");
     expect(page).toContain('dynamic = "force-dynamic"');
+    expect(page).toContain("shouldPromoteJoin");
+    expect(page).toContain("region");
+    expect(page).toContain("hiring");
     expect(insights).toContain("listApprovedPublicStartups");
+    expect(insights).toContain("shouldPromoteJoin");
     expect(insights).toContain('dynamic = "force-dynamic"');
     expect(queries).not.toMatch(/unstable_cache|revalidateTag/);
     expect(submit).toContain("router.refresh()");

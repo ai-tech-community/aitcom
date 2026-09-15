@@ -10,6 +10,7 @@ import {
   memberRoleForSlug,
   membershipStatusForSlug,
   resolveHubAuthUser,
+  shouldPromoteJoin,
   toHubAuthUser,
 } from "./hub-session";
 
@@ -273,5 +274,10 @@ describe("hubDocumentPaint", () => {
       forumSignInToPost: true,
       communityJoin: false,
     });
+  });
+
+  it("promotes Join for guests and hides it for signed-in Hub members", () => {
+    expect(shouldPromoteJoin(null)).toBe(true);
+    expect(shouldPromoteJoin(SOREN)).toBe(false);
   });
 });

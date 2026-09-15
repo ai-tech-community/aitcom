@@ -296,21 +296,154 @@ describe("directory query", () => {
     ).toEqual([]);
   });
 
+  it("filters region, stage, exit, and hiring from crawlable params", () => {
+    const cards = [
+      sampleCard({
+        id: "toronto",
+        name: "Cohere",
+        region: "Toronto, Canada",
+        jobsUrl: "https://cohere.com/careers",
+      }),
+      sampleCard({
+        id: "oklo",
+        name: "Oklo",
+        category: "energy",
+        exitStatus: "ipo",
+        exitOn: "2024",
+        jobsUrl: "https://oklo.com/careers",
+      }),
+      sampleCard({
+        id: "cursor",
+        name: "Cursor (Anysphere)",
+        category: "agents",
+        exitStatus: "acquired",
+        acquirer: "SpaceX",
+        exitOn: "2026",
+        jobsUrl: "https://cursor.com/careers",
+      }),
+      sampleCard({
+        id: "quiet",
+        name: "Quiet Co",
+        stage: "Seed",
+        jobsUrl: null,
+      }),
+    ];
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", region: "Toronto, Canada" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["toronto"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", stage: "Seed" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["quiet"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", exit: "active" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["toronto", "quiet"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", exit: "ipo" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["oklo"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", hiring: "hiring" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["toronto", "cursor", "oklo"]);
+  });
+
+  it("sorts newest, name A–Z, and category without inventing rows", () => {
+    const cards = [
+      sampleCard({
+        id: "z",
+        name: "Zed",
+        category: "energy",
+        listedOn: "2026-09-01",
+      }),
+      sampleCard({
+        id: "a",
+        name: "Ada",
+        category: "models",
+        listedOn: "2026-08-01",
+      }),
+      sampleCard({
+        id: "b",
+        name: "Beta",
+        category: "agents",
+        listedOn: "2026-08-15",
+      }),
+    ];
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", sort: "newest" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["z", "b", "a"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", sort: "name" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["a", "b", "z"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", sort: "category" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["a", "b", "z"]);
+  });
+
   it("canonicalizes filtered views to the directory root", () => {
     const query = parseStartupDirectoryQuery({
       q: "alpha",
       category: "models",
+      region: "Toronto, Canada",
+      stage: "Seed",
+      exit: "active",
+      hiring: "1",
+      sort: "name",
       page: "3",
     });
     expect(query).toEqual({
       q: "alpha",
       category: "models",
-      sort: "newest",
+      region: "Toronto, Canada",
+      stage: "Seed",
+      exit: "active",
+      hiring: "hiring",
+      sort: "name",
       page: 3,
     });
     expect(startupDirectoryCanonicalPath(query)).toBe(STARTUPS_PATH);
     expect(buildStartupDirectoryPath({ page: 2 })).toBe(
       `${STARTUPS_PATH}?page=2`,
+    );
+    expect(
+      buildStartupDirectoryPath({
+        region: "Toronto, Canada",
+        exit: "ipo",
+        hiring: "hiring",
+        sort: "category",
+        page: 2,
+      }),
+    ).toBe(
+      `${STARTUPS_PATH}?region=Toronto%2C+Canada&exit=ipo&hiring=1&sort=category&page=2`,
     );
   });
 

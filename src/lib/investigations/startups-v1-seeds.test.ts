@@ -12,6 +12,7 @@ import {
 } from "./startups-v1-seeds";
 import { buildStartupInsights } from "./startups-insights";
 import {
+  applyStartupDirectoryQuery,
   displayStartupSources,
   normalizeStartupHomepage,
   parseStartupCategory,
@@ -183,6 +184,27 @@ describe("Startups v1 Ops-Passed seeds", () => {
     );
     expect(JSON.stringify(cards)).not.toMatch(BANNED_METRIC);
     expect(JSON.stringify(cards)).not.toMatch(/who-works-where|people graph/i);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", hiring: "hiring" },
+        "en",
+      ),
+    ).toHaveLength(20);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", exit: "active" },
+        "en",
+      ),
+    ).toHaveLength(18);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", exit: "ipo" },
+        "en",
+      ).map((card) => card.name),
+    ).toEqual(["Oklo"]);
   });
 
   it("feeds Insights from listed seed rows only", () => {

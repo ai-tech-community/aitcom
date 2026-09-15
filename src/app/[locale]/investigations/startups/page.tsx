@@ -23,6 +23,10 @@ import {
   buildOgMeta,
 } from "@/lib/metadata";
 import { userIsHubOperator } from "@/server/awesome-ai-oss/operator";
+import {
+  shouldPromoteJoin,
+  toHubAuthUser,
+} from "@/server/better-auth/hub-session";
 import { getSession } from "@/server/better-auth/server";
 import { listApprovedPublicStartups } from "@/server/startups/queries";
 
@@ -32,6 +36,10 @@ interface PageProps {
   searchParams: Promise<{
     q?: string;
     category?: string;
+    region?: string;
+    stage?: string;
+    exit?: string;
+    hiring?: string;
     sort?: string;
     page?: string;
     tab?: string;
@@ -128,6 +136,7 @@ export default async function StartupsInvestigationPage({
       companies={companies}
       isModerator={isModerator}
       query={query}
+      promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
     />
   );
 }
