@@ -187,7 +187,7 @@ function topLiveStars(
     .map((card) => ({
       id: card.id,
       name: card.name,
-      starCount: card.starCount as number,
+      starCount: card.starCount!,
       repoHost: card.repoHost,
     }));
 }
