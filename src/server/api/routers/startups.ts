@@ -63,13 +63,16 @@ function flattenPulseStartupRow(raw: unknown): unknown {
     acquirer: row.acquirer ?? row.exit_acquirer ?? null,
     exitOn,
     founders: Array.isArray(row.founders)
-      ? row.founders.map((founder) => {
-          if (!founder || typeof founder !== "object") return founder;
+      ? row.founders.flatMap((founder) => {
+          if (!founder || typeof founder !== "object") return [];
           const item = founder as Record<string, unknown>;
-          return {
-            ...item,
-            imageUrl: item.imageUrl ?? item.image_url ?? item.photo_url ?? null,
-          };
+          return [
+            {
+              ...item,
+              imageUrl:
+                item.imageUrl ?? item.image_url ?? item.photo_url ?? null,
+            },
+          ];
         })
       : [],
   };

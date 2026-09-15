@@ -222,8 +222,8 @@ export function StartupsSubmitDialog({
             .map((part) => part.trim());
           return {
             name: name ?? "",
-            url: url || null,
-            imageUrl: imageUrl || null,
+            url: url ?? null,
+            imageUrl: imageUrl ?? null,
           };
         }),
       exitStatus: exitStatus || null,
