@@ -72,10 +72,10 @@ describe("buildAlternates", () => {
   });
 
   it("keeps the org-tree roles page self-canonical on www", () => {
-    const en = buildAlternates("/investigations/ait-community-roles", "en");
-    const nl = buildAlternates("/investigations/ait-community-roles", "nl");
-    const enUrl = `${CANONICAL_PRODUCTION_ORIGIN}/en/investigations/ait-community-roles`;
-    const nlUrl = `${CANONICAL_PRODUCTION_ORIGIN}/nl/investigations/ait-community-roles`;
+    const en = buildAlternates("/roles", "en");
+    const nl = buildAlternates("/roles", "nl");
+    const enUrl = `${CANONICAL_PRODUCTION_ORIGIN}/en/roles`;
+    const nlUrl = `${CANONICAL_PRODUCTION_ORIGIN}/nl/roles`;
 
     expect(en.canonical).toBe(enUrl);
     expect(nl.canonical).toBe(nlUrl);

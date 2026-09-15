@@ -15,7 +15,6 @@ export type AitCommunityRolesKey =
   | "kicker"
   | "title"
   | "lead"
-  | "backLink"
   | "claimCta"
   | "pathLead"
   | "welcomeLabel"
@@ -46,15 +45,6 @@ export function AitCommunityRolesPage({
 }) {
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-16 sm:px-12">
-      <nav className="text-muted-foreground text-xs">
-        <Link
-          href="/investigations"
-          className="hover:text-foreground hover:underline"
-        >
-          ← {t("backLink")}
-        </Link>
-      </nav>
-
       <SectionLabel as="div">{t("kicker")}</SectionLabel>
 
       <div className="flex max-w-2xl flex-col gap-3">

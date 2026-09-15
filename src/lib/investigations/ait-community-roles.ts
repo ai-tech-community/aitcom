@@ -1,7 +1,7 @@
 import { HUB_COMMUNITY_PATH } from "@/lib/join-path";
 import { HUB_FORUM_PATH } from "@/server/communities/forum-scope";
 
-export const AIT_COMMUNITY_ROLES_PATH = "/investigations/ait-community-roles";
+export const AIT_COMMUNITY_ROLES_PATH = "/roles";
 
 export const AIT_COMMUNITY_ROLES_H1 = "AIT Community roles";
 
