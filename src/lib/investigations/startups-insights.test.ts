@@ -24,6 +24,11 @@ function card(overrides: Partial<StartupPublicCard> = {}): StartupPublicCard {
     lng: null,
     stage: null,
     logoUrl: null,
+    founders: [],
+    exitStatus: null,
+    acquirer: null,
+    exitOn: null,
+    jobsUrl: null,
     listedOn: "2026-09-15",
     ...overrides,
   };
@@ -33,6 +38,7 @@ describe("startup insights paths", () => {
   it("keeps a crawlable /insights path", () => {
     expect(STARTUPS_INSIGHTS_PATH).toBe("/investigations/startups/insights");
     expect(STARTUPS_INSIGHTS_H1).toBe("AI startups insights");
+    expect(STARTUPS_INSIGHTS_META).toMatch(/source coverage/i);
     expect(STARTUPS_INSIGHTS_META).toMatch(/from the live directory only/i);
     expect(STARTUPS_INSIGHTS_CAPTION).toBe("from listed companies · Neon only");
     expect(STARTUPS_INSIGHTS_META).not.toMatch(
@@ -54,6 +60,8 @@ describe("buildStartupInsights", () => {
     expect(stats.total).toBe(0);
     expect(stats.categoryMix).toEqual([]);
     expect(stats.regionMix).toBeNull();
+    expect(stats.stageMix).toBeNull();
+    expect(stats.sourcesCoverage).toBeNull();
     expect(stats.addedOverTime).toEqual([]);
   });
 
@@ -77,9 +85,33 @@ describe("buildStartupInsights", () => {
       ["energy", 1],
     ]);
     expect(stats.regionMix).toEqual([{ region: "Toronto, Canada", count: 1 }]);
+    expect(stats.stageMix).toBeNull();
+    expect(stats.sourcesCoverage).toEqual([
+      { sources: 1, label: "1 source", count: 3 },
+    ]);
     expect(stats.addedOverTime.map((row) => [row.month, row.count])).toEqual([
       ["2026-08", 1],
       ["2026-09", 2],
+    ]);
+  });
+
+  it("counts listed stages and source buckets; omits blanks", () => {
+    const stats = buildStartupInsights(
+      [
+        card({ id: "a", stage: "Seed", sources: ["https://a.example/about"] }),
+        card({
+          id: "b",
+          stage: "Seed",
+          sources: ["https://b.example/about", "https://b.example/blog"],
+        }),
+        card({ id: "c", stage: null, sources: [] }),
+      ],
+      "en",
+    );
+    expect(stats.stageMix).toEqual([{ stage: "Seed", count: 2 }]);
+    expect(stats.sourcesCoverage).toEqual([
+      { sources: 1, label: "1 source", count: 1 },
+      { sources: 2, label: "2 sources", count: 1 },
     ]);
   });
 });

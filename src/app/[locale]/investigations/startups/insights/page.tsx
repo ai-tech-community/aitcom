@@ -11,6 +11,10 @@ import {
 import { buildStartupInsights } from "@/lib/investigations/startups-insights";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { userIsHubOperator } from "@/server/awesome-ai-oss/operator";
+import {
+  shouldPromoteJoin,
+  toHubAuthUser,
+} from "@/server/better-auth/hub-session";
 import { getSession } from "@/server/better-auth/server";
 import { listApprovedPublicStartups } from "@/server/startups/queries";
 
@@ -49,6 +53,7 @@ export default async function StartupsInsightsPage() {
       isModerator={isModerator}
       tab="insights"
       insights={insights}
+      promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
     />
   );
 }

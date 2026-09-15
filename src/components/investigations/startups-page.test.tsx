@@ -51,6 +51,8 @@ vi.mock("@/i18n/navigation", () => ({
 vi.mock("./startups-insights-charts", () => ({
   StartupCategoryMixChart: () => <div data-testid="chart-category" />,
   StartupRegionMixChart: () => <div data-testid="chart-region" />,
+  StartupStageMixChart: () => <div data-testid="chart-stage" />,
+  StartupSourcesCoverageChart: () => <div data-testid="chart-sources" />,
   StartupAddedOverTimeChart: () => <div data-testid="chart-added" />,
 }));
 
@@ -67,6 +69,7 @@ import {
   STARTUPS_PATH,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
+import { HUB_OPEN_HREF } from "@/lib/join-path";
 import { STARTUPS_INSIGHTS_CAPTION } from "@/lib/investigations/startups-insights";
 import { appPathFromGuideHref, JOIN_PATH } from "@/lib/seo-guides";
 import { StartupsPage } from "./startups-page";
@@ -88,6 +91,10 @@ const SEED_MIGRATION_FILE = join(
   "../../migrations/20260915c_startups_v1_seeds.ts",
 );
 const SEED_MODULE = join(dir, "../../lib/investigations/startups-v1-seeds.ts");
+const SOFT_OMIT_MIGRATION_FILE = join(
+  dir,
+  "../../migrations/20260915d_startups_soft_omit_fields.ts",
+);
 const QUERIES_FILE = join(dir, "../../server/startups/queries.ts");
 const PAGINATION_FILE = join(dir, "startups-pagination.tsx");
 const SUBMIT_FILE = join(dir, "startups-submit-dialog.tsx");
@@ -114,7 +121,20 @@ const FIXTURE_CARD: StartupPublicCard = {
   lng: -79.38,
   stage: null,
   logoUrl: null,
+  founders: [],
+  exitStatus: null,
+  acquirer: null,
+  exitOn: null,
+  jobsUrl: null,
   listedOn: "2026-09-15",
+};
+
+const CARD_COPY = {
+  openHomepage: "Open homepage",
+  openJobs: "Open jobs",
+  sources: "Sources",
+  founders: "Founders",
+  edit: "Edit",
 };
 
 function tFrom(messages: typeof en.investigationsStartups) {
@@ -189,6 +209,60 @@ describe("StartupsPage", () => {
     expect(screen.getByTestId("startups-map")).toBeInTheDocument();
     expect(container.querySelector("img")).toBeNull();
     expect(hrefsOf(container)).toContain("https://fixture.example");
+    expect(hrefsOf(container)).toContain("https://fixture.example/about");
+    expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute(
+      "href",
+      "https://fixture.example/about",
+    );
+    expect(container.querySelector("[data-startup-exit]")).toBeNull();
+    expect(container.querySelector("[data-startup-founders]")).toBeNull();
+    expect(container.querySelector("[data-startup-jobs]")).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "Open jobs" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses Writing Bot chrome: slim deck, search, category, Newest", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[FIXTURE_CARD]}
+      />,
+    );
+    const heading = screen.getByRole("heading", {
+      level: 1,
+      name: STARTUPS_H1,
+    });
+    expect(heading.className).toMatch(/text-2xl/);
+    expect(heading.className).not.toMatch(/text-5xl/);
+    expect(container.textContent).toContain(en.investigationsStartups.lead);
+    expect(container.textContent).toContain(en.investigationsStartups.lead2);
+    expect(
+      screen.getByPlaceholderText("Search companies…"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("Filter by category").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Filter by region").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Filter by stage").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Filter by exit").length).toBeGreaterThan(0);
+    expect(container.querySelector("#startup-status")).not.toBeNull();
+    expect(screen.getAllByText("All listings").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("All companies").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Newest first").length).toBeGreaterThan(0);
+    expect(en.investigationsStartups.sortName).toBe("Name A–Z");
+    expect(en.investigationsStartups.sortCategory).toBe("Category");
+    expect(screen.getByRole("link", { name: "Directory" })).toHaveAttribute(
+      "href",
+      STARTUPS_PATH,
+    );
+    expect(screen.getByRole("link", { name: "Insights" })).toHaveAttribute(
+      "href",
+      STARTUPS_INSIGHTS_PATH,
+    );
+    expect(screen.getByRole("link", { name: "Open homepage" })).toHaveAttribute(
+      "href",
+      "https://fixture.example",
+    );
   });
 
   it("pins a sourced city/region with no stored coords, and skips unknown", () => {
@@ -236,6 +310,42 @@ describe("StartupsPage", () => {
     expect(hrefs).toContain("/investigations/startups?page=2");
     expect(hrefs).toContain("/investigations/startups?page=3");
     expect(container.querySelectorAll("[data-startup-card]")).toHaveLength(24);
+  });
+
+  it("swaps Directory and Insights Join to Open Hub for signed-in Hub members", () => {
+    const directory = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[FIXTURE_CARD]}
+        promoteJoin={false}
+      />,
+    );
+    expect(hrefsOf(directory.container)).not.toContain(STARTUPS_JOIN_HREF);
+    expect(directory.container.textContent).not.toContain(
+      en.investigationsStartups.joinCta,
+    );
+    expect(
+      screen.getByRole("link", { name: en.investigationsStartups.hubCta }),
+    ).toHaveAttribute("href", HUB_OPEN_HREF);
+    directory.unmount();
+
+    const insights = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        tab="insights"
+        companies={[FIXTURE_CARD]}
+        promoteJoin={false}
+      />,
+    );
+    expect(hrefsOf(insights.container)).not.toContain(STARTUPS_JOIN_HREF);
+    expect(insights.container.textContent).not.toContain(
+      en.investigationsStartups.joinCta,
+    );
+    expect(
+      screen.getByRole("link", { name: en.investigationsStartups.hubCta }),
+    ).toHaveAttribute("href", HUB_OPEN_HREF);
   });
 
   it("keeps Dutch copy on the same investigation path", () => {
@@ -289,35 +399,114 @@ describe("Startups Insights tab", () => {
     ];
     expect(
       tiles.map((tile) => tile.getAttribute("data-startups-insight-tile")),
-    ).toEqual(["added-over-time", "category-mix", "region-mix"]);
+    ).toEqual([
+      "added-over-time",
+      "category-mix",
+      "region-mix",
+      "stage-mix",
+      "sources-coverage",
+    ]);
     expect(tiles[0]).toHaveClass("md:col-span-2");
-    for (const tile of tiles) {
-      expect(
-        tile.querySelector("[data-startups-insight-table] table"),
-      ).not.toBeNull();
-    }
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Added over time" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Category" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Region" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Stage" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Sources coverage" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Directory" })).toHaveAttribute(
+      "href",
+      STARTUPS_PATH,
+    );
+    const chartTiles = tiles.filter(
+      (tile) =>
+        tile.querySelector("[data-startups-insight-table] table") != null,
+    );
+    expect(
+      chartTiles.map((tile) => tile.getAttribute("data-startups-insight-tile")),
+    ).toEqual([
+      "added-over-time",
+      "category-mix",
+      "region-mix",
+      "sources-coverage",
+    ]);
+    const stageTile = tiles.find(
+      (tile) => tile.getAttribute("data-startups-insight-tile") === "stage-mix",
+    );
+    expect(stageTile?.hasAttribute("data-startups-insight-omitted")).toBe(true);
+    expect(
+      stageTile?.querySelector("[data-startups-insight-table]"),
+    ).toBeNull();
+    expect(screen.queryByTestId("chart-stage")).not.toBeInTheDocument();
+    expect(screen.getByTestId("chart-sources")).toBeInTheDocument();
     expect(container.textContent).toContain(STARTUPS_INSIGHTS_CAPTION);
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
   });
 });
 
 describe("Startups card soft-omit", () => {
-  it("hides logo, stage, and region when they are blank", () => {
+  it("hides logo, stage, region, founders, exit, and jobs when they are blank", () => {
     const { container } = render(
       <StartupsCard
         card={{ ...FIXTURE_CARD, region: null, lat: null, lng: null }}
         locale="en"
         isModerator={false}
-        copy={{
-          openHomepage: "Open homepage",
-          sources: "Sources",
-          edit: "Edit",
-        }}
+        copy={CARD_COPY}
       />,
     );
     expect(container.querySelector("img")).toBeNull();
     expect(container.textContent).not.toContain("Toronto, Canada");
+    expect(container.querySelector("[data-startup-exit]")).toBeNull();
+    expect(container.querySelector("[data-startup-founders]")).toBeNull();
+    expect(container.querySelector("[data-startup-jobs]")).toBeNull();
+    expect(screen.queryByText("Founders")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Open jobs" }),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("Edit")).not.toBeInTheDocument();
+  });
+
+  it("shows sourced founders, exit badge, and Open jobs only when present", () => {
+    const { container } = render(
+      <StartupsCard
+        card={{
+          ...FIXTURE_CARD,
+          founders: [
+            { name: "Ada Example", url: "https://ada.example" },
+            { name: "No Url", url: null },
+          ],
+          exitStatus: "acquired",
+          acquirer: "Example Corp",
+          exitOn: "2024-06-01",
+          jobsUrl: "https://fixture.example/careers",
+        }}
+        locale="en"
+        isModerator={false}
+        copy={CARD_COPY}
+      />,
+    );
+    expect(container.querySelector("[data-startup-exit]")?.textContent).toBe(
+      "Acquired",
+    );
+    expect(container.textContent).toContain("Example Corp · 2024-06-01");
+    expect(container.querySelector("[data-startup-founders]")).not.toBeNull();
+    expect(screen.getByRole("link", { name: "Ada Example" })).toHaveAttribute(
+      "href",
+      "https://ada.example",
+    );
+    expect(container.textContent).toContain("No Url");
+    expect(screen.getByRole("link", { name: "Open jobs" })).toHaveAttribute(
+      "href",
+      "https://fixture.example/careers",
+    );
   });
 });
 
@@ -374,6 +563,7 @@ describe("Startups site integration", () => {
     expect(existsSync(MIGRATION_FILE)).toBe(true);
     expect(readFileSync(MIGRATION_FILE, "utf8")).not.toMatch(/INSERT INTO/i);
     expect(existsSync(SEED_MIGRATION_FILE)).toBe(true);
+    expect(existsSync(SOFT_OMIT_MIGRATION_FILE)).toBe(true);
     expect(existsSync(SEED_MODULE)).toBe(true);
     expect(readFileSync(SEED_MIGRATION_FILE, "utf8")).toMatch(/INSERT INTO/i);
     expect(existsSync(OPS_DOC)).toBe(true);
@@ -382,6 +572,13 @@ describe("Startups site integration", () => {
       /createStartup|createStartups/,
     );
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/v1 seed/i);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/people graph/i);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/enriched/i);
+    expect(readFileSync(FIXTURE, "utf8")).toContain("jobs_url");
+    expect(readFileSync(FIXTURE, "utf8")).toContain('"status": "ipo"');
+    expect(readFileSync(SOFT_OMIT_MIGRATION_FILE, "utf8")).toContain(
+      "jobs_url",
+    );
   });
 
   it("SSR-reads Neon, paginates with crawlable ?page= links, and sitemaps from the live count", () => {
@@ -394,7 +591,14 @@ describe("Startups site integration", () => {
 
     expect(page).toContain("listApprovedPublicStartups");
     expect(page).toContain('dynamic = "force-dynamic"');
+    expect(page).toContain("shouldPromoteJoin");
+    expect(page).toContain("promoteJoin");
+    expect(page).toContain("status?:");
+    expect(page).toContain("region");
+    expect(page).toContain("hiring");
     expect(insights).toContain("listApprovedPublicStartups");
+    expect(insights).toContain("shouldPromoteJoin");
+    expect(insights).toContain("promoteJoin");
     expect(insights).toContain('dynamic = "force-dynamic"');
     expect(queries).not.toMatch(/unstable_cache|revalidateTag/);
     expect(submit).toContain("router.refresh()");

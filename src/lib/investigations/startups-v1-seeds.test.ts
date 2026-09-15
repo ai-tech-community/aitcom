@@ -12,6 +12,7 @@ import {
 } from "./startups-v1-seeds";
 import { buildStartupInsights } from "./startups-insights";
 import {
+  applyStartupDirectoryQuery,
   displayStartupSources,
   normalizeStartupHomepage,
   parseStartupCategory,
@@ -150,6 +151,62 @@ describe("Startups v1 Ops-Passed seeds", () => {
     ).toHaveLength(18);
   });
 
+  it("applies Ops-passed founders, exits, and jobs_url; soft-omits the rest", () => {
+    const cards = startupsV1PublicCards();
+    const byName = new Map(cards.map((card) => [card.name, card]));
+
+    expect(cards.filter((card) => card.founders.length > 0)).toHaveLength(17);
+    expect(
+      ["Weaviate", "Apptronik", "Skild AI"].map(
+        (name) => byName.get(name)?.founders,
+      ),
+    ).toEqual([[], [], []]);
+    expect(cards.every((card) => card.founders.length <= 8)).toBe(true);
+    expect(byName.get("Anthropic")?.founders).toHaveLength(8);
+
+    expect(byName.get("Oklo")).toMatchObject({
+      exitStatus: "ipo",
+      acquirer: null,
+      exitOn: "2024",
+    });
+    expect(byName.get("Cursor (Anysphere)")).toMatchObject({
+      exitStatus: "acquired",
+      acquirer: "SpaceX",
+      exitOn: "2026",
+    });
+    expect(
+      cards.filter((card) => card.exitStatus != null).map((card) => card.name),
+    ).toEqual(["Oklo", "Cursor (Anysphere)"]);
+
+    expect(cards.every((card) => card.jobsUrl != null)).toBe(true);
+    expect(byName.get("Weaviate")?.jobsUrl).toBe(
+      "https://weaviate.io/company/careers",
+    );
+    expect(JSON.stringify(cards)).not.toMatch(BANNED_METRIC);
+    expect(JSON.stringify(cards)).not.toMatch(/who-works-where|people graph/i);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", hiring: "hiring" },
+        "en",
+      ),
+    ).toHaveLength(20);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", status: "active" },
+        "en",
+      ),
+    ).toHaveLength(18);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", status: "ipo" },
+        "en",
+      ).map((card) => card.name),
+    ).toEqual(["Oklo"]);
+  });
+
   it("feeds Insights from listed seed rows only", () => {
     const stats = buildStartupInsights(startupsV1PublicCards(), "en");
     expect(stats.total).toBe(20);
@@ -166,6 +223,13 @@ describe("Startups v1 Ops-Passed seeds", () => {
     expect(stats.regionMix).toEqual([
       { region: "New York, US", count: 1 },
       { region: "Toronto, Canada", count: 1 },
+    ]);
+    expect(stats.stageMix).toBeNull();
+    expect(
+      stats.sourcesCoverage?.map((row) => [row.sources, row.count]),
+    ).toEqual([
+      [2, 6],
+      [3, 14],
     ]);
     expect(stats.addedOverTime).toEqual([
       { month: "2026-09", label: "Sep 2026", count: 20 },
@@ -186,8 +250,15 @@ describe("Startups v1 seed migration", () => {
     expect(migration).toContain("ON CONFLICT");
     expect(index).toContain("20260915c_startups_v1_seeds");
     expect(index).toMatch(
-      /20260915b_startups[\s\S]*20260915c_startups_v1_seeds/,
+      /20260915b_startups[\s\S]*20260915c_startups_v1_seeds[\s\S]*20260915d_startups_soft_omit_fields[\s\S]*20260915e_startups_v1_enriched/,
     );
+    const enrich = readFileSync(
+      join(root, "migrations/20260915e_startups_v1_enriched.ts"),
+      "utf8",
+    );
+    expect(enrich).toMatch(/UPDATE "app"\."startup"/);
+    expect(enrich).toContain("STARTUPS_V1_SEEDS");
+    expect(enrich).not.toMatch(/INSERT INTO/i);
     for (const overflow of OVERFLOW_NAMES) {
       expect(migration).not.toContain(overflow);
     }

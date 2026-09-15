@@ -6,12 +6,18 @@ import {
   STARTUPS_BATCH_MAX,
   STARTUPS_CATEGORY_ERROR,
   STARTUPS_DUPLICATE_ERROR,
+  STARTUPS_EXIT_ERROR,
   STARTUPS_HOMEPAGE_ERROR,
+  STARTUPS_JOBS_URL_ERROR,
   STARTUPS_NAME_MAX,
   STARTUPS_SOURCES_ERROR,
   normalizeStartupHomepage,
   parseStartupCategory,
+  parseStartupExitOn,
+  parseStartupExitStatus,
+  pulseExitAlias,
   resolveStartupPinCoords,
+  sanitizeStartupFounders,
   sanitizeStartupSources,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
@@ -39,7 +45,28 @@ const optionalBlank = z
     return value.length > 0 ? value : null;
   });
 
-const createStartupInput = z.object({
+function flattenPulseStartupRow(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const row = raw as Record<string, unknown>;
+  const exitYear = row.exitOn ?? row.exit_year;
+  const exitOn =
+    typeof exitYear === "string" || typeof exitYear === "number"
+      ? String(exitYear)
+      : null;
+  return {
+    ...row,
+    logoUrl: row.logoUrl ?? row.logo_url ?? null,
+    jobsUrl: row.jobsUrl ?? row.jobs_url ?? null,
+    exitStatus:
+      row.exitStatus ??
+      pulseExitAlias(typeof row.status === "string" ? row.status : null),
+    acquirer: row.acquirer ?? row.exit_acquirer ?? null,
+    exitOn,
+    founders: Array.isArray(row.founders) ? row.founders : [],
+  };
+}
+
+const createStartupFields = z.object({
   name: z.string().trim().min(1).max(STARTUPS_NAME_MAX),
   homepage: z.string().trim().min(1).max(500),
   category: z.string().trim().min(1).max(32),
@@ -49,9 +76,34 @@ const createStartupInput = z.object({
   lng: z.number().min(-180).max(180).nullable().optional(),
   stage: optionalBlank,
   logoUrl: optionalBlank,
+  founders: z
+    .array(
+      z.object({
+        name: z.string().trim().max(160),
+        url: optionalBlank,
+      }),
+    )
+    .max(8)
+    .optional(),
+  exitStatus: optionalBlank,
+  acquirer: optionalBlank,
+  exitOn: optionalBlank,
+  jobsUrl: optionalBlank,
 });
 
-type CreateStartupInput = z.infer<typeof createStartupInput>;
+const createStartupInput = z.preprocess(
+  flattenPulseStartupRow,
+  createStartupFields,
+);
+
+const updateStartupInput = z.preprocess(
+  flattenPulseStartupRow,
+  createStartupFields.extend({
+    id: z.string().trim().min(1),
+  }),
+);
+
+type CreateStartupInput = z.infer<typeof createStartupFields>;
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
@@ -88,6 +140,23 @@ function parsedWriteFields(input: CreateStartupInput) {
     lat: input.lat ?? null,
     lng: input.lng ?? null,
   });
+  const founders = sanitizeStartupFounders(input.founders);
+  const rawExit = input.exitStatus?.trim() ?? "";
+  const exitStatus = rawExit ? parseStartupExitStatus(rawExit) : null;
+  if (rawExit && !exitStatus) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: STARTUPS_EXIT_ERROR,
+    });
+  }
+  const jobsRaw = input.jobsUrl?.trim() ?? "";
+  const jobsUrl = jobsRaw ? normalizeStartupHomepage(jobsRaw) : null;
+  if (jobsRaw && !jobsUrl) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: STARTUPS_JOBS_URL_ERROR,
+    });
+  }
 
   return {
     name: input.name,
@@ -99,6 +168,11 @@ function parsedWriteFields(input: CreateStartupInput) {
     lng: resolved?.lng ?? null,
     stage: input.stage ?? null,
     logoUrl,
+    founders,
+    exitStatus,
+    acquirer: exitStatus ? (input.acquirer ?? null) : null,
+    exitOn: exitStatus ? parseStartupExitOn(input.exitOn) : null,
+    jobsUrl,
   };
 }
 
@@ -191,11 +265,7 @@ export const startupsRouter = createTRPCRouter({
     }),
 
   updateStartup: protectedProcedure
-    .input(
-      createStartupInput.extend({
-        id: z.string().trim().min(1),
-      }),
-    )
+    .input(updateStartupInput)
     .mutation(async ({ ctx, input }) => {
       await requireHubOperator(ctx);
       const existing = await findStartupById(input.id);

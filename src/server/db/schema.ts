@@ -4191,6 +4191,19 @@ export const startups = appSchema.table(
     lng: d.doublePrecision(),
     stage: d.text(),
     logoUrl: d.text(),
+    founders: d
+      .json()
+      .$type<Array<{ name: string; url: string | null }>>()
+      .notNull()
+      .default([]),
+    /** Sourced exit only. Distinct from listing `status` pending|approved|rejected. */
+    exitStatus: d
+      .varchar({ length: 16 })
+      .$type<"acquired" | "ipo" | "shutdown">(),
+    acquirer: d.text(),
+    /** Sourced year (`2024`) or date (`YYYY-MM-DD`). Never invent a day. */
+    exitOn: d.text(),
+    jobsUrl: d.text(),
     status: d
       .varchar({ length: 16 })
       .notNull()

@@ -26,10 +26,23 @@ export type StartupsInsightsMonthRow = {
   count: number;
 };
 
+export type StartupsInsightsStageRow = {
+  stage: string;
+  count: number;
+};
+
+export type StartupsInsightsSourcesRow = {
+  sources: 1 | 2 | 3;
+  label: string;
+  count: number;
+};
+
 export type StartupsInsightsStats = {
   total: number;
   categoryMix: StartupsInsightsCategoryRow[];
   regionMix: StartupsInsightsRegionRow[] | null;
+  stageMix: StartupsInsightsStageRow[] | null;
+  sourcesCoverage: StartupsInsightsSourcesRow[] | null;
   addedOverTime: StartupsInsightsMonthRow[];
 };
 
@@ -58,12 +71,21 @@ export function formatStartupInsightMonth(
  * Aggregates listed directory cards. Never invents valuation, headcount,
  * attendance, or growth — only category / verified region / listed-on counts.
  */
+function sourcesCoverageLabel(count: 1 | 2 | 3, locale: StartupLocale): string {
+  if (locale === "nl") {
+    return count === 1 ? "1 bron" : `${count} bronnen`;
+  }
+  return count === 1 ? "1 source" : `${count} sources`;
+}
+
 export function buildStartupInsights(
   cards: readonly StartupPublicCard[],
   locale: StartupLocale,
 ): StartupsInsightsStats {
   const categoryCounts = new Map<StartupCategoryId, number>();
   const regionCounts = new Map<string, number>();
+  const stageCounts = new Map<string, number>();
+  const sourceBucketCounts = new Map<1 | 2 | 3, number>();
   const monthCounts = new Map<string, number>();
 
   for (const card of cards) {
@@ -74,6 +96,17 @@ export function buildStartupInsights(
     const region = presentText(card.region);
     if (region) {
       regionCounts.set(region, (regionCounts.get(region) ?? 0) + 1);
+    }
+    const stage = presentText(card.stage);
+    if (stage) {
+      stageCounts.set(stage, (stageCounts.get(stage) ?? 0) + 1);
+    }
+    const sourceCount = card.sources.length;
+    if (sourceCount === 1 || sourceCount === 2 || sourceCount === 3) {
+      sourceBucketCounts.set(
+        sourceCount,
+        (sourceBucketCounts.get(sourceCount) ?? 0) + 1,
+      );
     }
     const month = card.listedOn.slice(0, 7);
     if (/^\d{4}-\d{2}$/.test(month)) {
@@ -108,10 +141,30 @@ export function buildStartupInsights(
       count,
     }));
 
+  const stageMix =
+    stageCounts.size === 0
+      ? null
+      : [...stageCounts.entries()]
+          .map(([stage, count]) => ({ stage, count }))
+          .sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage));
+
+  const sourcesCoverage =
+    sourceBucketCounts.size === 0
+      ? null
+      : ([1, 2, 3] as const)
+          .filter((sources) => (sourceBucketCounts.get(sources) ?? 0) > 0)
+          .map((sources) => ({
+            sources,
+            label: sourcesCoverageLabel(sources, locale),
+            count: sourceBucketCounts.get(sources)!,
+          }));
+
   return {
     total: cards.length,
     categoryMix,
     regionMix,
+    stageMix,
+    sourcesCoverage,
     addedOverTime,
   };
 }

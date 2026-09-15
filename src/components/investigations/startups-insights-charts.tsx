@@ -15,6 +15,8 @@ import type {
   StartupsInsightsCategoryRow,
   StartupsInsightsMonthRow,
   StartupsInsightsRegionRow,
+  StartupsInsightsSourcesRow,
+  StartupsInsightsStageRow,
 } from "@/lib/investigations/startups-insights";
 import { cn } from "@/lib/utils";
 
@@ -113,6 +115,85 @@ export function StartupRegionMixChart({
           {data.map((row, index) => (
             <Cell
               key={row.region}
+              fill={CHART_COLORS[index % CHART_COLORS.length]}
+            />
+          ))}
+        </Bar>
+      </BarChart>
+    </ChartFrame>
+  );
+}
+
+export function StartupStageMixChart({
+  data,
+  label,
+}: {
+  data: StartupsInsightsStageRow[];
+  label: string;
+}) {
+  const rows = data.map((row) => ({ label: row.stage, count: row.count }));
+  return (
+    <ChartFrame label={label}>
+      <BarChart
+        data={rows}
+        layout="vertical"
+        margin={{ top: 8, right: 16, bottom: 8, left: 8 }}
+      >
+        <CartesianGrid horizontal={false} stroke="var(--border)" />
+        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+        <YAxis
+          type="category"
+          dataKey="label"
+          width={108}
+          tick={{ fontSize: 12 }}
+        />
+        <Tooltip
+          cursor={{ fill: "var(--secondary)" }}
+          formatter={(value) => [String(value), label]}
+        />
+        <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+          {rows.map((row, index) => (
+            <Cell
+              key={row.label}
+              fill={CHART_COLORS[index % CHART_COLORS.length]}
+            />
+          ))}
+        </Bar>
+      </BarChart>
+    </ChartFrame>
+  );
+}
+
+export function StartupSourcesCoverageChart({
+  data,
+  label,
+}: {
+  data: StartupsInsightsSourcesRow[];
+  label: string;
+}) {
+  return (
+    <ChartFrame label={label}>
+      <BarChart
+        data={data}
+        layout="vertical"
+        margin={{ top: 8, right: 16, bottom: 8, left: 8 }}
+      >
+        <CartesianGrid horizontal={false} stroke="var(--border)" />
+        <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12 }} />
+        <YAxis
+          type="category"
+          dataKey="label"
+          width={108}
+          tick={{ fontSize: 12 }}
+        />
+        <Tooltip
+          cursor={{ fill: "var(--secondary)" }}
+          formatter={(value) => [String(value), label]}
+        />
+        <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+          {data.map((row, index) => (
+            <Cell
+              key={row.sources}
               fill={CHART_COLORS[index % CHART_COLORS.length]}
             />
           ))}

@@ -8,7 +8,7 @@ export const STARTUPS_PATH = "/investigations/startups";
 
 export const STARTUPS_INSIGHTS_PATH = "/investigations/startups/insights";
 
-export const STARTUPS_H1 = "AI startups";
+export const STARTUPS_H1 = "AI startups worth watching";
 
 export const STARTUPS_META =
   "Companies that materially enable AI — models, agents, AI infra, robotics, energy, and verticals. Homepage and sources verified. Not a size or price scorecard.";
@@ -16,7 +16,7 @@ export const STARTUPS_META =
 export const STARTUPS_INSIGHTS_H1 = "AI startups insights";
 
 export const STARTUPS_INSIGHTS_META =
-  "Category mix, region mix, and when companies were listed — from the live directory only. Blank region, stage, and logo stay omitted.";
+  "Added over time, plus category, region, stage, and source coverage — from the live directory only. Blank region and stage stay omitted.";
 
 export const STARTUPS_JOIN_HREF =
   "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=investigations&utm_campaign=startups";
@@ -53,6 +53,13 @@ export type StartupStatus = "pending" | "approved" | "rejected";
 
 export type StartupSourceKind = "staff";
 
+export type StartupExitStatus = "acquired" | "ipo" | "shutdown";
+
+export type StartupFounder = {
+  name: string;
+  url: string | null;
+};
+
 export type StartupPublicCard = {
   id: string;
   name: string;
@@ -64,17 +71,78 @@ export type StartupPublicCard = {
   lng: number | null;
   stage: string | null;
   logoUrl: string | null;
+  founders: StartupFounder[];
+  exitStatus: StartupExitStatus | null;
+  acquirer: string | null;
+  exitOn: string | null;
+  jobsUrl: string | null;
   listedOn: string;
 };
+
+export const STARTUP_EXIT_STATUS_IDS = [
+  "acquired",
+  "ipo",
+  "shutdown",
+] as const satisfies readonly StartupExitStatus[];
+
+export const STARTUP_EXIT_STATUS_LABELS: Record<
+  StartupExitStatus,
+  Record<StartupLocale, string>
+> = {
+  acquired: { en: "Acquired", nl: "Overgenomen" },
+  ipo: { en: "IPO", nl: "Beursgang" },
+  shutdown: { en: "Shutdown", nl: "Gestopt" },
+};
+
+/** Filter labels only. Blank exit stays badge-omitted on the card. */
+export const STARTUP_EXIT_FILTER_LABELS: Record<
+  StartupExitFilter,
+  Record<StartupLocale, string>
+> = {
+  active: { en: "Active", nl: "Actief" },
+  ...STARTUP_EXIT_STATUS_LABELS,
+};
+
+export const STARTUPS_FOUNDERS_MAX = 8;
+
+export const STARTUPS_EXIT_ERROR =
+  "Use a sourced exit only: acquired, IPO, or shutdown.";
+
+export const STARTUPS_JOBS_URL_ERROR =
+  "Use a live http(s) careers URL (Ops-confirmed 200) or leave blank.";
+
+export type StartupSort = "newest" | "name" | "category";
+
+export type StartupExitFilter = "active" | StartupExitStatus;
+
+export type StartupHiringFilter = "all" | "hiring";
 
 export type StartupDirectoryFilters = {
   q: string;
   category: StartupCategoryId | "all";
+  region?: string;
+  stage?: string;
+  status?: StartupExitFilter | "all";
+  hiring?: StartupHiringFilter;
+  sort?: StartupSort;
 };
 
 export type StartupDirectoryQuery = StartupDirectoryFilters & {
   page: number;
 };
+
+export const STARTUP_SORT_IDS = [
+  "newest",
+  "name",
+  "category",
+] as const satisfies readonly StartupSort[];
+
+export const STARTUP_EXIT_FILTER_IDS = [
+  "active",
+  "acquired",
+  "ipo",
+  "shutdown",
+] as const satisfies readonly StartupExitFilter[];
 
 export type StartupMapPin = {
   id: string;
@@ -175,6 +243,192 @@ export function displayStartupSources(
   return clean.length >= 1 && clean.length <= 3 ? clean : [];
 }
 
+export function parseStartupExitStatus(
+  value: string | null | undefined,
+): StartupExitStatus | null {
+  if (value == null) return null;
+  const raw = value.trim().toLowerCase();
+  if (raw === "acquired" || raw === "ipo" || raw === "shutdown") return raw;
+  return null;
+}
+
+export function isStartupExitStatus(
+  value: string | null | undefined,
+): value is StartupExitStatus {
+  return parseStartupExitStatus(value) != null;
+}
+
+export function parseStartupExitOn(
+  value: string | number | null | undefined,
+): string | null {
+  const trimmed = value == null ? "" : String(value).trim();
+  if (!trimmed) return null;
+  if (/^\d{4}$/.test(trimmed)) return trimmed;
+  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : null;
+}
+
+export type PulseStartupRow = {
+  name: string;
+  homepage: string;
+  category: string;
+  sources: readonly string[];
+  region?: string | null;
+  stage?: string | null;
+  logo_url?: string | null;
+  logoUrl?: string | null;
+  founders?: readonly { name?: string | null; url?: string | null }[] | null;
+  status?: string | null;
+  exitStatus?: string | null;
+  exit_acquirer?: string | null;
+  acquirer?: string | null;
+  exit_year?: string | number | null;
+  exitOn?: string | number | null;
+  jobs_url?: string | null;
+  jobsUrl?: string | null;
+};
+
+/** Pulse `status` is the sourced exit, not listing pending|approved|rejected. */
+export function pulseExitAlias(
+  value: string | null | undefined,
+): StartupExitStatus | null {
+  return parseStartupExitStatus(value);
+}
+
+export function mapPulseStartupWrite(row: PulseStartupRow) {
+  const exitStatus =
+    parseStartupExitStatus(row.exitStatus) ?? pulseExitAlias(row.status);
+  const logoRaw = presentText(row.logoUrl) ?? presentText(row.logo_url);
+  const jobsRaw = presentText(row.jobsUrl) ?? presentText(row.jobs_url);
+  return {
+    name: row.name,
+    homepage: normalizeStartupHomepage(row.homepage),
+    category: parseStartupCategory(row.category),
+    sources: sanitizeStartupSources(row.sources),
+    region: presentText(row.region),
+    stage: presentText(row.stage),
+    logoUrl: logoRaw ? normalizeStartupHomepage(logoRaw) : null,
+    founders: sanitizeStartupFounders(row.founders),
+    exitStatus,
+    acquirer: exitStatus
+      ? (presentText(row.acquirer) ?? presentText(row.exit_acquirer))
+      : null,
+    exitOn: exitStatus ? parseStartupExitOn(row.exitOn ?? row.exit_year) : null,
+    jobsUrl: jobsRaw ? normalizeStartupHomepage(jobsRaw) : null,
+  };
+}
+
+export function sanitizeStartupFounders(
+  founders:
+    | readonly { name?: string | null; url?: string | null }[]
+    | null
+    | undefined,
+): StartupFounder[] {
+  const clean: StartupFounder[] = [];
+  for (const raw of founders ?? []) {
+    const name = presentText(raw?.name);
+    if (!name) continue;
+    const url = raw?.url ? normalizeStartupHomepage(raw.url) : null;
+    clean.push({ name, url });
+    if (clean.length === STARTUPS_FOUNDERS_MAX) break;
+  }
+  return clean;
+}
+
+export function displayStartupFounders(
+  founders:
+    | readonly { name?: string | null; url?: string | null }[]
+    | null
+    | undefined,
+): StartupFounder[] {
+  return sanitizeStartupFounders(founders);
+}
+
+export type StartupCiteKind = "docs" | "deep-dive" | "talk" | "news";
+
+export const STARTUP_CITE_KIND_IDS = [
+  "docs",
+  "deep-dive",
+  "talk",
+  "news",
+] as const satisfies readonly StartupCiteKind[];
+
+export const STARTUP_CITE_KIND_LABELS: Record<
+  StartupCiteKind,
+  Record<StartupLocale, string>
+> = {
+  docs: { en: "Docs", nl: "Docs" },
+  "deep-dive": { en: "Deep dive", nl: "Deep dive" },
+  talk: { en: "Talk", nl: "Talk" },
+  news: { en: "News", nl: "Nieuws" },
+};
+
+const SOURCED_PUBLICATION_TITLES: Record<string, string> = {
+  "techcrunch.com": "TechCrunch",
+  "datacenterdynamics.com": "Data Center Dynamics",
+};
+
+function startupSourceHost(
+  href: string,
+): { host: string; path: string } | null {
+  try {
+    const url = new URL(href);
+    return {
+      host: url.hostname.replace(/^www\./, "").toLowerCase(),
+      path: url.pathname.replace(/\/+$/, "").toLowerCase(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Publication name from the host only — never an invented article title. */
+export function sourcedStartupSourceTitle(href: string): string | null {
+  const parsed = startupSourceHost(href);
+  if (!parsed) return null;
+  if (
+    parsed.host === "wikipedia.org" ||
+    parsed.host.endsWith(".wikipedia.org")
+  ) {
+    return "Wikipedia";
+  }
+  return SOURCED_PUBLICATION_TITLES[parsed.host] ?? null;
+}
+
+export function startupCiteKind(href: string): StartupCiteKind {
+  const parsed = startupSourceHost(href);
+  if (!parsed) return "docs";
+  const { host, path } = parsed;
+  if (
+    host === "youtube.com" ||
+    host === "youtu.be" ||
+    host === "vimeo.com" ||
+    /\/(talks?|keynote|podcast|webinar|watch)(?:\/|$)/.test(path)
+  ) {
+    return "talk";
+  }
+  if (/\/(newsroom|news|press|press-releases|in-the-news)(?:\/|$)/.test(path)) {
+    return "news";
+  }
+  if (/\/(blog|research|papers|analysis|post)(?:\/|$)/.test(path)) {
+    return "deep-dive";
+  }
+  return "docs";
+}
+
+/**
+ * Visible `<a>` label: sourced publication title when the host is known,
+ * otherwise Docs · Deep dive · Talk · News. Never a bare 1/2/3.
+ */
+export function startupSourceLabel(
+  href: string,
+  locale: StartupLocale = "en",
+): string {
+  return (
+    sourcedStartupSourceTitle(href) ??
+    STARTUP_CITE_KIND_LABELS[startupCiteKind(href)][locale]
+  );
+}
+
 function isUsableCoord(lat: number | null, lng: number | null): boolean {
   if (typeof lat !== "number" || typeof lng !== "number") return false;
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
@@ -248,20 +502,73 @@ export function parseStartupPage(value: string | string[] | undefined): number {
   return Number.isFinite(parsed) && parsed >= 1 ? parsed : 1;
 }
 
+export function parseStartupSort(
+  value: string | null | undefined,
+): StartupSort {
+  const raw = value?.trim().toLowerCase() ?? "";
+  if (raw === "name" || raw === "a-z" || raw === "az") return "name";
+  if (raw === "category") return "category";
+  return "newest";
+}
+
+export function parseStartupExitFilter(
+  value: string | null | undefined,
+): StartupExitFilter | "all" {
+  const raw = value?.trim().toLowerCase() ?? "";
+  if (
+    raw === "active" ||
+    raw === "acquired" ||
+    raw === "ipo" ||
+    raw === "shutdown"
+  ) {
+    return raw;
+  }
+  return "all";
+}
+
+export function parseStartupHiringFilter(
+  value: string | null | undefined,
+): StartupHiringFilter {
+  const raw = value?.trim().toLowerCase() ?? "";
+  if (raw === "1" || raw === "yes" || raw === "true" || raw === "hiring") {
+    return "hiring";
+  }
+  return "all";
+}
+
+export function startupExitBucket(
+  card: Pick<StartupPublicCard, "exitStatus">,
+): StartupExitFilter {
+  return card.exitStatus ?? "active";
+}
+
 export function parseStartupDirectoryQuery(raw: {
   q?: string | string[];
   category?: string | string[];
+  region?: string | string[];
+  stage?: string | string[];
+  status?: string | string[];
+  exit?: string | string[];
+  hiring?: string | string[];
+  sort?: string | string[];
   page?: string | string[] | number;
 }): StartupDirectoryQuery {
   const q = firstParam(raw.q)?.trim() ?? "";
   const category = parseStartupCategory(firstParam(raw.category)) ?? "all";
+  const region = presentText(firstParam(raw.region)) ?? "all";
+  const stage = presentText(firstParam(raw.stage)) ?? "all";
+  const status = parseStartupExitFilter(
+    firstParam(raw.status) ?? firstParam(raw.exit),
+  );
+  const hiring = parseStartupHiringFilter(firstParam(raw.hiring));
+  const sort = parseStartupSort(firstParam(raw.sort));
   const page =
     typeof raw.page === "number"
       ? raw.page >= 1 && Number.isFinite(raw.page)
         ? Math.floor(raw.page)
         : 1
       : parseStartupPage(raw.page);
-  return { q, category, page };
+  return { q, category, region, stage, status, hiring, sort, page };
 }
 
 export function applyStartupDirectoryQuery(
@@ -270,10 +577,19 @@ export function applyStartupDirectoryQuery(
   locale: StartupLocale,
 ): StartupPublicCard[] {
   const needle = query.q.trim().toLowerCase();
+  const region = presentText(query.region === "all" ? null : query.region);
+  const stage = presentText(query.stage === "all" ? null : query.stage);
+  const status = query.status && query.status !== "all" ? query.status : "all";
+  const hiring = query.hiring === "hiring" ? "hiring" : "all";
+  const sort = query.sort ?? "newest";
   const filtered = cards.filter((card) => {
     if (query.category !== "all" && card.category !== query.category) {
       return false;
     }
+    if (region && presentText(card.region) !== region) return false;
+    if (stage && presentText(card.stage) !== stage) return false;
+    if (status !== "all" && startupExitBucket(card) !== status) return false;
+    if (hiring === "hiring" && !presentText(card.jobsUrl)) return false;
     if (!needle) return true;
     const haystack = [
       card.name,
@@ -288,10 +604,43 @@ export function applyStartupDirectoryQuery(
     return haystack.includes(needle);
   });
 
-  return [...filtered].sort((a, b) => {
-    if (a.listedOn === b.listedOn) return a.name.localeCompare(b.name);
+  const sorted = [...filtered];
+  if (sort === "name") {
+    sorted.sort((a, b) => a.name.localeCompare(b.name, locale));
+    return sorted;
+  }
+  if (sort === "category") {
+    sorted.sort((a, b) => {
+      const delta =
+        STARTUP_CATEGORY_IDS.indexOf(a.category) -
+        STARTUP_CATEGORY_IDS.indexOf(b.category);
+      if (delta !== 0) return delta;
+      return a.name.localeCompare(b.name, locale);
+    });
+    return sorted;
+  }
+  sorted.sort((a, b) => {
+    if (a.listedOn === b.listedOn) return a.name.localeCompare(b.name, locale);
     return a.listedOn < b.listedOn ? 1 : -1;
   });
+  return sorted;
+}
+
+export function startupDirectoryFilterOptions(
+  cards: readonly StartupPublicCard[],
+): { regions: string[]; stages: string[] } {
+  const regions = new Set<string>();
+  const stages = new Set<string>();
+  for (const card of cards) {
+    const region = presentText(card.region);
+    if (region) regions.add(region);
+    const stage = presentText(card.stage);
+    if (stage) stages.add(stage);
+  }
+  return {
+    regions: [...regions].sort((a, b) => a.localeCompare(b)),
+    stages: [...stages].sort((a, b) => a.localeCompare(b)),
+  };
 }
 
 export function paginateStartupCards<T>(
@@ -325,6 +674,15 @@ export function buildStartupDirectoryPath(
   const params = new URLSearchParams();
   if (parsed.q.trim()) params.set("q", parsed.q.trim());
   if (parsed.category !== "all") params.set("category", parsed.category);
+  if (parsed.region && parsed.region !== "all") {
+    params.set("region", parsed.region);
+  }
+  if (parsed.stage && parsed.stage !== "all") params.set("stage", parsed.stage);
+  if (parsed.status && parsed.status !== "all") {
+    params.set("status", parsed.status);
+  }
+  if (parsed.hiring === "hiring") params.set("hiring", "1");
+  if (parsed.sort && parsed.sort !== "newest") params.set("sort", parsed.sort);
   if (parsed.page > 1) params.set("page", String(parsed.page));
   const qs = params.toString();
   return qs ? `${STARTUPS_PATH}?${qs}` : STARTUPS_PATH;
@@ -333,7 +691,15 @@ export function buildStartupDirectoryPath(
 export function startupDirectoryHasFilters(
   query: StartupDirectoryQuery,
 ): boolean {
-  return query.q.trim().length > 0 || query.category !== "all";
+  return (
+    query.q.trim().length > 0 ||
+    query.category !== "all" ||
+    (query.region != null && query.region !== "all") ||
+    (query.stage != null && query.stage !== "all") ||
+    (query.status != null && query.status !== "all") ||
+    query.hiring === "hiring" ||
+    (query.sort != null && query.sort !== "newest")
+  );
 }
 
 export function startupDirectoryCanonicalPath(

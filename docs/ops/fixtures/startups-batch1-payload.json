@@ -11,7 +11,45 @@
         "https://www.anthropic.com/company",
         "https://techcrunch.com/tag/anthropic/"
       ],
-      "logo_url": "https://cdn.prod.website-files.com/67ce28cfec624e2b733f8a52/68309ab48369f7ad9b4a40e1_open-graph.jpg"
+      "logo_url": "https://cdn.prod.website-files.com/67ce28cfec624e2b733f8a52/68309ab48369f7ad9b4a40e1_open-graph.jpg",
+      "founders": [
+        {
+          "name": "Dario Amodei",
+          "url": "https://en.wikipedia.org/wiki/Dario_Amodei"
+        },
+        {
+          "name": "Daniela Amodei",
+          "url": null
+        },
+        {
+          "name": "Jared Kaplan",
+          "url": null
+        },
+        {
+          "name": "Jack Clark",
+          "url": null
+        },
+        {
+          "name": "Chris Olah",
+          "url": "https://en.wikipedia.org/wiki/Chris_Olah"
+        },
+        {
+          "name": "Ben Mann",
+          "url": null
+        },
+        {
+          "name": "Sam McCandlish",
+          "url": null
+        },
+        {
+          "name": "Tom Brown",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://www.anthropic.com/careers"
     },
     {
       "name": "Mistral AI",
@@ -24,7 +62,25 @@
         "https://mistral.ai/about/",
         "https://techcrunch.com/tag/mistral/"
       ],
-      "logo_url": "https://mistral.ai/cms-media/api/media/file/OG-mistral-main_1x.jpg"
+      "logo_url": "https://mistral.ai/cms-media/api/media/file/OG-mistral-main_1x.jpg",
+      "founders": [
+        {
+          "name": "Arthur Mensch",
+          "url": null
+        },
+        {
+          "name": "Guillaume Lample",
+          "url": null
+        },
+        {
+          "name": "Timothée Lacroix",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://mistral.ai/careers"
     },
     {
       "name": "Hugging Face",
@@ -37,7 +93,25 @@
         "https://huggingface.co/blog",
         "https://techcrunch.com/tag/hugging-face/"
       ],
-      "logo_url": "https://huggingface.co/front/thumbnails/v2-2.png"
+      "logo_url": "https://huggingface.co/front/thumbnails/v2-2.png",
+      "founders": [
+        {
+          "name": "Clément Delangue",
+          "url": null
+        },
+        {
+          "name": "Julien Chaumond",
+          "url": null
+        },
+        {
+          "name": "Thomas Wolf",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://huggingface.co/jobs"
     },
     {
       "name": "Cohere",
@@ -50,7 +124,25 @@
         "https://cohere.com/about",
         "https://cohere.com/blog"
       ],
-      "logo_url": "https://cdn.sanity.io/images/rjtqmwfu/web3-prod/85811b8ce33b1579bac01f1fe8f4989c2749d6ba-1200x630.png?w=1200&h=630&q=80&fit=crop&auto=format"
+      "logo_url": "https://cdn.sanity.io/images/rjtqmwfu/web3-prod/85811b8ce33b1579bac01f1fe8f4989c2749d6ba-1200x630.png?w=1200&h=630&q=80&fit=crop&auto=format",
+      "founders": [
+        {
+          "name": "Aidan Gomez",
+          "url": null
+        },
+        {
+          "name": "Ivan Zhang",
+          "url": null
+        },
+        {
+          "name": "Nick Frosst",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://cohere.com/careers"
     },
     {
       "name": "Perplexity",
@@ -63,7 +155,29 @@
         "https://www.perplexity.ai/hub",
         "https://techcrunch.com/tag/perplexity/"
       ],
-      "logo_url": "https://ppl-ai-public.s3.amazonaws.com/static/img/pplx-default-preview.png"
+      "logo_url": "https://ppl-ai-public.s3.amazonaws.com/static/img/pplx-default-preview.png",
+      "founders": [
+        {
+          "name": "Aravind Srinivas",
+          "url": null
+        },
+        {
+          "name": "Denis Yarats",
+          "url": null
+        },
+        {
+          "name": "Johnny Ho",
+          "url": null
+        },
+        {
+          "name": "Andy Konwinski",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://www.perplexity.ai/careers"
     },
     {
       "name": "Cursor (Anysphere)",
@@ -76,7 +190,29 @@
         "https://cursor.com/about",
         "https://cursor.com/blog"
       ],
-      "logo_url": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/og/opengraph-default.png"
+      "logo_url": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/og/opengraph-default.png",
+      "founders": [
+        {
+          "name": "Michael Truell",
+          "url": null
+        },
+        {
+          "name": "Sualeh Asif",
+          "url": null
+        },
+        {
+          "name": "Arvid Lunnemark",
+          "url": null
+        },
+        {
+          "name": "Aman Sanger",
+          "url": null
+        }
+      ],
+      "status": "acquired",
+      "exit_acquirer": "SpaceX",
+      "exit_year": 2026,
+      "jobs_url": "https://cursor.com/careers"
     },
     {
       "name": "LangChain",
@@ -89,7 +225,21 @@
         "https://www.langchain.com/about",
         "https://www.langchain.com/blog"
       ],
-      "logo_url": "https://cdn.prod.website-files.com/65b8cd72835ceeacd4449a53/6a907b277587adb77be09e34_Website%20preview%20.png"
+      "logo_url": "https://cdn.prod.website-files.com/65b8cd72835ceeacd4449a53/6a907b277587adb77be09e34_Website%20preview%20.png",
+      "founders": [
+        {
+          "name": "Harrison Chase",
+          "url": null
+        },
+        {
+          "name": "Ankush Gola",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://www.langchain.com/careers"
     },
     {
       "name": "Pinecone",
@@ -101,7 +251,17 @@
         "https://www.pinecone.io/company/",
         "https://techcrunch.com/tag/pinecone/"
       ],
-      "logo_url": "https://www.pinecone.io/api/og/?title=The+vector+database+for&highlight=scale+in+production&alignment=center"
+      "logo_url": "https://www.pinecone.io/api/og/?title=The+vector+database+for&highlight=scale+in+production&alignment=center",
+      "founders": [
+        {
+          "name": "Edo Liberty",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://www.pinecone.io/careers"
     },
     {
       "name": "Weaviate",
@@ -114,7 +274,12 @@
         "https://weaviate.io/blog",
         "https://techcrunch.com/2022/02/22/semi-technologies-search-engine-data/"
       ],
-      "logo_url": "https://weaviate.io/og/website/home.jpg"
+      "logo_url": "https://weaviate.io/og/website/home.jpg",
+      "founders": null,
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://weaviate.io/company/careers"
     },
     {
       "name": "Fireworks AI",
@@ -127,7 +292,41 @@
         "https://techcrunch.com/2024/03/26/fireworks-ai-open-source-api-puts-generative-ai-in-reach-of-any-developer/",
         "https://fireworks.ai/blog/fireworks-ai-series-b-compound-ai"
       ],
-      "logo_url": "https://cdn.sanity.io/images/pv37i0yn/production/9557e447af01a9b49c5ea1393ee212c8bc0d2396-1600x900.png"
+      "logo_url": "https://cdn.sanity.io/images/pv37i0yn/production/9557e447af01a9b49c5ea1393ee212c8bc0d2396-1600x900.png",
+      "founders": [
+        {
+          "name": "Lin Qiao",
+          "url": null
+        },
+        {
+          "name": "Benny Chen",
+          "url": null
+        },
+        {
+          "name": "Chenyu Zhao",
+          "url": null
+        },
+        {
+          "name": "Dmytro Dzhulgakov",
+          "url": null
+        },
+        {
+          "name": "Dmytro Ivchenko",
+          "url": null
+        },
+        {
+          "name": "James Reed",
+          "url": null
+        },
+        {
+          "name": "Pawel Garbacki",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://fireworks.ai/careers"
     },
     {
       "name": "Figure AI",
@@ -139,7 +338,17 @@
         "https://en.wikipedia.org/wiki/Figure_AI",
         "https://techcrunch.com/tag/figure-ai/"
       ],
-      "logo_url": "https://images.ctfassets.net/qx5k8y1u9drj/56I3mHKEdLZdrsONwOm3sc/63b1569bb855cc334c2dda67ce40ba4a/generic-page-image.jpeg"
+      "logo_url": "https://images.ctfassets.net/qx5k8y1u9drj/56I3mHKEdLZdrsONwOm3sc/63b1569bb855cc334c2dda67ce40ba4a/generic-page-image.jpeg",
+      "founders": [
+        {
+          "name": "Brett Adcock",
+          "url": "https://en.wikipedia.org/wiki/Brett_Adcock"
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://www.figure.ai/careers"
     },
     {
       "name": "Agility Robotics",
@@ -151,7 +360,25 @@
         "https://en.wikipedia.org/wiki/Agility_Robotics",
         "https://www.agilityrobotics.com/company-overview"
       ],
-      "logo_url": "https://cdn.prod.website-files.com/68d6ca150ffa11fdc25d7575/698c88da0a3bf08e257409ea_80ed2951470859371c4f50dec21751bd_digit-profile.jpg"
+      "logo_url": "https://cdn.prod.website-files.com/68d6ca150ffa11fdc25d7575/698c88da0a3bf08e257409ea_80ed2951470859371c4f50dec21751bd_digit-profile.jpg",
+      "founders": [
+        {
+          "name": "Jonathan Hurst",
+          "url": null
+        },
+        {
+          "name": "Damion Shelton",
+          "url": null
+        },
+        {
+          "name": "Mikhail Jones",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://www.agilityrobotics.com/careers"
     },
     {
       "name": "Apptronik",
@@ -164,7 +391,12 @@
         "https://apptronik.com/company/press-releases",
         "https://apptronik.com/company/in-the-news"
       ],
-      "logo_url": "https://cdn.prod.website-files.com/6a0dd86942776facbc2f6ba4/6a0dd86942776facbc2f6e8f_apptronik-webclip.png"
+      "logo_url": "https://cdn.prod.website-files.com/6a0dd86942776facbc2f6ba4/6a0dd86942776facbc2f6e8f_apptronik-webclip.png",
+      "founders": null,
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://apptronik.com/careers/job-listings"
     },
     {
       "name": "1X Technologies",
@@ -177,7 +409,17 @@
         "https://www.1x.tech/about",
         "https://techcrunch.com/tag/1x/"
       ],
-      "logo_url": "https://cdn.sanity.io/images/qka6yvsc/production/fdda789a2e7c6caa9a798dd920b8a0acb254ea9d-1200x630.jpg?fit=max&auto=format"
+      "logo_url": "https://cdn.sanity.io/images/qka6yvsc/production/fdda789a2e7c6caa9a798dd920b8a0acb254ea9d-1200x630.jpg?fit=max&auto=format",
+      "founders": [
+        {
+          "name": "Bernt Øivind Børnich",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://www.1x.tech/careers"
     },
     {
       "name": "Physical Intelligence",
@@ -190,7 +432,41 @@
         "https://techcrunch.com/2026/01/30/physical-intelligence-stripe-veteran-lachy-grooms-latest-bet-is-building-silicon-valleys-buzziest-robot-brains/",
         "https://techcrunch.com/2026/03/27/physical-intelligence-is-reportedly-in-talks-to-raise-1-billion-again/"
       ],
-      "logo_url": "https://physicalintelligence.company/images/og/og.png"
+      "logo_url": "https://physicalintelligence.company/images/og/og.png",
+      "founders": [
+        {
+          "name": "Karol Hausman",
+          "url": null
+        },
+        {
+          "name": "Sergey Levine",
+          "url": "https://en.wikipedia.org/wiki/Sergey_Levine"
+        },
+        {
+          "name": "Chelsea Finn",
+          "url": "https://en.wikipedia.org/wiki/Chelsea_Finn"
+        },
+        {
+          "name": "Brian Ichter",
+          "url": null
+        },
+        {
+          "name": "Lachy Groom",
+          "url": null
+        },
+        {
+          "name": "Adnan Esmail",
+          "url": null
+        },
+        {
+          "name": "Quan Vuong",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://jobs.ashbyhq.com/physicalintelligence"
     },
     {
       "name": "Skild AI",
@@ -203,7 +479,12 @@
         "https://techcrunch.com/2025/12/08/softbank-and-nvidia-reportedly-in-talks-to-fund-skildai-at-14b-nearly-tripling-its-value/",
         "https://techcrunch.com/tag/skild/"
       ],
-      "logo_url": "https://www.skild.ai/opengraph-image.png?8499c556da4d12e7"
+      "logo_url": "https://www.skild.ai/opengraph-image.png?8499c556da4d12e7",
+      "founders": null,
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://jobs.ashbyhq.com/skildai"
     },
     {
       "name": "Crusoe",
@@ -216,7 +497,21 @@
         "https://techcrunch.com/tag/crusoe/",
         "https://www.crusoe.ai/resources/newsroom/crusoe-and-aalo-atomics-form-strategic-partnership-with-goal-of-deploying-first-nuclear-powered-ai-factory"
       ],
-      "logo_url": "https://cdn.prod.website-files.com/6855c1aa175582ee23e0aa19/68e56afb7fd29e836c07c81b_og-crusoe-home.png"
+      "logo_url": "https://cdn.prod.website-files.com/6855c1aa175582ee23e0aa19/68e56afb7fd29e836c07c81b_og-crusoe-home.png",
+      "founders": [
+        {
+          "name": "Chase Lochmiller",
+          "url": null
+        },
+        {
+          "name": "Cully Cavness",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://www.crusoe.ai/careers"
     },
     {
       "name": "Aalo Atomics",
@@ -228,7 +523,21 @@
         "https://www.aalo.com/post/crusoe-and-aalo-atomics-form-strategic-partnership",
         "https://www.crusoe.ai/resources/newsroom/crusoe-and-aalo-atomics-form-strategic-partnership-with-goal-of-deploying-first-nuclear-powered-ai-factory"
       ],
-      "logo_url": "https://cdn.prod.website-files.com/6a4b99ecaf48385ceb81b786/6a4b99ecaf48385ceb81b903_og-a.png"
+      "logo_url": "https://cdn.prod.website-files.com/6a4b99ecaf48385ceb81b786/6a4b99ecaf48385ceb81b903_og-a.png",
+      "founders": [
+        {
+          "name": "Matt Loszak",
+          "url": null
+        },
+        {
+          "name": "Yasir Arafat",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://www.aalo.com/careers"
     },
     {
       "name": "Oklo",
@@ -240,7 +549,21 @@
         "https://en.wikipedia.org/wiki/Oklo_Inc.",
         "https://oklo.com/about"
       ],
-      "logo_url": "https://cdn.sanity.io/images/lxzjf5ub/production/1183abab260b75d67553d81673764dd8e632946b-1264x963.png?w=1200&h=630&fit=crop&crop=focalpoint&auto=format"
+      "logo_url": "https://cdn.sanity.io/images/lxzjf5ub/production/1183abab260b75d67553d81673764dd8e632946b-1264x963.png?w=1200&h=630&fit=crop&crop=focalpoint&auto=format",
+      "founders": [
+        {
+          "name": "Jacob DeWitte",
+          "url": null
+        },
+        {
+          "name": "Caroline DeWitte",
+          "url": null
+        }
+      ],
+      "status": "ipo",
+      "exit_acquirer": null,
+      "exit_year": 2024,
+      "jobs_url": "https://oklo.com/careers"
     },
     {
       "name": "Emerald AI",
@@ -252,9 +575,44 @@
         "https://www.emeraldai.co/blog/sharing-our-strategic-expansion-round-emerald-ai-raises-25-million-to-transform-ai-data-centers-into-flexible-power-grid-assets",
         "https://www.datacenterdynamics.com/en/analysis/in-perfect-harmony-how-emerald-ai-is-turning-data-centers-into-flexible-grid-assets/"
       ],
-      "logo_url": "https://cdn.prod.website-files.com/68f069ba4a6142fc9e37da1e/68f1d7c60982cb1c841bec4e_EM_256.svg"
+      "logo_url": "https://cdn.prod.website-files.com/68f069ba4a6142fc9e37da1e/68f1d7c60982cb1c841bec4e_EM_256.svg",
+      "founders": [
+        {
+          "name": "Varun Sivaram",
+          "url": null
+        }
+      ],
+      "status": null,
+      "exit_acquirer": null,
+      "exit_year": null,
+      "jobs_url": "https://www.emeraldai.co/careers"
     }
   ],
   "count": 20,
-  "note": "verified 2026-09-15; no invent metrics. Same 20 rows as the Neon v1 seed. Pulse overflow stays out."
+  "note": "verified 2026-09-15; no invent metrics",
+  "summary": {
+    "enriched_at": "2026-09-15",
+    "companies": 20,
+    "with_founders": 17,
+    "with_exit_status": 2,
+    "with_jobs_url": 20,
+    "soft_omit_founders": 3,
+    "soft_omit_exit": 18,
+    "soft_omit_jobs_url": 0,
+    "exit_detail": [
+      {
+        "name": "Cursor (Anysphere)",
+        "status": "acquired",
+        "exit_acquirer": "SpaceX",
+        "exit_year": 2026
+      },
+      {
+        "name": "Oklo",
+        "status": "ipo",
+        "exit_acquirer": null,
+        "exit_year": 2024
+      }
+    ],
+    "rules": "founders from Wikipedia/about/team/leadership/company pages only; status only acquired/ipo/shutdown when clearly sourced; jobs_url only if HTTP 200; null = soft-omit; no invent"
+  }
 }

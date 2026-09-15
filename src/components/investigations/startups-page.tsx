@@ -1,5 +1,5 @@
 import { Link } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
+import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
 import { StartupsDirectory } from "@/components/investigations/startups-directory";
@@ -25,17 +25,26 @@ export type StartupsKey =
   | "insightsLead"
   | "backLink"
   | "joinCta"
+  | "hubCta"
   | "howWeList"
   | "tabDirectory"
   | "tabInsights"
   | "tabNav"
+  | "lead2"
+  | "insightsLead2"
   | "categoryMixTitle"
   | "regionMixTitle"
+  | "stageMixTitle"
+  | "sourcesCoverageTitle"
   | "addedOverTimeTitle"
   | "chartCaption"
   | "regionOmitted"
+  | "stageOmitted"
+  | "sourcesOmitted"
   | "categoryColumn"
   | "regionColumn"
+  | "stageColumn"
+  | "sourcesColumn"
   | "monthColumn"
   | "countColumn"
   | "empty"
@@ -46,9 +55,10 @@ export function StartupsPage({
   t,
   companies = [],
   isModerator = false,
-  query = { q: "", category: "all", page: 1 },
+  query = { q: "", category: "all", sort: "newest", page: 1 },
   tab = "directory",
   insights,
+  promoteJoin = true,
 }: {
   locale: string;
   t: (key: StartupsKey) => string;
@@ -57,6 +67,7 @@ export function StartupsPage({
   query?: StartupDirectoryQuery;
   tab?: "directory" | "insights";
   insights?: StartupsInsightsStats;
+  promoteJoin?: boolean;
 }) {
   const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
   const isInsights = tab === "insights";
@@ -82,12 +93,15 @@ export function StartupsPage({
         {t("kicker")}
       </SectionLabel>
 
-      <div className="mt-8 max-w-2xl space-y-3">
-        <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+      <div className="mt-6 flex max-w-2xl flex-col gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           {isInsights ? t("insightsTitle") : t("title")}
         </h1>
-        <p className="text-muted-foreground text-lg leading-relaxed">
+        <p className="text-muted-foreground text-base leading-relaxed">
           {isInsights ? t("insightsLead") : t("lead")}
+        </p>
+        <p className="text-muted-foreground text-base leading-relaxed">
+          {isInsights ? t("insightsLead2") : t("lead2")}
         </p>
       </div>
 
@@ -98,9 +112,13 @@ export function StartupsPage({
           insightsLabel={t("tabInsights")}
           navLabel={t("tabNav")}
         />
-        <Button asChild variant={isInsights ? "default" : "outline"}>
-          <a href={STARTUPS_JOIN_HREF}>{t("joinCta")}</a>
-        </Button>
+        <PromoteJoinCta
+          promoteJoin={promoteJoin}
+          guestHref={STARTUPS_JOIN_HREF}
+          guestLabel={t("joinCta")}
+          hubLabel={t("hubCta")}
+          variant={isInsights ? "default" : "outline"}
+        />
       </div>
 
       <section className="mt-10">
@@ -110,11 +128,17 @@ export function StartupsPage({
             copy={{
               categoryMixTitle: t("categoryMixTitle"),
               regionMixTitle: t("regionMixTitle"),
+              stageMixTitle: t("stageMixTitle"),
+              sourcesCoverageTitle: t("sourcesCoverageTitle"),
               addedOverTimeTitle: t("addedOverTimeTitle"),
               chartCaption: t("chartCaption"),
               regionOmitted: t("regionOmitted"),
+              stageOmitted: t("stageOmitted"),
+              sourcesOmitted: t("sourcesOmitted"),
               categoryColumn: t("categoryColumn"),
               regionColumn: t("regionColumn"),
+              stageColumn: t("stageColumn"),
+              sourcesColumn: t("sourcesColumn"),
               monthColumn: t("monthColumn"),
               countColumn: t("countColumn"),
               empty: t("empty"),

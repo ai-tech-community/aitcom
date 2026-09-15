@@ -94,6 +94,8 @@ import * as migration_20260914g_awesome_ai_oss_phase_3 from "./20260914g_awesome
 import * as migration_20260915a_curated_public_events from "./20260915a_curated_public_events";
 import * as migration_20260915b_startups from "./20260915b_startups";
 import * as migration_20260915c_startups_v1_seeds from "./20260915c_startups_v1_seeds";
+import * as migration_20260915d_startups_soft_omit_fields from "./20260915d_startups_soft_omit_fields";
+import * as migration_20260915e_startups_v1_enriched from "./20260915e_startups_v1_enriched";
 
 export const migrations = [
   {
@@ -575,5 +577,15 @@ export const migrations = [
     up: migration_20260915c_startups_v1_seeds.up,
     down: migration_20260915c_startups_v1_seeds.down,
     name: "20260915c_startups_v1_seeds",
+  },
+  {
+    up: migration_20260915d_startups_soft_omit_fields.up,
+    down: migration_20260915d_startups_soft_omit_fields.down,
+    name: "20260915d_startups_soft_omit_fields",
+  },
+  {
+    up: migration_20260915e_startups_v1_enriched.up,
+    down: migration_20260915e_startups_v1_enriched.down,
+    name: "20260915e_startups_v1_enriched",
   },
 ];

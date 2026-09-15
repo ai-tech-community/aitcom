@@ -85,6 +85,16 @@ export function membershipStatusForSlug(
 }
 
 /**
+ * Guests see the hard /en/join door. Signed-in Hub members do not.
+ * Same leftover rule as navbar JOIN (`!user`) — not a missing `ait` row.
+ */
+export function shouldPromoteJoin(
+  user: HubAuthUser | null | undefined,
+): boolean {
+  return hubDocumentPaint(user, []).navbarJoin;
+}
+
+/**
  * Hub leftover paint after verify / password sign-in. JOIN and the feed /
  * forum sign-in copy are all `!user` — not a missing `ait` membership.
  */

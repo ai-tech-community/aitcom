@@ -12,10 +12,15 @@ import {
   buildStartupDirectoryPath,
   displayStartupSources,
   normalizeStartupHomepage,
+  startupSourceLabel,
   paginateStartupCards,
   parseStartupCategory,
   parseStartupDirectoryQuery,
+  mapPulseStartupWrite,
+  parseStartupExitOn,
+  parseStartupExitStatus,
   presentText,
+  sanitizeStartupFounders,
   sanitizeStartupSources,
   startupDirectoryCanonicalPath,
   startupDirectorySitemapPaths,
@@ -42,6 +47,11 @@ function sampleCard(
     lng: null,
     stage: null,
     logoUrl: null,
+    founders: [],
+    exitStatus: null,
+    acquirer: null,
+    exitOn: null,
+    jobsUrl: null,
     listedOn: "2026-09-15",
     ...overrides,
   };
@@ -51,7 +61,7 @@ describe("startups investigation contract", () => {
   it("lives under /investigations/startups with a dedicated insights path", () => {
     expect(STARTUPS_PATH).toBe("/investigations/startups");
     expect(STARTUPS_INSIGHTS_PATH).toBe("/investigations/startups/insights");
-    expect(STARTUPS_H1).toBe("AI startups");
+    expect(STARTUPS_H1).toBe("AI startups worth watching");
     expect(STARTUPS_META).toMatch(/homepage and sources verified/i);
     expect(STARTUPS_META).not.toMatch(BANNED_METRIC);
   });
@@ -66,6 +76,7 @@ describe("startups investigation contract", () => {
     expect(url.searchParams.get("utm_source")).toBe("aitcom");
     expect(url.searchParams.get("utm_medium")).toBe("investigations");
     expect(url.searchParams.get("utm_campaign")).toBe("startups");
+    expect(url.pathname).not.toContain("forum");
   });
 
   it("locks the fixed taxonomy and a 30-row API batch cap", () => {
@@ -121,6 +132,39 @@ describe("homepage and sources", () => {
       "https://a.example",
     ]);
   });
+
+  it("labels sources as Docs · Deep dive · Talk · News, or a sourced title", () => {
+    expect(startupSourceLabel("https://en.wikipedia.org/wiki/Anthropic")).toBe(
+      "Wikipedia",
+    );
+    expect(startupSourceLabel("https://techcrunch.com/tag/anthropic/")).toBe(
+      "TechCrunch",
+    );
+    expect(
+      startupSourceLabel(
+        "https://www.datacenterdynamics.com/en/analysis/in-perfect-harmony-how-emerald-ai-is-turning-data-centers-into-flexible-grid-assets/",
+      ),
+    ).toBe("Data Center Dynamics");
+    expect(startupSourceLabel("https://cohere.com/about")).toBe("Docs");
+    expect(startupSourceLabel("https://cohere.com/about", "nl")).toBe("Docs");
+    expect(startupSourceLabel("https://weaviate.io/blog")).toBe("Deep dive");
+    expect(startupSourceLabel("https://www.crusoe.ai/resources/newsroom")).toBe(
+      "News",
+    );
+    expect(startupSourceLabel("https://www.youtube.com/watch?v=abc")).toBe(
+      "Talk",
+    );
+    expect(startupSourceLabel("https://obscure.example/path")).toBe("Docs");
+    for (const href of [
+      "https://en.wikipedia.org/wiki/Anthropic",
+      "https://cohere.com/about",
+      "https://weaviate.io/blog",
+      "https://www.crusoe.ai/resources/newsroom",
+      "https://obscure.example/path",
+    ]) {
+      expect(startupSourceLabel(href)).not.toMatch(/^[123]$/);
+    }
+  });
 });
 
 describe("soft-omit helpers", () => {
@@ -128,6 +172,78 @@ describe("soft-omit helpers", () => {
     expect(presentText(null)).toBeNull();
     expect(presentText("   ")).toBeNull();
     expect(presentText("Toronto, Canada")).toBe("Toronto, Canada");
+  });
+
+  it("keeps sourced founders and exits only; never invents a people graph", () => {
+    expect(sanitizeStartupFounders(null)).toEqual([]);
+    expect(
+      sanitizeStartupFounders([{ name: "  " }, { name: "Ada", url: "" }]),
+    ).toEqual([{ name: "Ada", url: null }]);
+    expect(
+      sanitizeStartupFounders([
+        { name: "Ada", url: "https://ada.example/about" },
+        { name: "Ada", url: "javascript:alert(1)" },
+      ]),
+    ).toEqual([
+      { name: "Ada", url: "https://ada.example/about" },
+      { name: "Ada", url: null },
+    ]);
+    expect(
+      sanitizeStartupFounders(
+        Array.from({ length: 12 }, (_, index) => ({
+          name: `Founder ${index}`,
+        })),
+      ),
+    ).toHaveLength(8);
+    expect(parseStartupExitStatus("acquired")).toBe("acquired");
+    expect(parseStartupExitStatus("IPO")).toBe("ipo");
+    expect(parseStartupExitStatus("shutdown")).toBe("shutdown");
+    expect(parseStartupExitStatus("")).toBeNull();
+    expect(parseStartupExitStatus("stealth unicorn")).toBeNull();
+    expect(parseStartupExitOn("2024-06-01")).toBe("2024-06-01");
+    expect(parseStartupExitOn("2024")).toBe("2024");
+    expect(parseStartupExitOn("2026")).toBe("2026");
+    expect(parseStartupExitOn("June 2024")).toBeNull();
+    expect(parseStartupExitOn("")).toBeNull();
+  });
+
+  it("maps Pulse fixture aliases without inventing people or a day", () => {
+    const mapped = mapPulseStartupWrite({
+      name: "Cursor (Anysphere)",
+      homepage: "https://cursor.com/",
+      category: "agents",
+      sources: ["https://cursor.com/about"],
+      logo_url: "https://cursor.com/og.png",
+      founders: [{ name: "Michael Truell", url: null }],
+      status: "acquired",
+      exit_acquirer: "SpaceX",
+      exit_year: 2026,
+      jobs_url: "https://cursor.com/careers",
+    });
+    expect(mapped.exitStatus).toBe("acquired");
+    expect(mapped.acquirer).toBe("SpaceX");
+    expect(mapped.exitOn).toBe("2026");
+    expect(mapped.jobsUrl).toBe("https://cursor.com/careers");
+    expect(mapped.founders).toEqual([{ name: "Michael Truell", url: null }]);
+    expect(mapped.logoUrl).toBe("https://cursor.com/og.png");
+    expect(
+      mapPulseStartupWrite({
+        name: "Weaviate",
+        homepage: "https://weaviate.io/",
+        category: "AI infra",
+        sources: ["https://weaviate.io/company/"],
+        founders: null,
+        status: "approved",
+        exit_year: null,
+        jobs_url: "https://weaviate.io/company/careers",
+      }),
+    ).toMatchObject({
+      founders: [],
+      exitStatus: null,
+      acquirer: null,
+      exitOn: null,
+      category: "ai-infra",
+    });
   });
 
   it("pins city/HQ or region centroid and lists unknown with no pin", () => {
@@ -199,17 +315,161 @@ describe("directory query", () => {
     ).toEqual([]);
   });
 
+  it("filters region, stage, exit, and hiring from crawlable params", () => {
+    const cards = [
+      sampleCard({
+        id: "toronto",
+        name: "Cohere",
+        region: "Toronto, Canada",
+        jobsUrl: "https://cohere.com/careers",
+      }),
+      sampleCard({
+        id: "oklo",
+        name: "Oklo",
+        category: "energy",
+        exitStatus: "ipo",
+        exitOn: "2024",
+        jobsUrl: "https://oklo.com/careers",
+      }),
+      sampleCard({
+        id: "cursor",
+        name: "Cursor (Anysphere)",
+        category: "agents",
+        exitStatus: "acquired",
+        acquirer: "SpaceX",
+        exitOn: "2026",
+        jobsUrl: "https://cursor.com/careers",
+      }),
+      sampleCard({
+        id: "quiet",
+        name: "Quiet Co",
+        stage: "Seed",
+        jobsUrl: null,
+      }),
+    ];
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", region: "Toronto, Canada" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["toronto"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", stage: "Seed" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["quiet"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", status: "active" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["toronto", "quiet"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", status: "ipo" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["oklo"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", hiring: "hiring" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["toronto", "cursor", "oklo"]);
+  });
+
+  it("sorts newest, name A–Z, and category without inventing rows", () => {
+    const cards = [
+      sampleCard({
+        id: "z",
+        name: "Zed",
+        category: "energy",
+        listedOn: "2026-09-01",
+      }),
+      sampleCard({
+        id: "a",
+        name: "Ada",
+        category: "models",
+        listedOn: "2026-08-01",
+      }),
+      sampleCard({
+        id: "b",
+        name: "Beta",
+        category: "agents",
+        listedOn: "2026-08-15",
+      }),
+    ];
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", sort: "newest" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["z", "b", "a"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", sort: "name" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["a", "b", "z"]);
+    expect(
+      applyStartupDirectoryQuery(
+        cards,
+        { q: "", category: "all", sort: "category" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["a", "b", "z"]);
+  });
+
   it("canonicalizes filtered views to the directory root", () => {
     const query = parseStartupDirectoryQuery({
       q: "alpha",
       category: "models",
+      region: "Toronto, Canada",
+      stage: "Seed",
+      status: "active",
+      hiring: "1",
+      sort: "name",
       page: "3",
     });
-    expect(query).toEqual({ q: "alpha", category: "models", page: 3 });
+    expect(query).toEqual({
+      q: "alpha",
+      category: "models",
+      region: "Toronto, Canada",
+      stage: "Seed",
+      status: "active",
+      hiring: "hiring",
+      sort: "name",
+      page: 3,
+    });
     expect(startupDirectoryCanonicalPath(query)).toBe(STARTUPS_PATH);
     expect(buildStartupDirectoryPath({ page: 2 })).toBe(
       `${STARTUPS_PATH}?page=2`,
     );
+    expect(
+      buildStartupDirectoryPath({
+        region: "Toronto, Canada",
+        status: "ipo",
+        hiring: "hiring",
+        sort: "category",
+        page: 2,
+      }),
+    ).toBe(
+      `${STARTUPS_PATH}?region=Toronto%2C+Canada&status=ipo&hiring=1&sort=category&page=2`,
+    );
+    const legacyExit = parseStartupDirectoryQuery({ exit: "ipo" });
+    expect(legacyExit.status).toBe("ipo");
+    expect(buildStartupDirectoryPath(legacyExit)).toBe(
+      `${STARTUPS_PATH}?status=ipo`,
+    );
+    expect(buildStartupDirectoryPath(legacyExit)).not.toContain("exit=");
   });
 
   it("emits crawlable ?page= sitemap paths once the directory is past ~50 rows", () => {
