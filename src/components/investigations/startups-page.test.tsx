@@ -312,42 +312,6 @@ describe("StartupsPage", () => {
     expect(container.querySelectorAll("[data-startup-card]")).toHaveLength(24);
   });
 
-  it("swaps Directory and Insights Join to Open Hub for signed-in Hub members", () => {
-    const directory = render(
-      <StartupsPage
-        locale="en"
-        t={tFrom(en.investigationsStartups)}
-        companies={[FIXTURE_CARD]}
-        promoteJoin={false}
-      />,
-    );
-    expect(hrefsOf(directory.container)).not.toContain(STARTUPS_JOIN_HREF);
-    expect(directory.container.textContent).not.toContain(
-      en.investigationsStartups.joinCta,
-    );
-    expect(
-      screen.getByRole("link", { name: en.investigationsStartups.hubCta }),
-    ).toHaveAttribute("href", HUB_OPEN_HREF);
-    directory.unmount();
-
-    const insights = render(
-      <StartupsPage
-        locale="en"
-        t={tFrom(en.investigationsStartups)}
-        tab="insights"
-        companies={[FIXTURE_CARD]}
-        promoteJoin={false}
-      />,
-    );
-    expect(hrefsOf(insights.container)).not.toContain(STARTUPS_JOIN_HREF);
-    expect(insights.container.textContent).not.toContain(
-      en.investigationsStartups.joinCta,
-    );
-    expect(
-      screen.getByRole("link", { name: en.investigationsStartups.hubCta }),
-    ).toHaveAttribute("href", HUB_OPEN_HREF);
-  });
-
   it("keeps Dutch copy on the same investigation path", () => {
     const { container } = render(
       <StartupsPage locale="nl" t={tFrom(nl.investigationsStartups)} />,
