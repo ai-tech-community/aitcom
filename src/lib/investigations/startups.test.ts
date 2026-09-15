@@ -27,7 +27,6 @@ import {
   sanitizeStartupSources,
   startupDirectoryCanonicalPath,
   startupDirectorySitemapPaths,
-  filterUnlistedStartupSitemapEntries,
   startupInvestigationSitemapPaths,
   startupMapPins,
   startupSourceFaviconUrl,
@@ -628,23 +627,19 @@ describe("directory query", () => {
     expect(startupsPublicIndexable(20)).toBe(false);
     expect(startupsPublicIndexable(2999)).toBe(false);
     expect(startupsPublicIndexable(3000)).toBe(true);
-    expect(startupsPublicRobots(20)).toEqual({ index: false, follow: true });
-    expect(startupsPublicRobots(2999)).toEqual({ index: false, follow: true });
+    expect(startupsPublicRobots(20)).toEqual({ index: true, follow: true });
+    expect(startupsPublicRobots(2999)).toEqual({ index: true, follow: true });
     expect(startupsPublicRobots(3000)).toEqual({ index: true, follow: true });
-    expect(startupInvestigationSitemapPaths(20)).toEqual([]);
-    expect(startupInvestigationSitemapPaths(51)).toEqual([]);
-    expect(
-      filterUnlistedStartupSitemapEntries(
-        [
-          { url: "https://www.aitcommunity.org/en/events" },
-          { url: "https://www.aitcommunity.org/en/investigations/startups" },
-          {
-            url: "https://www.aitcommunity.org/en/investigations/startups/insights",
-          },
-        ],
-        [],
-      ).map((entry) => entry.url),
-    ).toEqual(["https://www.aitcommunity.org/en/events"]);
+    expect(startupInvestigationSitemapPaths(20)).toEqual([
+      STARTUPS_PATH,
+      STARTUPS_INSIGHTS_PATH,
+    ]);
+    expect(startupInvestigationSitemapPaths(51)).toEqual([
+      STARTUPS_PATH,
+      STARTUPS_INSIGHTS_PATH,
+      `${STARTUPS_PATH}?page=2`,
+      `${STARTUPS_PATH}?page=3`,
+    ]);
     expect(startupInvestigationSitemapPaths(3000)).toEqual([
       STARTUPS_PATH,
       STARTUPS_INSIGHTS_PATH,

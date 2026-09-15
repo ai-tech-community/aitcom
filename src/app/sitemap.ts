@@ -1,9 +1,6 @@
 import type { MetadataRoute } from "next";
 import { awesomeDirectorySitemapPaths } from "@/lib/investigations/awesome-ai-oss";
-import {
-  filterUnlistedStartupSitemapEntries,
-  startupInvestigationSitemapPaths,
-} from "@/lib/investigations/startups";
+import { startupInvestigationSitemapPaths } from "@/lib/investigations/startups";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import {
   HUB_FORUM_PATH,
@@ -38,6 +35,8 @@ const STATIC_PAGES = [
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
+  "/investigations/startups",
+  "/investigations/startups/insights",
   "/roles",
 ] as const;
 
@@ -131,7 +130,7 @@ async function defaultStartupPagePaths(): Promise<string[]> {
     return startupInvestigationSitemapPaths(cards.length);
   } catch (error) {
     console.error("[sitemap] startups directory page lookup failed", error);
-    return [];
+    return startupInvestigationSitemapPaths(0);
   }
 }
 
@@ -154,17 +153,14 @@ export async function buildSitemapEntries(
     startupPagePaths = await getStartupPagePaths();
   } catch (error) {
     console.error("[sitemap] startups directory page lookup failed", error);
-    startupPagePaths = [];
+    startupPagePaths = startupInvestigationSitemapPaths(0);
   }
 
-  const staticEntries = filterUnlistedStartupSitemapEntries(
-    uniqueLocaleEntries([
-      ...STATIC_PAGES,
-      ...awesomePagePaths,
-      ...startupPagePaths,
-    ]),
-    startupPagePaths,
-  );
+  const staticEntries = uniqueLocaleEntries([
+    ...STATIC_PAGES,
+    ...awesomePagePaths,
+    ...startupPagePaths,
+  ]);
 
   let payload: SitemapClient;
   try {
@@ -226,10 +222,12 @@ export async function buildSitemapEntries(
     },
   );
 
-  return filterUnlistedStartupSitemapEntries(
-    [...staticEntries, ...eventEntries, ...articleEntries, ...threadEntries],
-    startupPagePaths,
-  );
+  return [
+    ...staticEntries,
+    ...eventEntries,
+    ...articleEntries,
+    ...threadEntries,
+  ];
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

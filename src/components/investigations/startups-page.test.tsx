@@ -167,17 +167,17 @@ describe("Startups investigation route", () => {
     expect(src).toContain('dynamic = "force-dynamic"');
     expect(src).toContain("isStartupInsightsTab");
     expect(src).toContain("startupsPublicRobots");
-    expect(src).not.toContain("robots: { index: true, follow: true }");
-    const layoutFile = join(appLocale, "investigations/startups/layout.tsx");
-    expect(existsSync(layoutFile)).toBe(true);
-    expect(readFileSync(layoutFile, "utf8")).toContain("index: false");
+    expect(src).not.toContain("robots: { index: false");
+    expect(
+      existsSync(join(appLocale, "investigations/startups/layout.tsx")),
+    ).toBe(false);
     const insights = readFileSync(INSIGHTS_FILE, "utf8");
     expect(insights).toContain("buildStartupInsights");
     expect(insights).toContain("listApprovedPublicStartups");
     expect(insights).toContain("startupsPublicRobots");
     expect(insights).toContain('dynamic = "force-dynamic"');
     expect(insights).toContain('tab="insights"');
-    expect(insights).not.toContain("robots: { index: true, follow: true }");
+    expect(insights).not.toContain("robots: { index: false");
     expect(readFileSync(QUERIES_FILE, "utf8")).not.toMatch(BAKED_COMPANIES);
   });
 });
@@ -793,8 +793,8 @@ describe("Startups site integration", () => {
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/enriched/i);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/3000/);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Writing Bot/);
-    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/noindex/);
-    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/3000/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/promo-only/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Do \*\*not\*\* noindex/);
     expect(readFileSync(FIXTURE, "utf8")).toContain("jobs_url");
     expect(readFileSync(FIXTURE, "utf8")).toContain('"status": "ipo"');
     expect(readFileSync(SOFT_OMIT_MIGRATION_FILE, "utf8")).toContain(
@@ -831,8 +831,8 @@ describe("Startups site integration", () => {
 
     expect(sitemap).toContain("listApprovedPublicStartups");
     expect(sitemap).toContain("startupInvestigationSitemapPaths(cards.length)");
-    expect(sitemap).toContain("filterUnlistedStartupSitemapEntries");
-    expect(sitemap).not.toContain('"/investigations/startups",');
+    expect(sitemap).toContain('"/investigations/startups"');
+    expect(sitemap).not.toContain("filterUnlistedStartupSitemapEntries");
   });
 
   it("does not bake Pulse company names into UI components or queries", () => {
