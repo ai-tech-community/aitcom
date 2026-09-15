@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
 import {
@@ -12,7 +12,9 @@ export type PublicEventsKey =
   | "kicker"
   | "title"
   | "lead"
+  | "memberLead"
   | "joinCta"
+  | "hubCta"
   | "empty"
   | "eventPage"
   | "online";
@@ -21,10 +23,12 @@ export function PublicEventsPage({
   locale,
   t,
   events,
+  promoteJoin = true,
 }: {
   locale: string;
   t: (key: PublicEventsKey) => string;
   events: PublicEventCard[];
+  promoteJoin?: boolean;
 }) {
   const copyLocale = locale === "nl" ? "nl" : "en";
 
@@ -39,14 +43,17 @@ export function PublicEventsPage({
           {t("title")}
         </h1>
         <p className="text-muted-foreground text-lg leading-relaxed">
-          {t("lead")}
+          {promoteJoin ? t("lead") : t("memberLead")}
         </p>
       </div>
 
       <div className="mt-8">
-        <Button asChild>
-          <a href={PUBLIC_EVENTS_JOIN_HREF}>{t("joinCta")}</a>
-        </Button>
+        <PromoteJoinCta
+          promoteJoin={promoteJoin}
+          guestHref={PUBLIC_EVENTS_JOIN_HREF}
+          guestLabel={t("joinCta")}
+          hubLabel={t("hubCta")}
+        />
       </div>
 
       {events.length === 0 ? (

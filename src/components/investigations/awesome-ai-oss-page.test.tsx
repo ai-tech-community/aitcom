@@ -77,6 +77,7 @@ import { AWESOME_AI_OSS_SEEDS_CHUNK_3 } from "@/lib/investigations/awesome-ai-os
 import { AWESOME_AI_OSS_SEEDS_CHUNK_4 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-4";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_5 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-5";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_6 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-6";
+import { HUB_OPEN_HREF } from "@/lib/join-path";
 import { GUIDE_PATHS, JOIN_PATH, appPathFromGuideHref } from "@/lib/seo-guides";
 import { HOME_CRAWL_DOORS } from "@/components/home/home-crawl-doors";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -885,6 +886,46 @@ describe("Awesome AI OSS Insights tab", () => {
     expect(hrefsOf(container)).toContain(AWESOME_AI_OSS_JOIN_HREF);
     expect(hrefsOf(container)).toContain(AWESOME_AI_OSS_PATH);
     expectNoBannedClaims(container.textContent ?? "");
+  });
+
+  it("swaps the hard Join CTA to Open Hub for signed-in Hub members", () => {
+    const directory = render(
+      <AwesomeAiOssPage
+        locale="en"
+        t={tFrom(en.investigationsAwesomeAiOss)}
+        signedIn
+      />,
+    );
+    expect(hrefsOf(directory.container)).not.toContain(
+      AWESOME_AI_OSS_JOIN_HREF,
+    );
+    expect(directory.container.textContent).not.toContain(
+      en.investigationsAwesomeAiOss.joinCta,
+    );
+    expect(
+      screen.getByRole("link", {
+        name: en.investigationsAwesomeAiOss.hubCta,
+      }),
+    ).toHaveAttribute("href", HUB_OPEN_HREF);
+    directory.unmount();
+
+    const insights = render(
+      <AwesomeAiOssPage
+        locale="en"
+        t={tFrom(en.investigationsAwesomeAiOss)}
+        signedIn
+        tab="insights"
+      />,
+    );
+    expect(hrefsOf(insights.container)).not.toContain(AWESOME_AI_OSS_JOIN_HREF);
+    expect(insights.container.textContent).not.toContain(
+      en.investigationsAwesomeAiOss.joinCta,
+    );
+    expect(
+      screen.getByRole("link", {
+        name: en.investigationsAwesomeAiOss.hubCta,
+      }),
+    ).toHaveAttribute("href", HUB_OPEN_HREF);
   });
 
   it("renders star distribution and Top 10 from fetched star_count only", () => {

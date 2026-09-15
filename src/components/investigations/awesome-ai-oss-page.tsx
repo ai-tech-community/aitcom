@@ -1,5 +1,5 @@
 import { Link } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
+import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
 import { AwesomeAiOssDirectory } from "@/components/investigations/awesome-ai-oss-directory";
@@ -42,6 +42,7 @@ export type AwesomeAiOssKey =
   | "joinTitle"
   | "joinLead"
   | "joinCta"
+  | "hubCta"
   | "registerAgentLabel"
   | "starTooltip"
   | "learnMore"
@@ -68,6 +69,7 @@ export function AwesomeAiOssPage({
   t,
   projects = curatedPublicCards(),
   signedIn = false,
+  promoteJoin = !signedIn,
   isModerator = false,
   query = { q: "", category: "all", sort: "newest", page: 1 },
   signInHref = "/en/auth/signin?redirect=/en/investigations/awesome-ai-oss",
@@ -78,6 +80,7 @@ export function AwesomeAiOssPage({
   t: (key: AwesomeAiOssKey) => string;
   projects?: AwesomePublicCard[];
   signedIn?: boolean;
+  promoteJoin?: boolean;
   isModerator?: boolean;
   query?: AwesomeDirectoryQuery;
   signInHref?: string;
@@ -122,9 +125,13 @@ export function AwesomeAiOssPage({
           insightsLabel={t("tabInsights")}
           navLabel={t("tabNav")}
         />
-        <Button asChild variant={isInsights ? "default" : "outline"}>
-          <a href={AWESOME_AI_OSS_JOIN_HREF}>{t("joinCta")}</a>
-        </Button>
+        <PromoteJoinCta
+          promoteJoin={promoteJoin}
+          guestHref={AWESOME_AI_OSS_JOIN_HREF}
+          guestLabel={t("joinCta")}
+          hubLabel={t("hubCta")}
+          variant={isInsights ? "default" : "outline"}
+        />
       </div>
 
       <section className="mt-10">

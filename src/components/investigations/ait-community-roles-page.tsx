@@ -24,6 +24,7 @@ export type AitCommunityRolesKey =
   | "endingSoon"
   | "termNote"
   | "joinHint"
+  | "memberHint"
   | "hubHost"
   | "awesomeOssCurator"
   | "outreachCampus"
@@ -39,9 +40,11 @@ const SEAT_TITLE_KEY: Record<SeatId, AitCommunityRolesKey> = {
 export function AitCommunityRolesPage({
   t,
   seats,
+  promoteJoin = true,
 }: {
   t: (key: AitCommunityRolesKey, values?: { days: number }) => string;
   seats: ResolvedSeat[];
+  promoteJoin?: boolean;
 }) {
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-16 sm:px-12">
@@ -81,7 +84,11 @@ export function AitCommunityRolesPage({
 
             {seat.empty ? (
               <Button asChild variant="outline">
-                <a href={AIT_COMMUNITY_ROLES_JOIN_HREF}>{t("claimCta")}</a>
+                {promoteJoin ? (
+                  <a href={AIT_COMMUNITY_ROLES_JOIN_HREF}>{t("claimCta")}</a>
+                ) : (
+                  <Link href={HUB_WELCOME_THREAD_PATH}>{t("claimCta")}</Link>
+                )}
               </Button>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
@@ -99,7 +106,7 @@ export function AitCommunityRolesPage({
 
       <div className="text-muted-foreground flex max-w-2xl flex-col gap-2 text-sm leading-relaxed">
         <p>
-          {t("pathLead")}{" "}
+          {promoteJoin ? <>{t("pathLead")} </> : null}
           <Link
             href={HUB_WELCOME_THREAD_PATH}
             className="underline-offset-4 hover:underline"
@@ -122,7 +129,7 @@ export function AitCommunityRolesPage({
           </Link>
         </p>
         <p>{t("termNote")}</p>
-        <p>{t("joinHint")}</p>
+        <p>{t(promoteJoin ? "joinHint" : "memberHint")}</p>
       </div>
     </main>
   );

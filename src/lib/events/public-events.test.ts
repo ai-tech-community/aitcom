@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   PUBLIC_EVENTS_H1,
+  PUBLIC_EVENTS_HUB_HREF,
   PUBLIC_EVENTS_JOIN_HREF,
   PUBLIC_EVENTS_META,
   PUBLIC_EVENTS_PATH,
@@ -51,6 +52,7 @@ describe("public events contract", () => {
     expect(url.searchParams.get("utm_source")).toBe("aitcom");
     expect(url.searchParams.get("utm_medium")).toBe("events");
     expect(url.searchParams.get("utm_campaign")).toBe("ai-events");
+    expect(PUBLIC_EVENTS_HUB_HREF).toBe("/communities/ait/forum");
   });
 
   it("keeps indexable copy without invented counts", () => {
