@@ -97,7 +97,9 @@ export async function generateMetadata({
     description: STARTUPS_META,
     robots: { index: true, follow: true },
     ...buildOgMeta(STARTUPS_H1, STARTUPS_META, "Investigation"),
-    alternates: await localeAlternates(canonicalPath),
+    alternates: await localeAlternates(
+      canonicalPath.startsWith(STARTUPS_PATH) ? canonicalPath : STARTUPS_PATH,
+    ),
     ...paginationLinks,
   };
 }

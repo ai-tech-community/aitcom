@@ -213,7 +213,7 @@ export function StartupsSubmitDialog({
         .filter(Boolean)
         .map((line) => {
           const [name, url] = line.split("|").map((part) => part.trim());
-          return { name: name ?? "", url: url || null };
+          return { name: name ?? "", url: url ?? null };
         }),
       exitStatus: exitStatus || null,
       acquirer: acquirer.trim() || null,
