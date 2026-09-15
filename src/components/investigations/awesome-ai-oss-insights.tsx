@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   AwesomeAddedOverTimeChart,
@@ -7,6 +9,7 @@ import {
   AwesomeTopLiveStarsChart,
 } from "@/components/investigations/awesome-ai-oss-insights-charts";
 import type { AwesomeInsightsStats } from "@/lib/investigations/awesome-ai-oss-insights";
+import { cn } from "@/lib/utils";
 
 export type AwesomeAiOssInsightsCopy = {
   categoryMixTitle: string;
@@ -37,8 +40,27 @@ export function AwesomeAiOssInsights({
   }
 
   return (
-    <div className="flex flex-col gap-10">
-      <InsightBlock
+    <div
+      data-awesome-insights-bento
+      className="grid grid-cols-1 gap-4 md:grid-cols-2"
+    >
+      <InsightTile
+        tile="added-over-time"
+        wide
+        title={copy.addedOverTimeTitle}
+        caption={copy.chartCaption}
+        columns={[copy.monthColumn, copy.countColumn]}
+        rows={stats.addedOverTime.map((row) => [row.label, String(row.count)])}
+      >
+        <AwesomeAddedOverTimeChart
+          data={stats.addedOverTime}
+          label={copy.addedOverTimeTitle}
+          className="h-80"
+        />
+      </InsightTile>
+
+      <InsightTile
+        tile="category-mix"
         title={copy.categoryMixTitle}
         caption={copy.chartCaption}
         columns={[copy.categoryColumn, copy.countColumn]}
@@ -48,31 +70,21 @@ export function AwesomeAiOssInsights({
           data={stats.categoryMix}
           label={copy.categoryMixTitle}
         />
-      </InsightBlock>
+      </InsightTile>
 
-      <InsightBlock
+      <InsightTile
+        tile="host-mix"
         title={copy.hostMixTitle}
         caption={copy.chartCaption}
         columns={[copy.hostColumn, copy.countColumn]}
         rows={stats.hostMix.map((row) => [row.label, String(row.count)])}
       >
         <AwesomeHostMixChart data={stats.hostMix} label={copy.hostMixTitle} />
-      </InsightBlock>
-
-      <InsightBlock
-        title={copy.addedOverTimeTitle}
-        caption={copy.chartCaption}
-        columns={[copy.monthColumn, copy.countColumn]}
-        rows={stats.addedOverTime.map((row) => [row.label, String(row.count)])}
-      >
-        <AwesomeAddedOverTimeChart
-          data={stats.addedOverTime}
-          label={copy.addedOverTimeTitle}
-        />
-      </InsightBlock>
+      </InsightTile>
 
       {stats.starDistribution ? (
-        <InsightBlock
+        <InsightTile
+          tile="star-distribution"
           title={copy.starDistributionTitle}
           caption={copy.chartCaption}
           columns={[copy.liveStarColumn, copy.countColumn]}
@@ -85,18 +97,19 @@ export function AwesomeAiOssInsights({
             data={stats.starDistribution}
             label={copy.starDistributionTitle}
           />
-        </InsightBlock>
+        </InsightTile>
       ) : (
         <p
           data-awesome-stars-omitted
-          className="text-muted-foreground text-sm leading-relaxed"
+          className="text-muted-foreground text-sm leading-relaxed md:col-span-2"
         >
           {copy.starsOmitted}
         </p>
       )}
 
       {stats.topLiveStars ? (
-        <InsightBlock
+        <InsightTile
+          tile="top-stars"
           title={copy.topStarsTitle}
           caption={copy.chartCaption}
           columns={[copy.projectColumn, copy.liveStarColumn]}
@@ -109,35 +122,50 @@ export function AwesomeAiOssInsights({
             data={stats.topLiveStars}
             label={copy.topStarsTitle}
           />
-        </InsightBlock>
+        </InsightTile>
       ) : null}
     </div>
   );
 }
 
-function InsightBlock({
+function InsightTile({
+  tile,
+  wide = false,
   title,
   caption,
   columns,
   rows,
   children,
 }: {
+  tile: string;
+  wide?: boolean;
   title: string;
   caption: string;
   columns: [string, string];
   rows: Array<[string, string]>;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const headingId = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   return (
-    <section aria-labelledby={headingId} className="space-y-4">
+    <section
+      data-awesome-insight-tile={tile}
+      aria-labelledby={headingId}
+      className={cn(
+        "bg-card text-card-foreground flex flex-col gap-4 self-stretch rounded-xl border p-6 shadow-sm",
+        wide && "md:col-span-2",
+      )}
+    >
       <div className="space-y-1">
         <h2 id={headingId} className="text-lg font-semibold tracking-tight">
           {title}
         </h2>
         <p className="text-muted-foreground text-sm">{caption}</p>
       </div>
-      <div className="max-h-72 max-w-xl overflow-auto">
+      {children}
+      <div
+        data-awesome-insight-table
+        className={cn("overflow-auto", wide ? "max-h-56" : "max-h-48")}
+      >
         <table className="w-full min-w-56 text-sm">
           <caption className="sr-only">{title}</caption>
           <thead>
@@ -165,7 +193,6 @@ function InsightBlock({
           </tbody>
         </table>
       </div>
-      {children}
     </section>
   );
 }

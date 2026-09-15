@@ -113,7 +113,7 @@ const BANNED = [
 ];
 
 const DENIALS =
-  /does not register you for World Summit|registreert je niet voor World Summit|not a summit ticket|geen summit-ticket|no stars|geen sterren|live repo stars when fetched|live-reposterren wanneer opgehaald|not a complete catalog|geen complete catalogus|not a star-sorted|★ \d/gi;
+  /does not register you for World Summit|registreert je niet voor World Summit|not a summit ticket|geen summit-ticket|no stars|geen sterren|live repo stars when fetched|live-reposterren wanneer opgehaald|not a complete catalog|geen complete catalogus|not a star-sorted|Star distribution|Top by stars|★ \d/gi;
 
 const V1_HREFS = [
   "https://github.com/modelcontextprotocol/servers",
@@ -630,6 +630,8 @@ describe("Awesome AI OSS site integration", () => {
     expect(copy.categoryMixTitle).toBe("Category mix");
     expect(copy.hostMixTitle).toBe("GitHub vs GitLab");
     expect(copy.addedOverTimeTitle).toBe("Added over time");
+    expect(copy.starDistributionTitle).toBe("Star distribution");
+    expect(copy.topStarsTitle).toBe("Top by stars");
     expect(copy.chartCaption).toBe(AWESOME_INSIGHTS_CAPTION);
     expect(copy.starsOmitted).toMatch(/live repo stars when fetched/i);
     expect(AWESOME_CATEGORY_LABELS.protocols.en).toBe("Protocols & SDKs");
@@ -849,6 +851,28 @@ describe("Awesome AI OSS Insights tab", () => {
     expect(container.textContent).toMatch(
       /from our curated list · refreshed daily/,
     );
+    expect(
+      container.querySelector("[data-awesome-insights-bento]"),
+    ).toBeInTheDocument();
+    const tiles = [
+      ...container.querySelectorAll("[data-awesome-insight-tile]"),
+    ];
+    expect(
+      tiles.map((tile) => tile.getAttribute("data-awesome-insight-tile")),
+    ).toEqual(["added-over-time", "category-mix", "host-mix"]);
+    expect(tiles[0]).toHaveClass("md:col-span-2");
+    for (const tile of tiles) {
+      const chart = tile.querySelector("[data-testid^='chart-']");
+      const table = tile.querySelector("[data-awesome-insight-table] table");
+      expect(chart).not.toBeNull();
+      expect(table).not.toBeNull();
+      expect(
+        Boolean(
+          chart!.compareDocumentPosition(table!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ).toBe(true);
+    }
     expect(screen.getByTestId("chart-category")).toBeInTheDocument();
     expect(screen.getByTestId("chart-host")).toBeInTheDocument();
     expect(screen.getByTestId("chart-added")).toBeInTheDocument();
@@ -880,13 +904,27 @@ describe("Awesome AI OSS Insights tab", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Live star_count distribution" }),
+      screen.getByRole("heading", { name: "Star distribution" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Top 10 by live star_count" }),
+      screen.getByRole("heading", { name: "Top by stars" }),
     ).toBeInTheDocument();
     expect(screen.getByTestId("chart-stars")).toBeInTheDocument();
     expect(screen.getByTestId("chart-top")).toBeInTheDocument();
+    expect(
+      [...container.querySelectorAll("[data-awesome-insight-tile]")].map(
+        (tile) => tile.getAttribute("data-awesome-insight-tile"),
+      ),
+    ).toEqual([
+      "added-over-time",
+      "category-mix",
+      "host-mix",
+      "star-distribution",
+      "top-stars",
+    ]);
+    expect(
+      container.querySelectorAll("[data-awesome-insight-tile] table"),
+    ).toHaveLength(5);
     expect(container.querySelector("[data-awesome-stars-omitted]")).toBeNull();
     expect(container.textContent).toContain(projects.at(-1)!.name);
     expect(container.textContent).toContain(String(projects.length * 40));
