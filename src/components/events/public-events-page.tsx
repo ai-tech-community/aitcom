@@ -1,10 +1,14 @@
+import { Fragment } from "react";
+
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
 import {
   PUBLIC_EVENTS_JOIN_HREF,
+  isPublicEventUrl,
   publicEventPlace,
   publicEventsJsonLd,
+  toPublicEventDate,
   type PublicEventCard,
 } from "@/lib/events/public-events";
 
@@ -31,10 +35,16 @@ export function PublicEventsPage({
   promoteJoin?: boolean;
 }) {
   const copyLocale = locale === "nl" ? "nl" : "en";
+  const eventJsonLd = publicEventsJsonLd(events);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
-      {events.length > 0 ? <JsonLd data={publicEventsJsonLd(events)} /> : null}
+      {eventJsonLd.map((data, index) => (
+        <JsonLd
+          key={`event-jsonld-${typeof data.url === "string" ? data.url : index}`}
+          data={data}
+        />
+      ))}
 
       <SectionLabel as="div">{t("kicker")}</SectionLabel>
 
@@ -67,47 +77,73 @@ export function PublicEventsPage({
               event.why[copyLocale].length > 0
                 ? event.why[copyLocale]
                 : event.why.en;
-            const external = !event.url.startsWith(
-              "https://www.aitcommunity.org/",
+            const date = toPublicEventDate(event.date);
+            const place = publicEventPlace(event, t("online"));
+            const url = isPublicEventUrl(event.url) ? event.url : null;
+            const title = event.title.trim();
+            const external = Boolean(
+              url && !url.startsWith("https://www.aitcommunity.org/"),
             );
+            const linkProps = external
+              ? { target: "_blank" as const, rel: "noopener noreferrer" }
+              : {};
+
             return (
               <li
                 key={event.id}
                 data-public-event={event.id}
                 className="border-border py-6 first:pt-0"
               >
-                <div className="text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 font-mono text-xs tracking-wider">
-                  <time dateTime={event.date}>{event.date}</time>
-                  <span aria-hidden="true">·</span>
-                  <span>{publicEventPlace(event, t("online"))}</span>
-                </div>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight">
-                  <a
-                    href={event.url}
-                    className="hover:text-foreground hover:underline"
-                    {...(external
-                      ? { target: "_blank", rel: "noopener noreferrer" }
-                      : {})}
-                  >
-                    {event.title}
-                  </a>
-                </h2>
+                {date || place ? (
+                  <div className="text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 font-mono text-xs tracking-wider">
+                    {[
+                      date ? (
+                        <time key="date" dateTime={date}>
+                          {date}
+                        </time>
+                      ) : null,
+                      place ? <span key="place">{place}</span> : null,
+                    ]
+                      .filter(Boolean)
+                      .map((node, index) => (
+                        <Fragment key={index}>
+                          {index > 0 ? <span aria-hidden="true">·</span> : null}
+                          {node}
+                        </Fragment>
+                      ))}
+                  </div>
+                ) : null}
+                {title ? (
+                  <h2 className="mt-2 text-xl font-semibold tracking-tight">
+                    {url ? (
+                      <a
+                        href={url}
+                        className="hover:text-foreground hover:underline"
+                        {...linkProps}
+                      >
+                        {title}
+                      </a>
+                    ) : (
+                      title
+                    )}
+                  </h2>
+                ) : null}
                 {why ? (
                   <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                     {why}
                   </p>
                 ) : null}
-                <p className="mt-3">
-                  <a
-                    href={event.url}
-                    className="text-foreground font-mono text-xs tracking-wider underline-offset-4 hover:underline"
-                    {...(external
-                      ? { target: "_blank", rel: "noopener noreferrer" }
-                      : {})}
-                  >
-                    {t("eventPage")}
-                  </a>
-                </p>
+                {url ? (
+                  <p className="mt-3">
+                    <a
+                      href={url}
+                      className="text-foreground font-mono text-xs tracking-wider underline-offset-4 hover:underline"
+                      {...linkProps}
+                    >
+                      {t("eventPage")}
+                    </a>
+                  </p>
+                ) : null}
               </li>
             );
           })}

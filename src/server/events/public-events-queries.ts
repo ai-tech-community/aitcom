@@ -2,7 +2,6 @@ import { asc } from "drizzle-orm";
 
 import { curatedPublicEventCards } from "@/lib/events/public-events-seeds";
 import {
-  mergePublicEvents,
   publicEventFromHosted,
   type PublicEventCard,
   type PublicEventLocale,
@@ -82,11 +81,7 @@ export async function listHostedPublicEventCards(
 }
 
 export async function listPublicEventCards(
-  locale: PublicEventLocale,
+  _locale?: PublicEventLocale,
 ): Promise<PublicEventCard[]> {
-  const [curated, hosted] = await Promise.all([
-    listCuratedPublicEvents(),
-    listHostedPublicEventCards(locale),
-  ]);
-  return mergePublicEvents(curated, hosted);
+  return listCuratedPublicEvents();
 }
