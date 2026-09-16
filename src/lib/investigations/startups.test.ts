@@ -623,6 +623,19 @@ describe("directory query", () => {
       `${STARTUPS_PATH}?page=2`,
       `${STARTUPS_PATH}?page=3`,
     ]);
+    expect(startupDirectorySitemapPaths(279)).toEqual(
+      Array.from(
+        { length: 11 },
+        (_, index) => `${STARTUPS_PATH}?page=${index + 2}`,
+      ),
+    );
+    expect(startupDirectorySitemapPaths(279).at(-1)).toBe(
+      `${STARTUPS_PATH}?page=12`,
+    );
+    expect(startupDirectorySitemapPaths(279)).not.toContain(STARTUPS_PATH);
+    expect(startupDirectorySitemapPaths(279)).not.toContain(
+      STARTUPS_INSIGHTS_PATH,
+    );
     expect(STARTUPS_PUBLIC_INDEX_MIN).toBe(3000);
     expect(startupsPublicIndexable(20)).toBe(false);
     expect(startupsPublicIndexable(2999)).toBe(false);

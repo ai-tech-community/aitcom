@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 
 import {
   displayStartupFounders,
@@ -46,6 +46,19 @@ export async function listApprovedPublicStartups(): Promise<
     return rows.map(toPublicCard);
   } catch {
     return [];
+  }
+}
+
+/** Listed row count for sitemap pagination — no card payload. */
+export async function countApprovedPublicStartups(): Promise<number> {
+  try {
+    const [row] = await db
+      .select({ value: count() })
+      .from(startups)
+      .where(eq(startups.status, "approved"));
+    return Number(row?.value ?? 0);
+  } catch {
+    return 0;
   }
 }
 
