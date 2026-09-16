@@ -122,6 +122,7 @@ const FIXTURE_CARD: StartupPublicCard = {
   lng: -79.38,
   stage: null,
   logoUrl: null,
+  description: null,
   founders: [],
   exitStatus: null,
   acquirer: null,
@@ -237,13 +238,15 @@ describe("StartupsPage", () => {
       "href",
       "https://fixture.example",
     );
-    expect(screen.getByRole("link", { name: "Open homepage" })).toHaveAttribute(
-      "href",
-      "https://fixture.example",
-    );
+    expect(
+      screen.queryByRole("link", { name: "Open homepage" }),
+    ).not.toBeInTheDocument();
     expect(table?.querySelector("[data-startup-homepage]")).toHaveAttribute(
       "href",
       "https://fixture.example",
+    );
+    expect(table?.querySelector("[data-startup-homepage]")?.textContent).toBe(
+      "Fixture Co",
     );
     const nameHead = screen.getByRole("columnheader", { name: "Name" });
     expect(nameHead.className).toMatch(/sticky/);
@@ -309,32 +312,24 @@ describe("StartupsPage", () => {
       "https://fixture.example",
     );
     expect(
-      screen.getByRole("columnheader", { name: "Name" }),
-    ).toBeInTheDocument();
+      [...container.querySelectorAll("thead [scope='col']")].map(
+        (node) => node.textContent,
+      ),
+    ).toEqual([
+      "Logo",
+      "Name",
+      "Short description",
+      "Category",
+      "Region",
+      "Founders",
+      "Sources",
+      "Jobs",
+      "Exit",
+      "Stage",
+    ]);
     expect(
-      screen.getByRole("columnheader", { name: "Founders" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Homepage" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Category" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Region" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Stage" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Exit" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Sources" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("columnheader", { name: "Jobs" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("columnheader", { name: "Homepage" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Open map" }),
     ).toBeInTheDocument();
@@ -434,9 +429,10 @@ describe("StartupsPage", () => {
     expect(
       data.itemListElement?.some((row) => row.item?.name === "Listed Co 1"),
     ).toBe(false);
+    expect(JSON.stringify(data)).not.toContain('"description"');
   });
 
-  it("keeps name, homepage, and source links in the table HTML", () => {
+  it("keeps name→homepage and source links in the table HTML", () => {
     const { container } = render(
       <StartupsPage
         locale="en"
@@ -451,16 +447,12 @@ describe("StartupsPage", () => {
     );
     const table = container.querySelector("table");
     expect(table).not.toBeNull();
-    const nameLink = table?.querySelector(
-      'a[href="https://fixture.example"]:not([data-startup-homepage])',
-    );
+    const nameLink = table?.querySelector("[data-startup-homepage]");
     expect(nameLink?.textContent).toBe("Fixture Co");
+    expect(nameLink?.getAttribute("href")).toBe("https://fixture.example");
     expect(
-      table?.querySelector("[data-startup-homepage]")?.getAttribute("href"),
-    ).toBe("https://fixture.example");
-    expect(table?.querySelector("[data-startup-homepage]")?.textContent).toBe(
-      "Open homepage",
-    );
+      table?.querySelectorAll('a[href="https://fixture.example"]'),
+    ).toHaveLength(1);
     const sourceLink = table?.querySelector(
       'a[href="https://fixture.example/about"]',
     );
@@ -474,6 +466,52 @@ describe("StartupsPage", () => {
     expect(container.innerHTML).toContain(
       'href="https://fixture.example/about"',
     );
+  });
+
+  it("soft-omits blank logo and short description without inventing marks or copy", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[FIXTURE_CARD]}
+      />,
+    );
+    const table = container.querySelector("table");
+    expect(table).not.toBeNull();
+    expect(table?.querySelector("[data-startup-logo]")).toBeNull();
+    expect(table?.querySelector("[data-startup-description]")).toBeNull();
+    expect(
+      table?.querySelector("img:not([data-startup-source-favicon])"),
+    ).toBeNull();
+    expect(table?.textContent).not.toContain("—");
+    expect(
+      table
+        ?.querySelector("[data-startup-logo]")
+        ?.getAttribute("src")
+        ?.includes("favicon.ico"),
+    ).not.toBe(true);
+
+    const sourced = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[
+          {
+            ...FIXTURE_CARD,
+            logoUrl: "https://fixture.example/logo.png",
+            description: "Sourced short blurb.",
+          },
+        ]}
+      />,
+    );
+    const sourcedTable = sourced.container.querySelector("table");
+    expect(
+      sourcedTable?.querySelector("[data-startup-logo]")?.getAttribute("src"),
+    ).toBe("https://fixture.example/logo.png");
+    expect(
+      sourcedTable?.querySelector("[data-startup-description]")?.textContent,
+    ).toBe("Sourced short blurb.");
+    sourced.unmount();
   });
 
   it("soft-omits blank region, stage, exit, and jobs cells without placeholders", () => {
@@ -510,7 +548,7 @@ describe("StartupsPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders sourced founders and a dedicated Homepage <a> in the table", () => {
+  it("renders sourced founders and keeps Name as the homepage <a>", () => {
     const { container } = render(
       <StartupsPage
         locale="en"
@@ -544,10 +582,13 @@ describe("StartupsPage", () => {
       ),
     ).toHaveAttribute("href", "https://ada.example");
     expect(table?.textContent).toContain("No Url");
-    expect(screen.getByRole("link", { name: "Open homepage" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Fixture Co" })).toHaveAttribute(
       "href",
       "https://fixture.example",
     );
+    expect(
+      screen.queryByRole("link", { name: "Open homepage" }),
+    ).not.toBeInTheDocument();
     expect(table?.textContent).not.toContain("—");
   });
 
@@ -617,7 +658,7 @@ describe("StartupsPage", () => {
     );
   });
 
-  it("keeps Dutch Founders and Homepage chrome on the directory table", () => {
+  it("keeps Dutch Founders and Short description chrome on the directory table", () => {
     const { container } = render(
       <StartupsPage
         locale="nl"
@@ -626,19 +667,25 @@ describe("StartupsPage", () => {
       />,
     );
     expect(nl.investigationsStartups.foundersColumn).toBe("Oprichters");
-    expect(nl.investigationsStartups.homepageColumn).toBe("Homepage");
-    expect(nl.investigationsStartups.openHomepage).toBeTruthy();
+    expect(nl.investigationsStartups.logoColumn).toBe("Logo");
+    expect(nl.investigationsStartups.descriptionColumn).toBe(
+      "Korte beschrijving",
+    );
+    expect(nl.investigationsStartups.nameColumn).toBe("Naam");
     expect(container.querySelector("table")).not.toBeNull();
     expect(container.querySelector("[data-startup-homepage]")).toHaveAttribute(
       "href",
       "https://fixture.example",
     );
     expect(
-      screen.getByRole("columnheader", { name: "Founders" }),
+      container.querySelector("[data-startup-homepage]")?.textContent,
+    ).toBe("Fixture Co");
+    expect(
+      screen.getByRole("columnheader", { name: "Short description" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("columnheader", { name: "Homepage" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("columnheader", { name: "Homepage" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Open map" }),
     ).toBeInTheDocument();
@@ -1048,11 +1095,19 @@ describe("Startups i18n", () => {
     expect(en.investigationsStartups.mapClose).toBe("Close");
     expect(en.investigationsStartups.mapEmpty).toBe("No locations listed yet");
     expect(en.investigationsStartups.nameColumn).toBe("Name");
+    expect(en.investigationsStartups.logoColumn).toBe("Logo");
+    expect(en.investigationsStartups.descriptionColumn).toBe(
+      "Short description",
+    );
     expect(en.investigationsStartups.foundersColumn).toBe("Founders");
     expect(en.investigationsStartups.homepageColumn).toBe("Homepage");
     expect(en.investigationsStartups.exitColumn).toBe("Exit");
     expect(en.investigationsStartups.jobsColumn).toBe("Jobs");
     expect(nl.investigationsStartups.foundersColumn).toBe("Oprichters");
+    expect(nl.investigationsStartups.logoColumn).toBe("Logo");
+    expect(nl.investigationsStartups.descriptionColumn).toBe(
+      "Korte beschrijving",
+    );
     expect(nl.investigationsStartups.homepageColumn).toBe("Homepage");
     expect(nl.investigationsStartups.openMap).toBe("Open kaart");
     expect(nl.investigationsStartups.mapTitle).toBe("Kaart");
@@ -1126,6 +1181,8 @@ describe("Startups site integration", () => {
     expect(readFileSync(SOFT_OMIT_MIGRATION_FILE, "utf8")).toContain(
       "jobs_url",
     );
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/description|blurb/i);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Short description/);
   });
 
   it("SSR-reads Neon, paginates with crawlable ?page= links, and sitemaps from the live count", () => {

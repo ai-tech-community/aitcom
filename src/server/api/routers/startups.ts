@@ -9,8 +9,10 @@ import {
   STARTUPS_EXIT_ERROR,
   STARTUPS_HOMEPAGE_ERROR,
   STARTUPS_JOBS_URL_ERROR,
+  STARTUPS_DESCRIPTION_MAX,
   STARTUPS_NAME_MAX,
   STARTUPS_SOURCES_ERROR,
+  sanitizeStartupDescription,
   normalizeStartupHomepage,
   parseStartupCategory,
   parseStartupExitOn,
@@ -45,6 +47,14 @@ const optionalBlank = z
     return value.length > 0 ? value : null;
   });
 
+const optionalDescription = z
+  .string()
+  .trim()
+  .max(STARTUPS_DESCRIPTION_MAX)
+  .nullable()
+  .optional()
+  .transform((value) => sanitizeStartupDescription(value));
+
 function flattenPulseStartupRow(raw: unknown): unknown {
   if (!raw || typeof raw !== "object") return raw;
   const row = raw as Record<string, unknown>;
@@ -57,6 +67,7 @@ function flattenPulseStartupRow(raw: unknown): unknown {
     ...row,
     logoUrl: row.logoUrl ?? row.logo_url ?? null,
     jobsUrl: row.jobsUrl ?? row.jobs_url ?? null,
+    description: row.description ?? row.blurb ?? null,
     exitStatus:
       row.exitStatus ??
       pulseExitAlias(typeof row.status === "string" ? row.status : null),
@@ -88,6 +99,8 @@ const createStartupFields = z.object({
   lng: z.number().min(-180).max(180).nullable().optional(),
   stage: optionalBlank,
   logoUrl: optionalBlank,
+  description: optionalDescription,
+  blurb: optionalDescription,
   founders: z
     .array(
       z.object({
@@ -183,6 +196,9 @@ function parsedWriteFields(input: CreateStartupInput) {
     lng: resolved?.lng ?? null,
     stage: input.stage ?? null,
     logoUrl,
+    description: sanitizeStartupDescription(
+      input.description ?? input.blurb ?? null,
+    ),
     founders,
     exitStatus,
     acquirer: exitStatus ? (input.acquirer ?? null) : null,

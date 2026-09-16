@@ -33,6 +33,13 @@ const softOmit = readFileSync(
   ),
   "utf8",
 );
+const descriptionMigration = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../migrations/20260916b_startups_description.ts",
+  ),
+  "utf8",
+);
 
 const BAKED_COMPANIES =
   /Anthropic|Mistral AI|Hugging Face|Cohere|Perplexity|LangChain|Pinecone|Weaviate|Fireworks AI|Figure AI|Agility Robotics|Apptronik|1X Technologies|Physical Intelligence|Skild AI|Aalo Atomics|Emerald AI/;
@@ -54,6 +61,8 @@ describe("startups router locks", () => {
     expect(src).toContain("jobsUrl");
     expect(src).toContain("logo_url");
     expect(src).toContain("jobs_url");
+    expect(src).toContain("description");
+    expect(src).toContain("blurb");
     expect(src).toContain("exit_acquirer");
     expect(src).toContain("exit_year");
     expect(src).toContain("imageUrl");
@@ -89,5 +98,14 @@ describe("startups router locks", () => {
     expect(softOmit).not.toMatch(/INSERT INTO/i);
     expect(queries).toContain("displayStartupFounders");
     expect(queries).toContain("parseStartupExitStatus");
+  });
+
+  it("adds a sourced-only description column without inventing blurbs", () => {
+    expect(descriptionMigration).toContain('"description"');
+    expect(descriptionMigration).toMatch(/ADD COLUMN IF NOT EXISTS/);
+    expect(descriptionMigration).not.toMatch(/INSERT INTO/i);
+    expect(descriptionMigration).not.toMatch(BAKED_COMPANIES);
+    expect(queries).toContain("description");
+    expect(src).toContain("description:");
   });
 });

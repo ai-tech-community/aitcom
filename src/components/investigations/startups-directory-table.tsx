@@ -14,8 +14,10 @@ import { StartupsSourceChips } from "@/components/investigations/startups-source
 import {
   STARTUP_CATEGORY_LABELS,
   displayStartupFounders,
+  displayStartupLogoUrl,
   formatStartupExitBadge,
   presentText,
+  sanitizeStartupDescription,
   type StartupLocale,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
@@ -37,16 +39,16 @@ export function StartupsDirectoryTable({
   locale: StartupLocale;
   isModerator: boolean;
   copy: {
+    logoColumn: string;
     nameColumn: string;
+    descriptionColumn: string;
     foundersColumn: string;
-    homepageColumn: string;
     categoryColumn: string;
     regionColumn: string;
     stageColumn: string;
     exitColumn: string;
     sourcesColumn: string;
     jobsColumn: string;
-    openHomepage: string;
     openJobs: string;
     edit: string;
     caption: string;
@@ -59,14 +61,14 @@ export function StartupsDirectoryTable({
         <TableCaption className="sr-only">{copy.caption}</TableCaption>
         <TableHeader>
           <TableRow>
+            <TableHead scope="col" className={columnHead}>
+              {copy.logoColumn}
+            </TableHead>
             <TableHead scope="col" className={cn(stickyName, columnHead)}>
               {copy.nameColumn}
             </TableHead>
             <TableHead scope="col" className={columnHead}>
-              {copy.foundersColumn}
-            </TableHead>
-            <TableHead scope="col" className={columnHead}>
-              {copy.homepageColumn}
+              {copy.descriptionColumn}
             </TableHead>
             <TableHead scope="col" className={columnHead}>
               {copy.categoryColumn}
@@ -75,16 +77,19 @@ export function StartupsDirectoryTable({
               {copy.regionColumn}
             </TableHead>
             <TableHead scope="col" className={columnHead}>
-              {copy.stageColumn}
-            </TableHead>
-            <TableHead scope="col" className={columnHead}>
-              {copy.exitColumn}
+              {copy.foundersColumn}
             </TableHead>
             <TableHead scope="col" className={columnHead}>
               {copy.sourcesColumn}
             </TableHead>
             <TableHead scope="col" className={columnHead}>
               {copy.jobsColumn}
+            </TableHead>
+            <TableHead scope="col" className={columnHead}>
+              {copy.exitColumn}
+            </TableHead>
+            <TableHead scope="col" className={columnHead}>
+              {copy.stageColumn}
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -95,6 +100,8 @@ export function StartupsDirectoryTable({
             const exitBadge = formatStartupExitBadge(card, locale);
             const jobsUrl = presentText(card.jobsUrl);
             const founders = displayStartupFounders(card.founders);
+            const logoUrl = displayStartupLogoUrl(card.logoUrl);
+            const description = sanitizeStartupDescription(card.description);
 
             return (
               <TableRow
@@ -103,11 +110,28 @@ export function StartupsDirectoryTable({
                 data-startup-card={card.id}
                 className="group"
               >
+                <TableCell className="align-top">
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoUrl}
+                      alt=""
+                      width={32}
+                      height={32}
+                      data-startup-logo={logoUrl}
+                      className="border-border size-8 rounded-md border object-cover"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : null}
+                </TableCell>
                 <TableCell className={cn(stickyName, "align-top")}>
                   <div className="flex items-center gap-2">
                     <a
                       href={card.homepage}
                       rel="noopener noreferrer"
+                      data-startup-homepage=""
                       className="font-medium hover:underline"
                     >
                       {card.name}
@@ -124,24 +148,15 @@ export function StartupsDirectoryTable({
                     ) : null}
                   </div>
                 </TableCell>
-                <TableCell className="align-top whitespace-normal">
-                  {founders.length > 0 ? (
-                    <StartupsFounders
-                      founders={founders}
-                      label={copy.foundersColumn}
-                      compact
-                    />
+                <TableCell className="max-w-64 align-top whitespace-normal">
+                  {description ? (
+                    <span
+                      data-startup-description=""
+                      className="text-muted-foreground line-clamp-2 text-sm"
+                    >
+                      {description}
+                    </span>
                   ) : null}
-                </TableCell>
-                <TableCell className="align-top">
-                  <a
-                    href={card.homepage}
-                    rel="noopener noreferrer"
-                    data-startup-homepage=""
-                    className="hover:underline"
-                  >
-                    {copy.openHomepage}
-                  </a>
                 </TableCell>
                 <TableCell className="align-top">
                   <Badge variant="secondary">
@@ -153,16 +168,13 @@ export function StartupsDirectoryTable({
                     <span data-startup-region={region}>{region}</span>
                   ) : null}
                 </TableCell>
-                <TableCell className="align-top">
-                  {stage ? (
-                    <span data-startup-stage={stage}>{stage}</span>
-                  ) : null}
-                </TableCell>
-                <TableCell className="align-top">
-                  {exitBadge ? (
-                    <Badge data-startup-exit={card.exitStatus ?? ""}>
-                      {exitBadge}
-                    </Badge>
+                <TableCell className="align-top whitespace-normal">
+                  {founders.length > 0 ? (
+                    <StartupsFounders
+                      founders={founders}
+                      label={copy.foundersColumn}
+                      compact
+                    />
                   ) : null}
                 </TableCell>
                 <TableCell className="align-top whitespace-normal">
@@ -178,6 +190,18 @@ export function StartupsDirectoryTable({
                     >
                       {copy.openJobs}
                     </a>
+                  ) : null}
+                </TableCell>
+                <TableCell className="align-top">
+                  {exitBadge ? (
+                    <Badge data-startup-exit={card.exitStatus ?? ""}>
+                      {exitBadge}
+                    </Badge>
+                  ) : null}
+                </TableCell>
+                <TableCell className="align-top">
+                  {stage ? (
+                    <span data-startup-stage={stage}>{stage}</span>
                   ) : null}
                 </TableCell>
               </TableRow>

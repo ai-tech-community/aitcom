@@ -65,6 +65,7 @@ export type StartupV1Seed = {
   region: string | null;
   stage: string | null;
   logoUrl: string | null;
+  description: string | null;
   founders: StartupFounder[];
   exitStatus: StartupExitStatus | null;
   acquirer: string | null;
@@ -107,6 +108,7 @@ function seedFromFixture(name: string, id: string): StartupV1Seed {
     region: mapped.region,
     stage: mapped.stage,
     logoUrl: mapped.logoUrl,
+    description: mapped.description,
     founders: mapped.founders,
     exitStatus: mapped.exitStatus,
     acquirer: mapped.acquirer,
@@ -144,6 +146,7 @@ export function startupsV1PublicCards(): StartupPublicCard[] {
       lng: coords?.lng ?? null,
       stage: row.stage,
       logoUrl: row.logoUrl,
+      description: row.description,
       founders: row.founders,
       exitStatus: row.exitStatus,
       acquirer: row.acquirer,

@@ -4191,6 +4191,8 @@ export const startups = appSchema.table(
     lng: d.doublePrecision(),
     stage: d.text(),
     logoUrl: d.text(),
+    /** Sourced short blurb only. Soft-omit blank — never invent copy. */
+    description: d.text(),
     founders: d
       .json()
       .$type<

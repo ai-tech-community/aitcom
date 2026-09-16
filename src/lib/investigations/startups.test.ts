@@ -55,6 +55,7 @@ function sampleCard(
     lng: null,
     stage: null,
     logoUrl: null,
+    description: null,
     founders: [],
     exitStatus: null,
     acquirer: null,
@@ -465,6 +466,7 @@ describe("soft-omit helpers", () => {
       { name: "Michael Truell", url: null, imageUrl: null },
     ]);
     expect(mapped.logoUrl).toBe("https://cursor.com/og.png");
+    expect(mapped.description).toBeNull();
     expect(
       mapPulseStartupWrite({
         name: "Weaviate",
@@ -475,6 +477,7 @@ describe("soft-omit helpers", () => {
         status: "approved",
         exit_year: null,
         jobs_url: "https://weaviate.io/company/careers",
+        blurb: "Open-source vector database.",
       }),
     ).toMatchObject({
       founders: [],
@@ -482,7 +485,18 @@ describe("soft-omit helpers", () => {
       acquirer: null,
       exitOn: null,
       category: "ai-infra",
+      description: "Open-source vector database.",
     });
+    expect(
+      mapPulseStartupWrite({
+        name: "Quiet Co",
+        homepage: "https://quiet.example/",
+        category: "other",
+        sources: ["https://quiet.example/about"],
+        description: "   ",
+        blurb: null,
+      }).description,
+    ).toBeNull();
   });
 
   it("pins city/HQ or region centroid and lists unknown with no pin", () => {
@@ -826,6 +840,17 @@ describe("json-ld", () => {
     expect(JSON.stringify(data)).not.toMatch(
       /"@type":"Person"|founder.*image/i,
     );
+    const item = (
+      data.itemListElement as Array<{
+        item: { name: string; url: string; description?: string };
+      }>
+    )[0]?.item;
+    expect(item).toMatchObject({
+      "@type": "Organization",
+      name: "Fixture Co",
+      url: "https://fixture.example",
+    });
+    expect(item).not.toHaveProperty("description");
     const withFounderPhoto = startupsDirectoryJsonLd([
       sampleCard({
         founders: [
@@ -841,5 +866,29 @@ describe("json-ld", () => {
       "https://ada.example/ada.jpg",
     );
     expect(JSON.stringify(withFounderPhoto)).not.toContain("Person");
+  });
+
+  it("includes Organization description only when a sourced blurb exists", () => {
+    const blank = startupsDirectoryJsonLd([
+      sampleCard({ description: null }),
+      sampleCard({
+        id: "whitespace",
+        description: "   ",
+      }),
+    ]);
+    expect(JSON.stringify(blank)).not.toContain('"description"');
+
+    const sourced = startupsDirectoryJsonLd([
+      sampleCard({
+        description: "Sourced short blurb from Pulse.",
+      }),
+    ]);
+    const item = (
+      sourced.itemListElement as Array<{
+        item: { description?: string };
+      }>
+    )[0]?.item;
+    expect(item?.description).toBe("Sourced short blurb from Pulse.");
+    expect(item?.description).not.toMatch(/worth watching/i);
   });
 });

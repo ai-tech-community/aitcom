@@ -24,6 +24,7 @@ function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
     lng: row.lng ?? null,
     stage: presentText(row.stage),
     logoUrl: presentText(row.logoUrl),
+    description: presentText(row.description),
     founders: displayStartupFounders(row.founders),
     exitStatus: parseStartupExitStatus(row.exitStatus),
     acquirer: presentText(row.acquirer),
