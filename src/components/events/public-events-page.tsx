@@ -23,6 +23,7 @@ export type PublicEventsKey =
   | "eventPage"
   | "online";
 
+/** Retired from `/en/events` — the public route is the fat CMS listing. */
 export function PublicEventsPage({
   locale,
   t,

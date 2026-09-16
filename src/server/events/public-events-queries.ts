@@ -80,6 +80,7 @@ export async function listHostedPublicEventCards(
   }
 }
 
+/** Parked curated store. `/en/events` reads hosted Payload docs, not this. */
 export async function listPublicEventCards(
   _locale?: PublicEventLocale,
 ): Promise<PublicEventCard[]> {

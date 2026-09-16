@@ -3,10 +3,10 @@ import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
 
 export const PUBLIC_EVENTS_PATH = "/events";
 
-export const PUBLIC_EVENTS_H1 = "AI events";
+export const PUBLIC_EVENTS_H1 = "Events";
 
 export const PUBLIC_EVENTS_META =
-  "Public AI events we list for builders: date, city or online, and the official page. Join the Hub — community sign-up, not an event ticket.";
+  "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community.";
 
 export const PUBLIC_EVENTS_JOIN_HREF =
   "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=events&utm_campaign=ai-events";
