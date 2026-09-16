@@ -135,6 +135,12 @@ Hub members never see Join — `shouldPromoteJoin()` / `PromoteJoinCta` swap
 to Open Hub (`/communities/ait/forum`). Same leftover rule as navbar JOIN
 (`!user`).
 
+Directory default is an SSR `<table>`: Name (homepage link, sticky) ·
+Category · Region · Stage · Exit · Sources (favicon chips) · Jobs. Blank
+cells soft-omit — never invent “—”. Map is behind **Open map** → Sheet
+(`Map` / `Close`). Sourced pins only; empty sheet copy is
+**No locations listed yet**. No always-on map.
+
 ## Directory filters
 
 Crawlable query params on `/investigations/startups`. Pagination links keep
@@ -145,7 +151,7 @@ the active filters.
 | `category` | taxonomy id                          | same as before                                                                                              |
 | `region`   | sourced region string                | only listed, non-blank regions                                                                              |
 | `stage`    | sourced stage string                 | blank stage does not match                                                                                  |
-| `status`   | `active` `acquired` `ipo` `shutdown` | blank/null exit → **active** for the filter only. Cards still omit the badge. Not listing pending/approved. |
+| `status`   | `active` `acquired` `ipo` `shutdown` | blank/null exit → **active** for the filter only. Rows still omit the badge. Not listing pending/approved. |
 | `hiring`   | `1`                                  | has a sourced `jobs_url`                                                                                    |
 | `sort`     | `newest` (default) `name` `category` | `newest` is omitted from the URL                                                                            |
 
