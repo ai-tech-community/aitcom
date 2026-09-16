@@ -16,8 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { StartupsCard } from "@/components/investigations/startups-card";
-import { StartupsMap } from "@/components/investigations/startups-map";
+import { StartupsDirectoryTable } from "@/components/investigations/startups-directory-table";
+import { StartupsMapSheet } from "@/components/investigations/startups-map-sheet";
 import { StartupsPagination } from "@/components/investigations/startups-pagination";
 import { StartupsSubmitDialog } from "@/components/investigations/startups-submit-dialog";
 import {
@@ -164,6 +164,15 @@ export function StartupsDirectory({
               </SelectContent>
             </Select>
           </div>
+          <StartupsMapSheet
+            pins={pins}
+            copy={{
+              openMap: t("openMap"),
+              title: t("mapTitle"),
+              close: t("mapClose"),
+              empty: t("mapEmpty"),
+            }}
+          />
           {isModerator ? (
             <Button
               type="button"
@@ -303,36 +312,32 @@ export function StartupsDirectory({
         </div>
       </div>
 
-      <StartupsMap pins={pins} />
-
       {emptyFiltered ? (
         <EmptyState
           title={emptyCatalog ? t("empty") : t("emptyFiltered")}
           description={emptyCatalog ? t("emptyHelp") : undefined}
         />
       ) : (
-        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {pagination.items.map((card) => (
-            <li key={card.id} id={card.id}>
-              <StartupsCard
-                card={card}
-                locale={locale}
-                isModerator={isModerator}
-                copy={{
-                  openHomepage: t("openHomepage"),
-                  openJobs: t("openJobs"),
-                  sources: t("sources"),
-                  founders: t("founders"),
-                  edit: t("edit"),
-                }}
-                onEdit={(next) => {
-                  setEditing(next);
-                  setSubmitOpen(true);
-                }}
-              />
-            </li>
-          ))}
-        </ul>
+        <StartupsDirectoryTable
+          companies={pagination.items}
+          locale={locale}
+          isModerator={isModerator}
+          copy={{
+            nameColumn: t("nameColumn"),
+            categoryColumn: t("categoryColumn"),
+            regionColumn: t("regionColumn"),
+            stageColumn: t("stageColumn"),
+            exitColumn: t("exitColumn"),
+            sourcesColumn: t("sourcesColumn"),
+            jobsColumn: t("jobsColumn"),
+            openJobs: t("openJobs"),
+            edit: t("edit"),
+          }}
+          onEdit={(next) => {
+            setEditing(next);
+            setSubmitOpen(true);
+          }}
+        />
       )}
 
       <StartupsPagination

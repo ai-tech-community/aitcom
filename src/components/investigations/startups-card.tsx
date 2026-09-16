@@ -9,14 +9,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { StartupsFounders } from "@/components/investigations/startups-founders";
+import { StartupsSourceChips } from "@/components/investigations/startups-source-chips";
 import {
   STARTUP_CATEGORY_LABELS,
   displayStartupFounders,
-  displayStartupSourceChips,
   formatStartupExitBadge,
   formatStartupListedDate,
   presentText,
-  startupSourceFaviconUrl,
   type StartupLocale,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
@@ -43,7 +42,6 @@ export function StartupsCard({
   const region = presentText(card.region);
   const stage = presentText(card.stage);
   const logoUrl = presentText(card.logoUrl);
-  const chips = displayStartupSourceChips(card.sources, locale);
   const founders = displayStartupFounders(card.founders);
   const exitBadge = formatStartupExitBadge(card, locale);
   const jobsUrl = presentText(card.jobsUrl);
@@ -89,30 +87,11 @@ export function StartupsCard({
         {founders.length > 0 ? (
           <StartupsFounders founders={founders} label={copy.founders} />
         ) : null}
-        {chips.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-foreground text-sm font-medium">
-              {copy.sources}
-            </p>
-            <ul className="flex flex-wrap gap-1.5">
-              {chips.map((chip) => (
-                <li key={chip.href}>
-                  <Badge asChild variant="outline">
-                    <a
-                      href={chip.href}
-                      rel="noopener noreferrer"
-                      data-startup-source-chip={chip.label}
-                      className="inline-flex items-center gap-1.5"
-                    >
-                      <SourceChipFavicon href={chip.href} />
-                      {chip.label}
-                    </a>
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+        <StartupsSourceChips
+          sources={card.sources}
+          locale={locale}
+          label={copy.sources}
+        />
       </CardContent>
       <CardFooter className="flex flex-wrap items-center gap-2">
         <Button asChild size="sm" variant="outline">
@@ -139,24 +118,5 @@ export function StartupsCard({
         ) : null}
       </CardFooter>
     </Card>
-  );
-}
-
-function SourceChipFavicon({ href }: { href: string }) {
-  const src = startupSourceFaviconUrl(href);
-  if (!src) return null;
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt=""
-      width={12}
-      height={12}
-      data-startup-source-favicon={src}
-      className="size-3 rounded-sm"
-      onError={(event) => {
-        event.currentTarget.style.display = "none";
-      }}
-    />
   );
 }

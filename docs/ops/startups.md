@@ -135,6 +135,12 @@ Hub members never see Join — `shouldPromoteJoin()` / `PromoteJoinCta` swap
 to Open Hub (`/communities/ait/forum`). Same leftover rule as navbar JOIN
 (`!user`).
 
+Directory default is an SSR `<table>`: Name (homepage link, sticky) ·
+Category · Region · Stage · Exit · Sources (favicon chips) · Jobs. Blank
+cells soft-omit — never invent “—”. Map is behind **Open map** → Sheet
+(`Map` / `Close`). Sourced pins only; empty sheet copy is
+**No locations listed yet**. No always-on map.
+
 ## Directory filters
 
 Crawlable query params on `/investigations/startups`. Pagination links keep

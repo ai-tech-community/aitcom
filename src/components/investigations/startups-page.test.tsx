@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
@@ -192,7 +192,11 @@ describe("StartupsPage", () => {
     ).toBeInTheDocument();
     expect(container.textContent).toContain(en.investigationsStartups.empty);
     expect(container.querySelectorAll("[data-startup-card]")).toHaveLength(0);
+    expect(container.querySelector("table")).toBeNull();
     expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open map" }),
+    ).toBeInTheDocument();
     expect(hrefsOf(container)).toContain("/investigations");
     expect(hrefsOf(container)).toContain(STARTUPS_INSIGHTS_PATH);
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
@@ -202,7 +206,7 @@ describe("StartupsPage", () => {
     expect(screen.queryByText("Add a company")).not.toBeInTheDocument();
   });
 
-  it("renders listed cards, soft-omits blank logo/stage, and pins sourced places", () => {
+  it("renders an SSR table with homepage and source links, and keeps the map behind Open map", () => {
     const { container } = render(
       <StartupsPage
         locale="en"
@@ -210,15 +214,29 @@ describe("StartupsPage", () => {
         companies={[FIXTURE_CARD]}
       />,
     );
+    const table = container.querySelector("table");
+    expect(table).not.toBeNull();
     expect(container.querySelector("[data-startup-card]")).not.toBeNull();
+    expect(
+      container.querySelector("[data-startup-card]")?.closest("tr"),
+    ).not.toBeNull();
     expect(container.textContent).toContain("Fixture Co");
     expect(container.textContent).toContain("Toronto, Canada");
-    expect(screen.getByTestId("startups-map")).toBeInTheDocument();
+    expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open map" }),
+    ).toBeInTheDocument();
     expect(
       container.querySelector("img:not([data-startup-source-favicon])"),
     ).toBeNull();
-    expect(hrefsOf(container)).toContain("https://fixture.example");
-    expect(hrefsOf(container)).toContain("https://fixture.example/about");
+    expect(hrefsOf(table as HTMLElement)).toContain("https://fixture.example");
+    expect(hrefsOf(table as HTMLElement)).toContain(
+      "https://fixture.example/about",
+    );
+    expect(screen.getByRole("link", { name: "Fixture Co" })).toHaveAttribute(
+      "href",
+      "https://fixture.example",
+    );
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute(
       "href",
       "https://fixture.example/about",
@@ -229,6 +247,7 @@ describe("StartupsPage", () => {
     expect(
       screen.queryByRole("link", { name: "Open jobs" }),
     ).not.toBeInTheDocument();
+    expect(table?.textContent).not.toContain("—");
   });
 
   it("uses Writing Bot chrome: slim deck, search, category, Newest", () => {
@@ -268,13 +287,37 @@ describe("StartupsPage", () => {
       "href",
       STARTUPS_INSIGHTS_PATH,
     );
-    expect(screen.getByRole("link", { name: "Open homepage" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Fixture Co" })).toHaveAttribute(
       "href",
       "https://fixture.example",
     );
+    expect(
+      screen.getByRole("columnheader", { name: "Name" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Category" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Region" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Stage" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Exit" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Sources" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Jobs" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Open map" }),
+    ).toBeInTheDocument();
   });
 
-  it("pins a sourced city/region with no stored coords, and skips unknown", () => {
+  it("opens sourced pins in the Map sheet and soft-omits unknown places", () => {
     const { rerender } = render(
       <StartupsPage
         locale="en"
@@ -288,7 +331,14 @@ describe("StartupsPage", () => {
         ]}
       />,
     );
+    expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open map" }));
+    expect(screen.getByRole("heading", { name: "Map" })).toBeInTheDocument();
     expect(screen.getByTestId("startups-map")).toBeInTheDocument();
+    expect(
+      screen.queryByText("No locations listed yet"),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
 
     rerender(
       <StartupsPage
@@ -297,7 +347,11 @@ describe("StartupsPage", () => {
         companies={[{ ...FIXTURE_CARD, region: null, lat: null, lng: null }]}
       />,
     );
+    fireEvent.click(screen.getByRole("button", { name: "Open map" }));
+    expect(screen.getByRole("heading", { name: "Map" })).toBeInTheDocument();
+    expect(screen.getByText("No locations listed yet")).toBeInTheDocument();
     expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
   });
 
   it("renders crawlable ?page= links when the directory is past ~50 rows", () => {
@@ -357,6 +411,90 @@ describe("StartupsPage", () => {
     expect(
       data.itemListElement?.some((row) => row.item?.name === "Listed Co 1"),
     ).toBe(false);
+  });
+
+  it("keeps name, homepage, and source links in the table HTML", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[
+          {
+            ...FIXTURE_CARD,
+            jobsUrl: "https://fixture.example/careers",
+          },
+        ]}
+      />,
+    );
+    const table = container.querySelector("table");
+    expect(table).not.toBeNull();
+    const nameLink = table?.querySelector('a[href="https://fixture.example"]');
+    expect(nameLink?.textContent).toBe("Fixture Co");
+    const sourceLink = table?.querySelector(
+      'a[href="https://fixture.example/about"]',
+    );
+    expect(sourceLink).not.toBeNull();
+    expect(sourceLink?.getAttribute("data-startup-source-chip")).toBe("Docs");
+    expect(
+      table?.querySelector('a[href="https://fixture.example/careers"]'),
+    ).not.toBeNull();
+    expect(container.innerHTML).toContain("<table");
+    expect(container.innerHTML).toContain('href="https://fixture.example"');
+    expect(container.innerHTML).toContain(
+      'href="https://fixture.example/about"',
+    );
+  });
+
+  it("soft-omits blank region, stage, exit, and jobs cells without placeholders", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[
+          {
+            ...FIXTURE_CARD,
+            region: null,
+            lat: null,
+            lng: null,
+            stage: null,
+            exitStatus: null,
+            jobsUrl: null,
+          },
+        ]}
+      />,
+    );
+    expect(container.querySelector("table")).not.toBeNull();
+    const row = container.querySelector("[data-startup-card]");
+    expect(row).not.toBeNull();
+    expect(row?.closest("tr")).not.toBeNull();
+    expect(row?.textContent).not.toContain("—");
+    expect(row?.textContent).not.toContain("N/A");
+    expect(row?.textContent).not.toContain("Toronto, Canada");
+    expect(container.querySelector("[data-startup-exit]")).toBeNull();
+    expect(container.querySelector("[data-startup-jobs]")).toBeNull();
+    expect(container.querySelector("[data-startup-region]")).toBeNull();
+    expect(container.querySelector("[data-startup-stage]")).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: "Open jobs" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the Map sheet empty state when no sourced places are listed", () => {
+    render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[{ ...FIXTURE_CARD, region: null, lat: null, lng: null }]}
+      />,
+    );
+    expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open map" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Map" })).toBeInTheDocument();
+    expect(screen.getByText("No locations listed yet")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
+    expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
   });
 
   it("keeps Dutch copy on the same investigation path", () => {
@@ -772,6 +910,19 @@ describe("Startups i18n", () => {
       Object.keys(en.investigationsStartups).sort(),
     );
     expect(en.investigationsStartups.title).toBe(STARTUPS_H1);
+    expect(en.investigationsStartups.openMap).toBe("Open map");
+    expect(en.investigationsStartups.mapTitle).toBe("Map");
+    expect(en.investigationsStartups.mapClose).toBe("Close");
+    expect(en.investigationsStartups.mapEmpty).toBe("No locations listed yet");
+    expect(en.investigationsStartups.nameColumn).toBe("Name");
+    expect(en.investigationsStartups.exitColumn).toBe("Exit");
+    expect(en.investigationsStartups.jobsColumn).toBe("Jobs");
+    expect(nl.investigationsStartups.openMap).toBe("Open kaart");
+    expect(nl.investigationsStartups.mapTitle).toBe("Kaart");
+    expect(nl.investigationsStartups.mapClose).toBe("Sluiten");
+    expect(nl.investigationsStartups.mapEmpty).toBe(
+      "Nog geen locaties op de lijst.",
+    );
     expect(en.investigationsStartups.chartCaption).toBe(
       STARTUPS_INSIGHTS_CAPTION,
     );
