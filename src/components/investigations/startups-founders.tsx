@@ -17,9 +17,11 @@ import {
 export function StartupsFounders({
   founders,
   label,
+  compact = false,
 }: {
   founders: readonly StartupFounder[];
   label: string;
+  compact?: boolean;
 }) {
   const sourced = displayStartupFounders(founders);
   if (sourced.length === 0) return null;
@@ -28,8 +30,13 @@ export function StartupsFounders({
   const overflow = sourced.length - shown.length;
 
   return (
-    <div data-startup-founders="" className="flex flex-col gap-2">
-      <p className="text-foreground text-sm font-medium">{label}</p>
+    <div
+      data-startup-founders=""
+      className={compact ? "flex flex-col gap-1.5" : "flex flex-col gap-2"}
+    >
+      {compact ? null : (
+        <p className="text-foreground text-sm font-medium">{label}</p>
+      )}
       <AvatarGroup aria-label={label}>
         {shown.map((founder) => {
           const avatar = (

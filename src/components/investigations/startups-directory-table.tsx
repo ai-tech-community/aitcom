@@ -9,9 +9,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { StartupsFounders } from "@/components/investigations/startups-founders";
 import { StartupsSourceChips } from "@/components/investigations/startups-source-chips";
 import {
   STARTUP_CATEGORY_LABELS,
+  displayStartupFounders,
   formatStartupExitBadge,
   presentText,
   type StartupLocale,
@@ -20,7 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const stickyName =
-  "bg-background group-hover:bg-muted/50 sticky left-0 z-10 min-w-40 border-r";
+  "bg-background group-hover:bg-muted/50 sticky left-0 z-10 min-w-44 border-r";
 const columnHead =
   "text-muted-foreground font-mono text-xs tracking-wider uppercase";
 
@@ -36,12 +38,15 @@ export function StartupsDirectoryTable({
   isModerator: boolean;
   copy: {
     nameColumn: string;
+    foundersColumn: string;
+    homepageColumn: string;
     categoryColumn: string;
     regionColumn: string;
     stageColumn: string;
     exitColumn: string;
     sourcesColumn: string;
     jobsColumn: string;
+    openHomepage: string;
     openJobs: string;
     edit: string;
     caption: string;
@@ -49,107 +54,137 @@ export function StartupsDirectoryTable({
   onEdit?: (card: StartupPublicCard) => void;
 }) {
   return (
-    <Table className="border-separate border-spacing-0">
-      <TableCaption className="sr-only">{copy.caption}</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead scope="col" className={cn(stickyName, columnHead)}>
-            {copy.nameColumn}
-          </TableHead>
-          <TableHead scope="col" className={columnHead}>
-            {copy.categoryColumn}
-          </TableHead>
-          <TableHead scope="col" className={columnHead}>
-            {copy.regionColumn}
-          </TableHead>
-          <TableHead scope="col" className={columnHead}>
-            {copy.stageColumn}
-          </TableHead>
-          <TableHead scope="col" className={columnHead}>
-            {copy.exitColumn}
-          </TableHead>
-          <TableHead scope="col" className={columnHead}>
-            {copy.sourcesColumn}
-          </TableHead>
-          <TableHead scope="col" className={columnHead}>
-            {copy.jobsColumn}
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {companies.map((card) => {
-          const region = presentText(card.region);
-          const stage = presentText(card.stage);
-          const exitBadge = formatStartupExitBadge(card, locale);
-          const jobsUrl = presentText(card.jobsUrl);
+    <div className="border-border overflow-hidden rounded-xl border">
+      <Table className="border-separate border-spacing-0">
+        <TableCaption className="sr-only">{copy.caption}</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead scope="col" className={cn(stickyName, columnHead)}>
+              {copy.nameColumn}
+            </TableHead>
+            <TableHead scope="col" className={columnHead}>
+              {copy.foundersColumn}
+            </TableHead>
+            <TableHead scope="col" className={columnHead}>
+              {copy.homepageColumn}
+            </TableHead>
+            <TableHead scope="col" className={columnHead}>
+              {copy.categoryColumn}
+            </TableHead>
+            <TableHead scope="col" className={columnHead}>
+              {copy.regionColumn}
+            </TableHead>
+            <TableHead scope="col" className={columnHead}>
+              {copy.stageColumn}
+            </TableHead>
+            <TableHead scope="col" className={columnHead}>
+              {copy.exitColumn}
+            </TableHead>
+            <TableHead scope="col" className={columnHead}>
+              {copy.sourcesColumn}
+            </TableHead>
+            <TableHead scope="col" className={columnHead}>
+              {copy.jobsColumn}
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {companies.map((card) => {
+            const region = presentText(card.region);
+            const stage = presentText(card.stage);
+            const exitBadge = formatStartupExitBadge(card, locale);
+            const jobsUrl = presentText(card.jobsUrl);
+            const founders = displayStartupFounders(card.founders);
 
-          return (
-            <TableRow
-              key={card.id}
-              id={card.id}
-              data-startup-card={card.id}
-              className="group"
-            >
-              <TableCell className={stickyName}>
-                <div className="flex items-center gap-2">
+            return (
+              <TableRow
+                key={card.id}
+                id={card.id}
+                data-startup-card={card.id}
+                className="group"
+              >
+                <TableCell className={cn(stickyName, "align-top")}>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={card.homepage}
+                      rel="noopener noreferrer"
+                      className="font-medium hover:underline"
+                    >
+                      {card.name}
+                    </a>
+                    {isModerator ? (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => onEdit?.(card)}
+                      >
+                        {copy.edit}
+                      </Button>
+                    ) : null}
+                  </div>
+                </TableCell>
+                <TableCell className="align-top whitespace-normal">
+                  {founders.length > 0 ? (
+                    <StartupsFounders
+                      founders={founders}
+                      label={copy.foundersColumn}
+                      compact
+                    />
+                  ) : null}
+                </TableCell>
+                <TableCell className="align-top">
                   <a
                     href={card.homepage}
                     rel="noopener noreferrer"
-                    className="font-medium hover:underline"
-                  >
-                    {card.name}
-                  </a>
-                  {isModerator ? (
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="ghost"
-                      onClick={() => onEdit?.(card)}
-                    >
-                      {copy.edit}
-                    </Button>
-                  ) : null}
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant="secondary">
-                  {STARTUP_CATEGORY_LABELS[card.category][locale]}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {region ? (
-                  <span data-startup-region={region}>{region}</span>
-                ) : null}
-              </TableCell>
-              <TableCell>
-                {stage ? <span data-startup-stage={stage}>{stage}</span> : null}
-              </TableCell>
-              <TableCell>
-                {exitBadge ? (
-                  <Badge data-startup-exit={card.exitStatus ?? ""}>
-                    {exitBadge}
-                  </Badge>
-                ) : null}
-              </TableCell>
-              <TableCell className="whitespace-normal">
-                <StartupsSourceChips sources={card.sources} locale={locale} />
-              </TableCell>
-              <TableCell>
-                {jobsUrl ? (
-                  <a
-                    href={jobsUrl}
-                    rel="noopener noreferrer"
-                    data-startup-jobs=""
+                    data-startup-homepage=""
                     className="hover:underline"
                   >
-                    {copy.openJobs}
+                    {copy.openHomepage}
                   </a>
-                ) : null}
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+                </TableCell>
+                <TableCell className="align-top">
+                  <Badge variant="secondary">
+                    {STARTUP_CATEGORY_LABELS[card.category][locale]}
+                  </Badge>
+                </TableCell>
+                <TableCell className="align-top whitespace-normal">
+                  {region ? (
+                    <span data-startup-region={region}>{region}</span>
+                  ) : null}
+                </TableCell>
+                <TableCell className="align-top">
+                  {stage ? (
+                    <span data-startup-stage={stage}>{stage}</span>
+                  ) : null}
+                </TableCell>
+                <TableCell className="align-top">
+                  {exitBadge ? (
+                    <Badge data-startup-exit={card.exitStatus ?? ""}>
+                      {exitBadge}
+                    </Badge>
+                  ) : null}
+                </TableCell>
+                <TableCell className="align-top whitespace-normal">
+                  <StartupsSourceChips sources={card.sources} locale={locale} />
+                </TableCell>
+                <TableCell className="align-top">
+                  {jobsUrl ? (
+                    <a
+                      href={jobsUrl}
+                      rel="noopener noreferrer"
+                      data-startup-jobs=""
+                      className="hover:underline"
+                    >
+                      {copy.openJobs}
+                    </a>
+                  ) : null}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

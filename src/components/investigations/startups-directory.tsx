@@ -324,12 +324,15 @@ export function StartupsDirectory({
           isModerator={isModerator}
           copy={{
             nameColumn: t("nameColumn"),
+            foundersColumn: t("foundersColumn"),
+            homepageColumn: t("homepageColumn"),
             categoryColumn: t("categoryColumn"),
             regionColumn: t("regionColumn"),
             stageColumn: t("stageColumn"),
             exitColumn: t("exitColumn"),
             sourcesColumn: t("sourcesColumn"),
             jobsColumn: t("jobsColumn"),
+            openHomepage: t("openHomepage"),
             openJobs: t("openJobs"),
             edit: t("edit"),
             caption: t("tabDirectory"),

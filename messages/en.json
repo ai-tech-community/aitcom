@@ -1241,6 +1241,8 @@
     "mapClose": "Close",
     "mapEmpty": "No locations listed yet",
     "nameColumn": "Name",
+    "foundersColumn": "Founders",
+    "homepageColumn": "Homepage",
     "exitColumn": "Exit",
     "jobsColumn": "Jobs",
     "sources": "Sources",
