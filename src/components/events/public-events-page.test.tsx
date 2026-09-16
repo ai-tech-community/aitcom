@@ -60,6 +60,29 @@ const SAMPLE: PublicEventCard = {
   source: "curated",
 };
 
+const INCOMPLETE: PublicEventCard = {
+  id: "untitled-meetup",
+  title: "Untitled meetup",
+  date: "",
+  online: false,
+  city: null,
+  url: "",
+  why: { en: "", nl: "" },
+  source: "hosted",
+};
+
+function jsonLdOf(container: HTMLElement): Record<string, unknown>[] {
+  return [...container.querySelectorAll('script[type="application/ld+json"]')]
+    .map((node) => {
+      try {
+        return JSON.parse(node.textContent ?? "") as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    })
+    .filter((row): row is Record<string, unknown> => row !== null);
+}
+
 function tFrom(dict: Record<string, string>) {
   return (key: string) => dict[key] ?? key;
 }
@@ -87,6 +110,7 @@ describe("public events route", () => {
     expect(src).not.toContain("EventsMap");
     expect(src).not.toContain("maxAttendees");
     expect(src).not.toContain("aitFitScore");
+    expect(src).not.toContain("listHostedPublicEventCards");
   });
 });
 
@@ -111,6 +135,55 @@ describe("PublicEventsPage", () => {
     expect(hrefsOf(container)).not.toContain("/en/join");
     expect(container.textContent).not.toMatch(COUNT_COPY);
     expect(container.querySelector("[data-event-attendees]")).toBeNull();
+    expect(
+      screen.getByRole("link", { name: en.publicEvents.eventPage }),
+    ).toHaveAttribute("href", SAMPLE.url);
+    expect(container.querySelector("ul")?.querySelectorAll("li")).toHaveLength(
+      1,
+    );
+  });
+
+  it("soft-omits blank date, place, blurb, and official link without inventing them", () => {
+    const { container } = render(
+      <PublicEventsPage
+        locale="en"
+        t={tFrom(en.publicEvents)}
+        events={[INCOMPLETE]}
+      />,
+    );
+    const entry = container.querySelector(
+      "[data-public-event='untitled-meetup']",
+    );
+    expect(entry).not.toBeNull();
+    expect(entry?.querySelector("time")).toBeNull();
+    expect(entry?.textContent).not.toContain("Online");
+    expect(entry?.textContent).not.toContain("·");
+    expect(entry?.textContent).toContain("Untitled meetup");
+    expect(
+      screen.queryByRole("link", { name: en.publicEvents.eventPage }),
+    ).toBeNull();
+    expect(jsonLdOf(container)).toEqual([]);
+    expect(container.textContent).not.toMatch(COUNT_COPY);
+  });
+
+  it("emits Event JSON-LD only for sourced date/place/title/URL rows", () => {
+    const { container } = render(
+      <PublicEventsPage
+        locale="en"
+        t={tFrom(en.publicEvents)}
+        events={[SAMPLE, INCOMPLETE]}
+      />,
+    );
+    const payloads = jsonLdOf(container);
+    expect(payloads).toHaveLength(1);
+    expect(payloads[0]).toMatchObject({
+      "@type": "Event",
+      name: SAMPLE.title,
+      startDate: SAMPLE.date,
+      url: SAMPLE.url,
+    });
+    expect(payloads.some((row) => row["@type"] === "ItemList")).toBe(false);
+    expect(JSON.stringify(payloads)).not.toMatch(COUNT_COPY);
   });
 
   it("soft-fails empty without inventing rows", () => {
@@ -210,6 +283,21 @@ describe("public events site integration", () => {
     );
     expect(existsSync(OPS_DOC)).toBe(true);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/AIT room/i);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/not a flat dump/i);
+  });
+
+  it("does not dump hosted CMS events onto the public list", () => {
+    const queries = readFileSync(
+      join(dir, "../../server/events/public-events-queries.ts"),
+      "utf8",
+    );
+    expect(queries).toMatch(/listCuratedPublicEvents/);
+    expect(queries).not.toMatch(
+      /return mergePublicEvents\(\s*curated,\s*hosted/,
+    );
+    expect(queries).toMatch(
+      /export async function listPublicEventCards[\s\S]*return listCuratedPublicEvents/,
+    );
   });
 
   it("locks page metadata to the thin list", () => {

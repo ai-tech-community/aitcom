@@ -11,8 +11,11 @@ import {
   PUBLIC_EVENTS_PATH,
   PUBLIC_EVENTS_WHY_MAX,
   isPublicEventUrl,
+  isSourcedPublicEvent,
   publicEventFromHosted,
+  publicEventJsonLd,
   publicEventPlace,
+  publicEventsJsonLd,
   sanitizePublicEventWhy,
   sortPublicEvents,
   type PublicEventCard,
@@ -80,6 +83,91 @@ describe("publicEventPlace", () => {
     expect(publicEventPlace({ online: false, city: "Amsterdam" })).toBe(
       "Amsterdam",
     );
+  });
+
+  it("soft-omits a blank in-person city instead of inventing Online", () => {
+    expect(publicEventPlace({ online: false, city: null })).toBeNull();
+    expect(publicEventPlace({ online: false, city: "   " })).toBeNull();
+  });
+});
+
+function sourcedCard(
+  overrides: Partial<PublicEventCard> = {},
+): PublicEventCard {
+  return {
+    id: "world-summit-ai-amsterdam-2026",
+    title: "World Summit AI Amsterdam 2026",
+    date: "2026-10-07",
+    online: false,
+    city: "Amsterdam",
+    url: "https://worldsummit.ai/",
+    why: {
+      en: "Flagship global AI summit in the Netherlands for builders to track.",
+      nl: "Toonaangevende wereldwijde AI-top in Nederland voor bouwers.",
+    },
+    source: "curated",
+    ...overrides,
+  };
+}
+
+describe("isSourcedPublicEvent", () => {
+  it("requires a real date, place, title, and URL", () => {
+    expect(isSourcedPublicEvent(sourcedCard())).toBe(true);
+    expect(
+      isSourcedPublicEvent(sourcedCard({ online: true, city: null })),
+    ).toBe(true);
+    expect(isSourcedPublicEvent(sourcedCard({ title: "  " }))).toBe(false);
+    expect(isSourcedPublicEvent(sourcedCard({ date: "soon" }))).toBe(false);
+    expect(isSourcedPublicEvent(sourcedCard({ city: null }))).toBe(false);
+    expect(
+      isSourcedPublicEvent(sourcedCard({ url: "javascript:alert(1)" })),
+    ).toBe(false);
+  });
+});
+
+describe("publicEventJsonLd", () => {
+  it("emits Event JSON-LD only when date, place, title, and URL are sourced", () => {
+    const data = publicEventJsonLd(sourcedCard());
+    expect(data).toMatchObject({
+      "@type": "Event",
+      name: "World Summit AI Amsterdam 2026",
+      startDate: "2026-10-07",
+      url: "https://worldsummit.ai/",
+      eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+      location: { "@type": "Place", name: "Amsterdam" },
+      description:
+        "Flagship global AI summit in the Netherlands for builders to track.",
+    });
+    expect(data).not.toHaveProperty("attendee");
+    expect(data).not.toHaveProperty("maximumAttendeeCapacity");
+    expect(data).not.toHaveProperty("remainingAttendeeCapacity");
+
+    expect(publicEventJsonLd(sourcedCard({ city: null }))).toBeNull();
+    expect(publicEventJsonLd(sourcedCard({ title: "" }))).toBeNull();
+    expect(publicEventJsonLd(sourcedCard({ url: "/local" }))).toBeNull();
+  });
+
+  it("soft-omits a blank blurb and never invents attendance", () => {
+    const data = publicEventJsonLd(
+      sourcedCard({ why: { en: "  ", nl: "  " } }),
+    );
+    expect(data?.["@type"]).toBe("Event");
+    expect(data).not.toHaveProperty("description");
+    expect(JSON.stringify(data)).not.toMatch(
+      /attendee|RSVP|spots?\s+left|maximumAttendeeCapacity/i,
+    );
+  });
+});
+
+describe("publicEventsJsonLd", () => {
+  it("returns sourced Event entries, not a flat ItemList dump", () => {
+    const rows = publicEventsJsonLd([
+      sourcedCard(),
+      sourcedCard({ id: "broken", city: null, url: "not-a-url" }),
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.["@type"]).toBe("Event");
+    expect(rows.some((row) => row["@type"] === "ItemList")).toBe(false);
   });
 });
 

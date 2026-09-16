@@ -62,10 +62,19 @@ export function sanitizePublicEventWhy(value: string): string {
 export function publicEventPlace(
   event: Pick<PublicEventCard, "online" | "city">,
   onlineLabel = "Online",
-): string {
+): string | null {
   if (event.online) return onlineLabel;
   const city = event.city?.trim();
-  return city && city.length > 0 ? city : onlineLabel;
+  return city && city.length > 0 ? city : null;
+}
+
+export function isSourcedPublicEvent(
+  event: Pick<PublicEventCard, "title" | "date" | "online" | "city" | "url">,
+): boolean {
+  const title = event.title.trim();
+  const date = toPublicEventDate(event.date);
+  const place = publicEventPlace(event);
+  return Boolean(title && date && place && isPublicEventUrl(event.url));
 }
 
 export function toPublicEventDate(value: string): string | null {
@@ -153,29 +162,36 @@ export function publicEventFromHosted(
   };
 }
 
+export function publicEventJsonLd(
+  event: PublicEventCard,
+): Record<string, unknown> | null {
+  if (!isSourcedPublicEvent(event)) return null;
+  const date = toPublicEventDate(event.date);
+  const place = publicEventPlace(event);
+  if (!date || !place) return null;
+
+  const data: Record<string, unknown> = {
+    "@type": "Event",
+    name: event.title.trim(),
+    startDate: date,
+    url: event.url,
+    eventAttendanceMode: event.online
+      ? "https://schema.org/OnlineEventAttendanceMode"
+      : "https://schema.org/OfflineEventAttendanceMode",
+    location: event.online
+      ? { "@type": "VirtualLocation", url: event.url }
+      : { "@type": "Place", name: place },
+  };
+  const description = sanitizePublicEventWhy(event.why.en);
+  if (description) data.description = description;
+  return data;
+}
+
 export function publicEventsJsonLd(
   events: readonly PublicEventCard[],
-): Record<string, unknown> {
-  return {
-    "@type": "ItemList",
-    name: PUBLIC_EVENTS_H1,
-    url: `${CANONICAL_PRODUCTION_ORIGIN}/en${PUBLIC_EVENTS_PATH}`,
-    itemListElement: events.map((event, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      item: {
-        "@type": "Event",
-        name: event.title,
-        startDate: event.date,
-        url: event.url,
-        eventAttendanceMode: event.online
-          ? "https://schema.org/OnlineEventAttendanceMode"
-          : "https://schema.org/OfflineEventAttendanceMode",
-        location: event.online
-          ? { "@type": "VirtualLocation", url: event.url }
-          : { "@type": "Place", name: event.city, address: event.city },
-        description: event.why.en,
-      },
-    })),
-  };
+): Record<string, unknown>[] {
+  return events.flatMap((event) => {
+    const data = publicEventJsonLd(event);
+    return data ? [data] : [];
+  });
 }

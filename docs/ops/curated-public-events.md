@@ -2,7 +2,8 @@
 
 Thin, indexable list at `/en/events` and `/nl/events`. This is the landing
 surface for public AI events parked in the AIT room until they have a row
-here.
+here. Structured event entries only — **not a flat dump** of hosted CMS
+events. Each row is date · place · title · blurb · Official event page.
 
 ## Row shape
 
@@ -13,7 +14,9 @@ Only these public fields:
 - **real URL** (official external event page — `https://…`, never invented)
 - **one-line why** (EN + NL; short; no essays)
 
-Do **not** store or display attendance, RSVP, or spots-left counts.
+Soft-omit blanks. Event JSON-LD is emitted only when date, place, title,
+and URL are sourced. Do **not** store or display attendance, RSVP, or
+spots-left counts. Hosted `/events/[slug]` detail routes stay off this list.
 
 ## How to add a parked AIT-room event
 
