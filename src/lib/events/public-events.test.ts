@@ -293,10 +293,63 @@ describe("curated public event seeds", () => {
       expect(seed.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(seed.why.en.length).toBeGreaterThan(0);
       expect(seed.why.en.length).toBeLessThanOrEqual(PUBLIC_EVENTS_WHY_MAX);
+      expect(seed.why.nl.length).toBeGreaterThan(0);
+      expect(seed.why.nl.length).toBeLessThanOrEqual(PUBLIC_EVENTS_WHY_MAX);
       expect(seed.online || Boolean(seed.city)).toBe(true);
+      expect(seed).not.toHaveProperty("endDate");
       for (const field of BANNED_COUNT_FIELDS) {
         expect(seed).not.toHaveProperty(field);
       }
     }
+  });
+
+  it("keeps World Summit and the weekday +5 official pages", () => {
+    expect(CURATED_PUBLIC_EVENT_SEEDS.map((seed) => seed.id)).toEqual([
+      "ai-summit-barcelona-2026",
+      "lisbon-ai-2026",
+      "world-summit-ai-amsterdam-2026",
+      "ai-engineer-new-york-2026",
+      "nvidia-gtc-berlin-2026",
+      "ai-engineer-code-summit-2026",
+    ]);
+    const byId = Object.fromEntries(
+      CURATED_PUBLIC_EVENT_SEEDS.map((seed) => [seed.id, seed]),
+    );
+    expect(byId["ai-summit-barcelona-2026"]).toMatchObject({
+      title: "AI Summit Barcelona",
+      date: "2026-09-22",
+      city: "Barcelona",
+      url: "https://aisummitbarcelona.com/",
+    });
+    expect(byId["lisbon-ai-2026"]).toMatchObject({
+      title: "Lisbon AI",
+      date: "2026-09-23",
+      city: "Lisbon",
+      url: "https://lisbonai.org/",
+    });
+    expect(byId["world-summit-ai-amsterdam-2026"]).toMatchObject({
+      title: "World Summit AI Amsterdam 2026",
+      date: "2026-10-07",
+      city: "Amsterdam",
+      url: "https://worldsummit.ai/",
+    });
+    expect(byId["ai-engineer-new-york-2026"]).toMatchObject({
+      title: "AI Engineer New York",
+      date: "2026-10-12",
+      city: "New York",
+      url: "https://www.ai.engineer/nyc/2026",
+    });
+    expect(byId["nvidia-gtc-berlin-2026"]).toMatchObject({
+      title: "NVIDIA GTC Berlin",
+      date: "2026-10-20",
+      city: "Berlin",
+      url: "https://www.nvidia.com/en-eu/gtc/",
+    });
+    expect(byId["ai-engineer-code-summit-2026"]).toMatchObject({
+      title: "AI Engineer CODE Summit",
+      date: "2026-11-10",
+      city: "San Francisco",
+      url: "https://www.ai.engineer/code/2026",
+    });
   });
 });

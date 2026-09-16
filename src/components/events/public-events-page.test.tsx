@@ -43,6 +43,10 @@ const MIGRATION_FILE = join(
   dir,
   "../../migrations/20260915a_curated_public_events.ts",
 );
+const WEEKDAY_MIGRATION_FILE = join(
+  dir,
+  "../../migrations/20260916a_curated_public_events_weekday.ts",
+);
 const MIGRATION_INDEX = join(dir, "../../migrations/index.ts");
 const OPS_DOC = join(dir, "../../../docs/ops/curated-public-events.md");
 
@@ -278,8 +282,12 @@ describe("public events site integration", () => {
     expect(existsSync(SCHEMA_FILE)).toBe(true);
     expect(readFileSync(SCHEMA_FILE, "utf8")).toContain("curatedPublicEvents");
     expect(existsSync(MIGRATION_FILE)).toBe(true);
+    expect(existsSync(WEEKDAY_MIGRATION_FILE)).toBe(true);
     expect(readFileSync(MIGRATION_INDEX, "utf8")).toContain(
       "20260915a_curated_public_events",
+    );
+    expect(readFileSync(MIGRATION_INDEX, "utf8")).toContain(
+      "20260916a_curated_public_events_weekday",
     );
     expect(existsSync(OPS_DOC)).toBe(true);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/AIT room/i);

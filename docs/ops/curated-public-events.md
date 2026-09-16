@@ -39,7 +39,9 @@ INSERT INTO app.curated_public_event (
 ```
 
 3. Or add the same object to `src/lib/events/public-events-seeds.ts` and a
-   follow-up migration if the list should ship in git.
+   follow-up migration if the list should ship in git. Weekday +5
+   (`20260916a_curated_public_events_weekday`) inserts those official
+   start-date rows; never invent end dates or attendance.
 
 The public page reads the table first. If the query fails or the table is
 empty, it falls back to the static seed list. Soft-fail empty: never invent
