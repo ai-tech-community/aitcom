@@ -1,24 +1,37 @@
-# Curated public events (`/en/events`)
+# Curated public events (parked store)
 
-Thin, indexable list at `/en/events` and `/nl/events`. This is the landing
-surface for public AI events parked in the AIT room until they have a row
-here. Structured event entries only — **not a flat dump** of hosted CMS
-events. Each row is date · place · title · blurb · Official event page.
+The public surface at `/en/events` and `/nl/events` is again the **fat CMS
+listing** (filters / map / cards) of hosted Payload `events` with
+`status = published` and `discoverySource ≠ luma`. That Greg override
+supersedes the thin curated-only bar from #285 / #300.
 
-## Row shape
+`app.curated_public_event` and `src/lib/events/public-events-seeds.ts`
+remain in the repo as a parked AIT-room store. They are **not** the
+public listing. Do not dump curated seed rows onto `/en/events` as a
+substitute for the CMS chrome.
 
-Only these public fields:
+## Public listing (current)
+
+- Hosted Payload published events (cards)
+- Upcoming / past tabs, search, type / focus / format / AIT-fit filters
+- Grid and map views
+- Join chrome: guests get hard www `/en/join` with events UTMs; signed-in
+  Hub members get Open Hub (zero Join). No invented attendance / RSVP /
+  spots-left counts on the listing.
+- Detail routes stay at `/events/[slug]`.
+
+## Parked curated row shape (unused by `/events`)
+
+Only these fields if you still park an AIT-room event here:
 
 - **date** (`YYYY-MM-DD`)
 - **city** or **online**
 - **real URL** (official external event page — `https://…`, never invented)
 - **one-line why** (EN + NL; short; no essays)
 
-Soft-omit blanks. Event JSON-LD is emitted only when date, place, title,
-and URL are sourced. Do **not** store or display attendance, RSVP, or
-spots-left counts. Hosted `/events/[slug]` detail routes stay off this list.
+Do **not** store or display attendance, RSVP, or spots-left counts.
 
-## How to add a parked AIT-room event
+## How to add a parked AIT-room event (store only)
 
 1. Confirm the official event page is live and the date is published there.
 2. Insert a row into `app.curated_public_event`:
@@ -42,10 +55,6 @@ INSERT INTO app.curated_public_event (
    follow-up migration if the list should ship in git. Weekday +5
    (`20260916a_curated_public_events_weekday`) inserts those official
    start-date rows; never invent end dates or attendance.
-
-The public page reads the table first. If the query fails or the table is
-empty, it falls back to the static seed list. Soft-fail empty: never invent
-rows.
 
 ## Out of scope
 
