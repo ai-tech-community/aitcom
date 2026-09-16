@@ -7,6 +7,9 @@ import { StartupsInsights } from "@/components/investigations/startups-insights"
 import { StartupsTabs } from "@/components/investigations/startups-tabs";
 import {
   STARTUPS_JOIN_HREF,
+  applyStartupDirectoryQuery,
+  paginateStartupCards,
+  parseStartupDirectoryQuery,
   startupsDirectoryJsonLd,
   type StartupDirectoryQuery,
   type StartupLocale,
@@ -74,11 +77,18 @@ export function StartupsPage({
   const insightStats =
     insights ??
     (isInsights ? buildStartupInsights(companies, copyLocale) : undefined);
+  const directoryQuery = parseStartupDirectoryQuery(query);
+  const directoryPage = isInsights
+    ? null
+    : paginateStartupCards(
+        applyStartupDirectoryQuery(companies, directoryQuery, copyLocale),
+        directoryQuery.page,
+      );
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
-      {!isInsights && companies.length > 0 ? (
-        <JsonLd data={startupsDirectoryJsonLd(companies)} />
+      {directoryPage && directoryPage.items.length > 0 ? (
+        <JsonLd data={startupsDirectoryJsonLd(directoryPage.items)} />
       ) : null}
       <nav className="text-muted-foreground text-xs">
         <Link

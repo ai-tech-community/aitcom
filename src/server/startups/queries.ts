@@ -49,6 +49,11 @@ export async function listApprovedPublicStartups(): Promise<
   }
 }
 
+function asFiniteCount(value: unknown): number {
+  const n = typeof value === "bigint" ? Number(value) : Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 /** Listed row count for sitemap pagination — no card payload. */
 export async function countApprovedPublicStartups(): Promise<number> {
   try {
@@ -56,10 +61,20 @@ export async function countApprovedPublicStartups(): Promise<number> {
       .select({ value: count() })
       .from(startups)
       .where(eq(startups.status, "approved"));
-    return Number(row?.value ?? 0);
+    return asFiniteCount(row?.value);
   } catch {
     return 0;
   }
+}
+
+/**
+ * Same listed set the Directory / ItemList read. Prefer COUNT(*); if that
+ * soft-fails to 0, fall back to `listApprovedPublicStartups().length`.
+ */
+export async function listedPublicStartupCount(): Promise<number> {
+  const counted = await countApprovedPublicStartups();
+  if (counted > 0) return counted;
+  return (await listApprovedPublicStartups()).length;
 }
 
 export async function findStartupByHomepage(homepage: string) {

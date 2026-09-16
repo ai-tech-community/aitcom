@@ -295,11 +295,11 @@ describe("buildSitemapEntries", () => {
     const { STARTUPS_PAGE_SIZE, STARTUPS_PATH, startupDirectorySitemapPaths } =
       await import("@/lib/investigations/startups");
 
-    const listed = 279;
+    const listed = 3479;
     const extra = startupDirectorySitemapPaths(listed, STARTUPS_PAGE_SIZE);
     expect(extra).toHaveLength(Math.ceil(listed / STARTUPS_PAGE_SIZE) - 1);
     expect(extra[0]).toBe(`${STARTUPS_PATH}?page=2`);
-    expect(extra.at(-1)).toBe(`${STARTUPS_PATH}?page=12`);
+    expect(extra.at(-1)).toBe(`${STARTUPS_PATH}?page=145`);
 
     const entries = await buildSitemapEntries(
       undefined,
@@ -312,7 +312,7 @@ describe("buildSitemapEntries", () => {
       "https://www.aitcommunity.org/en/investigations/startups?page=2",
     );
     expect(urls).toContain(
-      "https://www.aitcommunity.org/en/investigations/startups?page=12",
+      "https://www.aitcommunity.org/en/investigations/startups?page=145",
     );
     expect(urls).not.toContain(
       "https://www.aitcommunity.org/en/investigations/startups?page=1",
@@ -321,11 +321,11 @@ describe("buildSitemapEntries", () => {
       entries.find(
         (item) =>
           item.url ===
-          "https://www.aitcommunity.org/en/investigations/startups?page=12",
+          "https://www.aitcommunity.org/en/investigations/startups?page=145",
       )?.alternates?.languages,
     ).toEqual({
-      en: "https://www.aitcommunity.org/en/investigations/startups?page=12",
-      nl: "https://www.aitcommunity.org/nl/investigations/startups?page=12",
+      en: "https://www.aitcommunity.org/en/investigations/startups?page=145",
+      nl: "https://www.aitcommunity.org/nl/investigations/startups?page=145",
     });
   });
 
