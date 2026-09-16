@@ -4208,6 +4208,8 @@ export const startups = appSchema.table(
     /** Sourced year (`2024`) or date (`YYYY-MM-DD`). Never invent a day. */
     exitOn: d.text(),
     jobsUrl: d.text(),
+    /** Stable unique public path. Backfilled from name; never a marketing handle. */
+    slug: d.text().notNull(),
     status: d
       .varchar({ length: 16 })
       .notNull()
@@ -4228,6 +4230,7 @@ export const startups = appSchema.table(
   }),
   (t) => [
     uniqueIndex("startup_homepage_idx").on(t.homepage),
+    uniqueIndex("startup_slug_idx").on(t.slug),
     index("startup_status_idx").on(t.status),
     index("startup_category_idx").on(t.category),
     index("startup_listed_on_idx").on(t.listedOn),

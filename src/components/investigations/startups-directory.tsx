@@ -334,6 +334,7 @@ export function StartupsDirectory({
             sourcesColumn: t("sourcesColumn"),
             jobsColumn: t("jobsColumn"),
             openJobs: t("openJobs"),
+            openHomepage: t("openHomepage"),
             edit: t("edit"),
             caption: t("tabDirectory"),
           }}

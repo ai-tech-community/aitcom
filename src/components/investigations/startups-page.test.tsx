@@ -67,8 +67,10 @@ import {
   STARTUPS_INSIGHTS_PATH,
   STARTUPS_JOIN_HREF,
   STARTUPS_PATH,
+  buildStartupProfilePath,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
+import { StartupsProfilePage } from "./startups-profile";
 import { HUB_OPEN_HREF } from "@/lib/join-path";
 import { STARTUPS_INSIGHTS_CAPTION } from "@/lib/investigations/startups-insights";
 import { appPathFromGuideHref, JOIN_PATH } from "@/lib/seo-guides";
@@ -79,6 +81,7 @@ import { StartupsCard } from "./startups-card";
 const dir = dirname(fileURLToPath(import.meta.url));
 const appLocale = join(dir, "../../app/[locale]");
 const PAGE_FILE = join(appLocale, "investigations/startups/page.tsx");
+const PROFILE_FILE = join(appLocale, "investigations/startups/[slug]/page.tsx");
 const INSIGHTS_FILE = join(
   appLocale,
   "investigations/startups/insights/page.tsx",
@@ -129,6 +132,7 @@ const FIXTURE_CARD: StartupPublicCard = {
   exitOn: null,
   jobsUrl: null,
   listedOn: "2026-09-15",
+  slug: "fixture-co",
 };
 
 const CARD_COPY = {
@@ -160,6 +164,7 @@ describe("Startups investigation route", () => {
   it("lives under /investigations/startups with a dedicated insights path", () => {
     expect(STARTUPS_PATH).toBe("/investigations/startups");
     expect(existsSync(PAGE_FILE)).toBe(true);
+    expect(existsSync(PROFILE_FILE)).toBe(true);
     expect(existsSync(INSIGHTS_FILE)).toBe(true);
     const src = readFileSync(PAGE_FILE, "utf8");
     expect(src).toContain("STARTUPS_PATH");
@@ -180,6 +185,13 @@ describe("Startups investigation route", () => {
     expect(insights).toContain('tab="insights"');
     expect(insights).not.toContain("robots: { index: false");
     expect(readFileSync(QUERIES_FILE, "utf8")).not.toMatch(BAKED_COMPANIES);
+    const profile = readFileSync(PROFILE_FILE, "utf8");
+    expect(profile).toContain("findApprovedPublicStartupBySlug");
+    expect(profile).toContain("localeAlternates");
+    expect(profile).toContain('dynamic = "force-dynamic"');
+    expect(profile).toContain("shouldPromoteJoin");
+    expect(profile).toContain("StartupsProfilePage");
+    expect(profile).not.toContain("robots: { index: false");
   });
 });
 
@@ -236,17 +248,22 @@ describe("StartupsPage", () => {
     );
     expect(screen.getByRole("link", { name: "Fixture Co" })).toHaveAttribute(
       "href",
+      buildStartupProfilePath("fixture-co"),
+    );
+    expect(screen.getByRole("link", { name: "Open homepage" })).toHaveAttribute(
+      "href",
       "https://fixture.example",
     );
-    expect(
-      screen.queryByRole("link", { name: "Open homepage" }),
-    ).not.toBeInTheDocument();
+    expect(table?.querySelector("[data-startup-profile]")).toHaveAttribute(
+      "href",
+      buildStartupProfilePath("fixture-co"),
+    );
     expect(table?.querySelector("[data-startup-homepage]")).toHaveAttribute(
       "href",
       "https://fixture.example",
     );
     expect(table?.querySelector("[data-startup-homepage]")?.textContent).toBe(
-      "Fixture Co",
+      "Open homepage",
     );
     const nameHead = screen.getByRole("columnheader", { name: "Name" });
     expect(nameHead.className).toMatch(/sticky/);
@@ -309,7 +326,7 @@ describe("StartupsPage", () => {
     );
     expect(screen.getByRole("link", { name: "Fixture Co" })).toHaveAttribute(
       "href",
-      "https://fixture.example",
+      buildStartupProfilePath("fixture-co"),
     );
     expect(
       [...container.querySelectorAll("thead [scope='col']")].map(
@@ -432,7 +449,7 @@ describe("StartupsPage", () => {
     expect(JSON.stringify(data)).not.toContain('"description"');
   });
 
-  it("keeps name→homepage and source links in the table HTML", () => {
+  it("keeps name→profile and homepage as a secondary control in the table HTML", () => {
     const { container } = render(
       <StartupsPage
         locale="en"
@@ -447,9 +464,15 @@ describe("StartupsPage", () => {
     );
     const table = container.querySelector("table");
     expect(table).not.toBeNull();
-    const nameLink = table?.querySelector("[data-startup-homepage]");
+    const nameLink = table?.querySelector("[data-startup-profile]");
     expect(nameLink?.textContent).toBe("Fixture Co");
-    expect(nameLink?.getAttribute("href")).toBe("https://fixture.example");
+    expect(nameLink?.getAttribute("href")).toBe(
+      buildStartupProfilePath("fixture-co"),
+    );
+    expect(table?.querySelector("[data-startup-homepage]")).toHaveAttribute(
+      "href",
+      "https://fixture.example",
+    );
     expect(
       table?.querySelectorAll('a[href="https://fixture.example"]'),
     ).toHaveLength(1);
@@ -548,7 +571,7 @@ describe("StartupsPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders sourced founders and keeps Name as the homepage <a>", () => {
+  it("renders sourced founders and keeps Name as the profile <a>", () => {
     const { container } = render(
       <StartupsPage
         locale="en"
@@ -584,11 +607,12 @@ describe("StartupsPage", () => {
     expect(table?.textContent).toContain("No Url");
     expect(screen.getByRole("link", { name: "Fixture Co" })).toHaveAttribute(
       "href",
+      buildStartupProfilePath("fixture-co"),
+    );
+    expect(screen.getByRole("link", { name: "Open homepage" })).toHaveAttribute(
+      "href",
       "https://fixture.example",
     );
-    expect(
-      screen.queryByRole("link", { name: "Open homepage" }),
-    ).not.toBeInTheDocument();
     expect(table?.textContent).not.toContain("—");
   });
 
@@ -673,13 +697,17 @@ describe("StartupsPage", () => {
     );
     expect(nl.investigationsStartups.nameColumn).toBe("Naam");
     expect(container.querySelector("table")).not.toBeNull();
+    expect(container.querySelector("[data-startup-profile]")).toHaveAttribute(
+      "href",
+      buildStartupProfilePath("fixture-co"),
+    );
     expect(container.querySelector("[data-startup-homepage]")).toHaveAttribute(
       "href",
       "https://fixture.example",
     );
-    expect(
-      container.querySelector("[data-startup-homepage]")?.textContent,
-    ).toBe("Fixture Co");
+    expect(container.querySelector("[data-startup-profile]")?.textContent).toBe(
+      "Fixture Co",
+    );
     expect(
       screen.getByRole("columnheader", { name: "Short description" }),
     ).toBeInTheDocument();
@@ -1115,6 +1143,16 @@ describe("Startups i18n", () => {
     expect(nl.investigationsStartups.mapEmpty).toBe(
       "Nog geen locaties op de lijst.",
     );
+    expect(en.investigationsStartups.tabOverview).toBe("Overview");
+    expect(en.investigationsStartups.tabNews).toBe("News");
+    expect(en.investigationsStartups.tabHiring).toBe("Hiring");
+    expect(en.investigationsStartups.tabFunding).toBe("Funding / Exit");
+    expect(en.investigationsStartups.tabTeam).toBe("Team");
+    expect(nl.investigationsStartups.tabOverview).toBe("Overzicht");
+    expect(nl.investigationsStartups.tabNews).toBe("Nieuws");
+    expect(nl.investigationsStartups.tabHiring).toBe("Vacatures");
+    expect(nl.investigationsStartups.tabFunding).toBe("Funding / Exit");
+    expect(nl.investigationsStartups.tabTeam).toBe("Team");
     expect(en.investigationsStartups.chartCaption).toBe(
       STARTUPS_INSIGHTS_CAPTION,
     );
@@ -1127,10 +1165,161 @@ describe("Startups i18n", () => {
   });
 });
 
+describe("Startups profile page", () => {
+  it("renders Overview bento chrome and soft-omits empty tiles and extra tabs", () => {
+    const { container } = render(
+      <StartupsProfilePage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        card={FIXTURE_CARD}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Fixture Co" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open homepage" })).toHaveAttribute(
+      "href",
+      "https://fixture.example",
+    );
+    expect(hrefsOf(container)).toContain(STARTUPS_PATH);
+    expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
+    const bento = container.querySelector("[data-startup-profile-bento]");
+    expect(bento).not.toBeNull();
+    expect(bento?.className).toContain("grid");
+    expect(bento?.className).toContain("md:grid-cols-2");
+    const tiles = [
+      ...container.querySelectorAll("[data-startup-profile-tile]"),
+    ];
+    expect(
+      tiles.map((node) => node.getAttribute("data-startup-profile-tile")),
+    ).toEqual(["category", "region", "sources", "map"]);
+    expect(tiles.every((node) => node.className.includes("rounded-xl"))).toBe(
+      true,
+    );
+    expect(
+      container.querySelector("[data-startup-profile-tile=logo]"),
+    ).toBeNull();
+    expect(
+      container.querySelector("[data-startup-profile-tile=blurb]"),
+    ).toBeNull();
+    expect(
+      container.querySelector("[data-startup-profile-tile=stage]"),
+    ).toBeNull();
+    expect(
+      container.querySelector("[data-startup-profile-tile=exit]"),
+    ).toBeNull();
+    expect(
+      container.querySelector("[data-startup-profile-tile=founders]"),
+    ).toBeNull();
+    expect(
+      container.querySelector("[data-startup-profile-tile=jobs]"),
+    ).toBeNull();
+    expect(container.querySelector("[data-startup-profile-tabs]")).toBeNull();
+    expect(
+      container.querySelector("[data-startup-profile-tab=news]"),
+    ).toBeNull();
+    expect(
+      container.querySelector("[data-startup-profile-tab=hiring]"),
+    ).toBeNull();
+    expect(
+      container.querySelector("[data-startup-profile-tab=funding]"),
+    ).toBeNull();
+    expect(
+      container.querySelector("[data-startup-profile-tab=team]"),
+    ).toBeNull();
+    const data = JSON.parse(
+      container.querySelector("script[type='application/ld+json']")
+        ?.textContent ?? "null",
+    ) as { description?: string; url?: string };
+    expect(data.url).toBe("https://fixture.example");
+    expect(data).not.toHaveProperty("description");
+    expect(container.textContent).not.toMatch(BANNED);
+    expect(container.textContent).not.toContain("—");
+  });
+
+  it("shows sourced extra tabs only and never invents News/Hiring/Funding/Team copy", () => {
+    const { container } = render(
+      <StartupsProfilePage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        card={{
+          ...FIXTURE_CARD,
+          description: "Sourced short blurb from Pulse.",
+          logoUrl: "https://fixture.example/logo.png",
+          stage: "Series B",
+          exitStatus: "acquired",
+          acquirer: "SpaceX",
+          exitOn: "2026",
+          jobsUrl: "https://fixture.example/careers",
+          founders: [{ name: "Ada Example", url: null, imageUrl: null }],
+          sources: [
+            "https://fixture.example/about",
+            "https://fixture.example/newsroom",
+          ],
+        }}
+      />,
+    );
+    expect(
+      container.querySelector("[data-startup-profile-tabs]"),
+    ).not.toBeNull();
+    expect(
+      [...container.querySelectorAll("[data-startup-profile-tab]")].map(
+        (node) => node.getAttribute("data-startup-profile-tab"),
+      ),
+    ).toEqual(["overview", "news", "hiring", "funding", "team"]);
+    expect(
+      container.querySelector("[data-startup-profile-tile=logo]"),
+    ).not.toBeNull();
+    expect(
+      container.querySelector("[data-startup-description]")?.textContent,
+    ).toBe("Sourced short blurb from Pulse.");
+    expect(container.querySelector("[data-startup-jobs]")).toHaveAttribute(
+      "href",
+      "https://fixture.example/careers",
+    );
+    const data = JSON.parse(
+      container.querySelector("script[type='application/ld+json']")
+        ?.textContent ?? "null",
+    ) as { description?: string };
+    expect(data.description).toBe("Sourced short blurb from Pulse.");
+    expect(JSON.stringify(data)).not.toContain("Person");
+  });
+
+  it("uses Dutch profile tab chrome", () => {
+    render(
+      <StartupsProfilePage
+        locale="nl"
+        t={tFrom(nl.investigationsStartups)}
+        card={{
+          ...FIXTURE_CARD,
+          jobsUrl: "https://fixture.example/careers",
+          founders: [{ name: "Ada Example", url: null, imageUrl: null }],
+          exitStatus: "ipo",
+          exitOn: "2024",
+          sources: ["https://fixture.example/newsroom"],
+        }}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Overzicht" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Nieuws" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Vacatures" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Funding / Exit" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Team" })).toBeInTheDocument();
+  });
+});
+
 describe("Startups site integration", () => {
   it("is in the sitemap and investigations index", () => {
     const sitemap = readFileSync(SITEMAP_FILE, "utf8");
     expect(sitemap).toContain("startupDirectorySitemapPaths");
+    expect(sitemap).toContain("startupProfileSitemapPaths");
+    expect(sitemap).toContain("listApprovedPublicStartupSlugs");
     expect(sitemap).toContain("listedPublicStartupCount");
     expect(readFileSync(SITEMAP_TEST_FILE, "utf8")).toContain(STARTUPS_PATH);
     expect(readFileSync(INDEX_FILE, "utf8")).toContain(STARTUPS_PATH);
@@ -1214,6 +1403,7 @@ describe("Startups site integration", () => {
 
     expect(sitemap).toContain("listedPublicStartupCount");
     expect(sitemap).toContain("startupDirectorySitemapPaths(listed)");
+    expect(sitemap).toContain("startupProfileSitemapPaths(slugs)");
     expect(sitemap).toContain("noStore");
     expect(sitemap).toContain('"/investigations/startups"');
     expect(sitemap).not.toContain("startupInvestigationSitemapPaths");
@@ -1224,6 +1414,7 @@ describe("Startups site integration", () => {
     for (const file of [
       ...componentSources(),
       PAGE_FILE,
+      PROFILE_FILE,
       INSIGHTS_FILE,
       MIGRATION_FILE,
       QUERIES_FILE,

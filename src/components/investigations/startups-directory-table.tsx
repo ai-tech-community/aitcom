@@ -1,3 +1,4 @@
+import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +14,7 @@ import { StartupsFounders } from "@/components/investigations/startups-founders"
 import { StartupsSourceChips } from "@/components/investigations/startups-source-chips";
 import {
   STARTUP_CATEGORY_LABELS,
+  buildStartupProfilePath,
   displayStartupFounders,
   displayStartupLogoUrl,
   formatStartupExitBadge,
@@ -50,6 +52,7 @@ export function StartupsDirectoryTable({
     sourcesColumn: string;
     jobsColumn: string;
     openJobs: string;
+    openHomepage: string;
     edit: string;
     caption: string;
   };
@@ -112,40 +115,51 @@ export function StartupsDirectoryTable({
               >
                 <TableCell className="align-top">
                   {logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={logoUrl}
-                      alt=""
-                      width={32}
-                      height={32}
-                      data-startup-logo={logoUrl}
-                      className="border-border size-8 rounded-md border object-cover"
-                      onError={(event) => {
-                        event.currentTarget.style.display = "none";
-                      }}
-                    />
+                    <a href={card.homepage} rel="noopener noreferrer">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={logoUrl}
+                        alt=""
+                        width={32}
+                        height={32}
+                        data-startup-logo={logoUrl}
+                        className="border-border size-8 rounded-md border object-cover"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
+                    </a>
                   ) : null}
                 </TableCell>
                 <TableCell className={cn(stickyName, "align-top")}>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={buildStartupProfilePath(card.slug)}
+                        data-startup-profile=""
+                        className="font-medium hover:underline"
+                      >
+                        {card.name}
+                      </Link>
+                      {isModerator ? (
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => onEdit?.(card)}
+                        >
+                          {copy.edit}
+                        </Button>
+                      ) : null}
+                    </div>
                     <a
                       href={card.homepage}
                       rel="noopener noreferrer"
                       data-startup-homepage=""
-                      className="font-medium hover:underline"
+                      className="text-muted-foreground text-xs hover:underline"
                     >
-                      {card.name}
+                      {copy.openHomepage}
                     </a>
-                    {isModerator ? (
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="ghost"
-                        onClick={() => onEdit?.(card)}
-                      >
-                        {copy.edit}
-                      </Button>
-                    ) : null}
                   </div>
                 </TableCell>
                 <TableCell className="max-w-64 align-top whitespace-normal">

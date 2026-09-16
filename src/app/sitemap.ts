@@ -1,7 +1,10 @@
 import type { MetadataRoute } from "next";
 import { unstable_noStore as noStore } from "next/cache";
 import { awesomeDirectorySitemapPaths } from "@/lib/investigations/awesome-ai-oss";
-import { startupDirectorySitemapPaths } from "@/lib/investigations/startups";
+import {
+  startupDirectorySitemapPaths,
+  startupProfileSitemapPaths,
+} from "@/lib/investigations/startups";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import {
   HUB_FORUM_PATH,
@@ -126,10 +129,14 @@ async function defaultAwesomePagePaths(): Promise<string[]> {
 async function defaultStartupPagePaths(): Promise<string[]> {
   noStore();
   try {
-    const { listedPublicStartupCount } =
+    const { listedPublicStartupCount, listApprovedPublicStartupSlugs } =
       await import("@/server/startups/queries");
     const listed = await listedPublicStartupCount();
-    return startupDirectorySitemapPaths(listed);
+    const slugs = await listApprovedPublicStartupSlugs();
+    return [
+      ...startupDirectorySitemapPaths(listed),
+      ...startupProfileSitemapPaths(slugs),
+    ];
   } catch (error) {
     console.error("[sitemap] startups directory page lookup failed", error);
     return [];

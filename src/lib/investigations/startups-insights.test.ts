@@ -33,6 +33,7 @@ function card(overrides: Partial<StartupPublicCard> = {}): StartupPublicCard {
     exitOn: null,
     jobsUrl: null,
     listedOn: "2026-09-15",
+    slug: "fixture-co",
     ...overrides,
   };
 }

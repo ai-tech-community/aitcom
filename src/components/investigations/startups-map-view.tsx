@@ -5,7 +5,11 @@ import { useMemo } from "react";
 import L from "leaflet";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 
-import type { StartupMapPin } from "@/lib/investigations/startups";
+import { Link } from "@/i18n/navigation";
+import {
+  buildStartupProfilePath,
+  type StartupMapPin,
+} from "@/lib/investigations/startups";
 
 const markerIcon = L.divIcon({
   html: `<div style="
@@ -53,12 +57,18 @@ export function StartupsMapView({ pins }: { pins: StartupMapPin[] }) {
         {pins.map((pin) => (
           <Marker key={pin.id} position={[pin.lat, pin.lng]} icon={markerIcon}>
             <Popup>
-              <a
-                href={pin.homepage}
-                rel="noopener noreferrer"
+              <Link
+                href={buildStartupProfilePath(pin.slug)}
                 className="block text-sm font-semibold text-black hover:underline"
               >
                 {pin.name}
+              </Link>
+              <a
+                href={pin.homepage}
+                rel="noopener noreferrer"
+                className="mt-1 block text-xs text-neutral-600 hover:underline"
+              >
+                {pin.homepage}
               </a>
               {pin.region ? (
                 <div className="mt-1 text-xs text-neutral-600">

@@ -1,4 +1,5 @@
 import { CANONICAL_PRODUCTION_ORIGIN } from "@/server/better-auth/base-url";
+import { slugify } from "@/lib/text-utils";
 import {
   sourcedStartupPlaceLabel,
   startupPlaceCentroid,
@@ -7,6 +8,16 @@ import {
 export const STARTUPS_PATH = "/investigations/startups";
 
 export const STARTUPS_INSIGHTS_PATH = "/investigations/startups/insights";
+
+/** Static `/insights` segment — never a company profile slug. */
+export const STARTUPS_RESERVED_SLUGS = new Set(["insights"]);
+
+export const STARTUPS_SLUG_MAX = 80;
+
+export const STARTUPS_SLUG_FALLBACK = "startup";
+
+export const STARTUPS_SLUG_ERROR =
+  "Use a unique lowercase slug (letters, numbers, hyphens).";
 
 export const STARTUPS_H1 = "AI startups worth watching";
 
@@ -89,6 +100,8 @@ export type StartupPublicCard = {
   exitOn: string | null;
   jobsUrl: string | null;
   listedOn: string;
+  /** Stable unique public path segment. Never invent a marketing handle. */
+  slug: string;
 };
 
 export const STARTUP_EXIT_STATUS_IDS = [
@@ -160,6 +173,7 @@ export type StartupMapPin = {
   id: string;
   name: string;
   homepage: string;
+  slug: string;
   lat: number;
   lng: number;
   /** Sourced city/region string only — never a fabricated street address. */
@@ -204,6 +218,137 @@ const CATEGORY_ALIASES: Record<string, StartupCategoryId> = {
 export function presentText(value: string | null | undefined): string | null {
   const trimmed = value?.trim() ?? "";
   return trimmed.length > 0 ? trimmed : null;
+}
+
+export function buildStartupProfilePath(slug: string): string {
+  return `${STARTUPS_PATH}/${slug}`;
+}
+
+export function startupSlugFromName(name: string): string {
+  const slug = slugify(name).slice(0, STARTUPS_SLUG_MAX);
+  return slug || STARTUPS_SLUG_FALLBACK;
+}
+
+export function parseStartupSlug(
+  value: string | null | undefined,
+): string | null {
+  const raw = presentText(value)?.toLowerCase() ?? "";
+  if (!raw || raw.length > STARTUPS_SLUG_MAX) return null;
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(raw) ? raw : null;
+}
+
+export function isReservedStartupSlug(slug: string): boolean {
+  return STARTUPS_RESERVED_SLUGS.has(slug);
+}
+
+export function allocateStartupSlug(
+  name: string,
+  taken: Iterable<string> = [],
+  preferred?: string | null,
+): string {
+  const reserved = new Set<string>(STARTUPS_RESERVED_SLUGS);
+  for (const value of taken) {
+    const slug = parseStartupSlug(value);
+    if (slug) reserved.add(slug);
+  }
+  const base = parseStartupSlug(preferred) ?? startupSlugFromName(name);
+  if (!reserved.has(base)) return base;
+  let n = 2;
+  while (reserved.has(`${base}-${n}`)) n += 1;
+  return `${base}-${n}`;
+}
+
+export type StartupOverviewTile =
+  | "logo"
+  | "blurb"
+  | "category"
+  | "region"
+  | "stage"
+  | "exit"
+  | "founders"
+  | "jobs"
+  | "sources"
+  | "map";
+
+export type StartupProfileExtraTab = "news" | "hiring" | "funding" | "team";
+
+export function startupNewsSources(
+  sources: readonly string[] | null | undefined,
+): string[] {
+  return displayStartupSources(sources).filter(
+    (href) => startupCiteKind(href) === "news",
+  );
+}
+
+export function startupOverviewTiles(
+  card: StartupPublicCard,
+): StartupOverviewTile[] {
+  const tiles: StartupOverviewTile[] = [];
+  if (displayStartupLogoUrl(card.logoUrl)) tiles.push("logo");
+  if (sanitizeStartupDescription(card.description)) tiles.push("blurb");
+  tiles.push("category");
+  if (presentText(card.region)) tiles.push("region");
+  if (presentText(card.stage)) tiles.push("stage");
+  if (card.exitStatus) tiles.push("exit");
+  if (displayStartupFounders(card.founders).length > 0) tiles.push("founders");
+  if (presentText(card.jobsUrl)) tiles.push("jobs");
+  if (displayStartupSources(card.sources).length > 0) tiles.push("sources");
+  if (verifiedStartupPin(card)) tiles.push("map");
+  return tiles;
+}
+
+export function startupProfileExtraTabs(
+  card: StartupPublicCard,
+): StartupProfileExtraTab[] {
+  const tabs: StartupProfileExtraTab[] = [];
+  if (startupNewsSources(card.sources).length > 0) tabs.push("news");
+  if (presentText(card.jobsUrl)) tabs.push("hiring");
+  if (card.exitStatus) tabs.push("funding");
+  if (displayStartupFounders(card.founders).length > 0) tabs.push("team");
+  return tabs;
+}
+
+export function startupProfileSitemapPaths(slugs: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const paths: string[] = [];
+  for (const raw of slugs) {
+    const slug = parseStartupSlug(raw);
+    if (!slug || seen.has(slug) || isReservedStartupSlug(slug)) continue;
+    seen.add(slug);
+    paths.push(buildStartupProfilePath(slug));
+  }
+  return paths;
+}
+
+export function startupProfileJsonLd(
+  card: StartupPublicCard,
+): Record<string, unknown> {
+  const item: Record<string, unknown> = {
+    "@type": "Organization",
+    name: card.name,
+    url: card.homepage,
+  };
+  const description = sanitizeStartupDescription(card.description);
+  if (description) item.description = description;
+  const logo = displayStartupLogoUrl(card.logoUrl);
+  if (logo) item.logo = logo;
+  const sources = displayStartupSources(card.sources);
+  if (sources.length > 0) item.sameAs = sources;
+  return item;
+}
+
+export function startupProfileMetaDescription(
+  card: StartupPublicCard,
+  locale: StartupLocale,
+): string | undefined {
+  const blurb = sanitizeStartupDescription(card.description);
+  if (blurb) return blurb;
+  const parts = [
+    STARTUP_CATEGORY_LABELS[card.category][locale],
+    presentText(card.region),
+    presentText(card.stage),
+  ].filter((value): value is string => value != null);
+  return parts.length > 0 ? parts.join(" · ") : undefined;
 }
 
 /** Sourced blurb only. Blank / whitespace stays omitted — never invent copy. */
@@ -330,6 +475,7 @@ export type PulseStartupRow = {
   jobsUrl?: string | null;
   description?: string | null;
   blurb?: string | null;
+  slug?: string | null;
 };
 
 /** Pulse `status` is the sourced exit, not listing pending|approved|rejected. */
@@ -362,6 +508,7 @@ export function mapPulseStartupWrite(row: PulseStartupRow) {
       : null,
     exitOn: exitStatus ? parseStartupExitOn(row.exitOn ?? row.exit_year) : null,
     jobsUrl: jobsRaw ? normalizeStartupHomepage(jobsRaw) : null,
+    slug: parseStartupSlug(row.slug),
   };
 }
 
@@ -598,7 +745,7 @@ export function resolveStartupPinCoords(
 export function verifiedStartupPin(
   card: Pick<
     StartupPublicCard,
-    "id" | "name" | "homepage" | "region" | "lat" | "lng"
+    "id" | "name" | "homepage" | "slug" | "region" | "lat" | "lng"
   >,
 ): StartupMapPin | null {
   const coords = resolveStartupPinCoords(card);
@@ -607,6 +754,7 @@ export function verifiedStartupPin(
     id: card.id,
     name: card.name,
     homepage: card.homepage,
+    slug: card.slug,
     lat: coords.lat,
     lng: coords.lng,
     region: sourcedStartupPlaceLabel(card.region),
