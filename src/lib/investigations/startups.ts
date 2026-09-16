@@ -451,6 +451,15 @@ function isTechAvivAirtableSource(host: string, path: string): boolean {
   );
 }
 
+/** Gigasheet Israel business sample — not every gigasheet.com URL. */
+const GIGASHEET_ISRAEL_LIST_PATH = "/sample-data/free-israel-business-listcsv";
+
+function isGigasheetIsraelListSource(host: string, path: string): boolean {
+  const gigasheetHost =
+    host === "gigasheet.com" || host.endsWith(".gigasheet.com");
+  return gigasheetHost && path === GIGASHEET_ISRAEL_LIST_PATH;
+}
+
 /** Publication name from the host only — never an invented article title. */
 export function sourcedStartupSourceTitle(href: string): string | null {
   const parsed = startupSourceHost(href);
@@ -466,6 +475,9 @@ export function sourcedStartupSourceTitle(href: string): string | null {
   }
   if (isTechAvivAirtableSource(parsed.host, parsed.path)) {
     return "TechAviv";
+  }
+  if (isGigasheetIsraelListSource(parsed.host, parsed.path)) {
+    return "Gigasheet";
   }
   const article = SOURCED_ARTICLE_TITLES[`${parsed.host}${parsed.path}`];
   if (article) return article;
