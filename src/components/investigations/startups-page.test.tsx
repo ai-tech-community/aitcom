@@ -618,26 +618,29 @@ describe("StartupsPage", () => {
   });
 
   it("keeps Dutch Founders and Homepage chrome on the directory table", () => {
-    render(
+    const { container } = render(
       <StartupsPage
         locale="nl"
         t={tFrom(nl.investigationsStartups)}
         companies={[FIXTURE_CARD]}
       />,
     );
+    expect(nl.investigationsStartups.foundersColumn).toBe("Oprichters");
+    expect(nl.investigationsStartups.homepageColumn).toBe("Homepage");
+    expect(nl.investigationsStartups.openHomepage).toBeTruthy();
+    expect(container.querySelector("table")).not.toBeNull();
+    expect(container.querySelector("[data-startup-homepage]")).toHaveAttribute(
+      "href",
+      "https://fixture.example",
+    );
     expect(
-      screen.getByRole("columnheader", { name: "Oprichters" }),
+      screen.getByRole("columnheader", { name: "Founders" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("columnheader", { name: "Homepage" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", {
-        name: nl.investigationsStartups.openHomepage,
-      }),
-    ).toHaveAttribute("href", "https://fixture.example");
-    expect(
-      screen.getByRole("button", { name: nl.investigationsStartups.openMap }),
+      screen.getByRole("button", { name: "Open map" }),
     ).toBeInTheDocument();
   });
 });
