@@ -24,6 +24,42 @@ describe("startup place centroids", () => {
     expect(startupPlaceCentroid(null)).toBeNull();
     expect(startupPlaceCentroid("")).toBeNull();
     expect(startupPlaceCentroid("Atlantis")).toBeNull();
+    expect(startupPlaceCentroid("Remote")).toBeNull();
+  });
+
+  it("pins every sourced live-style region at a city or country centroid", () => {
+    const liveRegions = [
+      "Israel",
+      "San Francisco, CA, USA",
+      "Paris, Île-de-France, France",
+      "New York City, NY, USA",
+      "Bengaluru, KA, India",
+      "Frankfurt am Main, Hesse, Germany",
+      "Boston, MA, USA",
+      "London, England, United Kingdom",
+      "Dallas, Texas, United States",
+      "Limerick, County Limerick, Ireland; Remote",
+      "Los Angeles, CA, USA",
+      "Seattle, WA, USA",
+    ];
+    for (const region of liveRegions) {
+      expect(startupPlaceCentroid(region), region).not.toBeNull();
+    }
+    expect(startupPlaceCentroid("Israel")).toMatchObject({
+      lat: 31.0461,
+      lng: 34.8516,
+      kind: "region",
+    });
+    expect(startupPlaceCentroid("San Francisco, CA, USA")).toMatchObject({
+      lat: 37.7749,
+      lng: -122.4194,
+      kind: "city",
+    });
+    expect(startupPlaceCentroid("Paris, Île-de-France, France")).toMatchObject({
+      lat: 48.8566,
+      lng: 2.3522,
+      kind: "city",
+    });
   });
 
   it("refuses street-like strings so we never invent an address", () => {

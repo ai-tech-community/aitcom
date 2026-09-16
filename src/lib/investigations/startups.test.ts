@@ -529,6 +529,32 @@ describe("soft-omit helpers", () => {
         }),
       ]),
     ).toHaveLength(1);
+
+    const liveStyle = startupMapPins([
+      sampleCard({
+        id: "israel",
+        region: "Israel",
+        lat: null,
+        lng: null,
+      }),
+      sampleCard({
+        id: "sf",
+        region: "San Francisco, CA, USA",
+        lat: null,
+        lng: null,
+      }),
+      sampleCard({
+        id: "blank",
+        region: null,
+        lat: null,
+        lng: null,
+      }),
+    ]);
+    expect(liveStyle).toHaveLength(2);
+    expect(liveStyle.map((pin) => pin.region).sort()).toEqual([
+      "Israel",
+      "San Francisco, CA, USA",
+    ]);
   });
 });
 

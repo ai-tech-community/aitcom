@@ -135,25 +135,28 @@ Hub members never see Join — `shouldPromoteJoin()` / `PromoteJoinCta` swap
 to Open Hub (`/communities/ait/forum`). Same leftover rule as navbar JOIN
 (`!user`).
 
-Directory default is an SSR `<table>`: Name (homepage link, sticky) ·
-Category · Region · Stage · Exit · Sources (favicon chips) · Jobs. Blank
-cells soft-omit — never invent “—”. Map is behind **Open map** → Sheet
-(`Map` / `Close`). Sourced pins only; empty sheet copy is
-**No locations listed yet**. No always-on map.
+Directory default is an SSR `<table>`: sticky **Name** · **Founders**
+(sourced name + profile link; AvatarGroup OK) · **Homepage** (its own
+hard `<a>`, not only Name) · Category · Region/City · Stage · Exit ·
+Sources (favicon chips) · Jobs. Blank cells soft-omit — never invent “—”.
+Map is behind **Open map** → Sheet (`Map` / `Close`). Every sourced
+region gets a pin at a city/region centroid; unknown / street-like
+strings stay list-only. Empty sheet copy is **No locations listed yet**
+only when no sourced region can be pinned. No always-on map.
 
 ## Directory filters
 
 Crawlable query params on `/investigations/startups`. Pagination links keep
 the active filters.
 
-| Param      | Values                               | Notes                                                                                                       |
-| ---------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `category` | taxonomy id                          | same as before                                                                                              |
-| `region`   | sourced region string                | only listed, non-blank regions                                                                              |
-| `stage`    | sourced stage string                 | blank stage does not match                                                                                  |
+| Param      | Values                               | Notes                                                                                                      |
+| ---------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `category` | taxonomy id                          | same as before                                                                                             |
+| `region`   | sourced region string                | only listed, non-blank regions                                                                             |
+| `stage`    | sourced stage string                 | blank stage does not match                                                                                 |
 | `status`   | `active` `acquired` `ipo` `shutdown` | blank/null exit → **active** for the filter only. Rows still omit the badge. Not listing pending/approved. |
-| `hiring`   | `1`                                  | has a sourced `jobs_url`                                                                                    |
-| `sort`     | `newest` (default) `name` `category` | `newest` is omitted from the URL                                                                            |
+| `hiring`   | `1`                                  | has a sourced `jobs_url`                                                                                   |
+| `sort`     | `newest` (default) `name` `category` | `newest` is omitted from the URL                                                                           |
 
 ## Crawl / SEO
 

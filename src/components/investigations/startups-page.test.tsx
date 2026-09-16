@@ -237,6 +237,14 @@ describe("StartupsPage", () => {
       "href",
       "https://fixture.example",
     );
+    expect(screen.getByRole("link", { name: "Open homepage" })).toHaveAttribute(
+      "href",
+      "https://fixture.example",
+    );
+    expect(table?.querySelector("[data-startup-homepage]")).toHaveAttribute(
+      "href",
+      "https://fixture.example",
+    );
     const nameHead = screen.getByRole("columnheader", { name: "Name" });
     expect(nameHead.className).toMatch(/sticky/);
     expect(nameHead.className).toMatch(/left-0/);
@@ -302,6 +310,12 @@ describe("StartupsPage", () => {
     );
     expect(
       screen.getByRole("columnheader", { name: "Name" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Founders" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Homepage" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("columnheader", { name: "Category" }),
@@ -437,8 +451,16 @@ describe("StartupsPage", () => {
     );
     const table = container.querySelector("table");
     expect(table).not.toBeNull();
-    const nameLink = table?.querySelector('a[href="https://fixture.example"]');
+    const nameLink = table?.querySelector(
+      'a[href="https://fixture.example"]:not([data-startup-homepage])',
+    );
     expect(nameLink?.textContent).toBe("Fixture Co");
+    expect(
+      table?.querySelector("[data-startup-homepage]")?.getAttribute("href"),
+    ).toBe("https://fixture.example");
+    expect(table?.querySelector("[data-startup-homepage]")?.textContent).toBe(
+      "Open homepage",
+    );
     const sourceLink = table?.querySelector(
       'a[href="https://fixture.example/about"]',
     );
@@ -488,6 +510,81 @@ describe("StartupsPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders sourced founders and a dedicated Homepage <a> in the table", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[
+          {
+            ...FIXTURE_CARD,
+            founders: [
+              {
+                name: "Ada Example",
+                url: "https://ada.example",
+                imageUrl: null,
+              },
+              { name: "No Url", url: null, imageUrl: null },
+            ],
+          },
+        ]}
+      />,
+    );
+    const table = container.querySelector("table");
+    expect(table).not.toBeNull();
+    expect(table?.querySelector("[data-startup-founders]")).not.toBeNull();
+    expect(table?.querySelector("[data-startup-founder-ssr]")).not.toBeNull();
+    expect(
+      table?.querySelector("[data-startup-founder-name='Ada Example']")
+        ?.textContent,
+    ).toBe("Ada Example");
+    expect(
+      table?.querySelector(
+        "[data-startup-founder-profile='https://ada.example']",
+      ),
+    ).toHaveAttribute("href", "https://ada.example");
+    expect(table?.textContent).toContain("No Url");
+    expect(screen.getByRole("link", { name: "Open homepage" })).toHaveAttribute(
+      "href",
+      "https://fixture.example",
+    );
+    expect(table?.textContent).not.toContain("—");
+  });
+
+  it("pins live sourced regions in the Map sheet instead of staying empty", () => {
+    render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[
+          {
+            ...FIXTURE_CARD,
+            id: "israel-co",
+            name: "Israel Co",
+            region: "Israel",
+            lat: null,
+            lng: null,
+          },
+          {
+            ...FIXTURE_CARD,
+            id: "sf-co",
+            name: "SF Co",
+            region: "San Francisco, CA, USA",
+            lat: null,
+            lng: null,
+          },
+        ]}
+      />,
+    );
+    expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open map" }));
+    expect(screen.getByRole("heading", { name: "Map" })).toBeInTheDocument();
+    expect(screen.getByTestId("startups-map")).toBeInTheDocument();
+    expect(
+      screen.queryByText("No locations listed yet"),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the Map sheet empty state when no sourced places are listed", () => {
     render(
       <StartupsPage
@@ -518,6 +615,30 @@ describe("StartupsPage", () => {
     expect(container.textContent).toContain(
       nl.investigationsStartups.howWeList,
     );
+  });
+
+  it("keeps Dutch Founders and Homepage chrome on the directory table", () => {
+    render(
+      <StartupsPage
+        locale="nl"
+        t={tFrom(nl.investigationsStartups)}
+        companies={[FIXTURE_CARD]}
+      />,
+    );
+    expect(
+      screen.getByRole("columnheader", { name: "Oprichters" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Homepage" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", {
+        name: nl.investigationsStartups.openHomepage,
+      }),
+    ).toHaveAttribute("href", "https://fixture.example");
+    expect(
+      screen.getByRole("button", { name: nl.investigationsStartups.openMap }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -924,8 +1045,12 @@ describe("Startups i18n", () => {
     expect(en.investigationsStartups.mapClose).toBe("Close");
     expect(en.investigationsStartups.mapEmpty).toBe("No locations listed yet");
     expect(en.investigationsStartups.nameColumn).toBe("Name");
+    expect(en.investigationsStartups.foundersColumn).toBe("Founders");
+    expect(en.investigationsStartups.homepageColumn).toBe("Homepage");
     expect(en.investigationsStartups.exitColumn).toBe("Exit");
     expect(en.investigationsStartups.jobsColumn).toBe("Jobs");
+    expect(nl.investigationsStartups.foundersColumn).toBe("Oprichters");
+    expect(nl.investigationsStartups.homepageColumn).toBe("Homepage");
     expect(nl.investigationsStartups.openMap).toBe("Open kaart");
     expect(nl.investigationsStartups.mapTitle).toBe("Kaart");
     expect(nl.investigationsStartups.mapClose).toBe("Sluiten");

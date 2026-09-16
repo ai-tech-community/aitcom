@@ -1241,6 +1241,8 @@
     "mapClose": "Sluiten",
     "mapEmpty": "Nog geen locaties op de lijst.",
     "nameColumn": "Naam",
+    "foundersColumn": "Oprichters",
+    "homepageColumn": "Homepage",
     "exitColumn": "Exit",
     "jobsColumn": "Vacatures",
     "sources": "Bronnen",
