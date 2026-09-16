@@ -126,8 +126,8 @@ describe("public events site integration", () => {
     );
     expect(existsSync(OPS_DOC)).toBe(true);
     const ops = readFileSync(OPS_DOC, "utf8");
-    expect(ops).toMatch(/fat CMS listing/i);
-    expect(ops).toMatch(/not the public listing/i);
+    expect(ops).toMatch(/fat CMS\s+listing/i);
+    expect(ops).toMatch(/not\*\* the\s+public listing/i);
     expect(readFileSync(QUERIES_FILE, "utf8")).toMatch(
       /Parked curated store[\s\S]*listPublicEventCards[\s\S]*listCuratedPublicEvents/,
     );
