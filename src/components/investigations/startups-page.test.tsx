@@ -237,6 +237,15 @@ describe("StartupsPage", () => {
       "href",
       "https://fixture.example",
     );
+    const nameHead = screen.getByRole("columnheader", { name: "Name" });
+    expect(nameHead.className).toMatch(/sticky/);
+    expect(nameHead.className).toMatch(/left-0/);
+    const nameCell = screen
+      .getByRole("link", { name: "Fixture Co" })
+      .closest("td");
+    expect(nameCell?.className).toMatch(/sticky/);
+    expect(nameCell?.className).toMatch(/left-0/);
+    expect(table?.className).toMatch(/border-separate/);
     expect(screen.getByRole("link", { name: "Docs" })).toHaveAttribute(
       "href",
       "https://fixture.example/about",

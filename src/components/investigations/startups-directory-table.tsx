@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -16,8 +17,10 @@ import {
   type StartupLocale,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
+import { cn } from "@/lib/utils";
 
-const stickyName = "bg-background sticky left-0 z-10 min-w-40 border-r";
+const stickyName =
+  "bg-background group-hover:bg-muted/50 sticky left-0 z-10 min-w-40 border-r";
 const columnHead =
   "text-muted-foreground font-mono text-xs tracking-wider uppercase";
 
@@ -41,14 +44,16 @@ export function StartupsDirectoryTable({
     jobsColumn: string;
     openJobs: string;
     edit: string;
+    caption: string;
   };
   onEdit?: (card: StartupPublicCard) => void;
 }) {
   return (
-    <Table>
+    <Table className="border-separate border-spacing-0">
+      <TableCaption className="sr-only">{copy.caption}</TableCaption>
       <TableHeader>
         <TableRow>
-          <TableHead scope="col" className={`${stickyName} ${columnHead}`}>
+          <TableHead scope="col" className={cn(stickyName, columnHead)}>
             {copy.nameColumn}
           </TableHead>
           <TableHead scope="col" className={columnHead}>
@@ -79,7 +84,12 @@ export function StartupsDirectoryTable({
           const jobsUrl = presentText(card.jobsUrl);
 
           return (
-            <TableRow key={card.id} id={card.id} data-startup-card={card.id}>
+            <TableRow
+              key={card.id}
+              id={card.id}
+              data-startup-card={card.id}
+              className="group"
+            >
               <TableCell className={stickyName}>
                 <div className="flex items-center gap-2">
                   <a

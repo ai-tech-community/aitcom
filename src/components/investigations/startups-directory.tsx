@@ -332,6 +332,7 @@ export function StartupsDirectory({
             jobsColumn: t("jobsColumn"),
             openJobs: t("openJobs"),
             edit: t("edit"),
+            caption: t("tabDirectory"),
           }}
           onEdit={(next) => {
             setEditing(next);

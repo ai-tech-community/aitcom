@@ -151,7 +151,7 @@ the active filters.
 | `category` | taxonomy id                          | same as before                                                                                              |
 | `region`   | sourced region string                | only listed, non-blank regions                                                                              |
 | `stage`    | sourced stage string                 | blank stage does not match                                                                                  |
-| `status`   | `active` `acquired` `ipo` `shutdown` | blank/null exit → **active** for the filter only. Cards still omit the badge. Not listing pending/approved. |
+| `status`   | `active` `acquired` `ipo` `shutdown` | blank/null exit → **active** for the filter only. Rows still omit the badge. Not listing pending/approved. |
 | `hiring`   | `1`                                  | has a sourced `jobs_url`                                                                                    |
 | `sort`     | `newest` (default) `name` `category` | `newest` is omitted from the URL                                                                            |
 
