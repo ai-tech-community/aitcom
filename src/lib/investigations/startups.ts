@@ -438,6 +438,19 @@ function isCursorJoiningSpacexSource(host: string, path: string): boolean {
   return cursorHost && path === "/blog/joining-spacex";
 }
 
+/** TechAviv Unicorns share base — not every airtable.com URL. */
+const TECHAVIV_AIRTABLE_APP = "appyexehrnzkmquvh";
+
+function isTechAvivAirtableSource(host: string, path: string): boolean {
+  const airtableHost =
+    host === "airtable.com" || host.endsWith(".airtable.com");
+  if (!airtableHost) return false;
+  return (
+    path === `/${TECHAVIV_AIRTABLE_APP}` ||
+    path.startsWith(`/${TECHAVIV_AIRTABLE_APP}/`)
+  );
+}
+
 /** Publication name from the host only — never an invented article title. */
 export function sourcedStartupSourceTitle(href: string): string | null {
   const parsed = startupSourceHost(href);
@@ -450,6 +463,9 @@ export function sourcedStartupSourceTitle(href: string): string | null {
   }
   if (isCursorJoiningSpacexSource(parsed.host, parsed.path)) {
     return "Cursor: Joining SpaceX";
+  }
+  if (isTechAvivAirtableSource(parsed.host, parsed.path)) {
+    return "TechAviv";
   }
   const article = SOURCED_ARTICLE_TITLES[`${parsed.host}${parsed.path}`];
   if (article) return article;

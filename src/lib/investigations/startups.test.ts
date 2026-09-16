@@ -177,6 +177,28 @@ describe("homepage and sources", () => {
     expect(
       startupSourceLabel("https://cursor.com/blog/joining-spacex", "nl"),
     ).toBe("Cursor: Joining SpaceX");
+    expect(
+      startupSourceLabel(
+        "https://airtable.com/appyexehrnzkMquvH/shrTechAvivUnicorns",
+      ),
+    ).toBe("TechAviv");
+    expect(
+      startupSourceLabel("https://www.airtable.com/appyexehrnzkMquvH/"),
+    ).toBe("TechAviv");
+    expect(
+      startupSourceLabel(
+        "https://airtable.com/appyexehrnzkMquvH/shrShare?utm_source=ops",
+      ),
+    ).toBe("TechAviv");
+    expect(
+      startupSourceLabel(
+        "https://airtable.com/appyexehrnzkMquvH/shrShare",
+        "nl",
+      ),
+    ).toBe("TechAviv");
+    expect(
+      startupSourceLabel("https://airtable.com/appOtherBase/shrNotTechAviv"),
+    ).toBe("Docs");
     for (const href of [
       "https://en.wikipedia.org/wiki/Anthropic",
       "https://cohere.com/about",
@@ -227,6 +249,32 @@ describe("homepage and sources", () => {
         label: "TechCrunch",
       },
     ]);
+  });
+
+  it("labels the TechAviv Airtable unicorn share as TechAviv, not Docs or News", () => {
+    const airtable =
+      "https://airtable.com/appyexehrnzkMquvH/shrTechAvivUnicorns";
+    const companyPage = "https://example-startup.com/";
+    expect(
+      displayStartupSourceChips([airtable, companyPage], "en").map(
+        (chip) => chip.label,
+      ),
+    ).toEqual(["TechAviv", "Docs"]);
+    expect(
+      displayStartupSourceChips([airtable, companyPage], "nl").map(
+        (chip) => chip.label,
+      ),
+    ).toEqual(["TechAviv", "Docs"]);
+    expect(
+      displayStartupSourceChips(
+        [
+          airtable,
+          "https://example-startup.com/news/one",
+          "https://example-startup.com/news/two",
+        ],
+        "en",
+      ).map((chip) => chip.label),
+    ).toEqual(["TechAviv", "News"]);
   });
 
   it("keeps the Production Cursor sources URL as the Joining SpaceX chip", () => {
