@@ -319,6 +319,44 @@ describe("StartupsPage", () => {
     expect(hrefs).toContain("/investigations/startups?page=2");
     expect(hrefs).toContain("/investigations/startups?page=3");
     expect(container.querySelectorAll("[data-startup-card]")).toHaveLength(24);
+    const page1Ld = JSON.parse(
+      container.querySelector("script[type='application/ld+json']")
+        ?.textContent ?? "null",
+    ) as { itemListElement?: unknown[] };
+    expect(page1Ld.itemListElement).toHaveLength(24);
+  });
+
+  it("page-scopes Directory JSON-LD to the current ?page= slice", () => {
+    const companies = Array.from({ length: 80 }, (_, index) => ({
+      ...FIXTURE_CARD,
+      id: `ld-card-${index}`,
+      name: `Listed Co ${index + 1}`,
+      homepage: `https://listed-${index}.example`,
+      // Distinct listedOn so default Newest keeps insertion order (page 3 = 49–72).
+      listedOn: new Date(Date.UTC(2026, 8, 15) - index * 86_400_000)
+        .toISOString()
+        .slice(0, 10),
+    }));
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={companies}
+        query={{ q: "", category: "all", page: 3 }}
+      />,
+    );
+    expect(container.querySelectorAll("[data-startup-card]")).toHaveLength(24);
+    expect(container.textContent).toContain("Listed Co 49");
+    expect(container.textContent).not.toContain("Listed Co 1");
+    const data = JSON.parse(
+      container.querySelector("script[type='application/ld+json']")
+        ?.textContent ?? "null",
+    ) as { itemListElement?: Array<{ item?: { name?: string } }> };
+    expect(data.itemListElement).toHaveLength(24);
+    expect(data.itemListElement?.[0]?.item?.name).toBe("Listed Co 49");
+    expect(
+      data.itemListElement?.some((row) => row.item?.name === "Listed Co 1"),
+    ).toBe(false);
   });
 
   it("keeps Dutch copy on the same investigation path", () => {
@@ -750,7 +788,7 @@ describe("Startups site integration", () => {
   it("is in the sitemap and investigations index", () => {
     const sitemap = readFileSync(SITEMAP_FILE, "utf8");
     expect(sitemap).toContain("startupDirectorySitemapPaths");
-    expect(sitemap).toContain("countApprovedPublicStartups");
+    expect(sitemap).toContain("listedPublicStartupCount");
     expect(readFileSync(SITEMAP_TEST_FILE, "utf8")).toContain(STARTUPS_PATH);
     expect(readFileSync(INDEX_FILE, "utf8")).toContain(STARTUPS_PATH);
   });
@@ -829,8 +867,9 @@ describe("Startups site integration", () => {
     expect(pagination).toContain("<Link");
     expect(pagination).not.toMatch(/onClick=\{[^}]*page/);
 
-    expect(sitemap).toContain("countApprovedPublicStartups");
+    expect(sitemap).toContain("listedPublicStartupCount");
     expect(sitemap).toContain("startupDirectorySitemapPaths(listed)");
+    expect(sitemap).toContain("noStore");
     expect(sitemap).toContain('"/investigations/startups"');
     expect(sitemap).not.toContain("startupInvestigationSitemapPaths");
     expect(sitemap).not.toContain("filterUnlistedStartupSitemapEntries");

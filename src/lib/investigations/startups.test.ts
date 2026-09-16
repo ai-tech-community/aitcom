@@ -636,6 +636,10 @@ describe("directory query", () => {
     expect(startupDirectorySitemapPaths(279)).not.toContain(
       STARTUPS_INSIGHTS_PATH,
     );
+    expect(startupDirectorySitemapPaths(3479)).toHaveLength(144);
+    expect(startupDirectorySitemapPaths(3479).at(-1)).toBe(
+      `${STARTUPS_PATH}?page=145`,
+    );
     expect(STARTUPS_PUBLIC_INDEX_MIN).toBe(3000);
     expect(startupsPublicIndexable(20)).toBe(false);
     expect(startupsPublicIndexable(2999)).toBe(false);
@@ -670,6 +674,27 @@ describe("directory query", () => {
 });
 
 describe("json-ld", () => {
+  it("page-scopes ItemList to the current Directory slice", () => {
+    const cards = Array.from({ length: 80 }, (_, index) =>
+      sampleCard({ id: `n-${index}`, name: `Co ${index}` }),
+    );
+    const page = paginateStartupCards(cards, 3);
+    expect(page.items).toHaveLength(24);
+    expect(page.items[0]?.name).toBe("Co 48");
+    const data = startupsDirectoryJsonLd(page.items);
+    const items = data.itemListElement as Array<{
+      position: number;
+      item: { name: string };
+    }>;
+    expect(items).toHaveLength(24);
+    expect(items).toHaveLength(page.pageSize);
+    expect(items[0]?.item.name).toBe("Co 48");
+    expect(items[0]?.position).toBe(1);
+    expect(items.at(-1)?.item.name).toBe("Co 71");
+    expect(JSON.stringify(data)).not.toContain("Co 0");
+    expect(JSON.stringify(data)).not.toContain("Co 47");
+  });
+
   it("emits Organization items from listed cards only", () => {
     const data = startupsDirectoryJsonLd([sampleCard()]);
     expect(data["@type"]).toBe("ItemList");
