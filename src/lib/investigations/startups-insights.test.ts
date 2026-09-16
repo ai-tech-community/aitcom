@@ -26,6 +26,7 @@ function card(overrides: Partial<StartupPublicCard> = {}): StartupPublicCard {
     lng: null,
     stage: null,
     logoUrl: null,
+    description: null,
     founders: [],
     exitStatus: null,
     acquirer: null,

@@ -66,6 +66,7 @@ export function StartupsSubmitDialog({
     fieldLat: string;
     fieldLng: string;
     fieldStage: string;
+    fieldDescription: string;
     fieldLogo: string;
     fieldFounders: string;
     fieldFoundersHint: string;
@@ -89,6 +90,7 @@ export function StartupsSubmitDialog({
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [stage, setStage] = useState("");
+  const [description, setDescription] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [foundersText, setFoundersText] = useState("");
   const [exitStatus, setExitStatus] = useState<StartupExitStatus | "">("");
@@ -111,6 +113,7 @@ export function StartupsSubmitDialog({
       setLat(editing.lat != null ? String(editing.lat) : "");
       setLng(editing.lng != null ? String(editing.lng) : "");
       setStage(editing.stage ?? "");
+      setDescription(editing.description ?? "");
       setLogoUrl(editing.logoUrl ?? "");
       setFoundersText(
         editing.founders
@@ -179,6 +182,7 @@ export function StartupsSubmitDialog({
     setLat("");
     setLng("");
     setStage("");
+    setDescription("");
     setLogoUrl("");
     setFoundersText("");
     setExitStatus("");
@@ -211,6 +215,7 @@ export function StartupsSubmitDialog({
       lat: parsedOptionalNumber(lat),
       lng: parsedOptionalNumber(lng),
       stage: stage.trim() || null,
+      description: description.trim() || null,
       logoUrl: logoUrl.trim() || null,
       founders: foundersText
         .split("\n")
@@ -343,6 +348,14 @@ export function StartupsSubmitDialog({
               id="startup-stage"
               value={stage}
               onChange={(event) => setStage(event.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="startup-description">{copy.fieldDescription}</Label>
+            <Textarea
+              id="startup-description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
             />
           </div>
           <div className="flex flex-col gap-2">

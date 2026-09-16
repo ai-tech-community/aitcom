@@ -38,6 +38,9 @@ export const STARTUPS_PAGE_SIZE = 24;
 
 export const STARTUPS_NAME_MAX = 160;
 
+/** Sourced short blurb. Longer than logo URLs; still a directory one-liner. */
+export const STARTUPS_DESCRIPTION_MAX = 500;
+
 export type StartupLocale = "en" | "nl";
 
 export type StartupCategoryId =
@@ -78,6 +81,8 @@ export type StartupPublicCard = {
   lng: number | null;
   stage: string | null;
   logoUrl: string | null;
+  /** Sourced short blurb only. Soft-omit blank — never invent copy. */
+  description: string | null;
   founders: StartupFounder[];
   exitStatus: StartupExitStatus | null;
   acquirer: string | null;
@@ -201,6 +206,29 @@ export function presentText(value: string | null | undefined): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+/** Sourced blurb only. Blank / whitespace stays omitted — never invent copy. */
+export function sanitizeStartupDescription(
+  value: string | null | undefined,
+): string | null {
+  const trimmed = presentText(value);
+  if (!trimmed) return null;
+  return trimmed.length <= STARTUPS_DESCRIPTION_MAX
+    ? trimmed
+    : trimmed.slice(0, STARTUPS_DESCRIPTION_MAX);
+}
+
+/**
+ * Verified logo URL only. Soft-omit blank, over-long, or non-http(s).
+ * Never invent a mark or homepage favicon.
+ */
+export function displayStartupLogoUrl(
+  value: string | null | undefined,
+): string | null {
+  const raw = presentText(value);
+  if (!raw || raw.length > 240) return null;
+  return normalizeStartupHomepage(raw);
+}
+
 export function parseStartupCategory(
   value: string | null | undefined,
 ): StartupCategoryId | null {
@@ -300,6 +328,8 @@ export type PulseStartupRow = {
   exitOn?: string | number | null;
   jobs_url?: string | null;
   jobsUrl?: string | null;
+  description?: string | null;
+  blurb?: string | null;
 };
 
 /** Pulse `status` is the sourced exit, not listing pending|approved|rejected. */
@@ -322,6 +352,9 @@ export function mapPulseStartupWrite(row: PulseStartupRow) {
     region: presentText(row.region),
     stage: presentText(row.stage),
     logoUrl: logoRaw ? normalizeStartupHomepage(logoRaw) : null,
+    description: sanitizeStartupDescription(
+      presentText(row.description) ?? presentText(row.blurb),
+    ),
     founders: sanitizeStartupFounders(row.founders),
     exitStatus,
     acquirer: exitStatus
@@ -911,6 +944,8 @@ export function startupsDirectoryJsonLd(
         name: card.name,
         url: card.homepage,
       };
+      const description = sanitizeStartupDescription(card.description);
+      if (description) item.description = description;
       const sources = displayStartupSources(card.sources);
       if (sources.length > 0) item.sameAs = sources;
       // Organization only — never Person nodes or invented founder images.

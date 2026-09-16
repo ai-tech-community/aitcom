@@ -98,6 +98,7 @@ import * as migration_20260915d_startups_soft_omit_fields from "./20260915d_star
 import * as migration_20260915e_startups_v1_enriched from "./20260915e_startups_v1_enriched";
 import * as migration_20260915f_startups_v1_polish from "./20260915f_startups_v1_polish";
 import * as migration_20260916a_curated_public_events_weekday from "./20260916a_curated_public_events_weekday";
+import * as migration_20260916b_startups_description from "./20260916b_startups_description";
 
 export const migrations = [
   {
@@ -599,5 +600,10 @@ export const migrations = [
     up: migration_20260916a_curated_public_events_weekday.up,
     down: migration_20260916a_curated_public_events_weekday.down,
     name: "20260916a_curated_public_events_weekday",
+  },
+  {
+    up: migration_20260916b_startups_description.up,
+    down: migration_20260916b_startups_description.down,
+    name: "20260916b_startups_description",
   },
 ];

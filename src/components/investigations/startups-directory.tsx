@@ -323,16 +323,16 @@ export function StartupsDirectory({
           locale={locale}
           isModerator={isModerator}
           copy={{
+            logoColumn: t("logoColumn"),
             nameColumn: t("nameColumn"),
+            descriptionColumn: t("descriptionColumn"),
             foundersColumn: t("foundersColumn"),
-            homepageColumn: t("homepageColumn"),
             categoryColumn: t("categoryColumn"),
             regionColumn: t("regionColumn"),
             stageColumn: t("stageColumn"),
             exitColumn: t("exitColumn"),
             sourcesColumn: t("sourcesColumn"),
             jobsColumn: t("jobsColumn"),
-            openHomepage: t("openHomepage"),
             openJobs: t("openJobs"),
             edit: t("edit"),
             caption: t("tabDirectory"),
@@ -374,6 +374,7 @@ export function StartupsDirectory({
             fieldLat: t("fieldLat"),
             fieldLng: t("fieldLng"),
             fieldStage: t("fieldStage"),
+            fieldDescription: t("fieldDescription"),
             fieldLogo: t("fieldLogo"),
             fieldFounders: t("fieldFounders"),
             fieldFoundersHint: t("fieldFoundersHint"),

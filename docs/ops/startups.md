@@ -75,6 +75,7 @@ Row shape — Pulse fixture aliases are accepted (`logo_url`, `jobs_url`,
   "region": null,
   "stage": null,
   "logo_url": null,
+  "description": null,
   "founders": [{ "name": "Ada Example", "url": null }],
   "status": null,
   "exit_acquirer": null,
@@ -87,7 +88,9 @@ Rules:
 
 - Homepage must be a live `http(s)` URL (Ops confirms 200 before insert).
 - Sources: **1–3** URLs.
-- `region`, `stage`, `logoUrl`, `lat`, `lng` may be null. The UI soft-omits blanks.
+- `region`, `stage`, `logoUrl`, `description` / `blurb`, `lat`, `lng` may be
+  null. The UI soft-omits blanks. `description` is a sourced short blurb only
+  — never invent copy. Pulse will enrich existing rows once the column exists.
 - `founders` is sourced-only `{ name, url?, imageUrl? }[]`. Blank name rows
   drop. Max 8. Leave `[]` when Pulse did not pass names. Photo URL only when
   sourced — UI uses initials otherwise and **never invents a face or stock
@@ -135,10 +138,12 @@ Hub members never see Join — `shouldPromoteJoin()` / `PromoteJoinCta` swap
 to Open Hub (`/communities/ait/forum`). Same leftover rule as navbar JOIN
 (`!user`).
 
-Directory default is an SSR `<table>`: sticky **Name** · **Founders**
-(sourced name + profile link; AvatarGroup OK) · **Homepage** (its own
-hard `<a>`, not only Name) · Category · Region/City · Stage · Exit ·
-Sources (favicon chips) · Jobs. Blank cells soft-omit — never invent “—”.
+Directory default is an SSR `<table>`: **Logo** (sourced `logoUrl` only;
+never a favicon or invented mark) · sticky **Name** (hard `<a href={homepage}>`)
+· **Short description** (sourced blurb only) · Category · City/region ·
+Founders (sourced name + profile link; AvatarGroup OK) · Sources (favicon
+chips) · Jobs · Exit · Stage. The separate Homepage column is gone — Name
+is the homepage link. Blank cells soft-omit — never invent “—”.
 Map is behind **Open map** → Sheet (`Map` / `Close`). Every sourced
 region gets a pin at a city/region centroid; unknown / street-like
 strings stay list-only. Empty sheet copy is **No locations listed yet**
