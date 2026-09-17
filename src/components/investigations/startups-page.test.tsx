@@ -1312,6 +1312,22 @@ describe("Startups profile page", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Team" })).toBeInTheDocument();
   });
+
+  it("keeps source-chip favicon onError behind a client boundary so profile SSR cannot throw", () => {
+    const chips = readFileSync(join(dir, "startups-source-chips.tsx"), "utf8");
+    const overview = readFileSync(
+      join(dir, "startups-profile-overview.tsx"),
+      "utf8",
+    );
+    const profile = readFileSync(join(dir, "startups-profile.tsx"), "utf8");
+    const route = readFileSync(PROFILE_FILE, "utf8");
+    expect(overview).toContain("StartupsSourceChips");
+    expect(profile).toContain("StartupsSourceChips");
+    expect(chips).toMatch(/^["']use client["']/);
+    expect(overview).not.toMatch(/\bon(?:Error|Click|Change|Load)\s*=/);
+    expect(profile).not.toMatch(/\bon(?:Error|Click|Change|Load)\s*=/);
+    expect(route).not.toMatch(/\bon(?:Error|Click|Change|Load)\s*=/);
+  });
 });
 
 describe("Startups site integration", () => {
