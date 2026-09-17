@@ -200,7 +200,7 @@ const HOLLOW_LISTING_PLACE = /^(online|tba)$/i;
 
 /** Real venue or city only — never invent "Online" as a city. */
 export function sourcedListingEventPlace(
-  event: Pick<HostedEventInput, "city" | "location">,
+  event: Pick<HostedEventInput, "city" | "location" | "format">,
 ): string | null {
   const city = event.city?.trim() ?? "";
   if (city && !HOLLOW_LISTING_PLACE.test(city)) return city;
