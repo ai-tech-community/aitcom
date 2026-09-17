@@ -195,3 +195,51 @@ export function publicEventsJsonLd(
     return data ? [data] : [];
   });
 }
+
+const HOLLOW_LISTING_PLACE = /^(online|tba)$/i;
+
+/** Real venue or city only — never invent "Online" as a city. */
+export function sourcedListingEventPlace(
+  event: Pick<HostedEventInput, "city" | "location" | "format">,
+): string | null {
+  const city = event.city?.trim() ?? "";
+  if (city && !HOLLOW_LISTING_PLACE.test(city)) return city;
+  const location = event.location?.trim() ?? "";
+  if (location && !HOLLOW_LISTING_PLACE.test(location)) return location;
+  return null;
+}
+
+export function listingEventJsonLd(
+  event: HostedEventInput,
+  locale: PublicEventLocale,
+): Record<string, unknown> | null {
+  const name = event.title.trim();
+  const startDate = toPublicEventDate(event.date);
+  const url = hostedEventUrl(event, locale);
+  const place = sourcedListingEventPlace(event);
+  if (!name || !startDate || !url || !place) return null;
+
+  const data: Record<string, unknown> = {
+    "@type": "Event",
+    name,
+    startDate,
+    url,
+    location: { "@type": "Place", name: place },
+  };
+  const description = sanitizePublicEventWhy(
+    (typeof event.summary === "string" ? event.summary : "").split(/\n/)[0] ??
+      "",
+  );
+  if (description) data.description = description;
+  return data;
+}
+
+export function listingEventsJsonLd(
+  events: readonly HostedEventInput[],
+  locale: PublicEventLocale,
+): Record<string, unknown>[] {
+  return events.flatMap((event) => {
+    const data = listingEventJsonLd(event, locale);
+    return data ? [data] : [];
+  });
+}

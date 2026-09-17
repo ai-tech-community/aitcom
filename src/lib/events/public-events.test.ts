@@ -12,12 +12,16 @@ import {
   PUBLIC_EVENTS_WHY_MAX,
   isPublicEventUrl,
   isSourcedPublicEvent,
+  listingEventJsonLd,
+  listingEventsJsonLd,
   publicEventFromHosted,
   publicEventJsonLd,
   publicEventPlace,
   publicEventsJsonLd,
   sanitizePublicEventWhy,
   sortPublicEvents,
+  sourcedListingEventPlace,
+  type HostedEventInput,
   type PublicEventCard,
 } from "./public-events";
 import { CURATED_PUBLIC_EVENT_SEEDS } from "./public-events-seeds";
@@ -167,6 +171,170 @@ describe("publicEventsJsonLd", () => {
     ]);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.["@type"]).toBe("Event");
+    expect(rows.some((row) => row["@type"] === "ItemList")).toBe(false);
+  });
+});
+
+function hostedListingEvent(
+  overrides: Partial<HostedEventInput> = {},
+): HostedEventInput {
+  return {
+    id: 12,
+    title: "World Summit AI Amsterdam 2026",
+    slug: "world-summit-ai-amsterdam-2026",
+    date: "2026-10-07T00:00:00.000Z",
+    format: "in-person",
+    city: "Amsterdam",
+    location: "RAI Amsterdam",
+    sourceUrl: "https://worldsummit.ai/",
+    summary:
+      "Flagship global AI summit in the Netherlands for builders to track.",
+    ...overrides,
+  };
+}
+
+describe("sourcedListingEventPlace", () => {
+  it("keeps a real city or venue and never invents Online as a city", () => {
+    expect(
+      sourcedListingEventPlace({
+        city: "Amsterdam",
+        location: "RAI Amsterdam",
+        format: "in-person",
+      }),
+    ).toBe("Amsterdam");
+    expect(
+      sourcedListingEventPlace({
+        city: null,
+        location: "Pakhuis de Zwijger",
+        format: "in-person",
+      }),
+    ).toBe("Pakhuis de Zwijger");
+    expect(
+      sourcedListingEventPlace({
+        city: null,
+        location: "Online",
+        format: "online",
+      }),
+    ).toBeNull();
+    expect(
+      sourcedListingEventPlace({
+        city: "  Online  ",
+        location: "Online",
+        format: "hybrid",
+      }),
+    ).toBeNull();
+    expect(
+      sourcedListingEventPlace({
+        city: null,
+        location: "TBA",
+        format: "in-person",
+      }),
+    ).toBeNull();
+    expect(
+      sourcedListingEventPlace({
+        city: "   ",
+        location: "   ",
+        format: "in-person",
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("listingEventJsonLd", () => {
+  it("emits Event JSON-LD only when name, startDate, url, and a real place are sourced", () => {
+    const data = listingEventJsonLd(hostedListingEvent(), "en");
+    expect(data).toMatchObject({
+      "@type": "Event",
+      name: "World Summit AI Amsterdam 2026",
+      startDate: "2026-10-07",
+      url: "https://worldsummit.ai/",
+      location: { "@type": "Place", name: "Amsterdam" },
+      description:
+        "Flagship global AI summit in the Netherlands for builders to track.",
+    });
+    expect(data).not.toHaveProperty("endDate");
+    expect(data).not.toHaveProperty("attendee");
+    expect(data).not.toHaveProperty("maximumAttendeeCapacity");
+    expect(data).not.toHaveProperty("remainingAttendeeCapacity");
+    expect(data).not.toHaveProperty("eventAttendanceMode");
+    expect(JSON.stringify(data)).not.toMatch(
+      /attendee|RSVP|spots?\s+left|Online/i,
+    );
+
+    expect(
+      listingEventJsonLd(hostedListingEvent({ title: "  " }), "en"),
+    ).toBeNull();
+    expect(
+      listingEventJsonLd(hostedListingEvent({ date: "soon" }), "en"),
+    ).toBeNull();
+    expect(
+      listingEventJsonLd(
+        hostedListingEvent({
+          slug: "",
+          sourceUrl: "javascript:alert(1)",
+        }),
+        "en",
+      ),
+    ).toBeNull();
+    expect(
+      listingEventJsonLd(
+        hostedListingEvent({
+          city: null,
+          location: "Online",
+          format: "online",
+        }),
+        "en",
+      ),
+    ).toBeNull();
+  });
+
+  it("soft-omits a blank blurb and never invents attendance or end dates", () => {
+    const data = listingEventJsonLd(
+      hostedListingEvent({
+        summary: "  ",
+        maxAttendees: 80,
+      }),
+      "nl",
+    );
+    expect(data?.["@type"]).toBe("Event");
+    expect(data).not.toHaveProperty("description");
+    expect(data).not.toHaveProperty("endDate");
+    expect(JSON.stringify(data)).not.toMatch(
+      /attendee|RSVP|spots?\s+left|maximumAttendeeCapacity|80/i,
+    );
+  });
+
+  it("falls back to the canonical www event page when sourceUrl is missing", () => {
+    const data = listingEventJsonLd(
+      hostedListingEvent({ sourceUrl: null }),
+      "nl",
+    );
+    expect(data?.url).toBe(
+      "https://www.aitcommunity.org/nl/events/world-summit-ai-amsterdam-2026",
+    );
+  });
+});
+
+describe("listingEventsJsonLd", () => {
+  it("returns sourced Event entries only, not a flat ItemList dump", () => {
+    const rows = listingEventsJsonLd(
+      [
+        hostedListingEvent(),
+        hostedListingEvent({
+          id: 13,
+          title: "Hollow webinar",
+          slug: "hollow-webinar",
+          city: null,
+          location: "Online",
+          format: "online",
+          sourceUrl: "https://example.com/webinar",
+        }),
+      ],
+      "en",
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.["@type"]).toBe("Event");
+    expect(rows[0]?.name).toBe("World Summit AI Amsterdam 2026");
     expect(rows.some((row) => row["@type"] === "ItemList")).toBe(false);
   });
 });
