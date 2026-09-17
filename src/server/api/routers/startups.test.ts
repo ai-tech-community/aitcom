@@ -9,6 +9,7 @@ import {
   STARTUPS_EXIT_ERROR,
   STARTUPS_HOMEPAGE_ERROR,
   STARTUPS_JOBS_URL_ERROR,
+  STARTUPS_SLUG_ERROR,
 } from "@/lib/investigations/startups";
 
 const src = readFileSync(
@@ -40,6 +41,13 @@ const descriptionMigration = readFileSync(
   ),
   "utf8",
 );
+const slugMigration = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../migrations/20260916c_startups_slug.ts",
+  ),
+  "utf8",
+);
 
 const BAKED_COMPANIES =
   /Anthropic|Mistral AI|Hugging Face|Cohere|Perplexity|LangChain|Pinecone|Weaviate|Fireworks AI|Figure AI|Agility Robotics|Apptronik|1X Technologies|Physical Intelligence|Skild AI|Aalo Atomics|Emerald AI/;
@@ -68,6 +76,9 @@ describe("startups router locks", () => {
     expect(src).toContain("imageUrl");
     expect(src).toContain("photo_url");
     expect(src).toContain("pulseExitAlias");
+    expect(src).toContain("slug");
+    expect(src).toContain("allocateStartupSlug");
+    expect(src).toContain("STARTUPS_SLUG_ERROR");
     expect(STARTUPS_HOMEPAGE_ERROR).toMatch(/homepage URL/i);
     expect(STARTUPS_DUPLICATE_ERROR).toMatch(/already/i);
     expect(STARTUPS_EXIT_ERROR).toMatch(/acquired, IPO, or shutdown/i);
@@ -98,6 +109,19 @@ describe("startups router locks", () => {
     expect(softOmit).not.toMatch(/INSERT INTO/i);
     expect(queries).toContain("displayStartupFounders");
     expect(queries).toContain("parseStartupExitStatus");
+  });
+
+  it("adds a unique slug column and backfills from name with collision suffixes", () => {
+    expect(slugMigration).toContain('ADD COLUMN IF NOT EXISTS "slug"');
+    expect(slugMigration).toContain("startup_slug_idx");
+    expect(slugMigration).toContain("ROW_NUMBER()");
+    expect(slugMigration).toContain("|| '-' || numbered.n");
+    expect(slugMigration).not.toMatch(/INSERT INTO/i);
+    expect(slugMigration).not.toMatch(BAKED_COMPANIES);
+    expect(queries).toContain("findApprovedPublicStartupBySlug");
+    expect(queries).toContain("listApprovedPublicStartupSlugs");
+    expect(src).toContain("resolveWriteSlug");
+    expect(STARTUPS_SLUG_ERROR).toMatch(/unique lowercase slug/i);
   });
 
   it("adds a sourced-only description column without inventing blurbs", () => {

@@ -29,11 +29,20 @@ import {
   startupDirectorySitemapPaths,
   startupInvestigationSitemapPaths,
   startupMapPins,
+  startupNewsSources,
+  startupOverviewTiles,
+  startupProfileExtraTabs,
+  startupProfileJsonLd,
+  startupProfileSitemapPaths,
   startupSourceFaviconUrl,
   startupsDirectoryJsonLd,
   startupsPublicIndexable,
   startupsPublicRobots,
   STARTUPS_PUBLIC_INDEX_MIN,
+  allocateStartupSlug,
+  buildStartupProfilePath,
+  parseStartupSlug,
+  startupSlugFromName,
   verifiedStartupPin,
   type StartupPublicCard,
 } from "./startups";
@@ -62,6 +71,7 @@ function sampleCard(
     exitOn: null,
     jobsUrl: null,
     listedOn: "2026-09-15",
+    slug: "fixture-co",
     ...overrides,
   };
 }
@@ -808,6 +818,129 @@ describe("directory query", () => {
     );
     expect(page.totalPages).toBe(3);
     expect(page.items).toHaveLength(24);
+  });
+});
+
+describe("startup slugs and profile contract", () => {
+  it("slugifies names and suffixes collisions with -2", () => {
+    expect(startupSlugFromName("Cursor (Anysphere)")).toBe("cursor-anysphere");
+    expect(startupSlugFromName("1X Technologies")).toBe("1x-technologies");
+    expect(startupSlugFromName("Hugging Face")).toBe("hugging-face");
+    expect(startupSlugFromName("  ")).toBe("startup");
+    expect(parseStartupSlug("Cursor-Anysphere")).toBe("cursor-anysphere");
+    expect(parseStartupSlug("not a slug")).toBeNull();
+    expect(parseStartupSlug("insights")).toBe("insights");
+    expect(allocateStartupSlug("Fixture Co", [])).toBe("fixture-co");
+    expect(allocateStartupSlug("Fixture Co", ["fixture-co"])).toBe(
+      "fixture-co-2",
+    );
+    expect(
+      allocateStartupSlug("Fixture Co", ["fixture-co", "fixture-co-2"]),
+    ).toBe("fixture-co-3");
+    expect(allocateStartupSlug("Insights", [])).toBe("insights-2");
+    expect(allocateStartupSlug("Fixture Co", ["taken"], "custom-slug")).toBe(
+      "custom-slug",
+    );
+    expect(buildStartupProfilePath("cursor-anysphere")).toBe(
+      "/investigations/startups/cursor-anysphere",
+    );
+  });
+
+  it("lists profile sitemap locs from unique usable slugs only", () => {
+    expect(
+      startupProfileSitemapPaths([
+        "cursor-anysphere",
+        "cursor-anysphere",
+        "Insights",
+        "not a slug",
+        "  ",
+        "hugging-face",
+      ]),
+    ).toEqual([
+      "/investigations/startups/cursor-anysphere",
+      "/investigations/startups/hugging-face",
+    ]);
+  });
+
+  it("soft-omits empty overview tiles and extra tabs", () => {
+    const bare = sampleCard();
+    expect(startupOverviewTiles(bare)).toEqual(["category", "sources"]);
+    expect(startupProfileExtraTabs(bare)).toEqual([]);
+    expect(startupNewsSources(bare.sources)).toEqual([]);
+
+    const rich = sampleCard({
+      logoUrl: "https://fixture.example/logo.png",
+      description: "Sourced blurb",
+      region: "Toronto, Canada",
+      lat: 43.65,
+      lng: -79.38,
+      stage: "Series B",
+      exitStatus: "acquired",
+      acquirer: "SpaceX",
+      exitOn: "2026",
+      jobsUrl: "https://fixture.example/careers",
+      founders: [{ name: "Ada Example", url: null, imageUrl: null }],
+      sources: [
+        "https://fixture.example/about",
+        "https://fixture.example/newsroom",
+      ],
+    });
+    expect(startupOverviewTiles(rich)).toEqual([
+      "logo",
+      "blurb",
+      "category",
+      "region",
+      "stage",
+      "exit",
+      "founders",
+      "jobs",
+      "sources",
+      "map",
+    ]);
+    expect(startupProfileExtraTabs(rich)).toEqual([
+      "news",
+      "hiring",
+      "funding",
+      "team",
+    ]);
+    expect(startupNewsSources(rich.sources)).toEqual([
+      "https://fixture.example/newsroom",
+    ]);
+  });
+
+  it("emits Organization JSON-LD from sourced fields only", () => {
+    const blank = startupProfileJsonLd(sampleCard());
+    expect(blank).toEqual({
+      "@type": "Organization",
+      name: "Fixture Co",
+      url: "https://fixture.example",
+      sameAs: ["https://fixture.example/about"],
+    });
+    expect(blank).not.toHaveProperty("description");
+    expect(JSON.stringify(blank)).not.toMatch(BANNED_METRIC);
+    expect(JSON.stringify(blank)).not.toMatch(/"@type":"Person"/);
+    expect(JSON.stringify(blank)).not.toMatch(/streetAddress|addressLocality/);
+
+    const sourced = startupProfileJsonLd(
+      sampleCard({
+        description: "Sourced short blurb from Pulse.",
+        logoUrl: "https://fixture.example/logo.png",
+        founders: [
+          {
+            name: "Ada Example",
+            url: "https://ada.example",
+            imageUrl: "https://ada.example/ada.jpg",
+          },
+        ],
+      }),
+    );
+    expect(sourced.description).toBe("Sourced short blurb from Pulse.");
+    expect(sourced.logo).toBe("https://fixture.example/logo.png");
+    expect(JSON.stringify(sourced)).not.toContain(
+      "https://ada.example/ada.jpg",
+    );
+    expect(JSON.stringify(sourced)).not.toContain("Person");
+    expect(sourced.description).not.toMatch(/worth watching/i);
   });
 });
 

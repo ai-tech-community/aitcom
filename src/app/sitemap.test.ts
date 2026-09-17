@@ -270,6 +270,7 @@ describe("buildSitemapEntries", () => {
         "/investigations/startups",
         "/investigations/startups/insights",
         "/investigations/startups?page=2",
+        "/investigations/startups/cursor-anysphere",
       ],
     );
     const indexedUrls = urlsOf(indexed);
@@ -281,6 +282,9 @@ describe("buildSitemapEntries", () => {
     );
     expect(indexedUrls).toContain(
       "https://www.aitcommunity.org/en/investigations/startups?page=2",
+    );
+    expect(indexedUrls).toContain(
+      "https://www.aitcommunity.org/en/investigations/startups/cursor-anysphere",
     );
     expect(
       indexedUrls.filter(

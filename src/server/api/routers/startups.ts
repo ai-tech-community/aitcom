@@ -11,12 +11,16 @@ import {
   STARTUPS_JOBS_URL_ERROR,
   STARTUPS_DESCRIPTION_MAX,
   STARTUPS_NAME_MAX,
+  STARTUPS_SLUG_ERROR,
   STARTUPS_SOURCES_ERROR,
+  allocateStartupSlug,
+  isReservedStartupSlug,
   sanitizeStartupDescription,
   normalizeStartupHomepage,
   parseStartupCategory,
   parseStartupExitOn,
   parseStartupExitStatus,
+  parseStartupSlug,
   pulseExitAlias,
   resolveStartupPinCoords,
   sanitizeStartupFounders,
@@ -33,6 +37,7 @@ import { startups } from "@/server/db/schema";
 import {
   findStartupByHomepage,
   findStartupById,
+  findStartupBySlug,
   listApprovedPublicStartups,
 } from "@/server/startups/queries";
 
@@ -68,6 +73,7 @@ function flattenPulseStartupRow(raw: unknown): unknown {
     logoUrl: row.logoUrl ?? row.logo_url ?? null,
     jobsUrl: row.jobsUrl ?? row.jobs_url ?? null,
     description: row.description ?? row.blurb ?? null,
+    slug: row.slug ?? null,
     exitStatus:
       row.exitStatus ??
       pulseExitAlias(typeof row.status === "string" ? row.status : null),
@@ -117,6 +123,7 @@ const createStartupFields = z.object({
   acquirer: optionalBlank,
   exitOn: optionalBlank,
   jobsUrl: optionalBlank,
+  slug: optionalBlank,
 });
 
 const createStartupInput = z.preprocess(
@@ -135,6 +142,45 @@ type CreateStartupInput = z.infer<typeof createStartupFields>;
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
+}
+
+async function resolveWriteSlug(
+  name: string,
+  requested: string | null | undefined,
+  existingSlug?: string | null,
+  excludeId?: string,
+): Promise<string> {
+  const parsed = parseStartupSlug(requested);
+  if (parsed) {
+    if (isReservedStartupSlug(parsed)) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: STARTUPS_SLUG_ERROR,
+      });
+    }
+    const clash = await findStartupBySlug(parsed);
+    if (clash && clash.id !== excludeId) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: STARTUPS_SLUG_ERROR,
+      });
+    }
+    return parsed;
+  }
+  const keep = parseStartupSlug(existingSlug);
+  if (keep) return keep;
+  const taken = new Set<string>();
+  let candidate = allocateStartupSlug(name, taken);
+  for (let i = 0; i < 40; i++) {
+    const found = await findStartupBySlug(candidate);
+    if (!found || found.id === excludeId) return candidate;
+    taken.add(candidate);
+    candidate = allocateStartupSlug(name, taken);
+  }
+  throw new TRPCError({
+    code: "CONFLICT",
+    message: STARTUPS_SLUG_ERROR,
+  });
 }
 
 function parsedWriteFields(input: CreateStartupInput) {
@@ -220,6 +266,7 @@ export const startupsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       await requireHubOperator(ctx);
       const fields = parsedWriteFields(input);
+      const slug = await resolveWriteSlug(fields.name, input.slug);
 
       const existing = await findStartupByHomepage(fields.homepage);
       if (existing) {
@@ -233,6 +280,7 @@ export const startupsRouter = createTRPCRouter({
         .insert(startups)
         .values({
           ...fields,
+          slug,
           status: "approved",
           source: "staff",
           listedOn: todayIsoDate(),
@@ -279,10 +327,23 @@ export const startupsRouter = createTRPCRouter({
           continue;
         }
 
+        let slug: string;
+        try {
+          slug = await resolveWriteSlug(fields.name, row.slug);
+        } catch (error) {
+          skipped.push({
+            homepage: fields.homepage,
+            reason:
+              error instanceof TRPCError ? error.message : STARTUPS_SLUG_ERROR,
+          });
+          continue;
+        }
+
         const [inserted] = await ctx.db
           .insert(startups)
           .values({
             ...fields,
+            slug,
             status: "approved",
             source: "staff",
             listedOn: todayIsoDate(),
@@ -305,6 +366,12 @@ export const startupsRouter = createTRPCRouter({
       }
 
       const fields = parsedWriteFields(input);
+      const slug = await resolveWriteSlug(
+        fields.name,
+        input.slug,
+        existing.slug,
+        existing.id,
+      );
       if (fields.homepage !== existing.homepage) {
         const clash = await findStartupByHomepage(fields.homepage);
         if (clash && clash.id !== existing.id) {
@@ -319,6 +386,7 @@ export const startupsRouter = createTRPCRouter({
         .update(startups)
         .set({
           ...fields,
+          slug,
           updatedAt: new Date(),
         })
         .where(eq(startups.id, input.id));

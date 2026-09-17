@@ -4,6 +4,7 @@ import {
   normalizeStartupHomepage,
   resolveStartupPinCoords,
   sanitizeStartupSources,
+  startupSlugFromName,
   type StartupCategoryId,
   type StartupExitStatus,
   type StartupFounder,
@@ -153,6 +154,7 @@ export function startupsV1PublicCards(): StartupPublicCard[] {
       exitOn: row.exitOn,
       jobsUrl: row.jobsUrl,
       listedOn: row.listedOn,
+      slug: startupSlugFromName(row.name),
     };
   });
 }

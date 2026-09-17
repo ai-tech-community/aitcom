@@ -5,8 +5,10 @@ import {
   displayStartupSources,
   parseStartupExitOn,
   parseStartupExitStatus,
+  parseStartupSlug,
   presentText,
   normalizeStartupHomepage,
+  startupSlugFromName,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
 import { db } from "@/server/db";
@@ -31,6 +33,7 @@ function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
     exitOn: parseStartupExitOn(row.exitOn),
     jobsUrl: row.jobsUrl ? normalizeStartupHomepage(row.jobsUrl) : null,
     listedOn: row.listedOn,
+    slug: parseStartupSlug(row.slug) ?? startupSlugFromName(row.name),
   };
 }
 
@@ -94,4 +97,46 @@ export async function findStartupById(id: string) {
     .where(eq(startups.id, id))
     .limit(1);
   return row ?? null;
+}
+
+export async function findStartupBySlug(slug: string) {
+  const [row] = await db
+    .select()
+    .from(startups)
+    .where(eq(startups.slug, slug))
+    .limit(1);
+  return row ?? null;
+}
+
+export async function findApprovedPublicStartupBySlug(
+  slug: string,
+): Promise<StartupPublicCard | null> {
+  try {
+    const parsed = parseStartupSlug(slug);
+    if (!parsed) return null;
+    const [row] = await db
+      .select()
+      .from(startups)
+      .where(eq(startups.slug, parsed))
+      .limit(1);
+    if (row?.status === "approved") return toPublicCard(row);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function listApprovedPublicStartupSlugs(): Promise<string[]> {
+  try {
+    const rows = await db
+      .select({ slug: startups.slug })
+      .from(startups)
+      .where(eq(startups.status, "approved"));
+    return rows.flatMap((row) => {
+      const slug = parseStartupSlug(row.slug);
+      return slug ? [slug] : [];
+    });
+  } catch {
+    return [];
+  }
 }
