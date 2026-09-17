@@ -59,6 +59,8 @@ describe("public events route", () => {
     expect(src).not.toContain("listCuratedPublicEvents");
     expect(src).not.toContain("curatedPublicEventCards");
     expect(src).not.toMatch(/maxAttendees|spotsLeft|spots remaining|RSVP/i);
+    expect(src).toContain("JsonLd");
+    expect(src).toContain("listingEventsJsonLd");
   });
 
   it("keeps /events/[slug] detail routes", () => {

@@ -20,6 +20,7 @@ import {
 } from "@/lib/event-metadata";
 import { EventsFilterBar } from "@/components/events-filter-bar";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
+import { JsonLd } from "@/components/json-ld";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
 import { EventsMap, type MapEvent } from "@/components/events-map";
@@ -29,6 +30,7 @@ import {
   PUBLIC_EVENTS_JOIN_HREF,
   PUBLIC_EVENTS_META,
   PUBLIC_EVENTS_PATH,
+  listingEventsJsonLd,
 } from "@/lib/events/public-events";
 import { getVisitorLocation } from "@/lib/visitor-location";
 import { haversineDistanceKm, formatDistance } from "@/lib/geo";
@@ -320,8 +322,30 @@ export default async function EventsPage({
     return qs ? `/events?${qs}` : "/events";
   };
 
+  const listingLocale = locale === "nl" ? "nl" : "en";
+  const eventJsonLd = listingEventsJsonLd(
+    events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      slug: event.slug,
+      date: event.date,
+      format: event.format,
+      city: event.city,
+      location: event.location,
+      sourceUrl: event.sourceUrl,
+      summary: typeof event.summary === "string" ? event.summary : null,
+    })),
+    listingLocale,
+  );
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+      {eventJsonLd.map((data, index) => (
+        <JsonLd
+          key={`event-jsonld-${typeof data.url === "string" ? data.url : index}`}
+          data={data}
+        />
+      ))}
       <SectionLabel as="h1">{t("title")}</SectionLabel>
 
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

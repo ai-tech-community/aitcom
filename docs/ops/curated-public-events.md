@@ -18,6 +18,9 @@ substitute for the CMS chrome.
 - Join chrome: guests get hard www `/en/join` with events UTMs; signed-in
   Hub members get Open Hub (zero Join). No invented attendance / RSVP /
   spots-left counts on the listing.
+- Event JSON-LD on the listing only when name, startDate, url, and a real
+  place are sourced. Hollow rows are omitted. Never invent attendance,
+  RSVP, spots-left, end dates, or "Online" as a city.
 - Detail routes stay at `/events/[slug]`.
 
 ## Parked curated row shape (unused by `/events`)
