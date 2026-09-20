@@ -14,6 +14,7 @@ import { StartupsFounders } from "@/components/investigations/startups-founders"
 import { StartupsSourceChips } from "@/components/investigations/startups-source-chips";
 import {
   STARTUP_CATEGORY_LABELS,
+  buildStartupJobsPath,
   buildStartupProfilePath,
   displayStartupFounders,
   displayStartupLogoUrl,
@@ -52,6 +53,7 @@ export function StartupsDirectoryTable({
     sourcesColumn: string;
     jobsColumn: string;
     openJobs: string;
+    openRoles: string;
     openHomepage: string;
     edit: string;
     caption: string;
@@ -195,7 +197,18 @@ export function StartupsDirectoryTable({
                   <StartupsSourceChips sources={card.sources} locale={locale} />
                 </TableCell>
                 <TableCell className="align-top">
-                  {jobsUrl ? (
+                  {card.openRoleCount > 0 ? (
+                    <Link
+                      href={buildStartupJobsPath({ company: card.slug })}
+                      data-startup-jobs=""
+                      className="hover:underline"
+                    >
+                      {copy.openRoles.replace(
+                        "{count}",
+                        String(card.openRoleCount),
+                      )}
+                    </Link>
+                  ) : jobsUrl ? (
                     <a
                       href={jobsUrl}
                       rel="noopener noreferrer"

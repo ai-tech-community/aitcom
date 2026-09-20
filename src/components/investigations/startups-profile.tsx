@@ -9,6 +9,8 @@ import { StartupsSourceChips } from "@/components/investigations/startups-source
 import {
   STARTUPS_JOIN_HREF,
   STARTUPS_PATH,
+  buildStartupJobsPath,
+  buildStartupRolePath,
   displayStartupFounders,
   formatStartupExitBadge,
   presentText,
@@ -18,6 +20,7 @@ import {
   type StartupLocale,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
+import type { StartupRolePublic } from "@/lib/investigations/startup-roles";
 
 export type StartupsProfileKey =
   | "kicker"
@@ -25,6 +28,8 @@ export type StartupsProfileKey =
   | "hubCta"
   | "openHomepage"
   | "openJobs"
+  | "openOriginal"
+  | "openRoles"
   | "profileBack"
   | "tabOverview"
   | "tabNews"
@@ -47,11 +52,13 @@ export function StartupsProfilePage({
   locale,
   t,
   card,
+  roles = [],
   promoteJoin = true,
 }: {
   locale: string;
   t: (key: StartupsProfileKey) => string;
   card: StartupPublicCard;
+  roles?: StartupRolePublic[];
   promoteJoin?: boolean;
 }) {
   const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
@@ -127,6 +134,7 @@ export function StartupsProfilePage({
                 tileSources: t("tileSources"),
                 tileMap: t("tileMap"),
                 openJobs: t("openJobs"),
+                openRoles: t("openRoles"),
               }}
             />
           }
@@ -140,15 +148,45 @@ export function StartupsProfilePage({
             ) : undefined
           }
           hiring={
-            jobsUrl ? (
-              <a
-                href={jobsUrl}
-                rel="noopener noreferrer"
-                data-startup-jobs=""
-                className="hover:underline"
-              >
-                {t("openJobs")}
-              </a>
+            roles.length > 0 || jobsUrl ? (
+              <div className="flex flex-col gap-3" data-startup-hiring="">
+                {roles.length > 0 ? (
+                  <ul className="flex flex-col gap-2">
+                    {roles.map((role) => (
+                      <li key={role.id}>
+                        <Link
+                          href={buildStartupRolePath(role.slug)}
+                          className="hover:underline"
+                        >
+                          {role.title}
+                        </Link>
+                        {role.location ? (
+                          <span className="text-muted-foreground ml-2 text-sm">
+                            {role.location}
+                          </span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {roles.length > 0 ? (
+                  <Link
+                    href={buildStartupJobsPath({ company: card.slug })}
+                    className="hover:underline"
+                  >
+                    {t("openRoles").replace("{count}", String(roles.length))}
+                  </Link>
+                ) : jobsUrl ? (
+                  <a
+                    href={jobsUrl}
+                    rel="noopener noreferrer"
+                    data-startup-jobs=""
+                    className="hover:underline"
+                  >
+                    {t("openJobs")}
+                  </a>
+                ) : null}
+              </div>
             ) : undefined
           }
           funding={

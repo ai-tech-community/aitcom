@@ -16,7 +16,7 @@ import {
   toHubAuthUser,
 } from "@/server/better-auth/hub-session";
 import { getSession } from "@/server/better-auth/server";
-import { findApprovedPublicStartupBySlug } from "@/server/startups/queries";
+import { findApprovedPublicStartupBySlug, listOpenStartupRolesForCompany } from "@/server/startups/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -56,12 +56,14 @@ export default async function StartupProfileRoute({ params }: PageProps) {
   const locale = await getLocale();
   const t = await getTranslations("investigationsStartups");
   const session = await getSession();
+  const roles = await listOpenStartupRolesForCompany(card.id);
 
   return (
     <StartupsProfilePage
       locale={locale}
       t={t}
       card={card}
+      roles={roles}
       promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
     />
   );

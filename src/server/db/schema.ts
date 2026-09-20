@@ -4210,6 +4210,8 @@ export const startups = appSchema.table(
     jobsUrl: d.text(),
     /** Stable unique public path. Backfilled from name; never a marketing handle. */
     slug: d.text().notNull(),
+    /** Last careers scan. Null until the open-positions cron has tried. */
+    jobsScannedAt: d.timestamp({ withTimezone: true }),
     status: d
       .varchar({ length: 16 })
       .notNull()
@@ -4237,12 +4239,67 @@ export const startups = appSchema.table(
   ],
 );
 
-export const startupsRelations = relations(startups, ({ one }) => ({
+/** Sourced job postings scanned from a startup's verified careers URL. */
+export const startupRoles = appSchema.table(
+  "startup_role",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    startupId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => startups.id),
+    slug: d.text().notNull(),
+    title: d.text().notNull(),
+    location: d.text(),
+    workType: d.text(),
+    sourceUrl: d.text().notNull(),
+    applyUrl: d.text(),
+    descriptionText: d.text(),
+    fetchedAt: d.timestamp({ withTimezone: true }).notNull(),
+    board: d
+      .varchar({ length: 16 })
+      .notNull()
+      .$type<
+        "ashby" | "greenhouse" | "lever" | "workable" | "html" | "unknown"
+      >(),
+    externalId: d.text(),
+    status: d
+      .varchar({ length: 16 })
+      .notNull()
+      .default("open")
+      .$type<"open" | "closed" | "pending_review">(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("startup_role_slug_idx").on(t.slug),
+    uniqueIndex("startup_role_source_idx").on(t.startupId, t.sourceUrl),
+    index("startup_role_startup_idx").on(t.startupId),
+    index("startup_role_status_idx").on(t.status),
+  ],
+);
+
+export const startupRolesRelations = relations(startupRoles, ({ one }) => ({
+  startup: one(startups, {
+    fields: [startupRoles.startupId],
+    references: [startups.id],
+  }),
+}));
+
+export const startupsRelations = relations(startups, ({ one, many }) => ({
   submittedBy: one(user, {
     fields: [startups.submittedByUserId],
     references: [user.id],
     relationName: "startup_submitter",
   }),
+  roles: many(startupRoles),
 }));
 
 /** Thin public /events list. No attendance / RSVP fields — never invent counts. */

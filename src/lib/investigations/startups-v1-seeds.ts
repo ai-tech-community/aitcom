@@ -155,6 +155,7 @@ export function startupsV1PublicCards(): StartupPublicCard[] {
       jobsUrl: row.jobsUrl,
       listedOn: row.listedOn,
       slug: startupSlugFromName(row.name),
+      openRoleCount: 0,
     };
   });
 }

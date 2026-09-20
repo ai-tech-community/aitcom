@@ -1,9 +1,11 @@
+import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { StartupsFounders } from "@/components/investigations/startups-founders";
 import { StartupsMap } from "@/components/investigations/startups-map";
 import { StartupsSourceChips } from "@/components/investigations/startups-source-chips";
 import {
   STARTUP_CATEGORY_LABELS,
+  buildStartupJobsPath,
   displayStartupFounders,
   displayStartupLogoUrl,
   displayStartupSources,
@@ -31,6 +33,7 @@ export type StartupsProfileOverviewCopy = {
   tileSources: string;
   tileMap: string;
   openJobs: string;
+  openRoles: string;
 };
 
 export function StartupsProfileOverview({
@@ -194,7 +197,15 @@ function TileBody({
         <StartupsFounders founders={founders} label={copy.tileFounders} />
       ) : null;
     case "jobs":
-      return jobsUrl ? (
+      return card.openRoleCount > 0 ? (
+        <Link
+          href={buildStartupJobsPath({ company: card.slug })}
+          data-startup-jobs=""
+          className="hover:underline"
+        >
+          {copy.openRoles.replace("{count}", String(card.openRoleCount))}
+        </Link>
+      ) : jobsUrl ? (
         <a
           href={jobsUrl}
           rel="noopener noreferrer"

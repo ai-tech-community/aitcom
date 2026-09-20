@@ -1,0 +1,410 @@
+import {
+  parseStartupRoleLocation,
+  parseStartupRoleTitle,
+  sanitizeStartupRoleDescription,
+  type ExtractedJobListing,
+  type StartupRoleBoard,
+} from "./startup-roles";
+import { presentText } from "./startups";
+
+export type DetectedJobBoard = {
+  board: Exclude<StartupRoleBoard, "html" | "unknown"> | "unknown";
+  token: string | null;
+};
+
+const SKIP_TITLE =
+  /^(careers|jobs|job openings|open roles|open jobs|view all|see all|learn more|apply|home|about|teams?)$/i;
+
+function firstPathSegment(pathname: string): string | null {
+  const token = pathname.split("/").filter(Boolean)[0] ?? "";
+  return token.length > 0 ? token : null;
+}
+
+function asUrl(value: string, base?: string): URL | null {
+  try {
+    return new URL(value, base);
+  } catch {
+    return null;
+  }
+}
+
+export function detectJobBoardFromUrl(jobsUrl: string): DetectedJobBoard {
+  const url = asUrl(jobsUrl);
+  if (!url) return { board: "unknown", token: null };
+  const host = url.hostname.replace(/^www\./, "").toLowerCase();
+  if (host === "jobs.ashbyhq.com" || host === "api.ashbyhq.com") {
+    return { board: "ashby", token: firstPathSegment(url.pathname) };
+  }
+  if (
+    host === "boards.greenhouse.io" ||
+    host === "job-boards.greenhouse.io" ||
+    host === "boards-api.greenhouse.io"
+  ) {
+    const embed = url.searchParams.get("for");
+    return {
+      board: "greenhouse",
+      token: embed || firstPathSegment(url.pathname),
+    };
+  }
+  if (host === "jobs.lever.co" || host === "api.lever.co") {
+    return { board: "lever", token: firstPathSegment(url.pathname) };
+  }
+  if (host === "apply.workable.com") {
+    return { board: "workable", token: firstPathSegment(url.pathname) };
+  }
+  return { board: "unknown", token: null };
+}
+
+export function detectJobBoardFromHtml(html: string): DetectedJobBoard {
+  const ashby = html.match(
+    /https?:\/\/jobs\.ashbyhq\.com\/([A-Za-z0-9_-]+)/i,
+  );
+  if (ashby?.[1]) return { board: "ashby", token: ashby[1] };
+  const greenhouse =
+    html.match(
+      /https?:\/\/(?:job-)?boards(?:-api)?\.greenhouse\.io\/(?:embed\/job_board\?for=)?([A-Za-z0-9_-]+)/i,
+    ) ?? html.match(/boards\.greenhouse\.io\/([A-Za-z0-9_-]+)/i);
+  if (greenhouse?.[1]) return { board: "greenhouse", token: greenhouse[1] };
+  const lever = html.match(/https?:\/\/jobs\.lever\.co\/([A-Za-z0-9_-]+)/i);
+  if (lever?.[1]) return { board: "lever", token: lever[1] };
+  const workable = html.match(
+    /https?:\/\/apply\.workable\.com\/([A-Za-z0-9_-]+)/i,
+  );
+  if (workable?.[1]) return { board: "workable", token: workable[1] };
+  return { board: "unknown", token: null };
+}
+
+export function greenhouseBoardUrl(token: string): string {
+  return `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}/jobs?content=true`;
+}
+
+export function ashbyBoardUrl(token: string): string {
+  return `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(token)}`;
+}
+
+export function leverBoardUrl(token: string): string {
+  return `https://api.lever.co/v0/postings/${encodeURIComponent(token)}?mode=json`;
+}
+
+export function workableBoardUrl(token: string): string {
+  return `https://apply.workable.com/api/v1/widget/accounts/${encodeURIComponent(token)}`;
+}
+
+function listing(partial: {
+  title: string | null;
+  sourceUrl: string | null;
+  applyUrl?: string | null;
+  location?: string | null;
+  workType?: string | null;
+  descriptionText?: string | null;
+  externalId?: string | null;
+  board: StartupRoleBoard;
+}): ExtractedJobListing | null {
+  const title = parseStartupRoleTitle(partial.title);
+  const sourceUrl = presentText(partial.sourceUrl);
+  if (!title || !sourceUrl || SKIP_TITLE.test(title)) return null;
+  const url = asUrl(sourceUrl);
+  if (!url || (url.protocol !== "https:" && url.protocol !== "http:")) {
+    return null;
+  }
+  return {
+    title,
+    sourceUrl: url.toString(),
+    applyUrl: presentText(partial.applyUrl) ?? url.toString(),
+    location: parseStartupRoleLocation(partial.location),
+    workType: presentText(partial.workType),
+    descriptionText: sanitizeStartupRoleDescription(partial.descriptionText),
+    externalId: presentText(partial.externalId),
+    board: partial.board,
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function asId(value: unknown): string | null {
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+  return null;
+}
+
+export function parseGreenhouseJobs(payload: unknown): ExtractedJobListing[] {
+  const root = asRecord(payload);
+  const jobs = Array.isArray(root?.jobs) ? root.jobs : [];
+  return jobs.flatMap((job) => {
+    const row = asRecord(job);
+    if (!row) return [];
+    const location = asRecord(row.location);
+    const parsed = listing({
+      title: asString(row.title),
+      sourceUrl: asString(row.absolute_url),
+      location: asString(location?.name),
+      descriptionText: htmlToPlainText(asString(row.content)),
+      externalId: asId(row.id),
+      board: "greenhouse",
+    });
+    return parsed ? [parsed] : [];
+  });
+}
+
+export function parseAshbyJobs(payload: unknown): ExtractedJobListing[] {
+  const root = asRecord(payload);
+  const jobs = Array.isArray(root?.jobs)
+    ? root.jobs
+    : Array.isArray(root?.jobPostings)
+      ? root.jobPostings
+      : [];
+  return jobs.flatMap((job) => {
+    const row = asRecord(job);
+    if (!row) return [];
+    const parsed = listing({
+      title: asString(row.title),
+      sourceUrl: asString(row.jobUrl) ?? asString(row.applyUrl),
+      applyUrl: asString(row.applyUrl),
+      location: asString(row.locationName) ?? asString(row.location),
+      workType: asString(row.employmentType),
+      descriptionText:
+        asString(row.descriptionPlain) ??
+        htmlToPlainText(asString(row.descriptionHtml)),
+      externalId: asId(row.id),
+      board: "ashby",
+    });
+    return parsed ? [parsed] : [];
+  });
+}
+
+export function parseLeverJobs(payload: unknown): ExtractedJobListing[] {
+  const jobs = Array.isArray(payload) ? payload : [];
+  return jobs.flatMap((job) => {
+    const row = asRecord(job);
+    if (!row) return [];
+    const categories = asRecord(row.categories);
+    const parsed = listing({
+      title: asString(row.text) ?? asString(row.title),
+      sourceUrl: asString(row.hostedUrl) ?? asString(row.applyUrl),
+      applyUrl: asString(row.applyUrl),
+      location: asString(categories?.location),
+      workType: asString(categories?.commitment),
+      descriptionText:
+        asString(row.descriptionPlain) ??
+        htmlToPlainText(asString(row.description)),
+      externalId: asId(row.id),
+      board: "lever",
+    });
+    return parsed ? [parsed] : [];
+  });
+}
+
+export function parseWorkableJobs(payload: unknown): ExtractedJobListing[] {
+  const root = asRecord(payload);
+  const jobs = Array.isArray(root?.jobs) ? root.jobs : [];
+  return jobs.flatMap((job) => {
+    const row = asRecord(job);
+    if (!row) return [];
+    const location = asRecord(row.location);
+    const parsed = listing({
+      title: asString(row.title),
+      sourceUrl: asString(row.url) ?? asString(row.application_url),
+      applyUrl: asString(row.application_url),
+      location: asString(location?.city) ?? asString(row.location),
+      descriptionText: htmlToPlainText(asString(row.description)),
+      externalId: asString(row.shortcode) ?? asId(row.id),
+      board: "workable",
+    });
+    return parsed ? [parsed] : [];
+  });
+}
+
+export function htmlToPlainText(html: string | null | undefined): string | null {
+  if (!html) return null;
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<\/h[1-6]>/gi, "\n")
+    .replace(/<li>/gi, "\n• ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+\n/g, "\n")
+    .replace(/\n\s+/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+  return presentText(text);
+}
+
+function extractJsonLdNodes(html: string): unknown[] {
+  const nodes: unknown[] = [];
+  const blocks = html.matchAll(
+    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
+  );
+  for (const block of blocks) {
+    const raw = block[1]?.trim();
+    if (!raw) continue;
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (Array.isArray(parsed)) nodes.push(...parsed);
+      else nodes.push(parsed);
+    } catch {
+      // Sourced JSON-LD only — skip broken blocks.
+    }
+  }
+  return nodes;
+}
+
+function flattenJsonLd(node: unknown): Record<string, unknown>[] {
+  const record = asRecord(node);
+  if (!record) return [];
+  const graph = record["@graph"];
+  if (Array.isArray(graph)) {
+    return graph.flatMap((item) => flattenJsonLd(item));
+  }
+  return [record];
+}
+
+function jsonLdType(record: Record<string, unknown>): string {
+  const type = record["@type"];
+  if (typeof type === "string") return type;
+  if (Array.isArray(type) && typeof type[0] === "string") return type[0];
+  return "";
+}
+
+export function extractJobsFromJsonLd(
+  html: string,
+  baseUrl: string,
+): ExtractedJobListing[] {
+  const listings: ExtractedJobListing[] = [];
+  for (const node of extractJsonLdNodes(html).flatMap(flattenJsonLd)) {
+    if (jsonLdType(node) !== "JobPosting") continue;
+    const org = asRecord(node.hiringOrganization);
+    const identifier = asRecord(node.identifier);
+    const location = asRecord(node.jobLocation);
+    const address = asRecord(location?.address);
+    const source =
+      asString(node.url) ??
+      asString(node.sameAs) ??
+      (baseUrl.includes("/job") ? baseUrl : null);
+    const parsed = listing({
+      title: asString(node.title),
+      sourceUrl: source ? (asUrl(source, baseUrl)?.toString() ?? null) : null,
+      location:
+        asString(address?.addressLocality) ??
+        asString(node.jobLocationType) ??
+        (org ? asString(org.address) : null),
+      workType: asString(node.employmentType),
+      descriptionText: htmlToPlainText(asString(node.description)),
+      externalId: asString(identifier?.value) ?? asId(node.identifier),
+      board: "html",
+    });
+    if (parsed) listings.push(parsed);
+  }
+  return listings;
+}
+
+const JOB_HREF =
+  /(?:\/jobs?\/|\/careers\/[^"'#?\s]+|\/position\/|\/openings\/|boards\.greenhouse\.io|jobs\.ashbyhq\.com|jobs\.lever\.co|apply\.workable\.com)/i;
+
+export function extractJobAnchors(
+  html: string,
+  baseUrl: string,
+): ExtractedJobListing[] {
+  const listings: ExtractedJobListing[] = [];
+  const seen = new Set<string>();
+  const anchors = html.matchAll(
+    /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
+  );
+  for (const match of anchors) {
+    const href = match[1];
+    const inner = htmlToPlainText(match[2]);
+    if (!href || !JOB_HREF.test(href)) continue;
+    const url = asUrl(href, baseUrl);
+    if (!url) continue;
+    const normalized = url.toString().split("#")[0] ?? url.toString();
+    if (normalized === asUrl(baseUrl)?.toString()) continue;
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    const parsed = listing({
+      title: inner,
+      sourceUrl: normalized,
+      board: "html",
+    });
+    if (parsed) listings.push(parsed);
+  }
+  return listings;
+}
+
+export function extractJobPostingFromHtml(
+  html: string,
+  sourceUrl: string,
+): Pick<
+  ExtractedJobListing,
+  "title" | "location" | "descriptionText" | "workType"
+> | null {
+  const fromLd = extractJobsFromJsonLd(html, sourceUrl)[0];
+  if (fromLd) {
+    return {
+      title: fromLd.title,
+      location: fromLd.location,
+      descriptionText: fromLd.descriptionText,
+      workType: fromLd.workType,
+    };
+  }
+  const ogTitle = html.match(
+    /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
+  );
+  const h1 = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+  const title =
+    parseStartupRoleTitle(ogTitle?.[1]) ??
+    parseStartupRoleTitle(htmlToPlainText(h1?.[1]));
+  if (!title) return null;
+  const description =
+    htmlToPlainText(
+      html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1],
+    ) ??
+    htmlToPlainText(
+      html.match(
+        /<(?:div|section)[^>]*(?:job-description|jobDescription|description)[^>]*>([\s\S]*?)<\/(?:div|section)>/i,
+      )?.[1],
+    );
+  return {
+    title,
+    location: null,
+    descriptionText: sanitizeStartupRoleDescription(description),
+    workType: null,
+  };
+}
+
+export function extractListingsFromCareersHtml(
+  html: string,
+  baseUrl: string,
+): ExtractedJobListing[] {
+  const fromLd = extractJobsFromJsonLd(html, baseUrl);
+  if (fromLd.length > 0) return dedupeListings(fromLd);
+  return dedupeListings(extractJobAnchors(html, baseUrl));
+}
+
+export function dedupeListings(
+  listings: readonly ExtractedJobListing[],
+): ExtractedJobListing[] {
+  const seen = new Set<string>();
+  const out: ExtractedJobListing[] = [];
+  for (const listing of listings) {
+    if (seen.has(listing.sourceUrl)) continue;
+    seen.add(listing.sourceUrl);
+    out.push(listing);
+  }
+  return out;
+}

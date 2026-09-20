@@ -1,4 +1,3 @@
-import { Link } from "@/i18n/navigation";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
@@ -26,12 +25,12 @@ export type StartupsKey =
   | "lead"
   | "insightsTitle"
   | "insightsLead"
-  | "backLink"
   | "joinCta"
   | "hubCta"
   | "howWeList"
   | "tabDirectory"
   | "tabInsights"
+  | "tabJobs"
   | "tabNav"
   | "lead2"
   | "insightsLead2"
@@ -90,16 +89,8 @@ export function StartupsPage({
       {directoryPage && directoryPage.items.length > 0 ? (
         <JsonLd data={startupsDirectoryJsonLd(directoryPage.items)} />
       ) : null}
-      <nav className="text-muted-foreground text-xs">
-        <Link
-          href="/investigations"
-          className="hover:text-foreground hover:underline"
-        >
-          ← {t("backLink")}
-        </Link>
-      </nav>
 
-      <SectionLabel as="div" className="mt-8">
+      <SectionLabel as="div">
         {t("kicker")}
       </SectionLabel>
 
@@ -120,6 +111,7 @@ export function StartupsPage({
           active={isInsights ? "insights" : "directory"}
           directoryLabel={t("tabDirectory")}
           insightsLabel={t("tabInsights")}
+          jobsLabel={t("tabJobs")}
           navLabel={t("tabNav")}
         />
         <PromoteJoinCta

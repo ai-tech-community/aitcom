@@ -34,13 +34,14 @@ function card(overrides: Partial<StartupPublicCard> = {}): StartupPublicCard {
     jobsUrl: null,
     listedOn: "2026-09-15",
     slug: "fixture-co",
+    openRoleCount: 0,
     ...overrides,
   };
 }
 
 describe("startup insights paths", () => {
   it("keeps a crawlable /insights path", () => {
-    expect(STARTUPS_INSIGHTS_PATH).toBe("/investigations/startups/insights");
+    expect(STARTUPS_INSIGHTS_PATH).toBe("/startups/insights");
     expect(STARTUPS_INSIGHTS_H1).toBe("AI startups insights");
     expect(STARTUPS_INSIGHTS_META).toMatch(/source coverage/i);
     expect(STARTUPS_INSIGHTS_META).toMatch(/from the live directory only/i);
