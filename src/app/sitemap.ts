@@ -130,11 +130,13 @@ async function defaultAwesomePagePaths(): Promise<string[]> {
 async function defaultStartupPagePaths(): Promise<string[]> {
   noStore();
   try {
-    const { listedPublicStartupCount, listApprovedPublicStartupSlugs, listOpenStartupRoleSlugs } =
-      await import("@/server/startups/queries");
-    const { startupRoleSitemapPaths } = await import(
-      "@/lib/investigations/startup-roles"
-    );
+    const {
+      listedPublicStartupCount,
+      listApprovedPublicStartupSlugs,
+      listOpenStartupRoleSlugs,
+    } = await import("@/server/startups/queries");
+    const { startupRoleSitemapPaths } =
+      await import("@/lib/investigations/startup-roles");
     const listed = await listedPublicStartupCount();
     const slugs = await listApprovedPublicStartupSlugs();
     const roleSlugs = await listOpenStartupRoleSlugs();

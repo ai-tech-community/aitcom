@@ -51,7 +51,9 @@ describe("listingsFromJobsUrl", () => {
       },
     );
     expect(listings[0]?.title).toBe("Staff Engineer");
-    expect(listings[0]?.sourceUrl).toBe("https://cursor.com/careers/staff-engineer");
+    expect(listings[0]?.sourceUrl).toBe(
+      "https://cursor.com/careers/staff-engineer",
+    );
     expect(listings[0]?.descriptionText).toContain("Build the editor");
   });
 

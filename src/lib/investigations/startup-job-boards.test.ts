@@ -157,12 +157,18 @@ describe("startup role slugs and jobs query", () => {
       ]),
     ).toBe("cursor-anysphere-staff-engineer-2");
     expect(
-      startupRoleSitemapPaths(["cursor-anysphere-staff-engineer", "Insights"]),
+      startupRoleSitemapPaths([
+        "cursor-anysphere-staff-engineer",
+        "not a slug",
+      ]),
     ).toEqual(["/startups/jobs/cursor-anysphere-staff-engineer"]);
   });
 
   it("filters the public jobs table by company slug", () => {
-    const query = parseStartupJobsQuery({ company: "cursor-anysphere", page: "2" });
+    const query = parseStartupJobsQuery({
+      company: "cursor-anysphere",
+      page: "2",
+    });
     expect(query.company).toBe("cursor-anysphere");
     expect(query.page).toBe(2);
     const filtered = applyStartupJobsQuery(

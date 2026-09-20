@@ -99,7 +99,10 @@ export function startupRoleSlugFromTitle(
 ): string {
   const company = parseStartupSlug(startupSlug) ?? "startup";
   const role = slugify(title).slice(0, STARTUP_ROLE_SLUG_MAX);
-  const combined = `${company}-${role || "role"}`.slice(0, STARTUP_ROLE_SLUG_MAX);
+  const combined = `${company}-${role || "role"}`.slice(
+    0,
+    STARTUP_ROLE_SLUG_MAX,
+  );
   return combined.replace(/-+$/g, "") || "role";
 }
 

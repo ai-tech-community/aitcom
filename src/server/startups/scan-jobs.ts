@@ -139,7 +139,8 @@ export async function listingsFromJobsUrl(
 ): Promise<ExtractedJobListing[]> {
   const fromUrl = detectJobBoardFromUrl(jobsUrl);
   const viaApi = await listingsFromBoard(fromUrl, fetchPage);
-  if (viaApi && viaApi.length > 0) return viaApi.slice(0, STARTUP_ROLES_PER_COMPANY_CAP);
+  if (viaApi && viaApi.length > 0)
+    return viaApi.slice(0, STARTUP_ROLES_PER_COMPANY_CAP);
 
   const page = await fetchPage(jobsUrl);
   if (!page.ok) return [];
@@ -228,7 +229,11 @@ export async function scanStartupJobs(
         .where(eq(startupRoles.id, current.id));
       continue;
     }
-    const slug = allocateStartupRoleSlug(startup.slug, listing.title, takenSlugs);
+    const slug = allocateStartupRoleSlug(
+      startup.slug,
+      listing.title,
+      takenSlugs,
+    );
     takenSlugs.push(slug);
     await db.insert(startupRoles).values({
       startupId: startup.id,
@@ -247,9 +252,7 @@ export async function scanStartupJobs(
   }
 
   const staleIds = existing
-    .filter(
-      (row) => row.status === "open" && !seenSources.has(row.sourceUrl),
-    )
+    .filter((row) => row.status === "open" && !seenSources.has(row.sourceUrl))
     .map((row) => row.id);
   if (staleIds.length > 0) {
     await db
@@ -279,9 +282,7 @@ export async function scanAllStartupJobs(
   const rows = await db
     .select()
     .from(startups)
-    .where(
-      and(eq(startups.status, "approved"), eq(startups.source, "staff")),
-    )
+    .where(and(eq(startups.status, "approved"), eq(startups.source, "staff")))
     .orderBy(asc(startups.jobsScannedAt), asc(startups.listedOn));
 
   const targets = rows

@@ -16,8 +16,12 @@ const SKIP_TITLE =
   /^(careers|jobs|job openings|open roles|open jobs|view all|see all|learn more|apply|home|about|teams?)$/i;
 
 function firstPathSegment(pathname: string): string | null {
-  const token = pathname.split("/").filter(Boolean)[0] ?? "";
+  const token = pathname.split("/").find(Boolean) ?? "";
   return token.length > 0 ? token : null;
+}
+
+function firstCapture(value: string, pattern: RegExp): string | null {
+  return pattern.exec(value)?.[1] ?? null;
 }
 
 function asUrl(value: string, base?: string): URL | null {
@@ -43,7 +47,7 @@ export function detectJobBoardFromUrl(jobsUrl: string): DetectedJobBoard {
     const embed = url.searchParams.get("for");
     return {
       board: "greenhouse",
-      token: embed || firstPathSegment(url.pathname),
+      token: embed ?? firstPathSegment(url.pathname),
     };
   }
   if (host === "jobs.lever.co" || host === "api.lever.co") {
@@ -56,21 +60,27 @@ export function detectJobBoardFromUrl(jobsUrl: string): DetectedJobBoard {
 }
 
 export function detectJobBoardFromHtml(html: string): DetectedJobBoard {
-  const ashby = html.match(
+  const ashby = firstCapture(
+    html,
     /https?:\/\/jobs\.ashbyhq\.com\/([A-Za-z0-9_-]+)/i,
   );
-  if (ashby?.[1]) return { board: "ashby", token: ashby[1] };
+  if (ashby) return { board: "ashby", token: ashby };
   const greenhouse =
-    html.match(
+    firstCapture(
+      html,
       /https?:\/\/(?:job-)?boards(?:-api)?\.greenhouse\.io\/(?:embed\/job_board\?for=)?([A-Za-z0-9_-]+)/i,
-    ) ?? html.match(/boards\.greenhouse\.io\/([A-Za-z0-9_-]+)/i);
-  if (greenhouse?.[1]) return { board: "greenhouse", token: greenhouse[1] };
-  const lever = html.match(/https?:\/\/jobs\.lever\.co\/([A-Za-z0-9_-]+)/i);
-  if (lever?.[1]) return { board: "lever", token: lever[1] };
-  const workable = html.match(
+    ) ?? firstCapture(html, /boards\.greenhouse\.io\/([A-Za-z0-9_-]+)/i);
+  if (greenhouse) return { board: "greenhouse", token: greenhouse };
+  const lever = firstCapture(
+    html,
+    /https?:\/\/jobs\.lever\.co\/([A-Za-z0-9_-]+)/i,
+  );
+  if (lever) return { board: "lever", token: lever };
+  const workable = firstCapture(
+    html,
     /https?:\/\/apply\.workable\.com\/([A-Za-z0-9_-]+)/i,
   );
-  if (workable?.[1]) return { board: "workable", token: workable[1] };
+  if (workable) return { board: "workable", token: workable };
   return { board: "unknown", token: null };
 }
 
@@ -223,7 +233,9 @@ export function parseWorkableJobs(payload: unknown): ExtractedJobListing[] {
   });
 }
 
-export function htmlToPlainText(html: string | null | undefined): string | null {
+export function htmlToPlainText(
+  html: string | null | undefined,
+): string | null {
   if (!html) return null;
   const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -242,6 +254,7 @@ export function htmlToPlainText(html: string | null | undefined): string | null 
     .replace(/\s+\n/g, "\n")
     .replace(/\n\s+/g, "\n")
     .replace(/[ \t]{2,}/g, " ")
+    .replace(/ +([.,;:!?])/g, "$1")
     .trim();
   return presentText(text);
 }
@@ -362,22 +375,24 @@ export function extractJobPostingFromHtml(
       workType: fromLd.workType,
     };
   }
-  const ogTitle = html.match(
+  const ogTitle = firstCapture(
+    html,
     /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
   );
-  const h1 = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+  const h1 = firstCapture(html, /<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
   const title =
-    parseStartupRoleTitle(ogTitle?.[1]) ??
-    parseStartupRoleTitle(htmlToPlainText(h1?.[1]));
+    parseStartupRoleTitle(ogTitle) ??
+    parseStartupRoleTitle(htmlToPlainText(h1));
   if (!title) return null;
   const description =
     htmlToPlainText(
-      html.match(/<article\b[^>]*>([\s\S]*?)<\/article>/i)?.[1],
+      firstCapture(html, /<article\b[^>]*>([\s\S]*?)<\/article>/i),
     ) ??
     htmlToPlainText(
-      html.match(
+      firstCapture(
+        html,
         /<(?:div|section)[^>]*(?:job-description|jobDescription|description)[^>]*>([\s\S]*?)<\/(?:div|section)>/i,
-      )?.[1],
+      ),
     );
   return {
     title,

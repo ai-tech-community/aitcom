@@ -135,8 +135,8 @@ const FIXTURE_CARD: StartupPublicCard = {
   exitOn: null,
   jobsUrl: null,
   listedOn: "2026-09-15",
-    slug: "fixture-co",
-    openRoleCount: 0,
+  slug: "fixture-co",
+  openRoleCount: 0,
 };
 
 const FIXTURE_ROLE: StartupRolePublic = {
@@ -199,9 +199,7 @@ describe("Startups investigation route", () => {
     expect(src).toContain("isStartupInsightsTab");
     expect(src).toContain("startupsPublicRobots");
     expect(src).not.toContain("robots: { index: false");
-    expect(
-      existsSync(join(appLocale, "startups/layout.tsx")),
-    ).toBe(false);
+    expect(existsSync(join(appLocale, "startups/layout.tsx"))).toBe(false);
     const insights = readFileSync(INSIGHTS_FILE, "utf8");
     expect(insights).toContain("buildStartupInsights");
     expect(insights).toContain("listApprovedPublicStartups");
@@ -1328,10 +1326,9 @@ describe("Startups profile page", () => {
       "/startups/jobs?company=fixture-co",
     );
     fireEvent.click(screen.getByRole("button", { name: "Hiring" }));
-    expect(screen.getByRole("link", { name: "Staff Engineer" })).toHaveAttribute(
-      "href",
-      "/startups/jobs/fixture-co-staff-engineer",
-    );
+    expect(
+      screen.getByRole("link", { name: "Staff Engineer" }),
+    ).toHaveAttribute("href", "/startups/jobs/fixture-co-staff-engineer");
     const data = JSON.parse(
       container.querySelector("script[type='application/ld+json']")
         ?.textContent ?? "null",
@@ -1416,18 +1413,18 @@ describe("Startups open positions", () => {
         query={{ company: "", q: "", page: 1 }}
       />,
     );
-    expect(screen.getByRole("link", { name: "Staff Engineer" })).toHaveAttribute(
-      "href",
-      "/startups/jobs/fixture-co-staff-engineer",
-    );
+    expect(
+      screen.getByRole("link", { name: "Staff Engineer" }),
+    ).toHaveAttribute("href", "/startups/jobs/fixture-co-staff-engineer");
     expect(screen.getByRole("link", { name: "Fixture Co" })).toHaveAttribute(
       "href",
       "/startups/fixture-co",
     );
-    expect(container.querySelector("[data-startup-role-location]")?.textContent).toBe(
-      "Toronto, Canada",
-    );
-    expect(container.textContent).not.toMatch(/salary|fit score|compensation/i);
+    expect(
+      container.querySelector("[data-startup-role-location]")?.textContent,
+    ).toBe("Toronto, Canada");
+    expect(container.textContent).not.toMatch(BANNED);
+    expect(container.textContent).not.toMatch(/\$\d|€\d/);
   });
 
   it("keeps the original careers URL on the dedicated role page", () => {
@@ -1441,13 +1438,12 @@ describe("Startups open positions", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Staff Engineer" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open original posting" })).toHaveAttribute(
-      "href",
-      "https://fixture.example/careers/staff",
-    );
-    expect(container.querySelector("[data-startup-role-description]")?.textContent).toBe(
-      "Build the product.",
-    );
+    expect(
+      screen.getByRole("link", { name: "Open original posting" }),
+    ).toHaveAttribute("href", "https://fixture.example/careers/staff");
+    expect(
+      container.querySelector("[data-startup-role-description]")?.textContent,
+    ).toBe("Build the product.");
     expect(hrefsOf(container)).toContain(STARTUPS_JOBS_PATH);
     expect(container.textContent).not.toMatch(BANNED);
   });
@@ -1466,18 +1462,14 @@ describe("Startups site integration", () => {
 
   it("maps www cite URLs onto the investigation path", () => {
     expect(
-      appPathFromGuideHref(
-        "https://www.aitcommunity.org/en/startups",
-      ),
+      appPathFromGuideHref("https://www.aitcommunity.org/en/startups"),
     ).toBe(STARTUPS_PATH);
     expect(
-      appPathFromGuideHref(
-        "https://www.aitcommunity.org/en/startups/insights",
-      ),
+      appPathFromGuideHref("https://www.aitcommunity.org/en/startups/insights"),
     ).toBe(STARTUPS_INSIGHTS_PATH);
-    expect(
-      appPathFromGuideHref("/en/startups?tab=insights"),
-    ).toBe(STARTUPS_INSIGHTS_PATH);
+    expect(appPathFromGuideHref("/en/startups?tab=insights")).toBe(
+      STARTUPS_INSIGHTS_PATH,
+    );
     expect(
       appPathFromGuideHref("https://www.aitcommunity.org/en/startups/jobs"),
     ).toBe(STARTUPS_JOBS_PATH);
@@ -1518,9 +1510,9 @@ describe("Startups site integration", () => {
     expect(
       existsSync(join(dir, "../../migrations/20260920a_startup_roles.ts")),
     ).toBe(true);
-    expect(readFileSync(join(dir, "../../../next.config.js"), "utf8")).toContain(
-      "/investigations/startups",
-    );
+    expect(
+      readFileSync(join(dir, "../../../next.config.js"), "utf8"),
+    ).toContain("/investigations/startups");
     expect(readFileSync(join(dir, "../../../vercel.json"), "utf8")).toContain(
       "/api/cron/startup-jobs-scan",
     );

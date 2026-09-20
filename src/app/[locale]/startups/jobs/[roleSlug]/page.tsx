@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 
 import { StartupsRolePage } from "@/components/investigations/startups-role-page";
-import { buildStartupRolePath, startupsPublicRobots } from "@/lib/investigations/startups";
+import {
+  buildStartupRolePath,
+  startupsPublicRobots,
+} from "@/lib/investigations/startups";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import {
   shouldPromoteJoin,
@@ -33,7 +36,11 @@ export async function generateMetadata({
     title: `${role.title} — ${role.startupName}`,
     description,
     robots: startupsPublicRobots(),
-    ...buildOgMeta(`${role.title} — ${role.startupName}`, description, "Startups"),
+    ...buildOgMeta(
+      `${role.title} — ${role.startupName}`,
+      description,
+      "Startups",
+    ),
     alternates: await localeAlternates(buildStartupRolePath(role.slug)),
   };
 }

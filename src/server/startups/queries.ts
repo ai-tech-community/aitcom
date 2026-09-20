@@ -290,7 +290,7 @@ export async function findPublicStartupRoleBySlug(
       .innerJoin(startups, eq(startupRoles.startupId, startups.id))
       .where(eq(startupRoles.slug, parsed))
       .limit(1);
-    if (!row || row.startupStatus !== "approved") return null;
+    if (row?.startupStatus !== "approved") return null;
     if (row.role.status === "pending_review") return null;
     return toPublicRole(row.role, {
       slug: row.startupSlug,

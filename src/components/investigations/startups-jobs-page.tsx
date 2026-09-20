@@ -137,7 +137,9 @@ export function StartupsJobsPage({
                     </TableCell>
                     <TableCell>
                       {role.location ? (
-                        <span data-startup-role-location="">{role.location}</span>
+                        <span data-startup-role-location="">
+                          {role.location}
+                        </span>
                       ) : null}
                     </TableCell>
                   </TableRow>

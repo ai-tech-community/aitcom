@@ -68,7 +68,10 @@ export function StartupsRolePage({
           <p className="text-muted-foreground text-sm">{t("closedRole")}</p>
         ) : null}
         {role.location ? (
-          <p data-startup-role-location="" className="text-muted-foreground text-sm">
+          <p
+            data-startup-role-location=""
+            className="text-muted-foreground text-sm"
+          >
             {role.location}
           </p>
         ) : null}
@@ -100,7 +103,7 @@ export function StartupsRolePage({
       {role.descriptionText ? (
         <div
           data-startup-role-description=""
-          className="text-foreground mt-10 whitespace-pre-wrap text-sm leading-relaxed"
+          className="text-foreground mt-10 text-sm leading-relaxed whitespace-pre-wrap"
         >
           {role.descriptionText}
         </div>
