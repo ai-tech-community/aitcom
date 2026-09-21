@@ -208,7 +208,7 @@ describe("Startups v1 Ops-Passed seeds", () => {
         { q: "", category: "all", hiring: "hiring" },
         "en",
       ),
-    ).toHaveLength(20);
+    ).toHaveLength(0);
     expect(
       applyStartupDirectoryQuery(
         cards,

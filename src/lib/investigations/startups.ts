@@ -111,6 +111,12 @@ export type StartupPublicCard = {
   openRoleCount: number;
 };
 
+export function startupHasOpenJobs(
+  card: Pick<StartupPublicCard, "openRoleCount">,
+): boolean {
+  return card.openRoleCount > 0;
+}
+
 export const STARTUP_EXIT_STATUS_IDS = [
   "acquired",
   "ipo",
@@ -317,7 +323,7 @@ export function startupOverviewTiles(
   if (presentText(card.stage)) tiles.push("stage");
   if (card.exitStatus) tiles.push("exit");
   if (displayStartupFounders(card.founders).length > 0) tiles.push("founders");
-  if (presentText(card.jobsUrl) || card.openRoleCount > 0) tiles.push("jobs");
+  if (startupHasOpenJobs(card)) tiles.push("jobs");
   if (displayStartupSources(card.sources).length > 0) tiles.push("sources");
   if (verifiedStartupPin(card)) tiles.push("map");
   return tiles;
@@ -328,7 +334,7 @@ export function startupProfileExtraTabs(
 ): StartupProfileExtraTab[] {
   const tabs: StartupProfileExtraTab[] = [];
   if (startupNewsSources(card.sources).length > 0) tabs.push("news");
-  if (presentText(card.jobsUrl) || card.openRoleCount > 0) tabs.push("hiring");
+  if (startupHasOpenJobs(card)) tabs.push("hiring");
   if (card.exitStatus) tabs.push("funding");
   if (displayStartupFounders(card.founders).length > 0) tabs.push("team");
   return tabs;
@@ -908,7 +914,7 @@ export function applyStartupDirectoryQuery(
     if (region && presentText(card.region) !== region) return false;
     if (stage && presentText(card.stage) !== stage) return false;
     if (status !== "all" && startupExitBucket(card) !== status) return false;
-    if (hiring === "hiring" && !presentText(card.jobsUrl)) return false;
+    if (hiring === "hiring" && !startupHasOpenJobs(card)) return false;
     if (!needle) return true;
     const haystack = [
       card.name,

@@ -16,8 +16,8 @@ export const STARTUP_ROLE_SLUG_MAX = 80;
 
 export const STARTUP_ROLES_PER_COMPANY_CAP = 40;
 
-/** JD HTML fetches per company. ATS JSON already carries description text. */
-export const STARTUP_ROLE_ENRICH_CAP = 8;
+/** JD HTML fetches per company, including ATS rows that omitted description text. */
+export const STARTUP_ROLE_ENRICH_CAP = STARTUP_ROLES_PER_COMPANY_CAP;
 
 export const STARTUP_ROLE_FETCH_TIMEOUT_MS = 12_000;
 

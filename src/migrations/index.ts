@@ -102,6 +102,7 @@ import * as migration_20260916b_startups_description from "./20260916b_startups_
 import * as migration_20260916c_startups_slug from "./20260916c_startups_slug";
 import * as migration_20260920a_startup_roles from "./20260920a_startup_roles";
 import * as migration_20260921a_startup_member_cv from "./20260921a_startup_member_cv";
+import * as migration_20260921b_startup_open_role_count from "./20260921b_startup_open_role_count";
 
 export const migrations = [
   {
@@ -623,5 +624,10 @@ export const migrations = [
     up: migration_20260921a_startup_member_cv.up,
     down: migration_20260921a_startup_member_cv.down,
     name: "20260921a_startup_member_cv",
+  },
+  {
+    up: migration_20260921b_startup_open_role_count.up,
+    down: migration_20260921b_startup_open_role_count.down,
+    name: "20260921b_startup_open_role_count",
   },
 ];

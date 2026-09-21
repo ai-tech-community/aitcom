@@ -4212,6 +4212,8 @@ export const startups = appSchema.table(
     slug: d.text().notNull(),
     /** Last careers scan. Null until the open-positions cron has tried. */
     jobsScannedAt: d.timestamp({ withTimezone: true }),
+    /** Sourced `open` role count from the last successful scan. 0 = no jobs. */
+    openRoleCount: d.integer().notNull().default(0),
     status: d
       .varchar({ length: 16 })
       .notNull()

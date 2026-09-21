@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 
 import {
   displayStartupFounders,
@@ -20,10 +20,7 @@ function asFiniteCount(value: unknown): number {
   return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-function toPublicCard(
-  row: typeof startups.$inferSelect,
-  openRoleCount = 0,
-): StartupPublicCard {
+function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
   return {
     id: row.id,
     name: row.name,
@@ -43,36 +40,8 @@ function toPublicCard(
     jobsUrl: row.jobsUrl ? normalizeStartupHomepage(row.jobsUrl) : null,
     listedOn: row.listedOn,
     slug: parseStartupSlug(row.slug) ?? startupSlugFromName(row.name),
-    openRoleCount,
+    openRoleCount: asFiniteCount(row.openRoleCount),
   };
-}
-
-async function openRoleCountByStartup(
-  ids: readonly string[],
-): Promise<Map<string, number>> {
-  const counts = new Map<string, number>();
-  if (ids.length === 0) return counts;
-  try {
-    const rows = await db
-      .select({
-        startupId: startupRoles.startupId,
-        value: count(),
-      })
-      .from(startupRoles)
-      .where(
-        and(
-          inArray(startupRoles.startupId, [...ids]),
-          eq(startupRoles.status, "open"),
-        ),
-      )
-      .groupBy(startupRoles.startupId);
-    for (const row of rows) {
-      counts.set(row.startupId, asFiniteCount(row.value));
-    }
-  } catch {
-    return counts;
-  }
-  return counts;
 }
 
 /** Public directory. DB only — empty table or query failure is a soft empty. */
@@ -85,8 +54,7 @@ export async function listApprovedPublicStartups(): Promise<
       .from(startups)
       .where(eq(startups.status, "approved"))
       .orderBy(desc(startups.listedOn), desc(startups.createdAt));
-    const counts = await openRoleCountByStartup(rows.map((row) => row.id));
-    return rows.map((row) => toPublicCard(row, counts.get(row.id) ?? 0));
+    return rows.map((row) => toPublicCard(row));
   } catch {
     return [];
   }
@@ -154,8 +122,7 @@ export async function findApprovedPublicStartupBySlug(
       .where(eq(startups.slug, parsed))
       .limit(1);
     if (row?.status === "approved") {
-      const counts = await openRoleCountByStartup([row.id]);
-      return toPublicCard(row, counts.get(row.id) ?? 0);
+      return toPublicCard(row);
     }
     return null;
   } catch {

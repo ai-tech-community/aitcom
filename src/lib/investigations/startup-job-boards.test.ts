@@ -164,6 +164,21 @@ describe("startup role slugs and jobs query", () => {
     ).toEqual(["/startups/jobs/cursor-anysphere-staff-engineer"]);
   });
 
+  it("plain-texts entity-escaped HTML instead of leaving tags in the JD", () => {
+    expect(
+      htmlToPlainText("&lt;p&gt;Ship models in San Francisco.&lt;/p&gt;"),
+    ).toBe("Ship models in San Francisco.");
+  });
+
+  it("skips careers-index CTA titles", () => {
+    const listings = extractListingsFromCareersHtml(
+      `<a href="/careers/jobs">Explore open roles</a>
+       <a href="/careers/research-engineer">Research Engineer</a>`,
+      "https://www.anthropic.com/careers",
+    );
+    expect(listings.map((row) => row.title)).toEqual(["Research Engineer"]);
+  });
+
   it("filters the public jobs table by company slug", () => {
     const query = parseStartupJobsQuery({
       company: "cursor-anysphere",

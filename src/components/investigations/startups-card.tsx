@@ -1,3 +1,4 @@
+import { Link } from "@/i18n/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,7 @@ import { StartupsFounders } from "@/components/investigations/startups-founders"
 import { StartupsSourceChips } from "@/components/investigations/startups-source-chips";
 import {
   STARTUP_CATEGORY_LABELS,
+  buildStartupJobsPath,
   displayStartupFounders,
   formatStartupExitBadge,
   formatStartupListedDate,
@@ -33,6 +35,7 @@ export function StartupsCard({
   copy: {
     openHomepage: string;
     openJobs: string;
+    openRoles: string;
     sources: string;
     founders: string;
     edit: string;
@@ -44,7 +47,6 @@ export function StartupsCard({
   const logoUrl = presentText(card.logoUrl);
   const founders = displayStartupFounders(card.founders);
   const exitBadge = formatStartupExitBadge(card, locale);
-  const jobsUrl = presentText(card.jobsUrl);
 
   return (
     <Card className="h-full" data-startup-card={card.id}>
@@ -99,11 +101,14 @@ export function StartupsCard({
             {copy.openHomepage}
           </a>
         </Button>
-        {jobsUrl ? (
+        {card.openRoleCount > 0 ? (
           <Button asChild size="sm" variant="outline">
-            <a href={jobsUrl} rel="noopener noreferrer" data-startup-jobs="">
-              {copy.openJobs}
-            </a>
+            <Link
+              href={buildStartupJobsPath({ company: card.slug })}
+              data-startup-jobs=""
+            >
+              {copy.openRoles.replace("{count}", String(card.openRoleCount))}
+            </Link>
           </Button>
         ) : null}
         {isModerator ? (
