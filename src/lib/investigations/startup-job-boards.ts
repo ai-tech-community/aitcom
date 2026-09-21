@@ -16,7 +16,7 @@ const SKIP_TITLE =
   /^(careers|jobs|job openings|open roles|open jobs|view all|see all|learn more|apply|home|about|teams?)$/i;
 
 const SKIP_INDEX_TITLE =
-  /^(explore|view|see|browse)\s+(all\s+)?(open\s+)?(roles|jobs|openings)\b/i;
+  /^(?:explore|view|see|browse)\s+(?:all\s+|our\s+|job\s+)?(?:open\s+)?(?:roles|jobs|openings)\b/i;
 
 /** YC-style location/category index CTAs, not a single posting. */
 const SKIP_LOCATION_INDEX_TITLE = /^(?:.+ )?jobs in .+$/i;
@@ -307,6 +307,13 @@ export function htmlToPlainText(
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
+      .replace(/&ndash;|&#8211;/g, "–")
+      .replace(/&mdash;|&#8212;/g, "—")
+      .replace(/&rsquo;|&#8217;/g, "’")
+      .replace(/&lsquo;|&#8216;/g, "‘")
+      .replace(/&rdquo;|&#8221;/g, "”")
+      .replace(/&ldquo;|&#8220;/g, "“")
+      .replace(/&hellip;|&#8230;/g, "…")
       .replace(/&#39;/g, "'")
       .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) =>
         String.fromCodePoint(Number.parseInt(hex, 16)),
@@ -749,10 +756,18 @@ export function mergePostingIntoListing(
     pageNorm.length > 0 &&
     listing.title.includes("\n") &&
     firstLine === pageNorm;
+  const iconChrome =
+    pageNorm.length > 0 &&
+    listingNorm.includes(pageNorm) &&
+    listingNorm !== pageNorm &&
+    /north_east|full time/.test(listingNorm);
   const replaceTitle =
     pageTitle != null &&
     isPublishableJobTitle(pageTitle) &&
-    (!isPublishableJobTitle(listing.title) || applyChrome || cardChrome);
+    (!isPublishableJobTitle(listing.title) ||
+      applyChrome ||
+      cardChrome ||
+      iconChrome);
   return {
     ...listing,
     title: replaceTitle && pageTitle ? pageTitle : listing.title,
