@@ -1,4 +1,4 @@
-# Startups investigation (`/en/investigations/startups`)
+# Startups (`/en/startups`)
 
 Public directory + Insights. **Live rows live in Neon.** The app reads the
 database on each request (`force-dynamic`). Staff inserts after deploy show
@@ -125,7 +125,7 @@ Hub operator (`Add a company`).
 
 ## Insights
 
-`/en/investigations/startups/insights` aggregates **listed Neon rows only**.
+`/en/startups/insights` aggregates **listed Neon rows only**.
 Bento hero: Added over time. 2×2: Category / Region / Stage / Sources
 coverage. HTML table under each chart. Blank stage omits the chart (no
 fake empty series). **Region mix is soft-omitted until ≥5 distinct sourced
@@ -133,21 +133,21 @@ regions** — never invent region zeros. Directory ↔ Insights are hard links.
 
 ## Join chrome
 
-Guests see the hard www `/en/join` door plus investigation UTMs. Signed-in
+Guests see the hard www `/en/join` door plus startups UTMs. Signed-in
 Hub members never see Join — `shouldPromoteJoin()` / `PromoteJoinCta` swap
 to Open Hub (`/communities/ait/forum`). Same leftover rule as navbar JOIN
 (`!user`).
 
 Directory default is an SSR `<table>`: **Logo** (sourced `logoUrl` only;
 never a favicon or invented mark; logo may link to the homepage) · sticky
-**Name** (hard SSR link to `/en/investigations/startups/{slug}`) · **Short description** (sourced blurb only) · Category · City/region · Founders
+**Name** (hard SSR link to `/en/startups/{slug}`) · **Short description** (sourced blurb only) · Category · City/region · Founders
 (sourced name + profile link; AvatarGroup OK) · Sources (favicon chips) ·
 Jobs · Exit · Stage. Homepage stays a secondary control (logo and/or
 “Open homepage”). Blank cells soft-omit — never invent “—”.
 
 Each listed company has a unique stable `slug` (slugify of the name, with
 `-2` / `-3` on collision). Create/update accept or generate a slug and keep
-it unique. Profile route is `/en/investigations/startups/[slug]` (NL
+it unique. Profile route is `/en/startups/[slug]` (NL
 equivalent). Overview is an Awesome-OSS-style bento; empty tiles and empty
 News / Hiring / Funding/Exit / Team tabs are omitted entirely. Never invent
 copy, faces, marks, metrics, or street addresses.
@@ -158,7 +158,7 @@ only when no sourced region can be pinned. No always-on map.
 
 ## Directory filters
 
-Crawlable query params on `/investigations/startups`. Pagination links keep
+Crawlable query params on `/startups`. Pagination links keep
 the active filters.
 
 | Param      | Values                               | Notes                                                                                                      |
@@ -174,9 +174,18 @@ the active filters.
 
 - Directory and Insights are `force-dynamic` and server-read Neon on each
   request. New API rows appear in SSR without a redeploy.
-- One canonical per startup profile (`/investigations/startups/{slug}`).
+- One canonical per startup profile (`/startups/{slug}`).
   Organization JSON-LD uses sourced fields only and includes `description`
   only when a sourced blurb exists. Sitemap lists each profile slug.
+- Open positions live at `/startups/jobs` with one page per sourced role
+  (`/startups/jobs/{roleSlug}`). The daily `startup-jobs-scan` cron reads
+  verified `jobs_url` pages (ATS JSON when the board is Ashby / Greenhouse /
+  Lever / Workable, otherwise listing HTML). Title + source URL are required
+  to publish. Low-confidence extracts stay `pending_review`. Roles that
+  disappear on a later scan become `closed` and keep their page. Jobs column
+  shows a count when open roles exist; otherwise the careers CTA. `/en/roles`
+  remains Hub seats. Sponsor `/jobs` is unchanged.
+- `/investigations/startups` permanent-redirects to `/startups`.
 - Directory pages after page 1 use crawlable `?page=` links (`STARTUPS_PAGE_SIZE`
   is 24, so a list past ~50 rows is page 3). Pagination stays crawlable.
 - **Crawl is open:** Directory + Insights send `index,follow` and stay **in

@@ -128,18 +128,34 @@ export function appPathFromGuideHref(href: string): string | null {
     return "/investigations/awesome-ai-oss";
   }
   const startupsRoot =
+    pathOnly === "/startups" ||
+    pathOnly === "/en/startups" ||
+    pathOnly === "/nl/startups" ||
     pathOnly === "/investigations/startups" ||
     pathOnly === "/en/investigations/startups" ||
     pathOnly === "/nl/investigations/startups";
   const startupsInsights =
+    pathOnly === "/startups/insights" ||
+    pathOnly === "/en/startups/insights" ||
+    pathOnly === "/nl/startups/insights" ||
     pathOnly === "/investigations/startups/insights" ||
     pathOnly === "/en/investigations/startups/insights" ||
     pathOnly === "/nl/investigations/startups/insights";
+  const startupsJobs =
+    pathOnly === "/startups/jobs" ||
+    pathOnly === "/en/startups/jobs" ||
+    pathOnly === "/nl/startups/jobs" ||
+    pathOnly === "/investigations/startups/jobs" ||
+    pathOnly === "/en/investigations/startups/jobs" ||
+    pathOnly === "/nl/investigations/startups/jobs";
   if (startupsInsights || (startupsRoot && params.get("tab") === "insights")) {
-    return "/investigations/startups/insights";
+    return "/startups/insights";
+  }
+  if (startupsJobs) {
+    return "/startups/jobs";
   }
   if (startupsRoot) {
-    return "/investigations/startups";
+    return "/startups";
   }
   return null;
 }

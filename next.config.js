@@ -26,6 +26,16 @@ const config = {
         destination: "https://www.aitcommunity.org/:path*",
         permanent: false,
       },
+      {
+        source: "/:locale(en|nl)/investigations/startups",
+        destination: "/:locale/startups",
+        permanent: true,
+      },
+      {
+        source: "/:locale(en|nl)/investigations/startups/:path*",
+        destination: "/:locale/startups/:path*",
+        permanent: true,
+      },
     ];
   },
   async headers() {

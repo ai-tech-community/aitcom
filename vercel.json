@@ -68,6 +68,10 @@
     {
       "path": "/api/cron/awesome-ai-oss-stars",
       "schedule": "20 7 * * *"
+    },
+    {
+      "path": "/api/cron/startup-jobs-scan",
+      "schedule": "40 7 * * *"
     }
   ]
 }

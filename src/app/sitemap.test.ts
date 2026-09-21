@@ -29,8 +29,9 @@ const STATIC_PATHS = [
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
   "/investigations/awesome-ai-oss/insights",
-  "/investigations/startups",
-  "/investigations/startups/insights",
+  "/startups",
+  "/startups/insights",
+  "/startups/jobs",
   "/roles",
 ] as const;
 
@@ -255,11 +256,12 @@ describe("buildSitemapEntries", () => {
       async () => [],
     );
     const staticUrls = urlsOf(staticOnly);
+    expect(staticUrls).toContain("https://www.aitcommunity.org/en/startups");
     expect(staticUrls).toContain(
-      "https://www.aitcommunity.org/en/investigations/startups",
+      "https://www.aitcommunity.org/en/startups/insights",
     );
     expect(staticUrls).toContain(
-      "https://www.aitcommunity.org/en/investigations/startups/insights",
+      "https://www.aitcommunity.org/en/startups/jobs",
     );
 
     const indexed = await buildSitemapEntries(
@@ -267,29 +269,26 @@ describe("buildSitemapEntries", () => {
       async () => new Map(),
       async () => [],
       async () => [
-        "/investigations/startups",
-        "/investigations/startups/insights",
-        "/investigations/startups?page=2",
-        "/investigations/startups/cursor-anysphere",
+        "/startups",
+        "/startups/insights",
+        "/startups?page=2",
+        "/startups/cursor-anysphere",
       ],
     );
     const indexedUrls = urlsOf(indexed);
+    expect(indexedUrls).toContain("https://www.aitcommunity.org/en/startups");
     expect(indexedUrls).toContain(
-      "https://www.aitcommunity.org/en/investigations/startups",
+      "https://www.aitcommunity.org/en/startups/insights",
     );
     expect(indexedUrls).toContain(
-      "https://www.aitcommunity.org/en/investigations/startups/insights",
+      "https://www.aitcommunity.org/en/startups?page=2",
     );
     expect(indexedUrls).toContain(
-      "https://www.aitcommunity.org/en/investigations/startups?page=2",
-    );
-    expect(indexedUrls).toContain(
-      "https://www.aitcommunity.org/en/investigations/startups/cursor-anysphere",
+      "https://www.aitcommunity.org/en/startups/cursor-anysphere",
     );
     expect(
       indexedUrls.filter(
-        (url) =>
-          url === "https://www.aitcommunity.org/en/investigations/startups",
+        (url) => url === "https://www.aitcommunity.org/en/startups",
       ),
     ).toHaveLength(1);
   });
@@ -312,24 +311,19 @@ describe("buildSitemapEntries", () => {
       async () => extra,
     );
     const urls = urlsOf(entries);
-    expect(urls).toContain(
-      "https://www.aitcommunity.org/en/investigations/startups?page=2",
-    );
-    expect(urls).toContain(
-      "https://www.aitcommunity.org/en/investigations/startups?page=145",
-    );
+    expect(urls).toContain("https://www.aitcommunity.org/en/startups?page=2");
+    expect(urls).toContain("https://www.aitcommunity.org/en/startups?page=145");
     expect(urls).not.toContain(
-      "https://www.aitcommunity.org/en/investigations/startups?page=1",
+      "https://www.aitcommunity.org/en/startups?page=1",
     );
     expect(
       entries.find(
         (item) =>
-          item.url ===
-          "https://www.aitcommunity.org/en/investigations/startups?page=145",
+          item.url === "https://www.aitcommunity.org/en/startups?page=145",
       )?.alternates?.languages,
     ).toEqual({
-      en: "https://www.aitcommunity.org/en/investigations/startups?page=145",
-      nl: "https://www.aitcommunity.org/nl/investigations/startups?page=145",
+      en: "https://www.aitcommunity.org/en/startups?page=145",
+      nl: "https://www.aitcommunity.org/nl/startups?page=145",
     });
   });
 
@@ -340,28 +334,20 @@ describe("buildSitemapEntries", () => {
       undefined,
       async () => new Map(),
       async () => [],
-      async () => [
-        "/investigations/startups?page=2",
-        "/investigations/startups?page=3",
-      ],
+      async () => ["/startups?page=2", "/startups?page=3"],
     );
     const urls = urlsOf(entries);
 
-    expect(urls).toContain(
-      "https://www.aitcommunity.org/en/investigations/startups?page=2",
-    );
-    expect(urls).toContain(
-      "https://www.aitcommunity.org/en/investigations/startups?page=3",
-    );
+    expect(urls).toContain("https://www.aitcommunity.org/en/startups?page=2");
+    expect(urls).toContain("https://www.aitcommunity.org/en/startups?page=3");
     expect(
       entries.find(
         (item) =>
-          item.url ===
-          "https://www.aitcommunity.org/en/investigations/startups?page=2",
+          item.url === "https://www.aitcommunity.org/en/startups?page=2",
       )?.alternates?.languages,
     ).toEqual({
-      en: "https://www.aitcommunity.org/en/investigations/startups?page=2",
-      nl: "https://www.aitcommunity.org/nl/investigations/startups?page=2",
+      en: "https://www.aitcommunity.org/en/startups?page=2",
+      nl: "https://www.aitcommunity.org/nl/startups?page=2",
     });
   });
 

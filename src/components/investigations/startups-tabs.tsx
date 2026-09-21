@@ -1,21 +1,24 @@
 import { Link } from "@/i18n/navigation";
 import {
   STARTUPS_INSIGHTS_PATH,
+  STARTUPS_JOBS_PATH,
   STARTUPS_PATH,
 } from "@/lib/investigations/startups";
 import { cn } from "@/lib/utils";
 
-export type StartupsTab = "directory" | "insights";
+export type StartupsTab = "directory" | "insights" | "jobs";
 
 export function StartupsTabs({
   active,
   directoryLabel,
   insightsLabel,
+  jobsLabel,
   navLabel,
 }: {
   active: StartupsTab;
   directoryLabel: string;
   insightsLabel: string;
+  jobsLabel?: string;
   navLabel: string;
 }) {
   return (
@@ -33,6 +36,13 @@ export function StartupsTabs({
         active={active === "insights"}
         label={insightsLabel}
       />
+      {jobsLabel ? (
+        <TabLink
+          href={STARTUPS_JOBS_PATH}
+          active={active === "jobs"}
+          label={jobsLabel}
+        />
+      ) : null}
     </nav>
   );
 }

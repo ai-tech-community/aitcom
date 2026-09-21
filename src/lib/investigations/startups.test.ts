@@ -4,6 +4,7 @@ import {
   STARTUPS_BATCH_MAX,
   STARTUPS_H1,
   STARTUPS_INSIGHTS_PATH,
+  STARTUPS_JOBS_PATH,
   STARTUPS_JOIN_HREF,
   STARTUPS_META,
   STARTUPS_PATH,
@@ -40,7 +41,9 @@ import {
   startupsPublicRobots,
   STARTUPS_PUBLIC_INDEX_MIN,
   allocateStartupSlug,
+  buildStartupJobsPath,
   buildStartupProfilePath,
+  buildStartupRolePath,
   parseStartupSlug,
   startupSlugFromName,
   verifiedStartupPin,
@@ -72,28 +75,30 @@ function sampleCard(
     jobsUrl: null,
     listedOn: "2026-09-15",
     slug: "fixture-co",
+    openRoleCount: 0,
     ...overrides,
   };
 }
 
 describe("startups investigation contract", () => {
-  it("lives under /investigations/startups with a dedicated insights path", () => {
-    expect(STARTUPS_PATH).toBe("/investigations/startups");
-    expect(STARTUPS_INSIGHTS_PATH).toBe("/investigations/startups/insights");
+  it("lives under /startups with a dedicated insights path", () => {
+    expect(STARTUPS_PATH).toBe("/startups");
+    expect(STARTUPS_INSIGHTS_PATH).toBe("/startups/insights");
+    expect(STARTUPS_JOBS_PATH).toBe("/startups/jobs");
     expect(STARTUPS_H1).toBe("AI startups worth watching");
     expect(STARTUPS_META).toMatch(/homepage and sources verified/i);
     expect(STARTUPS_META).not.toMatch(BANNED_METRIC);
   });
 
-  it("uses a hard www Join door with investigation UTMs", () => {
+  it("uses a hard www Join door with startups UTMs", () => {
     expect(STARTUPS_JOIN_HREF).toBe(
-      "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=investigations&utm_campaign=startups",
+      "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=startups&utm_campaign=startups",
     );
     const url = new URL(STARTUPS_JOIN_HREF);
     expect(url.origin).toBe("https://www.aitcommunity.org");
     expect(url.pathname).toBe("/en/join");
     expect(url.searchParams.get("utm_source")).toBe("aitcom");
-    expect(url.searchParams.get("utm_medium")).toBe("investigations");
+    expect(url.searchParams.get("utm_medium")).toBe("startups");
     expect(url.searchParams.get("utm_campaign")).toBe("startups");
     expect(url.pathname).not.toContain("forum");
   });
@@ -798,16 +803,19 @@ describe("directory query", () => {
     expect(startupInvestigationSitemapPaths(20)).toEqual([
       STARTUPS_PATH,
       STARTUPS_INSIGHTS_PATH,
+      STARTUPS_JOBS_PATH,
     ]);
     expect(startupInvestigationSitemapPaths(51)).toEqual([
       STARTUPS_PATH,
       STARTUPS_INSIGHTS_PATH,
+      STARTUPS_JOBS_PATH,
       `${STARTUPS_PATH}?page=2`,
       `${STARTUPS_PATH}?page=3`,
     ]);
     expect(startupInvestigationSitemapPaths(3000)).toEqual([
       STARTUPS_PATH,
       STARTUPS_INSIGHTS_PATH,
+      STARTUPS_JOBS_PATH,
       ...startupDirectorySitemapPaths(3000),
     ]);
     const page = paginateStartupCards(
@@ -838,12 +846,20 @@ describe("startup slugs and profile contract", () => {
       allocateStartupSlug("Fixture Co", ["fixture-co", "fixture-co-2"]),
     ).toBe("fixture-co-3");
     expect(allocateStartupSlug("Insights", [])).toBe("insights-2");
+    expect(allocateStartupSlug("Jobs", [])).toBe("jobs-2");
     expect(allocateStartupSlug("Fixture Co", ["taken"], "custom-slug")).toBe(
       "custom-slug",
     );
     expect(buildStartupProfilePath("cursor-anysphere")).toBe(
-      "/investigations/startups/cursor-anysphere",
+      "/startups/cursor-anysphere",
     );
+    expect(buildStartupRolePath("cursor-anysphere-staff-engineer")).toBe(
+      "/startups/jobs/cursor-anysphere-staff-engineer",
+    );
+    expect(buildStartupJobsPath({ company: "cursor-anysphere" })).toBe(
+      "/startups/jobs?company=cursor-anysphere",
+    );
+    expect(buildStartupJobsPath({ page: 2 })).toBe("/startups/jobs?page=2");
   });
 
   it("lists profile sitemap locs from unique usable slugs only", () => {
@@ -852,14 +868,12 @@ describe("startup slugs and profile contract", () => {
         "cursor-anysphere",
         "cursor-anysphere",
         "Insights",
+        "jobs",
         "not a slug",
         "  ",
         "hugging-face",
       ]),
-    ).toEqual([
-      "/investigations/startups/cursor-anysphere",
-      "/investigations/startups/hugging-face",
-    ]);
+    ).toEqual(["/startups/cursor-anysphere", "/startups/hugging-face"]);
   });
 
   it("soft-omits empty overview tiles and extra tabs", () => {

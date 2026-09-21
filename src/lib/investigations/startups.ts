@@ -5,12 +5,17 @@ import {
   startupPlaceCentroid,
 } from "./startups-places";
 
-export const STARTUPS_PATH = "/investigations/startups";
+export const STARTUPS_PATH = "/startups";
 
-export const STARTUPS_INSIGHTS_PATH = "/investigations/startups/insights";
+export const STARTUPS_INSIGHTS_PATH = "/startups/insights";
 
-/** Static `/insights` segment — never a company profile slug. */
-export const STARTUPS_RESERVED_SLUGS = new Set(["insights"]);
+export const STARTUPS_JOBS_PATH = "/startups/jobs";
+
+/** Pre-IA investigation URLs. Permanent-redirect in next.config. */
+export const STARTUPS_LEGACY_PATH = "/investigations/startups";
+
+/** Static segments — never a company profile slug. */
+export const STARTUPS_RESERVED_SLUGS = new Set(["insights", "jobs"]);
 
 export const STARTUPS_SLUG_MAX = 80;
 
@@ -30,7 +35,7 @@ export const STARTUPS_INSIGHTS_META =
   "Added over time, plus category, region, stage, and source coverage — from the live directory only. Blank stage stays omitted. Region mix waits until five distinct sourced regions are listed.";
 
 export const STARTUPS_JOIN_HREF =
-  "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=investigations&utm_campaign=startups";
+  "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=startups&utm_campaign=startups";
 
 export const STARTUPS_HOMEPAGE_ERROR = "Use a live http(s) homepage URL.";
 
@@ -102,6 +107,8 @@ export type StartupPublicCard = {
   listedOn: string;
   /** Stable unique public path segment. Never invent a marketing handle. */
   slug: string;
+  /** Count of sourced `open` roles. 0 until a scan has published any. */
+  openRoleCount: number;
 };
 
 export const STARTUP_EXIT_STATUS_IDS = [
@@ -224,6 +231,25 @@ export function buildStartupProfilePath(slug: string): string {
   return `${STARTUPS_PATH}/${slug}`;
 }
 
+export function buildStartupRolePath(slug: string): string {
+  return `${STARTUPS_JOBS_PATH}/${slug}`;
+}
+
+export function buildStartupJobsPath(query?: {
+  company?: string | null;
+  q?: string | null;
+  page?: number;
+}): string {
+  const params = new URLSearchParams();
+  const company = parseStartupSlug(query?.company ?? null);
+  const needle = presentText(query?.q);
+  if (company) params.set("company", company);
+  if (needle) params.set("q", needle);
+  if (query?.page && query.page > 1) params.set("page", String(query.page));
+  const suffix = params.toString();
+  return suffix ? `${STARTUPS_JOBS_PATH}?${suffix}` : STARTUPS_JOBS_PATH;
+}
+
 export function startupSlugFromName(name: string): string {
   const slug = slugify(name).slice(0, STARTUPS_SLUG_MAX);
   return slug || STARTUPS_SLUG_FALLBACK;
@@ -291,7 +317,7 @@ export function startupOverviewTiles(
   if (presentText(card.stage)) tiles.push("stage");
   if (card.exitStatus) tiles.push("exit");
   if (displayStartupFounders(card.founders).length > 0) tiles.push("founders");
-  if (presentText(card.jobsUrl)) tiles.push("jobs");
+  if (presentText(card.jobsUrl) || card.openRoleCount > 0) tiles.push("jobs");
   if (displayStartupSources(card.sources).length > 0) tiles.push("sources");
   if (verifiedStartupPin(card)) tiles.push("map");
   return tiles;
@@ -302,7 +328,7 @@ export function startupProfileExtraTabs(
 ): StartupProfileExtraTab[] {
   const tabs: StartupProfileExtraTab[] = [];
   if (startupNewsSources(card.sources).length > 0) tabs.push("news");
-  if (presentText(card.jobsUrl)) tabs.push("hiring");
+  if (presentText(card.jobsUrl) || card.openRoleCount > 0) tabs.push("hiring");
   if (card.exitStatus) tabs.push("funding");
   if (displayStartupFounders(card.founders).length > 0) tabs.push("team");
   return tabs;
@@ -1041,6 +1067,7 @@ export function startupInvestigationSitemapPaths(
   return [
     STARTUPS_PATH,
     STARTUPS_INSIGHTS_PATH,
+    STARTUPS_JOBS_PATH,
     ...startupDirectorySitemapPaths(verifiedCount, pageSize),
   ];
 }
