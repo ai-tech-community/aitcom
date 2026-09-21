@@ -99,8 +99,8 @@ const appLocale = join(dir, "../../app/[locale]");
 const PAGE_FILE = join(appLocale, "startups/page.tsx");
 const PROFILE_FILE = join(appLocale, "startups/[slug]/page.tsx");
 const INSIGHTS_FILE = join(appLocale, "startups/insights/page.tsx");
-const JOBS_FILE = join(appLocale, "startups/jobs/page.tsx");
-const ROLE_FILE = join(appLocale, "startups/jobs/[roleSlug]/page.tsx");
+const JOBS_FILE = join(appLocale, "jobs/page.tsx");
+const ROLE_FILE = join(appLocale, "jobs/[roleSlug]/page.tsx");
 const INDEX_FILE = join(appLocale, "investigations/page.tsx");
 const SITEMAP_FILE = join(dir, "../../app/sitemap.ts");
 const SITEMAP_TEST_FILE = join(dir, "../../app/sitemap.test.ts");
@@ -215,6 +215,10 @@ describe("Startups investigation route", () => {
     expect(existsSync(INSIGHTS_FILE)).toBe(true);
     expect(existsSync(JOBS_FILE)).toBe(true);
     expect(existsSync(ROLE_FILE)).toBe(true);
+    expect(existsSync(join(appLocale, "startups/jobs/page.tsx"))).toBe(false);
+    expect(
+      existsSync(join(appLocale, "startups/jobs/[roleSlug]/page.tsx")),
+    ).toBe(false);
     const src = readFileSync(PAGE_FILE, "utf8");
     expect(src).toContain("STARTUPS_PATH");
     expect(src).toContain("localeAlternates");
@@ -635,7 +639,7 @@ describe("StartupsPage", () => {
       />,
     );
     const jobs = screen.getByRole("link", { name: "3 open" });
-    expect(jobs).toHaveAttribute("href", "/startups/jobs?company=fixture-co");
+    expect(jobs).toHaveAttribute("href", "/jobs?company=fixture-co");
     expect(container.querySelector("[data-startup-jobs]")).toBe(jobs);
   });
 
@@ -1067,7 +1071,7 @@ describe("Startups card soft-omit", () => {
     ).not.toBeNull();
     expect(screen.getByRole("link", { name: "2 open" })).toHaveAttribute(
       "href",
-      "/startups/jobs?company=fixture-co",
+      "/jobs?company=fixture-co",
     );
   });
 
@@ -1349,12 +1353,12 @@ describe("Startups profile page", () => {
     ).toBe("Sourced short blurb from Pulse.");
     expect(container.querySelector("[data-startup-jobs]")).toHaveAttribute(
       "href",
-      "/startups/jobs?company=fixture-co",
+      "/jobs?company=fixture-co",
     );
     fireEvent.click(screen.getByRole("button", { name: "Hiring" }));
     expect(
       screen.getByRole("link", { name: "Staff Engineer" }),
-    ).toHaveAttribute("href", "/startups/jobs/fixture-co-staff-engineer");
+    ).toHaveAttribute("href", "/jobs/fixture-co-staff-engineer");
     const data = JSON.parse(
       container.querySelector("script[type='application/ld+json']")
         ?.textContent ?? "null",
@@ -1427,6 +1431,9 @@ describe("Startups open positions", () => {
       en.investigationsStartups.jobsEmpty,
     );
     expect(container.textContent).not.toContain("Directory: Directory");
+    expect(container.querySelector("main")?.className.split(/\s+/)).toContain(
+      "max-w-6xl",
+    );
     expect(hrefsOf(container)).toContain(STARTUPS_PATH);
     expect(hrefsOf(container)).toContain(STARTUPS_PATH);
     expect(hrefsOf(container)).toContain(STARTUPS_JOBS_PATH);
@@ -1444,7 +1451,7 @@ describe("Startups open positions", () => {
     );
     expect(
       screen.getByRole("link", { name: "Staff Engineer" }),
-    ).toHaveAttribute("href", "/startups/jobs/fixture-co-staff-engineer");
+    ).toHaveAttribute("href", "/jobs/fixture-co-staff-engineer");
     expect(screen.getByRole("link", { name: "Fixture Co" })).toHaveAttribute(
       "href",
       "/startups/fixture-co",
@@ -1467,12 +1474,24 @@ describe("Startups open positions", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Staff Engineer" }),
     ).toBeInTheDocument();
+    expect(container.querySelector("main")?.className.split(/\s+/)).toContain(
+      "max-w-6xl",
+    );
+    expect(
+      container.querySelector("main")?.className.split(/\s+/),
+    ).not.toContain("max-w-3xl");
     expect(
       screen.getByRole("link", { name: "Open original posting" }),
     ).toHaveAttribute("href", "https://fixture.example/careers/staff");
     expect(
       container.querySelector("[data-startup-role-description]")?.textContent,
     ).toBe("Build the product.");
+    expect(
+      container.querySelector("[data-startup-role-description]")?.tagName,
+    ).toBe("ARTICLE");
+    expect(
+      container.querySelector("[data-startup-role-description]")?.className,
+    ).not.toMatch(/whitespace-pre-wrap/);
     expect(hrefsOf(container)).toContain(STARTUPS_JOBS_PATH);
     expect(container.textContent).not.toMatch(BANNED);
     expect(container.querySelector("[data-startup-role-member]")).toBeNull();
@@ -1530,6 +1549,37 @@ Nice to have:
     expect(container.textContent).not.toMatch(BANNED);
     expect(container.textContent).not.toMatch(/salary|fit score/i);
   });
+
+  it("renders sourced headings and bullets instead of a pre-wrapped dump", () => {
+    const { container } = render(
+      <StartupsRolePage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        role={{
+          ...FIXTURE_ROLE,
+          descriptionText: `About the role
+Build the product.
+
+Requirements:
+- 5 years shipping TypeScript
+- English`,
+        }}
+      />,
+    );
+    const posting = container.querySelector("[data-startup-role-description]");
+    expect(posting?.className.split(/\s+/)).toContain("max-w-prose");
+    expect(posting?.className).not.toMatch(/whitespace-pre-wrap/);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "About the role" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Requirements" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("list")).toBeInTheDocument();
+    expect(posting?.textContent).toContain("Build the product.");
+    expect(posting?.textContent).toContain("5 years shipping TypeScript");
+    expect(posting?.textContent).not.toMatch(/salary|fit score/i);
+  });
 });
 
 describe("Startups site integration", () => {
@@ -1556,6 +1606,9 @@ describe("Startups site integration", () => {
     expect(
       appPathFromGuideHref("https://www.aitcommunity.org/en/startups/jobs"),
     ).toBe(STARTUPS_JOBS_PATH);
+    expect(appPathFromGuideHref("https://www.aitcommunity.org/en/jobs")).toBe(
+      STARTUPS_JOBS_PATH,
+    );
   });
 
   it("keeps Join as a Hub door with UTMs", () => {
@@ -1624,15 +1677,23 @@ describe("Startups site integration", () => {
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/open_role_count/);
   });
 
-  it("lists Startups in overflow nav and footer without colliding with Hub roles or sponsor jobs", () => {
+  it("lists sourced jobs at /jobs in overflow without colliding with Hub roles", () => {
     const nav = readFileSync(NAV_FILE, "utf8");
     const footer = readFileSync(FOOTER_FILE, "utf8");
+    const nextConfig = readFileSync(
+      join(dir, "../../../next.config.js"),
+      "utf8",
+    );
     expect(nav).toMatch(/href: "\/startups",[\s\S]*?primary: false/);
     expect(nav).toContain('key: "startups"');
     expect(nav).toContain('shortcut: "U"');
     expect(nav).toMatch(/href: "\/jobs",[\s\S]*?primary: false/);
     expect(nav).toMatch(/href: "\/roles",[\s\S]*?primary: true/);
     expect(nav).not.toMatch(/href: "\/startups\/jobs"/);
+    expect(readFileSync(JOBS_FILE, "utf8")).toContain("listPublicStartupRoles");
+    expect(readFileSync(JOBS_FILE, "utf8")).not.toContain('collection: "jobs"');
+    expect(nextConfig).toContain("/startups/jobs");
+    expect(nextConfig).toContain('destination: "/:locale/jobs"');
     expect(footer).toContain('href="/startups"');
     expect(footer).toContain('tNav("startups")');
     expect(en.nav.startups).toBe("Startups");
@@ -1683,7 +1744,8 @@ describe("Startups site integration", () => {
     expect(sitemap).toContain("startupProfileSitemapPaths(slugs)");
     expect(sitemap).toContain("noStore");
     expect(sitemap).toContain('"/startups"');
-    expect(sitemap).toContain('"/startups/jobs"');
+    expect(sitemap).toContain('"/jobs"');
+    expect(sitemap).not.toContain('"/startups/jobs"');
     expect(sitemap).toContain("startupRoleSitemapPaths");
     expect(sitemap).not.toContain("startupInvestigationSitemapPaths");
     expect(sitemap).not.toContain("filterUnlistedStartupSitemapEntries");

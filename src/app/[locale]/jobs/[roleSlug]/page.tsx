@@ -45,7 +45,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function StartupsRoleRoute({ params }: PageProps) {
+export default async function JobsRoleRoute({ params }: PageProps) {
   const { roleSlug } = await params;
   const role = await findPublicStartupRoleBySlug(roleSlug);
   if (!role) notFound();

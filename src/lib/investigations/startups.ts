@@ -9,7 +9,7 @@ export const STARTUPS_PATH = "/startups";
 
 export const STARTUPS_INSIGHTS_PATH = "/startups/insights";
 
-export const STARTUPS_JOBS_PATH = "/startups/jobs";
+export const STARTUPS_JOBS_PATH = "/jobs";
 
 /** Pre-IA investigation URLs. Permanent-redirect in next.config. */
 export const STARTUPS_LEGACY_PATH = "/investigations/startups";

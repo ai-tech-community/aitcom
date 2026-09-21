@@ -190,24 +190,27 @@ the active filters.
 - One canonical per startup profile (`/startups/{slug}`).
   Organization JSON-LD uses sourced fields only and includes `description`
   only when a sourced blurb exists. Sitemap lists each profile slug.
-- Open positions live at `/startups/jobs` with one page per sourced role
-  (`/startups/jobs/{roleSlug}`). The daily `startup-jobs-scan` cron reads
+- Open positions live at `/jobs` with one page per sourced role
+  (`/jobs/{roleSlug}`). `/startups/jobs` and `/investigations/startups/jobs`
+  permanent-redirect here. The daily `startup-jobs-scan` cron reads
   every listed startup with a verified `jobs_url` (oldest `jobs_scanned_at`
   first) until `STARTUP_JOBS_SCAN_BUDGET_MS` (~240s). ATS JSON first (Ashby /
   Greenhouse / Lever / Workable); otherwise listing HTML then the original
   posting page for any missing JD. Title + source URL are required to
-  publish. Low-confidence extracts stay `pending_review`. Roles that
+  publish. Location/category index CTAs (`Jobs in Chicago`,
+  `Software Engineer Jobs in New York`) are skipped. Low-confidence
+  extracts stay `pending_review`. Roles that
   disappear on a later **successful** scan become `closed` and keep their
   page. A live empty board writes `open_role_count = 0` on `app.startup`
   (do not invent a JD). A failed fetch does not close roles or zero the
   count. Jobs column shows a count when open roles exist; otherwise the
-  cell is soft-omitted. `/en/roles` remains Hub seats. Sponsor `/jobs` is
-  unchanged.
+  cell is soft-omitted. `/en/roles` remains Hub seats.
 - `/investigations/startups` permanent-redirects to `/startups`.
 - Global nav lists **Startups** in the overflow menu (`[U]`, ADR-0010)
-  at `/startups`. Footer Navigate does too. Do **not** replace Hub
-  `/roles` or sponsor `/jobs`. Nested paths (`/startups/jobs`,
-  `/startups/{slug}`) keep the overflow item active.
+  at `/startups` and **Jobs** (`[W]`) at `/jobs` (sourced startup openings).
+  Footer Navigate lists Startups. Do **not** replace Hub `/roles`. Nested
+  `/startups/{slug}` keeps the overflow Startups item active; `/jobs/{slug}`
+  keeps Jobs active.
 - Directory pages after page 1 use crawlable `?page=` links (`STARTUPS_PAGE_SIZE`
   is 24, so a list past ~50 rows is page 3). Pagination stays crawlable.
 - **Crawl is open:** Directory + Insights send `index,follow` and stay **in

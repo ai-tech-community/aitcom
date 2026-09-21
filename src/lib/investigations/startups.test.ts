@@ -85,7 +85,7 @@ describe("startups investigation contract", () => {
   it("lives under /startups with a dedicated insights path", () => {
     expect(STARTUPS_PATH).toBe("/startups");
     expect(STARTUPS_INSIGHTS_PATH).toBe("/startups/insights");
-    expect(STARTUPS_JOBS_PATH).toBe("/startups/jobs");
+    expect(STARTUPS_JOBS_PATH).toBe("/jobs");
     expect(STARTUPS_H1).toBe("AI startups worth watching");
     expect(STARTUPS_META).toMatch(/homepage and sources verified/i);
     expect(STARTUPS_META).not.toMatch(BANNED_METRIC);
@@ -883,12 +883,12 @@ describe("startup slugs and profile contract", () => {
       "/startups/cursor-anysphere",
     );
     expect(buildStartupRolePath("cursor-anysphere-staff-engineer")).toBe(
-      "/startups/jobs/cursor-anysphere-staff-engineer",
+      "/jobs/cursor-anysphere-staff-engineer",
     );
     expect(buildStartupJobsPath({ company: "cursor-anysphere" })).toBe(
-      "/startups/jobs?company=cursor-anysphere",
+      "/jobs?company=cursor-anysphere",
     );
-    expect(buildStartupJobsPath({ page: 2 })).toBe("/startups/jobs?page=2");
+    expect(buildStartupJobsPath({ page: 2 })).toBe("/jobs?page=2");
   });
 
   it("lists profile sitemap locs from unique usable slugs only", () => {

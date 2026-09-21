@@ -18,6 +18,17 @@ const SKIP_TITLE =
 const SKIP_INDEX_TITLE =
   /^(explore|view|see|browse)\s+(all\s+)?(open\s+)?(roles|jobs|openings)\b/i;
 
+/** YC-style location/category index CTAs, not a single posting. */
+const SKIP_LOCATION_INDEX_TITLE = /^(?:.+ )?jobs in .+$/i;
+
+export function isSkippedExtractedJobTitle(title: string): boolean {
+  return (
+    SKIP_TITLE.test(title) ||
+    SKIP_INDEX_TITLE.test(title) ||
+    SKIP_LOCATION_INDEX_TITLE.test(title)
+  );
+}
+
 function firstPathSegment(pathname: string): string | null {
   const token = pathname.split("/").find(Boolean) ?? "";
   return token.length > 0 ? token : null;
@@ -115,13 +126,7 @@ function listing(partial: {
 }): ExtractedJobListing | null {
   const title = parseStartupRoleTitle(partial.title);
   const sourceUrl = presentText(partial.sourceUrl);
-  if (
-    !title ||
-    !sourceUrl ||
-    SKIP_TITLE.test(title) ||
-    SKIP_INDEX_TITLE.test(title)
-  )
-    return null;
+  if (!title || !sourceUrl || isSkippedExtractedJobTitle(title)) return null;
   const url = asUrl(sourceUrl);
   if (!url || (url.protocol !== "https:" && url.protocol !== "http:")) {
     return null;

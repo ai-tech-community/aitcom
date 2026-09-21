@@ -41,8 +41,8 @@ const MessagesNavLink = dynamic(() =>
 // Source of truth for the IA split — see ADR-0010.
 // New top-level destinations default to `primary: false` unless they are a
 // recurring action surface or a flagship product.
-// `/startups` is overflow (directory + sourced jobs). Do not collide with
-// Hub `/roles` or sponsor `/jobs`.
+// `/startups` is overflow (directory). `/jobs` is sourced startup openings.
+// Do not collide with Hub `/roles`.
 const navLinks = [
   { href: "/communities", key: "explore", shortcut: "C", primary: true },
   { href: "/events", key: "events", shortcut: "E", primary: true },
