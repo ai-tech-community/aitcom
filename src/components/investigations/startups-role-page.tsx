@@ -42,7 +42,7 @@ export function StartupsRolePage({
   const brief = member ? extractStartupRoleBrief(role) : null;
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
+    <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       <JsonLd data={startupRoleJsonLd(role)} />
       <nav className="text-muted-foreground text-xs">
         <Link

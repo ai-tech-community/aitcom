@@ -1,101 +1,101 @@
 import type { Metadata } from "next";
-import { localeAlternates, buildOgMeta } from "@/lib/metadata";
-import { getTranslations } from "next-intl/server";
-import { getPayloadClient } from "@/server/payload";
-import Image from "next/image";
+import { getLocale, getTranslations } from "next-intl/server";
 
-export async function generateMetadata(): Promise<Metadata> {
+import { StartupsJobsPage } from "@/components/investigations/startups-jobs-page";
+import {
+  STARTUPS_JOBS_PATH,
+  buildStartupJobsPath,
+  startupsPublicRobots,
+} from "@/lib/investigations/startups";
+import {
+  applyStartupJobsQuery,
+  paginateStartupRoles,
+  parseStartupJobsQuery,
+} from "@/lib/investigations/startup-roles";
+import {
+  absoluteLocaleUrl,
+  localeAlternates,
+  buildOgMeta,
+} from "@/lib/metadata";
+import {
+  shouldPromoteJoin,
+  toHubAuthUser,
+} from "@/server/better-auth/hub-session";
+import { getSession } from "@/server/better-auth/server";
+import { listPublicStartupRoles } from "@/server/startups/queries";
+
+export const dynamic = "force-dynamic";
+
+const JOBS_H1 = "Open positions";
+const JOBS_META =
+  "Sourced openings from verified careers pages of listed AI startups. Original posting always linked. Not a size or salary scorecard.";
+
+interface PageProps {
+  searchParams: Promise<{
+    company?: string;
+    q?: string;
+    page?: string;
+  }>;
+}
+
+export async function generateMetadata({
+  searchParams,
+}: PageProps): Promise<Metadata> {
+  const locale = await getLocale();
+  const raw = await searchParams;
+  const query = parseStartupJobsQuery(raw);
+  const roles = await listPublicStartupRoles();
+  const filtered = applyStartupJobsQuery(roles, query);
+  const pagination = paginateStartupRoles(filtered, query.page);
+  const canonical =
+    query.company || query.q
+      ? STARTUPS_JOBS_PATH
+      : buildStartupJobsPath({ page: pagination.page });
   return {
-    title: "Jobs",
-    description:
-      "Job openings from AIT Community sponsors - remote, hybrid, and on-site positions in AI and tech.",
-    ...buildOgMeta(
-      "Jobs",
-      "Job openings from AIT Community sponsors - remote, hybrid, and on-site positions in AI and tech.",
-      "Jobs",
-    ),
-    alternates: await localeAlternates("/jobs"),
+    title: JOBS_H1,
+    description: JOBS_META,
+    robots: startupsPublicRobots(),
+    ...buildOgMeta(JOBS_H1, JOBS_META, "Startups"),
+    alternates: await localeAlternates(canonical),
+    ...(pagination.totalPages > 1 && !query.company && !query.q
+      ? {
+          pagination: {
+            ...(pagination.page > 1
+              ? {
+                  previous: absoluteLocaleUrl(
+                    locale,
+                    `${STARTUPS_JOBS_PATH}?page=${pagination.page - 1}`,
+                  ),
+                }
+              : {}),
+            ...(pagination.page < pagination.totalPages
+              ? {
+                  next: absoluteLocaleUrl(
+                    locale,
+                    `${STARTUPS_JOBS_PATH}?page=${pagination.page + 1}`,
+                  ),
+                }
+              : {}),
+          },
+        }
+      : {}),
   };
 }
 
-const typeLabels: Record<string, string> = {
-  remote: "REMOTE",
-  hybrid: "HYBRID",
-  onsite: "ON-SITE",
-};
-
-export default async function JobsPage() {
-  const t = await getTranslations("jobs");
-
-  const payload = await getPayloadClient();
-  const { docs: jobs } = await payload.find({
-    collection: "jobs",
-    where: { status: { equals: "active" } },
-    sort: "-postedAt",
-    limit: 50,
-    depth: 1,
-  });
+export default async function JobsRoute({ searchParams }: PageProps) {
+  const locale = await getLocale();
+  const t = await getTranslations("investigationsStartups");
+  const session = await getSession();
+  const query = parseStartupJobsQuery(await searchParams);
+  const roles = await listPublicStartupRoles();
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
-      {/* Section Header */}
-      <div className="border-border border-b pb-4">
-        <h1 className="text-muted-foreground font-mono text-xs font-medium tracking-wider">
-          / {t("title").toUpperCase()}
-        </h1>
-      </div>
-      <p className="text-muted-foreground mt-4 text-sm">{t("subtitle")}</p>
-
-      {jobs.length === 0 ? (
-        <p className="text-muted-foreground mt-12 text-center font-mono text-xs tracking-wider">
-          {t("noJobs")}
-        </p>
-      ) : (
-        <div className="mt-8 space-y-3">
-          {jobs.map((job) => {
-            const sponsor =
-              typeof job.sponsor === "object" ? job.sponsor : null;
-            const logo =
-              sponsor && typeof sponsor.logo === "object" ? sponsor.logo : null;
-            return (
-              <a
-                key={job.id}
-                href={job.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="border-border hover:border-foreground/30 flex items-center gap-3 rounded-lg border px-4 py-4 transition-colors sm:gap-4"
-              >
-                {logo?.url && (
-                  <Image
-                    src={logo.url}
-                    alt={sponsor?.name ?? ""}
-                    width={40}
-                    height={40}
-                    className="h-10 w-10 rounded object-contain"
-                  />
-                )}
-                <div className="flex-1">
-                  <span className="text-sm font-medium">{job.title}</span>
-                  {sponsor && (
-                    <span className="text-muted-foreground ml-2 text-xs">
-                      {sponsor.name}
-                    </span>
-                  )}
-                  <div className="text-muted-foreground mt-1 flex gap-2 font-mono text-xs tracking-wider">
-                    <span>{job.location}</span>
-                    <span className="border-border rounded border px-1.5 py-0.5">
-                      {typeLabels[job.type] ?? job.type}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-muted-foreground hidden font-mono text-xs font-light sm:inline">
-                  +
-                </span>
-              </a>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    <StartupsJobsPage
+      locale={locale}
+      t={t}
+      roles={roles}
+      query={query}
+      promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
+    />
   );
 }

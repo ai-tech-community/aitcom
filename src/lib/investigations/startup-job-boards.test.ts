@@ -161,7 +161,7 @@ describe("startup role slugs and jobs query", () => {
         "cursor-anysphere-staff-engineer",
         "not a slug",
       ]),
-    ).toEqual(["/startups/jobs/cursor-anysphere-staff-engineer"]);
+    ).toEqual(["/jobs/cursor-anysphere-staff-engineer"]);
   });
 
   it("plain-texts entity-escaped HTML instead of leaving tags in the JD", () => {
@@ -177,6 +177,17 @@ describe("startup role slugs and jobs query", () => {
       "https://www.anthropic.com/careers",
     );
     expect(listings.map((row) => row.title)).toEqual(["Research Engineer"]);
+  });
+
+  it("skips location/category index titles such as Jobs in Chicago", () => {
+    const listings = extractListingsFromCareersHtml(
+      `<a href="/jobs/jobs-in-india">Jobs in India</a>
+       <a href="/jobs/software-engineer-jobs-in-new-york">Software Engineer Jobs in New York</a>
+       <a href="/jobs/product-manager-jobs-in-san-francisco">Product Manager Jobs in San Francisco</a>
+       <a href="/jobs/platform-engineer">Platform Engineer</a>`,
+      "https://www.ycombinator.com/companies/bite-ninja/jobs",
+    );
+    expect(listings.map((row) => row.title)).toEqual(["Platform Engineer"]);
   });
 
   it("filters the public jobs table by company slug", () => {

@@ -31,7 +31,6 @@ const STATIC_PATHS = [
   "/investigations/awesome-ai-oss/insights",
   "/startups",
   "/startups/insights",
-  "/startups/jobs",
   "/roles",
 ] as const;
 
@@ -260,7 +259,8 @@ describe("buildSitemapEntries", () => {
     expect(staticUrls).toContain(
       "https://www.aitcommunity.org/en/startups/insights",
     );
-    expect(staticUrls).toContain(
+    expect(staticUrls).toContain("https://www.aitcommunity.org/en/jobs");
+    expect(staticUrls).not.toContain(
       "https://www.aitcommunity.org/en/startups/jobs",
     );
 

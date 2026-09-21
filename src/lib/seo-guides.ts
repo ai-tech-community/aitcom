@@ -142,6 +142,9 @@ export function appPathFromGuideHref(href: string): string | null {
     pathOnly === "/en/investigations/startups/insights" ||
     pathOnly === "/nl/investigations/startups/insights";
   const startupsJobs =
+    pathOnly === "/jobs" ||
+    pathOnly === "/en/jobs" ||
+    pathOnly === "/nl/jobs" ||
     pathOnly === "/startups/jobs" ||
     pathOnly === "/en/startups/jobs" ||
     pathOnly === "/nl/startups/jobs" ||
@@ -152,7 +155,7 @@ export function appPathFromGuideHref(href: string): string | null {
     return "/startups/insights";
   }
   if (startupsJobs) {
-    return "/startups/jobs";
+    return "/jobs";
   }
   if (startupsRoot) {
     return "/startups";

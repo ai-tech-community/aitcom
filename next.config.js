@@ -27,6 +27,26 @@ const config = {
         permanent: false,
       },
       {
+        source: "/:locale(en|nl)/investigations/startups/jobs",
+        destination: "/:locale/jobs",
+        permanent: true,
+      },
+      {
+        source: "/:locale(en|nl)/investigations/startups/jobs/:path*",
+        destination: "/:locale/jobs/:path*",
+        permanent: true,
+      },
+      {
+        source: "/:locale(en|nl)/startups/jobs",
+        destination: "/:locale/jobs",
+        permanent: true,
+      },
+      {
+        source: "/:locale(en|nl)/startups/jobs/:path*",
+        destination: "/:locale/jobs/:path*",
+        permanent: true,
+      },
+      {
         source: "/:locale(en|nl)/investigations/startups",
         destination: "/:locale/startups",
         permanent: true,
