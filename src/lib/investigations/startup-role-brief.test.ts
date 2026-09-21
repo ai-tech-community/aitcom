@@ -87,7 +87,9 @@ describe("buildStartupRoleCopyPrompt", () => {
 describe("extractStartupCvText", () => {
   it("reads a .txt CV and rejects empty or binary files", () => {
     const text = extractStartupCvText(
-      Buffer.from("Ada Example\nStaff engineer. TypeScript, React, Postgres."),
+      Buffer.from(
+        "Ada Example\nStaff engineer in Toronto. TypeScript, React, Postgres, and shipping editors.",
+      ),
       "ada.txt",
       "text/plain",
     );
@@ -106,7 +108,7 @@ describe("extractStartupCvText", () => {
 
   it("pulls literal strings from a tiny PDF when they are long enough", () => {
     const body =
-      "%PDF-1.1\n(Ada Example is a staff engineer writing TypeScript in Toronto.)\n%%EOF";
+      "%PDF-1.1\n(Ada Example is a staff engineer writing TypeScript, React, and Postgres in Toronto.)\n%%EOF";
     const text = extractStartupCvText(
       Buffer.from(body, "latin1"),
       "ada.pdf",

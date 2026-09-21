@@ -11,6 +11,7 @@ import {
   STARTUPS_JOBS_URL_ERROR,
   STARTUPS_SLUG_ERROR,
 } from "@/lib/investigations/startups";
+import { STARTUP_CV_PURPOSE } from "@/lib/investigations/startup-cv";
 
 const src = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "startups.ts"),
@@ -98,7 +99,7 @@ describe("startups router locks", () => {
     expect(src).not.toContain("/api/upload");
     expect(src).not.toMatch(/openrouter/i);
     expect(cvStore).toContain("STARTUP_CV_PURPOSE");
-    expect(cvStore).toContain("startup_role_applications");
+    expect(STARTUP_CV_PURPOSE).toBe("startup_role_applications");
     expect(cvStore).toContain("textContent");
     expect(cvMigration).toContain("text_content");
     expect(cvMigration).toMatch(/ON DELETE CASCADE/);
