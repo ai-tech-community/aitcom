@@ -180,7 +180,7 @@ the active filters.
 | `region`   | sourced region string                | only listed, non-blank regions                                                                             |
 | `stage`    | sourced stage string                 | blank stage does not match                                                                                 |
 | `status`   | `active` `acquired` `ipo` `shutdown` | blank/null exit → **active** for the filter only. Rows still omit the badge. Not listing pending/approved. |
-| `hiring`   | `1`                                  | has a sourced `jobs_url`                                                                                   |
+| `hiring`   | `1`                                  | has sourced `open` roles (`open_role_count` > 0)                                                           |
 | `sort`     | `newest` (default) `name` `category` | `newest` is omitted from the URL                                                                           |
 
 ## Crawl / SEO
@@ -192,12 +192,17 @@ the active filters.
   only when a sourced blurb exists. Sitemap lists each profile slug.
 - Open positions live at `/startups/jobs` with one page per sourced role
   (`/startups/jobs/{roleSlug}`). The daily `startup-jobs-scan` cron reads
-  verified `jobs_url` pages (ATS JSON when the board is Ashby / Greenhouse /
-  Lever / Workable, otherwise listing HTML). Title + source URL are required
-  to publish. Low-confidence extracts stay `pending_review`. Roles that
-  disappear on a later scan become `closed` and keep their page. Jobs column
-  shows a count when open roles exist; otherwise the careers CTA. `/en/roles`
-  remains Hub seats. Sponsor `/jobs` is unchanged.
+  every listed startup with a verified `jobs_url` (oldest `jobs_scanned_at`
+  first) until `STARTUP_JOBS_SCAN_BUDGET_MS` (~240s). ATS JSON first (Ashby /
+  Greenhouse / Lever / Workable); otherwise listing HTML then the original
+  posting page for any missing JD. Title + source URL are required to
+  publish. Low-confidence extracts stay `pending_review`. Roles that
+  disappear on a later **successful** scan become `closed` and keep their
+  page. A live empty board writes `open_role_count = 0` on `app.startup`
+  (do not invent a JD). A failed fetch does not close roles or zero the
+  count. Jobs column shows a count when open roles exist; otherwise the
+  cell is soft-omitted. `/en/roles` remains Hub seats. Sponsor `/jobs` is
+  unchanged.
 - `/investigations/startups` permanent-redirects to `/startups`.
 - Global nav lists **Startups** in the overflow menu (`[U]`, ADR-0010)
   at `/startups`. Footer Navigate does too. Do **not** replace Hub

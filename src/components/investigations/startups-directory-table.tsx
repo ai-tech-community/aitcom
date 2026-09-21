@@ -103,7 +103,6 @@ export function StartupsDirectoryTable({
             const region = presentText(card.region);
             const stage = presentText(card.stage);
             const exitBadge = formatStartupExitBadge(card, locale);
-            const jobsUrl = presentText(card.jobsUrl);
             const founders = displayStartupFounders(card.founders);
             const logoUrl = displayStartupLogoUrl(card.logoUrl);
             const description = sanitizeStartupDescription(card.description);
@@ -208,15 +207,6 @@ export function StartupsDirectoryTable({
                         String(card.openRoleCount),
                       )}
                     </Link>
-                  ) : jobsUrl ? (
-                    <a
-                      href={jobsUrl}
-                      rel="noopener noreferrer"
-                      data-startup-jobs=""
-                      className="hover:underline"
-                    >
-                      {copy.openJobs}
-                    </a>
                   ) : null}
                 </TableCell>
                 <TableCell className="align-top">

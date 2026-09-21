@@ -124,6 +124,10 @@ const CV_MIGRATION_FILE = join(
   dir,
   "../../migrations/20260921a_startup_member_cv.ts",
 );
+const OPEN_ROLE_COUNT_MIGRATION_FILE = join(
+  dir,
+  "../../migrations/20260921b_startup_open_role_count.ts",
+);
 const ROUTER_FILE = join(dir, "../../server/api/routers/startups.ts");
 const MEMBER_DESK_FILE = join(dir, "startups-role-member-desk.tsx");
 const FIXTURE = join(
@@ -533,7 +537,8 @@ describe("StartupsPage", () => {
     expect(sourceLink?.getAttribute("data-startup-source-chip")).toBe("Docs");
     expect(
       table?.querySelector('a[href="https://fixture.example/careers"]'),
-    ).not.toBeNull();
+    ).toBeNull();
+    expect(table?.querySelector("[data-startup-jobs]")).toBeNull();
     expect(container.innerHTML).toContain("<table");
     expect(container.innerHTML).toContain('href="https://fixture.example"');
     expect(container.innerHTML).toContain(
@@ -1019,6 +1024,7 @@ describe("Startups card soft-omit", () => {
           acquirer: "Example Corp",
           exitOn: "2024-06-01",
           jobsUrl: "https://fixture.example/careers",
+          openRoleCount: 2,
         }}
         locale="en"
         isModerator={false}
@@ -1059,9 +1065,9 @@ describe("Startups card soft-omit", () => {
         "[data-startup-founder-photo='https://ada.example/ada.jpg']",
       ),
     ).not.toBeNull();
-    expect(screen.getByRole("link", { name: "Open jobs" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "2 open" })).toHaveAttribute(
       "href",
-      "https://fixture.example/careers",
+      "/startups/jobs?company=fixture-co",
     );
   });
 
@@ -1365,6 +1371,7 @@ describe("Startups profile page", () => {
         card={{
           ...FIXTURE_CARD,
           jobsUrl: "https://fixture.example/careers",
+          openRoleCount: 1,
           founders: [{ name: "Ada Example", url: null, imageUrl: null }],
           exitStatus: "ipo",
           exitOn: "2024",
@@ -1606,6 +1613,15 @@ describe("Startups site integration", () => {
       /ON DELETE CASCADE/,
     );
     expect(readFileSync(CV_MIGRATION_FILE, "utf8")).not.toMatch(/INSERT INTO/i);
+    expect(existsSync(OPEN_ROLE_COUNT_MIGRATION_FILE)).toBe(true);
+    expect(readFileSync(OPEN_ROLE_COUNT_MIGRATION_FILE, "utf8")).toContain(
+      "open_role_count",
+    );
+    expect(readFileSync(OPEN_ROLE_COUNT_MIGRATION_FILE, "utf8")).not.toMatch(
+      /INSERT INTO/i,
+    );
+    expect(readFileSync(QUERIES_FILE, "utf8")).toContain("row.openRoleCount");
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/open_role_count/);
   });
 
   it("lists Startups in overflow nav and footer without colliding with Hub roles or sponsor jobs", () => {

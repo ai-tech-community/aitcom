@@ -8,6 +8,8 @@ export const maxDuration = 300;
 
 /**
  * Daily careers scan for listed startups that have a verified jobsUrl.
+ * Reads every jobsUrl company oldest-first until STARTUP_JOBS_SCAN_BUDGET_MS.
+ * A live empty board writes open_role_count = 0. A failed fetch does not.
  * Per-company isolation: one careers page failing must not abort the batch.
  * Low-confidence extracts stay pending_review and never hit the public table.
  */

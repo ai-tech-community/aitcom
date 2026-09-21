@@ -30,6 +30,7 @@ import {
   startupDirectorySitemapPaths,
   startupInvestigationSitemapPaths,
   startupMapPins,
+  startupHasOpenJobs,
   startupNewsSources,
   startupOverviewTiles,
   startupProfileExtraTabs,
@@ -616,6 +617,7 @@ describe("directory query", () => {
         name: "Cohere",
         region: "Toronto, Canada",
         jobsUrl: "https://cohere.com/careers",
+        openRoleCount: 2,
       }),
       sampleCard({
         id: "oklo",
@@ -624,6 +626,7 @@ describe("directory query", () => {
         exitStatus: "ipo",
         exitOn: "2024",
         jobsUrl: "https://oklo.com/careers",
+        openRoleCount: 0,
       }),
       sampleCard({
         id: "cursor",
@@ -633,6 +636,7 @@ describe("directory query", () => {
         acquirer: "SpaceX",
         exitOn: "2026",
         jobsUrl: "https://cursor.com/careers",
+        openRoleCount: 1,
       }),
       sampleCard({
         id: "quiet",
@@ -675,7 +679,32 @@ describe("directory query", () => {
         { q: "", category: "all", hiring: "hiring" },
         "en",
       ).map((card) => card.id),
-    ).toEqual(["toronto", "cursor", "oklo"]);
+    ).toEqual(["toronto", "cursor"]);
+  });
+
+  it("treats hiring as sourced open roles, not merely a careers URL", () => {
+    const closed = sampleCard({
+      jobsUrl: "https://co.example/careers",
+      openRoleCount: 0,
+    });
+    const open = sampleCard({
+      id: "open",
+      jobsUrl: "https://open.example/careers",
+      openRoleCount: 2,
+    });
+    expect(startupHasOpenJobs(closed)).toBe(false);
+    expect(startupHasOpenJobs(open)).toBe(true);
+    expect(
+      applyStartupDirectoryQuery(
+        [closed, open],
+        { q: "", category: "all", hiring: "hiring" },
+        "en",
+      ).map((card) => card.id),
+    ).toEqual(["open"]);
+    expect(startupOverviewTiles(closed)).not.toContain("jobs");
+    expect(startupProfileExtraTabs(closed)).not.toContain("hiring");
+    expect(startupOverviewTiles(open)).toContain("jobs");
+    expect(startupProfileExtraTabs(open)).toContain("hiring");
   });
 
   it("sorts newest, name A–Z, and category without inventing rows", () => {
@@ -893,6 +922,7 @@ describe("startup slugs and profile contract", () => {
       acquirer: "SpaceX",
       exitOn: "2026",
       jobsUrl: "https://fixture.example/careers",
+      openRoleCount: 2,
       founders: [{ name: "Ada Example", url: null, imageUrl: null }],
       sources: [
         "https://fixture.example/about",

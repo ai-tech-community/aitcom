@@ -144,7 +144,6 @@ function TileBody({
   const stage = presentText(card.stage);
   const exitBadge = formatStartupExitBadge(card, locale);
   const founders = displayStartupFounders(card.founders);
-  const jobsUrl = presentText(card.jobsUrl);
   const sources = displayStartupSources(card.sources);
   const pin = verifiedStartupPin(card);
   const place = sourcedStartupPlaceLabel(card.region);
@@ -205,15 +204,6 @@ function TileBody({
         >
           {copy.openRoles.replace("{count}", String(card.openRoleCount))}
         </Link>
-      ) : jobsUrl ? (
-        <a
-          href={jobsUrl}
-          rel="noopener noreferrer"
-          data-startup-jobs=""
-          className="hover:underline"
-        >
-          {copy.openJobs}
-        </a>
       ) : null;
     case "sources":
       return sources.length > 0 ? (

@@ -13,7 +13,6 @@ import {
   buildStartupRolePath,
   displayStartupFounders,
   formatStartupExitBadge,
-  presentText,
   startupNewsSources,
   startupProfileExtraTabs,
   startupProfileJsonLd,
@@ -64,7 +63,6 @@ export function StartupsProfilePage({
   const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
   const extraTabs = startupProfileExtraTabs(card);
   const news = startupNewsSources(card.sources);
-  const jobsUrl = presentText(card.jobsUrl);
   const exitBadge = formatStartupExitBadge(card, copyLocale);
   const founders = displayStartupFounders(card.founders);
 
@@ -148,44 +146,31 @@ export function StartupsProfilePage({
             ) : undefined
           }
           hiring={
-            roles.length > 0 || jobsUrl ? (
+            roles.length > 0 ? (
               <div className="flex flex-col gap-3" data-startup-hiring="">
-                {roles.length > 0 ? (
-                  <ul className="flex flex-col gap-2">
-                    {roles.map((role) => (
-                      <li key={role.id}>
-                        <Link
-                          href={buildStartupRolePath(role.slug)}
-                          className="hover:underline"
-                        >
-                          {role.title}
-                        </Link>
-                        {role.location ? (
-                          <span className="text-muted-foreground ml-2 text-sm">
-                            {role.location}
-                          </span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                {roles.length > 0 ? (
-                  <Link
-                    href={buildStartupJobsPath({ company: card.slug })}
-                    className="hover:underline"
-                  >
-                    {t("openRoles").replace("{count}", String(roles.length))}
-                  </Link>
-                ) : jobsUrl ? (
-                  <a
-                    href={jobsUrl}
-                    rel="noopener noreferrer"
-                    data-startup-jobs=""
-                    className="hover:underline"
-                  >
-                    {t("openJobs")}
-                  </a>
-                ) : null}
+                <ul className="flex flex-col gap-2">
+                  {roles.map((role) => (
+                    <li key={role.id}>
+                      <Link
+                        href={buildStartupRolePath(role.slug)}
+                        className="hover:underline"
+                      >
+                        {role.title}
+                      </Link>
+                      {role.location ? (
+                        <span className="text-muted-foreground ml-2 text-sm">
+                          {role.location}
+                        </span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={buildStartupJobsPath({ company: card.slug })}
+                  className="hover:underline"
+                >
+                  {t("openRoles").replace("{count}", String(roles.length))}
+                </Link>
               </div>
             ) : undefined
           }

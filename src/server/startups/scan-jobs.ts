@@ -17,7 +17,6 @@ import {
 } from "@/lib/investigations/startup-job-boards";
 import {
   STARTUP_ROLES_PER_COMPANY_CAP,
-  STARTUP_ROLE_ENRICH_CAP,
   STARTUP_ROLE_FETCH_TIMEOUT_MS,
   STARTUP_ROLE_USER_AGENT,
   allocateStartupRoleSlug,
@@ -36,6 +35,11 @@ export type JobFetchResult = {
 
 export type JobFetch = (url: string) => Promise<JobFetchResult>;
 
+export type JobsUrlListings = {
+  fetched: boolean;
+  listings: ExtractedJobListing[];
+};
+
 export type ScanStartupJobsResult = {
   startupId: string;
   fetched: number;
@@ -53,7 +57,22 @@ export type ScanAllStartupJobsResult = {
   errors: number;
 };
 
-const SCAN_BATCH = 25;
+/** Leave headroom under the cron `maxDuration` of 300s. */
+export const STARTUP_JOBS_SCAN_BUDGET_MS = 240_000;
+
+export function startupJobsScanTablePatch(input: {
+  fetched: boolean;
+  published: number;
+  scannedAt: Date;
+}): { jobsScannedAt: Date; openRoleCount?: number } {
+  if (!input.fetched) {
+    return { jobsScannedAt: input.scannedAt };
+  }
+  return {
+    jobsScannedAt: input.scannedAt,
+    openRoleCount: input.published,
+  };
+}
 
 export async function defaultJobFetch(url: string): Promise<JobFetchResult> {
   const controller = new AbortController();
@@ -133,35 +152,55 @@ async function enrichListing(
   };
 }
 
+async function enrichListings(
+  listings: ExtractedJobListing[],
+  fetchPage: JobFetch,
+): Promise<ExtractedJobListing[]> {
+  const capped = listings.slice(0, STARTUP_ROLES_PER_COMPANY_CAP);
+  return Promise.all(
+    capped.map((listing) => enrichListing(listing, fetchPage)),
+  );
+}
+
+export async function readJobsUrlListings(
+  jobsUrl: string,
+  fetchPage: JobFetch = defaultJobFetch,
+): Promise<JobsUrlListings> {
+  const fromUrl = detectJobBoardFromUrl(jobsUrl);
+  const viaApi = await listingsFromBoard(fromUrl, fetchPage);
+  if (viaApi) {
+    return {
+      fetched: true,
+      listings: await enrichListings(viaApi, fetchPage),
+    };
+  }
+
+  const page = await fetchPage(jobsUrl);
+  if (!page.ok) return { fetched: false, listings: [] };
+
+  const fromHtml = detectJobBoardFromHtml(page.text);
+  if (fromHtml.board !== "unknown") {
+    const nested = await listingsFromBoard(fromHtml, fetchPage);
+    if (nested) {
+      return {
+        fetched: true,
+        listings: await enrichListings(nested, fetchPage),
+      };
+    }
+  }
+
+  const extracted = extractListingsFromCareersHtml(page.text, jobsUrl);
+  return {
+    fetched: true,
+    listings: await enrichListings(extracted, fetchPage),
+  };
+}
+
 export async function listingsFromJobsUrl(
   jobsUrl: string,
   fetchPage: JobFetch = defaultJobFetch,
 ): Promise<ExtractedJobListing[]> {
-  const fromUrl = detectJobBoardFromUrl(jobsUrl);
-  const viaApi = await listingsFromBoard(fromUrl, fetchPage);
-  if (viaApi && viaApi.length > 0)
-    return viaApi.slice(0, STARTUP_ROLES_PER_COMPANY_CAP);
-
-  const page = await fetchPage(jobsUrl);
-  if (!page.ok) return [];
-  const fromHtml = detectJobBoardFromHtml(page.text);
-  if (fromHtml.board !== "unknown") {
-    const nested = await listingsFromBoard(fromHtml, fetchPage);
-    if (nested && nested.length > 0) {
-      return nested.slice(0, STARTUP_ROLES_PER_COMPANY_CAP);
-    }
-  }
-  const extracted = extractListingsFromCareersHtml(page.text, jobsUrl).slice(
-    0,
-    STARTUP_ROLES_PER_COMPANY_CAP,
-  );
-  return Promise.all(
-    extracted.map((listing, index) =>
-      index < STARTUP_ROLE_ENRICH_CAP
-        ? enrichListing(listing, fetchPage)
-        : Promise.resolve(listing),
-    ),
-  );
+  return (await readJobsUrlListings(jobsUrl, fetchPage)).listings;
 }
 
 export async function scanStartupJobs(
@@ -179,20 +218,49 @@ export async function scanStartupJobs(
   if (!jobsUrl) {
     await db
       .update(startups)
-      .set({ jobsScannedAt: new Date() })
+      .set(
+        startupJobsScanTablePatch({
+          fetched: true,
+          published: 0,
+          scannedAt: new Date(),
+        }),
+      )
       .where(eq(startups.id, startup.id));
     return empty;
   }
 
+  let fetched = false;
   let listings: ExtractedJobListing[] = [];
   try {
-    listings = await listingsFromJobsUrl(jobsUrl, fetchPage);
+    const result = await readJobsUrlListings(jobsUrl, fetchPage);
+    fetched = result.fetched;
+    listings = result.listings;
   } catch (error) {
     await db
       .update(startups)
-      .set({ jobsScannedAt: new Date() })
+      .set(
+        startupJobsScanTablePatch({
+          fetched: false,
+          published: 0,
+          scannedAt: new Date(),
+        }),
+      )
       .where(eq(startups.id, startup.id));
     return { ...empty, error: String(error) };
+  }
+
+  if (!fetched) {
+    await db
+      .update(startups)
+      .set(
+        startupJobsScanTablePatch({
+          fetched: false,
+          published: 0,
+          scannedAt: new Date(),
+        }),
+      )
+      .where(eq(startups.id, startup.id));
+    return { ...empty, error: "careers page unreachable" };
   }
 
   const existing = await db
@@ -251,19 +319,29 @@ export async function scanStartupJobs(
     });
   }
 
-  const staleIds = existing
-    .filter((row) => row.status === "open" && !seenSources.has(row.sourceUrl))
-    .map((row) => row.id);
-  if (staleIds.length > 0) {
-    await db
-      .update(startupRoles)
-      .set({ status: "closed", fetchedAt })
-      .where(inArray(startupRoles.id, staleIds));
+  let closed = 0;
+  if (fetched) {
+    const staleIds = existing
+      .filter((row) => row.status === "open" && !seenSources.has(row.sourceUrl))
+      .map((row) => row.id);
+    if (staleIds.length > 0) {
+      await db
+        .update(startupRoles)
+        .set({ status: "closed", fetchedAt })
+        .where(inArray(startupRoles.id, staleIds));
+    }
+    closed = staleIds.length;
   }
 
   await db
     .update(startups)
-    .set({ jobsScannedAt: fetchedAt })
+    .set(
+      startupJobsScanTablePatch({
+        fetched,
+        published,
+        scannedAt: fetchedAt,
+      }),
+    )
     .where(eq(startups.id, startup.id));
 
   return {
@@ -271,13 +349,12 @@ export async function scanStartupJobs(
     fetched: listings.length,
     published,
     pending,
-    closed: staleIds.length,
+    closed,
   };
 }
 
 export async function scanAllStartupJobs(
   fetchPage: JobFetch = defaultJobFetch,
-  limit = SCAN_BATCH,
 ): Promise<ScanAllStartupJobsResult> {
   const rows = await db
     .select()
@@ -285,9 +362,8 @@ export async function scanAllStartupJobs(
     .where(and(eq(startups.status, "approved"), eq(startups.source, "staff")))
     .orderBy(asc(startups.jobsScannedAt), asc(startups.listedOn));
 
-  const targets = rows
-    .filter((row) => presentText(row.jobsUrl))
-    .slice(0, limit);
+  const targets = rows.filter((row) => presentText(row.jobsUrl));
+  const started = Date.now();
 
   const summary: ScanAllStartupJobsResult = {
     scanned: 0,
@@ -298,6 +374,7 @@ export async function scanAllStartupJobs(
   };
 
   for (const startup of targets) {
+    if (Date.now() - started >= STARTUP_JOBS_SCAN_BUDGET_MS) break;
     try {
       const result = await scanStartupJobs(startup, fetchPage);
       summary.scanned += 1;
@@ -311,7 +388,13 @@ export async function scanAllStartupJobs(
       try {
         await db
           .update(startups)
-          .set({ jobsScannedAt: new Date() })
+          .set(
+            startupJobsScanTablePatch({
+              fetched: false,
+              published: 0,
+              scannedAt: new Date(),
+            }),
+          )
           .where(eq(startups.id, startup.id));
       } catch {
         // Soft-fail: the next cron can retry this company.
