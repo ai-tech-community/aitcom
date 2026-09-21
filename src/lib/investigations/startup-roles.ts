@@ -48,6 +48,8 @@ export type StartupRolePublic = {
   applyUrl: string | null;
   descriptionText: string | null;
   fetchedAt: string;
+  /** ATS / careers-board published date. Never a scan or crawl timestamp. */
+  postedAt?: string | null;
   board: StartupRoleBoard;
   status: "open" | "closed";
 };
@@ -216,6 +218,16 @@ export function startupRoleJsonLd(
       address: role.location,
     };
   }
-  if (role.fetchedAt) item.datePosted = role.fetchedAt.slice(0, 10);
+  const datePosted = boardSourcedDatePosted(role.postedAt);
+  if (datePosted) item.datePosted = datePosted;
   return item;
+}
+
+/** YYYY-MM-DD from a board-sourced timestamp. Soft-omit when missing or invalid. */
+function boardSourcedDatePosted(
+  value: string | null | undefined,
+): string | null {
+  const text = presentText(value);
+  if (!text) return null;
+  return /^(\d{4}-\d{2}-\d{2})/.exec(text)?.[1] ?? null;
 }
