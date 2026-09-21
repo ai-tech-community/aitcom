@@ -8,6 +8,7 @@ import {
   extractJobPostingFromHtml,
   extractListingsFromCareersHtml,
   extractRipplingBoardJobs,
+  greenhouseTokenFromGhJid,
   ripplingJobsIndexUrl,
   greenhouseBoardUrl,
   isPublishableJobTitle,
@@ -202,6 +203,20 @@ export async function readJobsUrlListings(
       return {
         fetched: true,
         listings: await enrichListings(nested, fetchPage),
+      };
+    }
+  }
+
+  const greenhouseToken = greenhouseTokenFromGhJid(page.text, jobsUrl);
+  if (greenhouseToken) {
+    const greenhouse = await listingsFromBoard(
+      { board: "greenhouse", token: greenhouseToken },
+      fetchPage,
+    );
+    if (greenhouse && greenhouse.length > 0) {
+      return {
+        fetched: true,
+        listings: await enrichListings(greenhouse, fetchPage),
       };
     }
   }

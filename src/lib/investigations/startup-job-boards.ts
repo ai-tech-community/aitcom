@@ -27,6 +27,8 @@ const SKIP_OPEN_ROLES_CTA = /^(?:check out|view)\b.*\bopen roles\b/i;
 
 const SKIP_GARBAGE_TITLE = /-->|^[^A-Za-z0-9]+$/;
 
+const SKIP_NOT_A_ROLE = /\bjoin our\b|privacy notice|^careers single cms$/i;
+
 export function isSkippedExtractedJobTitle(title: string): boolean {
   return (
     SKIP_TITLE.test(title) ||
@@ -34,7 +36,8 @@ export function isSkippedExtractedJobTitle(title: string): boolean {
     SKIP_LOCATION_INDEX_TITLE.test(title) ||
     SKIP_URL_TITLE.test(title) ||
     SKIP_OPEN_ROLES_CTA.test(title) ||
-    SKIP_GARBAGE_TITLE.test(title)
+    SKIP_GARBAGE_TITLE.test(title) ||
+    SKIP_NOT_A_ROLE.test(title)
   );
 }
 
@@ -46,7 +49,7 @@ export function isApplyCtaTitle(title: string): boolean {
     .replace(/&amp;/gi, "&")
     .replace(/\s+/g, " ")
     .trim();
-  return /^(?:view position(?:\s*(?:&|and)\s*apply)?|apply(?:\s+now|\s+to(?:\s+this)?\s+(?:role|position)|\s+for\s+this\s+(?:role|position))?)$/i.test(
+  return /^(?:view position(?:\s*(?:&|and)\s*apply)?|apply(?:\s+now|\s+to(?:\s+this)?\s+(?:role|position)|\s+for\s+this\s+(?:role|position))?|see position details|read more|more info)$/i.test(
     normalized,
   );
 }
@@ -102,7 +105,7 @@ export function detectJobBoardFromUrl(jobsUrl: string): DetectedJobBoard {
 export function detectJobBoardFromHtml(html: string): DetectedJobBoard {
   const ashby = firstCapture(
     html,
-    /https?:\/\/jobs\.ashbyhq\.com\/([A-Za-z0-9_-]+)/i,
+    /https?:\/\/jobs\.ashbyhq\.com\/([A-Za-z0-9][A-Za-z0-9._-]*)/i,
   );
   if (ashby) return { board: "ashby", token: ashby };
   const greenhouse =
@@ -126,6 +129,17 @@ export function detectJobBoardFromHtml(html: string): DetectedJobBoard {
 
 export function greenhouseBoardUrl(token: string): string {
   return `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}/jobs?content=true`;
+}
+
+/** Careers pages that link `?gh_jid=` without a Greenhouse host still use that company's board. */
+export function greenhouseTokenFromGhJid(
+  html: string,
+  jobsUrl: string,
+): string | null {
+  if (!/[?&]gh_jid=\d+/i.test(html)) return null;
+  const host = asUrl(jobsUrl)?.hostname.replace(/^www\./, "").toLowerCase() ?? "";
+  const label = host.split(".")[0] ?? "";
+  return /^[a-z0-9-]{2,}$/.test(label) ? label : null;
 }
 
 export function ashbyBoardUrl(token: string): string {
@@ -294,6 +308,12 @@ export function htmlToPlainText(
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) =>
+        String.fromCodePoint(Number.parseInt(hex, 16)),
+      )
+      .replace(/&#(\d+);/g, (_, dec: string) =>
+        String.fromCodePoint(Number(dec)),
+      )
       .replace(/&#x27;/gi, "'");
   const text = decode(strip(decode(html)))
     .replace(/\s+\n/g, "\n")
@@ -720,10 +740,19 @@ export function mergePostingIntoListing(
     pageNorm.length > 0 &&
     listingNorm.startsWith(pageNorm) &&
     /\bapply now\b/i.test(listingNorm.slice(pageNorm.length));
+  const firstLine = listing.title
+    .split("\n")[0]
+    ?.replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+  const cardChrome =
+    pageNorm.length > 0 &&
+    listing.title.includes("\n") &&
+    firstLine === pageNorm;
   const replaceTitle =
     pageTitle != null &&
     isPublishableJobTitle(pageTitle) &&
-    (!isPublishableJobTitle(listing.title) || applyChrome);
+    (!isPublishableJobTitle(listing.title) || applyChrome || cardChrome);
   return {
     ...listing,
     title: replaceTitle && pageTitle ? pageTitle : listing.title,

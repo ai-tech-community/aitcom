@@ -5,6 +5,7 @@ import {
   detectJobBoardFromUrl,
   extractJobPostingFromHtml,
   extractListingsFromCareersHtml,
+  greenhouseTokenFromGhJid,
   htmlToPlainText,
   mergePostingIntoListing,
   parseAshbyJobs,
@@ -139,11 +140,25 @@ describe("HTML extract", () => {
         '<iframe src="https://jobs.ashbyhq.com/physicalintelligence"></iframe>',
       ),
     ).toEqual({ board: "ashby", token: "physicalintelligence" });
+    expect(
+      detectJobBoardFromHtml(
+        '<a href="https://jobs.ashbyhq.com/mistral.ai">Mistral Jobs</a>',
+      ),
+    ).toEqual({ board: "ashby", token: "mistral.ai" });
+    expect(
+      greenhouseTokenFromGhJid(
+        '<a href="/careers/job-details/?gh_jid=8622173002">DevOps Engineer</a>',
+        "https://www.bigid.com/company/careers",
+      ),
+    ).toBe("bigid");
   });
 
   it("strips tags for sourced description text", () => {
     expect(htmlToPlainText("<p>Ship&nbsp;<strong>agents</strong>.</p>")).toBe(
       "Ship agents.",
+    );
+    expect(htmlToPlainText("Engineer &#8211; Remote &#038; hybrid")).toBe(
+      "Engineer – Remote & hybrid",
     );
     expect(
       extractJobPostingFromHtml(
@@ -295,6 +310,48 @@ describe("startup role slugs and jobs query", () => {
     );
     expect(merged.title).toBe("Senior Data Scientist");
     expect(merged.descriptionText).toContain("workforce intelligence");
+  });
+
+  it("replaces a card label with the posting title", () => {
+    const merged = mergePostingIntoListing(
+      {
+        title: "See position details",
+        sourceUrl: "https://balink.net/job/cloud-architect",
+        applyUrl: null,
+        location: null,
+        workType: null,
+        descriptionText: null,
+        externalId: null,
+        board: "html",
+      },
+      {
+        title: "Cloud Architect",
+        location: null,
+        descriptionText: null,
+        workType: null,
+      },
+    );
+    expect(merged.title).toBe("Cloud Architect");
+    const card = mergePostingIntoListing(
+      {
+        title: "AI Engineer (Junior)\nStellenbosch\nMore Info",
+        sourceUrl: "https://www.spatialedge.ai/careers/junior-ai-engineer",
+        applyUrl: null,
+        location: null,
+        workType: null,
+        descriptionText: null,
+        externalId: null,
+        board: "html",
+      },
+      {
+        title: "AI Engineer (Junior)",
+        location: "Stellenbosch",
+        descriptionText: "Build models.",
+        workType: "Full-Time",
+      },
+    );
+    expect(card.title).toBe("AI Engineer (Junior)");
+    expect(card.descriptionText).toBe("Build models.");
   });
 
   it("reads Rippling roles from the page payload", () => {
