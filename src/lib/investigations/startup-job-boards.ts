@@ -612,6 +612,70 @@ export function extractJobAnchors(
   return listings;
 }
 
+function classNameOf(tag: string): string {
+  return /class=["']([^"']+)["']/i.exec(tag)?.[1] ?? "";
+}
+
+/** Inner HTML of divs whose class matches, respecting nested divs. */
+function divsWithClass(
+  html: string,
+  matches: (className: string) => boolean,
+): string[] {
+  const blocks: string[] = [];
+  const open = /<div\b[^>]*>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = open.exec(html))) {
+    const tag = match[0];
+    if (!matches(classNameOf(tag))) continue;
+    const start = match.index + tag.length;
+    const tags = /<div\b[^>]*>|<\/div>/gi;
+    tags.lastIndex = start;
+    let depth = 1;
+    let end = -1;
+    let next: RegExpExecArray | null;
+    while ((next = tags.exec(html))) {
+      depth += next[0].startsWith("</") ? -1 : 1;
+      if (depth === 0) {
+        end = next.index;
+        break;
+      }
+    }
+    if (end > start) blocks.push(html.slice(start, end));
+    if (end > 0) open.lastIndex = end;
+  }
+  return blocks;
+}
+
+/**
+ * Webflow and similar boards put the JD in rich-text blocks, not in
+ * `<article>` or a class named description.
+ */
+function richTextDescription(html: string): string | null {
+  const rich = divsWithClass(
+    html,
+    (className) =>
+      /(?:^|\s)(?:job-rich-text-block|job-description|posting-description)(?:\s|$)/i.test(
+        className,
+      ) || /job-rich-text/i.test(className),
+  );
+  const blocks =
+    rich.length > 0
+      ? rich
+      : divsWithClass(html, (className) =>
+          /(?:^|\s)w-richtext(?:\s|$)/i.test(className),
+        );
+  const text = htmlToPlainText(blocks.join("\n"));
+  return text && text.length >= 80 ? text : null;
+}
+
+function iconDetail(html: string, label: RegExp): string | null {
+  const pattern = new RegExp(
+    `alt=["'](?:${label.source})["'][^>]*>\\s*<div[^>]*position-detail__text[^>]*>([\\s\\S]*?)<\\/div>`,
+    "i",
+  );
+  return htmlToPlainText(pattern.exec(html)?.[1]);
+}
+
 function preferPublishableTitle(
   value: string | null | undefined,
 ): string | null {
@@ -650,7 +714,8 @@ export function extractJobPostingFromHtml(
   )?.replace(/^(?:←\s*)?all open roles\s+/i, "");
   return {
     title,
-    location: structured?.location ?? fromLd?.location ?? null,
+    location:
+      structured?.location ?? fromLd?.location ?? iconDetail(html, /location/i),
     descriptionText:
       structured?.descriptionText ??
       fromLd?.descriptionText ??
@@ -664,9 +729,13 @@ export function extractJobPostingFromHtml(
               /<(?:div|section)[^>]*(?:job-description|jobDescription|description)[^>]*>([\s\S]*?)<\/(?:div|section)>/i,
             ),
           ) ??
+          richTextDescription(html) ??
           (main && main.length >= 80 ? main : null),
       ),
-    workType: structured?.workType ?? fromLd?.workType ?? null,
+    workType:
+      structured?.workType ??
+      fromLd?.workType ??
+      iconDetail(html, /availability|employment|work type/i),
   };
 }
 
