@@ -21,11 +21,20 @@ const SKIP_INDEX_TITLE =
 /** YC-style location/category index CTAs, not a single posting. */
 const SKIP_LOCATION_INDEX_TITLE = /^(?:.+ )?jobs in .+$/i;
 
+const SKIP_URL_TITLE = /^https?:\/\//i;
+
+const SKIP_OPEN_ROLES_CTA = /^(?:check out|view)\b.*\bopen roles\b/i;
+
+const SKIP_GARBAGE_TITLE = /-->|^[^A-Za-z0-9]+$/;
+
 export function isSkippedExtractedJobTitle(title: string): boolean {
   return (
     SKIP_TITLE.test(title) ||
     SKIP_INDEX_TITLE.test(title) ||
-    SKIP_LOCATION_INDEX_TITLE.test(title)
+    SKIP_LOCATION_INDEX_TITLE.test(title) ||
+    SKIP_URL_TITLE.test(title) ||
+    SKIP_OPEN_ROLES_CTA.test(title) ||
+    SKIP_GARBAGE_TITLE.test(title)
   );
 }
 
@@ -276,7 +285,7 @@ export function htmlToPlainText(
       .replace(/<\/p>/gi, "\n")
       .replace(/<\/h[1-6]>/gi, "\n")
       .replace(/<li>/gi, "\n• ")
-      .replace(/<[^>]+>/g, " ");
+      .replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, " ");
   const decode = (value: string) =>
     value
       .replace(/&nbsp;/g, " ")
@@ -366,6 +375,172 @@ export function extractJobsFromJsonLd(
 const JOB_HREF =
   /(?:\/jobs?\/|\/careers\/[^"'#?\s]+|\/position\/|\/openings\/|boards\.greenhouse\.io|jobs\.ashbyhq\.com|jobs\.lever\.co|apply\.workable\.com)/i;
 
+function isDirectoryJobPath(pathname: string): boolean {
+  return /\/jobs\/(?:location|role|industry)(?:\/|$)/i.test(pathname);
+}
+
+/** Company slug from a YC or Work at a Startup company board URL. */
+function companySlugFromBoardUrl(baseUrl: string): string | null {
+  const url = asUrl(baseUrl);
+  if (!url) return null;
+  const host = url.hostname.replace(/^www\./, "").toLowerCase();
+  if (host !== "ycombinator.com" && host !== "workatastartup.com") return null;
+  return /\/companies\/([^/]+)/i.exec(url.pathname)?.[1]?.toLowerCase() ?? null;
+}
+
+function jobBelongsToCompany(jobUrl: URL, companySlug: string | null): boolean {
+  if (!companySlug) return true;
+  const path = jobUrl.pathname.toLowerCase();
+  if (!path.includes("/companies/")) return true;
+  return path.includes(`/companies/${companySlug}/jobs/`);
+}
+
+function parseDataPage(html: string): Record<string, unknown> | null {
+  const raw = firstCapture(html, /data-page="([^"]*)"/i);
+  if (!raw) return null;
+  try {
+    return asRecord(JSON.parse(unescapeBoardJson(raw)));
+  } catch {
+    return null;
+  }
+}
+
+function parseNextData(html: string): Record<string, unknown> | null {
+  const raw = firstCapture(
+    html,
+    /<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i,
+  );
+  if (!raw) return null;
+  try {
+    return asRecord(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * YC company pages embed `jobPostings`. An empty list is a live empty board.
+ * Returns null when this page is not that board.
+ */
+export function extractInertiaJobBoard(
+  html: string,
+  baseUrl: string,
+): ExtractedJobListing[] | null {
+  const props = asRecord(parseDataPage(html)?.props);
+  if (!props || !Array.isArray(props.jobPostings)) return null;
+  const companySlug = companySlugFromBoardUrl(baseUrl);
+  const listings: ExtractedJobListing[] = [];
+  for (const item of props.jobPostings) {
+    const row = asRecord(item);
+    if (!row) continue;
+    const url = asUrl(asString(row.url) ?? "", baseUrl);
+    if (!url || isDirectoryJobPath(url.pathname)) continue;
+    if (!jobBelongsToCompany(url, companySlug)) continue;
+    const parsed = listing({
+      title: asString(row.title),
+      sourceUrl: url.toString(),
+      location: asString(row.location),
+      workType: asString(row.type),
+      externalId: asId(row.id),
+      board: "html",
+    });
+    if (parsed) listings.push(parsed);
+  }
+  return dedupeListings(listings);
+}
+
+/** Rippling ATS embeds the open roles in the page payload, without a public JSON API. */
+export function extractRipplingBoardJobs(
+  html: string,
+  baseUrl: string,
+): ExtractedJobListing[] | null {
+  const next = parseNextData(html);
+  const pageProps = asRecord(asRecord(next?.props)?.pageProps);
+  const queries = asRecord(pageProps?.dehydratedState)?.queries;
+  if (!Array.isArray(queries)) return null;
+  const jobsQuery = queries.find((query) => {
+    const key = asRecord(query)?.queryKey;
+    return Array.isArray(key) && key.includes("job-posts");
+  });
+  if (!jobsQuery) return null;
+  const items = asRecord(asRecord(asRecord(jobsQuery)?.state)?.data)?.items;
+  if (!Array.isArray(items)) return null;
+  const listings: ExtractedJobListing[] = [];
+  for (const item of items) {
+    const row = asRecord(item);
+    if (!row) continue;
+    const url = asUrl(asString(row.url) ?? "", baseUrl);
+    if (!url) continue;
+    const locations = Array.isArray(row.locations) ? row.locations : [];
+    const place = asRecord(locations[0])?.name;
+    const parsed = listing({
+      title: asString(row.name),
+      sourceUrl: url.toString(),
+      location: asString(place),
+      externalId: asString(row.id),
+      board: "html",
+    });
+    if (parsed) listings.push(parsed);
+  }
+  return dedupeListings(listings);
+}
+
+export function ripplingJobsIndexUrl(html: string): string | null {
+  const slug = firstCapture(
+    html,
+    /https?:\/\/ats\.rippling\.com\/(?:[a-z]{2}-[a-z]{2}\/)?([a-z0-9_-]+)\/jobs\b/i,
+  );
+  if (!slug || slug.toLowerCase() === "jobs") return null;
+  return `https://ats.rippling.com/${slug}/jobs`;
+}
+
+function postingFromInertia(html: string): Pick<
+  ExtractedJobListing,
+  "title" | "location" | "descriptionText" | "workType"
+> | null {
+  const job = asRecord(asRecord(parseDataPage(html)?.props)?.job);
+  if (!job) return null;
+  const title = preferPublishableTitle(asString(job.title));
+  if (!title) return null;
+  return {
+    title,
+    location: asString(job.location),
+    descriptionText: sanitizeStartupRoleDescription(
+      htmlToPlainText(asString(job.descriptionHtml) ?? asString(job.description)),
+    ),
+    workType: asString(job.type) ?? asString(job.jobType),
+  };
+}
+
+function postingFromRippling(html: string): Pick<
+  ExtractedJobListing,
+  "title" | "location" | "descriptionText" | "workType"
+> | null {
+  const job = asRecord(
+    asRecord(asRecord(asRecord(parseNextData(html)?.props)?.pageProps)?.apiData)
+      ?.jobPost,
+  );
+  if (!job) return null;
+  const title = preferPublishableTitle(asString(job.name));
+  if (!title) return null;
+  const description = asRecord(job.description);
+  const descriptionText = sanitizeStartupRoleDescription(
+    [htmlToPlainText(asString(description?.company)), htmlToPlainText(asString(description?.role))]
+      .filter((part): part is string => Boolean(part))
+      .join("\n\n"),
+  );
+  const locations = Array.isArray(job.workLocations)
+    ? job.workLocations.filter((place): place is string => typeof place === "string")
+    : [];
+  const employment = asRecord(job.employmentType);
+  return {
+    title,
+    location: locations.length > 0 ? locations.join(", ") : null,
+    descriptionText,
+    workType: asString(employment?.id),
+  };
+}
+
 export function extractJobAnchors(
   html: string,
   baseUrl: string,
@@ -380,7 +555,8 @@ export function extractJobAnchors(
     const inner = htmlToPlainText(match[2]);
     if (!href || !JOB_HREF.test(href)) continue;
     const url = asUrl(href, baseUrl);
-    if (!url) continue;
+    if (!url || isDirectoryJobPath(url.pathname)) continue;
+    if (!jobBelongsToCompany(url, companySlugFromBoardUrl(baseUrl))) continue;
     const normalized = url.toString().split("#")[0] ?? url.toString();
     if (normalized === asUrl(baseUrl)?.toString()) continue;
     if (seen.has(normalized)) continue;
@@ -410,6 +586,7 @@ export function extractJobPostingFromHtml(
   ExtractedJobListing,
   "title" | "location" | "descriptionText" | "workType"
 > | null {
+  const structured = postingFromInertia(html) ?? postingFromRippling(html);
   const fromLd = extractJobsFromJsonLd(html, sourceUrl)[0];
   const ogTitle =
     firstCapture(
@@ -422,14 +599,19 @@ export function extractJobPostingFromHtml(
     );
   const h1 = firstCapture(html, /<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
   const title =
+    structured?.title ??
     preferPublishableTitle(fromLd?.title) ??
     preferPublishableTitle(h1) ??
     preferPublishableTitle(ogTitle);
   if (!title) return null;
+  const main = htmlToPlainText(
+    firstCapture(html, /<main\b[^>]*>([\s\S]*?)<\/main>/i),
+  )?.replace(/^(?:←\s*)?all open roles\s+/i, "");
   return {
     title,
-    location: fromLd?.location ?? null,
+    location: structured?.location ?? fromLd?.location ?? null,
     descriptionText:
+      structured?.descriptionText ??
       fromLd?.descriptionText ??
       sanitizeStartupRoleDescription(
         htmlToPlainText(
@@ -440,9 +622,10 @@ export function extractJobPostingFromHtml(
               html,
               /<(?:div|section)[^>]*(?:job-description|jobDescription|description)[^>]*>([\s\S]*?)<\/(?:div|section)>/i,
             ),
-          ),
+          ) ??
+          (main && main.length >= 80 ? main : null),
       ),
-    workType: fromLd?.workType ?? null,
+    workType: structured?.workType ?? fromLd?.workType ?? null,
   };
 }
 
@@ -459,6 +642,8 @@ export function nestedJobsIndexUrl(
     if (!href) continue;
     const url = asUrl(href, jobsUrl);
     if (url?.origin !== base.origin) continue;
+    const host = url.hostname.replace(/^www\./, "").toLowerCase();
+    if (host === "ycombinator.com" || host === "workatastartup.com") continue;
     const path = url.pathname.replace(/\/$/, "") || "/";
     if (path === basePath) continue;
     if (/\/(?:careers\/)?jobs$/i.test(path)) {
@@ -504,6 +689,8 @@ export function extractEmbeddedBoardJobs(
     const href = unescapeJsonString(match[2] ?? "");
     const url = asUrl(href, baseUrl);
     if (!url || !/\/jobs\/[^/]+/i.test(url.pathname)) continue;
+    if (isDirectoryJobPath(url.pathname)) continue;
+    if (!jobBelongsToCompany(url, companySlugFromBoardUrl(baseUrl))) continue;
     const window = decoded.slice(match.index ?? 0, (match.index ?? 0) + 700);
     const location = firstCapture(window, /"location":"((?:\\.|[^"\\])*)"/);
     const workType = firstCapture(window, /"type":"((?:\\.|[^"\\])*)"/);
@@ -527,10 +714,16 @@ export function mergePostingIntoListing(
   > | null,
 ): ExtractedJobListing {
   const pageTitle = presentText(posting?.title);
+  const listingNorm = listing.title.replace(/\s+/g, " ").trim().toLowerCase();
+  const pageNorm = pageTitle?.replace(/\s+/g, " ").trim().toLowerCase() ?? "";
+  const applyChrome =
+    pageNorm.length > 0 &&
+    listingNorm.startsWith(pageNorm) &&
+    /\bapply now\b/i.test(listingNorm.slice(pageNorm.length));
   const replaceTitle =
-    !isPublishableJobTitle(listing.title) &&
     pageTitle != null &&
-    isPublishableJobTitle(pageTitle);
+    isPublishableJobTitle(pageTitle) &&
+    (!isPublishableJobTitle(listing.title) || applyChrome);
   return {
     ...listing,
     title: replaceTitle && pageTitle ? pageTitle : listing.title,
@@ -544,6 +737,10 @@ export function extractListingsFromCareersHtml(
   html: string,
   baseUrl: string,
 ): ExtractedJobListing[] {
+  const inertia = extractInertiaJobBoard(html, baseUrl);
+  if (inertia) return inertia;
+  const rippling = extractRipplingBoardJobs(html, baseUrl);
+  if (rippling) return rippling;
   const fromLd = extractJobsFromJsonLd(html, baseUrl);
   if (fromLd.length > 0) return dedupeListings(fromLd);
   const embedded = extractEmbeddedBoardJobs(html, baseUrl);

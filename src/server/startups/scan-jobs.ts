@@ -4,8 +4,11 @@ import {
   ashbyBoardUrl,
   detectJobBoardFromHtml,
   detectJobBoardFromUrl,
+  extractInertiaJobBoard,
   extractJobPostingFromHtml,
   extractListingsFromCareersHtml,
+  extractRipplingBoardJobs,
+  ripplingJobsIndexUrl,
   greenhouseBoardUrl,
   isPublishableJobTitle,
   leverBoardUrl,
@@ -87,7 +90,7 @@ export async function defaultJobFetch(url: string): Promise<JobFetchResult> {
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        Accept: "application/json, text/html;q=0.9, */*;q=0.8",
+        Accept: "text/html, application/json;q=0.9, */*;q=0.8",
         "User-Agent": STARTUP_ROLE_USER_AGENT,
       },
       redirect: "follow",
@@ -184,6 +187,14 @@ export async function readJobsUrlListings(
   const page = await fetchPage(jobsUrl);
   if (!page.ok) return { fetched: false, listings: [] };
 
+  const inertia = extractInertiaJobBoard(page.text, jobsUrl);
+  if (inertia) {
+    return {
+      fetched: true,
+      listings: await enrichListings(inertia, fetchPage),
+    };
+  }
+
   const fromHtml = detectJobBoardFromHtml(page.text);
   if (fromHtml.board !== "unknown") {
     const nested = await listingsFromBoard(fromHtml, fetchPage);
@@ -217,6 +228,21 @@ export async function readJobsUrlListings(
         return {
           fetched: true,
           listings: await enrichListings(extractedNested, fetchPage),
+        };
+      }
+    }
+  }
+
+  const ripplingUrl = ripplingJobsIndexUrl(page.text);
+  if (ripplingUrl) {
+    const boardPage =
+      ripplingUrl === jobsUrl ? page : await fetchPage(ripplingUrl);
+    if (boardPage.ok) {
+      const rippling = extractRipplingBoardJobs(boardPage.text, ripplingUrl);
+      if (rippling) {
+        return {
+          fetched: true,
+          listings: await enrichListings(rippling, fetchPage),
         };
       }
     }

@@ -338,6 +338,81 @@ describe("readJobsUrlListings", () => {
     expect(result.fetched).toBe(false);
     expect(result.listings).toEqual([]);
   });
+
+  it("treats an empty YC company board as empty and does not open the site directory", async () => {
+    const calls: string[] = [];
+    const result = await readJobsUrlListings(
+      "https://www.ycombinator.com/companies/bite-ninja/jobs",
+      async (url) => {
+        calls.push(url);
+        return {
+          ok: true,
+          status: 200,
+          contentType: "text/html",
+          text: `<div data-page="{&quot;props&quot;:{&quot;jobPostings&quot;:[]}}"></div><a href="/jobs">Jobs</a><a href="/jobs/location/india">Jobs in India</a>`,
+        };
+      },
+    );
+    expect(result.fetched).toBe(true);
+    expect(result.listings).toEqual([]);
+    expect(calls).toEqual([
+      "https://www.ycombinator.com/companies/bite-ninja/jobs",
+    ]);
+  });
+
+  it("follows a Rippling board linked from the company careers page", async () => {
+    const result = await readJobsUrlListings(
+      "https://www.aalo.com/careers",
+      async (url) => {
+        if (url === "https://www.aalo.com/careers") {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: `<a href="https://ats.rippling.com/aalo-atomics/jobs">Careers</a>
+              <a href="https://www.aalo.com/aalo-atomics/jobs/dead">AI Platform Architect</a>`,
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          contentType: "text/html",
+          text: `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+            props: {
+              pageProps: {
+                dehydratedState: {
+                  queries: [
+                    {
+                      queryKey: ["board", "aalo-atomics", "job-posts"],
+                      state: {
+                        data: {
+                          items: [
+                            {
+                              id: "8d4783fb",
+                              name: "AI Platform Architect",
+                              url: "https://ats.rippling.com/aalo-atomics/jobs/8d4783fb",
+                              locations: [{ name: "Austin, TX" }],
+                            },
+                          ],
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          })}</script>`,
+        };
+      },
+    );
+    expect(result.fetched).toBe(true);
+    expect(result.listings.map((row) => row.title)).toEqual([
+      "AI Platform Architect",
+    ]);
+    expect(result.listings[0]?.sourceUrl).toBe(
+      "https://ats.rippling.com/aalo-atomics/jobs/8d4783fb",
+    );
+  });
 });
 
 describe("startupJobsScanTablePatch", () => {
@@ -388,6 +463,11 @@ describe("startup jobs scan locks", () => {
     expect(src).toContain("startupJobsScanTablePatch");
     expect(src).toContain("openRoleCount");
     expect(src).toContain("readJobsUrlListings");
+    expect(src).toContain(
+      'Accept: "text/html, application/json;q=0.9, */*;q=0.8"',
+    );
+    expect(src).toContain("extractInertiaJobBoard");
+    expect(src).toContain("ripplingJobsIndexUrl");
     expect(src).toMatch(/if \(fetched\)/);
   });
 });
