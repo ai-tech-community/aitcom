@@ -32,6 +32,13 @@ import {
 import { presentText } from "@/lib/investigations/startups";
 import { db } from "@/server/db";
 import { startupRoles, startups } from "@/server/db/schema";
+import {
+  STARTUP_ROLE_VISUAL_BACKUP_CAP,
+  armVisualBackup,
+  ocrPostingPage,
+} from "@/server/startups/posting-visual-backup";
+
+let inVisualBatch = false;
 
 export type JobFetchResult = {
   ok: boolean;
@@ -156,7 +163,10 @@ async function enrichListing(
     listing,
     extractJobPostingFromHtml(page.text, listing.sourceUrl),
   );
-  return isPublishableJobTitle(merged.title) ? merged : null;
+  if (!isPublishableJobTitle(merged.title)) return null;
+  if (merged.descriptionText) return merged;
+  const visual = await ocrPostingPage(listing.sourceUrl);
+  return visual ? { ...merged, descriptionText: visual } : merged;
 }
 
 async function enrichListings(
@@ -289,6 +299,7 @@ export async function scanStartupJobs(
     pending: 0,
     closed: 0,
   };
+  if (!inVisualBatch) armVisualBackup(4);
   if (!jobsUrl) {
     await db
       .update(startups)
@@ -438,6 +449,8 @@ export async function scanAllStartupJobs(
 
   const targets = rows.filter((row) => presentText(row.jobsUrl));
   const started = Date.now();
+  inVisualBatch = true;
+  armVisualBackup(STARTUP_ROLE_VISUAL_BACKUP_CAP);
 
   const summary: ScanAllStartupJobsResult = {
     scanned: 0,
@@ -447,33 +460,37 @@ export async function scanAllStartupJobs(
     errors: 0,
   };
 
-  for (const startup of targets) {
-    if (Date.now() - started >= STARTUP_JOBS_SCAN_BUDGET_MS) break;
-    try {
-      const result = await scanStartupJobs(startup, fetchPage);
-      summary.scanned += 1;
-      summary.published += result.published;
-      summary.pending += result.pending;
-      summary.closed += result.closed;
-      if (result.error) summary.errors += 1;
-    } catch {
-      summary.scanned += 1;
-      summary.errors += 1;
+  try {
+    for (const startup of targets) {
+      if (Date.now() - started >= STARTUP_JOBS_SCAN_BUDGET_MS) break;
       try {
-        await db
-          .update(startups)
-          .set(
-            startupJobsScanTablePatch({
-              fetched: false,
-              published: 0,
-              scannedAt: new Date(),
-            }),
-          )
-          .where(eq(startups.id, startup.id));
+        const result = await scanStartupJobs(startup, fetchPage);
+        summary.scanned += 1;
+        summary.published += result.published;
+        summary.pending += result.pending;
+        summary.closed += result.closed;
+        if (result.error) summary.errors += 1;
       } catch {
-        // Soft-fail: the next cron can retry this company.
+        summary.scanned += 1;
+        summary.errors += 1;
+        try {
+          await db
+            .update(startups)
+            .set(
+              startupJobsScanTablePatch({
+                fetched: false,
+                published: 0,
+                scannedAt: new Date(),
+              }),
+            )
+            .where(eq(startups.id, startup.id));
+        } catch {
+          // Soft-fail: the next cron can retry this company.
+        }
       }
     }
+  } finally {
+    inVisualBatch = false;
   }
 
   return summary;

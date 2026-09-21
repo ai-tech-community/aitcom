@@ -267,6 +267,22 @@ describe("startup role slugs and jobs query", () => {
     expect(empty).toEqual([]);
   });
 
+  it("reads a Webflow rich-text job description and labeled location", () => {
+    const posting = extractJobPostingFromHtml(
+      `<h1>Team Leader iOS</h1>
+       <img alt="Availability" class="position-detail__icon"/><div class="position-detail__text">Full time</div>
+       <img alt="Location" class="position-detail__icon"/><div class="position-detail__text">Jerusalem</div>
+       <div class="job-rich-text-block"><h3>Description</h3><div class="w-richtext"><p>If you have a strong background in iOS development, excellent leadership skills, and a passion for building innovative applications, we want to hear from you!</p></div></div>
+       <div class="job-rich-text-block"><h3>The role</h3><div class="w-richtext"><ul><li>Lead and manage a team of iOS developers.</li></ul></div></div>`,
+      "https://balink.net/job/team-leader-ios",
+    );
+    expect(posting?.title).toBe("Team Leader iOS");
+    expect(posting?.location).toBe("Jerusalem");
+    expect(posting?.workType).toBe("Full time");
+    expect(posting?.descriptionText).toContain("strong background in iOS");
+    expect(posting?.descriptionText).toContain("Lead and manage a team");
+  });
+
   it("reads a Work at a Startup posting from the page payload", () => {
     const posting = extractJobPostingFromHtml(
       `<div data-page="${escapeAttr(
