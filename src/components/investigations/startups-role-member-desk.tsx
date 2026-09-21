@@ -11,14 +11,17 @@ import {
   type StartupRoleBrief,
 } from "@/lib/investigations/startup-role-brief";
 import type { StartupLocale } from "@/lib/investigations/startups";
+import { cn } from "@/lib/utils";
 import { api } from "@/trpc/react";
 
 export function StartupsRoleMemberDesk({
   locale,
   brief,
+  className,
 }: {
   locale: string;
   brief: StartupRoleBrief;
+  className?: string;
 }) {
   const t = useTranslations("investigationsStartups");
   const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
@@ -82,7 +85,10 @@ export function StartupsRoleMemberDesk({
   return (
     <section
       data-startup-role-member=""
-      className="border-border mt-12 flex flex-col gap-8 border-t pt-10"
+      className={cn(
+        "border-border mt-12 flex flex-col gap-8 border-t pt-10",
+        className,
+      )}
     >
       <div className="flex flex-col gap-3">
         <h2 className="text-base font-semibold tracking-tight">
@@ -174,7 +180,9 @@ export function StartupsRoleMemberDesk({
               type="button"
               variant="ghost"
               disabled={remove.isPending}
-              onClick={() => remove.mutate()}
+              onClick={() => {
+                remove.mutate();
+              }}
             >
               {t("cvDelete")}
             </Button>

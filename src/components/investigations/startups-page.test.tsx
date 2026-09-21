@@ -1486,6 +1486,12 @@ describe("Startups open positions", () => {
     expect(
       container.querySelector("[data-startup-role-description]")?.textContent,
     ).toBe("Build the product.");
+    expect(
+      container.querySelector("[data-startup-role-description]")?.tagName,
+    ).toBe("ARTICLE");
+    expect(
+      container.querySelector("[data-startup-role-description]")?.className,
+    ).not.toMatch(/whitespace-pre-wrap/);
     expect(hrefsOf(container)).toContain(STARTUPS_JOBS_PATH);
     expect(container.textContent).not.toMatch(BANNED);
     expect(container.querySelector("[data-startup-role-member]")).toBeNull();
@@ -1542,6 +1548,37 @@ Nice to have:
     expect(hrefsOf(container)).not.toContain(STARTUPS_JOIN_HREF);
     expect(container.textContent).not.toMatch(BANNED);
     expect(container.textContent).not.toMatch(/salary|fit score/i);
+  });
+
+  it("renders sourced headings and bullets instead of a pre-wrapped dump", () => {
+    const { container } = render(
+      <StartupsRolePage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        role={{
+          ...FIXTURE_ROLE,
+          descriptionText: `About the role
+Build the product.
+
+Requirements:
+- 5 years shipping TypeScript
+- English`,
+        }}
+      />,
+    );
+    const posting = container.querySelector("[data-startup-role-description]");
+    expect(posting?.className.split(/\s+/)).toContain("max-w-prose");
+    expect(posting?.className).not.toMatch(/whitespace-pre-wrap/);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "About the role" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Requirements" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("list")).toBeInTheDocument();
+    expect(posting?.textContent).toContain("Build the product.");
+    expect(posting?.textContent).toContain("5 years shipping TypeScript");
+    expect(posting?.textContent).not.toMatch(/salary|fit score/i);
   });
 });
 

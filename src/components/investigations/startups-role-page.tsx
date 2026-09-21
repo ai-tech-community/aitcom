@@ -12,6 +12,7 @@ import {
   type StartupRolePublic,
 } from "@/lib/investigations/startup-roles";
 import { extractStartupRoleBrief } from "@/lib/investigations/startup-role-brief";
+import { StartupsRoleDescription } from "@/components/investigations/startups-role-description";
 import { StartupsRoleMemberDesk } from "@/components/investigations/startups-role-member-desk";
 
 export type StartupsRoleKey =
@@ -105,16 +106,20 @@ export function StartupsRolePage({
         />
       </div>
 
-      {role.descriptionText ? (
-        <div
-          data-startup-role-description=""
-          className="text-foreground mt-10 text-sm leading-relaxed whitespace-pre-wrap"
-        >
-          {role.descriptionText}
+      {role.descriptionText || brief ? (
+        <div className="mt-10 flex flex-col gap-12 lg:flex-row lg:items-start">
+          {role.descriptionText ? (
+            <StartupsRoleDescription text={role.descriptionText} />
+          ) : null}
+          {brief ? (
+            <StartupsRoleMemberDesk
+              locale={locale}
+              brief={brief}
+              className="lg:mt-0 lg:w-80 lg:shrink-0 lg:border-t-0 lg:pt-0"
+            />
+          ) : null}
         </div>
       ) : null}
-
-      {brief ? <StartupsRoleMemberDesk locale={locale} brief={brief} /> : null}
 
       <p className="text-muted-foreground mt-12 font-mono text-xs tracking-wider">
         {t("fetchedAt")} {fetched}
