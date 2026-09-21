@@ -276,10 +276,7 @@ describe("shouldPromoteJoin", () => {
 
   it("Roles/Events/Awesome read promoteJoin from the same per-request getSession as Startups", () => {
     const app = join(dir, "../../app/[locale]");
-    const startups = readFileSync(
-      join(app, "startups/page.tsx"),
-      "utf8",
-    );
+    const startups = readFileSync(join(app, "startups/page.tsx"), "utf8");
     expect(startups).toContain('dynamic = "force-dynamic"');
     expect(startups).toContain(
       "shouldPromoteJoin(toHubAuthUser(session?.user))",

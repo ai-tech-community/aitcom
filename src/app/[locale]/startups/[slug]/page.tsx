@@ -16,7 +16,10 @@ import {
   toHubAuthUser,
 } from "@/server/better-auth/hub-session";
 import { getSession } from "@/server/better-auth/server";
-import { findApprovedPublicStartupBySlug, listOpenStartupRolesForCompany } from "@/server/startups/queries";
+import {
+  findApprovedPublicStartupBySlug,
+  listOpenStartupRolesForCompany,
+} from "@/server/startups/queries";
 
 export const dynamic = "force-dynamic";
 

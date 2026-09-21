@@ -873,10 +873,7 @@ describe("startup slugs and profile contract", () => {
         "  ",
         "hugging-face",
       ]),
-    ).toEqual([
-      "/startups/cursor-anysphere",
-      "/startups/hugging-face",
-    ]);
+    ).toEqual(["/startups/cursor-anysphere", "/startups/hugging-face"]);
   });
 
   it("soft-omits empty overview tiles and extra tabs", () => {

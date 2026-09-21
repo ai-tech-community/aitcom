@@ -90,9 +90,7 @@ export function StartupsPage({
         <JsonLd data={startupsDirectoryJsonLd(directoryPage.items)} />
       ) : null}
 
-      <SectionLabel as="div">
-        {t("kicker")}
-      </SectionLabel>
+      <SectionLabel as="div">{t("kicker")}</SectionLabel>
 
       <div className="mt-6 flex max-w-2xl flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
