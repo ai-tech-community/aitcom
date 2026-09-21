@@ -1419,6 +1419,8 @@ describe("Startups open positions", () => {
     expect(container.textContent).toContain(
       en.investigationsStartups.jobsEmpty,
     );
+    expect(container.textContent).not.toContain("Directory: Directory");
+    expect(hrefsOf(container)).toContain(STARTUPS_PATH);
     expect(hrefsOf(container)).toContain(STARTUPS_PATH);
     expect(hrefsOf(container)).toContain(STARTUPS_JOBS_PATH);
     expect(container.textContent).not.toMatch(BANNED);

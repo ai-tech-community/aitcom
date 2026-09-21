@@ -1250,7 +1250,7 @@
     "jobsEmpty": "No sourced openings listed yet.",
     "jobsEmptyHelp": "We scan verified careers URLs. Low-confidence extracts stay off the public table.",
     "jobsBack": "Open positions",
-    "howWeListJobs": "Each role is copied from a live careers page we already verified. Closed roles stay on their page and are marked closed. Directory:",
+    "howWeListJobs": "Each role is copied from a live careers page we already verified. Closed roles stay on their page and are marked closed. See the",
     "roleColumn": "Role",
     "companyColumn": "Company",
     "locationColumn": "Location",
