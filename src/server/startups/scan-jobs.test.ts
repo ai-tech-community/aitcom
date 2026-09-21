@@ -151,6 +151,58 @@ describe("listingsFromJobsUrl", () => {
     expect(listings.at(-1)?.title).toBe("Role 10");
   });
 
+  it("follows a careers-index CTA into the ATS board", async () => {
+    const fetched: string[] = [];
+    const listings = await listingsFromJobsUrl(
+      "https://www.anthropic.com/careers",
+      async (url) => {
+        fetched.push(url);
+        if (url.includes("boards-api.greenhouse.io")) {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "application/json",
+            text: JSON.stringify({
+              jobs: [
+                {
+                  id: 9,
+                  title: "Research Engineer",
+                  absolute_url:
+                    "https://job-boards.greenhouse.io/anthropic/jobs/9",
+                  location: { name: "San Francisco" },
+                  content: "&lt;p&gt;Ship models.&lt;/p&gt;",
+                },
+              ],
+            }),
+          };
+        }
+        if (url.includes("/careers/jobs")) {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: `<a href="https://job-boards.greenhouse.io/anthropic/jobs/9">Research Engineer</a>`,
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          contentType: "text/html",
+          text: `<a href="/careers/jobs">Explore open roles</a>`,
+        };
+      },
+    );
+    expect(fetched.some((url) => url.endsWith("/careers/jobs"))).toBe(true);
+    expect(
+      fetched.some((url) => url.includes("boards-api.greenhouse.io")),
+    ).toBe(true);
+    expect(listings).toHaveLength(1);
+    expect(listings[0]?.title).toBe("Research Engineer");
+    expect(listings[0]?.board).toBe("greenhouse");
+    expect(listings[0]?.descriptionText).toContain("Ship models");
+    expect(listings[0]?.descriptionText).not.toMatch(/<p>/i);
+  });
+
   it("does not invent a JD when the posting page has no sourced text", async () => {
     const listings = await listingsFromJobsUrl(
       "https://example.com/careers",

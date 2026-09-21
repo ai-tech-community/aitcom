@@ -15,6 +15,9 @@ export type DetectedJobBoard = {
 const SKIP_TITLE =
   /^(careers|jobs|job openings|open roles|open jobs|view all|see all|learn more|apply|home|about|teams?)$/i;
 
+const SKIP_INDEX_TITLE =
+  /^(explore|view|see|browse)\s+(all\s+)?(open\s+)?(roles|jobs|openings)\b/i;
+
 function firstPathSegment(pathname: string): string | null {
   const token = pathname.split("/").find(Boolean) ?? "";
   return token.length > 0 ? token : null;
@@ -112,7 +115,13 @@ function listing(partial: {
 }): ExtractedJobListing | null {
   const title = parseStartupRoleTitle(partial.title);
   const sourceUrl = presentText(partial.sourceUrl);
-  if (!title || !sourceUrl || SKIP_TITLE.test(title)) return null;
+  if (
+    !title ||
+    !sourceUrl ||
+    SKIP_TITLE.test(title) ||
+    SKIP_INDEX_TITLE.test(title)
+  )
+    return null;
   const url = asUrl(sourceUrl);
   if (!url || (url.protocol !== "https:" && url.protocol !== "http:")) {
     return null;
@@ -237,20 +246,25 @@ export function htmlToPlainText(
   html: string | null | undefined,
 ): string | null {
   if (!html) return null;
-  const text = html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/p>/gi, "\n")
-    .replace(/<\/h[1-6]>/gi, "\n")
-    .replace(/<li>/gi, "\n• ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
+  const strip = (value: string) =>
+    value
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<\/h[1-6]>/gi, "\n")
+      .replace(/<li>/gi, "\n• ")
+      .replace(/<[^>]+>/g, " ");
+  const decode = (value: string) =>
+    value
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&#x27;/gi, "'");
+  const text = decode(strip(decode(html)))
     .replace(/\s+\n/g, "\n")
     .replace(/\n\s+/g, "\n")
     .replace(/[ \t]{2,}/g, " ")
@@ -400,6 +414,28 @@ export function extractJobPostingFromHtml(
     descriptionText: sanitizeStartupRoleDescription(description),
     workType: null,
   };
+}
+
+export function nestedJobsIndexUrl(
+  html: string,
+  jobsUrl: string,
+): string | null {
+  const base = asUrl(jobsUrl);
+  if (!base) return null;
+  const basePath = base.pathname.replace(/\/$/, "") || "/";
+  const anchors = html.matchAll(/<a\b[^>]*href=["']([^"']+)["']/gi);
+  for (const match of anchors) {
+    const href = match[1];
+    if (!href) continue;
+    const url = asUrl(href, jobsUrl);
+    if (!url || url.origin !== base.origin) continue;
+    const path = url.pathname.replace(/\/$/, "") || "/";
+    if (path === basePath) continue;
+    if (/\/(?:careers\/)?jobs$/i.test(path)) {
+      return `${url.origin}${url.pathname}`;
+    }
+  }
+  return null;
 }
 
 export function extractListingsFromCareersHtml(

@@ -8,6 +8,7 @@ import {
   extractListingsFromCareersHtml,
   greenhouseBoardUrl,
   leverBoardUrl,
+  nestedJobsIndexUrl,
   parseAshbyJobs,
   parseGreenhouseJobs,
   parseLeverJobs,
@@ -186,6 +187,33 @@ export async function readJobsUrlListings(
         fetched: true,
         listings: await enrichListings(nested, fetchPage),
       };
+    }
+  }
+
+  const indexUrl = nestedJobsIndexUrl(page.text, jobsUrl);
+  if (indexUrl) {
+    const nestedPage = await fetchPage(indexUrl);
+    if (nestedPage.ok) {
+      const nestedBoard = detectJobBoardFromHtml(nestedPage.text);
+      if (nestedBoard.board !== "unknown") {
+        const nested = await listingsFromBoard(nestedBoard, fetchPage);
+        if (nested) {
+          return {
+            fetched: true,
+            listings: await enrichListings(nested, fetchPage),
+          };
+        }
+      }
+      const extractedNested = extractListingsFromCareersHtml(
+        nestedPage.text,
+        indexUrl,
+      );
+      if (extractedNested.length > 0) {
+        return {
+          fetched: true,
+          listings: await enrichListings(extractedNested, fetchPage),
+        };
+      }
     }
   }
 
