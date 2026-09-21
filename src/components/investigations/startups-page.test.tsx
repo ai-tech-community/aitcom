@@ -20,13 +20,25 @@ vi.mock("next-intl", () => ({
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
-      startups: { listApproved: { invalidate: vi.fn() } },
+      startups: {
+        listApproved: { invalidate: vi.fn() },
+        getMyCv: { invalidate: vi.fn() },
+      },
     }),
     startups: {
       createStartup: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       updateStartup: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      getMyCv: {
+        useQuery: () => ({ data: null, isPending: false }),
+      },
+      upsertMyCv: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      deleteMyCv: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
     },
@@ -106,6 +118,14 @@ const QUERIES_FILE = join(dir, "../../server/startups/queries.ts");
 const PAGINATION_FILE = join(dir, "startups-pagination.tsx");
 const SUBMIT_FILE = join(dir, "startups-submit-dialog.tsx");
 const OPS_DOC = join(dir, "../../../docs/ops/startups.md");
+const NAV_FILE = join(dir, "../navbar.tsx");
+const FOOTER_FILE = join(dir, "../footer.tsx");
+const CV_MIGRATION_FILE = join(
+  dir,
+  "../../migrations/20260921a_startup_member_cv.ts",
+);
+const ROUTER_FILE = join(dir, "../../server/api/routers/startups.ts");
+const MEMBER_DESK_FILE = join(dir, "startups-role-member-desk.tsx");
 const FIXTURE = join(
   dir,
   "../../../docs/ops/fixtures/startups-batch1-payload.json",
@@ -1446,6 +1466,60 @@ describe("Startups open positions", () => {
     ).toBe("Build the product.");
     expect(hrefsOf(container)).toContain(STARTUPS_JOBS_PATH);
     expect(container.textContent).not.toMatch(BANNED);
+    expect(container.querySelector("[data-startup-role-member]")).toBeNull();
+    expect(container.textContent).not.toContain(
+      en.investigationsStartups.roleBriefTitle,
+    );
+    expect(container.textContent).not.toContain(
+      en.investigationsStartups.copyPromptTitle,
+    );
+    expect(container.textContent).not.toContain(
+      en.investigationsStartups.cvTitle,
+    );
+  });
+
+  it("shows a sourced Role Brief, copy prompt, and CV upload for Hub members", () => {
+    const { container } = render(
+      <StartupsRolePage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        role={{
+          ...FIXTURE_ROLE,
+          title: "Senior Staff Engineer",
+          descriptionText: `Requirements:
+- 5 years shipping TypeScript
+- English
+
+Nice to have:
+- Dutch`,
+        }}
+        promoteJoin={false}
+      />,
+    );
+    expect(
+      container.querySelector("[data-startup-role-member]"),
+    ).not.toBeNull();
+    expect(container.textContent).toContain(
+      en.investigationsStartups.roleBriefTitle,
+    );
+    expect(container.textContent).toContain("5 years shipping TypeScript");
+    expect(container.textContent).toContain("Dutch");
+    const prompt =
+      container.querySelector("[data-startup-role-prompt]")?.textContent ?? "";
+    expect(prompt).toContain("https://fixture.example/careers/staff");
+    expect(prompt).toMatch(/do not invent employers/i);
+    expect(prompt).toContain("Paste my CV below.");
+    expect(
+      screen.getByRole("button", {
+        name: en.investigationsStartups.copyPromptCta,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: en.investigationsStartups.cvUpload }),
+    ).toBeInTheDocument();
+    expect(hrefsOf(container)).not.toContain(STARTUPS_JOIN_HREF);
+    expect(container.textContent).not.toMatch(BANNED);
+    expect(container.textContent).not.toMatch(/salary|fit score/i);
   });
 });
 
@@ -1507,6 +1581,9 @@ describe("Startups site integration", () => {
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/description|blurb/i);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Short description/);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Open positions/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Role Brief/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/startup_member_cv/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/overflow/);
     expect(
       existsSync(join(dir, "../../migrations/20260920a_startup_roles.ts")),
     ).toBe(true);
@@ -1516,6 +1593,34 @@ describe("Startups site integration", () => {
     expect(readFileSync(join(dir, "../../../vercel.json"), "utf8")).toContain(
       "/api/cron/startup-jobs-scan",
     );
+    expect(existsSync(CV_MIGRATION_FILE)).toBe(true);
+    expect(readFileSync(CV_MIGRATION_FILE, "utf8")).toContain(
+      "startup_member_cv",
+    );
+    expect(readFileSync(CV_MIGRATION_FILE, "utf8")).toContain(
+      "startup_role_applications",
+    );
+    expect(readFileSync(CV_MIGRATION_FILE, "utf8")).toMatch(
+      /ON DELETE CASCADE/,
+    );
+    expect(readFileSync(CV_MIGRATION_FILE, "utf8")).not.toMatch(/INSERT INTO/i);
+  });
+
+  it("lists Startups in overflow nav and footer without colliding with Hub roles or sponsor jobs", () => {
+    const nav = readFileSync(NAV_FILE, "utf8");
+    const footer = readFileSync(FOOTER_FILE, "utf8");
+    expect(nav).toMatch(/href: "\/startups",[\s\S]*?primary: false/);
+    expect(nav).toContain('key: "startups"');
+    expect(nav).toContain('shortcut: "U"');
+    expect(nav).toMatch(/href: "\/jobs",[\s\S]*?primary: false/);
+    expect(nav).toMatch(/href: "\/roles",[\s\S]*?primary: true/);
+    expect(nav).not.toMatch(/href: "\/startups\/jobs"/);
+    expect(footer).toContain('href="/startups"');
+    expect(footer).toContain('tNav("startups")');
+    expect(en.nav.startups).toBe("Startups");
+    expect(nl.nav.startups).toBe("Startups");
+    expect(en.nav.jobs).toBe("Jobs");
+    expect(en.nav.roles).toBe("Roles");
   });
 
   it("SSR-reads Neon, paginates with crawlable ?page= links, and sitemaps from the live count", () => {
@@ -1533,7 +1638,17 @@ describe("Startups site integration", () => {
     expect(page).toContain("startupsPublicRobots");
     expect(page).toContain("status?:");
     expect(page).toContain("region");
-    expect(page).toContain("hiring");
+    expect(ROLE_FILE).toBeTruthy();
+    const roleSrc = readFileSync(ROLE_FILE, "utf8");
+    expect(roleSrc).toContain("shouldPromoteJoin");
+    expect(roleSrc).toContain("promoteJoin");
+    const desk = readFileSync(MEMBER_DESK_FILE, "utf8");
+    expect(desk).toContain("getMyCv");
+    expect(desk).toContain("upsertMyCv");
+    expect(desk).toContain("deleteMyCv");
+    expect(desk).not.toMatch(/openrouter/i);
+    expect(desk).not.toContain("/api/upload");
+    expect(readFileSync(ROUTER_FILE, "utf8")).toContain("protectedProcedure");
     expect(insights).toContain("listApprovedPublicStartups");
     expect(insights).toContain("shouldPromoteJoin");
     expect(insights).toContain("promoteJoin");

@@ -40,6 +40,18 @@ import {
   findStartupBySlug,
   listApprovedPublicStartups,
 } from "@/server/startups/queries";
+import {
+  deleteStartupCvForUser,
+  findStartupCvForUser,
+  upsertStartupCvForUser,
+} from "@/server/startups/cv";
+import {
+  extractStartupCvText,
+  parseStartupCvFileName,
+  STARTUP_CV_FILENAME_MAX,
+  STARTUP_CV_MAX_BYTES,
+  STARTUP_CV_READ_ERROR,
+} from "@/lib/investigations/startup-cv";
 
 const optionalBlank = z
   .string()
@@ -393,4 +405,62 @@ export const startupsRouter = createTRPCRouter({
 
       return { id: input.id, status: existing.status };
     }),
+
+  getMyCv: protectedProcedure.query(async ({ ctx }) => {
+    return findStartupCvForUser(ctx.session.user.id);
+  }),
+
+  upsertMyCv: protectedProcedure
+    .input(
+      z.object({
+        fileName: z.string().trim().min(1).max(STARTUP_CV_FILENAME_MAX),
+        mimeType: z.string().trim().min(1).max(128),
+        bytesBase64: z
+          .string()
+          .min(1)
+          .max(Math.ceil(STARTUP_CV_MAX_BYTES * 1.4)),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const fileName = parseStartupCvFileName(input.fileName);
+      if (!fileName) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: STARTUP_CV_READ_ERROR,
+        });
+      }
+      let buffer: Buffer;
+      try {
+        buffer = Buffer.from(input.bytesBase64, "base64");
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: STARTUP_CV_READ_ERROR,
+        });
+      }
+      if (buffer.length === 0 || buffer.length > STARTUP_CV_MAX_BYTES) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: STARTUP_CV_READ_ERROR,
+        });
+      }
+      const text = extractStartupCvText(buffer, fileName, input.mimeType);
+      if (!text) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: STARTUP_CV_READ_ERROR,
+        });
+      }
+      return upsertStartupCvForUser({
+        userId: ctx.session.user.id,
+        fileName,
+        mimeType: input.mimeType,
+        textContent: text,
+      });
+    }),
+
+  deleteMyCv: protectedProcedure.mutation(async ({ ctx }) => {
+    await deleteStartupCvForUser(ctx.session.user.id);
+    return { deleted: true };
+  }),
 });

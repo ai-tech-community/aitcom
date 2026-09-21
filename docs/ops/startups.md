@@ -51,14 +51,18 @@ Stable ids live in
 Later batches (daily 30, overflow when Ops-passed) go through the staff API,
 not a new seed migration.
 
-tRPC router `startups`, Hub owner/admin only:
+tRPC router `startups`. Staff writes are Hub owner/admin only.
+CV procedures are any signed-in member (`protectedProcedure`).
 
-| Procedure                 | Purpose                                   |
-| ------------------------- | ----------------------------------------- |
-| `startups.createStartup`  | One Ops-passed row                        |
-| `startups.createStartups` | Batch, max 30 rows (`STARTUPS_BATCH_MAX`) |
-| `startups.updateStartup`  | Edit an existing row                      |
-| `startups.listApproved`   | Public read (also what the page uses)     |
+| Procedure                 | Purpose                                           |
+| ------------------------- | ------------------------------------------------- |
+| `startups.createStartup`  | One Ops-passed row                                |
+| `startups.createStartups` | Batch, max 30 rows (`STARTUPS_BATCH_MAX`)         |
+| `startups.updateStartup`  | Edit an existing row                              |
+| `startups.listApproved`   | Public read (also what the page uses)             |
+| `startups.getMyCv`        | Member: stored CV filename + extracted text       |
+| `startups.upsertMyCv`     | Member: store extracted text (2MB, .txt/.md/.pdf) |
+| `startups.deleteMyCv`     | Member: remove the stored CV                      |
 
 Row shape — Pulse fixture aliases are accepted (`logo_url`, `jobs_url`,
 `status` as the sourced exit, `exit_acquirer`, `exit_year`):
@@ -138,6 +142,15 @@ Hub members never see Join — `shouldPromoteJoin()` / `PromoteJoinCta` swap
 to Open Hub (`/communities/ait/forum`). Same leftover rule as navbar JOIN
 (`!user`).
 
+On a dedicated role page, members also get a **Role Brief** copied from
+the sourced snapshot (must/nice headings, title seniority, mentioned
+languages — never invented copy). The copy prompt is assembled in the
+browser so CV text is not SSR'd for crawlers. Private CVs live in
+`app.startup_member_cv` as extracted text only (purpose
+`startup_role_applications`, one row per user, deletable, cascade on
+account delete). Do not reuse `/api/upload`. Tailor / coverage map /
+in-app send stay out of this slice.
+
 Directory default is an SSR `<table>`: **Logo** (sourced `logoUrl` only;
 never a favicon or invented mark; logo may link to the homepage) · sticky
 **Name** (hard SSR link to `/en/startups/{slug}`) · **Short description** (sourced blurb only) · Category · City/region · Founders
@@ -186,6 +199,10 @@ the active filters.
   shows a count when open roles exist; otherwise the careers CTA. `/en/roles`
   remains Hub seats. Sponsor `/jobs` is unchanged.
 - `/investigations/startups` permanent-redirects to `/startups`.
+- Global nav lists **Startups** in the overflow menu (`[U]`, ADR-0010)
+  at `/startups`. Footer Navigate does too. Do **not** replace Hub
+  `/roles` or sponsor `/jobs`. Nested paths (`/startups/jobs`,
+  `/startups/{slug}`) keep the overflow item active.
 - Directory pages after page 1 use crawlable `?page=` links (`STARTUPS_PAGE_SIZE`
   is 24, so a list past ~50 rows is page 3). Pagination stays crawlable.
 - **Crawl is open:** Directory + Insights send `index,follow` and stay **in
