@@ -428,7 +428,7 @@ export function nestedJobsIndexUrl(
     const href = match[1];
     if (!href) continue;
     const url = asUrl(href, jobsUrl);
-    if (!url || url.origin !== base.origin) continue;
+    if (url?.origin !== base.origin) continue;
     const path = url.pathname.replace(/\/$/, "") || "/";
     if (path === basePath) continue;
     if (/\/(?:careers\/)?jobs$/i.test(path)) {
