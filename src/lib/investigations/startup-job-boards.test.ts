@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   detectJobBoardFromHtml,
   detectJobBoardFromUrl,
-  extractListingsFromCareersHtml,
   extractJobPostingFromHtml,
+  extractListingsFromCareersHtml,
   htmlToPlainText,
   parseAshbyJobs,
   parseGreenhouseJobs,
@@ -177,6 +177,21 @@ describe("startup role slugs and jobs query", () => {
       "https://www.anthropic.com/careers",
     );
     expect(listings.map((row) => row.title)).toEqual(["Research Engineer"]);
+  });
+
+  it("reads a YC board from embedded job JSON instead of the apply button", () => {
+    const listings = extractListingsFromCareersHtml(
+      `<a href="/companies/biostack-platforms/jobs/HIfysXu-clinical-data-lead">[View Position &amp; Apply →]</a>
+       <a href="https://account.ycombinator.com/authenticate?continue=https://www.workatastartup.com/application">Apply Now</a>
+       &quot;title&quot;:&quot;Clinical Data Lead&quot;,&quot;url&quot;:&quot;/companies/biostack-platforms/jobs/HIfysXu-clinical-data-lead&quot;,&quot;location&quot;:&quot;San Francisco, CA, US&quot;,&quot;type&quot;:&quot;Full-time&quot;`,
+      "https://www.ycombinator.com/companies/biostack-platforms/jobs",
+    );
+    expect(listings.map((row) => row.title)).toEqual(["Clinical Data Lead"]);
+    expect(listings[0]?.location).toBe("San Francisco, CA, US");
+    expect(listings[0]?.workType).toBe("Full-time");
+    expect(listings[0]?.sourceUrl).toBe(
+      "https://www.ycombinator.com/companies/biostack-platforms/jobs/HIfysXu-clinical-data-lead",
+    );
   });
 
   it("skips location/category index titles such as Jobs in Chicago", () => {
