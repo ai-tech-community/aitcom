@@ -11,6 +11,8 @@ import {
   startupRoleJsonLd,
   type StartupRolePublic,
 } from "@/lib/investigations/startup-roles";
+import { extractStartupRoleBrief } from "@/lib/investigations/startup-role-brief";
+import { StartupsRoleMemberDesk } from "@/components/investigations/startups-role-member-desk";
 
 export type StartupsRoleKey =
   | "kicker"
@@ -25,6 +27,7 @@ export type StartupsRoleKey =
   | "companyColumn";
 
 export function StartupsRolePage({
+  locale,
   t,
   role,
   promoteJoin = true,
@@ -35,6 +38,8 @@ export function StartupsRolePage({
   promoteJoin?: boolean;
 }) {
   const fetched = role.fetchedAt.slice(0, 10);
+  const member = !promoteJoin;
+  const brief = member ? extractStartupRoleBrief(role) : null;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-16 sm:px-12">
@@ -108,6 +113,8 @@ export function StartupsRolePage({
           {role.descriptionText}
         </div>
       ) : null}
+
+      {brief ? <StartupsRoleMemberDesk locale={locale} brief={brief} /> : null}
 
       <p className="text-muted-foreground mt-12 font-mono text-xs tracking-wider">
         {t("fetchedAt")} {fetched}

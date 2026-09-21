@@ -4302,6 +4302,27 @@ export const startupsRelations = relations(startups, ({ one, many }) => ({
   roles: many(startupRoles),
 }));
 
+/** Private extracted CV text for member startup applications. One row per user. */
+export const startupMemberCvs = appSchema.table("startup_member_cv", (d) => ({
+  userId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  fileName: d.text().notNull(),
+  mimeType: d.varchar({ length: 128 }).notNull(),
+  textContent: d.text().notNull(),
+  purpose: d
+    .varchar({ length: 64 })
+    .notNull()
+    .default("startup_role_applications"),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));
+
 /** Thin public /events list. No attendance / RSVP fields — never invent counts. */
 export const curatedPublicEvents = appSchema.table(
   "curated_public_event",

@@ -11,6 +11,7 @@ import {
   STARTUPS_JOBS_URL_ERROR,
   STARTUPS_SLUG_ERROR,
 } from "@/lib/investigations/startups";
+import { STARTUP_CV_PURPOSE } from "@/lib/investigations/startup-cv";
 
 const src = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "startups.ts"),
@@ -18,6 +19,17 @@ const src = readFileSync(
 );
 const queries = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "../../startups/queries.ts"),
+  "utf8",
+);
+const cvStore = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../../startups/cv.ts"),
+  "utf8",
+);
+const cvMigration = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../migrations/20260921a_startup_member_cv.ts",
+  ),
   "utf8",
 );
 const migration = readFileSync(
@@ -79,6 +91,18 @@ describe("startups router locks", () => {
     expect(src).toContain("slug");
     expect(src).toContain("allocateStartupSlug");
     expect(src).toContain("STARTUPS_SLUG_ERROR");
+    expect(src).toContain("getMyCv");
+    expect(src).toContain("upsertMyCv");
+    expect(src).toContain("deleteMyCv");
+    expect(src).toContain("protectedProcedure");
+    expect(src).toContain("extractStartupCvText");
+    expect(src).not.toContain("/api/upload");
+    expect(src).not.toMatch(/openrouter/i);
+    expect(cvStore).toContain("STARTUP_CV_PURPOSE");
+    expect(STARTUP_CV_PURPOSE).toBe("startup_role_applications");
+    expect(cvStore).toContain("textContent");
+    expect(cvMigration).toContain("text_content");
+    expect(cvMigration).toMatch(/ON DELETE CASCADE/);
     expect(STARTUPS_HOMEPAGE_ERROR).toMatch(/homepage URL/i);
     expect(STARTUPS_DUPLICATE_ERROR).toMatch(/already/i);
     expect(STARTUPS_EXIT_ERROR).toMatch(/acquired, IPO, or shutdown/i);

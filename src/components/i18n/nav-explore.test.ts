@@ -10,6 +10,10 @@ describe("nav.explore i18n", () => {
       const label = m.nav.explore;
       expect(typeof label).toBe("string");
       expect((label ?? "").trim().length).toBeGreaterThan(0);
+      expect(typeof m.nav.startups).toBe("string");
+      expect((m.nav.startups ?? "").trim().length).toBeGreaterThan(0);
     }
+    expect(en.nav.startups).toBe("Startups");
+    expect(nl.nav.startups).toBe("Startups");
   });
 });
