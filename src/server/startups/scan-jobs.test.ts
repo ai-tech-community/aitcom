@@ -227,6 +227,59 @@ describe("listingsFromJobsUrl", () => {
     expect(listings[0]?.descriptionText).toBeNull();
   });
 
+  it("replaces an apply-button title with the posting page title and JD", async () => {
+    const listings = await listingsFromJobsUrl(
+      "https://example.com/careers",
+      async (url) => {
+        if (url.endsWith("/careers")) {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: `<a href="/jobs/HIfysXu-clinical-data-lead">[View Position &amp; Apply →]</a>`,
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          contentType: "text/html",
+          text: `<h1>Clinical Data Lead</h1><article><p>Source clinical datasets.</p></article>`,
+        };
+      },
+    );
+    expect(listings).toHaveLength(1);
+    expect(listings[0]?.title).toBe("Clinical Data Lead");
+    expect(listings[0]?.descriptionText).toContain("Source clinical datasets");
+    expect(listings[0]?.title).not.toMatch(/view position/i);
+  });
+
+  it("reads YC embedded roles and fills the JD from the posting page", async () => {
+    const listings = await listingsFromJobsUrl(
+      "https://www.ycombinator.com/companies/biostack-platforms/jobs",
+      async (url) => {
+        if (url.endsWith("/jobs")) {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: `<a href="/companies/biostack-platforms/jobs/HIfysXu-clinical-data-lead">[View Position &amp; Apply →]</a>
+&quot;title&quot;:&quot;Clinical Data Lead&quot;,&quot;url&quot;:&quot;/companies/biostack-platforms/jobs/HIfysXu-clinical-data-lead&quot;,&quot;location&quot;:&quot;San Francisco, CA, US&quot;,&quot;type&quot;:&quot;Full-time&quot;`,
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          contentType: "text/html",
+          text: `<script type="application/ld+json">{"@type":"JobPosting","title":"Clinical Data Lead","description":"<h2>About BioStack</h2><p>Source clinical datasets.</p>","url":"${url}"}</script>`,
+        };
+      },
+    );
+    expect(listings.map((row) => row.title)).toEqual(["Clinical Data Lead"]);
+    expect(listings[0]?.location).toBe("San Francisco, CA, US");
+    expect(listings[0]?.descriptionText).toContain("Source clinical datasets");
+    expect(listings[0]?.descriptionText).toContain("About BioStack");
+  });
+
   it("treats an empty ATS board as no jobs without scraping listing HTML", async () => {
     const fetched: string[] = [];
     const listings = await listingsFromJobsUrl(

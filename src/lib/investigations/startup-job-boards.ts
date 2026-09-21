@@ -29,6 +29,23 @@ export function isSkippedExtractedJobTitle(title: string): boolean {
   );
 }
 
+/** Button labels such as "[View Position & Apply →]", not a role title. */
+export function isApplyCtaTitle(title: string): boolean {
+  const normalized = title
+    .replace(/[[\]()]/g, " ")
+    .replace(/[→›»>|]+/g, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+  return /^(?:view position(?:\s*(?:&|and)\s*apply)?|apply(?:\s+now|\s+to(?:\s+this)?\s+(?:role|position)|\s+for\s+this\s+(?:role|position))?)$/i.test(
+    normalized,
+  );
+}
+
+export function isPublishableJobTitle(title: string): boolean {
+  return !isSkippedExtractedJobTitle(title) && !isApplyCtaTitle(title);
+}
+
 function firstPathSegment(pathname: string): string | null {
   const token = pathname.split("/").find(Boolean) ?? "";
   return token.length > 0 ? token : null;
@@ -378,6 +395,14 @@ export function extractJobAnchors(
   return listings;
 }
 
+function preferPublishableTitle(
+  value: string | null | undefined,
+): string | null {
+  const title = parseStartupRoleTitle(htmlToPlainText(value) ?? value);
+  if (!title || !isPublishableJobTitle(title)) return null;
+  return title;
+}
+
 export function extractJobPostingFromHtml(
   html: string,
   sourceUrl: string,
@@ -386,38 +411,38 @@ export function extractJobPostingFromHtml(
   "title" | "location" | "descriptionText" | "workType"
 > | null {
   const fromLd = extractJobsFromJsonLd(html, sourceUrl)[0];
-  if (fromLd) {
-    return {
-      title: fromLd.title,
-      location: fromLd.location,
-      descriptionText: fromLd.descriptionText,
-      workType: fromLd.workType,
-    };
-  }
-  const ogTitle = firstCapture(
-    html,
-    /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
-  );
+  const ogTitle =
+    firstCapture(
+      html,
+      /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i,
+    ) ??
+    firstCapture(
+      html,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i,
+    );
   const h1 = firstCapture(html, /<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
   const title =
-    parseStartupRoleTitle(ogTitle) ??
-    parseStartupRoleTitle(htmlToPlainText(h1));
+    preferPublishableTitle(fromLd?.title) ??
+    preferPublishableTitle(h1) ??
+    preferPublishableTitle(ogTitle);
   if (!title) return null;
-  const description =
-    htmlToPlainText(
-      firstCapture(html, /<article\b[^>]*>([\s\S]*?)<\/article>/i),
-    ) ??
-    htmlToPlainText(
-      firstCapture(
-        html,
-        /<(?:div|section)[^>]*(?:job-description|jobDescription|description)[^>]*>([\s\S]*?)<\/(?:div|section)>/i,
-      ),
-    );
   return {
     title,
-    location: null,
-    descriptionText: sanitizeStartupRoleDescription(description),
-    workType: null,
+    location: fromLd?.location ?? null,
+    descriptionText:
+      fromLd?.descriptionText ??
+      sanitizeStartupRoleDescription(
+        htmlToPlainText(
+          firstCapture(html, /<article\b[^>]*>([\s\S]*?)<\/article>/i),
+        ) ??
+          htmlToPlainText(
+            firstCapture(
+              html,
+              /<(?:div|section)[^>]*(?:job-description|jobDescription|description)[^>]*>([\s\S]*?)<\/(?:div|section)>/i,
+            ),
+          ),
+      ),
+    workType: fromLd?.workType ?? null,
   };
 }
 
@@ -443,12 +468,86 @@ export function nestedJobsIndexUrl(
   return null;
 }
 
+function unescapeBoardJson(html: string): string {
+  return html
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&")
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function unescapeJsonString(value: string): string {
+  try {
+    const parsed: unknown = JSON.parse(`"${value}"`);
+    return typeof parsed === "string" ? parsed : value;
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * YC / Work at a Startup pages embed the real role next to a relative `/jobs/{id}`
+ * URL. Anchor text on those cards is often only an apply button.
+ */
+export function extractEmbeddedBoardJobs(
+  html: string,
+  baseUrl: string,
+): ExtractedJobListing[] {
+  const decoded = unescapeBoardJson(html);
+  const listings: ExtractedJobListing[] = [];
+  const matches = decoded.matchAll(
+    /"title":"((?:\\.|[^"\\])*)","url":"([^"]+)"/g,
+  );
+  for (const match of matches) {
+    const title = unescapeJsonString(match[1] ?? "");
+    const href = unescapeJsonString(match[2] ?? "");
+    const url = asUrl(href, baseUrl);
+    if (!url || !/\/jobs\/[^/]+/i.test(url.pathname)) continue;
+    const window = decoded.slice(match.index ?? 0, (match.index ?? 0) + 700);
+    const location = firstCapture(window, /"location":"((?:\\.|[^"\\])*)"/);
+    const workType = firstCapture(window, /"type":"((?:\\.|[^"\\])*)"/);
+    const parsed = listing({
+      title,
+      sourceUrl: url.toString(),
+      location: location ? unescapeJsonString(location) : null,
+      workType: workType ? unescapeJsonString(workType) : null,
+      board: "html",
+    });
+    if (parsed) listings.push(parsed);
+  }
+  return listings;
+}
+
+export function mergePostingIntoListing(
+  listing: ExtractedJobListing,
+  posting: Pick<
+    ExtractedJobListing,
+    "title" | "location" | "descriptionText" | "workType"
+  > | null,
+): ExtractedJobListing {
+  const pageTitle = presentText(posting?.title);
+  const replaceTitle =
+    !isPublishableJobTitle(listing.title) &&
+    pageTitle != null &&
+    isPublishableJobTitle(pageTitle);
+  return {
+    ...listing,
+    title: replaceTitle && pageTitle ? pageTitle : listing.title,
+    location: listing.location ?? posting?.location ?? null,
+    workType: listing.workType ?? posting?.workType ?? null,
+    descriptionText: posting?.descriptionText ?? listing.descriptionText,
+  };
+}
+
 export function extractListingsFromCareersHtml(
   html: string,
   baseUrl: string,
 ): ExtractedJobListing[] {
   const fromLd = extractJobsFromJsonLd(html, baseUrl);
   if (fromLd.length > 0) return dedupeListings(fromLd);
+  const embedded = extractEmbeddedBoardJobs(html, baseUrl);
+  if (embedded.length > 0) return dedupeListings(embedded);
   return dedupeListings(extractJobAnchors(html, baseUrl));
 }
 

@@ -198,7 +198,9 @@ the active filters.
   Greenhouse / Lever / Workable); otherwise listing HTML then the original
   posting page for any missing JD. Title + source URL are required to
   publish. Location/category index CTAs (`Jobs in Chicago`,
-  `Software Engineer Jobs in New York`) are skipped. Low-confidence
+  `Software Engineer Jobs in New York`) and apply buttons (`View Position & Apply`)
+  are skipped. YC and Work at a Startup pages are read from the embedded job
+  objects, then the original posting page supplies the JD. Low-confidence
   extracts stay `pending_review`. Roles that
   disappear on a later **successful** scan become `closed` and keep their
   page. A live empty board writes `open_role_count = 0` on `app.startup`

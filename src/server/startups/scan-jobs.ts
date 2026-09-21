@@ -7,7 +7,9 @@ import {
   extractJobPostingFromHtml,
   extractListingsFromCareersHtml,
   greenhouseBoardUrl,
+  isPublishableJobTitle,
   leverBoardUrl,
+  mergePostingIntoListing,
   nestedJobsIndexUrl,
   parseAshbyJobs,
   parseGreenhouseJobs,
@@ -138,19 +140,19 @@ async function listingsFromBoard(
 async function enrichListing(
   listing: ExtractedJobListing,
   fetchPage: JobFetch,
-): Promise<ExtractedJobListing> {
-  if (listing.descriptionText) return listing;
+): Promise<ExtractedJobListing | null> {
+  const needsPage =
+    !listing.descriptionText || !isPublishableJobTitle(listing.title);
+  if (!needsPage) return listing;
   const page = await fetchPage(listing.sourceUrl);
-  if (!page.ok) return listing;
-  const posting = extractJobPostingFromHtml(page.text, listing.sourceUrl);
-  if (!posting) return listing;
-  return {
-    ...listing,
-    title: listing.title,
-    location: listing.location ?? posting.location,
-    workType: listing.workType ?? posting.workType,
-    descriptionText: posting.descriptionText ?? listing.descriptionText,
-  };
+  if (!page.ok) {
+    return isPublishableJobTitle(listing.title) ? listing : null;
+  }
+  const merged = mergePostingIntoListing(
+    listing,
+    extractJobPostingFromHtml(page.text, listing.sourceUrl),
+  );
+  return isPublishableJobTitle(merged.title) ? merged : null;
 }
 
 async function enrichListings(
@@ -158,8 +160,11 @@ async function enrichListings(
   fetchPage: JobFetch,
 ): Promise<ExtractedJobListing[]> {
   const capped = listings.slice(0, STARTUP_ROLES_PER_COMPANY_CAP);
-  return Promise.all(
+  const enriched = await Promise.all(
     capped.map((listing) => enrichListing(listing, fetchPage)),
+  );
+  return enriched.filter((listing): listing is ExtractedJobListing =>
+    Boolean(listing),
   );
 }
 
