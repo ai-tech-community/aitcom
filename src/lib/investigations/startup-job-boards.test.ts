@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   detectJobBoardFromHtml,
   detectJobBoardFromUrl,
-  extractListingsFromCareersHtml,
   extractJobPostingFromHtml,
+  extractListingsFromCareersHtml,
+  greenhouseTokenFromGhJid,
   htmlToPlainText,
+  mergePostingIntoListing,
   parseAshbyJobs,
   parseGreenhouseJobs,
   parseLeverJobs,
@@ -18,6 +20,13 @@ import {
   startupRoleSitemapPaths,
   startupRoleSlugFromTitle,
 } from "./startup-roles";
+
+function escapeAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
 
 describe("detectJobBoardFromUrl", () => {
   it("recognises Ashby, Greenhouse, Lever, and Workable boards", () => {
@@ -131,11 +140,25 @@ describe("HTML extract", () => {
         '<iframe src="https://jobs.ashbyhq.com/physicalintelligence"></iframe>',
       ),
     ).toEqual({ board: "ashby", token: "physicalintelligence" });
+    expect(
+      detectJobBoardFromHtml(
+        '<a href="https://jobs.ashbyhq.com/mistral.ai">Mistral Jobs</a>',
+      ),
+    ).toEqual({ board: "ashby", token: "mistral.ai" });
+    expect(
+      greenhouseTokenFromGhJid(
+        '<a href="/careers/job-details/?gh_jid=8622173002">DevOps Engineer</a>',
+        "https://www.bigid.com/company/careers",
+      ),
+    ).toBe("bigid");
   });
 
   it("strips tags for sourced description text", () => {
     expect(htmlToPlainText("<p>Ship&nbsp;<strong>agents</strong>.</p>")).toBe(
       "Ship agents.",
+    );
+    expect(htmlToPlainText("Engineer &#8211; Remote &#038; hybrid")).toBe(
+      "Engineer – Remote & hybrid",
     );
     expect(
       extractJobPostingFromHtml(
@@ -179,6 +202,21 @@ describe("startup role slugs and jobs query", () => {
     expect(listings.map((row) => row.title)).toEqual(["Research Engineer"]);
   });
 
+  it("reads a YC board from embedded job JSON instead of the apply button", () => {
+    const listings = extractListingsFromCareersHtml(
+      `<a href="/companies/biostack-platforms/jobs/HIfysXu-clinical-data-lead">[View Position &amp; Apply →]</a>
+       <a href="https://account.ycombinator.com/authenticate?continue=https://www.workatastartup.com/application">Apply Now</a>
+       &quot;title&quot;:&quot;Clinical Data Lead&quot;,&quot;url&quot;:&quot;/companies/biostack-platforms/jobs/HIfysXu-clinical-data-lead&quot;,&quot;location&quot;:&quot;San Francisco, CA, US&quot;,&quot;type&quot;:&quot;Full-time&quot;`,
+      "https://www.ycombinator.com/companies/biostack-platforms/jobs",
+    );
+    expect(listings.map((row) => row.title)).toEqual(["Clinical Data Lead"]);
+    expect(listings[0]?.location).toBe("San Francisco, CA, US");
+    expect(listings[0]?.workType).toBe("Full-time");
+    expect(listings[0]?.sourceUrl).toBe(
+      "https://www.ycombinator.com/companies/biostack-platforms/jobs/HIfysXu-clinical-data-lead",
+    );
+  });
+
   it("skips location/category index titles such as Jobs in Chicago", () => {
     const listings = extractListingsFromCareersHtml(
       `<a href="/jobs/jobs-in-india">Jobs in India</a>
@@ -188,6 +226,170 @@ describe("startup role slugs and jobs query", () => {
       "https://www.ycombinator.com/companies/bite-ninja/jobs",
     );
     expect(listings.map((row) => row.title)).toEqual(["Platform Engineer"]);
+  });
+
+  it("reads only this company's YC jobPostings and treats an empty list as no roles", () => {
+    const board = extractListingsFromCareersHtml(
+      `<div data-page="${escapeAttr(
+        JSON.stringify({
+          props: {
+            jobPostings: [
+              {
+                id: 1,
+                title: "Clinical Data Lead",
+                url: "/companies/biostack-platforms/jobs/HIfysXu-clinical-data-lead",
+                location: "San Francisco, CA, US",
+                type: "Full-time",
+              },
+              {
+                id: 2,
+                title: "Other Company Engineer",
+                url: "/companies/other-co/jobs/abc-engineer",
+                location: "New York",
+                type: "Full-time",
+              },
+            ],
+          },
+        }),
+      )}"></div>
+       <a href="/jobs/location/india">Jobs in India</a>`,
+      "https://www.ycombinator.com/companies/biostack-platforms/jobs",
+    );
+    expect(board.map((row) => row.title)).toEqual(["Clinical Data Lead"]);
+    expect(board[0]?.location).toBe("San Francisco, CA, US");
+
+    const empty = extractListingsFromCareersHtml(
+      `<div data-page="${escapeAttr(JSON.stringify({ props: { jobPostings: [] } }))}"></div>
+       <a href="/jobs/location/india">Jobs in India</a>
+       <a href="/companies/other-co/jobs/abc-engineer">Other Company Engineer</a>`,
+      "https://www.ycombinator.com/companies/bite-ninja/jobs",
+    );
+    expect(empty).toEqual([]);
+  });
+
+  it("reads a Work at a Startup posting from the page payload", () => {
+    const posting = extractJobPostingFromHtml(
+      `<div data-page="${escapeAttr(
+        JSON.stringify({
+          props: {
+            job: {
+              title: "Founding Research Engineer, RL/Reasoning",
+              location: "San Francisco, CA, US",
+              jobType: "Full-time",
+              descriptionHtml:
+                "<h2>About BioStack</h2><p>Source clinical datasets.</p>",
+            },
+          },
+        }),
+      )}"></div>`,
+      "https://www.workatastartup.com/jobs/94045",
+    );
+    expect(posting?.title).toBe("Founding Research Engineer, RL/Reasoning");
+    expect(posting?.descriptionText).toContain("About BioStack");
+    expect(posting?.descriptionText).toContain("Source clinical datasets.");
+    expect(posting?.workType).toBe("Full-time");
+  });
+
+  it("replaces a concatenated Apply now label with the posting title", () => {
+    const merged = mergePostingIntoListing(
+      {
+        title: "Senior Data Scientist Data Science Remote Apply now",
+        sourceUrl: "https://www.reveliolabs.com/careers/role",
+        applyUrl: null,
+        location: null,
+        workType: null,
+        descriptionText: null,
+        externalId: null,
+        board: "html",
+      },
+      {
+        title: "Senior Data Scientist",
+        location: "Remote",
+        descriptionText:
+          "Who we are: Revelio Labs provides workforce intelligence.",
+        workType: "Full Time",
+      },
+    );
+    expect(merged.title).toBe("Senior Data Scientist");
+    expect(merged.descriptionText).toContain("workforce intelligence");
+  });
+
+  it("replaces a card label with the posting title", () => {
+    const merged = mergePostingIntoListing(
+      {
+        title: "See position details",
+        sourceUrl: "https://balink.net/job/cloud-architect",
+        applyUrl: null,
+        location: null,
+        workType: null,
+        descriptionText: null,
+        externalId: null,
+        board: "html",
+      },
+      {
+        title: "Cloud Architect",
+        location: null,
+        descriptionText: null,
+        workType: null,
+      },
+    );
+    expect(merged.title).toBe("Cloud Architect");
+    const card = mergePostingIntoListing(
+      {
+        title: "AI Engineer (Junior)\nStellenbosch\nMore Info",
+        sourceUrl: "https://www.spatialedge.ai/careers/junior-ai-engineer",
+        applyUrl: null,
+        location: null,
+        workType: null,
+        descriptionText: null,
+        externalId: null,
+        board: "html",
+      },
+      {
+        title: "AI Engineer (Junior)",
+        location: "Stellenbosch",
+        descriptionText: "Build models.",
+        workType: "Full-Time",
+      },
+    );
+    expect(card.title).toBe("AI Engineer (Junior)");
+    expect(card.descriptionText).toBe("Build models.");
+  });
+
+  it("reads Rippling roles from the page payload", () => {
+    const listings = extractListingsFromCareersHtml(
+      `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+        props: {
+          pageProps: {
+            dehydratedState: {
+              queries: [
+                {
+                  queryKey: ["board", "aalo-atomics", "job-posts"],
+                  state: {
+                    data: {
+                      items: [
+                        {
+                          id: "8d4783fb",
+                          name: "AI Platform Architect",
+                          url: "https://ats.rippling.com/aalo-atomics/jobs/8d4783fb",
+                          locations: [{ name: "Austin, TX" }],
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      })}</script>`,
+      "https://ats.rippling.com/aalo-atomics/jobs",
+    );
+    expect(listings.map((row) => row.title)).toEqual(["AI Platform Architect"]);
+    expect(listings[0]?.location).toBe("Austin, TX");
+    expect(listings[0]?.sourceUrl).toBe(
+      "https://ats.rippling.com/aalo-atomics/jobs/8d4783fb",
+    );
   });
 
   it("filters the public jobs table by company slug", () => {

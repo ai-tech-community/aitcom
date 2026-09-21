@@ -198,8 +198,14 @@ the active filters.
   Greenhouse / Lever / Workable); otherwise listing HTML then the original
   posting page for any missing JD. Title + source URL are required to
   publish. Location/category index CTAs (`Jobs in Chicago`,
-  `Software Engineer Jobs in New York`) are skipped. Low-confidence
-  extracts stay `pending_review`. Roles that
+  `Software Engineer Jobs in New York`) and apply buttons (`View Position & Apply`)
+  are skipped, as are raw URL titles and “check out our open roles” links. An
+  empty YC `jobPostings` list is a live empty board: the site-wide `/jobs`
+  directory is not followed. YC and Work at a Startup pages are read from
+  that list (or the embedded job object), then the original posting page
+  supplies the JD. Rippling boards are read from the page payload. A listing
+  title that only adds “Apply now” is replaced by the posting-page title.
+  Low-confidence extracts stay `pending_review`. Roles that
   disappear on a later **successful** scan become `closed` and keep their
   page. A live empty board writes `open_role_count = 0` on `app.startup`
   (do not invent a JD). A failed fetch does not close roles or zero the

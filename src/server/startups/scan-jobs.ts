@@ -4,10 +4,16 @@ import {
   ashbyBoardUrl,
   detectJobBoardFromHtml,
   detectJobBoardFromUrl,
+  extractInertiaJobBoard,
   extractJobPostingFromHtml,
   extractListingsFromCareersHtml,
+  extractRipplingBoardJobs,
+  greenhouseTokenFromGhJid,
+  ripplingJobsIndexUrl,
   greenhouseBoardUrl,
+  isPublishableJobTitle,
   leverBoardUrl,
+  mergePostingIntoListing,
   nestedJobsIndexUrl,
   parseAshbyJobs,
   parseGreenhouseJobs,
@@ -85,7 +91,7 @@ export async function defaultJobFetch(url: string): Promise<JobFetchResult> {
     const response = await fetch(url, {
       signal: controller.signal,
       headers: {
-        Accept: "application/json, text/html;q=0.9, */*;q=0.8",
+        Accept: "text/html, application/json;q=0.9, */*;q=0.8",
         "User-Agent": STARTUP_ROLE_USER_AGENT,
       },
       redirect: "follow",
@@ -138,19 +144,19 @@ async function listingsFromBoard(
 async function enrichListing(
   listing: ExtractedJobListing,
   fetchPage: JobFetch,
-): Promise<ExtractedJobListing> {
-  if (listing.descriptionText) return listing;
+): Promise<ExtractedJobListing | null> {
+  const needsPage =
+    !listing.descriptionText || !isPublishableJobTitle(listing.title);
+  if (!needsPage) return listing;
   const page = await fetchPage(listing.sourceUrl);
-  if (!page.ok) return listing;
-  const posting = extractJobPostingFromHtml(page.text, listing.sourceUrl);
-  if (!posting) return listing;
-  return {
-    ...listing,
-    title: listing.title,
-    location: listing.location ?? posting.location,
-    workType: listing.workType ?? posting.workType,
-    descriptionText: posting.descriptionText ?? listing.descriptionText,
-  };
+  if (!page.ok) {
+    return isPublishableJobTitle(listing.title) ? listing : null;
+  }
+  const merged = mergePostingIntoListing(
+    listing,
+    extractJobPostingFromHtml(page.text, listing.sourceUrl),
+  );
+  return isPublishableJobTitle(merged.title) ? merged : null;
 }
 
 async function enrichListings(
@@ -158,8 +164,11 @@ async function enrichListings(
   fetchPage: JobFetch,
 ): Promise<ExtractedJobListing[]> {
   const capped = listings.slice(0, STARTUP_ROLES_PER_COMPANY_CAP);
-  return Promise.all(
+  const enriched = await Promise.all(
     capped.map((listing) => enrichListing(listing, fetchPage)),
+  );
+  return enriched.filter((listing): listing is ExtractedJobListing =>
+    Boolean(listing),
   );
 }
 
@@ -179,6 +188,14 @@ export async function readJobsUrlListings(
   const page = await fetchPage(jobsUrl);
   if (!page.ok) return { fetched: false, listings: [] };
 
+  const inertia = extractInertiaJobBoard(page.text, jobsUrl);
+  if (inertia) {
+    return {
+      fetched: true,
+      listings: await enrichListings(inertia, fetchPage),
+    };
+  }
+
   const fromHtml = detectJobBoardFromHtml(page.text);
   if (fromHtml.board !== "unknown") {
     const nested = await listingsFromBoard(fromHtml, fetchPage);
@@ -186,6 +203,20 @@ export async function readJobsUrlListings(
       return {
         fetched: true,
         listings: await enrichListings(nested, fetchPage),
+      };
+    }
+  }
+
+  const greenhouseToken = greenhouseTokenFromGhJid(page.text, jobsUrl);
+  if (greenhouseToken) {
+    const greenhouse = await listingsFromBoard(
+      { board: "greenhouse", token: greenhouseToken },
+      fetchPage,
+    );
+    if (greenhouse && greenhouse.length > 0) {
+      return {
+        fetched: true,
+        listings: await enrichListings(greenhouse, fetchPage),
       };
     }
   }
@@ -212,6 +243,21 @@ export async function readJobsUrlListings(
         return {
           fetched: true,
           listings: await enrichListings(extractedNested, fetchPage),
+        };
+      }
+    }
+  }
+
+  const ripplingUrl = ripplingJobsIndexUrl(page.text);
+  if (ripplingUrl) {
+    const boardPage =
+      ripplingUrl === jobsUrl ? page : await fetchPage(ripplingUrl);
+    if (boardPage.ok) {
+      const rippling = extractRipplingBoardJobs(boardPage.text, ripplingUrl);
+      if (rippling) {
+        return {
+          fetched: true,
+          listings: await enrichListings(rippling, fetchPage),
         };
       }
     }

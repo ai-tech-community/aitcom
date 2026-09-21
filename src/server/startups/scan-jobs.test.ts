@@ -227,6 +227,59 @@ describe("listingsFromJobsUrl", () => {
     expect(listings[0]?.descriptionText).toBeNull();
   });
 
+  it("replaces an apply-button title with the posting page title and JD", async () => {
+    const listings = await listingsFromJobsUrl(
+      "https://example.com/careers",
+      async (url) => {
+        if (url.endsWith("/careers")) {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: `<a href="/jobs/HIfysXu-clinical-data-lead">[View Position &amp; Apply →]</a>`,
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          contentType: "text/html",
+          text: `<h1>Clinical Data Lead</h1><article><p>Source clinical datasets.</p></article>`,
+        };
+      },
+    );
+    expect(listings).toHaveLength(1);
+    expect(listings[0]?.title).toBe("Clinical Data Lead");
+    expect(listings[0]?.descriptionText).toContain("Source clinical datasets");
+    expect(listings[0]?.title).not.toMatch(/view position/i);
+  });
+
+  it("reads YC embedded roles and fills the JD from the posting page", async () => {
+    const listings = await listingsFromJobsUrl(
+      "https://www.ycombinator.com/companies/biostack-platforms/jobs",
+      async (url) => {
+        if (url.endsWith("/jobs")) {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: `<a href="/companies/biostack-platforms/jobs/HIfysXu-clinical-data-lead">[View Position &amp; Apply →]</a>
+&quot;title&quot;:&quot;Clinical Data Lead&quot;,&quot;url&quot;:&quot;/companies/biostack-platforms/jobs/HIfysXu-clinical-data-lead&quot;,&quot;location&quot;:&quot;San Francisco, CA, US&quot;,&quot;type&quot;:&quot;Full-time&quot;`,
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          contentType: "text/html",
+          text: `<script type="application/ld+json">{"@type":"JobPosting","title":"Clinical Data Lead","description":"<h2>About BioStack</h2><p>Source clinical datasets.</p>","url":"${url}"}</script>`,
+        };
+      },
+    );
+    expect(listings.map((row) => row.title)).toEqual(["Clinical Data Lead"]);
+    expect(listings[0]?.location).toBe("San Francisco, CA, US");
+    expect(listings[0]?.descriptionText).toContain("Source clinical datasets");
+    expect(listings[0]?.descriptionText).toContain("About BioStack");
+  });
+
   it("treats an empty ATS board as no jobs without scraping listing HTML", async () => {
     const fetched: string[] = [];
     const listings = await listingsFromJobsUrl(
@@ -285,6 +338,83 @@ describe("readJobsUrlListings", () => {
     expect(result.fetched).toBe(false);
     expect(result.listings).toEqual([]);
   });
+
+  it("treats an empty YC company board as empty and does not open the site directory", async () => {
+    const calls: string[] = [];
+    const result = await readJobsUrlListings(
+      "https://www.ycombinator.com/companies/bite-ninja/jobs",
+      async (url) => {
+        calls.push(url);
+        return {
+          ok: true,
+          status: 200,
+          contentType: "text/html",
+          text: `<div data-page="{&quot;props&quot;:{&quot;jobPostings&quot;:[]}}"></div><a href="/jobs">Jobs</a><a href="/jobs/location/india">Jobs in India</a>`,
+        };
+      },
+    );
+    expect(result.fetched).toBe(true);
+    expect(result.listings).toEqual([]);
+    expect(calls).toEqual([
+      "https://www.ycombinator.com/companies/bite-ninja/jobs",
+    ]);
+  });
+
+  it("follows a Rippling board linked from the company careers page", async () => {
+    const result = await readJobsUrlListings(
+      "https://www.aalo.com/careers",
+      async (url) => {
+        if (url === "https://www.aalo.com/careers") {
+          return {
+            ok: true,
+            status: 200,
+            contentType: "text/html",
+            text: `<a href="https://ats.rippling.com/aalo-atomics/jobs">Careers</a>
+              <a href="https://www.aalo.com/aalo-atomics/jobs/dead">AI Platform Architect</a>`,
+          };
+        }
+        return {
+          ok: true,
+          status: 200,
+          contentType: "text/html",
+          text: `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(
+            {
+              props: {
+                pageProps: {
+                  dehydratedState: {
+                    queries: [
+                      {
+                        queryKey: ["board", "aalo-atomics", "job-posts"],
+                        state: {
+                          data: {
+                            items: [
+                              {
+                                id: "8d4783fb",
+                                name: "AI Platform Architect",
+                                url: "https://ats.rippling.com/aalo-atomics/jobs/8d4783fb",
+                                locations: [{ name: "Austin, TX" }],
+                              },
+                            ],
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          )}</script>`,
+        };
+      },
+    );
+    expect(result.fetched).toBe(true);
+    expect(result.listings.map((row) => row.title)).toEqual([
+      "AI Platform Architect",
+    ]);
+    expect(result.listings[0]?.sourceUrl).toBe(
+      "https://ats.rippling.com/aalo-atomics/jobs/8d4783fb",
+    );
+  });
 });
 
 describe("startupJobsScanTablePatch", () => {
@@ -335,6 +465,11 @@ describe("startup jobs scan locks", () => {
     expect(src).toContain("startupJobsScanTablePatch");
     expect(src).toContain("openRoleCount");
     expect(src).toContain("readJobsUrlListings");
+    expect(src).toContain(
+      'Accept: "text/html, application/json;q=0.9, */*;q=0.8"',
+    );
+    expect(src).toContain("extractInertiaJobBoard");
+    expect(src).toContain("ripplingJobsIndexUrl");
     expect(src).toMatch(/if \(fetched\)/);
   });
 });
