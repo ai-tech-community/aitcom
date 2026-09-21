@@ -377,31 +377,33 @@ describe("readJobsUrlListings", () => {
           ok: true,
           status: 200,
           contentType: "text/html",
-          text: `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
-            props: {
-              pageProps: {
-                dehydratedState: {
-                  queries: [
-                    {
-                      queryKey: ["board", "aalo-atomics", "job-posts"],
-                      state: {
-                        data: {
-                          items: [
-                            {
-                              id: "8d4783fb",
-                              name: "AI Platform Architect",
-                              url: "https://ats.rippling.com/aalo-atomics/jobs/8d4783fb",
-                              locations: [{ name: "Austin, TX" }],
-                            },
-                          ],
+          text: `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(
+            {
+              props: {
+                pageProps: {
+                  dehydratedState: {
+                    queries: [
+                      {
+                        queryKey: ["board", "aalo-atomics", "job-posts"],
+                        state: {
+                          data: {
+                            items: [
+                              {
+                                id: "8d4783fb",
+                                name: "AI Platform Architect",
+                                url: "https://ats.rippling.com/aalo-atomics/jobs/8d4783fb",
+                                locations: [{ name: "Austin, TX" }],
+                              },
+                            ],
+                          },
                         },
                       },
-                    },
-                  ],
+                    ],
+                  },
                 },
               },
             },
-          })}</script>`,
+          )}</script>`,
         };
       },
     );

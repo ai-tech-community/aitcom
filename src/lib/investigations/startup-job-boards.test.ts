@@ -276,7 +276,8 @@ describe("startup role slugs and jobs query", () => {
               title: "Founding Research Engineer, RL/Reasoning",
               location: "San Francisco, CA, US",
               jobType: "Full-time",
-              descriptionHtml: "<h2>About BioStack</h2><p>Source clinical datasets.</p>",
+              descriptionHtml:
+                "<h2>About BioStack</h2><p>Source clinical datasets.</p>",
             },
           },
         }),
@@ -304,7 +305,8 @@ describe("startup role slugs and jobs query", () => {
       {
         title: "Senior Data Scientist",
         location: "Remote",
-        descriptionText: "Who we are: Revelio Labs provides workforce intelligence.",
+        descriptionText:
+          "Who we are: Revelio Labs provides workforce intelligence.",
         workType: "Full Time",
       },
     );

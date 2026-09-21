@@ -137,7 +137,10 @@ export function greenhouseTokenFromGhJid(
   jobsUrl: string,
 ): string | null {
   if (!/[?&]gh_jid=\d+/i.test(html)) return null;
-  const host = asUrl(jobsUrl)?.hostname.replace(/^www\./, "").toLowerCase() ?? "";
+  const host =
+    asUrl(jobsUrl)
+      ?.hostname.replace(/^www\./, "")
+      .toLowerCase() ?? "";
   const label = host.split(".")[0] ?? "";
   return /^[a-z0-9-]{2,}$/.test(label) ? label : null;
 }
@@ -521,7 +524,9 @@ export function ripplingJobsIndexUrl(html: string): string | null {
   return `https://ats.rippling.com/${slug}/jobs`;
 }
 
-function postingFromInertia(html: string): Pick<
+function postingFromInertia(
+  html: string,
+): Pick<
   ExtractedJobListing,
   "title" | "location" | "descriptionText" | "workType"
 > | null {
@@ -533,13 +538,17 @@ function postingFromInertia(html: string): Pick<
     title,
     location: asString(job.location),
     descriptionText: sanitizeStartupRoleDescription(
-      htmlToPlainText(asString(job.descriptionHtml) ?? asString(job.description)),
+      htmlToPlainText(
+        asString(job.descriptionHtml) ?? asString(job.description),
+      ),
     ),
     workType: asString(job.type) ?? asString(job.jobType),
   };
 }
 
-function postingFromRippling(html: string): Pick<
+function postingFromRippling(
+  html: string,
+): Pick<
   ExtractedJobListing,
   "title" | "location" | "descriptionText" | "workType"
 > | null {
@@ -552,12 +561,17 @@ function postingFromRippling(html: string): Pick<
   if (!title) return null;
   const description = asRecord(job.description);
   const descriptionText = sanitizeStartupRoleDescription(
-    [htmlToPlainText(asString(description?.company)), htmlToPlainText(asString(description?.role))]
+    [
+      htmlToPlainText(asString(description?.company)),
+      htmlToPlainText(asString(description?.role)),
+    ]
       .filter((part): part is string => Boolean(part))
       .join("\n\n"),
   );
   const locations = Array.isArray(job.workLocations)
-    ? job.workLocations.filter((place): place is string => typeof place === "string")
+    ? job.workLocations.filter(
+        (place): place is string => typeof place === "string",
+      )
     : [];
   const employment = asRecord(job.employmentType);
   return {
