@@ -283,6 +283,17 @@ describe("startup role slugs and jobs query", () => {
     expect(posting?.descriptionText).toContain("Lead and manage a team");
   });
 
+  it("does not list the careers index as its own opening", () => {
+    const listings = extractListingsFromCareersHtml(
+      `<a href="https://getzoog.com/jobs/">Open Positions</a>
+       <a href="https://getzoog.com/jobs/3d-artist/">3D Artist</a>`,
+      "https://getzoog.com/jobs",
+    );
+    expect(listings.map((row) => row.sourceUrl)).toEqual([
+      "https://getzoog.com/jobs/3d-artist/",
+    ]);
+  });
+
   it("reads an Elementor theme post body", () => {
     const posting = extractJobPostingFromHtml(
       `<h1>Algorithms Engineer</h1>

@@ -599,7 +599,7 @@ export function extractJobAnchors(
     if (!url || isDirectoryJobPath(url.pathname)) continue;
     if (!jobBelongsToCompany(url, companySlugFromBoardUrl(baseUrl))) continue;
     const normalized = url.toString().split("#")[0] ?? url.toString();
-    if (normalized === asUrl(baseUrl)?.toString()) continue;
+    if (samePage(normalized, baseUrl)) continue;
     if (seen.has(normalized)) continue;
     seen.add(normalized);
     const parsed = listing({
@@ -610,6 +610,14 @@ export function extractJobAnchors(
     if (parsed) listings.push(parsed);
   }
   return listings;
+}
+
+function samePage(left: string, right: string): boolean {
+  const a = asUrl(left);
+  const b = asUrl(right);
+  if (!a || !b) return false;
+  const path = (url: URL) => url.pathname.replace(/\/$/, "") || "/";
+  return a.origin === b.origin && path(a) === path(b) && a.search === b.search;
 }
 
 function classNameOf(tag: string): string {
