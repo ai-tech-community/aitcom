@@ -197,9 +197,9 @@ the active filters.
   first) until `STARTUP_JOBS_SCAN_BUDGET_MS` (~240s). ATS JSON first (Ashby /
   Greenhouse / Lever / Workable); otherwise listing HTML then the original
   posting page for any missing JD. Title + source URL are required to
-  publish. Location/category index CTAs (`Jobs in Chicago`, `Software
-  Engineer Jobs in New York`) are skipped. Low-confidence extracts stay
-  `pending_review`. Roles that
+  publish. Location/category index CTAs (`Jobs in Chicago`,
+  `Software Engineer Jobs in New York`) are skipped. Low-confidence
+  extracts stay `pending_review`. Roles that
   disappear on a later **successful** scan become `closed` and keep their
   page. A live empty board writes `open_role_count = 0` on `app.startup`
   (do not invent a JD). A failed fetch does not close roles or zero the

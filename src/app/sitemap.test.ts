@@ -201,6 +201,7 @@ describe("buildSitemapEntries", () => {
       undefined,
       async () => new Map(),
       async () => [],
+      async () => [],
     );
     const urls = urlsOf(entries);
 
