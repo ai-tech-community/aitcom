@@ -616,17 +616,17 @@ function classNameOf(tag: string): string {
   return /class=["']([^"']+)["']/i.exec(tag)?.[1] ?? "";
 }
 
-/** Inner HTML of divs whose class matches, respecting nested divs. */
-function divsWithClass(
+/** Inner HTML of divs whose opening tag matches, respecting nested divs. */
+function divsMatching(
   html: string,
-  matches: (className: string) => boolean,
+  matches: (openTag: string) => boolean,
 ): string[] {
   const blocks: string[] = [];
   const open = /<div\b[^>]*>/gi;
   let match: RegExpExecArray | null;
   while ((match = open.exec(html))) {
     const tag = match[0];
-    if (!matches(classNameOf(tag))) continue;
+    if (!matches(tag)) continue;
     const start = match.index + tag.length;
     const tags = /<div\b[^>]*>|<\/div>/gi;
     tags.lastIndex = start;
@@ -644,6 +644,13 @@ function divsWithClass(
     if (end > 0) open.lastIndex = end;
   }
   return blocks;
+}
+
+function divsWithClass(
+  html: string,
+  matches: (className: string) => boolean,
+): string[] {
+  return divsMatching(html, (tag) => matches(classNameOf(tag)));
 }
 
 /**
@@ -666,6 +673,35 @@ function richTextDescription(html: string): string | null {
         );
   const text = htmlToPlainText(blocks.join("\n"));
   return text && text.length >= 80 ? text : null;
+}
+
+/** WordPress / Elementor singles keep the JD in the theme post body. */
+function cmsPostDescription(html: string): string | null {
+  const blocks = divsWithClass(
+    html,
+    (className) =>
+      /theme-post-content/i.test(className) ||
+      /(?:^|\s)entry-content(?:\s|$)/i.test(className),
+  );
+  const text = htmlToPlainText(blocks.join("\n"));
+  return text && text.length >= 80 ? text : null;
+}
+
+function framerRegion(html: string, name: string): string | null {
+  const blocks = divsMatching(html, (tag) =>
+    new RegExp(`\\bdata-framer-name=["']${name}["']`, "i").test(tag),
+  );
+  return htmlToPlainText(blocks[0]);
+}
+
+function framerLabeledValue(html: string, label: string): string | null {
+  const pattern = new RegExp(
+    `<strong\\b[^>]*>\\s*${label}\\s*:?\\s*</strong>[\\s\\S]{0,500}?<p\\b[^>]*>([\\s\\S]*?)</p>`,
+    "i",
+  );
+  const text = htmlToPlainText(pattern.exec(html)?.[1]);
+  if (!text || text.length > 80) return null;
+  return text;
 }
 
 function iconDetail(html: string, label: RegExp): string | null {
@@ -712,10 +748,14 @@ export function extractJobPostingFromHtml(
   const main = htmlToPlainText(
     firstCapture(html, /<main\b[^>]*>([\s\S]*?)<\/main>/i),
   )?.replace(/^(?:←\s*)?all open roles\s+/i, "");
+  const framerBody = framerRegion(html, "Content");
   return {
     title,
     location:
-      structured?.location ?? fromLd?.location ?? iconDetail(html, /location/i),
+      structured?.location ??
+      fromLd?.location ??
+      iconDetail(html, /location/i) ??
+      parseStartupRoleLocation(framerRegion(html, "Location")),
     descriptionText:
       structured?.descriptionText ??
       fromLd?.descriptionText ??
@@ -730,12 +770,15 @@ export function extractJobPostingFromHtml(
             ),
           ) ??
           richTextDescription(html) ??
+          cmsPostDescription(html) ??
+          (framerBody && framerBody.length >= 80 ? framerBody : null) ??
           (main && main.length >= 80 ? main : null),
       ),
     workType:
       structured?.workType ??
       fromLd?.workType ??
-      iconDetail(html, /availability|employment|work type/i),
+      iconDetail(html, /availability|employment|work type/i) ??
+      framerLabeledValue(html, "Job Type"),
   };
 }
 

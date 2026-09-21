@@ -205,8 +205,9 @@ the active filters.
   that list (or the embedded job object), then the original posting page
   supplies the JD. Rippling boards are read from the page payload. A listing
   title that only adds “Apply now” is replaced by the posting-page title.
-  Rich-text blocks (for example Webflow `job-rich-text`) supply the JD when
-  the page has no article. If that text is still missing and
+  Rich-text blocks (for example Webflow `job-rich-text`), Elementor post
+  content, and Framer `Content` regions supply the JD when the page has no
+  article. If that text is still missing and
   `STARTUP_ROLE_VISUAL_BACKUP=1`, a capped local screenshot plus Tesseract
   pass is the backup. It uses no paid vision API and does nothing when
   Chrome or Tesseract is not installed.
