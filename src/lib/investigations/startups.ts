@@ -37,6 +37,10 @@ export const STARTUPS_INSIGHTS_META =
 export const STARTUPS_JOIN_HREF =
   "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=startups&utm_campaign=startups";
 
+/** Role-page guests only. Hard /en/join with a jobs campaign. Not the jobs index. */
+export const JOBS_ROLE_JOIN_HREF =
+  "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=jobs&utm_campaign=jobs";
+
 export const STARTUPS_HOMEPAGE_ERROR = "Use a live http(s) homepage URL.";
 
 export const STARTUPS_SOURCES_ERROR =

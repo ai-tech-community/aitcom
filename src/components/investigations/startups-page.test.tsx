@@ -90,6 +90,7 @@ import {
   STARTUPS_INSIGHTS_H1,
   STARTUPS_INSIGHTS_PATH,
   STARTUPS_JOBS_PATH,
+  JOBS_ROLE_JOIN_HREF,
   STARTUPS_JOIN_HREF,
   STARTUPS_PATH,
   buildStartupProfilePath,
@@ -1218,6 +1219,13 @@ describe("Startups i18n", () => {
     expect(en.investigationsStartups.jobsColumn).toBe("Jobs");
     expect(en.investigationsStartups.tabJobs).toBe("Open positions");
     expect(en.investigationsStartups.jobsTitle).toBe("Open positions");
+    expect(en.investigationsStartups.roleJoinCta).toBe(
+      "Join the AIT community to get more",
+    );
+    expect(nl.investigationsStartups.roleJoinCta).toBe(
+      "Word lid van de AIT-community voor meer",
+    );
+    expect(en.investigationsStartups.joinCta).toBe("Join the Hub");
     expect(nl.investigationsStartups.tabJobs).toBe("Open posities");
     expect(nl.investigationsStartups.foundersColumn).toBe("Oprichters");
     expect(nl.investigationsStartups.logoColumn).toBe("Logo");
@@ -1455,6 +1463,9 @@ describe("Startups open positions", () => {
     expect(container.textContent).toContain(
       en.investigationsStartups.jobsEmpty,
     );
+    expect(
+      screen.getByRole("link", { name: en.investigationsStartups.joinCta }),
+    ).toHaveAttribute("href", STARTUPS_JOIN_HREF);
     expect(container.textContent).not.toContain("Directory: Directory");
     expect(container.querySelector("main")?.className.split(/\s+/)).toContain(
       "max-w-6xl",
@@ -1585,6 +1596,16 @@ describe("Startups open positions", () => {
       container.querySelector("[data-startup-role-description]")?.className,
     ).not.toMatch(/whitespace-pre-wrap/);
     expect(hrefsOf(container)).toContain(STARTUPS_JOBS_PATH);
+    const join = screen.getByRole("link", {
+      name: en.investigationsStartups.roleJoinCta,
+    });
+    expect(join).toHaveAttribute("href", JOBS_ROLE_JOIN_HREF);
+    expect(join.getAttribute("href")).toContain("/en/join");
+    expect(join.getAttribute("href")).toContain("utm_source=aitcom");
+    expect(join.getAttribute("href")).toContain("utm_medium=jobs");
+    expect(join.getAttribute("href")).toContain("utm_campaign=jobs");
+    expect(container.textContent).not.toMatch(/Join the Hub/i);
+    expect(hrefsOf(container)).not.toContain(STARTUPS_JOIN_HREF);
     expect(container.textContent).not.toMatch(BANNED);
     expect(container.querySelector("[data-startup-role-member]")).toBeNull();
     expect(container.textContent).not.toContain(
@@ -1647,8 +1668,33 @@ Nice to have:
       "false",
     );
     expect(hrefsOf(container)).not.toContain(STARTUPS_JOIN_HREF);
+    expect(hrefsOf(container)).not.toContain(JOBS_ROLE_JOIN_HREF);
+    expect(container.textContent).not.toMatch(/Join the Hub/i);
+    expect(container.textContent).not.toContain(
+      en.investigationsStartups.roleJoinCta,
+    );
+    expect(
+      screen.getByRole("link", { name: en.investigationsStartups.hubCta }),
+    ).toHaveAttribute("href", HUB_OPEN_HREF);
     expect(container.textContent).not.toMatch(BANNED);
     expect(container.textContent).not.toMatch(/salary|fit score/i);
+  });
+
+  it("uses the Dutch role join label on the same hard /en/join jobs door", () => {
+    render(
+      <StartupsRolePage
+        locale="nl"
+        t={tFrom(nl.investigationsStartups)}
+        role={FIXTURE_ROLE}
+      />,
+    );
+    const join = screen.getByRole("link", {
+      name: nl.investigationsStartups.roleJoinCta,
+    });
+    expect(nl.investigationsStartups.roleJoinCta).not.toMatch(/Hub/i);
+    expect(join).toHaveAttribute("href", JOBS_ROLE_JOIN_HREF);
+    expect(join.getAttribute("href")).toContain("/en/join");
+    expect(join.getAttribute("href")).toContain("utm_campaign=jobs");
   });
 
   it("renders sourced headings and bullets instead of a pre-wrapped dump", () => {

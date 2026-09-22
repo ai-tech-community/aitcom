@@ -5,6 +5,7 @@ import {
   STARTUPS_H1,
   STARTUPS_INSIGHTS_PATH,
   STARTUPS_JOBS_PATH,
+  JOBS_ROLE_JOIN_HREF,
   STARTUPS_JOIN_HREF,
   STARTUPS_META,
   STARTUPS_PATH,
@@ -102,6 +103,17 @@ describe("startups investigation contract", () => {
     expect(url.searchParams.get("utm_medium")).toBe("startups");
     expect(url.searchParams.get("utm_campaign")).toBe("startups");
     expect(url.pathname).not.toContain("forum");
+  });
+
+  it("uses a hard /en/join door with a jobs campaign on role pages", () => {
+    expect(JOBS_ROLE_JOIN_HREF).toContain("/en/join");
+    expect(JOBS_ROLE_JOIN_HREF).not.toContain("/nl/join");
+    const url = new URL(JOBS_ROLE_JOIN_HREF);
+    expect(url.pathname).toBe("/en/join");
+    expect(url.searchParams.get("utm_source")).toBe("aitcom");
+    expect(url.searchParams.get("utm_medium")).toBe("jobs");
+    expect(url.searchParams.get("utm_campaign")).toBe("jobs");
+    expect(JOBS_ROLE_JOIN_HREF).not.toBe(STARTUPS_JOIN_HREF);
   });
 
   it("locks the fixed taxonomy and a 30-row API batch cap", () => {

@@ -3,7 +3,7 @@ import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
 import {
-  STARTUPS_JOIN_HREF,
+  JOBS_ROLE_JOIN_HREF,
   STARTUPS_JOBS_PATH,
   buildStartupProfilePath,
 } from "@/lib/investigations/startups";
@@ -18,7 +18,7 @@ import { StartupsRoleMemberDesk } from "@/components/investigations/startups-rol
 export type StartupsRoleKey =
   | "kicker"
   | "jobsTitle"
-  | "joinCta"
+  | "roleJoinCta"
   | "hubCta"
   | "jobsBack"
   | "openOriginal"
@@ -99,8 +99,8 @@ export function StartupsRolePage({
         </a>
         <PromoteJoinCta
           promoteJoin={promoteJoin}
-          guestHref={STARTUPS_JOIN_HREF}
-          guestLabel={t("joinCta")}
+          guestHref={JOBS_ROLE_JOIN_HREF}
+          guestLabel={t("roleJoinCta")}
           hubLabel={t("hubCta")}
           variant="outline"
         />
