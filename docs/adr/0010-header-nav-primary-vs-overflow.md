@@ -16,19 +16,21 @@ reverse and surprising without context.
 
 ## Decisions
 
-### 1. Five primary nav items, six in an overflow menu
+### 1. Primary nav items plus an overflow menu
 
 Primary, rendered inline:
 
-- `/benchmark` — the flagship product (see CONTEXT.md).
-- `/communities`, `/events`, `/challenges`, `/launchpad` — the
-  recurring action surfaces a returning member visits in a typical
-  session.
+- `/communities`, `/events`, `/roles` — the recurring action
+  surfaces a returning member visits in a typical session.
+- `/jobs`, `/startups` — the public openings surface and the
+  listed-company directory. These stay inline so they are visible
+  without opening More. Do not collide Jobs with Hub `/roles`.
+- `/challenges` — recurring action surface.
 
 Overflow, behind a "More ▾" DropdownMenu:
 
-- `/jobs`, `/members`, `/blog`, `/investigations`, `/impact`,
-  `/sponsors`.
+- `/launchpad`, `/benchmark`, `/agents`, `/ideas`, `/members`,
+  `/blog`, `/investigations`, `/impact`, `/sponsors`.
 
 **Why:** eleven equally-weighted top-level destinations is a
 symptom of unmade IA decisions, not a constraint. Picking five
@@ -37,18 +39,18 @@ mechanism that lets the rest stay one click away without
 re-creating the crowding problem the next time a page is added.
 
 **How to apply:** new destinations default to overflow unless they
-clear the bar that `/benchmark`, `/communities`, `/events`,
-`/challenges`, `/launchpad` cleared — recurring action surfaces, or
-flagship products. Editorial, directory, and about-the-org pages go
-into overflow.
+clear the bar that `/communities`, `/events`, `/roles`, `/jobs`,
+`/startups`, `/challenges` cleared — recurring action surfaces, or
+flagship products. Editorial and about-the-org pages go into
+overflow.
 
 ### 2. Hamburger Sheet stays until `lg` (1024px)
 
 Below `lg`: the existing right-side `Sheet` is the only nav. The
 inline `md`–`lg` middle state is removed.
 
-The Sheet's contents mirror the desktop hierarchy: primary five,
-divider, overflow six, then the auth-gated tail (Dashboard, My
+The Sheet's contents mirror the desktop hierarchy: primary items,
+divider, overflow items, then the auth-gated tail (Dashboard, My
 Agent, Sign Out / Join).
 
 **Why:** even with primary trimmed to five, the right-hand cluster

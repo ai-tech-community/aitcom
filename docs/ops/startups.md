@@ -227,11 +227,11 @@ the active filters.
   count. Jobs column shows a count when open roles exist; otherwise the
   cell is soft-omitted. `/en/roles` remains Hub seats.
 - `/investigations/startups` permanent-redirects to `/startups`.
-- Global nav lists **Startups** in the overflow menu (`[U]`, ADR-0010)
-  at `/startups` and **Jobs** (`[W]`) at `/jobs` (sourced startup openings).
-  Footer Navigate lists Startups. Do **not** replace Hub `/roles`. Nested
-  `/startups/{slug}` keeps the overflow Startups item active; `/jobs/{slug}`
-  keeps Jobs active.
+- Global nav lists **Jobs** (`[W]`) and **Startups** (`[U]`) inline
+  after Hub **Roles** (ADR-0010). `/jobs` is sourced startup openings;
+  `/startups` is the directory. Footer Navigate lists Startups. Do **not**
+  replace Hub `/roles`. Nested `/startups/{slug}` keeps Startups active;
+  `/jobs/{slug}` keeps Jobs active.
 - Directory pages after page 1 use crawlable `?page=` links (`STARTUPS_PAGE_SIZE`
   is 24, so a list past ~50 rows is page 3). Pagination stays crawlable.
 - **Crawl is open:** Directory + Insights send `index,follow` and stay **in
