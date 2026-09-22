@@ -470,6 +470,8 @@ describe("startup jobs scan locks", () => {
     );
     expect(src).toContain("extractInertiaJobBoard");
     expect(src).toContain("ripplingJobsIndexUrl");
+    expect(src).toContain("ocrPostingPage");
+    expect(src).toContain("STARTUP_ROLE_VISUAL_BACKUP");
     expect(src).toMatch(/if \(fetched\)/);
   });
 });

@@ -599,7 +599,7 @@ export function extractJobAnchors(
     if (!url || isDirectoryJobPath(url.pathname)) continue;
     if (!jobBelongsToCompany(url, companySlugFromBoardUrl(baseUrl))) continue;
     const normalized = url.toString().split("#")[0] ?? url.toString();
-    if (normalized === asUrl(baseUrl)?.toString()) continue;
+    if (samePage(normalized, baseUrl)) continue;
     if (seen.has(normalized)) continue;
     seen.add(normalized);
     const parsed = listing({
@@ -610,6 +610,114 @@ export function extractJobAnchors(
     if (parsed) listings.push(parsed);
   }
   return listings;
+}
+
+function samePage(left: string, right: string): boolean {
+  const a = asUrl(left);
+  const b = asUrl(right);
+  if (!a || !b) return false;
+  const path = (url: URL) => url.pathname.replace(/\/$/, "") || "/";
+  return a.origin === b.origin && path(a) === path(b) && a.search === b.search;
+}
+
+function classNameOf(tag: string): string {
+  return /class=["']([^"']+)["']/i.exec(tag)?.[1] ?? "";
+}
+
+/** Inner HTML of divs whose opening tag matches, respecting nested divs. */
+function divsMatching(
+  html: string,
+  matches: (openTag: string) => boolean,
+): string[] {
+  const blocks: string[] = [];
+  const open = /<div\b[^>]*>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = open.exec(html))) {
+    const tag = match[0];
+    if (!matches(tag)) continue;
+    const start = match.index + tag.length;
+    const tags = /<div\b[^>]*>|<\/div>/gi;
+    tags.lastIndex = start;
+    let depth = 1;
+    let end = -1;
+    let next: RegExpExecArray | null;
+    while ((next = tags.exec(html))) {
+      depth += next[0].startsWith("</") ? -1 : 1;
+      if (depth === 0) {
+        end = next.index;
+        break;
+      }
+    }
+    if (end > start) blocks.push(html.slice(start, end));
+    if (end > 0) open.lastIndex = end;
+  }
+  return blocks;
+}
+
+function divsWithClass(
+  html: string,
+  matches: (className: string) => boolean,
+): string[] {
+  return divsMatching(html, (tag) => matches(classNameOf(tag)));
+}
+
+/**
+ * Webflow and similar boards put the JD in rich-text blocks, not in
+ * `<article>` or a class named description.
+ */
+function richTextDescription(html: string): string | null {
+  const rich = divsWithClass(
+    html,
+    (className) =>
+      /(?:^|\s)(?:job-rich-text-block|job-description|posting-description)(?:\s|$)/i.test(
+        className,
+      ) || /job-rich-text/i.test(className),
+  );
+  const blocks =
+    rich.length > 0
+      ? rich
+      : divsWithClass(html, (className) =>
+          /(?:^|\s)w-richtext(?:\s|$)/i.test(className),
+        );
+  const text = htmlToPlainText(blocks.join("\n"));
+  return text && text.length >= 80 ? text : null;
+}
+
+/** WordPress / Elementor singles keep the JD in the theme post body. */
+function cmsPostDescription(html: string): string | null {
+  const blocks = divsWithClass(
+    html,
+    (className) =>
+      /theme-post-content/i.test(className) ||
+      /(?:^|\s)entry-content(?:\s|$)/i.test(className),
+  );
+  const text = htmlToPlainText(blocks.join("\n"));
+  return text && text.length >= 80 ? text : null;
+}
+
+function framerRegion(html: string, name: string): string | null {
+  const blocks = divsMatching(html, (tag) =>
+    new RegExp(`\\bdata-framer-name=["']${name}["']`, "i").test(tag),
+  );
+  return htmlToPlainText(blocks[0]);
+}
+
+function framerLabeledValue(html: string, label: string): string | null {
+  const pattern = new RegExp(
+    `<strong\\b[^>]*>\\s*${label}\\s*:?\\s*</strong>[\\s\\S]{0,500}?<p\\b[^>]*>([\\s\\S]*?)</p>`,
+    "i",
+  );
+  const text = htmlToPlainText(pattern.exec(html)?.[1]);
+  if (!text || text.length > 80) return null;
+  return text;
+}
+
+function iconDetail(html: string, label: RegExp): string | null {
+  const pattern = new RegExp(
+    `alt=["'](?:${label.source})["'][^>]*>\\s*<div[^>]*position-detail__text[^>]*>([\\s\\S]*?)<\\/div>`,
+    "i",
+  );
+  return htmlToPlainText(pattern.exec(html)?.[1]);
 }
 
 function preferPublishableTitle(
@@ -648,9 +756,14 @@ export function extractJobPostingFromHtml(
   const main = htmlToPlainText(
     firstCapture(html, /<main\b[^>]*>([\s\S]*?)<\/main>/i),
   )?.replace(/^(?:←\s*)?all open roles\s+/i, "");
+  const framerBody = framerRegion(html, "Content");
   return {
     title,
-    location: structured?.location ?? fromLd?.location ?? null,
+    location:
+      structured?.location ??
+      fromLd?.location ??
+      iconDetail(html, /location/i) ??
+      parseStartupRoleLocation(framerRegion(html, "Location")),
     descriptionText:
       structured?.descriptionText ??
       fromLd?.descriptionText ??
@@ -664,9 +777,16 @@ export function extractJobPostingFromHtml(
               /<(?:div|section)[^>]*(?:job-description|jobDescription|description)[^>]*>([\s\S]*?)<\/(?:div|section)>/i,
             ),
           ) ??
+          richTextDescription(html) ??
+          cmsPostDescription(html) ??
+          (framerBody && framerBody.length >= 80 ? framerBody : null) ??
           (main && main.length >= 80 ? main : null),
       ),
-    workType: structured?.workType ?? fromLd?.workType ?? null,
+    workType:
+      structured?.workType ??
+      fromLd?.workType ??
+      iconDetail(html, /availability|employment|work type/i) ??
+      framerLabeledValue(html, "Job Type"),
   };
 }
 

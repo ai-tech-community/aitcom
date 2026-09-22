@@ -267,6 +267,70 @@ describe("startup role slugs and jobs query", () => {
     expect(empty).toEqual([]);
   });
 
+  it("reads a Webflow rich-text job description and labeled location", () => {
+    const posting = extractJobPostingFromHtml(
+      `<h1>Team Leader iOS</h1>
+       <img alt="Availability" class="position-detail__icon"/><div class="position-detail__text">Full time</div>
+       <img alt="Location" class="position-detail__icon"/><div class="position-detail__text">Jerusalem</div>
+       <div class="job-rich-text-block"><h3>Description</h3><div class="w-richtext"><p>If you have a strong background in iOS development, excellent leadership skills, and a passion for building innovative applications, we want to hear from you!</p></div></div>
+       <div class="job-rich-text-block"><h3>The role</h3><div class="w-richtext"><ul><li>Lead and manage a team of iOS developers.</li></ul></div></div>`,
+      "https://balink.net/job/team-leader-ios",
+    );
+    expect(posting?.title).toBe("Team Leader iOS");
+    expect(posting?.location).toBe("Jerusalem");
+    expect(posting?.workType).toBe("Full time");
+    expect(posting?.descriptionText).toContain("strong background in iOS");
+    expect(posting?.descriptionText).toContain("Lead and manage a team");
+  });
+
+  it("does not list the careers index as its own opening", () => {
+    const listings = extractListingsFromCareersHtml(
+      `<a href="https://getzoog.com/jobs/">Open Positions</a>
+       <a href="https://getzoog.com/jobs/3d-artist/">3D Artist</a>`,
+      "https://getzoog.com/jobs",
+    );
+    expect(listings.map((row) => row.sourceUrl)).toEqual([
+      "https://getzoog.com/jobs/3d-artist/",
+    ]);
+  });
+
+  it("reads an Elementor theme post body", () => {
+    const posting = extractJobPostingFromHtml(
+      `<h1>Algorithms Engineer</h1>
+       <div class="elementor-widget elementor-widget-theme-post-content">
+         <div class="elementor-widget-container">
+           <h2>Required Skills</h2>
+           <ul><li>Thorough knowledge of C/C++, MATLAB and a scripting language such as Python for production computer vision.</li></ul>
+         </div>
+       </div>`,
+      "https://augmind.me/jobs/algorithms-engineer/",
+    );
+    expect(posting?.title).toBe("Algorithms Engineer");
+    expect(posting?.descriptionText).toContain("Thorough knowledge of C/C++");
+  });
+
+  it("reads a Framer Content region with location and job type", () => {
+    const posting = extractJobPostingFromHtml(
+      `<div data-framer-name="Title"><h1>AI Engineer (Junior)</h1></div>
+       <div data-framer-name="Location"><p class="framer-text">Stellenbosch, Western Cape</p></div>
+       <div><strong class="framer-text">Job Type:</strong></div>
+       <p class="framer-text">Full-Time</p>
+       <div data-framer-name="Content">
+         <p class="framer-text"><strong>Who We Are</strong></p>
+         <p class="framer-text">At Spatialedge, we deliver cutting-edge technical solutions for teams who want to ship reliable models.</p>
+       </div>
+       <p class="framer-text">Copyright footer that is not the posting.</p>`,
+      "https://www.spatialedge.ai/careers/junior-ai-engineer",
+    );
+    expect(posting?.title).toBe("AI Engineer (Junior)");
+    expect(posting?.location).toBe("Stellenbosch, Western Cape");
+    expect(posting?.workType).toBe("Full-Time");
+    expect(posting?.descriptionText).toContain(
+      "cutting-edge technical solutions",
+    );
+    expect(posting?.descriptionText).not.toContain("Copyright footer");
+  });
+
   it("reads a Work at a Startup posting from the page payload", () => {
     const posting = extractJobPostingFromHtml(
       `<div data-page="${escapeAttr(
