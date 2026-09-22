@@ -1218,6 +1218,7 @@
     "insightsLead2": "From the live directory only. Blank stage stays omitted. Region mix waits until five distinct sourced regions are listed.",
     "backLink": "All investigations",
     "joinCta": "Join the Hub",
+    "roleJoinCta": "Join the AIT community to get more",
     "hubCta": "Open Hub",
     "howWeList": "Staff list a company after a homepage 200 and one to three sources. Map pins use a sourced city or region — near that place or at the region centroid. Unknown location stays list-only. Founders, exit, and jobs stay omitted unless sourced. Founder photos stay omitted unless a sourced URL is listed — we never invent a face. We do not invent people, a street address, or size, price, or growth figures.",
     "tabDirectory": "Directory",
