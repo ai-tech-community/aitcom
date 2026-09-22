@@ -11,7 +11,11 @@ import {
   startupSlugFromName,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
-import type { StartupRolePublic } from "@/lib/investigations/startup-roles";
+import {
+  parseStartupRoleTitle,
+  sanitizeStartupRoleDescription,
+  type StartupRolePublic,
+} from "@/lib/investigations/startup-roles";
 import { db } from "@/server/db";
 import { startupRoles, startups } from "@/server/db/schema";
 
@@ -157,6 +161,8 @@ function toPublicRole(
   const slug = parseStartupSlug(role.slug);
   const startupSlug = parseStartupSlug(startup.slug);
   if (!slug || !startupSlug) return null;
+  const title = parseStartupRoleTitle(role.title) ?? presentText(role.title);
+  if (!title) return null;
   return {
     id: role.id,
     startupId: role.startupId,
@@ -164,12 +170,12 @@ function toPublicRole(
     startupName: startup.name,
     startupLogoUrl: presentText(startup.logoUrl),
     slug,
-    title: role.title,
+    title,
     location: presentText(role.location),
     workType: presentText(role.workType),
     sourceUrl: role.sourceUrl,
     applyUrl: presentText(role.applyUrl),
-    descriptionText: presentText(role.descriptionText),
+    descriptionText: sanitizeStartupRoleDescription(role.descriptionText),
     fetchedAt: role.fetchedAt.toISOString(),
     listedAt: role.createdAt.toISOString(),
     board: role.board,

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseStartupJobsQuery,
+  parseStartupRoleTitle,
   rolesListedSince,
+  sanitizeStartupRoleDescription,
   startupJobsFollowFromQuery,
   startupRoleJsonLd,
   type StartupRolePublic,
@@ -31,6 +33,51 @@ function sampleRole(
   };
 }
 
+describe("parseStartupRoleTitle", () => {
+  it("keeps the role name when work type, location, and CTA sit on nearby lines", () => {
+    expect(
+      parseStartupRoleTitle(
+        "*Construction Account Executive / Senior Account Executive – Canada\nFull-time\nCanada\nRead more",
+      ),
+    ).toBe(
+      "Construction Account Executive / Senior Account Executive – Canada",
+    );
+    expect(
+      parseStartupRoleTitle(
+        "BIM Specialist – Major Projects\nFull-time\nTel-Aviv\nRead more",
+      ),
+    ).toBe("BIM Specialist – Major Projects");
+    expect(
+      parseStartupRoleTitle("Enterprise BDR – Chicago Full-time Read more"),
+    ).toBe("Enterprise BDR – Chicago");
+  });
+
+  it("prefers the role line over a short department label when location trails", () => {
+    expect(
+      parseStartupRoleTitle(
+        "Customer Success\nReliability Success Manager\nUnited States (Remote)",
+      ),
+    ).toBe("Reliability Success Manager");
+  });
+});
+
+describe("sanitizeStartupRoleDescription", () => {
+  it("drops OCR and CTA junk from the start of a posting body", () => {
+    expect(
+      sanitizeStartupRoleDescription(
+        "kevAbout Buildots\nBuildots is the world’s most advanced construction intelligence platform.",
+      ),
+    ).toBe(
+      "About Buildots\nBuildots is the world’s most advanced construction intelligence platform.",
+    );
+    expect(
+      sanitizeStartupRoleDescription(
+        "Read more\nAbout the role\nShip the product.",
+      ),
+    ).toBe("About the role\nShip the product.");
+  });
+});
+
 describe("startupRoleJsonLd", () => {
   it("omits datePosted when only scan fetchedAt is present", () => {
     const data = startupRoleJsonLd(sampleRole());
@@ -44,6 +91,26 @@ describe("startupRoleJsonLd", () => {
     );
     expect(data.datePosted).toBe("2026-03-01");
     expect(data.datePosted).not.toBe("2026-09-20");
+  });
+
+  it("emits a role-only title and never invents salary or datePosted", () => {
+    const data = startupRoleJsonLd(
+      sampleRole({
+        title:
+          "*Enterprise Account Executive – Data Centers\nFull-time\nUSA\nRead more",
+        location: "Arizona",
+        workType: "Full-time",
+        descriptionText: "kevAbout Buildots\nBuild the product.",
+      }),
+    );
+    expect(data.title).toBe("Enterprise Account Executive – Data Centers");
+    expect(data.description).toBe("About Buildots\nBuild the product.");
+    expect(data).not.toHaveProperty("datePosted");
+    expect(data).not.toHaveProperty("baseSalary");
+    expect(data).not.toHaveProperty("salary");
+    expect(JSON.stringify(data)).not.toMatch(
+      /Full-time|Read more|\bUSA\b|kevAbout/,
+    );
   });
 });
 

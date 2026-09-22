@@ -211,6 +211,9 @@ the active filters.
   that list (or the embedded job object), then the original posting page
   supplies the JD. Rippling boards are read from the page payload. A listing
   title that only adds “Apply now” is replaced by the posting-page title.
+  Card chrome glued into the title (work type, location, “Read more”) is
+  stripped so the stored title and JobPosting JSON-LD stay role-only; OCR
+  prefixes like “kevAbout” are dropped from the description start.
   Rich-text blocks (for example Webflow `job-rich-text`), Elementor post
   content, and Framer `Content` regions supply the JD when the page has no
   article. Otherwise the visible page text is cut to the posting itself,
