@@ -543,5 +543,43 @@ describe("startup role slugs and jobs query", () => {
     );
     expect(filtered).toHaveLength(1);
     expect(filtered[0]?.startupSlug).toBe("cursor-anysphere");
+    const sorted = applyStartupJobsQuery(
+      [
+        {
+          ...filtered[0]!,
+          id: "1",
+          title: "Staff Engineer",
+          location: "Toronto",
+        },
+        {
+          id: "3",
+          startupId: "a",
+          startupSlug: "cursor-anysphere",
+          startupName: "Cursor",
+          startupLogoUrl: null,
+          slug: "cursor-anysphere-advisor",
+          title: "Advisor",
+          location: "London",
+          workType: null,
+          sourceUrl: "https://cursor.com/careers/advisor",
+          applyUrl: null,
+          descriptionText: null,
+          fetchedAt: "2026-09-20T00:00:00.000Z",
+          board: "html",
+          status: "open",
+        },
+      ],
+      parseStartupJobsQuery({
+        company: "cursor-anysphere",
+        location: "London",
+        sort: "role",
+      }),
+    );
+    expect(sorted.map((row) => row.title)).toEqual(["Advisor"]);
+    const byWorkType = applyStartupJobsQuery(sorted, {
+      ...parseStartupJobsQuery({ workType: "Full-time" }),
+      company: "",
+    });
+    expect(byWorkType).toHaveLength(0);
   });
 });

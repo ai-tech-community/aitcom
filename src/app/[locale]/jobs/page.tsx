@@ -11,6 +11,8 @@ import {
   applyStartupJobsQuery,
   paginateStartupRoles,
   parseStartupJobsQuery,
+  rolesListedSince,
+  startupJobsFollowFromQuery,
 } from "@/lib/investigations/startup-roles";
 import {
   absoluteLocaleUrl,
@@ -23,6 +25,10 @@ import {
 } from "@/server/better-auth/hub-session";
 import { getSession } from "@/server/better-auth/server";
 import { listPublicStartupRoles } from "@/server/startups/queries";
+import {
+  findStartupJobsFollow,
+  markStartupJobsFollowSeen,
+} from "@/server/startups/member-jobs";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +40,9 @@ interface PageProps {
   searchParams: Promise<{
     company?: string;
     q?: string;
+    location?: string;
+    workType?: string;
+    sort?: string;
     page?: string;
   }>;
 }
@@ -47,17 +56,23 @@ export async function generateMetadata({
   const roles = await listPublicStartupRoles();
   const filtered = applyStartupJobsQuery(roles, query);
   const pagination = paginateStartupRoles(filtered, query.page);
-  const canonical =
-    query.company || query.q
-      ? STARTUPS_JOBS_PATH
-      : buildStartupJobsPath({ page: pagination.page });
+  const filteredView = Boolean(
+    query.company ||
+    query.q ||
+    query.location ||
+    query.workType ||
+    query.sort !== "role",
+  );
+  const canonical = filteredView
+    ? STARTUPS_JOBS_PATH
+    : buildStartupJobsPath({ page: pagination.page });
   return {
     title: JOBS_H1,
     description: JOBS_META,
     robots: startupsPublicRobots(),
     ...buildOgMeta(JOBS_H1, JOBS_META, "Startups"),
     alternates: await localeAlternates(canonical),
-    ...(pagination.totalPages > 1 && !query.company && !query.q
+    ...(pagination.totalPages > 1 && !filteredView
       ? {
           pagination: {
             ...(pagination.page > 1
@@ -86,8 +101,26 @@ export default async function JobsRoute({ searchParams }: PageProps) {
   const locale = await getLocale();
   const t = await getTranslations("investigationsStartups");
   const session = await getSession();
+  const promoteJoin = shouldPromoteJoin(toHubAuthUser(session?.user));
   const query = parseStartupJobsQuery(await searchParams);
   const roles = await listPublicStartupRoles();
+  const follow = promoteJoin ? null : startupJobsFollowFromQuery(query);
+  const saved =
+    session?.user?.id && follow
+      ? await findStartupJobsFollow(session.user.id, follow)
+      : null;
+  const newRoles = saved
+    ? rolesListedSince(roles, query, saved.lastSeenAt.toISOString()).map(
+        (role) => ({
+          slug: role.slug,
+          title: role.title,
+          startupName: role.startupName,
+        }),
+      )
+    : [];
+  if (session?.user?.id && follow && saved) {
+    await markStartupJobsFollowSeen(session.user.id, follow);
+  }
 
   return (
     <StartupsJobsPage
@@ -95,7 +128,10 @@ export default async function JobsRoute({ searchParams }: PageProps) {
       t={t}
       roles={roles}
       query={query}
-      promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
+      promoteJoin={promoteJoin}
+      follow={follow}
+      following={Boolean(saved)}
+      newRoles={newRoles}
     />
   );
 }

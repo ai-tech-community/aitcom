@@ -48,6 +48,11 @@ export type StartupRolePublic = {
   applyUrl: string | null;
   descriptionText: string | null;
   fetchedAt: string;
+  /**
+   * When this directory first stored the role.
+   * Not the employer's publish date and not a scan timestamp to display.
+   */
+  listedAt?: string | null;
   /** ATS / careers-board published date. Never a scan or crawl timestamp. */
   postedAt?: string | null;
   board: StartupRoleBoard;
@@ -65,11 +70,28 @@ export type ExtractedJobListing = {
   board: StartupRoleBoard;
 };
 
+export const STARTUP_JOBS_SORTS = ["role", "company", "location"] as const;
+
+export type StartupJobsSort = (typeof STARTUP_JOBS_SORTS)[number];
+
 export type StartupJobsQuery = {
   company: string;
   q: string;
+  location: string;
+  workType: string;
+  sort: StartupJobsSort;
   page: number;
 };
+
+/** Saved jobs-table search. Empty fields mean that filter is unset. */
+export type StartupJobsFollow = {
+  company: string;
+  q: string;
+  location: string;
+  workType: string;
+};
+
+export const STARTUP_JOBS_FOLLOW_Q_MAX = 200;
 
 export function parseStartupRoleTitle(
   value: string | null | undefined,
@@ -128,9 +150,27 @@ export function allocateStartupRoleSlug(
   return `${base.slice(0, STARTUP_ROLE_SLUG_MAX - suffix.length)}${suffix}`;
 }
 
+export function parseStartupJobsSort(
+  value: string | null | undefined,
+): StartupJobsSort {
+  const text = presentText(value);
+  return text && (STARTUP_JOBS_SORTS as readonly string[]).includes(text)
+    ? (text as StartupJobsSort)
+    : "role";
+}
+
+function parseJobsFacet(value: string | null | undefined, max: number): string {
+  const text = presentText(value) ?? "";
+  if (!text || text.toLowerCase() === "all" || text.length > max) return "";
+  return text;
+}
+
 export function parseStartupJobsQuery(raw: {
   company?: string | string[];
   q?: string | string[];
+  location?: string | string[];
+  workType?: string | string[];
+  sort?: string | string[];
   page?: string | string[] | number;
 }): StartupJobsQuery {
   const first = (value: string | string[] | undefined) =>
@@ -145,8 +185,33 @@ export function parseStartupJobsQuery(raw: {
   return {
     company: parseStartupSlug(first(raw.company)) ?? "",
     q: presentText(first(raw.q)) ?? "",
+    location: parseJobsFacet(first(raw.location), 240),
+    workType: parseJobsFacet(first(raw.workType), 80),
+    sort: parseStartupJobsSort(first(raw.sort)),
     page,
   };
+}
+
+/** A follow needs at least one filter. The full catalog is not a saved search. */
+export function startupJobsFollowFromQuery(
+  query: StartupJobsQuery,
+): StartupJobsFollow | null {
+  const follow: StartupJobsFollow = {
+    company: query.company,
+    q: query.q.trim().toLowerCase().slice(0, STARTUP_JOBS_FOLLOW_Q_MAX),
+    location: query.location,
+    workType: query.workType,
+  };
+  if (!follow.company && !follow.q && !follow.location && !follow.workType) {
+    return null;
+  }
+  return follow;
+}
+
+function jobsSortKey(role: StartupRolePublic, sort: StartupJobsSort): string {
+  if (sort === "company") return role.startupName;
+  if (sort === "location") return role.location ?? "";
+  return role.title;
 }
 
 export function applyStartupJobsQuery(
@@ -154,15 +219,64 @@ export function applyStartupJobsQuery(
   query: StartupJobsQuery,
 ): StartupRolePublic[] {
   const company = query.company;
+  const location = query.location.toLowerCase();
+  const workType = query.workType.toLowerCase();
   const needle = query.q.trim().toLowerCase();
-  return roles.filter((role) => {
-    if (company && role.startupSlug !== company) return false;
-    if (!needle) return true;
-    const haystack = [role.title, role.startupName, role.location ?? ""]
-      .join("\n")
-      .toLowerCase();
-    return haystack.includes(needle);
-  });
+  const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+  return roles
+    .filter((role) => {
+      if (company && role.startupSlug !== company) return false;
+      if (location && (role.location ?? "").toLowerCase() !== location) {
+        return false;
+      }
+      if (workType && (role.workType ?? "").toLowerCase() !== workType) {
+        return false;
+      }
+      if (!needle) return true;
+      const haystack = [
+        role.title,
+        role.startupName,
+        role.location ?? "",
+        role.workType ?? "",
+      ]
+        .join("\n")
+        .toLowerCase();
+      return haystack.includes(needle);
+    })
+    .sort((a, b) => {
+      if (query.sort === "location") {
+        if (!a.location && b.location) return 1;
+        if (a.location && !b.location) return -1;
+      }
+      const byKey = collator.compare(
+        jobsSortKey(a, query.sort),
+        jobsSortKey(b, query.sort),
+      );
+      if (byKey !== 0) return byKey;
+      return collator.compare(a.title, b.title);
+    });
+}
+
+/**
+ * Roles matching a saved search that first appeared in this directory after
+ * `lastSeenAt`. No employer publish date is invented; roles without `listedAt`
+ * stay out of the set.
+ */
+export function rolesListedSince(
+  roles: readonly StartupRolePublic[],
+  query: StartupJobsQuery,
+  lastSeenAt: string,
+): StartupRolePublic[] {
+  const seen = Date.parse(lastSeenAt);
+  if (!Number.isFinite(seen)) return [];
+  return applyStartupJobsQuery(roles, { ...query, page: 1 })
+    .filter((role) => {
+      const listed = Date.parse(role.listedAt ?? "");
+      return Number.isFinite(listed) && listed > seen;
+    })
+    .sort(
+      (a, b) => Date.parse(b.listedAt ?? "") - Date.parse(a.listedAt ?? ""),
+    );
 }
 
 export function paginateStartupRoles(

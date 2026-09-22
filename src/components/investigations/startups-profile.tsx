@@ -150,7 +150,10 @@ export function StartupsProfilePage({
               <div className="flex flex-col gap-3" data-startup-hiring="">
                 <ul className="flex flex-col gap-2">
                   {roles.map((role) => (
-                    <li key={role.id}>
+                    <li
+                      key={role.id}
+                      className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
+                    >
                       <Link
                         href={buildStartupRolePath(role.slug)}
                         className="hover:underline"
@@ -158,8 +161,19 @@ export function StartupsProfilePage({
                         {role.title}
                       </Link>
                       {role.location ? (
-                        <span className="text-muted-foreground ml-2 text-sm">
+                        <span
+                          data-startup-hiring-location=""
+                          className="text-muted-foreground text-sm"
+                        >
                           {role.location}
+                        </span>
+                      ) : null}
+                      {role.workType ? (
+                        <span
+                          data-startup-hiring-work-type=""
+                          className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
+                        >
+                          {role.workType}
                         </span>
                       ) : null}
                     </li>

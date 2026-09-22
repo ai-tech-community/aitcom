@@ -115,6 +115,7 @@ export function StartupsRolePage({
             <StartupsRoleMemberDesk
               locale={locale}
               brief={brief}
+              roleId={role.id}
               className="lg:mt-0 lg:w-80 lg:shrink-0 lg:border-t-0 lg:pt-0"
             />
           ) : null}

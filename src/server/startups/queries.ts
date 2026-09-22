@@ -171,6 +171,7 @@ function toPublicRole(
     applyUrl: presentText(role.applyUrl),
     descriptionText: presentText(role.descriptionText),
     fetchedAt: role.fetchedAt.toISOString(),
+    listedAt: role.createdAt.toISOString(),
     board: role.board,
     status: role.status,
   };

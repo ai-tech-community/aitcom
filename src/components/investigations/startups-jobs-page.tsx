@@ -10,6 +10,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { StartupsJobsFilters } from "@/components/investigations/startups-jobs-filters";
+import { StartupsJobsFollow } from "@/components/investigations/startups-jobs-follow";
 import { StartupsTabs } from "@/components/investigations/startups-tabs";
 import {
   STARTUPS_JOIN_HREF,
@@ -21,9 +23,16 @@ import {
 import {
   applyStartupJobsQuery,
   paginateStartupRoles,
+  type StartupJobsFollow,
   type StartupJobsQuery,
   type StartupRolePublic,
 } from "@/lib/investigations/startup-roles";
+
+export type StartupJobsNewRole = {
+  slug: string;
+  title: string;
+  startupName: string;
+};
 
 export type StartupsJobsKey =
   | "kicker"
@@ -38,6 +47,23 @@ export type StartupsJobsKey =
   | "tabNav"
   | "jobsEmpty"
   | "jobsEmptyHelp"
+  | "jobsSearch"
+  | "jobsFilterCompany"
+  | "jobsFilterCompanyAll"
+  | "jobsFilterLocation"
+  | "jobsFilterLocationAll"
+  | "jobsFilterWorkType"
+  | "jobsFilterWorkTypeAll"
+  | "jobsSortRole"
+  | "jobsSortCompany"
+  | "jobsSortLocation"
+  | "jobsEmptyFiltered"
+  | "jobsFollow"
+  | "jobsFollowing"
+  | "jobsUnfollow"
+  | "jobsFollowHelp"
+  | "jobsNewSince"
+  | "jobsNewBadge"
   | "roleColumn"
   | "companyColumn"
   | "locationColumn"
@@ -51,15 +77,51 @@ export function StartupsJobsPage({
   roles,
   query,
   promoteJoin = true,
+  follow = null,
+  following = false,
+  newRoles = [],
 }: {
   locale: string;
   t: (key: StartupsJobsKey) => string;
   roles: StartupRolePublic[];
   query: StartupJobsQuery;
   promoteJoin?: boolean;
+  follow?: StartupJobsFollow | null;
+  following?: boolean;
+  newRoles?: StartupJobsNewRole[];
 }) {
   const filtered = applyStartupJobsQuery(roles, query);
   const pagination = paginateStartupRoles(filtered, query.page);
+  const companies = [
+    ...new Map(
+      roles.map((role) => [
+        role.startupSlug,
+        { slug: role.startupSlug, name: role.startupName },
+      ]),
+    ).values(),
+  ].sort((a, b) => a.name.localeCompare(b.name));
+  const locations = [
+    ...new Set(
+      roles
+        .map((role) => role.location)
+        .filter((location): location is string => Boolean(location)),
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+  const workTypes = [
+    ...new Set(
+      roles
+        .map((role) => role.workType)
+        .filter((workType): workType is string => Boolean(workType)),
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+  const pageQuery = {
+    company: query.company || null,
+    q: query.q || null,
+    location: query.location || null,
+    workType: query.workType || null,
+    sort: query.sort,
+  };
+  const newSlugs = new Set(newRoles.map((role) => role.slug));
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -94,10 +156,67 @@ export function StartupsJobsPage({
         />
       </div>
 
-      <section className="mt-10">
+      <StartupsJobsFilters
+        query={query}
+        companies={companies}
+        locations={locations}
+        workTypes={workTypes}
+        labels={{
+          search: t("jobsSearch"),
+          company: t("jobsFilterCompany"),
+          companyAll: t("jobsFilterCompanyAll"),
+          location: t("jobsFilterLocation"),
+          locationAll: t("jobsFilterLocationAll"),
+          workType: t("jobsFilterWorkType"),
+          workTypeAll: t("jobsFilterWorkTypeAll"),
+          sortRole: t("jobsSortRole"),
+          sortCompany: t("jobsSortCompany"),
+          sortLocation: t("jobsSortLocation"),
+        }}
+      />
+
+      {follow ? (
+        <div className="mt-4">
+          <StartupsJobsFollow
+            follow={follow}
+            following={following}
+            labels={{
+              follow: t("jobsFollow"),
+              following: t("jobsFollowing"),
+              unfollow: t("jobsUnfollow"),
+              help: t("jobsFollowHelp"),
+            }}
+          />
+        </div>
+      ) : null}
+
+      {newRoles.length > 0 ? (
+        <section className="mt-8" data-startup-jobs-new="">
+          <SectionLabel as="h2">{t("jobsNewSince")}</SectionLabel>
+          <ul className="mt-3 flex flex-col gap-2">
+            {newRoles.slice(0, 8).map((role) => (
+              <li key={role.slug}>
+                <Link
+                  href={buildStartupRolePath(role.slug)}
+                  className="hover:underline"
+                >
+                  {role.title}
+                </Link>
+                <span className="text-muted-foreground ml-2 text-sm">
+                  {role.startupName}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      <section className="mt-6">
         {pagination.items.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            {t("jobsEmpty")} {t("jobsEmptyHelp")}
+            {roles.length === 0
+              ? `${t("jobsEmpty")} ${t("jobsEmptyHelp")}`
+              : t("jobsEmptyFiltered")}
           </p>
         ) : (
           <div className="border-border overflow-hidden rounded-xl border">
@@ -105,15 +224,29 @@ export function StartupsJobsPage({
               <TableCaption className="sr-only">{t("jobsTitle")}</TableCaption>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
-                    {t("roleColumn")}
-                  </TableHead>
-                  <TableHead className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
-                    {t("companyColumn")}
-                  </TableHead>
-                  <TableHead className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
-                    {t("locationColumn")}
-                  </TableHead>
+                  {(
+                    [
+                      ["role", t("roleColumn")],
+                      ["company", t("companyColumn")],
+                      ["location", t("locationColumn")],
+                    ] as const
+                  ).map(([sort, label]) => (
+                    <TableHead
+                      key={sort}
+                      aria-sort={query.sort === sort ? "ascending" : "none"}
+                      className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
+                    >
+                      <Link
+                        href={buildStartupJobsPath({
+                          ...pageQuery,
+                          sort,
+                          page: 1,
+                        })}
+                      >
+                        {label}
+                      </Link>
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -126,6 +259,11 @@ export function StartupsJobsPage({
                       >
                         {role.title}
                       </Link>
+                      {newSlugs.has(role.slug) ? (
+                        <span className="text-muted-foreground ml-2 font-mono text-xs tracking-wider uppercase">
+                          {t("jobsNewBadge")}
+                        </span>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <Link
@@ -156,8 +294,7 @@ export function StartupsJobsPage({
             {pagination.page > 1 ? (
               <Link
                 href={buildStartupJobsPath({
-                  company: query.company || null,
-                  q: query.q || null,
+                  ...pageQuery,
                   page: pagination.page - 1,
                 })}
                 className="border-border rounded border px-3 py-1.5"
@@ -168,8 +305,7 @@ export function StartupsJobsPage({
             {pagination.page < pagination.totalPages ? (
               <Link
                 href={buildStartupJobsPath({
-                  company: query.company || null,
-                  q: query.q || null,
+                  ...pageQuery,
                   page: pagination.page + 1,
                 })}
                 className="border-border rounded border px-3 py-1.5"

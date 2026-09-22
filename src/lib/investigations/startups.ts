@@ -244,13 +244,26 @@ export function buildStartupRolePath(slug: string): string {
 export function buildStartupJobsPath(query?: {
   company?: string | null;
   q?: string | null;
+  location?: string | null;
+  workType?: string | null;
+  sort?: string | null;
   page?: number;
 }): string {
   const params = new URLSearchParams();
   const company = parseStartupSlug(query?.company ?? null);
   const needle = presentText(query?.q);
+  const location = presentText(query?.location);
+  const workType = presentText(query?.workType);
+  const sort = presentText(query?.sort);
   if (company) params.set("company", company);
   if (needle) params.set("q", needle);
+  if (location && location.toLowerCase() !== "all") {
+    params.set("location", location);
+  }
+  if (workType && workType.toLowerCase() !== "all") {
+    params.set("workType", workType);
+  }
+  if (sort && sort !== "role") params.set("sort", sort);
   if (query?.page && query.page > 1) params.set("page", String(query.page));
   const suffix = params.toString();
   return suffix ? `${STARTUPS_JOBS_PATH}?${suffix}` : STARTUPS_JOBS_PATH;

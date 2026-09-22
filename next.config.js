@@ -47,6 +47,11 @@ const config = {
         permanent: true,
       },
       {
+        source: "/:locale(en|nl)/communities/:slug/jobs",
+        destination: "/:locale/jobs",
+        permanent: true,
+      },
+      {
         source: "/:locale(en|nl)/investigations/startups",
         destination: "/:locale/startups",
         permanent: true,

@@ -17,10 +17,12 @@ import { api } from "@/trpc/react";
 export function StartupsRoleMemberDesk({
   locale,
   brief,
+  roleId,
   className,
 }: {
   locale: string;
   brief: StartupRoleBrief;
+  roleId: string;
   className?: string;
 }) {
   const t = useTranslations("investigationsStartups");
@@ -29,6 +31,17 @@ export function StartupsRoleMemberDesk({
   const [copied, setCopied] = useState(false);
   const utils = api.useUtils();
   const cvQuery = api.startups.getMyCv.useQuery();
+  const applyingQuery = api.startups.getMyRoleApplication.useQuery({
+    roleId,
+  });
+  const setApplying = api.startups.setMyRoleApplication.useMutation({
+    onSuccess: async () => {
+      await utils.startups.getMyRoleApplication.invalidate({ roleId });
+    },
+    onError: (error) => {
+      toast.error(error.message ?? t("cvError"));
+    },
+  });
   const upsert = api.startups.upsertMyCv.useMutation({
     onSuccess: async () => {
       toast.success(t("cvUploaded"));
@@ -118,6 +131,33 @@ export function StartupsRoleMemberDesk({
         !brief.seniority ? (
           <p className="text-muted-foreground text-sm">{t("roleBriefEmpty")}</p>
         ) : null}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold tracking-tight">
+          {t("applyingTitle")}
+        </h2>
+        <p className="text-muted-foreground text-sm leading-relaxed">
+          {t("applyingLead")}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-fit"
+          aria-pressed={Boolean(applyingQuery.data?.applying)}
+          data-startup-applying=""
+          disabled={setApplying.isPending}
+          onClick={() =>
+            setApplying.mutate({
+              roleId,
+              applying: !applyingQuery.data?.applying,
+            })
+          }
+        >
+          {applyingQuery.data?.applying
+            ? t("applyingActive")
+            : t("applyingCta")}
+        </Button>
       </div>
 
       <div className="flex flex-col gap-3">
