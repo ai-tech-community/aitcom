@@ -294,6 +294,45 @@ describe("startup role slugs and jobs query", () => {
     ]);
   });
 
+  it("reads the posting from visible sections when a menu is named description", () => {
+    const posting = extractJobPostingFromHtml(
+      `<header><div class="menu-item--with-description"><a>Products</a><div class="description">Everything leaders need to outperform the market.</div></div></header>
+       <script type="application/ld+json">${JSON.stringify({
+         "@type": "JobPosting",
+         title: "Bookkeeper",
+         url: "https://buildots.com/careers/CD.F64/",
+         employmentType: "FULL_TIME",
+         jobLocation: {
+           "@type": "Place",
+           address: { addressLocality: "Tel-Aviv" },
+         },
+       })}</script>
+       <main>
+         <h1>Bookkeeper</h1>
+         <p>Tel-Aviv</p>
+         <p>Open Positions</p>
+         <p><strong>About the Role</strong></p>
+         <p>We are looking for a detail-oriented Bookkeeper to join our finance team and keep the US and Canadian books current.</p>
+         <p><strong>Key Responsibilities</strong></p>
+         <ul><li>Manage Accounts Receivable and issue invoices.</li></ul>
+         <p><strong>Requirements</strong></p>
+         <ul><li>5+ years of bookkeeping experience in a Hi-Tech company.</li></ul>
+         <p>Application form loading.</p>
+         <p>See open positions</p>
+       </main>`,
+      "https://buildots.com/careers/CD.F64/",
+    );
+    expect(posting?.title).toBe("Bookkeeper");
+    expect(posting?.location).toBe("Tel-Aviv");
+    expect(posting?.workType).toBe("Full-time");
+    expect(posting?.descriptionText).toContain("About the Role");
+    expect(posting?.descriptionText).toContain("Manage Accounts Receivable");
+    expect(posting?.descriptionText).toContain("5+ years of bookkeeping");
+    expect(posting?.descriptionText).not.toContain("outperform the market");
+    expect(posting?.descriptionText?.startsWith("About the Role")).toBe(true);
+    expect(posting?.descriptionText).not.toContain("See open positions");
+  });
+
   it("reads an Elementor theme post body", () => {
     const posting = extractJobPostingFromHtml(
       `<h1>Algorithms Engineer</h1>

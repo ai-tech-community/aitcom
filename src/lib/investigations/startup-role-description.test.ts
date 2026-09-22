@@ -52,6 +52,15 @@ Minimum qualifications
       "list",
     ]);
     expect(blocks[0]).toEqual({ type: "heading", text: "About Anthropic" });
+    expect(
+      parseStartupRoleDescription(`Why join us?
+Own it from day one.
+
+Perks & benefits
+Hybrid work.`).map((block) =>
+        block.type === "heading" ? block.text : block.type,
+      ),
+    ).toEqual(["Why join us", "paragraph", "Perks & benefits", "paragraph"]);
     expect(blocks[3]).toEqual({
       type: "list",
       items: [

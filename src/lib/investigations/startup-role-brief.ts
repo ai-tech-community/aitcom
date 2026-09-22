@@ -23,7 +23,7 @@ const NICE_HEADING =
   /^(nice[- ]to[- ]haves?|bonus(?: points)?|preferred(?: qualifications?)?|plus|it.?s a plus)\b/i;
 
 const OTHER_HEADING =
-  /^(about(?: the role)?|responsibilities|what you.?ll do|benefits|compensation|perks|equal opportunity|how to apply)\b/i;
+  /^(about\b|the role|key responsibilities|responsibilities|what you.?ll do|benefits|compensation|perks\b|equal opportunity|how to apply|why\b|application\b)/i;
 
 const BULLET = /^(?:[-*•]|\d+[.)])\s+/;
 
@@ -96,6 +96,7 @@ function extractLists(description: string): {
       mode = null;
       continue;
     }
+    if (!BULLET.test(line)) continue;
     const item = clipItem(stripBullet(line));
     if (!item) continue;
     if (mode === "must") pushUnique(mustHaves, item);
