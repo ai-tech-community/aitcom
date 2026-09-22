@@ -93,12 +93,74 @@ export type StartupJobsFollow = {
 
 export const STARTUP_JOBS_FOLLOW_Q_MAX = 200;
 
+/** Work-type tokens that leak from card chrome into the title. */
+const TITLE_WORK_TYPE_LINE =
+  /^(?:full[- ]?time|part[- ]?time|contract(?:or|ing)?|temporary|internship|intern|volunteer|per[ -]?diem|freelance|permanent)$/i;
+
+/** CTA labels nested in the same careers-card anchor as the role. */
+const TITLE_CTA_LINE =
+  /^(?:read more|more info|learn more|apply(?: now)?|see (?:position )?details|view (?:position(?:\s*(?:&|and)\s*apply)?|role)|למידע נוסף|north_east)$/i;
+
+const TITLE_TRAILING_META =
+  /\s+(?:full[- ]?time|part[- ]?time|contract(?:or|ing)?|temporary|internship|intern|volunteer|per[ -]?diem|freelance|permanent|read more|more info|learn more|apply now)$/i;
+
+/**
+ * A whole line that is only a place / work-mode label, not a role name.
+ * Role titles that embed a place (“Team Lead, Canada”) stay intact.
+ */
+const TITLE_LOCATION_LINE =
+  /^(?:remote|hybrid|onsite|on-site|in[- ]office)(?:\s*[·|,/()-].*)?$|^(?:[\p{L}\s.'’()-]+)\s*\((?:remote|hybrid|onsite|on-site)\)\s*$|^(?:tel-?aviv|toronto|chicago|canada|usa|u\.?s\.?a\.?|united states|arizona|turkey|texas|haifa|bengaluru|taiwan|england|israel|india|europe)(?:\s*[,/·-]\s*[\p{L}\s.'’()-]+)?$/iu;
+
+const OCR_SECTION_GLUE =
+  /^[a-z]{1,8}(?=(?:About|Overview|Introduction|Responsibilities|Requirements|Qualifications|The role)\b)/;
+
+const DESCRIPTION_LEADING_CTA = /^(?:read more|more info|learn more)\s*/i;
+
+function isTitleMetaLine(line: string): boolean {
+  const text = line.trim();
+  if (!text) return true;
+  return (
+    TITLE_WORK_TYPE_LINE.test(text) ||
+    TITLE_CTA_LINE.test(text) ||
+    TITLE_LOCATION_LINE.test(text)
+  );
+}
+
+/**
+ * Role name only: drop card chrome (work type, location, CTA) and leading
+ * asterisks. When a department label sits above the role, keep the role line.
+ */
+export function cleanStartupRoleTitle(
+  value: string | null | undefined,
+): string | null {
+  const raw = presentText(value);
+  if (!raw) return null;
+  let lines = raw
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^\*+\s*/, "").trim())
+    .filter(Boolean);
+  lines = lines.filter((line) => !isTitleMetaLine(line));
+  if (lines.length === 0) return null;
+  let title =
+    lines.length === 1
+      ? (lines[0] ?? "")
+      : (lines.reduce((best, line) =>
+          line.length >= best.length ? line : best,
+        ) ?? "");
+  while (TITLE_TRAILING_META.test(title)) {
+    title = title.replace(TITLE_TRAILING_META, "").trim();
+  }
+  title = title.trim();
+  if (!title || title.length > STARTUP_ROLE_TITLE_MAX) return null;
+  return title;
+}
+
 export function parseStartupRoleTitle(
   value: string | null | undefined,
 ): string | null {
-  const title = presentText(value);
-  if (!title || title.length > STARTUP_ROLE_TITLE_MAX) return null;
-  return title;
+  return cleanStartupRoleTitle(value);
 }
 
 export function parseStartupRoleLocation(
@@ -112,7 +174,11 @@ export function parseStartupRoleLocation(
 export function sanitizeStartupRoleDescription(
   value: string | null | undefined,
 ): string | null {
-  const text = presentText(value);
+  let text = presentText(value);
+  if (!text) return null;
+  text = text.replace(OCR_SECTION_GLUE, "");
+  text = text.replace(DESCRIPTION_LEADING_CTA, "").trimStart();
+  text = text.replace(/(?:\n|^)\s*(?:read more|more info)\s*$/i, "").trim();
   if (!text) return null;
   return text.slice(0, STARTUP_ROLE_DESCRIPTION_MAX);
 }
@@ -316,16 +382,18 @@ export function startupRoleSitemapPaths(slugs: readonly string[]): string[] {
 export function startupRoleJsonLd(
   role: StartupRolePublic,
 ): Record<string, unknown> {
+  const title = cleanStartupRoleTitle(role.title) ?? role.title;
+  const description = sanitizeStartupRoleDescription(role.descriptionText);
   const item: Record<string, unknown> = {
     "@type": "JobPosting",
-    title: role.title,
+    title,
     url: role.sourceUrl,
     hiringOrganization: {
       "@type": "Organization",
       name: role.startupName,
     },
   };
-  if (role.descriptionText) item.description = role.descriptionText;
+  if (description) item.description = description;
   if (role.location) {
     item.jobLocation = {
       "@type": "Place",
