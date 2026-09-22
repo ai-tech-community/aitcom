@@ -46,6 +46,15 @@ import {
   upsertStartupCvForUser,
 } from "@/server/startups/cv";
 import {
+  findStartupRoleApplication,
+  setStartupJobsFollow,
+  setStartupRoleApplication,
+} from "@/server/startups/member-jobs";
+import {
+  startupJobsFollowFromQuery,
+  STARTUP_JOBS_FOLLOW_Q_MAX,
+} from "@/lib/investigations/startup-roles";
+import {
   extractStartupCvText,
   parseStartupCvFileName,
   STARTUP_CV_FILENAME_MAX,
@@ -463,4 +472,68 @@ export const startupsRouter = createTRPCRouter({
     await deleteStartupCvForUser(ctx.session.user.id);
     return { deleted: true };
   }),
+
+  setMyJobsFollow: protectedProcedure
+    .input(
+      z.object({
+        company: z.string().max(80).optional().default(""),
+        q: z.string().max(STARTUP_JOBS_FOLLOW_Q_MAX).optional().default(""),
+        location: z.string().max(240).optional().default(""),
+        workType: z.string().max(80).optional().default(""),
+        following: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const follow = startupJobsFollowFromQuery({
+        company: input.company,
+        q: input.q,
+        location: input.location,
+        workType: input.workType,
+        sort: "role",
+        page: 1,
+      });
+      if (!follow) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Follow a company, search, location, or work type.",
+        });
+      }
+      return setStartupJobsFollow({
+        userId: ctx.session.user.id,
+        follow,
+        following: input.following,
+      });
+    }),
+
+  getMyRoleApplication: protectedProcedure
+    .input(z.object({ roleId: z.string().trim().min(1).max(255) }))
+    .query(async ({ ctx, input }) => {
+      const applying = await findStartupRoleApplication(
+        ctx.session.user.id,
+        input.roleId,
+      );
+      return { applying };
+    }),
+
+  setMyRoleApplication: protectedProcedure
+    .input(
+      z.object({
+        roleId: z.string().trim().min(1).max(255),
+        applying: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await setStartupRoleApplication({
+          userId: ctx.session.user.id,
+          roleId: input.roleId,
+          applying: input.applying,
+        });
+      } catch {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Role not found",
+        });
+      }
+    }),
 });

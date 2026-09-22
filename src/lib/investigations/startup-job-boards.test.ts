@@ -576,5 +576,10 @@ describe("startup role slugs and jobs query", () => {
       }),
     );
     expect(sorted.map((row) => row.title)).toEqual(["Advisor"]);
+    const byWorkType = applyStartupJobsQuery(sorted, {
+      ...parseStartupJobsQuery({ workType: "Full-time" }),
+      company: "",
+    });
+    expect(byWorkType).toHaveLength(0);
   });
 });

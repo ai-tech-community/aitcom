@@ -4304,6 +4304,61 @@ export const startupsRelations = relations(startups, ({ one, many }) => ({
   roles: many(startupRoles),
 }));
 
+/** Private saved jobs-table search. One row per member and filter combination. */
+export const startupJobsFollows = appSchema.table(
+  "startup_jobs_follow",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    company: d.text().notNull().default(""),
+    q: d.text().notNull().default(""),
+    location: d.text().notNull().default(""),
+    workType: d.text().notNull().default(""),
+    lastSeenAt: d.timestamp({ withTimezone: true }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("startup_jobs_follow_query_idx").on(
+      t.userId,
+      t.company,
+      t.q,
+      t.location,
+      t.workType,
+    ),
+    index("startup_jobs_follow_user_idx").on(t.userId),
+  ],
+);
+
+/** Private "I'm applying" mark. Not a score and not shown on the public page. */
+export const startupRoleApplications = appSchema.table(
+  "startup_role_application",
+  (d) => ({
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    roleId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => startupRoles.id, { onDelete: "cascade" }),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [primaryKey({ columns: [t.userId, t.roleId] })],
+);
+
 /** Private extracted CV text for member startup applications. One row per user. */
 export const startupMemberCvs = appSchema.table("startup_member_cv", (d) => ({
   userId: d

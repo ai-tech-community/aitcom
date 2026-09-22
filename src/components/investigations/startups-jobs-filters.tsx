@@ -23,17 +23,21 @@ export function StartupsJobsFilters({
   query,
   companies,
   locations,
+  workTypes,
   labels,
 }: {
   query: StartupJobsQuery;
   companies: { slug: string; name: string }[];
   locations: string[];
+  workTypes: string[];
   labels: {
     search: string;
     company: string;
     companyAll: string;
     location: string;
     locationAll: string;
+    workType: string;
+    workTypeAll: string;
     sortRole: string;
     sortCompany: string;
     sortLocation: string;
@@ -47,6 +51,7 @@ export function StartupsJobsFilters({
       next.q !== undefined ||
       next.company !== undefined ||
       next.location !== undefined ||
+      next.workType !== undefined ||
       next.sort !== undefined;
     const merged = parseStartupJobsQuery({
       ...query,
@@ -148,6 +153,31 @@ export function StartupsJobsFilters({
                 {locations.map((location) => (
                   <SelectItem key={location} value={location}>
                     {location}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex min-w-44 flex-1 flex-col gap-2">
+          <Label htmlFor="jobs-work-type" className="sr-only">
+            {labels.workType}
+          </Label>
+          <Select
+            value={query.workType || "all"}
+            onValueChange={(value) =>
+              replaceQuery({ workType: value === "all" ? "" : value })
+            }
+          >
+            <SelectTrigger id="jobs-work-type" className="w-full">
+              <SelectValue placeholder={labels.workType} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="all">{labels.workTypeAll}</SelectItem>
+                {workTypes.map((workType) => (
+                  <SelectItem key={workType} value={workType}>
+                    {workType}
                   </SelectItem>
                 ))}
               </SelectGroup>

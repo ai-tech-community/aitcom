@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StartupsJobsFilters } from "@/components/investigations/startups-jobs-filters";
+import { StartupsJobsFollow } from "@/components/investigations/startups-jobs-follow";
 import { StartupsTabs } from "@/components/investigations/startups-tabs";
 import {
   STARTUPS_JOIN_HREF,
@@ -22,9 +23,16 @@ import {
 import {
   applyStartupJobsQuery,
   paginateStartupRoles,
+  type StartupJobsFollow,
   type StartupJobsQuery,
   type StartupRolePublic,
 } from "@/lib/investigations/startup-roles";
+
+export type StartupJobsNewRole = {
+  slug: string;
+  title: string;
+  startupName: string;
+};
 
 export type StartupsJobsKey =
   | "kicker"
@@ -44,10 +52,18 @@ export type StartupsJobsKey =
   | "jobsFilterCompanyAll"
   | "jobsFilterLocation"
   | "jobsFilterLocationAll"
+  | "jobsFilterWorkType"
+  | "jobsFilterWorkTypeAll"
   | "jobsSortRole"
   | "jobsSortCompany"
   | "jobsSortLocation"
   | "jobsEmptyFiltered"
+  | "jobsFollow"
+  | "jobsFollowing"
+  | "jobsUnfollow"
+  | "jobsFollowHelp"
+  | "jobsNewSince"
+  | "jobsNewBadge"
   | "roleColumn"
   | "companyColumn"
   | "locationColumn"
@@ -61,12 +77,18 @@ export function StartupsJobsPage({
   roles,
   query,
   promoteJoin = true,
+  follow = null,
+  following = false,
+  newRoles = [],
 }: {
   locale: string;
   t: (key: StartupsJobsKey) => string;
   roles: StartupRolePublic[];
   query: StartupJobsQuery;
   promoteJoin?: boolean;
+  follow?: StartupJobsFollow | null;
+  following?: boolean;
+  newRoles?: StartupJobsNewRole[];
 }) {
   const filtered = applyStartupJobsQuery(roles, query);
   const pagination = paginateStartupRoles(filtered, query.page);
@@ -85,12 +107,21 @@ export function StartupsJobsPage({
         .filter((location): location is string => Boolean(location)),
     ),
   ].sort((a, b) => a.localeCompare(b));
+  const workTypes = [
+    ...new Set(
+      roles
+        .map((role) => role.workType)
+        .filter((workType): workType is string => Boolean(workType)),
+    ),
+  ].sort((a, b) => a.localeCompare(b));
   const pageQuery = {
     company: query.company || null,
     q: query.q || null,
     location: query.location || null,
+    workType: query.workType || null,
     sort: query.sort,
   };
+  const newSlugs = new Set(newRoles.map((role) => role.slug));
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -129,17 +160,56 @@ export function StartupsJobsPage({
         query={query}
         companies={companies}
         locations={locations}
+        workTypes={workTypes}
         labels={{
           search: t("jobsSearch"),
           company: t("jobsFilterCompany"),
           companyAll: t("jobsFilterCompanyAll"),
           location: t("jobsFilterLocation"),
           locationAll: t("jobsFilterLocationAll"),
+          workType: t("jobsFilterWorkType"),
+          workTypeAll: t("jobsFilterWorkTypeAll"),
           sortRole: t("jobsSortRole"),
           sortCompany: t("jobsSortCompany"),
           sortLocation: t("jobsSortLocation"),
         }}
       />
+
+      {follow ? (
+        <div className="mt-4">
+          <StartupsJobsFollow
+            follow={follow}
+            following={following}
+            labels={{
+              follow: t("jobsFollow"),
+              following: t("jobsFollowing"),
+              unfollow: t("jobsUnfollow"),
+              help: t("jobsFollowHelp"),
+            }}
+          />
+        </div>
+      ) : null}
+
+      {newRoles.length > 0 ? (
+        <section className="mt-8" data-startup-jobs-new="">
+          <SectionLabel as="h2">{t("jobsNewSince")}</SectionLabel>
+          <ul className="mt-3 flex flex-col gap-2">
+            {newRoles.slice(0, 8).map((role) => (
+              <li key={role.slug}>
+                <Link
+                  href={buildStartupRolePath(role.slug)}
+                  className="hover:underline"
+                >
+                  {role.title}
+                </Link>
+                <span className="text-muted-foreground ml-2 text-sm">
+                  {role.startupName}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="mt-6">
         {pagination.items.length === 0 ? (
@@ -189,6 +259,11 @@ export function StartupsJobsPage({
                       >
                         {role.title}
                       </Link>
+                      {newSlugs.has(role.slug) ? (
+                        <span className="text-muted-foreground ml-2 font-mono text-xs tracking-wider uppercase">
+                          {t("jobsNewBadge")}
+                        </span>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <Link

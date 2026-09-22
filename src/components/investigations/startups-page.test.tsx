@@ -23,6 +23,7 @@ vi.mock("@/trpc/react", () => ({
       startups: {
         listApproved: { invalidate: vi.fn() },
         getMyCv: { invalidate: vi.fn() },
+        getMyRoleApplication: { invalidate: vi.fn() },
       },
     }),
     startups: {
@@ -39,6 +40,15 @@ vi.mock("@/trpc/react", () => ({
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
       deleteMyCv: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      setMyJobsFollow: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      getMyRoleApplication: {
+        useQuery: () => ({ data: { applying: false }, isPending: false }),
+      },
+      setMyRoleApplication: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
     },
@@ -1336,7 +1346,7 @@ describe("Startups profile page", () => {
             "https://fixture.example/newsroom",
           ],
         }}
-        roles={[FIXTURE_ROLE]}
+        roles={[{ ...FIXTURE_ROLE, workType: "Full-time" }]}
       />,
     );
     expect(
@@ -1361,6 +1371,12 @@ describe("Startups profile page", () => {
     expect(
       screen.getByRole("link", { name: "Staff Engineer" }),
     ).toHaveAttribute("href", "/jobs/fixture-co-staff-engineer");
+    expect(
+      container.querySelector("[data-startup-hiring-location]")?.textContent,
+    ).toBe("Toronto, Canada");
+    expect(
+      container.querySelector("[data-startup-hiring-work-type]")?.textContent,
+    ).toBe("Full-time");
     const data = JSON.parse(
       container.querySelector("script[type='application/ld+json']")
         ?.textContent ?? "null",
@@ -1422,7 +1438,14 @@ describe("Startups open positions", () => {
         locale="en"
         t={tFrom(en.investigationsStartups)}
         roles={[]}
-        query={{ company: "", q: "", location: "", sort: "role", page: 1 }}
+        query={{
+          company: "",
+          q: "",
+          location: "",
+          workType: "",
+          sort: "role",
+          page: 1,
+        }}
       />,
     );
     expect(
@@ -1448,7 +1471,14 @@ describe("Startups open positions", () => {
         locale="en"
         t={tFrom(en.investigationsStartups)}
         roles={[FIXTURE_ROLE]}
-        query={{ company: "", q: "", location: "", sort: "role", page: 1 }}
+        query={{
+          company: "",
+          q: "",
+          location: "",
+          workType: "",
+          sort: "role",
+          page: 1,
+        }}
       />,
     );
     expect(
@@ -1463,6 +1493,8 @@ describe("Startups open positions", () => {
       "/jobs?sort=company",
     );
     expect(screen.getByLabelText("Search roles…")).toBeInTheDocument();
+    expect(screen.getByLabelText("Filter by work type")).toBeInTheDocument();
+    expect(container.querySelector("[data-startup-jobs-follow]")).toBeNull();
     expect(screen.getByRole("link", { name: "Fixture Co" })).toHaveAttribute(
       "href",
       "/startups/fixture-co",
@@ -1472,6 +1504,55 @@ describe("Startups open positions", () => {
     ).toBe("Toronto, Canada");
     expect(container.textContent).not.toMatch(BANNED);
     expect(container.textContent).not.toMatch(/\$\d|€\d/);
+  });
+
+  it("follows a filtered search and lists roles added since the last look without a publish date", () => {
+    const listedAt = "2026-09-22T08:00:00.000Z";
+    const { container } = render(
+      <StartupsJobsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        promoteJoin={false}
+        roles={[
+          {
+            ...FIXTURE_ROLE,
+            workType: "Full-time",
+            listedAt,
+          },
+        ]}
+        query={{
+          company: "fixture-co",
+          q: "",
+          location: "",
+          workType: "Full-time",
+          sort: "role",
+          page: 1,
+        }}
+        follow={{
+          company: "fixture-co",
+          q: "",
+          location: "",
+          workType: "Full-time",
+        }}
+        following
+        newRoles={[
+          {
+            slug: FIXTURE_ROLE.slug,
+            title: FIXTURE_ROLE.title,
+            startupName: FIXTURE_ROLE.startupName,
+          },
+        ]}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Stop following" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /New since you last looked/ }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("New").length).toBeGreaterThan(0);
+    expect(container.textContent).not.toContain(listedAt);
+    expect(container.textContent).not.toContain("2026-09-22");
   });
 
   it("keeps the original careers URL on the dedicated role page", () => {
@@ -1556,6 +1637,15 @@ Nice to have:
     expect(
       screen.getByRole("button", { name: en.investigationsStartups.cvUpload }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: en.investigationsStartups.applyingCta,
+      }),
+    ).toBeInTheDocument();
+    expect(container.querySelector("[data-startup-applying]")).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
     expect(hrefsOf(container)).not.toContain(STARTUPS_JOIN_HREF);
     expect(container.textContent).not.toMatch(BANNED);
     expect(container.textContent).not.toMatch(/salary|fit score/i);
