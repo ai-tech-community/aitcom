@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Link } from "@/i18n/navigation";
 import {
   ActivityIcon,
+  BriefcaseIcon,
   CalendarIcon,
   SettingsIcon,
   UsersIcon,
@@ -14,6 +15,7 @@ const tabs = [
   { path: "/dashboard", icon: ActivityIcon, labelKey: "feed" },
   { path: "/dashboard/communities", icon: UsersIcon, labelKey: "communities" },
   { path: "/dashboard/events", icon: CalendarIcon, labelKey: "events" },
+  { path: "/dashboard/jobs", icon: BriefcaseIcon, labelKey: "jobs" },
   { path: "/dashboard/settings", icon: SettingsIcon, labelKey: "settings" },
 ] as const;
 

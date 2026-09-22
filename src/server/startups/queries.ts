@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNull } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 
 import {
   displayStartupFounders,
@@ -17,7 +17,7 @@ import {
   type StartupRolePublic,
 } from "@/lib/investigations/startup-roles";
 import { db } from "@/server/db";
-import { communities, startupRoles, startups } from "@/server/db/schema";
+import { startupRoles, startups } from "@/server/db/schema";
 
 function asFiniteCount(value: unknown): number {
   const n = typeof value === "bigint" ? Number(value) : Number(value);
@@ -289,26 +289,6 @@ export async function listOpenStartupRoleSlugs(): Promise<string[]> {
       const slug = parseStartupSlug(row.slug);
       return slug ? [slug] : [];
     });
-  } catch {
-    return [];
-  }
-}
-
-export async function listListedCommunities(): Promise<
-  { slug: string; name: string }[]
-> {
-  try {
-    return await db
-      .select({ slug: communities.slug, name: communities.name })
-      .from(communities)
-      .where(
-        and(
-          eq(communities.isListedInDirectory, true),
-          isNull(communities.deletedAt),
-        ),
-      )
-      .orderBy(communities.name)
-      .limit(40);
   } catch {
     return [];
   }

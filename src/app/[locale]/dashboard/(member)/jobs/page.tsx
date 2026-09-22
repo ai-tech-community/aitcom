@@ -1,19 +1,14 @@
-import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
+import { redirect } from "next/navigation";
 
 import { StartupsJobsBoard } from "@/components/investigations/startups-jobs-board";
-import {
-  listPublicStartupRoles,
-  listListedCommunities,
-} from "@/server/startups/queries";
 import type { StartupRolePublic } from "@/lib/investigations/startup-roles";
+import { getSession } from "@/server/better-auth/server";
+import { listMyCommunities } from "@/server/communities/my-communities";
+import { db } from "@/server/db";
+import { listPublicStartupRoles } from "@/server/startups/queries";
 
 export const dynamic = "force-dynamic";
-
-export const metadata: Metadata = {
-  title: "Your board",
-  robots: { index: false, follow: false },
-};
 
 function rolesForBoard(
   roles: readonly StartupRolePublic[],
@@ -29,12 +24,21 @@ function rolesForBoard(
   return picked;
 }
 
-export default async function JobsBoardPrototypePage() {
+export default async function DashboardJobsPage() {
+  const session = await getSession();
+  if (!session?.user) redirect("/auth/signin");
+
   const locale = await getLocale();
-  const [roles, communities] = await Promise.all([
+  const [roles, memberships] = await Promise.all([
     listPublicStartupRoles(),
-    listListedCommunities(),
+    listMyCommunities(db, session.user.id),
   ]);
+  const communities = memberships
+    .filter((membership) => membership.status === "active")
+    .map((membership) => ({
+      slug: membership.slug,
+      name: membership.name,
+    }));
 
   return (
     <StartupsJobsBoard

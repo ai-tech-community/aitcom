@@ -64,7 +64,6 @@ export type StartupsJobsKey =
   | "jobsFollowHelp"
   | "jobsNewSince"
   | "jobsNewBadge"
-  | "jobsBoardLink"
   | "roleColumn"
   | "companyColumn"
   | "locationColumn"
@@ -138,9 +137,6 @@ export function StartupsJobsPage({
         <p className="text-muted-foreground text-base leading-relaxed">
           {t("jobsLead2")}
         </p>
-        <Link href="/jobs/board" className="w-fit text-sm hover:underline">
-          {t("jobsBoardLink")}
-        </Link>
       </div>
 
       <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

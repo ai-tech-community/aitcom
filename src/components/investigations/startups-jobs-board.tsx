@@ -41,17 +41,17 @@ export type TrackingHelp = {
 
 const COPY = {
   en: {
-    kicker: "Prototype",
+    kicker: "Jobs",
     title: "Your board",
-    lead: "Track sourced roles you are pursuing. Status stays on this board. A help request goes to one community, with your note and an optional classroom.",
-    preview: "This preview stays in the tab. Nothing is saved.",
+    lead: "Track sourced roles you are pursuing. This board is private to your dashboard. A help request goes to one community you belong to, with your note and an optional classroom.",
+    preview: "Private to your dashboard. Nothing is saved yet.",
     open: "Open positions",
     track: "Track",
     remove: "Remove",
     ask: "Ask for help",
     cancel: "Cancel",
     community: "Community",
-    communityEmpty: "No listed community",
+    communityEmpty: "Join a community first",
     note: "What do you want help with?",
     classroom: "Classroom",
     classroomHelp:
@@ -68,17 +68,17 @@ const COPY = {
     passed: "Passed",
   },
   nl: {
-    kicker: "Prototype",
+    kicker: "Vacatures",
     title: "Jouw bord",
-    lead: "Volg geverifieerde rollen waar je mee bezig bent. De status blijft op dit bord. Een hulpvraag gaat naar één community, met je notitie en een optioneel classroom.",
-    preview: "Dit voorbeeld blijft in dit tabblad. Er wordt niets opgeslagen.",
+    lead: "Volg geverifieerde rollen waar je mee bezig bent. Dit bord is privé in je dashboard. Een hulpvraag gaat naar één community waar je lid van bent, met je notitie en een optioneel classroom.",
+    preview: "Privé in je dashboard. Er wordt nog niets opgeslagen.",
     open: "Open posities",
     track: "Volgen",
     remove: "Verwijderen",
     ask: "Vraag om hulp",
     cancel: "Annuleren",
     community: "Community",
-    communityEmpty: "Geen community in de lijst",
+    communityEmpty: "Word eerst lid van een community",
     note: "Waar wil je hulp bij?",
     classroom: "Classroom",
     classroomHelp:
@@ -158,12 +158,12 @@ export function StartupsJobsBoard({
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+    <div data-startup-jobs-board="">
       <SectionLabel as="div">{copy.kicker}</SectionLabel>
       <div className="mt-6 flex max-w-2xl flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
           {copy.title}
-        </h1>
+        </h2>
         <p className="text-muted-foreground text-base leading-relaxed">
           {copy.lead}
         </p>
@@ -395,7 +395,7 @@ export function StartupsJobsBoard({
           </ul>
         )}
       </section>
-    </main>
+    </div>
   );
 }
 
