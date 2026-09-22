@@ -179,7 +179,7 @@ function listing(partial: {
     sourceUrl: url.toString(),
     applyUrl: presentText(partial.applyUrl) ?? url.toString(),
     location: parseStartupRoleLocation(partial.location),
-    workType: presentText(partial.workType),
+    workType: presentWorkType(partial.workType),
     descriptionText: sanitizeStartupRoleDescription(partial.descriptionText),
     externalId: presentText(partial.externalId),
     board: partial.board,
@@ -720,6 +720,131 @@ function iconDetail(html: string, label: RegExp): string | null {
   return htmlToPlainText(pattern.exec(html)?.[1]);
 }
 
+const SCHEMA_WORK_TYPE: Record<string, string> = {
+  FULL_TIME: "Full-time",
+  PART_TIME: "Part-time",
+  CONTRACTOR: "Contract",
+  TEMPORARY: "Temporary",
+  INTERN: "Internship",
+  VOLUNTEER: "Volunteer",
+  PER_DIEM: "Per diem",
+};
+
+function presentWorkType(value: string | null | undefined): string | null {
+  const text = presentText(value);
+  if (!text) return null;
+  return SCHEMA_WORK_TYPE[text] ?? text;
+}
+
+const ROLE_SECTION =
+  /^(?:about(?:\s+[a-z0-9][\w&'-]*){0,3}|the role|overview|introduction|key responsibilities|responsibilities|requirements?|qualifications?|what you(?:'|’)ll do|who we are|why join(?: us)?|perks(?:\s*&\s*benefits)?|benefits|nice[- ]to[- ]haves?|minimum qualifications?|preferred qualifications?)\s*:?$/i;
+
+const POSTING_STOP =
+  /^(?:see open positions|ready to be a part of the team\??|cookie settings|privacy policy|all rights reserved)\s*:?$/i;
+
+const POSTING_SKIP =
+  /^(?:application(?: form(?: loading)?)?\.?|open positions)\s*:?$/i;
+
+function stripTag(html: string, tag: string): string {
+  return html.replace(
+    new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?</${tag}>`, "gi"),
+    " ",
+  );
+}
+
+/** Drop site chrome so a menu labeled “description” is not the posting. */
+function withoutChrome(html: string): string {
+  let next = html;
+  for (const tag of [
+    "script",
+    "style",
+    "noscript",
+    "svg",
+    "header",
+    "nav",
+    "footer",
+    "form",
+  ]) {
+    next = stripTag(next, tag);
+  }
+  return next;
+}
+
+function hasRoleSection(text: string): boolean {
+  return text.split("\n").some((line) => ROLE_SECTION.test(line.trim()));
+}
+
+function isNavBlurb(text: string): boolean {
+  if (hasRoleSection(text)) return false;
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length < 3) return false;
+  return lines.every(
+    (line) => line.replace(/^(?:[-*•]|\d+[.)])\s+/, "").length < 70,
+  );
+}
+
+/** A marked-up posting body. A short menu labeled “description” is not one. */
+function containerBody(text: string | null | undefined): string | null {
+  const body = presentText(text);
+  if (!body || isNavBlurb(body)) return null;
+  return body;
+}
+
+function asPostingBody(text: string | null | undefined): string | null {
+  const body = presentText(text);
+  if (!body || body.length < 80) return null;
+  if (hasRoleSection(body)) return body;
+  const longLine = body
+    .split("\n")
+    .some(
+      (line) => line.replace(/^(?:[-*•]|\d+[.)])\s+/, "").trim().length >= 80,
+    );
+  return longLine ? body : null;
+}
+
+/**
+ * One path for pages that do not share a markup pattern: read the visible
+ * text and keep the run that starts at the posting sections.
+ */
+function postingFromVisibleText(html: string): string | null {
+  const readable = withoutChrome(html);
+  const source =
+    firstCapture(readable, /<main\b[^>]*>([\s\S]*?)<\/main>/i) ?? readable;
+  const plain = htmlToPlainText(source);
+  if (!plain) return null;
+  const lines = plain
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const start = lines.findIndex(
+    (line) =>
+      ROLE_SECTION.test(line) ||
+      line.replace(/^(?:[-*•]|\d+[.)])\s+/, "").trim().length >= 80,
+  );
+  if (start < 0) return null;
+  let from = start;
+  const previous = lines[from - 1];
+  if (
+    !ROLE_SECTION.test(lines[start] ?? "") &&
+    previous &&
+    previous.length <= 48 &&
+    !/[.!?]/.test(previous) &&
+    !ROLE_SECTION.test(previous)
+  ) {
+    from -= 1;
+  }
+  const kept: string[] = [];
+  for (const line of lines.slice(from)) {
+    if (POSTING_STOP.test(line.replace(/^•\s*/, ""))) break;
+    if (POSTING_SKIP.test(line.replace(/^•\s*/, ""))) continue;
+    kept.push(line);
+  }
+  return asPostingBody(kept.join("\n"));
+}
+
 function preferPublishableTitle(
   value: string | null | undefined,
 ): string | null {
@@ -753,10 +878,22 @@ export function extractJobPostingFromHtml(
     preferPublishableTitle(h1) ??
     preferPublishableTitle(ogTitle);
   if (!title) return null;
-  const main = htmlToPlainText(
-    firstCapture(html, /<main\b[^>]*>([\s\S]*?)<\/main>/i),
-  )?.replace(/^(?:←\s*)?all open roles\s+/i, "");
+  const readable = withoutChrome(html);
   const framerBody = framerRegion(html, "Content");
+  const container = [
+    htmlToPlainText(
+      firstCapture(readable, /<article\b[^>]*>([\s\S]*?)<\/article>/i),
+    ),
+    htmlToPlainText(
+      firstCapture(
+        readable,
+        /<(?:div|section)[^>]*(?:job-description|jobDescription|posting-description)[^>]*>([\s\S]*?)<\/(?:div|section)>/i,
+      ),
+    ),
+    richTextDescription(readable),
+    cmsPostDescription(readable),
+    framerBody,
+  ].find((text) => containerBody(text));
   return {
     title,
     location:
@@ -764,24 +901,12 @@ export function extractJobPostingFromHtml(
       fromLd?.location ??
       iconDetail(html, /location/i) ??
       parseStartupRoleLocation(framerRegion(html, "Location")),
-    descriptionText:
+    descriptionText: sanitizeStartupRoleDescription(
       structured?.descriptionText ??
-      fromLd?.descriptionText ??
-      sanitizeStartupRoleDescription(
-        htmlToPlainText(
-          firstCapture(html, /<article\b[^>]*>([\s\S]*?)<\/article>/i),
-        ) ??
-          htmlToPlainText(
-            firstCapture(
-              html,
-              /<(?:div|section)[^>]*(?:job-description|jobDescription|description)[^>]*>([\s\S]*?)<\/(?:div|section)>/i,
-            ),
-          ) ??
-          richTextDescription(html) ??
-          cmsPostDescription(html) ??
-          (framerBody && framerBody.length >= 80 ? framerBody : null) ??
-          (main && main.length >= 80 ? main : null),
-      ),
+        fromLd?.descriptionText ??
+        containerBody(container) ??
+        postingFromVisibleText(html),
+    ),
     workType:
       structured?.workType ??
       fromLd?.workType ??

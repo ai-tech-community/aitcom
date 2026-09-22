@@ -207,7 +207,10 @@ the active filters.
   title that only adds “Apply now” is replaced by the posting-page title.
   Rich-text blocks (for example Webflow `job-rich-text`), Elementor post
   content, and Framer `Content` regions supply the JD when the page has no
-  article. If that text is still missing and
+  article. Otherwise the visible page text is cut to the posting itself,
+  starting at sections such as “About the role” and “Requirements”, so a
+  menu labeled description is not stored as the JD. Schema.org `FULL_TIME`
+  is stored as “Full-time”. If that text is still missing and
   `STARTUP_ROLE_VISUAL_BACKUP=1`, a capped local screenshot plus Tesseract
   pass is the backup. It uses no paid vision API and does nothing when
   Chrome or Tesseract is not installed.

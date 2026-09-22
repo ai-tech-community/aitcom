@@ -38,6 +38,7 @@ describe("extractStartupRoleBrief", () => {
     ]);
     expect(brief.niceToHaves).toEqual(["Dutch", "Prior editor work"]);
     expect(brief.mustHaves.join(" ")).not.toMatch(/Free lunch/i);
+    expect(brief.mustHaves.join(" ")).not.toMatch(/Build the product/i);
     expect(brief.seniority).toBe("senior");
     expect(brief.languages).toEqual(["English", "Dutch"]);
     expect(brief.sourceUrl).toBe(ROLE.sourceUrl);

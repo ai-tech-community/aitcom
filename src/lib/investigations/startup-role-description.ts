@@ -8,10 +8,10 @@ export type StartupRoleDescriptionBlock =
 const BULLET = /^(?:[-*•]|\d+[.)])\s+/;
 
 const KNOWN_HEADING =
-  /^(about(?: the (?:role|company|team|job|position))?|the role|overview|introduction|responsibilities|key responsibilities|what you.?ll do|what we (?:do|offer)|what we.?re looking for|who you are|who we are|our mission|about us|the team|requirements?|must[- ]haves?|minimum qualifications?|preferred qualifications?|qualifications?|nice[- ]to[- ]haves?|bonus(?: points)?|you (?:have|are)|benefits|compensation|perks|equal opportunity|how to apply|interview process|why (?:join|us)|location|reports? to)$/i;
+  /^(about(?: the (?:role|company|team|job|position)|(?:\s+[a-z0-9][\w'-]*){1,3})?|the role|overview|introduction|responsibilities|key responsibilities|what you.?ll do|what we (?:do|offer)|what we.?re looking for|who you are|who we are|our mission|about us|the team|requirements?|must[- ]haves?|minimum qualifications?|preferred qualifications?|qualifications?|nice[- ]to[- ]haves?|bonus(?: points)?|you (?:have|are)|benefits|compensation|perks(?:\s*&\s*benefits)?|equal opportunity|how to apply|interview process|why join(?: us)?|why us|location|reports? to)$/i;
 
 function stripColon(line: string): string {
-  return line.replace(/:+\s*$/, "").trim();
+  return line.replace(/[:?]+\s*$/, "").trim();
 }
 
 function isBullet(line: string): boolean {
