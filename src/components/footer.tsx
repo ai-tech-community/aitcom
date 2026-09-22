@@ -47,6 +47,12 @@ export function Footer() {
                   {tNav("roles")}
                 </Link>
                 <Link
+                  href="/jobs"
+                  className="hover:text-primary text-sm transition-colors"
+                >
+                  {tNav("jobs")}
+                </Link>
+                <Link
                   href="/blog"
                   className="hover:text-primary text-sm transition-colors"
                 >

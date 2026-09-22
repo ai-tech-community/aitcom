@@ -1778,17 +1778,17 @@ describe("Startups site integration", () => {
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/open_role_count/);
   });
 
-  it("lists sourced jobs at /jobs in overflow without colliding with Hub roles", () => {
+  it("lists sourced jobs at /jobs in the primary nav without colliding with Hub roles", () => {
     const nav = readFileSync(NAV_FILE, "utf8");
     const footer = readFileSync(FOOTER_FILE, "utf8");
     const nextConfig = readFileSync(
       join(dir, "../../../next.config.js"),
       "utf8",
     );
-    expect(nav).toMatch(/href: "\/startups",[\s\S]*?primary: false/);
+    expect(nav).toMatch(/href: "\/startups",[\s\S]*?primary: true/);
     expect(nav).toContain('key: "startups"');
     expect(nav).toContain('shortcut: "U"');
-    expect(nav).toMatch(/href: "\/jobs",[\s\S]*?primary: false/);
+    expect(nav).toMatch(/href: "\/jobs",[\s\S]*?primary: true/);
     expect(nav).toMatch(/href: "\/roles",[\s\S]*?primary: true/);
     expect(nav).not.toMatch(/href: "\/startups\/jobs"/);
     expect(readFileSync(JOBS_FILE, "utf8")).toContain("listPublicStartupRoles");
@@ -1799,6 +1799,8 @@ describe("Startups site integration", () => {
     expect(
       existsSync(join(appLocale, "communities/[slug]/jobs/page.tsx")),
     ).toBe(false);
+    expect(footer).toContain('href="/jobs"');
+    expect(footer).toContain('tNav("jobs")');
     expect(footer).toContain('href="/startups"');
     expect(footer).toContain('tNav("startups")');
     expect(en.nav.startups).toBe("Startups");
