@@ -58,6 +58,8 @@ vi.mock("@/i18n/navigation", () => ({
       {children}
     </a>
   ),
+  usePathname: () => "/jobs",
+  useRouter: () => ({ replace: vi.fn() }),
 }));
 
 vi.mock("./startups-insights-charts", () => ({
@@ -1420,7 +1422,7 @@ describe("Startups open positions", () => {
         locale="en"
         t={tFrom(en.investigationsStartups)}
         roles={[]}
-        query={{ company: "", q: "", page: 1 }}
+        query={{ company: "", q: "", location: "", sort: "role", page: 1 }}
       />,
     );
     expect(
@@ -1446,12 +1448,21 @@ describe("Startups open positions", () => {
         locale="en"
         t={tFrom(en.investigationsStartups)}
         roles={[FIXTURE_ROLE]}
-        query={{ company: "", q: "", page: 1 }}
+        query={{ company: "", q: "", location: "", sort: "role", page: 1 }}
       />,
     );
     expect(
       screen.getByRole("link", { name: "Staff Engineer" }),
     ).toHaveAttribute("href", "/jobs/fixture-co-staff-engineer");
+    expect(screen.getByRole("link", { name: "Role" })).toHaveAttribute(
+      "href",
+      "/jobs",
+    );
+    expect(screen.getByRole("link", { name: "Company" })).toHaveAttribute(
+      "href",
+      "/jobs?sort=company",
+    );
+    expect(screen.getByLabelText("Search roles…")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Fixture Co" })).toHaveAttribute(
       "href",
       "/startups/fixture-co",
@@ -1693,7 +1704,11 @@ describe("Startups site integration", () => {
     expect(readFileSync(JOBS_FILE, "utf8")).toContain("listPublicStartupRoles");
     expect(readFileSync(JOBS_FILE, "utf8")).not.toContain('collection: "jobs"');
     expect(nextConfig).toContain("/startups/jobs");
+    expect(nextConfig).toContain("/communities/:slug/jobs");
     expect(nextConfig).toContain('destination: "/:locale/jobs"');
+    expect(
+      existsSync(join(appLocale, "communities/[slug]/jobs/page.tsx")),
+    ).toBe(false);
     expect(footer).toContain('href="/startups"');
     expect(footer).toContain('tNav("startups")');
     expect(en.nav.startups).toBe("Startups");

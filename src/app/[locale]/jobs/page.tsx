@@ -34,6 +34,8 @@ interface PageProps {
   searchParams: Promise<{
     company?: string;
     q?: string;
+    location?: string;
+    sort?: string;
     page?: string;
   }>;
 }
@@ -47,17 +49,19 @@ export async function generateMetadata({
   const roles = await listPublicStartupRoles();
   const filtered = applyStartupJobsQuery(roles, query);
   const pagination = paginateStartupRoles(filtered, query.page);
-  const canonical =
-    query.company || query.q
-      ? STARTUPS_JOBS_PATH
-      : buildStartupJobsPath({ page: pagination.page });
+  const filteredView = Boolean(
+    query.company || query.q || query.location || query.sort !== "role",
+  );
+  const canonical = filteredView
+    ? STARTUPS_JOBS_PATH
+    : buildStartupJobsPath({ page: pagination.page });
   return {
     title: JOBS_H1,
     description: JOBS_META,
     robots: startupsPublicRobots(),
     ...buildOgMeta(JOBS_H1, JOBS_META, "Startups"),
     alternates: await localeAlternates(canonical),
-    ...(pagination.totalPages > 1 && !query.company && !query.q
+    ...(pagination.totalPages > 1 && !filteredView
       ? {
           pagination: {
             ...(pagination.page > 1

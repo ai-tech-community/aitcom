@@ -191,8 +191,10 @@ the active filters.
   Organization JSON-LD uses sourced fields only and includes `description`
   only when a sourced blurb exists. Sitemap lists each profile slug.
 - Open positions live at `/jobs` with one page per sourced role
-  (`/jobs/{roleSlug}`). `/startups/jobs` and `/investigations/startups/jobs`
-  permanent-redirect here. The daily `startup-jobs-scan` cron reads
+  (`/jobs/{roleSlug}`). The table filters by company, location, and search,
+  and sorts by role, company, or location. A role link opens that startup
+  job page. `/startups/jobs`, `/investigations/startups/jobs`, and the old
+  community `/communities/{slug}/jobs` board permanent-redirect here. The daily `startup-jobs-scan` cron reads
   every listed startup with a verified `jobs_url` (oldest `jobs_scanned_at`
   first) until `STARTUP_JOBS_SCAN_BUDGET_MS` (~240s). ATS JSON first (Ashby /
   Greenhouse / Lever / Workable); otherwise listing HTML then the original

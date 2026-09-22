@@ -65,9 +65,15 @@ export type ExtractedJobListing = {
   board: StartupRoleBoard;
 };
 
+export const STARTUP_JOBS_SORTS = ["role", "company", "location"] as const;
+
+export type StartupJobsSort = (typeof STARTUP_JOBS_SORTS)[number];
+
 export type StartupJobsQuery = {
   company: string;
   q: string;
+  location: string;
+  sort: StartupJobsSort;
   page: number;
 };
 
@@ -128,9 +134,20 @@ export function allocateStartupRoleSlug(
   return `${base.slice(0, STARTUP_ROLE_SLUG_MAX - suffix.length)}${suffix}`;
 }
 
+export function parseStartupJobsSort(
+  value: string | null | undefined,
+): StartupJobsSort {
+  const text = presentText(value);
+  return text && (STARTUP_JOBS_SORTS as readonly string[]).includes(text)
+    ? (text as StartupJobsSort)
+    : "role";
+}
+
 export function parseStartupJobsQuery(raw: {
   company?: string | string[];
   q?: string | string[];
+  location?: string | string[];
+  sort?: string | string[];
   page?: string | string[] | number;
 }): StartupJobsQuery {
   const first = (value: string | string[] | undefined) =>
@@ -142,11 +159,23 @@ export function parseStartupJobsQuery(raw: {
         ? Math.floor(pageRaw)
         : 1
       : Math.max(1, Number.parseInt(first(pageRaw) ?? "1", 10) || 1);
+  const location = presentText(first(raw.location)) ?? "";
   return {
     company: parseStartupSlug(first(raw.company)) ?? "",
     q: presentText(first(raw.q)) ?? "",
+    location:
+      !location || location.toLowerCase() === "all" || location.length > 240
+        ? ""
+        : location,
+    sort: parseStartupJobsSort(first(raw.sort)),
     page,
   };
+}
+
+function jobsSortKey(role: StartupRolePublic, sort: StartupJobsSort): string {
+  if (sort === "company") return role.startupName;
+  if (sort === "location") return role.location ?? "";
+  return role.title;
 }
 
 export function applyStartupJobsQuery(
@@ -154,15 +183,33 @@ export function applyStartupJobsQuery(
   query: StartupJobsQuery,
 ): StartupRolePublic[] {
   const company = query.company;
+  const location = query.location.toLowerCase();
   const needle = query.q.trim().toLowerCase();
-  return roles.filter((role) => {
-    if (company && role.startupSlug !== company) return false;
-    if (!needle) return true;
-    const haystack = [role.title, role.startupName, role.location ?? ""]
-      .join("\n")
-      .toLowerCase();
-    return haystack.includes(needle);
-  });
+  const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+  return roles
+    .filter((role) => {
+      if (company && role.startupSlug !== company) return false;
+      if (location && (role.location ?? "").toLowerCase() !== location) {
+        return false;
+      }
+      if (!needle) return true;
+      const haystack = [role.title, role.startupName, role.location ?? ""]
+        .join("\n")
+        .toLowerCase();
+      return haystack.includes(needle);
+    })
+    .sort((a, b) => {
+      if (query.sort === "location") {
+        if (!a.location && b.location) return 1;
+        if (a.location && !b.location) return -1;
+      }
+      const byKey = collator.compare(
+        jobsSortKey(a, query.sort),
+        jobsSortKey(b, query.sort),
+      );
+      if (byKey !== 0) return byKey;
+      return collator.compare(a.title, b.title);
+    });
 }
 
 export function paginateStartupRoles(
