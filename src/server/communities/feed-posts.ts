@@ -5,11 +5,12 @@ import type { db as Db } from "@/server/db";
 import { communities, communityMemberships, user } from "@/server/db/schema";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
+import type { CommunityRole } from "@/server/communities/role-utils";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
-export type FeedMemberRole = "owner" | "admin" | "moderator" | "member";
+export type FeedMemberRole = CommunityRole;
 
 /**
  * The community behind a feed, for an active member only. Feeds are
