@@ -1506,6 +1506,7 @@ describe("Startups open positions", () => {
     expect(screen.getByLabelText("Search roles…")).toBeInTheDocument();
     expect(screen.getByLabelText("Filter by work type")).toBeInTheDocument();
     expect(container.querySelector("[data-startup-jobs-follow]")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Track" })).toBeNull();
     expect(screen.getByRole("link", { name: "Fixture Co" })).toHaveAttribute(
       "href",
       "/startups/fixture-co",
@@ -1564,6 +1565,52 @@ describe("Startups open positions", () => {
     expect(screen.getAllByText("New").length).toBeGreaterThan(0);
     expect(container.textContent).not.toContain(listedAt);
     expect(container.textContent).not.toContain("2026-09-22");
+    expect(screen.getByRole("button", { name: "Track" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("marks a tracked role for a signed-in member and hides Track from guests", () => {
+    const { unmount } = render(
+      <StartupsJobsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        promoteJoin={false}
+        trackedRoleIds={[FIXTURE_ROLE.id]}
+        roles={[FIXTURE_ROLE]}
+        query={{
+          company: "",
+          q: "",
+          location: "",
+          workType: "",
+          sort: "role",
+          page: 1,
+        }}
+      />,
+    );
+    const tracking = screen.getByRole("button", { name: "Tracking" });
+    expect(tracking).toHaveAttribute("aria-pressed", "true");
+    expect(tracking).toHaveAttribute("data-startup-track", "");
+    unmount();
+
+    render(
+      <StartupsJobsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        roles={[FIXTURE_ROLE]}
+        query={{
+          company: "",
+          q: "",
+          location: "",
+          workType: "",
+          sort: "role",
+          page: 1,
+        }}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Track" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Tracking" })).toBeNull();
   });
 
   it("keeps the original careers URL on the dedicated role page", () => {

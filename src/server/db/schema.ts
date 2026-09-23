@@ -4339,7 +4339,7 @@ export const startupJobsFollows = appSchema.table(
   ],
 );
 
-/** Private "I'm applying" mark. Not a score and not shown on the public page. */
+/** Private tracked role. Status is the member's board column, not a score. */
 export const startupRoleApplications = appSchema.table(
   "startup_role_application",
   (d) => ({
@@ -4351,6 +4351,7 @@ export const startupRoleApplications = appSchema.table(
       .varchar({ length: 255 })
       .notNull()
       .references(() => startupRoles.id, { onDelete: "cascade" }),
+    status: d.varchar({ length: 32 }).notNull().default("applying"),
     createdAt: d
       .timestamp({ withTimezone: true })
       .default(sql`CURRENT_TIMESTAMP`)

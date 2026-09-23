@@ -27,6 +27,7 @@ import { getSession } from "@/server/better-auth/server";
 import { listPublicStartupRoles } from "@/server/startups/queries";
 import {
   findStartupJobsFollow,
+  listMyTrackedRoleIds,
   markStartupJobsFollowSeen,
 } from "@/server/startups/member-jobs";
 
@@ -121,6 +122,10 @@ export default async function JobsRoute({ searchParams }: PageProps) {
   if (session?.user?.id && follow && saved) {
     await markStartupJobsFollowSeen(session.user.id, follow);
   }
+  const trackedRoleIds =
+    session?.user?.id && !promoteJoin
+      ? await listMyTrackedRoleIds(session.user.id)
+      : [];
 
   return (
     <StartupsJobsPage
@@ -132,6 +137,7 @@ export default async function JobsRoute({ searchParams }: PageProps) {
       follow={follow}
       following={Boolean(saved)}
       newRoles={newRoles}
+      trackedRoleIds={trackedRoleIds}
     />
   );
 }

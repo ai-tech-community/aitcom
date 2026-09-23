@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { StartupsJobsFilters } from "@/components/investigations/startups-jobs-filters";
 import { StartupsJobsFollow } from "@/components/investigations/startups-jobs-follow";
+import { StartupsJobsTrackButton } from "@/components/investigations/startups-jobs-track-button";
 import { StartupsTabs } from "@/components/investigations/startups-tabs";
 import {
   STARTUPS_JOIN_HREF,
@@ -64,6 +65,8 @@ export type StartupsJobsKey =
   | "jobsFollowHelp"
   | "jobsNewSince"
   | "jobsNewBadge"
+  | "jobsTrack"
+  | "jobsTracking"
   | "roleColumn"
   | "companyColumn"
   | "locationColumn"
@@ -80,6 +83,7 @@ export function StartupsJobsPage({
   follow = null,
   following = false,
   newRoles = [],
+  trackedRoleIds = [],
 }: {
   locale: string;
   t: (key: StartupsJobsKey) => string;
@@ -89,6 +93,7 @@ export function StartupsJobsPage({
   follow?: StartupJobsFollow | null;
   following?: boolean;
   newRoles?: StartupJobsNewRole[];
+  trackedRoleIds?: readonly string[];
 }) {
   const filtered = applyStartupJobsQuery(roles, query);
   const pagination = paginateStartupRoles(filtered, query.page);
@@ -114,6 +119,7 @@ export function StartupsJobsPage({
         .filter((workType): workType is string => Boolean(workType)),
     ),
   ].sort((a, b) => a.localeCompare(b));
+  const trackedIds = new Set(trackedRoleIds);
   const pageQuery = {
     company: query.company || null,
     q: query.q || null,
@@ -247,6 +253,11 @@ export function StartupsJobsPage({
                       </Link>
                     </TableHead>
                   ))}
+                  {promoteJoin ? null : (
+                    <TableHead className="w-28">
+                      <span className="sr-only">{t("jobsTrack")}</span>
+                    </TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -280,6 +291,16 @@ export function StartupsJobsPage({
                         </span>
                       ) : null}
                     </TableCell>
+                    {promoteJoin ? null : (
+                      <TableCell className="text-right">
+                        <StartupsJobsTrackButton
+                          roleId={role.id}
+                          tracked={trackedIds.has(role.id)}
+                          trackLabel={t("jobsTrack")}
+                          trackingLabel={t("jobsTracking")}
+                        />
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
