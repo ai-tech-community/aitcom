@@ -29,6 +29,12 @@ import {
   communityMemberships,
 } from "@/server/db/schema";
 import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
+import { communityContentReadableWhere } from "@/server/communities/content-visibility";
+import {
+  findReadableCommunityBySlug,
+  hiddenContentCommunityIds,
+  viewerCanReadContentOf,
+} from "@/server/communities/content-visibility-queries";
 import { getPayloadClient } from "@/server/payload";
 import {
   logActivity,
@@ -95,31 +101,31 @@ export const agentRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
 
-      // Resolve community if scoped
-      let community: { id: string; slug: string } | undefined;
-      if (input.communitySlug) {
-        const found = await ctx.db.query.communities.findFirst({
-          where: and(
-            eq(communities.slug, input.communitySlug),
-            isNull(communities.deletedAt),
-          ),
-          columns: { id: true, slug: true },
-        });
-        if (!found) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Community not found",
-          });
-        }
-        community = found;
-      }
+      // An agent reads as its owner; an unclaimed agent sees public content.
+      const viewerId = ctx.agent.ownerId;
 
       const conditions: Where[] = [];
       if (input.category !== "all") {
         conditions.push({ category: { equals: input.category } });
       }
-      if (community) {
+      if (input.communitySlug) {
+        const community = await findReadableCommunityBySlug(
+          ctx.db,
+          input.communitySlug,
+          viewerId,
+        );
+        if (!community) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Community not found",
+          });
+        }
         conditions.push(forumThreadCommunityWhere(community));
+      } else {
+        const readable = communityContentReadableWhere(
+          await hiddenContentCommunityIds(ctx.db, viewerId),
+        );
+        if (readable) conditions.push(readable);
       }
 
       const where: Where | undefined =
@@ -168,7 +174,16 @@ export const agentRouter = createTRPCRouter({
         });
       }
 
-      if (!thread) {
+      // Unreadable answers like missing, so an unlisted thread is not
+      // confirmed to exist. The agent reads as its owner.
+      if (
+        !thread ||
+        !(await viewerCanReadContentOf(
+          ctx.db,
+          thread.communityId,
+          ctx.agent.ownerId,
+        ))
+      ) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Thread not found",
@@ -375,17 +390,24 @@ export const agentRouter = createTRPCRouter({
 
       const payload = await getPayloadClient();
 
+      // An agent reads as its owner; an unclaimed agent sees public content.
+      const viewerId = ctx.agent.ownerId;
+
       // Resolve community if scoped
       let communityId: string | undefined;
       let community: { id: string; slug: string } | undefined;
+      // Unscoped searches skip communities the viewer may not read.
+      const readable = input.communitySlug
+        ? null
+        : communityContentReadableWhere(
+            await hiddenContentCommunityIds(ctx.db, viewerId),
+          );
       if (input.communitySlug) {
-        const found = await ctx.db.query.communities.findFirst({
-          where: and(
-            eq(communities.slug, input.communitySlug),
-            isNull(communities.deletedAt),
-          ),
-          columns: { id: true, slug: true },
-        });
+        const found = await findReadableCommunityBySlug(
+          ctx.db,
+          input.communitySlug,
+          viewerId,
+        );
         if (!found) {
           throw new TRPCError({
             code: "NOT_FOUND",
@@ -419,9 +441,10 @@ export const agentRouter = createTRPCRouter({
         if (community) {
           threadConditions.push(forumThreadCommunityWhere(community));
         }
+        if (readable) threadConditions.push(readable);
         const { docs } = await payload.find({
           collection: "forum-threads",
-          where: community ? { and: threadConditions } : threadWhere,
+          where: { and: threadConditions },
           limit: perType,
           sort: "-createdAt",
           depth: 0,
@@ -484,9 +507,10 @@ export const agentRouter = createTRPCRouter({
         if (communityId) {
           ideaConditions.push({ communityId: { equals: communityId } });
         }
+        if (readable) ideaConditions.push(readable);
         const { docs } = await payload.find({
           collection: "community-ideas",
-          where: communityId ? { and: ideaConditions } : ideaWhere,
+          where: { and: ideaConditions },
           limit: perType,
           sort: "-createdAt",
           depth: 0,

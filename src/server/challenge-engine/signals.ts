@@ -2,6 +2,9 @@ import { getPayloadClient } from "@/server/payload";
 import { db } from "@/server/db";
 import { activityEvents } from "@/server/db/schema";
 import { sql, desc, gte } from "drizzle-orm";
+import type { Where } from "payload";
+import { communityContentReadableWhere } from "@/server/communities/content-visibility";
+import { hiddenContentCommunityIds } from "@/server/communities/content-visibility-queries";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,12 +48,20 @@ function daysAgo(days: number): Date {
  *   Base relevance 0.5, boosted by reply count.
  * - Community ideas: filtered to `status === "open"`, sorted by `-voteCount`,
  *   limited to 20.  Base relevance 0.7, boosted by vote count.
+ *
+ * Signals are platform-wide and reach any signed-in user or agent, so both
+ * sources are limited to publicly readable communities (ADR-0030).
  */
 export async function detectCommunitySignals(
   dayWindow = 14,
 ): Promise<ChallengeSignal[]> {
   const payload = await getPayloadClient();
   const since = daysAgo(dayWindow).toISOString();
+  const readable = communityContentReadableWhere(
+    await hiddenContentCommunityIds(db, null),
+  );
+  const onlyReadable = (where: Where): Where =>
+    readable ? { and: [where, readable] } : where;
 
   // Fetch forum threads and community ideas in parallel.
   const [threadsResult, ideasResult] = await Promise.all([
@@ -58,17 +69,17 @@ export async function detectCommunitySignals(
       collection: "forum-threads",
       sort: "-lastActivityAt",
       limit: 50,
-      where: {
+      where: onlyReadable({
         createdAt: { greater_than_equal: since },
-      },
+      }),
     }),
     payload.find({
       collection: "community-ideas",
       sort: "-voteCount",
       limit: 20,
-      where: {
+      where: onlyReadable({
         status: { equals: "open" },
-      },
+      }),
     }),
   ]);
 

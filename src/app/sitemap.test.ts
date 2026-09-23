@@ -4,6 +4,12 @@ vi.mock("@/server/payload", () => ({
   getPayloadClient: vi.fn(),
 }));
 
+// The default hidden-community lookup must never reach a real database here.
+vi.mock("@/server/db", () => ({ db: {} }));
+vi.mock("@/server/communities/content-visibility-queries", () => ({
+  hiddenContentCommunityIds: vi.fn(async () => []),
+}));
+
 import { getPayloadClient } from "@/server/payload";
 import * as sitemapModule from "./sitemap";
 import { buildSitemapEntries } from "./sitemap";
@@ -381,5 +387,62 @@ describe("buildSitemapEntries", () => {
       en: "https://www.aitcommunity.org/en/investigations/awesome-ai-oss?page=2",
       nl: "https://www.aitcommunity.org/nl/investigations/awesome-ai-oss?page=2",
     });
+  });
+  it("asks Payload only for threads of publicly readable communities", async () => {
+    const find = vi.fn(async (_args: { collection: string }) => ({
+      docs: [],
+    }));
+    mockGetPayloadClient.mockResolvedValue({
+      find,
+    } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
+
+    await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [],
+      async () => ["unlisted-id"],
+    );
+
+    expect(find).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "forum-threads",
+        where: {
+          or: [
+            { communityId: { exists: false } },
+            { communityId: { not_in: ["unlisted-id"] } },
+          ],
+        },
+      }),
+    );
+  });
+
+  it("lists no threads when the hidden-community lookup fails", async () => {
+    const find = vi.fn(async ({ collection }: { collection: string }) => ({
+      docs:
+        collection === "forum-threads"
+          ? [{ slug: "secret", updatedAt: "2026-04-03T12:00:00.000Z" }]
+          : [],
+    }));
+    mockGetPayloadClient.mockResolvedValue({
+      find,
+    } as unknown as Awaited<ReturnType<typeof getPayloadClient>>);
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [],
+      async () => {
+        throw new Error("db down");
+      },
+    );
+
+    expect(find).not.toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "forum-threads" }),
+    );
+    expect(urlsOf(entries).some((url) => url.includes("/forum/secret"))).toBe(
+      false,
+    );
   });
 });
