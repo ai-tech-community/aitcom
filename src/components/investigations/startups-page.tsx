@@ -2,7 +2,10 @@ import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
 import { StartupsDirectory } from "@/components/investigations/startups-directory";
-import { StartupsInsights } from "@/components/investigations/startups-insights";
+import {
+  StartupsInsights,
+  type StartupsInsightsKey,
+} from "@/components/investigations/startups-insights";
 import { StartupsTabs } from "@/components/investigations/startups-tabs";
 import {
   STARTUPS_JOIN_HREF,
@@ -20,6 +23,7 @@ import {
 } from "@/lib/investigations/startups-insights";
 
 export type StartupsKey =
+  | StartupsInsightsKey
   | "kicker"
   | "title"
   | "lead"
@@ -33,24 +37,7 @@ export type StartupsKey =
   | "tabJobs"
   | "tabNav"
   | "lead2"
-  | "insightsLead2"
-  | "categoryMixTitle"
-  | "regionMixTitle"
-  | "stageMixTitle"
-  | "sourcesCoverageTitle"
-  | "addedOverTimeTitle"
-  | "chartCaption"
-  | "regionOmitted"
-  | "stageOmitted"
-  | "sourcesOmitted"
-  | "categoryColumn"
-  | "regionColumn"
-  | "stageColumn"
-  | "sourcesColumn"
-  | "monthColumn"
-  | "countColumn"
-  | "empty"
-  | "emptyHelp";
+  | "insightsLead2";
 
 export function StartupsPage({
   locale,
@@ -63,7 +50,7 @@ export function StartupsPage({
   promoteJoin = true,
 }: {
   locale: string;
-  t: (key: StartupsKey) => string;
+  t: (key: StartupsKey, values?: Record<string, string | number>) => string;
   companies?: StartupPublicCard[];
   isModerator?: boolean;
   query?: StartupDirectoryQuery;
@@ -123,28 +110,7 @@ export function StartupsPage({
 
       <section className="mt-10">
         {isInsights ? (
-          <StartupsInsights
-            stats={insightStats!}
-            copy={{
-              categoryMixTitle: t("categoryMixTitle"),
-              regionMixTitle: t("regionMixTitle"),
-              stageMixTitle: t("stageMixTitle"),
-              sourcesCoverageTitle: t("sourcesCoverageTitle"),
-              addedOverTimeTitle: t("addedOverTimeTitle"),
-              chartCaption: t("chartCaption"),
-              regionOmitted: t("regionOmitted"),
-              stageOmitted: t("stageOmitted"),
-              sourcesOmitted: t("sourcesOmitted"),
-              categoryColumn: t("categoryColumn"),
-              regionColumn: t("regionColumn"),
-              stageColumn: t("stageColumn"),
-              sourcesColumn: t("sourcesColumn"),
-              monthColumn: t("monthColumn"),
-              countColumn: t("countColumn"),
-              empty: t("empty"),
-              emptyHelp: t("emptyHelp"),
-            }}
-          />
+          <StartupsInsights stats={insightStats!} locale={copyLocale} t={t} />
         ) : (
           <StartupsDirectory
             companies={companies}

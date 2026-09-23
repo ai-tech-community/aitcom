@@ -1,251 +1,469 @@
 import type { ReactNode } from "react";
 
+import { Link } from "@/i18n/navigation";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SectionLabel } from "@/components/ui/section-label";
 import {
-  StartupAddedOverTimeChart,
-  StartupCategoryMixChart,
-  StartupRegionMixChart,
-  StartupSourcesCoverageChart,
-  StartupStageMixChart,
-} from "@/components/investigations/startups-insights-charts";
+  INSIGHT_FILL,
+  MonthColumns,
+  RankedBars,
+  ShareBar,
+  StepLegend,
+} from "@/components/investigations/startups-insights-bars";
+import { StartupLogo } from "@/components/investigations/startups-logo";
+import { STARTUP_ROLES_PER_COMPANY_CAP } from "@/lib/investigations/startup-roles";
 import {
-  showStartupRegionMix,
-  type StartupsInsightsStats,
-} from "@/lib/investigations/startups-insights";
-import { cn } from "@/lib/utils";
+  STARTUP_EXIT_STATUS_LABELS,
+  STARTUP_EXIT_STATUS_IDS,
+  STARTUPS_JOBS_PATH,
+  buildStartupDirectoryPath,
+  buildStartupProfilePath,
+  type StartupLocale,
+} from "@/lib/investigations/startups";
+import type { StartupsInsightsStats } from "@/lib/investigations/startups-insights";
 
-export type StartupsInsightsCopy = {
-  categoryMixTitle: string;
-  regionMixTitle: string;
-  stageMixTitle: string;
-  sourcesCoverageTitle: string;
-  addedOverTimeTitle: string;
-  chartCaption: string;
-  regionOmitted: string;
-  stageOmitted: string;
-  sourcesOmitted: string;
-  categoryColumn: string;
-  regionColumn: string;
-  stageColumn: string;
-  sourcesColumn: string;
-  monthColumn: string;
-  countColumn: string;
-  empty: string;
-  emptyHelp?: string;
-};
+export type StartupsInsightsKey =
+  | "insightsLedeCompanies"
+  | "insightsLedeHiring"
+  | "insightsLedeExits"
+  | "whereTitle"
+  | "whereTakeaway"
+  | "whereOther"
+  | "whereUnplaced"
+  | "countryColumn"
+  | "whatTitle"
+  | "whatTakeaway"
+  | "legendHiring"
+  | "legendNotHiring"
+  | "hiringInCategory"
+  | "hiringTitle"
+  | "hiringTakeaway"
+  | "hiringCapNote"
+  | "hiringSeeAll"
+  | "hiringNone"
+  | "roleBand"
+  | "roleBandOpen"
+  | "hiringTopTitle"
+  | "sourcesTitle"
+  | "sourcesTakeaway"
+  | "sourcesBucket"
+  | "exitsTitle"
+  | "stageTitle"
+  | "timelineTitle"
+  | "notYetTitle"
+  | "stageOmitted"
+  | "timelineOmitted"
+  | "countriesOmitted"
+  | "categoryColumn"
+  | "stageColumn"
+  | "sourcesColumn"
+  | "monthColumn"
+  | "countColumn"
+  | "sectionHiring"
+  | "empty"
+  | "emptyHelp";
 
+export type StartupsInsightsT = (
+  key: StartupsInsightsKey,
+  values?: Record<string, string | number>,
+) => string;
+
+/**
+ * Insights as a short read: one sentence of headline counts, then one
+ * section per question (where, what, who is hiring, how well sourced).
+ * Sections without data are listed under "Not shown yet" instead of
+ * rendering empty panels.
+ */
 export function StartupsInsights({
   stats,
-  copy,
+  locale,
+  t,
 }: {
   stats: StartupsInsightsStats;
-  copy: StartupsInsightsCopy;
+  locale: StartupLocale;
+  t: StartupsInsightsT;
 }) {
   if (stats.total === 0) {
     return (
       <div data-startups-insights-empty="">
-        <EmptyState title={copy.empty} description={copy.emptyHelp} />
+        <EmptyState title={t("empty")} description={t("emptyHelp")} />
       </div>
     );
   }
 
+  const numbers = new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-US");
+  const format = (value: number) => numbers.format(value);
+  const exitCount = stats.exits.acquired + stats.exits.ipo;
+  const notYet = [
+    stats.countries ? null : t("countriesOmitted"),
+    stats.stageMix ? null : t("stageOmitted"),
+    stats.timeline ? null : t("timelineOmitted"),
+  ].filter((item): item is string => item !== null);
+
   return (
-    <div
-      data-startups-insights-bento
-      className="grid grid-cols-1 gap-4 md:grid-cols-2"
-    >
-      <InsightTile
-        tile="added-over-time"
-        wide
-        title={copy.addedOverTimeTitle}
-        caption={copy.chartCaption}
-        columns={[copy.monthColumn, copy.countColumn]}
-        rows={stats.addedOverTime.map((row) => [row.label, String(row.count)])}
+    <div data-startups-insights="" className="flex flex-col gap-16">
+      <p
+        data-insights-lede=""
+        className="text-muted-foreground max-w-4xl text-2xl leading-snug font-medium tracking-tight text-balance sm:text-3xl"
       >
-        <StartupAddedOverTimeChart
-          data={stats.addedOverTime}
-          label={copy.addedOverTimeTitle}
-          className="h-80"
-        />
-      </InsightTile>
+        {emphasizeNumbers(
+          [
+            t("insightsLedeCompanies", {
+              companies: stats.total,
+              countries: stats.countryCount,
+            }),
+            stats.hiring.companies > 0
+              ? t("insightsLedeHiring", {
+                  companies: stats.hiring.companies,
+                  roles: stats.hiring.roles,
+                  capped: String(stats.hiring.rolesCapped),
+                })
+              : null,
+            exitCount > 0 ? t("insightsLedeExits", { count: exitCount }) : null,
+          ]
+            .filter(Boolean)
+            .join(" "),
+        )}
+      </p>
 
-      <InsightTile
-        tile="category-mix"
-        title={copy.categoryMixTitle}
-        caption={copy.chartCaption}
-        columns={[copy.categoryColumn, copy.countColumn]}
-        rows={stats.categoryMix.map((row) => [row.label, String(row.count)])}
-      >
-        <StartupCategoryMixChart
-          data={stats.categoryMix}
-          label={copy.categoryMixTitle}
-        />
-      </InsightTile>
-
-      {showStartupRegionMix(stats.regionMix) ? (
-        <InsightTile
-          tile="region-mix"
-          title={copy.regionMixTitle}
-          caption={copy.chartCaption}
-          columns={[copy.regionColumn, copy.countColumn]}
-          rows={stats.regionMix.map((row) => [row.region, String(row.count)])}
-        >
-          <StartupRegionMixChart
-            data={stats.regionMix}
-            label={copy.regionMixTitle}
+      {stats.timeline ? (
+        <InsightSection id="timeline" title={t("timelineTitle")}>
+          <MonthColumns
+            caption={t("timelineTitle")}
+            monthHeader={t("monthColumn")}
+            valueHeader={t("countColumn")}
+            rows={stats.timeline}
+            format={format}
           />
-        </InsightTile>
-      ) : (
-        <OmittedTile
-          tile="region-mix"
-          title={copy.regionMixTitle}
-          message={copy.regionOmitted}
-        />
-      )}
+        </InsightSection>
+      ) : null}
 
-      {stats.stageMix ? (
-        <InsightTile
-          tile="stage-mix"
-          title={copy.stageMixTitle}
-          caption={copy.chartCaption}
-          columns={[copy.stageColumn, copy.countColumn]}
-          rows={stats.stageMix.map((row) => [row.stage, String(row.count)])}
-        >
-          <StartupStageMixChart
-            data={stats.stageMix}
-            label={copy.stageMixTitle}
-          />
-        </InsightTile>
-      ) : (
-        <OmittedTile
-          tile="stage-mix"
-          title={copy.stageMixTitle}
-          message={copy.stageOmitted}
-        />
-      )}
+      <div className="grid grid-cols-1 gap-x-16 gap-y-16 lg:grid-cols-2">
+        {stats.countries ? (
+          <InsightSection
+            id="where"
+            title={t("whereTitle")}
+            takeaway={whereTakeaway(stats, t)}
+            footnote={
+              stats.countries.unplaced > 0
+                ? t("whereUnplaced", { count: stats.countries.unplaced })
+                : undefined
+            }
+          >
+            <RankedBars
+              caption={t("whereTitle")}
+              labelHeader={t("countryColumn")}
+              valueHeader={t("countColumn")}
+              rows={[
+                ...stats.countries.rows.map((row) => ({
+                  key: row.country,
+                  label: row.country,
+                  value: row.count,
+                  display: format(row.count),
+                })),
+                ...(stats.countries.other.countries > 0
+                  ? [
+                      {
+                        key: "other",
+                        label: (
+                          <span className="text-muted-foreground">
+                            {t("whereOther", {
+                              countries: stats.countries.other.countries,
+                            })}
+                          </span>
+                        ),
+                        value: stats.countries.other.companies,
+                        display: format(stats.countries.other.companies),
+                        tone: "soft" as const,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+          </InsightSection>
+        ) : null}
 
-      {stats.sourcesCoverage ? (
-        <InsightTile
-          tile="sources-coverage"
-          title={copy.sourcesCoverageTitle}
-          caption={copy.chartCaption}
-          columns={[copy.sourcesColumn, copy.countColumn]}
-          rows={stats.sourcesCoverage.map((row) => [
-            row.label,
-            String(row.count),
-          ])}
+        <InsightSection
+          id="what"
+          title={t("whatTitle")}
+          takeaway={
+            stats.categories[0]
+              ? t("whatTakeaway", {
+                  category: stats.categories[0].label,
+                  share: stats.hiring.companies / stats.total,
+                })
+              : undefined
+          }
         >
-          <StartupSourcesCoverageChart
-            data={stats.sourcesCoverage}
-            label={copy.sourcesCoverageTitle}
+          <StepLegend
+            items={[
+              { label: t("legendHiring"), fill: INSIGHT_FILL.strong },
+              { label: t("legendNotHiring"), fill: INSIGHT_FILL.soft },
+            ]}
           />
-        </InsightTile>
-      ) : (
-        <OmittedTile
-          tile="sources-coverage"
-          title={copy.sourcesCoverageTitle}
-          message={copy.sourcesOmitted}
-        />
-      )}
+          <RankedBars
+            caption={t("whatTitle")}
+            labelHeader={t("categoryColumn")}
+            valueHeader={t("countColumn")}
+            labelWidth="w-24 sm:w-28"
+            valueRoom="pr-28"
+            rows={stats.categories.map((row) => ({
+              key: row.id,
+              label: (
+                <Link
+                  href={buildStartupDirectoryPath({ category: row.id })}
+                  className="underline-offset-4 hover:underline"
+                >
+                  {row.label}
+                </Link>
+              ),
+              value: row.count,
+              emphasis: row.hiring,
+              display: format(row.count),
+              note:
+                row.hiring > 0
+                  ? t("hiringInCategory", { count: format(row.hiring) })
+                  : undefined,
+            }))}
+          />
+        </InsightSection>
+
+        <InsightSection
+          id="hiring"
+          title={t("hiringTitle")}
+          takeaway={
+            stats.hiring.top.length > 0 ? t("hiringTakeaway") : undefined
+          }
+          footnote={
+            stats.hiring.rolesCapped
+              ? t("hiringCapNote", { cap: STARTUP_ROLES_PER_COMPANY_CAP })
+              : undefined
+          }
+        >
+          {stats.hiring.top.length > 0 ? (
+            <>
+              <RankedBars
+                caption={t("hiringTitle")}
+                labelHeader={t("sectionHiring")}
+                valueHeader={t("countColumn")}
+                labelWidth="w-24 sm:w-28"
+                rows={stats.hiring.bands.map((band) => ({
+                  key: String(band.min),
+                  label:
+                    band.max === null
+                      ? t("roleBandOpen", { min: band.min })
+                      : t("roleBand", { min: band.min, max: band.max }),
+                  value: band.count,
+                  display: format(band.count),
+                }))}
+              />
+              <div className="flex flex-col gap-3">
+                <h3 className="text-muted-foreground text-xs font-medium">
+                  {t("hiringTopTitle")}
+                </h3>
+                <ul
+                  data-insights-top-hiring=""
+                  className="flex flex-wrap gap-2"
+                >
+                  {stats.hiring.top.map((row) => (
+                    <li key={row.id}>
+                      <Link
+                        href={buildStartupProfilePath(row.slug)}
+                        className="border-border hover:bg-muted/50 focus-visible:ring-ring/50 inline-flex items-center gap-2 rounded-full border py-1 pr-3 pl-1 text-sm transition-colors outline-none focus-visible:ring-[3px]"
+                      >
+                        <StartupLogo card={row} size="xs" />
+                        <span>{row.name}</span>
+                        <span className="text-muted-foreground font-mono text-xs tabular-nums">
+                          {row.capped
+                            ? `${format(row.roles)}+`
+                            : format(row.roles)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <Link
+                href={STARTUPS_JOBS_PATH}
+                className="w-fit text-sm font-medium underline-offset-4 hover:underline"
+              >
+                {t("hiringSeeAll")}
+              </Link>
+            </>
+          ) : (
+            <p className="text-muted-foreground text-sm">{t("hiringNone")}</p>
+          )}
+        </InsightSection>
+
+        <InsightSection
+          id="sources"
+          title={t("sourcesTitle")}
+          takeaway={t("sourcesTakeaway", {
+            share: countOf(stats.sourceDepth, 3) / stats.total,
+          })}
+        >
+          <ShareBar
+            caption={t("sourcesTitle")}
+            segments={([3, 2, 1] as const).map((sources) => {
+              const count = countOf(stats.sourceDepth, sources);
+              return {
+                key: String(sources),
+                label: t("sourcesBucket", { count: sources }),
+                value: count,
+                display: format(count),
+                share: formatShare(count / stats.total, locale),
+                fill:
+                  sources === 3
+                    ? INSIGHT_FILL.strong
+                    : sources === 2
+                      ? INSIGHT_FILL.mid
+                      : INSIGHT_FILL.soft,
+              };
+            })}
+          />
+        </InsightSection>
+
+        {exitCount + stats.exits.shutdown > 0 ? (
+          <InsightSection id="exits" title={t("exitsTitle")}>
+            <ul className="divide-border divide-y text-sm">
+              {STARTUP_EXIT_STATUS_IDS.filter(
+                (status) => stats.exits[status] > 0,
+              ).map((status) => (
+                <li key={status}>
+                  <Link
+                    href={buildStartupDirectoryPath({ status })}
+                    className="hover:bg-muted/50 flex items-center justify-between gap-4 py-2.5 transition-colors"
+                  >
+                    <span className="underline-offset-4 hover:underline">
+                      {STARTUP_EXIT_STATUS_LABELS[status][locale]}
+                    </span>
+                    <span className="font-mono text-xs tabular-nums">
+                      {format(stats.exits[status])}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </InsightSection>
+        ) : null}
+
+        {stats.stageMix ? (
+          <InsightSection id="stage" title={t("stageTitle")}>
+            <RankedBars
+              caption={t("stageTitle")}
+              labelHeader={t("stageColumn")}
+              valueHeader={t("countColumn")}
+              rows={stats.stageMix.map((row) => ({
+                key: row.stage,
+                label: row.stage,
+                value: row.count,
+                display: format(row.count),
+              }))}
+            />
+          </InsightSection>
+        ) : null}
+      </div>
+
+      {notYet.length > 0 ? (
+        <aside
+          data-insights-not-yet=""
+          aria-labelledby="insight-not-yet"
+          className="flex flex-col gap-3"
+        >
+          <SectionLabel as="h2" id="insight-not-yet">
+            {t("notYetTitle")}
+          </SectionLabel>
+          <ul className="text-muted-foreground flex flex-col gap-1 text-sm">
+            {notYet.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </aside>
+      ) : null}
     </div>
   );
 }
 
-function OmittedTile({
-  tile,
+function InsightSection({
+  id,
   title,
-  message,
+  takeaway,
+  footnote,
+  children,
 }: {
-  tile: string;
+  id: string;
   title: string;
-  message: string;
+  takeaway?: string;
+  footnote?: string;
+  children: ReactNode;
 }) {
-  const headingId = `${tile}-omitted`;
+  const headingId = `insight-${id}`;
   return (
     <section
-      data-startups-insight-tile={tile}
-      data-startups-insight-omitted=""
       aria-labelledby={headingId}
-      className="bg-card text-card-foreground flex flex-col gap-4 self-stretch rounded-xl border p-6 shadow-sm"
+      data-startups-insight-tile={id}
+      className="flex min-w-0 flex-col gap-5"
     >
-      <h2 id={headingId} className="text-lg font-semibold tracking-tight">
+      <SectionLabel as="h2" id={headingId}>
         {title}
-      </h2>
-      <p
-        data-startups-insight-omitted-copy=""
-        className="text-muted-foreground text-sm leading-relaxed"
-      >
-        {message}
-      </p>
+      </SectionLabel>
+      {takeaway ? (
+        <p className="text-lg leading-snug font-medium tracking-tight text-balance">
+          {takeaway}
+        </p>
+      ) : null}
+      {children}
+      {footnote ? (
+        <p className="text-muted-foreground text-xs leading-relaxed">
+          {footnote}
+        </p>
+      ) : null}
     </section>
   );
 }
 
-function InsightTile({
-  tile,
-  wide = false,
-  title,
-  caption,
-  columns,
-  rows,
-  children,
-}: {
-  tile: string;
-  wide?: boolean;
-  title: string;
-  caption: string;
-  columns: [string, string];
-  rows: Array<[string, string]>;
-  children: ReactNode;
-}) {
-  const headingId = title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-  return (
-    <section
-      data-startups-insight-tile={tile}
-      aria-labelledby={headingId}
-      className={cn(
-        "bg-card text-card-foreground flex flex-col gap-4 self-stretch rounded-xl border p-6 shadow-sm",
-        wide && "md:col-span-2",
-      )}
-    >
-      <div className="flex flex-col gap-1">
-        <h2 id={headingId} className="text-lg font-semibold tracking-tight">
-          {title}
-        </h2>
-        <p className="text-muted-foreground text-sm">{caption}</p>
-      </div>
-      {children}
-      <div
-        data-startups-insight-table
-        className={cn("overflow-auto", wide ? "max-h-56" : "max-h-48")}
-      >
-        <table className="w-full min-w-56 text-sm">
-          <caption className="sr-only">{title}</caption>
-          <thead>
-            <tr className="border-border text-muted-foreground border-b text-left font-mono text-xs tracking-wider uppercase">
-              <th scope="col" className="py-2 pr-4 font-medium">
-                {columns[0]}
-              </th>
-              <th scope="col" className="py-2 font-medium">
-                {columns[1]}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(([name, count]) => (
-              <tr
-                key={`${name}-${count}`}
-                className="border-border border-b last:border-0"
-              >
-                <th scope="row" className="py-2 pr-4 font-normal">
-                  {name}
-                </th>
-                <td className="font-mono tabular-nums">{count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+function whereTakeaway(
+  stats: StartupsInsightsStats,
+  t: StartupsInsightsT,
+): string | undefined {
+  const countries = stats.countries;
+  const [first, second] = countries?.rows ?? [];
+  if (!countries || !first || !second) return undefined;
+  const placed = stats.total - countries.unplaced;
+  return t("whereTakeaway", {
+    first: first.country,
+    second: second.country,
+    share: (first.count + second.count) / placed,
+  });
+}
+
+function countOf(
+  depth: StartupsInsightsStats["sourceDepth"],
+  sources: 1 | 2 | 3,
+): number {
+  return depth.find((row) => row.sources === sources)?.count ?? 0;
+}
+
+/** Whole-percent share; a non-zero share under 0.5% reads "<1%", not "0%". */
+function formatShare(share: number, locale: StartupLocale): string {
+  const percent = new Intl.NumberFormat(locale === "nl" ? "nl-NL" : "en-US", {
+    style: "percent",
+    maximumFractionDigits: 0,
+  });
+  return share > 0 && share < 0.005
+    ? `<${percent.format(0.01)}`
+    : percent.format(share);
+}
+
+/** Headline counts read first: numbers in ink, words in muted text. */
+function emphasizeNumbers(text: string): ReactNode[] {
+  return text.split(/(\d[\d.,  ]*\d\+?|\d\+?)/).map((part, index) =>
+    index % 2 === 1 ? (
+      <strong key={index} className="text-foreground font-semibold">
+        {part}
+      </strong>
+    ) : (
+      part
+    ),
   );
 }

@@ -6,6 +6,8 @@ import {
 import { cn } from "@/lib/utils";
 
 const SIZES = {
+  /** Inline beside a label, e.g. an Insights bar row. */
+  xs: { box: "size-5 rounded-[4px]", text: "text-[10px]", px: 20 },
   /** Directory row. */
   sm: { box: "size-9 rounded-md", text: "text-sm", px: 36 },
   /** Profile header; fills the crop-mark frame. */
@@ -33,7 +35,7 @@ export function StartupLogo({
       alt=""
       width={px}
       height={px}
-      loading={size === "sm" ? "lazy" : undefined}
+      loading={size === "lg" ? undefined : "lazy"}
       data-startup-logo={logoUrl}
       className={cn(
         "border-border bg-background shrink-0 border object-cover",

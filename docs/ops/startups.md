@@ -129,11 +129,32 @@ Hub operator (`Add a company`).
 
 ## Insights
 
-`/en/startups/insights` aggregates **listed Neon rows only**.
-Bento hero: Added over time. 2×2: Category / Region / Stage / Sources
-coverage. HTML table under each chart. Blank stage omits the chart (no
-fake empty series). **Region mix is soft-omitted until ≥5 distinct sourced
-regions** — never invent region zeros. Directory ↔ Insights are hard links.
+`/en/startups/insights` aggregates **listed Neon rows only**
+(`buildStartupInsights`). It opens with one sentence of headline counts
+(companies, countries, hiring companies and open roles, exits), then one
+section per question:
+
+- **Where they are** — sourced places folded to countries
+  (`startupCountryOf`: "USA" = "United States", US states and US city
+  aliases count as the US; "Remote" / "Middle East" / ambiguous two-letter
+  codes like "IL" or "CA" stay unplaced and are counted in a footnote, never
+  guessed). Top 10 countries plus one "N other countries" row. Soft-omitted
+  until companies from ≥5 countries are listed.
+- **What they build** — categories, each bar split into hiring now / no open
+  roles found; rows link to the filtered directory.
+- **Who is hiring** — hiring companies by open-role band (1–4, 5–9, 10–19,
+  20–39, 40+). The job scan stops at `STARTUP_ROLES_PER_COMPANY_CAP` (40), so
+  40+ means 40 or more and the headline says "at least N open roles"; every
+  company at the cap is named (the scan cannot rank that tie).
+- **How well sourced** — one bar split by 3 / 2 / 1 cited sources.
+- **Exits** — acquired / IPO / shutdown counts linking to the filtered
+  directory, shown only when any exist.
+
+Stage and a monthly listing timeline appear only once sourced (stage) or
+once listings span ≥3 months; until then they are named under **Not shown
+yet**, never drawn as empty charts. Charts are HTML tables with bars in one
+hue (`--chart-2`, plus validated lighter steps), so every value reads
+without hover. Directory ↔ Insights are hard links.
 
 ## Join chrome
 

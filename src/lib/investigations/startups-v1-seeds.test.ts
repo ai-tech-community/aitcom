@@ -229,7 +229,7 @@ describe("Startups v1 Ops-Passed seeds", () => {
     const stats = buildStartupInsights(startupsV1PublicCards(), "en");
     expect(stats.total).toBe(20);
     expect(
-      Object.fromEntries(stats.categoryMix.map((row) => [row.id, row.count])),
+      Object.fromEntries(stats.categories.map((row) => [row.id, row.count])),
     ).toEqual({
       robotics: 6,
       "ai-infra": 5,
@@ -238,17 +238,14 @@ describe("Startups v1 Ops-Passed seeds", () => {
       agents: 1,
       vertical: 1,
     });
-    expect(stats.regionMix).toBeNull();
     expect(stats.stageMix).toBeNull();
-    expect(
-      stats.sourcesCoverage?.map((row) => [row.sources, row.count]),
-    ).toEqual([
+    expect(stats.sourceDepth.map((row) => [row.sources, row.count])).toEqual([
+      [1, 0],
       [2, 6],
       [3, 14],
     ]);
-    expect(stats.addedOverTime).toEqual([
-      { month: "2026-09", label: "Sep 2026", count: 20 },
-    ]);
+    // All seeds were listed in one month: no timeline yet.
+    expect(stats.timeline).toBeNull();
   });
 });
 

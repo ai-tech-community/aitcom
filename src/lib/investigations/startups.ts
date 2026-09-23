@@ -32,7 +32,7 @@ export const STARTUPS_META =
 export const STARTUPS_INSIGHTS_H1 = "AI startups insights";
 
 export const STARTUPS_INSIGHTS_META =
-  "Added over time, plus category, region, stage, and source coverage — from the live directory only. Blank stage stays omitted. Region mix waits until five distinct sourced regions are listed.";
+  "Where listed AI startups are, what they build, who is hiring, and how well each listing is sourced. Counted from the live directory only; nothing estimated.";
 
 export const STARTUPS_JOIN_HREF =
   "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=startups&utm_campaign=startups";
