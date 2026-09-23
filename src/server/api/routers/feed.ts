@@ -21,6 +21,10 @@ import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
 import { isCommunityVideosEnabled } from "@/lib/community-videos-flag";
 import { getVideoStorage } from "@/server/media/video-storage";
 import {
+  isModeratorRole,
+  postVisibilityWhere,
+} from "@/server/communities/post-visibility";
+import {
   cleanUpDeletedPostVideo,
   finishVideoPost,
   issueVideoUpload,
@@ -49,6 +53,11 @@ export const feedRouter = createTRPCRouter({
         and: [
           { communityId: { equals: community.id } },
           { isDeleted: { not_equals: true } },
+          postVisibilityWhere({
+            userId: ctx.session.user.id,
+            isMember: true,
+            isModerator: isModeratorRole(community.role),
+          }),
         ],
       };
 
@@ -93,6 +102,7 @@ export const feedRouter = createTRPCRouter({
         payload,
         page,
         ctx.session.user.id,
+        getVideoStorage(),
       );
       const last = page.at(-1);
       const nextCursor =
@@ -127,6 +137,12 @@ export const feedRouter = createTRPCRouter({
         payload: await getPayloadClient(),
         community,
         viewerId: ctx.session.user.id,
+        viewer: {
+          userId: ctx.session.user.id,
+          isMember: true,
+          isModerator: isModeratorRole(community.role),
+        },
+        storage: getVideoStorage(),
         cursor: input.cursor ?? null,
         limit: input.limit,
       });

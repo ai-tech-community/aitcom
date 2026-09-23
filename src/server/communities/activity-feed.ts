@@ -19,6 +19,11 @@ import {
 } from "@/server/communities/feed-posts";
 import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
 import { HUB_SLUG } from "@/server/communities/hub";
+import {
+  postVisibilityWhere,
+  type FeedViewer,
+} from "@/server/communities/post-visibility";
+import type { VideoStorage } from "@/server/media/video-storage";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -87,6 +92,8 @@ export async function loadCommunityActivity({
   payload,
   community,
   viewerId,
+  viewer,
+  storage,
   cursor,
   limit,
 }: {
@@ -94,9 +101,13 @@ export async function loadCommunityActivity({
   payload: Payload;
   community: { id: string; slug: string };
   viewerId: string;
+  /** Who is looking; decides which posts (hidden, community-only) show. */
+  viewer: FeedViewer;
+  storage: VideoStorage;
   cursor: ActivityCursor | null;
   limit: number;
 }): Promise<CommunityActivityPage> {
+  const visiblePosts = postVisibilityWhere(viewer);
   const perSource = limit + SOURCE_HEADROOM;
   const atOrBefore = cursor ? { less_than_equal: cursor.at } : undefined;
   const withCursor = (clauses: Where[]): Where => ({
@@ -110,6 +121,7 @@ export async function loadCommunityActivity({
         { communityId: { equals: community.id } },
         { isDeleted: { not_equals: true } },
         { isPinned: { not_equals: true } },
+        visiblePosts,
       ]),
       sort: "-createdAt",
       limit: perSource,
@@ -186,6 +198,7 @@ export async function loadCommunityActivity({
               { communityId: { equals: community.id } },
               { isDeleted: { not_equals: true } },
               { isPinned: { equals: true } },
+              visiblePosts,
             ],
           },
           sort: "-createdAt",
@@ -251,8 +264,8 @@ export async function loadCommunityActivity({
     .map((entry) => entry.data as (typeof posts.docs)[number]);
   const pinnedPosts = pinnedDocs?.docs ?? [];
   const [decorated, decoratedPinned] = await Promise.all([
-    decorateFeedPosts(database, payload, pagePosts, viewerId),
-    decorateFeedPosts(database, payload, pinnedPosts, viewerId),
+    decorateFeedPosts(database, payload, pagePosts, viewerId, storage),
+    decorateFeedPosts(database, payload, pinnedPosts, viewerId, storage),
   ]);
   const postById = new Map(decorated.map((post) => [String(post.id), post]));
   const authorImages = await loadUserImages(

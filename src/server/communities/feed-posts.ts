@@ -6,6 +6,7 @@ import { communities, communityMemberships, user } from "@/server/db/schema";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 import type { CommunityRole } from "@/server/communities/role-utils";
+import type { VideoStorage } from "@/server/media/video-storage";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -83,10 +84,41 @@ export async function requireFeedPoster(
   return community;
 }
 
-export type FeedPostView = FeedPost & {
+/** What a client sees of a post's video: playback links, never storage keys. */
+export type FeedVideoView = {
+  url: string;
+  thumbnailUrl: string;
+  durationSeconds: number;
+  width: number;
+  height: number;
+  visibility: "community" | "public";
+};
+
+export type FeedPostView = Omit<FeedPost, "video"> & {
   authorImage: string | null;
   hasLiked: boolean;
+  video: FeedVideoView | null;
 };
+
+async function videoView(
+  post: FeedPost,
+  storage: VideoStorage,
+): Promise<FeedVideoView | null> {
+  const video = post.video;
+  if (!video?.key || !video.thumbnailKey || !video.storage) return null;
+  const [url, thumbnailUrl] = await Promise.all([
+    storage.playbackUrl(video.key, video.storage),
+    storage.playbackUrl(video.thumbnailKey, video.storage),
+  ]);
+  return {
+    url,
+    thumbnailUrl,
+    durationSeconds: video.durationSeconds ?? 0,
+    width: video.width ?? 0,
+    height: video.height ?? 0,
+    visibility: post.visibility === "public" ? "public" : "community",
+  };
+}
 
 /** Author photos for a set of user ids, in one query. */
 export async function loadUserImages(
@@ -104,12 +136,16 @@ export async function loadUserImages(
   return images;
 }
 
-/** Adds the author photo and whether the viewer liked each post. */
+/**
+ * Adds the author photo, whether the viewer liked each post, and playback
+ * links for a post's video (the raw storage keys never leave the server).
+ */
 export async function decorateFeedPosts(
   database: Database,
   payload: Payload,
   posts: readonly FeedPost[],
   viewerId: string | null | undefined,
+  storage: VideoStorage,
 ): Promise<FeedPostView[]> {
   if (posts.length === 0) return [];
   const images = await loadUserImages(
@@ -135,9 +171,12 @@ export async function decorateFeedPosts(
       ),
     );
   }
-  return posts.map((post) => ({
-    ...post,
-    authorImage: images.get(post.authorId) ?? null,
-    hasLiked: liked.has(post.id),
-  }));
+  return Promise.all(
+    posts.map(async (post) => ({
+      ...post,
+      authorImage: images.get(post.authorId) ?? null,
+      hasLiked: liked.has(post.id),
+      video: await videoView(post, storage),
+    })),
+  );
 }
