@@ -6,6 +6,7 @@ import { getSession } from "@/server/better-auth/server";
 import { listMyCommunities } from "@/server/communities/my-communities";
 import { db } from "@/server/db";
 import { listMyTrackedStartupRoles } from "@/server/startups/member-jobs";
+import { listMyRoleHelp } from "@/server/startups/role-help";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +15,10 @@ export default async function DashboardJobsPage() {
   if (!session?.user) redirect("/auth/signin");
 
   const locale = await getLocale();
-  const [tracked, memberships] = await Promise.all([
+  const [tracked, memberships, help] = await Promise.all([
     listMyTrackedStartupRoles(session.user.id),
     listMyCommunities(db, session.user.id),
+    listMyRoleHelp(session.user.id),
   ]);
   const communities = memberships
     .filter((membership) => membership.status === "active")
@@ -30,6 +32,7 @@ export default async function DashboardJobsPage() {
       locale={locale}
       tracked={tracked}
       communities={communities}
+      helpRequests={help}
     />
   );
 }
