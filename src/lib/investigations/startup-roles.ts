@@ -67,6 +67,8 @@ export type ExtractedJobListing = {
   workType: string | null;
   descriptionText: string | null;
   externalId: string | null;
+  /** ATS publish date as YYYY-MM-DD. Never a scan or crawl timestamp. */
+  postedAt: string | null;
   board: StartupRoleBoard;
 };
 
@@ -379,37 +381,412 @@ export function startupRoleSitemapPaths(slugs: readonly string[]): string[] {
   return paths;
 }
 
+const NON_PLACE =
+  /^(?:remote|hybrid|worldwide|global|distributed|online|onsite|on-site|in[- ]office)$/i;
+
+const STREET_PART =
+  /\b(?:street|st|road|rd|avenue|ave|boulevard|blvd|drive|dr|lane|ln|way|suite|ste|floor|fl)\b/i;
+
+const POSTAL_CODE_PART = /^(?:\d{5}(?:-\d{4})?|[A-Z]\d[A-Z]\s?\d[A-Z]\d)$/i;
+
+const US_STATE_CODES = new Set([
+  "al",
+  "ak",
+  "az",
+  "ar",
+  "ca",
+  "co",
+  "ct",
+  "de",
+  "dc",
+  "fl",
+  "ga",
+  "hi",
+  "id",
+  "il",
+  "in",
+  "ia",
+  "ks",
+  "ky",
+  "la",
+  "me",
+  "md",
+  "ma",
+  "mi",
+  "mn",
+  "ms",
+  "mo",
+  "mt",
+  "ne",
+  "nv",
+  "nh",
+  "nj",
+  "nm",
+  "ny",
+  "nc",
+  "nd",
+  "oh",
+  "ok",
+  "or",
+  "pa",
+  "ri",
+  "sc",
+  "sd",
+  "tn",
+  "tx",
+  "ut",
+  "vt",
+  "va",
+  "wa",
+  "wv",
+  "wi",
+  "wy",
+]);
+
+const CA_PROVINCE_CODES = new Set([
+  "ab",
+  "bc",
+  "mb",
+  "nb",
+  "nl",
+  "ns",
+  "nt",
+  "nu",
+  "on",
+  "pe",
+  "qc",
+  "sk",
+  "yt",
+]);
+
+const REGION_NAMES = new Set([
+  "alabama",
+  "alaska",
+  "arizona",
+  "arkansas",
+  "california",
+  "colorado",
+  "connecticut",
+  "delaware",
+  "florida",
+  "georgia",
+  "hawaii",
+  "idaho",
+  "illinois",
+  "indiana",
+  "iowa",
+  "kansas",
+  "kentucky",
+  "louisiana",
+  "maine",
+  "maryland",
+  "massachusetts",
+  "michigan",
+  "minnesota",
+  "mississippi",
+  "missouri",
+  "montana",
+  "nebraska",
+  "nevada",
+  "new hampshire",
+  "new jersey",
+  "new mexico",
+  "new york",
+  "north carolina",
+  "north dakota",
+  "ohio",
+  "oklahoma",
+  "oregon",
+  "pennsylvania",
+  "rhode island",
+  "south carolina",
+  "south dakota",
+  "tennessee",
+  "texas",
+  "utah",
+  "vermont",
+  "virginia",
+  "washington",
+  "west virginia",
+  "wisconsin",
+  "wyoming",
+  "district of columbia",
+  "ontario",
+  "quebec",
+  "british columbia",
+  "alberta",
+  "manitoba",
+  "saskatchewan",
+  "nova scotia",
+  "new brunswick",
+  "newfoundland",
+  "prince edward island",
+  "england",
+  "scotland",
+  "wales",
+  "northern ireland",
+]);
+
+const COUNTRY_NAMES = new Set([
+  "usa",
+  "us",
+  "united states",
+  "united states of america",
+  "canada",
+  "uk",
+  "united kingdom",
+  "great britain",
+  "france",
+  "germany",
+  "netherlands",
+  "the netherlands",
+  "israel",
+  "india",
+  "ireland",
+  "australia",
+  "switzerland",
+  "sweden",
+  "spain",
+  "italy",
+  "japan",
+  "south korea",
+  "korea",
+  "brazil",
+  "mexico",
+  "singapore",
+  "china",
+  "taiwan",
+  "hong kong",
+  "new zealand",
+  "belgium",
+  "austria",
+  "poland",
+  "portugal",
+  "norway",
+  "denmark",
+  "finland",
+  "estonia",
+  "greece",
+  "turkey",
+  "uae",
+  "united arab emirates",
+  "luxembourg",
+  "czech republic",
+  "czechia",
+  "romania",
+  "ukraine",
+  "argentina",
+  "chile",
+  "south africa",
+  "nigeria",
+  "kenya",
+  "indonesia",
+  "vietnam",
+  "thailand",
+  "philippines",
+  "malaysia",
+  "saudi arabia",
+  "qatar",
+  "egypt",
+  "colombia",
+  "peru",
+  "iceland",
+  "hungary",
+  "lithuania",
+  "latvia",
+]);
+
+/** ISO country codes that are not also a US state or Canadian province. */
+const COUNTRY_CODES = new Set([
+  "us",
+  "gb",
+  "uk",
+  "fr",
+  "nl",
+  "ie",
+  "au",
+  "ch",
+  "se",
+  "es",
+  "it",
+  "jp",
+  "kr",
+  "br",
+  "mx",
+  "sg",
+  "cn",
+  "tw",
+  "hk",
+  "nz",
+  "be",
+  "at",
+  "pl",
+  "pt",
+  "no",
+  "dk",
+  "fi",
+  "ee",
+  "gr",
+  "tr",
+  "ae",
+  "lu",
+  "cz",
+  "ro",
+  "ua",
+  "cl",
+  "za",
+  "ng",
+  "ke",
+  "vn",
+  "th",
+  "ph",
+  "my",
+  "sa",
+  "qa",
+  "eg",
+  "pe",
+  "is",
+  "hu",
+  "lt",
+  "lv",
+]);
+
+function placeKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\./g, "");
+}
+
+function isRegionCode(value: string): boolean {
+  const key = placeKey(value);
+  return US_STATE_CODES.has(key) || CA_PROVINCE_CODES.has(key);
+}
+
+function countryToken(value: string): string | null {
+  const trimmed = value.trim();
+  const key = placeKey(trimmed);
+  if (COUNTRY_NAMES.has(key)) return trimmed;
+  if (key.length === 2 && COUNTRY_CODES.has(key) && !isRegionCode(trimmed)) {
+    return trimmed;
+  }
+  return null;
+}
+
+function regionToken(value: string): string | null {
+  const trimmed = value.trim();
+  const key = placeKey(trimmed);
+  if (isRegionCode(trimmed) || REGION_NAMES.has(key)) return trimmed;
+  return null;
+}
+
+function isStreetPart(value: string): boolean {
+  return /\d/.test(value) && STREET_PART.test(value);
+}
+
+/**
+ * YYYY-MM-DD from an ATS / careers-board publish timestamp.
+ * Soft-omits missing, non-ISO, and impossible calendar dates.
+ * Does not read crawl time, fetchedAt, or the current clock.
+ */
+export function sourcedIsoDate(
+  value: string | null | undefined,
+): string | null {
+  const text = presentText(value);
+  if (!text) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:$|T)/.exec(text);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  if (
+    utc.getUTCFullYear() !== year ||
+    utc.getUTCMonth() !== month - 1 ||
+    utc.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return `${match[1]}-${match[2]}-${match[3]}`;
+}
+
+function postalAddressFromSegment(
+  segment: string,
+): Record<string, string> | null {
+  const parts = segment
+    .split(",")
+    .map((part) => part.trim())
+    .filter(
+      (part) =>
+        part.length > 0 &&
+        !NON_PLACE.test(part) &&
+        !isStreetPart(part) &&
+        !POSTAL_CODE_PART.test(part),
+    );
+  if (parts.length === 0) return null;
+
+  const address: Record<string, string> = { "@type": "PostalAddress" };
+  let rest = parts;
+  const country = countryToken(parts.at(-1) ?? "");
+  if (country) {
+    address.addressCountry = country;
+    rest = parts.slice(0, -1);
+  }
+  if (rest.length === 0) return address;
+  if (rest.length === 1) {
+    const only = rest[0] ?? "";
+    const region = regionToken(only);
+    if (region) address.addressRegion = region;
+    else address.addressLocality = only;
+    return address;
+  }
+  address.addressLocality = rest[0] ?? "";
+  const regionSource = rest.at(-1) ?? "";
+  address.addressRegion = regionToken(regionSource) ?? regionSource;
+  return address;
+}
+
+function jobLocationFromPlace(
+  value: string | null | undefined,
+): Record<string, unknown> | Record<string, unknown>[] | null {
+  const text = presentText(value);
+  if (!text) return null;
+  const places = text
+    .split(/\s*[|;]\s*/)
+    .map((part) =>
+      part
+        .replace(
+          /\s*\((?:remote|hybrid|onsite|on-site|in[- ]office)\)\s*/gi,
+          " ",
+        )
+        .trim(),
+    )
+    .filter((part) => part.length > 0 && !NON_PLACE.test(part))
+    .flatMap((segment) => {
+      const address = postalAddressFromSegment(segment);
+      return address ? [{ "@type": "Place", address }] : [];
+    });
+  if (places.length === 0) return null;
+  if (places.length === 1) return places[0] ?? null;
+  return places;
+}
+
 export function startupRoleJsonLd(
   role: StartupRolePublic,
-): Record<string, unknown> {
+): Record<string, unknown> | null {
+  const datePosted = sourcedIsoDate(role.postedAt);
+  if (!datePosted) return null;
   const title = cleanStartupRoleTitle(role.title) ?? role.title;
   const description = sanitizeStartupRoleDescription(role.descriptionText);
   const item: Record<string, unknown> = {
     "@type": "JobPosting",
     title,
     url: role.sourceUrl,
+    datePosted,
     hiringOrganization: {
       "@type": "Organization",
       name: role.startupName,
     },
   };
   if (description) item.description = description;
-  if (role.location) {
-    item.jobLocation = {
-      "@type": "Place",
-      address: role.location,
-    };
-  }
-  const datePosted = boardSourcedDatePosted(role.postedAt);
-  if (datePosted) item.datePosted = datePosted;
+  const jobLocation = jobLocationFromPlace(role.location);
+  if (jobLocation) item.jobLocation = jobLocation;
   return item;
-}
-
-/** YYYY-MM-DD from a board-sourced timestamp. Soft-omit when missing or invalid. */
-function boardSourcedDatePosted(
-  value: string | null | undefined,
-): string | null {
-  const text = presentText(value);
-  if (!text) return null;
-  return /^(\d{4}-\d{2}-\d{2})/.exec(text)?.[1] ?? null;
 }

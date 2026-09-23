@@ -218,7 +218,15 @@ the active filters.
   supplies the JD. Rippling boards are read from the page payload. A listing
   title that only adds “Apply now” is replaced by the posting-page title.
   Card chrome glued into the title (work type, location, “Read more”) is
-  stripped so the stored title and JobPosting JSON-LD stay role-only; OCR
+  stripped so the stored title and JobPosting JSON-LD stay role-only. The
+  JobPosting block is emitted only when the ATS supplied a real publish
+  date (`datePosted`, `publishedAt`, `published_on`, or `first_published`).
+  `updated_at`, `createdAt`, `fetchedAt`, and the crawl clock are never
+  used as `datePosted`. A sourced place is a PostalAddress with only the
+  `addressLocality` / `addressRegion` / `addressCountry` tokens in the
+  string. Street and postal code stay omitted. `employmentType`,
+  `validThrough`, and `baseSalary` stay omitted unless the ATS already
+  stored a real value. OCR
   prefixes like “kevAbout” are dropped from the description start.
   Rich-text blocks (for example Webflow `job-rich-text`), Elementor post
   content, and Framer `Content` regions supply the JD when the page has no

@@ -106,6 +106,7 @@ import * as migration_20260921b_startup_open_role_count from "./20260921b_startu
 import * as migration_20260922a_startup_jobs_follow from "./20260922a_startup_jobs_follow";
 import * as migration_20260923a_startup_role_application_status from "./20260923a_startup_role_application_status";
 import * as migration_20260923b_startup_role_help from "./20260923b_startup_role_help";
+import * as migration_20260923c_startup_role_posted_at from "./20260923c_startup_role_posted_at";
 
 export const migrations = [
   {
@@ -647,5 +648,10 @@ export const migrations = [
     up: migration_20260923b_startup_role_help.up,
     down: migration_20260923b_startup_role_help.down,
     name: "20260923b_startup_role_help",
+  },
+  {
+    up: migration_20260923c_startup_role_posted_at.up,
+    down: migration_20260923c_startup_role_posted_at.down,
+    name: "20260923c_startup_role_posted_at",
   },
 ];

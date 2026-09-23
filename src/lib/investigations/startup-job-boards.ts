@@ -2,6 +2,7 @@ import {
   parseStartupRoleLocation,
   parseStartupRoleTitle,
   sanitizeStartupRoleDescription,
+  sourcedIsoDate,
   type ExtractedJobListing,
   type StartupRoleBoard,
 } from "./startup-roles";
@@ -165,6 +166,7 @@ function listing(partial: {
   workType?: string | null;
   descriptionText?: string | null;
   externalId?: string | null;
+  postedAt?: string | null;
   board: StartupRoleBoard;
 }): ExtractedJobListing | null {
   const title = parseStartupRoleTitle(partial.title);
@@ -182,8 +184,21 @@ function listing(partial: {
     workType: presentWorkType(partial.workType),
     descriptionText: sanitizeStartupRoleDescription(partial.descriptionText),
     externalId: presentText(partial.externalId),
+    postedAt: sourcedIsoDate(partial.postedAt),
     board: partial.board,
   };
+}
+
+/** Real ATS publish fields only. Never updated_at, createdAt, or a crawl clock. */
+function atsPostedAt(row: Record<string, unknown>): string | null {
+  return (
+    sourcedIsoDate(asString(row.datePosted)) ??
+    sourcedIsoDate(asString(row.publishedAt)) ??
+    sourcedIsoDate(asString(row.published_at)) ??
+    sourcedIsoDate(asString(row.published_on)) ??
+    sourcedIsoDate(asString(row.first_published)) ??
+    sourcedIsoDate(asString(row.firstPublishedAt))
+  );
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -216,6 +231,7 @@ export function parseGreenhouseJobs(payload: unknown): ExtractedJobListing[] {
       location: asString(location?.name),
       descriptionText: htmlToPlainText(asString(row.content)),
       externalId: asId(row.id),
+      postedAt: atsPostedAt(row),
       board: "greenhouse",
     });
     return parsed ? [parsed] : [];
@@ -242,6 +258,7 @@ export function parseAshbyJobs(payload: unknown): ExtractedJobListing[] {
         asString(row.descriptionPlain) ??
         htmlToPlainText(asString(row.descriptionHtml)),
       externalId: asId(row.id),
+      postedAt: atsPostedAt(row),
       board: "ashby",
     });
     return parsed ? [parsed] : [];
@@ -264,6 +281,7 @@ export function parseLeverJobs(payload: unknown): ExtractedJobListing[] {
         asString(row.descriptionPlain) ??
         htmlToPlainText(asString(row.description)),
       externalId: asId(row.id),
+      postedAt: atsPostedAt(row),
       board: "lever",
     });
     return parsed ? [parsed] : [];
@@ -284,6 +302,7 @@ export function parseWorkableJobs(payload: unknown): ExtractedJobListing[] {
       location: asString(location?.city) ?? asString(row.location),
       descriptionText: htmlToPlainText(asString(row.description)),
       externalId: asString(row.shortcode) ?? asId(row.id),
+      postedAt: atsPostedAt(row),
       board: "workable",
     });
     return parsed ? [parsed] : [];
@@ -395,6 +414,7 @@ export function extractJobsFromJsonLd(
       workType: asString(node.employmentType),
       descriptionText: htmlToPlainText(asString(node.description)),
       externalId: asString(identifier?.value) ?? asId(node.identifier),
+      postedAt: atsPostedAt(node),
       board: "html",
     });
     if (parsed) listings.push(parsed);
@@ -472,6 +492,7 @@ export function extractInertiaJobBoard(
       location: asString(row.location),
       workType: asString(row.type),
       externalId: asId(row.id),
+      postedAt: atsPostedAt(row),
       board: "html",
     });
     if (parsed) listings.push(parsed);
@@ -508,6 +529,7 @@ export function extractRipplingBoardJobs(
       sourceUrl: url.toString(),
       location: asString(place),
       externalId: asString(row.id),
+      postedAt: atsPostedAt(row),
       board: "html",
     });
     if (parsed) listings.push(parsed);
@@ -858,7 +880,7 @@ export function extractJobPostingFromHtml(
   sourceUrl: string,
 ): Pick<
   ExtractedJobListing,
-  "title" | "location" | "descriptionText" | "workType"
+  "title" | "location" | "descriptionText" | "workType" | "postedAt"
 > | null {
   const structured = postingFromInertia(html) ?? postingFromRippling(html);
   const fromLd = extractJobsFromJsonLd(html, sourceUrl)[0];
@@ -912,6 +934,7 @@ export function extractJobPostingFromHtml(
       fromLd?.workType ??
       iconDetail(html, /availability|employment|work type/i) ??
       framerLabeledValue(html, "Job Type"),
+    postedAt: fromLd?.postedAt ?? null,
   };
 }
 
@@ -994,10 +1017,12 @@ export function extractEmbeddedBoardJobs(
 
 export function mergePostingIntoListing(
   listing: ExtractedJobListing,
-  posting: Pick<
-    ExtractedJobListing,
-    "title" | "location" | "descriptionText" | "workType"
-  > | null,
+  posting:
+    | (Pick<
+        ExtractedJobListing,
+        "title" | "location" | "descriptionText" | "workType"
+      > & { postedAt?: string | null })
+    | null,
 ): ExtractedJobListing {
   const pageTitle = presentText(posting?.title);
   const listingNorm = listing.title.replace(/\s+/g, " ").trim().toLowerCase();
@@ -1033,6 +1058,7 @@ export function mergePostingIntoListing(
     location: listing.location ?? posting?.location ?? null,
     workType: listing.workType ?? posting?.workType ?? null,
     descriptionText: posting?.descriptionText ?? listing.descriptionText,
+    postedAt: listing.postedAt ?? posting?.postedAt ?? null,
   };
 }
 

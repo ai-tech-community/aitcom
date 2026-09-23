@@ -1664,6 +1664,55 @@ describe("Startups open positions", () => {
     expect(container.textContent).not.toContain(
       en.investigationsStartups.cvTitle,
     );
+    expect(
+      container.querySelector("script[type='application/ld+json']"),
+    ).toBeNull();
+  });
+
+  it("emits JobPosting JSON-LD only when the ATS published a date", () => {
+    const { container } = render(
+      <StartupsRolePage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        role={{
+          ...FIXTURE_ROLE,
+          postedAt: "2026-03-01T12:00:00.000Z",
+          location: "San Francisco, CA | Seattle, WA",
+          workType: "Full-time",
+        }}
+      />,
+    );
+    const data = JSON.parse(
+      container.querySelector("script[type='application/ld+json']")
+        ?.textContent ?? "null",
+    ) as {
+      "@type"?: string;
+      datePosted?: string;
+      jobLocation?: unknown;
+    };
+    expect(data["@type"]).toBe("JobPosting");
+    expect(data.datePosted).toBe("2026-03-01");
+    expect(JSON.stringify(data)).not.toMatch(
+      /streetAddress|postalCode|baseSalary|validThrough|employmentType|2026-09-20/,
+    );
+    expect(data.jobLocation).toEqual([
+      {
+        "@type": "Place",
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: "San Francisco",
+          addressRegion: "CA",
+        },
+      },
+      {
+        "@type": "Place",
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: "Seattle",
+          addressRegion: "WA",
+        },
+      },
+    ]);
   });
 
   it("shows a sourced Role Brief, copy prompt, and CV upload for Hub members", () => {

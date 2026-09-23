@@ -41,10 +41,11 @@ export function StartupsRolePage({
   const fetched = role.fetchedAt.slice(0, 10);
   const member = !promoteJoin;
   const brief = member ? extractStartupRoleBrief(role) : null;
+  const jobPosting = startupRoleJsonLd(role);
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
-      <JsonLd data={startupRoleJsonLd(role)} />
+      {jobPosting ? <JsonLd data={jobPosting} /> : null}
       <nav className="text-muted-foreground text-xs">
         <Link
           href={STARTUPS_JOBS_PATH}
