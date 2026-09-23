@@ -26,7 +26,13 @@ describe("community video schema", () => {
 
   it("defines reports and uploads collections", () => {
     expect(PostReports.slug).toBe("post-reports");
-    expect(names(PostReports.fields as never)).toEqual(["post", "reporterId", "reason", "note"]);
+    expect(names(PostReports.fields as never)).toEqual([
+      "post",
+      "reporterId",
+      "reason",
+      "note",
+      "dismissedAt",
+    ]);
     expect(VideoUploads.slug).toBe("video-uploads");
     expect(names(VideoUploads.fields as never)).toEqual([
       "uploadId",
@@ -52,6 +58,8 @@ describe("community video schema", () => {
       'CREATE TABLE IF NOT EXISTS "post_reports"',
       'CREATE TABLE IF NOT EXISTS "video_uploads"',
       '"post_reports_post_reporter_idx"',
+      '"dismissed_at" timestamp(3) with time zone',
+      'CREATE INDEX IF NOT EXISTS "post_reports_dismissed_at_idx"',
       '"post_reports_id"',
       '"video_uploads_id"',
       'CREATE UNIQUE INDEX IF NOT EXISTS "feed_posts_video_video_key_idx"',

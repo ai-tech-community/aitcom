@@ -46,6 +46,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       "reporter_id" varchar NOT NULL,
       "reason" "enum_post_reports_reason" NOT NULL,
       "note" varchar,
+      "dismissed_at" timestamp(3) with time zone,
       "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
       "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL
     );
@@ -53,6 +54,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
       ON "post_reports"("post_id", "reporter_id");
     CREATE INDEX IF NOT EXISTS "post_reports_post_idx" ON "post_reports"("post_id");
     CREATE INDEX IF NOT EXISTS "post_reports_reporter_id_idx" ON "post_reports"("reporter_id");
+    CREATE INDEX IF NOT EXISTS "post_reports_dismissed_at_idx" ON "post_reports"("dismissed_at");
     CREATE INDEX IF NOT EXISTS "post_reports_created_at_idx" ON "post_reports"("created_at");
 
     CREATE TABLE IF NOT EXISTS "video_uploads" (

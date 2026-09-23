@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { ValidationError } from "payload";
+import { ValidationError, type Where } from "payload";
 
 import type { PostReport } from "@/payload-types";
 import type { VideoStorageSource } from "@/server/media/video-storage";
@@ -29,6 +29,15 @@ export type PostReportView = {
 };
 
 const ALREADY_REPORTED = "You already reported this post.";
+
+/**
+ * Reports a moderator hasn't dismissed yet. A restore dismisses reports
+ * instead of deleting them, so the one-report-per-person rule still holds
+ * for them; only open reports count toward hiding and show to moderators.
+ */
+function openReportsOf(postId: number): Where {
+  return { and: [{ post: { equals: postId } }, { dismissedAt: { exists: false } }] };
+}
 
 async function loadPost(payload: Payload, postId: number) {
   try {
@@ -93,11 +102,11 @@ export async function reportPost(
     }
     throw error;
   }
-  // Count the stored reports rather than adding one to the loaded post, so
-  // two reports landing at once can't both write the same number.
+  // Count the stored open reports rather than adding one to the loaded
+  // post, so two reports landing at once can't both write the same number.
   const { totalDocs: reportCount } = await deps.payload.count({
     collection: "post-reports",
-    where: { post: { equals: post.id } },
+    where: openReportsOf(post.id),
   });
   const firstReport = !post.hiddenAt;
   await deps.payload.update({
@@ -123,7 +132,11 @@ export async function reportPost(
   return { hidden: true };
 }
 
-/** Restore shows the post again; remove deletes it and its files. */
+/**
+ * Restore shows the post again and dismisses its open reports (kept, so
+ * those reporters can't report it again). Remove deletes the post, its
+ * files, and its reports.
+ */
 export async function reviewReport(
   deps: ReportDeps,
   input: { postId: number; action: "restore" | "remove" },
@@ -140,31 +153,36 @@ export async function reviewReport(
   }
   if (input.action === "restore") {
     await deps.payload.update({
+      collection: "post-reports",
+      where: openReportsOf(post.id),
+      data: { dismissedAt: (deps.now?.() ?? new Date()).toISOString() },
+    });
+    await deps.payload.update({
       collection: "feed-posts",
       id: post.id,
       data: { hiddenAt: null, reportCount: 0 },
     });
-  } else {
-    await deps.payload.update({
-      collection: "feed-posts",
-      id: post.id,
-      data: { isDeleted: true, content: "", authorName: "", imageUrl: null },
-    });
-    // Best effort: the post is already removed, so a storage failure is
-    // logged rather than failing the moderator's action.
-    await cleanUpDeletedPostVideo(deps.storage, post, deps.log);
+    return;
   }
+  await deps.payload.update({
+    collection: "feed-posts",
+    id: post.id,
+    data: { isDeleted: true, content: "", authorName: "", imageUrl: null },
+  });
+  // Best effort: the post is already removed, so a storage failure is
+  // logged rather than failing the moderator's action.
+  await cleanUpDeletedPostVideo(deps.storage, post, deps.log);
   await clearReports();
 }
 
-/** A post's reports, newest first, for its community's moderators. */
+/** A post's open reports, newest first, for its community's moderators. */
 export async function listPostReports(
   payload: Payload,
   postId: number,
 ): Promise<PostReportView[]> {
   const { docs } = await payload.find({
     collection: "post-reports",
-    where: { post: { equals: postId } },
+    where: openReportsOf(postId),
     sort: "-createdAt",
     pagination: false,
     depth: 0,

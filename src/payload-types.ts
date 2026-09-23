@@ -711,6 +711,7 @@ export interface PostReport {
   reporterId: string;
   reason: 'spam' | 'inappropriate' | 'copyright' | 'other';
   note?: string | null;
+  dismissedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1949,6 +1950,7 @@ export interface PostReportsSelect<T extends boolean = true> {
   reporterId?: T;
   reason?: T;
   note?: T;
+  dismissedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

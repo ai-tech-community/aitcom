@@ -29,6 +29,14 @@ export const PostReports: CollectionConfig = {
       ],
     },
     { name: "note", type: "text", maxLength: 500 },
+    {
+      // Set when a moderator restores the post. The row stays, so the same
+      // reporter can't report it again; only open reports count and show.
+      name: "dismissedAt",
+      type: "date",
+      index: true,
+      admin: { position: "sidebar", readOnly: true },
+    },
   ],
   timestamps: true,
 };
