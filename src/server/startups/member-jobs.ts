@@ -20,6 +20,8 @@ import { toPublicRole } from "@/server/startups/queries";
 export type TrackedStartupRole = {
   role: StartupRolePublic;
   status: TrackingStatus;
+  /** When the member started tracking this role (ISO). */
+  trackedAt: string;
 };
 
 function followWhere(userId: string, follow: StartupJobsFollow) {
@@ -173,6 +175,7 @@ export async function listMyTrackedStartupRoles(
         startupName: startups.name,
         startupLogoUrl: startups.logoUrl,
         trackStatus: startupRoleApplications.status,
+        trackedAt: startupRoleApplications.createdAt,
       })
       .from(startupRoleApplications)
       .innerJoin(
@@ -197,7 +200,7 @@ export async function listMyTrackedStartupRoles(
       const status = isTrackingStatus(row.trackStatus)
         ? row.trackStatus
         : "applying";
-      return [{ role, status }];
+      return [{ role, status, trackedAt: row.trackedAt.toISOString() }];
     });
   } catch {
     return [];

@@ -246,9 +246,14 @@ the active filters.
   job page. Hub members can privately mark “I’m applying” on that page, and
   track a role from the jobs list (bookmark toggle). `/dashboard/jobs` lists only those tracked
   roles and lets the member move them through Applying, Applied, Talking,
-  Offer, and Passed. Ask for help posts a question in one community the member
-  belongs to, with their note and a classroom only when that community already
-  lists it.
+  Offer, and Passed: five columns on desktop, one stage at a time behind stage
+  tabs on small screens. Each card shows when it was tracked and offers its
+  one likely next step ("Move to Applied"); any stage, the original posting,
+  Ask for help, and Remove sit in the card menu. Ask for help posts a question
+  in one community the member belongs to, with their note and a classroom only
+  when that community already lists it; the sheet previews exactly what the
+  community sees (an anonymous member, the role, the note) before posting, and
+  the card then links each post ("Asked in …").
   `/startups/jobs`, `/investigations/startups/jobs`, and the old
   community `/communities/{slug}/jobs` board permanent-redirect here. The daily `startup-jobs-scan` cron reads
   every listed startup with a verified `jobs_url` (oldest `jobs_scanned_at`
