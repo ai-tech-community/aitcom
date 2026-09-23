@@ -1,21 +1,22 @@
+import { ArrowLeft } from "lucide-react";
+
 import { Link } from "@/i18n/navigation";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
 import { JsonLd } from "@/components/json-ld";
 import { SectionLabel } from "@/components/ui/section-label";
-import { StartupsFounders } from "@/components/investigations/startups-founders";
-import { StartupsProfileOverview } from "@/components/investigations/startups-profile-overview";
-import { StartupsProfileTabs } from "@/components/investigations/startups-profile-tabs";
-import { StartupsSourceChips } from "@/components/investigations/startups-source-chips";
+import { StartupsProfileHeader } from "@/components/investigations/startups-profile-header";
+import {
+  StartupsProfileFacts,
+  StartupsProfileLocation,
+} from "@/components/investigations/startups-profile-facts";
+import { StartupsProfileSections } from "@/components/investigations/startups-profile-sections";
 import {
   STARTUPS_JOIN_HREF,
   STARTUPS_PATH,
-  buildStartupJobsPath,
-  buildStartupRolePath,
-  displayStartupFounders,
-  formatStartupExitBadge,
-  startupNewsSources,
-  startupProfileExtraTabs,
+  startupProfileFacts,
   startupProfileJsonLd,
+  startupProfileSections,
+  verifiedStartupPin,
   type StartupLocale,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
@@ -26,27 +27,24 @@ export type StartupsProfileKey =
   | "joinCta"
   | "hubCta"
   | "openHomepage"
-  | "openJobs"
-  | "openOriginal"
-  | "openRoles"
+  | "rolesCta"
   | "profileBack"
-  | "tabOverview"
-  | "tabNews"
-  | "tabHiring"
-  | "tabFunding"
-  | "tabTeam"
-  | "tabProfileNav"
-  | "tileLogo"
-  | "tileBlurb"
-  | "tileCategory"
-  | "tileRegion"
-  | "tileStage"
-  | "tileExit"
-  | "tileFounders"
-  | "tileJobs"
-  | "tileSources"
-  | "tileMap";
+  | "sectionFounders"
+  | "sectionHiring"
+  | "sectionNews"
+  | "allRoles"
+  | "factsTitle"
+  | "factRegion"
+  | "factStage"
+  | "factListed"
+  | "factSources"
+  | "factLocation";
 
+/**
+ * A startup dossier: identity header, then sourced sections in a reading
+ * column beside a facts sheet. Everything shown is sourced; empty topics
+ * are left out rather than rendered as blank panels.
+ */
 export function StartupsProfilePage({
   locale,
   t,
@@ -55,150 +53,113 @@ export function StartupsProfilePage({
   promoteJoin = true,
 }: {
   locale: string;
-  t: (key: StartupsProfileKey) => string;
+  t: (key: StartupsProfileKey, values?: { count: number }) => string;
   card: StartupPublicCard;
   roles?: StartupRolePublic[];
   promoteJoin?: boolean;
 }) {
   const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
-  const extraTabs = startupProfileExtraTabs(card);
-  const news = startupNewsSources(card.sources);
-  const exitBadge = formatStartupExitBadge(card, copyLocale);
-  const founders = displayStartupFounders(card.founders);
+  const sections = startupProfileSections(card);
+  const pin = verifiedStartupPin(card);
+
+  const facts = (
+    <StartupsProfileFacts
+      facts={startupProfileFacts(card)}
+      card={card}
+      locale={copyLocale}
+      copy={{
+        factsTitle: t("factsTitle"),
+        factRegion: t("factRegion"),
+        factStage: t("factStage"),
+        factListed: t("factListed"),
+        factSources: t("factSources"),
+      }}
+    />
+  );
+  const location = pin ? (
+    <StartupsProfileLocation pin={pin} label={t("factLocation")} />
+  ) : null;
+  const join = (
+    <div>
+      <PromoteJoinCta
+        promoteJoin={promoteJoin}
+        guestHref={STARTUPS_JOIN_HREF}
+        guestLabel={t("joinCta")}
+        hubLabel={t("hubCta")}
+        variant="outline"
+      />
+    </div>
+  );
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
       <JsonLd data={startupProfileJsonLd(card)} />
-      <nav className="text-muted-foreground text-xs">
+
+      <SectionLabel
+        as="div"
+        marker={false}
+        className="flex items-center justify-between gap-4"
+      >
+        <span>
+          <span aria-hidden="true">/ </span>
+          {t("kicker")}
+        </span>
         <Link
           href={STARTUPS_PATH}
-          className="hover:text-foreground hover:underline"
+          className="hover:text-foreground inline-flex items-center gap-1.5 underline-offset-4 hover:underline"
         >
-          ← {t("profileBack")}
+          <ArrowLeft aria-hidden="true" className="size-3.5" />
+          {t("profileBack")}
         </Link>
-      </nav>
-
-      <SectionLabel as="div" className="mt-8">
-        {t("kicker")}
       </SectionLabel>
 
-      <div className="mt-6 flex max-w-2xl flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          {card.name}
-        </h1>
-        <a
-          href={card.homepage}
-          rel="noopener noreferrer"
-          data-startup-homepage=""
-          className="text-muted-foreground w-fit text-sm hover:underline"
-        >
-          {t("openHomepage")}
-        </a>
+      <div className="mt-10">
+        <StartupsProfileHeader
+          card={card}
+          locale={copyLocale}
+          copy={{
+            openHomepage: t("openHomepage"),
+            rolesCta: t("rolesCta", { count: card.openRoleCount }),
+          }}
+        />
       </div>
 
-      <div className="mt-8">
-        <StartupsProfileTabs
-          extraTabs={extraTabs}
-          aside={
-            <PromoteJoinCta
-              promoteJoin={promoteJoin}
-              guestHref={STARTUPS_JOIN_HREF}
-              guestLabel={t("joinCta")}
-              hubLabel={t("hubCta")}
-              variant="outline"
-            />
-          }
-          copy={{
-            overview: t("tabOverview"),
-            news: t("tabNews"),
-            hiring: t("tabHiring"),
-            funding: t("tabFunding"),
-            team: t("tabTeam"),
-            nav: t("tabProfileNav"),
-          }}
-          overview={
-            <StartupsProfileOverview
+      <div className="border-border mt-12 border-t pt-12">
+        {sections.length > 0 ? (
+          <div
+            data-startup-profile-layout="dossier"
+            className="grid grid-cols-1 gap-12 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-16"
+          >
+            <StartupsProfileSections
+              sections={sections}
               card={card}
+              roles={roles}
               locale={copyLocale}
               copy={{
-                tileLogo: t("tileLogo"),
-                tileBlurb: t("tileBlurb"),
-                tileCategory: t("tileCategory"),
-                tileRegion: t("tileRegion"),
-                tileStage: t("tileStage"),
-                tileExit: t("tileExit"),
-                tileFounders: t("tileFounders"),
-                tileJobs: t("tileJobs"),
-                tileSources: t("tileSources"),
-                tileMap: t("tileMap"),
-                openJobs: t("openJobs"),
-                openRoles: t("openRoles"),
+                sectionFounders: t("sectionFounders"),
+                sectionHiring: t("sectionHiring"),
+                sectionNews: t("sectionNews"),
+                allRoles: t("allRoles", { count: card.openRoleCount }),
               }}
             />
-          }
-          news={
-            news.length > 0 ? (
-              <StartupsSourceChips
-                sources={news}
-                locale={copyLocale}
-                label={t("tabNews")}
-              />
-            ) : undefined
-          }
-          hiring={
-            roles.length > 0 ? (
-              <div className="flex flex-col gap-3" data-startup-hiring="">
-                <ul className="flex flex-col gap-2">
-                  {roles.map((role) => (
-                    <li
-                      key={role.id}
-                      className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
-                    >
-                      <Link
-                        href={buildStartupRolePath(role.slug)}
-                        className="hover:underline"
-                      >
-                        {role.title}
-                      </Link>
-                      {role.location ? (
-                        <span
-                          data-startup-hiring-location=""
-                          className="text-muted-foreground text-sm"
-                        >
-                          {role.location}
-                        </span>
-                      ) : null}
-                      {role.workType ? (
-                        <span
-                          data-startup-hiring-work-type=""
-                          className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
-                        >
-                          {role.workType}
-                        </span>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  href={buildStartupJobsPath({ company: card.slug })}
-                  className="hover:underline"
-                >
-                  {t("openRoles").replace("{count}", String(roles.length))}
-                </Link>
-              </div>
-            ) : undefined
-          }
-          funding={
-            exitBadge ? (
-              <p data-startup-exit={card.exitStatus ?? ""}>{exitBadge}</p>
-            ) : undefined
-          }
-          team={
-            founders.length > 0 ? (
-              <StartupsFounders founders={founders} label={t("tabTeam")} />
-            ) : undefined
-          }
-        />
+            <aside className="flex flex-col gap-10">
+              {facts}
+              {location}
+              {join}
+            </aside>
+          </div>
+        ) : (
+          <div
+            data-startup-profile-layout="sheet"
+            className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:gap-16"
+          >
+            <div className="flex flex-col gap-10">
+              {facts}
+              {join}
+            </div>
+            {location}
+          </div>
+        )}
       </div>
     </main>
   );

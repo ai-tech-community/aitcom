@@ -14,6 +14,74 @@ import {
   type StartupFounder,
 } from "@/lib/investigations/startups";
 
+function FounderAvatar({
+  founder,
+  size,
+}: {
+  founder: StartupFounder;
+  size: "sm" | "lg";
+}) {
+  return (
+    <Avatar
+      size={size}
+      className={founder.url ? "cursor-pointer" : "cursor-default"}
+      aria-label={founder.name}
+      title={founder.name}
+      data-startup-founder-photo={founder.imageUrl ?? undefined}
+    >
+      {founder.imageUrl ? (
+        <AvatarImage src={founder.imageUrl} alt={founder.name} />
+      ) : null}
+      <AvatarFallback>{startupFounderInitials(founder.name)}</AvatarFallback>
+    </Avatar>
+  );
+}
+
+/**
+ * Every sourced founder as a face + name row. The profile's full roster,
+ * where the directory table uses the compact overlapping group below.
+ */
+export function StartupsFounderRoster({
+  founders,
+  label,
+}: {
+  founders: readonly StartupFounder[];
+  label: string;
+}) {
+  const sourced = displayStartupFounders(founders);
+  if (sourced.length === 0) return null;
+
+  return (
+    <ul
+      aria-label={label}
+      data-startup-founders=""
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+    >
+      {sourced.map((founder) => (
+        <li
+          key={`${founder.name}-${founder.url ?? ""}`}
+          data-startup-founder-name={founder.name}
+          className="flex min-w-0 items-center gap-3"
+        >
+          <FounderAvatar founder={founder} size="lg" />
+          {founder.url ? (
+            <a
+              href={founder.url}
+              rel="noopener noreferrer"
+              data-startup-founder-profile={founder.url}
+              className="truncate text-sm font-medium underline-offset-4 hover:underline"
+            >
+              {founder.name}
+            </a>
+          ) : (
+            <span className="truncate text-sm font-medium">{founder.name}</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function StartupsFounders({
   founders,
   label,
@@ -39,22 +107,7 @@ export function StartupsFounders({
       )}
       <AvatarGroup aria-label={label}>
         {shown.map((founder) => {
-          const avatar = (
-            <Avatar
-              size="sm"
-              className={founder.url ? "cursor-pointer" : "cursor-default"}
-              aria-label={founder.name}
-              title={founder.name}
-              data-startup-founder-photo={founder.imageUrl ?? undefined}
-            >
-              {founder.imageUrl ? (
-                <AvatarImage src={founder.imageUrl} alt={founder.name} />
-              ) : null}
-              <AvatarFallback>
-                {startupFounderInitials(founder.name)}
-              </AvatarFallback>
-            </Avatar>
-          );
+          const avatar = <FounderAvatar founder={founder} size="sm" />;
           return founder.url ? (
             <a
               key={`${founder.name}-${founder.url}`}

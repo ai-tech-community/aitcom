@@ -45,6 +45,10 @@ export function StartupsSourceChips({
   );
 }
 
+function hideFavicon(node: HTMLImageElement) {
+  node.style.display = "none";
+}
+
 function SourceChipFavicon({ href }: { href: string }) {
   const src = startupSourceFaviconUrl(href);
   if (!src) return null;
@@ -57,9 +61,11 @@ function SourceChipFavicon({ href }: { href: string }) {
       height={12}
       data-startup-source-favicon={src}
       className="size-3 rounded-sm"
-      onError={(event) => {
-        event.currentTarget.style.display = "none";
+      // An SSR image can fail before hydration attaches onError; catch that too.
+      ref={(node) => {
+        if (node?.complete && node.naturalWidth === 0) hideFavicon(node);
       }}
+      onError={(event) => hideFavicon(event.currentTarget)}
     />
   );
 }

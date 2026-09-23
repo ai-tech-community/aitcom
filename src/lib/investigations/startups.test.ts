@@ -33,8 +33,13 @@ import {
   startupMapPins,
   startupHasOpenJobs,
   startupNewsSources,
-  startupOverviewTiles,
-  startupProfileExtraTabs,
+  STARTUP_PIN_ZOOM,
+  formatStartupPinCoords,
+  startupMonogram,
+  parseStartupListedOn,
+  startupProfileFacts,
+  startupProfileSections,
+  startupReferenceSources,
   startupProfileJsonLd,
   startupProfileSitemapPaths,
   startupSourceFaviconUrl,
@@ -555,6 +560,18 @@ describe("soft-omit helpers", () => {
       region: "Toronto, Canada",
     });
 
+    expect(city?.precision).toBe("city");
+    expect(stored?.precision).toBe("city");
+    const country = verifiedStartupPin(sampleCard({ region: "Israel" }));
+    expect(country?.precision).toBe("region");
+    // Writes store the resolved centroid, so stored centroid coords stay region-level.
+    expect(
+      verifiedStartupPin(
+        sampleCard({ region: "Israel", lat: country!.lat, lng: country!.lng }),
+      )?.precision,
+    ).toBe("region");
+    expect(STARTUP_PIN_ZOOM.region).toBeLessThan(STARTUP_PIN_ZOOM.city);
+
     const coordsOnly = verifiedStartupPin(
       sampleCard({ lat: 40.71, lng: -74.0, region: null }),
     );
@@ -713,10 +730,8 @@ describe("directory query", () => {
         "en",
       ).map((card) => card.id),
     ).toEqual(["open"]);
-    expect(startupOverviewTiles(closed)).not.toContain("jobs");
-    expect(startupProfileExtraTabs(closed)).not.toContain("hiring");
-    expect(startupOverviewTiles(open)).toContain("jobs");
-    expect(startupProfileExtraTabs(open)).toContain("hiring");
+    expect(startupProfileSections(closed)).not.toContain("hiring");
+    expect(startupProfileSections(open)).toContain("hiring");
   });
 
   it("sorts newest, name A–Z, and category without inventing rows", () => {
@@ -917,15 +932,13 @@ describe("startup slugs and profile contract", () => {
     ).toEqual(["/startups/cursor-anysphere", "/startups/hugging-face"]);
   });
 
-  it("soft-omits empty overview tiles and extra tabs", () => {
+  it("soft-omits empty profile sections and facts", () => {
     const bare = sampleCard();
-    expect(startupOverviewTiles(bare)).toEqual(["category", "sources"]);
-    expect(startupProfileExtraTabs(bare)).toEqual([]);
+    expect(startupProfileSections(bare)).toEqual([]);
     expect(startupNewsSources(bare.sources)).toEqual([]);
+    expect(startupProfileFacts(bare)).toEqual(["listed", "sources"]);
 
     const rich = sampleCard({
-      logoUrl: "https://fixture.example/logo.png",
-      description: "Sourced blurb",
       region: "Toronto, Canada",
       lat: 43.65,
       lng: -79.38,
@@ -935,33 +948,63 @@ describe("startup slugs and profile contract", () => {
       exitOn: "2026",
       jobsUrl: "https://fixture.example/careers",
       openRoleCount: 2,
+      listedOn: "2026-09-15",
       founders: [{ name: "Ada Example", url: null, imageUrl: null }],
       sources: [
         "https://fixture.example/about",
         "https://fixture.example/newsroom",
       ],
     });
-    expect(startupOverviewTiles(rich)).toEqual([
-      "logo",
-      "blurb",
-      "category",
+    expect(startupProfileSections(rich)).toEqual([
+      "founders",
+      "hiring",
+      "news",
+    ]);
+    expect(startupProfileFacts(rich)).toEqual([
       "region",
       "stage",
-      "exit",
-      "founders",
-      "jobs",
+      "listed",
       "sources",
-      "map",
-    ]);
-    expect(startupProfileExtraTabs(rich)).toEqual([
-      "news",
-      "hiring",
-      "funding",
-      "team",
     ]);
     expect(startupNewsSources(rich.sources)).toEqual([
       "https://fixture.example/newsroom",
     ]);
+    expect(startupReferenceSources(rich.sources)).toEqual([
+      "https://fixture.example/about",
+    ]);
+
+    const pressOnly = sampleCard({
+      sources: ["https://fixture.example/newsroom"],
+    });
+    expect(startupProfileFacts(pressOnly)).not.toContain("sources");
+    expect(startupProfileSections(pressOnly)).toEqual(["news"]);
+  });
+
+  it("builds a letters-only monogram for logo-less companies", () => {
+    expect(startupMonogram("@hop")).toBe("H");
+    expect(startupMonogram("Fixture Co")).toBe("FC");
+    expect(startupMonogram("4Point AI")).toBe("4A");
+    expect(startupMonogram("  ")).toBe("?");
+    expect(startupMonogram("Été Labs")).toBe("ÉL");
+  });
+
+  it("reads the listing date and never invents one", () => {
+    expect(parseStartupListedOn("2026-09-15")).toBe("2026-09-15");
+    expect(parseStartupListedOn("2026-09-15T08:00:00.000Z")).toBe("2026-09-15");
+    expect(parseStartupListedOn("")).toBeNull();
+    expect(parseStartupListedOn("soon")).toBeNull();
+    expect(startupProfileFacts(sampleCard({ listedOn: "" }))).not.toContain(
+      "listed",
+    );
+  });
+
+  it("formats pin coordinates as approximate, one decimal, with hemispheres", () => {
+    expect(formatStartupPinCoords({ lat: 43.6532, lng: -79.3832 })).toBe(
+      "≈ 43.7° N, 79.4° W",
+    );
+    expect(formatStartupPinCoords({ lat: -33.87, lng: 151.21 })).toBe(
+      "≈ 33.9° S, 151.2° E",
+    );
   });
 
   it("emits Organization JSON-LD from sourced fields only", () => {

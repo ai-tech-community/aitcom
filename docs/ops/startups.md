@@ -151,22 +151,32 @@ browser so CV text is not SSR'd for crawlers. Private CVs live in
 account delete). Do not reuse `/api/upload`. Tailor / coverage map /
 in-app send stay out of this slice.
 
-Directory default is an SSR `<table>`: **Logo** (sourced `logoUrl` only;
-never a favicon or invented mark; logo may link to the homepage) · sticky
-**Name** (hard SSR link to `/en/startups/{slug}`) · **Short description** (sourced blurb only) · Category · City/region · Founders
-(sourced name + profile link; AvatarGroup OK) · Sources (favicon chips) ·
-Jobs · Exit · Stage. Homepage stays a secondary control (logo and/or
-“Open homepage”). Blank cells soft-omit — never invent “—”.
+Directory default is an SSR `<table>` with five columns plus a links cell:
+sticky **Company** (sourced `logoUrl`, or a letters-only monogram when none is
+on record — never a favicon or invented mark; name is the hard SSR link to
+`/en/startups/{slug}`; sourced blurb and founders sit under the name) ·
+Category · Region · **Status** (exit badge, open-role count, stage) · Sources
+(favicon chips). The last cell holds the homepage icon link (“Open homepage”
+for screen readers) and, for moderators, Edit. Blank cells soft-omit — never
+invent “—”. A result count sits above the table with **Clear filters** when
+any filter or search is on; on small screens the five filter menus fold
+behind a **Filters** toggle.
 
 Each listed company has a unique stable `slug` (slugify of the name, with
 `-2` / `-3` on collision). Create/update accept or generate a slug and keep
 it unique. Profile route is `/en/startups/[slug]` (NL
-equivalent). Overview is an Awesome-OSS-style bento; empty tiles and empty
-News / Hiring / Funding/Exit / Team tabs are omitted entirely. Never invent
-copy, faces, marks, metrics, or street addresses.
+equivalent). The profile is one page, no tabs: a header (logo in crop marks
+or monogram, name, category and exit badges, sourced blurb, Open homepage,
+open-roles count), then Founders / Open roles / In the news sections beside
+an “At a glance” facts sheet (region, stage, listed date, non-press sources)
+and a location map. Sections and fact rows with no sourced data are omitted
+entirely; a profile with no sections shows the facts sheet and map side by
+side. Never invent copy, faces, marks, metrics, or street addresses.
 Map is behind **Open map** → Sheet (`Map` / `Close`). Every sourced
 region gets a pin at a city/region centroid; unknown / street-like
-strings stay list-only. Empty sheet copy is **No locations listed yet**
+strings stay list-only. Maps never zoom past a pin's precision: city
+level (zoom 10) at most, country level (zoom 5) for region centroids, and
+the profile captions the pin as approximate (`≈ 43.7° N, 79.4° W`). Empty sheet copy is **No locations listed yet**
 only when no sourced region can be pinned. No always-on map.
 
 ## Directory filters
@@ -241,8 +251,8 @@ the active filters.
   disappear on a later **successful** scan become `closed` and keep their
   page. A live empty board writes `open_role_count = 0` on `app.startup`
   (do not invent a JD). A failed fetch does not close roles or zero the
-  count. Jobs column shows a count when open roles exist; otherwise the
-  cell is soft-omitted. `/en/roles` remains Hub seats.
+  count. The Status column shows the count when open roles exist;
+  otherwise it is soft-omitted. `/en/roles` remains Hub seats.
 - `/investigations/startups` permanent-redirects to `/startups`.
 - Global nav lists **Jobs** (`[W]`) and **Startups** (`[U]`) inline
   after Hub **Roles** (ADR-0010). `/jobs` is sourced startup openings;
