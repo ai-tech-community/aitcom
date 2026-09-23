@@ -90,8 +90,12 @@ export async function viewerCanReadRoster(
 
 /**
  * Ids of communities whose content the viewer may not read: unlisted, not the
- * Hub, and no active membership. Soft-deleted communities are included, so
- * their threads never resurface in cross-community listings.
+ * Hub, and no active membership. Soft-deleted unlisted communities are
+ * included; soft-deletion itself does not hide content.
+ *
+ * Callers pass the ids to Payload as a `NOT IN` list (a Payload `where`
+ * cannot hold a subquery), so the list grows with the number of unlisted
+ * communities. Fine at today's scale; keep it off per-row hot paths.
  */
 export async function hiddenContentCommunityIds(
   db: DB,

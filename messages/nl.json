@@ -484,8 +484,8 @@
     "replyEdited": "Reactie bijgewerkt",
     "threadDeleted": "Onderwerp verwijderd",
     "replyDeleted": "Reactie verwijderd",
-    "membersOnlyTitle": "Word lid van deze community om de discussies te zien",
-    "membersOnlyDescription": "Discussies in deze community zijn alleen zichtbaar voor leden."
+    "membersOnlyTitle": "Dit forum is alleen voor leden",
+    "membersOnlyDescription": "Discussies in deze community zijn alleen zichtbaar voor de leden."
   },
   "challengesLanding": {
     "title": "AI Challenges",

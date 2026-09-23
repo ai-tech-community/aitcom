@@ -56,6 +56,8 @@ describe.skipIf(!RUN_DB)(
     let listed: { id: string; slug: string };
     let unlistedThread: { id: number; slug: string };
     let listedThread: { id: number; slug: string };
+    let hubThread: { id: number; slug: string };
+    let unlistedIdeaId: number;
 
     beforeAll(async () => {
       const [{ db }, schema, { createCaller }, { getPayloadClient }, lexical] =
@@ -75,7 +77,7 @@ describe.skipIf(!RUN_DB)(
       };
     }, 120_000);
 
-    async function createThread(title: string, communityId: string) {
+    async function createThread(title: string, communityId: string | null) {
       const doc = await m.payload.create({
         collection: "forum-threads",
         data: {
@@ -85,7 +87,7 @@ describe.skipIf(!RUN_DB)(
           category: "general",
           authorId: memberId,
           authorName: "Member",
-          communityId,
+          ...(communityId ? { communityId } : {}),
         },
       });
       await m.payload.create({
@@ -94,7 +96,7 @@ describe.skipIf(!RUN_DB)(
           thread: doc.id,
           content: m.plainTextToLexical(`${title} reply`),
           authorId: memberId,
-          communityId,
+          ...(communityId ? { communityId } : {}),
         },
       });
       return { id: doc.id, slug: doc.slug };
@@ -138,12 +140,29 @@ describe.skipIf(!RUN_DB)(
       ]);
       unlistedThread = await createThread("secret-plans", unlisted.id);
       listedThread = await createThread("open-plans", listed.id);
+      // Legacy Hub thread: no communityId at all.
+      hubThread = await createThread("hub-plans", null);
+      const idea = await m.payload.create({
+        collection: "community-ideas",
+        data: {
+          title: `secret idea ${sfx}`,
+          authorId: memberId,
+          status: "open",
+          category: "platform",
+          communityId: unlisted.id,
+        },
+      });
+      unlistedIdeaId = idea.id;
     });
 
     afterEach(async () => {
       const { db, schema } = m;
       const { eq, inArray } = await import("drizzle-orm");
-      const threadIds = [unlistedThread.id, listedThread.id];
+      await m.payload.delete({
+        collection: "community-ideas",
+        id: unlistedIdeaId,
+      });
+      const threadIds = [unlistedThread.id, listedThread.id, hubThread.id];
       await m.payload.delete({
         collection: "forum-replies",
         where: { thread: { in: threadIds } },
@@ -216,7 +235,9 @@ describe.skipIf(!RUN_DB)(
           limit: 50,
           search: "plans",
         });
-        expect(slugsOf(outsider.threads)).toContain(listedThread.slug);
+        expect(slugsOf(outsider.threads)).toEqual(
+          expect.arrayContaining([listedThread.slug, hubThread.slug]),
+        );
         expect(slugsOf(outsider.threads)).not.toContain(unlistedThread.slug);
 
         const member = await callerAs(memberId).forum.getThreads({
@@ -226,6 +247,23 @@ describe.skipIf(!RUN_DB)(
         expect(slugsOf(member.threads)).toEqual(
           expect.arrayContaining([listedThread.slug, unlistedThread.slug]),
         );
+      });
+    });
+
+    describe("forum.getIdeas", () => {
+      it("returns an empty list for an unlisted community's outsiders", async () => {
+        for (const viewer of [null, outsiderId]) {
+          await expect(
+            callerAs(viewer).forum.getIdeas({ communitySlug: unlisted.slug }),
+          ).resolves.toEqual([]);
+        }
+      });
+
+      it("returns an unlisted community's ideas to its members", async () => {
+        const ideas = await callerAs(memberId).forum.getIdeas({
+          communitySlug: unlisted.slug,
+        });
+        expect(ideas.map((i) => i.id)).toEqual([unlistedIdeaId]);
       });
     });
 

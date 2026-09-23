@@ -208,13 +208,13 @@ export const forumRouter = createTRPCRouter({
 
       let communityId: string | undefined;
       if (input.communitySlug) {
-        const community = await ctx.db.query.communities.findFirst({
-          where: and(
-            eq(communities.slug, input.communitySlug),
-            isNull(communities.deletedAt),
-          ),
-          columns: { id: true },
-        });
+        // Unreadable answers like missing (an empty list), so an unlisted
+        // community's ideas are neither shown nor confirmed to exist.
+        const community = await findReadableCommunityBySlug(
+          ctx.db,
+          input.communitySlug,
+          ctx.session?.user?.id,
+        );
         if (!community) return [];
         communityId = community.id;
       }
