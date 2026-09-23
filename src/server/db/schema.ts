@@ -4262,6 +4262,8 @@ export const startupRoles = appSchema.table(
     applyUrl: d.text(),
     descriptionText: d.text(),
     fetchedAt: d.timestamp({ withTimezone: true }).notNull(),
+    /** ATS / careers-board publish date. Never a scan or crawl timestamp. */
+    postedAt: d.timestamp({ withTimezone: true }),
     board: d
       .varchar({ length: 16 })
       .notNull()

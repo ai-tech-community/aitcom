@@ -76,6 +76,74 @@ describe("ATS JSON parsers", () => {
     expect(listings[0]?.board).toBe("greenhouse");
   });
 
+  it("keeps a real ATS publish date and ignores crawl timestamps", () => {
+    expect(
+      parseAshbyJobs({
+        jobs: [
+          {
+            id: "abc",
+            title: "Forward Deployed Engineer",
+            jobUrl: "https://jobs.ashbyhq.com/skildai/abc",
+            locationName: "San Francisco, CA",
+            employmentType: "FullTime",
+            publishedAt: "2026-03-01T17:29:00.000Z",
+            updatedAt: "2026-09-20T00:00:00.000Z",
+          },
+        ],
+      })[0]?.postedAt,
+    ).toBe("2026-03-01");
+    expect(
+      parseGreenhouseJobs({
+        jobs: [
+          {
+            id: 1,
+            title: "Research Engineer",
+            absolute_url: "https://boards.greenhouse.io/anthropic/jobs/1",
+            updated_at: "2026-09-20T00:00:00.000Z",
+            location: { name: "San Francisco" },
+          },
+        ],
+      })[0]?.postedAt,
+    ).toBeNull();
+    expect(
+      parseGreenhouseJobs({
+        jobs: [
+          {
+            id: 1,
+            title: "Research Engineer",
+            absolute_url: "https://boards.greenhouse.io/anthropic/jobs/1",
+            first_published: "2026-02-11T08:00:00-08:00",
+            updated_at: "2026-09-20T00:00:00.000Z",
+          },
+        ],
+      })[0]?.postedAt,
+    ).toBe("2026-02-11");
+    expect(
+      parseLeverJobs([
+        {
+          id: "z",
+          text: "Hardware intern",
+          hostedUrl: "https://jobs.lever.co/figure/z",
+          createdAt: 1760000000000,
+          categories: { location: "Sunnyvale" },
+        },
+      ])[0]?.postedAt,
+    ).toBeNull();
+    expect(
+      parseWorkableJobs({
+        jobs: [
+          {
+            title: "Ops lead",
+            url: "https://apply.workable.com/example/j/1",
+            shortcode: "1",
+            published_on: "2026-01-15",
+            created_at: "2026-09-20T00:00:00.000Z",
+          },
+        ],
+      })[0]?.postedAt,
+    ).toBe("2026-01-15");
+  });
+
   it("parses Ashby and Lever payloads", () => {
     expect(
       parseAshbyJobs({
@@ -132,6 +200,23 @@ describe("HTML extract", () => {
       "https://example.com/careers",
     );
     expect(anchors.map((row) => row.title)).toEqual(["Platform Engineer"]);
+  });
+
+  it("reads datePosted from JobPosting JSON-LD and ignores fetched times", () => {
+    const listings = extractListingsFromCareersHtml(
+      `<script type="application/ld+json">
+        {"@type":"JobPosting","title":"Staff Engineer","datePosted":"2026-03-01","url":"https://cursor.com/careers/staff","description":"<p>Build the editor.</p>"}
+      </script>`,
+      "https://cursor.com/careers",
+    );
+    expect(listings[0]?.postedAt).toBe("2026-03-01");
+    const undated = extractJobPostingFromHtml(
+      `<script type="application/ld+json">
+        {"@type":"JobPosting","title":"Staff Engineer","url":"https://cursor.com/careers/staff","description":"<p>Build the editor.</p>"}
+      </script>`,
+      "https://cursor.com/careers/staff",
+    );
+    expect(undated?.postedAt ?? null).toBeNull();
   });
 
   it("detects an embedded Ashby board in custom careers HTML", () => {
@@ -403,6 +488,7 @@ describe("startup role slugs and jobs query", () => {
         workType: null,
         descriptionText: null,
         externalId: null,
+        postedAt: null,
         board: "html",
       },
       {
@@ -427,6 +513,7 @@ describe("startup role slugs and jobs query", () => {
         workType: null,
         descriptionText: null,
         externalId: null,
+        postedAt: null,
         board: "html",
       },
       {
@@ -446,6 +533,7 @@ describe("startup role slugs and jobs query", () => {
         workType: null,
         descriptionText: null,
         externalId: null,
+        postedAt: null,
         board: "html",
       },
       {

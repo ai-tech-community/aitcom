@@ -375,6 +375,9 @@ export async function scanStartupJobs(
           applyUrl: listing.applyUrl,
           descriptionText: listing.descriptionText ?? current.descriptionText,
           fetchedAt,
+          postedAt: listing.postedAt
+            ? new Date(`${listing.postedAt}T00:00:00.000Z`)
+            : current.postedAt,
           board: listing.board,
           externalId: listing.externalId ?? current.externalId,
           status,
@@ -398,6 +401,9 @@ export async function scanStartupJobs(
       applyUrl: listing.applyUrl,
       descriptionText: listing.descriptionText,
       fetchedAt,
+      postedAt: listing.postedAt
+        ? new Date(`${listing.postedAt}T00:00:00.000Z`)
+        : null,
       board: listing.board,
       externalId: listing.externalId,
       status,

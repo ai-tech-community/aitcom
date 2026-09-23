@@ -79,23 +79,125 @@ describe("sanitizeStartupRoleDescription", () => {
 });
 
 describe("startupRoleJsonLd", () => {
-  it("omits datePosted when only scan fetchedAt is present", () => {
-    const data = startupRoleJsonLd(sampleRole());
-    expect(data).not.toHaveProperty("datePosted");
-    expect(JSON.stringify(data)).not.toContain("2026-09-20");
-  });
-
-  it("emits datePosted from a board-sourced post date", () => {
+  it("emits an ISO datePosted from a real ATS post date", () => {
     const data = startupRoleJsonLd(
       sampleRole({ postedAt: "2026-03-01T12:00:00.000Z" }),
     );
-    expect(data.datePosted).toBe("2026-03-01");
-    expect(data.datePosted).not.toBe("2026-09-20");
+    expect(data?.["@type"]).toBe("JobPosting");
+    expect(data?.datePosted).toBe("2026-03-01");
+    expect(data?.datePosted).not.toBe("2026-09-20");
+    expect(
+      startupRoleJsonLd(sampleRole({ postedAt: "2026-03-01" }))?.datePosted,
+    ).toBe("2026-03-01");
   });
 
-  it("emits a role-only title and never invents salary or datePosted", () => {
+  it("soft-omits the JobPosting block when no real post date exists", () => {
+    expect(startupRoleJsonLd(sampleRole())).toBeNull();
+    expect(
+      startupRoleJsonLd(
+        sampleRole({
+          postedAt: "not-a-date",
+          listedAt: "2026-03-01T00:00:00.000Z",
+          location: "Toronto, Canada",
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      JSON.stringify(
+        startupRoleJsonLd(sampleRole({ listedAt: "2026-09-21T00:00:00.000Z" })),
+      ),
+    ).not.toContain("2026-09-20");
+  });
+
+  it("emits PostalAddress parts from a sourced place string and invents nothing else", () => {
     const data = startupRoleJsonLd(
       sampleRole({
+        postedAt: "2026-03-01T15:00:00.000Z",
+        location: "San Francisco, CA | Seattle, WA",
+        workType: "Full-time",
+        listedAt: "2026-09-21T00:00:00.000Z",
+      }),
+    );
+    expect(data?.jobLocation).toEqual([
+      {
+        "@type": "Place",
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: "San Francisco",
+          addressRegion: "CA",
+        },
+      },
+      {
+        "@type": "Place",
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: "Seattle",
+          addressRegion: "WA",
+        },
+      },
+    ]);
+    const toronto = startupRoleJsonLd(
+      sampleRole({
+        postedAt: "2026-03-01",
+        location: "Toronto, Canada",
+      }),
+    );
+    expect(toronto?.jobLocation).toEqual({
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Toronto",
+        addressCountry: "Canada",
+      },
+    });
+    const sourced = startupRoleJsonLd(
+      sampleRole({
+        postedAt: "2026-04-02",
+        location: "San Francisco, CA, USA",
+      }),
+    );
+    expect(sourced?.jobLocation).toEqual({
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "San Francisco",
+        addressRegion: "CA",
+        addressCountry: "USA",
+      },
+    });
+    const street = startupRoleJsonLd(
+      sampleRole({
+        postedAt: "2026-04-02",
+        location: "500 Howard St, San Francisco, CA",
+      }),
+    );
+    expect(street?.jobLocation).toEqual({
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "San Francisco",
+        addressRegion: "CA",
+      },
+    });
+    expect(
+      startupRoleJsonLd(
+        sampleRole({ postedAt: "2026-04-02", location: "Remote" }),
+      ),
+    ).not.toHaveProperty("jobLocation");
+    const json = JSON.stringify([data, toronto, sourced, street]);
+    expect(json).not.toMatch(
+      /streetAddress|postalCode|baseSalary|validThrough|employmentType|"salary"/,
+    );
+    expect(json).not.toContain("2026-09-20");
+    expect(json).not.toContain("2026-09-21");
+    expect(json).not.toContain("Full-time");
+    expect(json).not.toContain("500 Howard");
+  });
+
+  it("emits a role-only title when a real post date is present", () => {
+    const data = startupRoleJsonLd(
+      sampleRole({
+        postedAt: "2026-03-01",
         title:
           "*Enterprise Account Executive – Data Centers\nFull-time\nUSA\nRead more",
         location: "Arizona",
@@ -103,13 +205,22 @@ describe("startupRoleJsonLd", () => {
         descriptionText: "kevAbout Buildots\nBuild the product.",
       }),
     );
-    expect(data.title).toBe("Enterprise Account Executive – Data Centers");
-    expect(data.description).toBe("About Buildots\nBuild the product.");
-    expect(data).not.toHaveProperty("datePosted");
+    expect(data?.title).toBe("Enterprise Account Executive – Data Centers");
+    expect(data?.description).toBe("About Buildots\nBuild the product.");
+    expect(data?.datePosted).toBe("2026-03-01");
+    expect(data?.jobLocation).toEqual({
+      "@type": "Place",
+      address: {
+        "@type": "PostalAddress",
+        addressRegion: "Arizona",
+      },
+    });
     expect(data).not.toHaveProperty("baseSalary");
     expect(data).not.toHaveProperty("salary");
+    expect(data).not.toHaveProperty("employmentType");
+    expect(data).not.toHaveProperty("validThrough");
     expect(JSON.stringify(data)).not.toMatch(
-      /Full-time|Read more|\bUSA\b|kevAbout/,
+      /Full-time|Read more|\bUSA\b|kevAbout|streetAddress|postalCode/,
     );
   });
 });

@@ -178,6 +178,7 @@ export function toPublicRole(
     descriptionText: sanitizeStartupRoleDescription(role.descriptionText),
     fetchedAt: role.fetchedAt.toISOString(),
     listedAt: role.createdAt.toISOString(),
+    postedAt: role.postedAt?.toISOString() ?? null,
     board: role.board,
     status: role.status,
   };
