@@ -200,7 +200,9 @@ the active filters.
   job page. Hub members can privately mark “I’m applying” on that page, and
   track a role from the jobs table. `/dashboard/jobs` lists only those tracked
   roles and lets the member move them through Applying, Applied, Talking,
-  Offer, and Passed. A help note stays on that private board.
+  Offer, and Passed. Ask for help posts a question in one community the member
+  belongs to, with their note and a classroom only when that community already
+  lists it.
   `/startups/jobs`, `/investigations/startups/jobs`, and the old
   community `/communities/{slug}/jobs` board permanent-redirect here. The daily `startup-jobs-scan` cron reads
   every listed startup with a verified `jobs_url` (oldest `jobs_scanned_at`

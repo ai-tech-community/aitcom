@@ -25,6 +25,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import type { RoleHelpRequest } from "@/lib/investigations/startup-role-help";
 import {
   TRACKING_STATUSES,
   type TrackingStatus,
@@ -40,13 +41,6 @@ import { api } from "@/trpc/react";
 export type TrackedBoardRole = {
   role: StartupRolePublic;
   status: TrackingStatus;
-};
-
-export type TrackingHelp = {
-  roleId: string;
-  communitySlug: string;
-  note: string;
-  classroom: string;
 };
 
 const COPY = {
@@ -67,8 +61,13 @@ const COPY = {
     classroomHelp:
       "Optional. Only a classroom that already exists in that community.",
     post: "Post to community",
-    sheetLead: "This note stays on your board. It is not sent yet.",
+    posting: "Posting…",
+    posted: "Posted to the community",
+    rules: "Accept that community's rules, then try again.",
+    classroomMissing: "That classroom is not in this community.",
+    sheetLead: "Posts a question in the community you pick.",
     helpTitle: "What the community sees",
+    viewPost: "View post",
     helpPick: "Preview community",
     member: "A member",
     applying: "Applying",
@@ -94,8 +93,13 @@ const COPY = {
     classroomHelp:
       "Optioneel. Alleen een classroom die al in die community bestaat.",
     post: "Plaats in community",
-    sheetLead: "Deze notitie blijft op je bord. Hij is nog niet verstuurd.",
+    posting: "Plaatsen…",
+    posted: "Geplaatst in de community",
+    rules: "Accepteer eerst de regels van die community.",
+    classroomMissing: "Die classroom staat niet in deze community.",
+    sheetLead: "Plaatst een vraag in de community die je kiest.",
     helpTitle: "Wat de community ziet",
+    viewPost: "Bekijk bericht",
     helpPick: "Bekijk community",
     member: "Een lid",
     applying: "Solliciteren",
@@ -116,12 +120,15 @@ export function StartupsJobsBoard({
   locale,
   tracked,
   communities,
+  helpRequests = [],
 }: {
   locale: string;
   tracked: TrackedBoardRole[];
   communities: { slug: string; name: string }[];
+  helpRequests?: RoleHelpRequest[];
 }) {
   const copy = locale === "nl" ? COPY.nl : COPY.en;
+  const helpLocale = locale === "nl" ? "nl" : "en";
   const [rows, setRows] = useState(tracked);
   const [askingId, setAskingId] = useState<string | null>(null);
   const [communitySlug, setCommunitySlug] = useState(
@@ -129,7 +136,7 @@ export function StartupsJobsBoard({
   );
   const [note, setNote] = useState("");
   const [classroom, setClassroom] = useState("");
-  const [help, setHelp] = useState<TrackingHelp[]>([]);
+  const [help, setHelp] = useState<RoleHelpRequest[]>(helpRequests);
   const [previewSlug, setPreviewSlug] = useState(communities[0]?.slug ?? "");
   const utils = api.useUtils();
   const setStatus = api.startups.setMyTrackedRoleStatus.useMutation({
@@ -142,6 +149,36 @@ export function StartupsJobsBoard({
       });
     },
     onError: (error) => toast.error(error.message),
+  });
+  const askHelp = api.startups.askMyTrackedRoleHelp.useMutation({
+    onSuccess: (result) => {
+      setHelp((current) => [
+        result,
+        ...current.filter(
+          (row) =>
+            !(
+              row.roleId === result.roleId &&
+              row.communitySlug === result.communitySlug
+            ),
+        ),
+      ]);
+      setPreviewSlug(result.communitySlug);
+      setAskingId(null);
+      setNote("");
+      setClassroom("");
+      toast.success(copy.posted);
+    },
+    onError: (error) => {
+      if (error.message === "RULES_NOT_ACCEPTED") {
+        toast.error(copy.rules);
+        return;
+      }
+      if (error.message === "CLASSROOM_NOT_FOUND") {
+        toast.error(copy.classroomMissing);
+        return;
+      }
+      toast.error(error.message);
+    },
   });
 
   const asking = rows.find((row) => row.role.id === askingId)?.role ?? null;
@@ -174,23 +211,14 @@ export function StartupsJobsBoard({
 
   function postHelp(roleId: string) {
     const text = note.trim();
-    if (!text || !communitySlug) return;
-    setHelp((current) => [
-      {
-        roleId,
-        communitySlug,
-        note: text,
-        classroom: classroom.trim(),
-      },
-      ...current.filter(
-        (row) =>
-          !(row.roleId === roleId && row.communitySlug === communitySlug),
-      ),
-    ]);
-    setPreviewSlug(communitySlug);
-    setAskingId(null);
-    setNote("");
-    setClassroom("");
+    if (!text || !communitySlug || askHelp.isPending) return;
+    askHelp.mutate({
+      roleId,
+      communitySlug,
+      note: text,
+      classroom: classroom.trim(),
+      locale: helpLocale,
+    });
   }
 
   return (
@@ -339,6 +367,12 @@ export function StartupsJobsBoard({
                       {row.classroom}
                     </p>
                   ) : null}
+                  <Link
+                    href={row.path as never}
+                    className="text-sm hover:underline"
+                  >
+                    {copy.viewPost}
+                  </Link>
                 </li>
               );
             })}
@@ -420,10 +454,10 @@ export function StartupsJobsBoard({
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={!note.trim() || !communitySlug}
+                  disabled={!note.trim() || !communitySlug || askHelp.isPending}
                   onClick={() => postHelp(asking.id)}
                 >
-                  {copy.post}
+                  {askHelp.isPending ? copy.posting : copy.post}
                 </Button>
                 <Button
                   type="button"

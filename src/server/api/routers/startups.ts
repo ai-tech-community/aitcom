@@ -51,6 +51,7 @@ import {
   setStartupJobsFollow,
   setStartupRoleApplication,
 } from "@/server/startups/member-jobs";
+import { askMyTrackedRoleHelp } from "@/server/startups/role-help";
 import {
   startupJobsFollowFromQuery,
   STARTUP_JOBS_FOLLOW_Q_MAX,
@@ -559,5 +560,27 @@ export const startupsRouter = createTRPCRouter({
           message: "Role not found",
         });
       }
+    }),
+
+  askMyTrackedRoleHelp: protectedProcedure
+    .input(
+      z.object({
+        roleId: z.string().trim().min(1).max(255),
+        communitySlug: z.string().trim().min(1).max(120),
+        note: z.string().trim().min(1).max(2000),
+        classroom: z.string().trim().max(200).optional().default(""),
+        locale: z.enum(["en", "nl"]).optional().default("en"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return askMyTrackedRoleHelp({
+        userId: ctx.session.user.id,
+        userName: ctx.session.user.name ?? "member",
+        roleId: input.roleId,
+        communitySlug: input.communitySlug,
+        note: input.note,
+        classroom: input.classroom,
+        locale: input.locale,
+      });
     }),
 });

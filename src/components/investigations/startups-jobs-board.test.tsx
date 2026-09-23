@@ -33,6 +33,35 @@ vi.mock("@/trpc/react", () => ({
       setMyTrackedRoleStatus: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
       },
+      askMyTrackedRoleHelp: {
+        useMutation: (options?: {
+          onSuccess?: (data: {
+            roleId: string;
+            communitySlug: string;
+            communityName: string;
+            note: string;
+            classroom: string;
+            path: string;
+          }) => void;
+        }) => ({
+          mutate: (input: {
+            roleId: string;
+            communitySlug: string;
+            note: string;
+            classroom?: string;
+          }) => {
+            options?.onSuccess?.({
+              roleId: input.roleId,
+              communitySlug: input.communitySlug,
+              communityName: "AIT",
+              note: input.note,
+              classroom: input.classroom ?? "",
+              path: `/communities/${input.communitySlug}/forum/help-thread`,
+            });
+          },
+          isPending: false,
+        }),
+      },
     },
   },
 }));
@@ -87,5 +116,9 @@ describe("StartupsJobsBoard", () => {
     );
     expect(request?.textContent).toContain("System design");
     expect(request?.textContent).not.toMatch(/fit score|salary/i);
+    expect(screen.getByRole("link", { name: "View post" })).toHaveAttribute(
+      "href",
+      "/communities/ait/forum/help-thread",
+    );
   });
 });
