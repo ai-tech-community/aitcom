@@ -275,7 +275,8 @@ export function buildStartupJobsPath(query?: {
   if (workType && workType.toLowerCase() !== "all") {
     params.set("workType", workType);
   }
-  if (sort && sort !== "role") params.set("sort", sort);
+  // Company order is the default and stays out of the URL.
+  if (sort && sort !== "company") params.set("sort", sort);
   if (query?.page && query.page > 1) params.set("page", String(query.page));
   const suffix = params.toString();
   return suffix ? `${STARTUPS_JOBS_PATH}?${suffix}` : STARTUPS_JOBS_PATH;

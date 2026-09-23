@@ -8,6 +8,7 @@ import {
   startupsPublicRobots,
 } from "@/lib/investigations/startups";
 import {
+  STARTUP_JOBS_DEFAULT_SORT,
   applyStartupJobsQuery,
   paginateStartupRoles,
   parseStartupJobsQuery,
@@ -62,7 +63,7 @@ export async function generateMetadata({
     query.q ||
     query.location ||
     query.workType ||
-    query.sort !== "role",
+    query.sort !== STARTUP_JOBS_DEFAULT_SORT,
   );
   const canonical = filteredView
     ? STARTUPS_JOBS_PATH
