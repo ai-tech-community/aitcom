@@ -91,6 +91,21 @@ import * as migration_20260914d_awesome_ai_oss_seeds_chunk_4 from "./20260914d_a
 import * as migration_20260914e_awesome_ai_oss_seeds_chunk_5 from "./20260914e_awesome_ai_oss_seeds_chunk_5";
 import * as migration_20260914f_awesome_ai_oss_seeds_chunk_6 from "./20260914f_awesome_ai_oss_seeds_chunk_6";
 import * as migration_20260914g_awesome_ai_oss_phase_3 from "./20260914g_awesome_ai_oss_phase_3";
+import * as migration_20260915a_curated_public_events from "./20260915a_curated_public_events";
+import * as migration_20260915b_startups from "./20260915b_startups";
+import * as migration_20260915c_startups_v1_seeds from "./20260915c_startups_v1_seeds";
+import * as migration_20260915d_startups_soft_omit_fields from "./20260915d_startups_soft_omit_fields";
+import * as migration_20260915e_startups_v1_enriched from "./20260915e_startups_v1_enriched";
+import * as migration_20260915f_startups_v1_polish from "./20260915f_startups_v1_polish";
+import * as migration_20260916a_curated_public_events_weekday from "./20260916a_curated_public_events_weekday";
+import * as migration_20260916b_startups_description from "./20260916b_startups_description";
+import * as migration_20260916c_startups_slug from "./20260916c_startups_slug";
+import * as migration_20260920a_startup_roles from "./20260920a_startup_roles";
+import * as migration_20260921a_startup_member_cv from "./20260921a_startup_member_cv";
+import * as migration_20260921b_startup_open_role_count from "./20260921b_startup_open_role_count";
+import * as migration_20260922a_startup_jobs_follow from "./20260922a_startup_jobs_follow";
+import * as migration_20260923a_startup_role_application_status from "./20260923a_startup_role_application_status";
+import * as migration_20260923b_startup_role_help from "./20260923b_startup_role_help";
 
 export const migrations = [
   {
@@ -557,5 +572,80 @@ export const migrations = [
     up: migration_20260914g_awesome_ai_oss_phase_3.up,
     down: migration_20260914g_awesome_ai_oss_phase_3.down,
     name: "20260914g_awesome_ai_oss_phase_3",
+  },
+  {
+    up: migration_20260915a_curated_public_events.up,
+    down: migration_20260915a_curated_public_events.down,
+    name: "20260915a_curated_public_events",
+  },
+  {
+    up: migration_20260915b_startups.up,
+    down: migration_20260915b_startups.down,
+    name: "20260915b_startups",
+  },
+  {
+    up: migration_20260915c_startups_v1_seeds.up,
+    down: migration_20260915c_startups_v1_seeds.down,
+    name: "20260915c_startups_v1_seeds",
+  },
+  {
+    up: migration_20260915d_startups_soft_omit_fields.up,
+    down: migration_20260915d_startups_soft_omit_fields.down,
+    name: "20260915d_startups_soft_omit_fields",
+  },
+  {
+    up: migration_20260915e_startups_v1_enriched.up,
+    down: migration_20260915e_startups_v1_enriched.down,
+    name: "20260915e_startups_v1_enriched",
+  },
+  {
+    up: migration_20260915f_startups_v1_polish.up,
+    down: migration_20260915f_startups_v1_polish.down,
+    name: "20260915f_startups_v1_polish",
+  },
+  {
+    up: migration_20260916a_curated_public_events_weekday.up,
+    down: migration_20260916a_curated_public_events_weekday.down,
+    name: "20260916a_curated_public_events_weekday",
+  },
+  {
+    up: migration_20260916b_startups_description.up,
+    down: migration_20260916b_startups_description.down,
+    name: "20260916b_startups_description",
+  },
+  {
+    up: migration_20260916c_startups_slug.up,
+    down: migration_20260916c_startups_slug.down,
+    name: "20260916c_startups_slug",
+  },
+  {
+    up: migration_20260920a_startup_roles.up,
+    down: migration_20260920a_startup_roles.down,
+    name: "20260920a_startup_roles",
+  },
+  {
+    up: migration_20260921a_startup_member_cv.up,
+    down: migration_20260921a_startup_member_cv.down,
+    name: "20260921a_startup_member_cv",
+  },
+  {
+    up: migration_20260921b_startup_open_role_count.up,
+    down: migration_20260921b_startup_open_role_count.down,
+    name: "20260921b_startup_open_role_count",
+  },
+  {
+    up: migration_20260922a_startup_jobs_follow.up,
+    down: migration_20260922a_startup_jobs_follow.down,
+    name: "20260922a_startup_jobs_follow",
+  },
+  {
+    up: migration_20260923a_startup_role_application_status.up,
+    down: migration_20260923a_startup_role_application_status.down,
+    name: "20260923a_startup_role_application_status",
+  },
+  {
+    up: migration_20260923b_startup_role_help.up,
+    down: migration_20260923b_startup_role_help.down,
+    name: "20260923b_startup_role_help",
   },
 ];

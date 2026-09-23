@@ -46,6 +46,10 @@ describe("DashboardTabs", () => {
       "href",
       "/dashboard/events",
     );
+    expect(screen.getByRole("link", { name: /jobs/i })).toHaveAttribute(
+      "href",
+      "/dashboard/jobs",
+    );
     expect(screen.getByRole("link", { name: /settings/i })).toHaveAttribute(
       "href",
       "/dashboard/settings",

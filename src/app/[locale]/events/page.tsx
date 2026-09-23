@@ -19,25 +19,37 @@ import {
   type EventType,
 } from "@/lib/event-metadata";
 import { EventsFilterBar } from "@/components/events-filter-bar";
+import { PromoteJoinCta } from "@/components/join/promote-join-cta";
+import { JsonLd } from "@/components/json-ld";
 import { Badge } from "@/components/ui/badge";
 import { SectionLabel } from "@/components/ui/section-label";
 import { EventsMap, type MapEvent } from "@/components/events-map";
 import { UseMyLocationButton } from "@/components/use-my-location-button";
+import {
+  PUBLIC_EVENTS_H1,
+  PUBLIC_EVENTS_JOIN_HREF,
+  PUBLIC_EVENTS_META,
+  PUBLIC_EVENTS_PATH,
+  listingEventsJsonLd,
+} from "@/lib/events/public-events";
 import { getVisitorLocation } from "@/lib/visitor-location";
 import { haversineDistanceKm, formatDistance } from "@/lib/geo";
 import { formatEventTimeRange } from "@/lib/event-time";
+import {
+  shouldPromoteJoin,
+  toHubAuthUser,
+} from "@/server/better-auth/hub-session";
+import { getSession } from "@/server/better-auth/server";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Events",
-    description:
-      "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community.",
-    ...buildOgMeta(
-      "Events",
-      "Upcoming workshops, hackathons, deep-dives, and meetups from the AI Tech Community.",
-      "Events",
-    ),
-    alternates: await localeAlternates("/events"),
+    title: PUBLIC_EVENTS_H1,
+    description: PUBLIC_EVENTS_META,
+    robots: { index: true, follow: true },
+    ...buildOgMeta(PUBLIC_EVENTS_H1, PUBLIC_EVENTS_META, "Events"),
+    alternates: await localeAlternates(PUBLIC_EVENTS_PATH),
   };
 }
 
@@ -113,6 +125,8 @@ export default async function EventsPage({
 }) {
   const locale = await getLocale();
   const t = await getTranslations("events");
+  const session = await getSession();
+  const promoteJoin = shouldPromoteJoin(toHubAuthUser(session?.user));
   const sp = await searchParams;
 
   const isPast = firstParam(sp, "past") === "1";
@@ -308,9 +322,43 @@ export default async function EventsPage({
     return qs ? `/events?${qs}` : "/events";
   };
 
+  const listingLocale = locale === "nl" ? "nl" : "en";
+  const eventJsonLd = listingEventsJsonLd(
+    events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      slug: event.slug,
+      date: event.date,
+      format: event.format,
+      city: event.city,
+      location: event.location,
+      sourceUrl: event.sourceUrl,
+      summary: typeof event.summary === "string" ? event.summary : null,
+    })),
+    listingLocale,
+  );
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
+      {eventJsonLd.map((data, index) => (
+        <JsonLd
+          key={`event-jsonld-${typeof data.url === "string" ? data.url : index}`}
+          data={data}
+        />
+      ))}
       <SectionLabel as="h1">{t("title")}</SectionLabel>
+
+      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <p className="text-muted-foreground max-w-2xl text-base leading-relaxed">
+          {promoteJoin ? t("listingLead") : t("listingMemberLead")}
+        </p>
+        <PromoteJoinCta
+          promoteJoin={promoteJoin}
+          guestHref={PUBLIC_EVENTS_JOIN_HREF}
+          guestLabel={t("joinCta")}
+          hubLabel={t("hubCta")}
+        />
+      </div>
 
       <div className="mt-6 flex gap-1 font-mono text-xs tracking-wider">
         <Link

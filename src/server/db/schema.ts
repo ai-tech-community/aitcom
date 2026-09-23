@@ -4161,3 +4161,276 @@ export const awesomeAiOssSaveRelations = relations(
     }),
   }),
 );
+
+/** Startups investigation. No valuation / headcount / attendance — never invent metrics. */
+export const startups = appSchema.table(
+  "startup",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: d.text().notNull(),
+    homepage: d.text().notNull(),
+    category: d
+      .varchar({ length: 32 })
+      .notNull()
+      .$type<
+        | "models"
+        | "agents"
+        | "ai-infra"
+        | "robotics"
+        | "energy"
+        | "vertical"
+        | "other"
+      >(),
+    sources: d.json().$type<string[]>().notNull().default([]),
+    region: d.text(),
+    lat: d.doublePrecision(),
+    lng: d.doublePrecision(),
+    stage: d.text(),
+    logoUrl: d.text(),
+    /** Sourced short blurb only. Soft-omit blank — never invent copy. */
+    description: d.text(),
+    founders: d
+      .json()
+      .$type<
+        Array<{ name: string; url: string | null; imageUrl: string | null }>
+      >()
+      .notNull()
+      .default([]),
+    /** Sourced exit only. Distinct from listing `status` pending|approved|rejected. */
+    exitStatus: d
+      .varchar({ length: 16 })
+      .$type<"acquired" | "ipo" | "shutdown">(),
+    acquirer: d.text(),
+    /** Sourced year (`2024`) or date (`YYYY-MM-DD`). Never invent a day. */
+    exitOn: d.text(),
+    jobsUrl: d.text(),
+    /** Stable unique public path. Backfilled from name; never a marketing handle. */
+    slug: d.text().notNull(),
+    /** Last careers scan. Null until the open-positions cron has tried. */
+    jobsScannedAt: d.timestamp({ withTimezone: true }),
+    /** Sourced `open` role count from the last successful scan. 0 = no jobs. */
+    openRoleCount: d.integer().notNull().default(0),
+    status: d
+      .varchar({ length: 16 })
+      .notNull()
+      .default("approved")
+      .$type<"pending" | "approved" | "rejected">(),
+    source: d
+      .varchar({ length: 16 })
+      .notNull()
+      .default("staff")
+      .$type<"staff">(),
+    listedOn: d.date().notNull(),
+    submittedByUserId: d.varchar({ length: 255 }).references(() => user.id),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("startup_homepage_idx").on(t.homepage),
+    uniqueIndex("startup_slug_idx").on(t.slug),
+    index("startup_status_idx").on(t.status),
+    index("startup_category_idx").on(t.category),
+    index("startup_listed_on_idx").on(t.listedOn),
+  ],
+);
+
+/** Sourced job postings scanned from a startup's verified careers URL. */
+export const startupRoles = appSchema.table(
+  "startup_role",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    startupId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => startups.id),
+    slug: d.text().notNull(),
+    title: d.text().notNull(),
+    location: d.text(),
+    workType: d.text(),
+    sourceUrl: d.text().notNull(),
+    applyUrl: d.text(),
+    descriptionText: d.text(),
+    fetchedAt: d.timestamp({ withTimezone: true }).notNull(),
+    board: d
+      .varchar({ length: 16 })
+      .notNull()
+      .$type<
+        "ashby" | "greenhouse" | "lever" | "workable" | "html" | "unknown"
+      >(),
+    externalId: d.text(),
+    status: d
+      .varchar({ length: 16 })
+      .notNull()
+      .default("open")
+      .$type<"open" | "closed" | "pending_review">(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("startup_role_slug_idx").on(t.slug),
+    uniqueIndex("startup_role_source_idx").on(t.startupId, t.sourceUrl),
+    index("startup_role_startup_idx").on(t.startupId),
+    index("startup_role_status_idx").on(t.status),
+  ],
+);
+
+export const startupRolesRelations = relations(startupRoles, ({ one }) => ({
+  startup: one(startups, {
+    fields: [startupRoles.startupId],
+    references: [startups.id],
+  }),
+}));
+
+export const startupsRelations = relations(startups, ({ one, many }) => ({
+  submittedBy: one(user, {
+    fields: [startups.submittedByUserId],
+    references: [user.id],
+    relationName: "startup_submitter",
+  }),
+  roles: many(startupRoles),
+}));
+
+/** Private saved jobs-table search. One row per member and filter combination. */
+export const startupJobsFollows = appSchema.table(
+  "startup_jobs_follow",
+  (d) => ({
+    id: d
+      .varchar({ length: 255 })
+      .notNull()
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    company: d.text().notNull().default(""),
+    q: d.text().notNull().default(""),
+    location: d.text().notNull().default(""),
+    workType: d.text().notNull().default(""),
+    lastSeenAt: d.timestamp({ withTimezone: true }).notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [
+    uniqueIndex("startup_jobs_follow_query_idx").on(
+      t.userId,
+      t.company,
+      t.q,
+      t.location,
+      t.workType,
+    ),
+    index("startup_jobs_follow_user_idx").on(t.userId),
+  ],
+);
+
+/** Private tracked role. Status is the member's board column, not a score. */
+export const startupRoleApplications = appSchema.table(
+  "startup_role_application",
+  (d) => ({
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    roleId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => startupRoles.id, { onDelete: "cascade" }),
+    status: d.varchar({ length: 32 }).notNull().default("applying"),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  }),
+  (t) => [primaryKey({ columns: [t.userId, t.roleId] })],
+);
+
+/** Forum question a member posted while asking one community for help on a tracked role. */
+export const startupRoleHelp = appSchema.table(
+  "startup_role_help",
+  (d) => ({
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    roleId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => startupRoles.id, { onDelete: "cascade" }),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id, { onDelete: "cascade" }),
+    note: d.text().notNull(),
+    classroomTitle: d.text().notNull().default(""),
+    classroomSlug: d.text().notNull().default(""),
+    threadId: d.integer().notNull(),
+    threadSlug: d.text().notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [primaryKey({ columns: [t.userId, t.roleId, t.communityId] })],
+);
+
+/** Private extracted CV text for member startup applications. One row per user. */
+export const startupMemberCvs = appSchema.table("startup_member_cv", (d) => ({
+  userId: d
+    .varchar({ length: 255 })
+    .notNull()
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  fileName: d.text().notNull(),
+  mimeType: d.varchar({ length: 128 }).notNull(),
+  textContent: d.text().notNull(),
+  purpose: d
+    .varchar({ length: 64 })
+    .notNull()
+    .default("startup_role_applications"),
+  createdAt: d
+    .timestamp({ withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+}));
+
+/** Thin public /events list. No attendance / RSVP fields — never invent counts. */
+export const curatedPublicEvents = appSchema.table(
+  "curated_public_event",
+  (d) => ({
+    id: d.varchar({ length: 255 }).notNull().primaryKey(),
+    title: d.text().notNull(),
+    date: d.date().notNull(),
+    online: d.boolean().notNull().default(false),
+    city: d.text(),
+    url: d.text().notNull(),
+    whyEn: d.text().notNull(),
+    whyNl: d.text().notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
+  }),
+  (t) => [
+    uniqueIndex("curated_public_event_url_idx").on(t.url),
+    index("curated_public_event_date_idx").on(t.date),
+  ],
+);

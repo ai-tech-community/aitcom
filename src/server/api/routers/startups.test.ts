@@ -1,0 +1,159 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+
+import {
+  STARTUPS_BATCH_MAX,
+  STARTUPS_DUPLICATE_ERROR,
+  STARTUPS_EXIT_ERROR,
+  STARTUPS_HOMEPAGE_ERROR,
+  STARTUPS_JOBS_URL_ERROR,
+  STARTUPS_SLUG_ERROR,
+} from "@/lib/investigations/startups";
+import { STARTUP_CV_PURPOSE } from "@/lib/investigations/startup-cv";
+
+const src = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "startups.ts"),
+  "utf8",
+);
+const queries = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../../startups/queries.ts"),
+  "utf8",
+);
+const cvStore = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "../../startups/cv.ts"),
+  "utf8",
+);
+const cvMigration = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../migrations/20260921a_startup_member_cv.ts",
+  ),
+  "utf8",
+);
+const migration = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../migrations/20260915b_startups.ts",
+  ),
+  "utf8",
+);
+const softOmit = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../migrations/20260915d_startups_soft_omit_fields.ts",
+  ),
+  "utf8",
+);
+const descriptionMigration = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../migrations/20260916b_startups_description.ts",
+  ),
+  "utf8",
+);
+const slugMigration = readFileSync(
+  join(
+    dirname(fileURLToPath(import.meta.url)),
+    "../../../migrations/20260916c_startups_slug.ts",
+  ),
+  "utf8",
+);
+
+const BAKED_COMPANIES =
+  /Anthropic|Mistral AI|Hugging Face|Cohere|Perplexity|LangChain|Pinecone|Weaviate|Fireworks AI|Figure AI|Agility Robotics|Apptronik|1X Technologies|Physical Intelligence|Skild AI|Aalo Atomics|Emerald AI/;
+
+describe("startups router locks", () => {
+  it("gates writes on Hub operators and lists from Neon only", () => {
+    expect(src).toContain("requireHubOperator");
+    expect(src).toContain("createStartup");
+    expect(src).toContain("createStartups");
+    expect(src).toContain("updateStartup");
+    expect(src).toContain("listApprovedPublicStartups");
+    expect(src).toContain("STARTUPS_BATCH_MAX");
+    expect(src).toContain("STARTUPS_HOMEPAGE_ERROR");
+    expect(src).toContain("STARTUPS_DUPLICATE_ERROR");
+    expect(src).toContain("STARTUPS_EXIT_ERROR");
+    expect(src).toContain("STARTUPS_JOBS_URL_ERROR");
+    expect(src).toContain("founders");
+    expect(src).toContain("exitStatus");
+    expect(src).toContain("jobsUrl");
+    expect(src).toContain("logo_url");
+    expect(src).toContain("jobs_url");
+    expect(src).toContain("description");
+    expect(src).toContain("blurb");
+    expect(src).toContain("exit_acquirer");
+    expect(src).toContain("exit_year");
+    expect(src).toContain("imageUrl");
+    expect(src).toContain("photo_url");
+    expect(src).toContain("pulseExitAlias");
+    expect(src).toContain("slug");
+    expect(src).toContain("allocateStartupSlug");
+    expect(src).toContain("STARTUPS_SLUG_ERROR");
+    expect(src).toContain("getMyCv");
+    expect(src).toContain("upsertMyCv");
+    expect(src).toContain("deleteMyCv");
+    expect(src).toContain("protectedProcedure");
+    expect(src).toContain("extractStartupCvText");
+    expect(src).not.toContain("/api/upload");
+    expect(src).not.toMatch(/openrouter/i);
+    expect(cvStore).toContain("STARTUP_CV_PURPOSE");
+    expect(STARTUP_CV_PURPOSE).toBe("startup_role_applications");
+    expect(cvStore).toContain("textContent");
+    expect(cvMigration).toContain("text_content");
+    expect(cvMigration).toMatch(/ON DELETE CASCADE/);
+    expect(STARTUPS_HOMEPAGE_ERROR).toMatch(/homepage URL/i);
+    expect(STARTUPS_DUPLICATE_ERROR).toMatch(/already/i);
+    expect(STARTUPS_EXIT_ERROR).toMatch(/acquired, IPO, or shutdown/i);
+    expect(STARTUPS_JOBS_URL_ERROR).toMatch(/careers URL/i);
+    expect(STARTUPS_BATCH_MAX).toBe(30);
+    expect(src).not.toMatch(BAKED_COMPANIES);
+  });
+
+  it("does not fall back to a hardcoded seed list when Neon is empty", () => {
+    expect(queries).toContain("listApprovedPublicStartups");
+    expect(queries).toMatch(/return \[\]/);
+    expect(queries).not.toMatch(/curatedPublic|SEEDS|seedCards/);
+    expect(queries).not.toMatch(/unstable_cache|revalidateTag/);
+    expect(queries).not.toMatch(BAKED_COMPANIES);
+  });
+
+  it("keeps the schema migration insert-free", () => {
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS "app"."startup"');
+    expect(migration).not.toMatch(/INSERT INTO/i);
+    expect(migration).not.toMatch(BAKED_COMPANIES);
+  });
+
+  it("adds sourced-only founders, exit, and jobs columns without a people-graph backfill", () => {
+    expect(softOmit).toContain('"founders"');
+    expect(softOmit).toContain('"exit_status"');
+    expect(softOmit).toContain('"jobs_url"');
+    expect(softOmit).toMatch(/No people-graph backfill/);
+    expect(softOmit).not.toMatch(/INSERT INTO/i);
+    expect(queries).toContain("displayStartupFounders");
+    expect(queries).toContain("parseStartupExitStatus");
+  });
+
+  it("adds a unique slug column and backfills from name with collision suffixes", () => {
+    expect(slugMigration).toContain('ADD COLUMN IF NOT EXISTS "slug"');
+    expect(slugMigration).toContain("startup_slug_idx");
+    expect(slugMigration).toContain("ROW_NUMBER()");
+    expect(slugMigration).toContain("|| '-' || numbered.n");
+    expect(slugMigration).not.toMatch(/INSERT INTO/i);
+    expect(slugMigration).not.toMatch(BAKED_COMPANIES);
+    expect(queries).toContain("findApprovedPublicStartupBySlug");
+    expect(queries).toContain("listApprovedPublicStartupSlugs");
+    expect(src).toContain("resolveWriteSlug");
+    expect(STARTUPS_SLUG_ERROR).toMatch(/unique lowercase slug/i);
+  });
+
+  it("adds a sourced-only description column without inventing blurbs", () => {
+    expect(descriptionMigration).toContain('"description"');
+    expect(descriptionMigration).toMatch(/ADD COLUMN IF NOT EXISTS/);
+    expect(descriptionMigration).not.toMatch(/INSERT INTO/i);
+    expect(descriptionMigration).not.toMatch(BAKED_COMPANIES);
+    expect(queries).toContain("description");
+    expect(src).toContain("description:");
+  });
+});

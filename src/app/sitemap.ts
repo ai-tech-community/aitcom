@@ -1,5 +1,10 @@
 import type { MetadataRoute } from "next";
+import { unstable_noStore as noStore } from "next/cache";
 import { awesomeDirectorySitemapPaths } from "@/lib/investigations/awesome-ai-oss";
+import {
+  startupDirectorySitemapPaths,
+  startupProfileSitemapPaths,
+} from "@/lib/investigations/startups";
 import { absoluteLocaleUrl } from "@/lib/metadata";
 import {
   HUB_FORUM_PATH,
@@ -33,6 +38,10 @@ const STATIC_PAGES = [
   "/guides/mcp-registry-vs-community-hub",
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
+  "/investigations/awesome-ai-oss/insights",
+  "/startups",
+  "/startups/insights",
+  "/roles",
 ] as const;
 
 type SitemapDoc = {
@@ -63,6 +72,17 @@ function localeEntries(
       },
     },
   };
+}
+
+function uniqueLocaleEntries(paths: readonly string[]): MetadataRoute.Sitemap {
+  const seen = new Set<string>();
+  const entries: MetadataRoute.Sitemap = [];
+  for (const path of paths) {
+    if (seen.has(path)) continue;
+    seen.add(path);
+    entries.push(localeEntries(path));
+  }
+  return entries;
 }
 
 function docsFromSettled(
@@ -106,12 +126,37 @@ async function defaultAwesomePagePaths(): Promise<string[]> {
   }
 }
 
+async function defaultStartupPagePaths(): Promise<string[]> {
+  noStore();
+  try {
+    const {
+      listedPublicStartupCount,
+      listApprovedPublicStartupSlugs,
+      listOpenStartupRoleSlugs,
+    } = await import("@/server/startups/queries");
+    const { startupRoleSitemapPaths } =
+      await import("@/lib/investigations/startup-roles");
+    const listed = await listedPublicStartupCount();
+    const slugs = await listApprovedPublicStartupSlugs();
+    const roleSlugs = await listOpenStartupRoleSlugs();
+    return [
+      ...startupDirectorySitemapPaths(listed),
+      ...startupProfileSitemapPaths(slugs),
+      ...startupRoleSitemapPaths(roleSlugs),
+    ];
+  } catch (error) {
+    console.error("[sitemap] startups directory page lookup failed", error);
+    return [];
+  }
+}
+
 export async function buildSitemapEntries(
   getClient: () => Promise<SitemapClient> = getPayloadClient,
   getCommunitySlugById: () => Promise<
     ReadonlyMap<string, string>
   > = defaultCommunitySlugById,
   getAwesomePagePaths: () => Promise<string[]> = defaultAwesomePagePaths,
+  getStartupPagePaths: () => Promise<string[]> = defaultStartupPagePaths,
 ): Promise<MetadataRoute.Sitemap> {
   let awesomePagePaths: string[] = [];
   try {
@@ -119,11 +164,19 @@ export async function buildSitemapEntries(
   } catch (error) {
     console.error("[sitemap] awesome directory page lookup failed", error);
   }
+  let startupPagePaths: string[] = [];
+  try {
+    startupPagePaths = await getStartupPagePaths();
+  } catch (error) {
+    console.error("[sitemap] startups directory page lookup failed", error);
+    startupPagePaths = [];
+  }
 
-  const staticEntries = [
-    ...STATIC_PAGES.map((path) => localeEntries(path)),
-    ...awesomePagePaths.map((path) => localeEntries(path)),
-  ];
+  const staticEntries = uniqueLocaleEntries([
+    ...STATIC_PAGES,
+    ...awesomePagePaths,
+    ...startupPagePaths,
+  ]);
 
   let payload: SitemapClient;
   try {

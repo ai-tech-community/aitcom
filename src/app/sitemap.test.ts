@@ -28,6 +28,10 @@ const STATIC_PATHS = [
   "/guides/mcp-registry-vs-community-hub",
   "/guides/agent-ready-community",
   "/investigations/awesome-ai-oss",
+  "/investigations/awesome-ai-oss/insights",
+  "/startups",
+  "/startups/insights",
+  "/roles",
 ] as const;
 
 function urlsOf(entries: Awaited<ReturnType<typeof buildSitemapEntries>>) {
@@ -197,6 +201,7 @@ describe("buildSitemapEntries", () => {
       undefined,
       async () => new Map(),
       async () => [],
+      async () => [],
     );
     const urls = urlsOf(entries);
 
@@ -239,6 +244,112 @@ describe("buildSitemapEntries", () => {
     expect(event).toBeDefined();
     expect(event?.lastModified).toBeInstanceOf(Date);
     expect(Number.isNaN((event?.lastModified as Date).getTime())).toBe(false);
+  });
+
+  it("includes Startups Directory and Insights even below the promo count", async () => {
+    mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
+
+    const staticOnly = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [],
+    );
+    const staticUrls = urlsOf(staticOnly);
+    expect(staticUrls).toContain("https://www.aitcommunity.org/en/startups");
+    expect(staticUrls).toContain(
+      "https://www.aitcommunity.org/en/startups/insights",
+    );
+    expect(staticUrls).toContain("https://www.aitcommunity.org/en/jobs");
+    expect(staticUrls).not.toContain(
+      "https://www.aitcommunity.org/en/startups/jobs",
+    );
+
+    const indexed = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => [
+        "/startups",
+        "/startups/insights",
+        "/startups?page=2",
+        "/startups/cursor-anysphere",
+      ],
+    );
+    const indexedUrls = urlsOf(indexed);
+    expect(indexedUrls).toContain("https://www.aitcommunity.org/en/startups");
+    expect(indexedUrls).toContain(
+      "https://www.aitcommunity.org/en/startups/insights",
+    );
+    expect(indexedUrls).toContain(
+      "https://www.aitcommunity.org/en/startups?page=2",
+    );
+    expect(indexedUrls).toContain(
+      "https://www.aitcommunity.org/en/startups/cursor-anysphere",
+    );
+    expect(
+      indexedUrls.filter(
+        (url) => url === "https://www.aitcommunity.org/en/startups",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("grows Startups ?page= locs with the listed row count, like Awesome", async () => {
+    mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
+    const { STARTUPS_PAGE_SIZE, STARTUPS_PATH, startupDirectorySitemapPaths } =
+      await import("@/lib/investigations/startups");
+
+    const listed = 3479;
+    const extra = startupDirectorySitemapPaths(listed, STARTUPS_PAGE_SIZE);
+    expect(extra).toHaveLength(Math.ceil(listed / STARTUPS_PAGE_SIZE) - 1);
+    expect(extra[0]).toBe(`${STARTUPS_PATH}?page=2`);
+    expect(extra.at(-1)).toBe(`${STARTUPS_PATH}?page=145`);
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => extra,
+    );
+    const urls = urlsOf(entries);
+    expect(urls).toContain("https://www.aitcommunity.org/en/startups?page=2");
+    expect(urls).toContain("https://www.aitcommunity.org/en/startups?page=145");
+    expect(urls).not.toContain(
+      "https://www.aitcommunity.org/en/startups?page=1",
+    );
+    expect(
+      entries.find(
+        (item) =>
+          item.url === "https://www.aitcommunity.org/en/startups?page=145",
+      )?.alternates?.languages,
+    ).toEqual({
+      en: "https://www.aitcommunity.org/en/startups?page=145",
+      nl: "https://www.aitcommunity.org/nl/startups?page=145",
+    });
+  });
+
+  it("includes later Startups directory pages from the live Neon row count", async () => {
+    mockGetPayloadClient.mockRejectedValue(new Error("skip collections"));
+
+    const entries = await buildSitemapEntries(
+      undefined,
+      async () => new Map(),
+      async () => [],
+      async () => ["/startups?page=2", "/startups?page=3"],
+    );
+    const urls = urlsOf(entries);
+
+    expect(urls).toContain("https://www.aitcommunity.org/en/startups?page=2");
+    expect(urls).toContain("https://www.aitcommunity.org/en/startups?page=3");
+    expect(
+      entries.find(
+        (item) =>
+          item.url === "https://www.aitcommunity.org/en/startups?page=2",
+      )?.alternates?.languages,
+    ).toEqual({
+      en: "https://www.aitcommunity.org/en/startups?page=2",
+      nl: "https://www.aitcommunity.org/nl/startups?page=2",
+    });
   });
 
   it("includes later Awesome AI OSS directory pages with locale alternates", async () => {

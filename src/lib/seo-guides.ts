@@ -111,12 +111,54 @@ export function appPathFromGuideHref(href: string): string | null {
   ) {
     return "/events/world-summit-ai-amsterdam-2026";
   }
-  if (
-    normalized === "/investigations/awesome-ai-oss" ||
-    normalized === "/en/investigations/awesome-ai-oss" ||
-    normalized === "/nl/investigations/awesome-ai-oss"
-  ) {
+  const [pathOnly, query = ""] = normalized.split("?");
+  const params = new URLSearchParams(query);
+  const awesomeRoot =
+    pathOnly === "/investigations/awesome-ai-oss" ||
+    pathOnly === "/en/investigations/awesome-ai-oss" ||
+    pathOnly === "/nl/investigations/awesome-ai-oss";
+  const awesomeInsights =
+    pathOnly === "/investigations/awesome-ai-oss/insights" ||
+    pathOnly === "/en/investigations/awesome-ai-oss/insights" ||
+    pathOnly === "/nl/investigations/awesome-ai-oss/insights";
+  if (awesomeInsights || (awesomeRoot && params.get("tab") === "insights")) {
+    return "/investigations/awesome-ai-oss/insights";
+  }
+  if (awesomeRoot) {
     return "/investigations/awesome-ai-oss";
+  }
+  const startupsRoot =
+    pathOnly === "/startups" ||
+    pathOnly === "/en/startups" ||
+    pathOnly === "/nl/startups" ||
+    pathOnly === "/investigations/startups" ||
+    pathOnly === "/en/investigations/startups" ||
+    pathOnly === "/nl/investigations/startups";
+  const startupsInsights =
+    pathOnly === "/startups/insights" ||
+    pathOnly === "/en/startups/insights" ||
+    pathOnly === "/nl/startups/insights" ||
+    pathOnly === "/investigations/startups/insights" ||
+    pathOnly === "/en/investigations/startups/insights" ||
+    pathOnly === "/nl/investigations/startups/insights";
+  const startupsJobs =
+    pathOnly === "/jobs" ||
+    pathOnly === "/en/jobs" ||
+    pathOnly === "/nl/jobs" ||
+    pathOnly === "/startups/jobs" ||
+    pathOnly === "/en/startups/jobs" ||
+    pathOnly === "/nl/startups/jobs" ||
+    pathOnly === "/investigations/startups/jobs" ||
+    pathOnly === "/en/investigations/startups/jobs" ||
+    pathOnly === "/nl/investigations/startups/jobs";
+  if (startupsInsights || (startupsRoot && params.get("tab") === "insights")) {
+    return "/startups/insights";
+  }
+  if (startupsJobs) {
+    return "/jobs";
+  }
+  if (startupsRoot) {
+    return "/startups";
   }
   return null;
 }

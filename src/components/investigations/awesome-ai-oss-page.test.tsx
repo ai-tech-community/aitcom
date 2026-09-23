@@ -46,8 +46,18 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
+vi.mock("./awesome-ai-oss-insights-charts", () => ({
+  AwesomeCategoryMixChart: () => <div data-testid="chart-category" />,
+  AwesomeHostMixChart: () => <div data-testid="chart-host" />,
+  AwesomeAddedOverTimeChart: () => <div data-testid="chart-added" />,
+  AwesomeStarDistributionChart: () => <div data-testid="chart-stars" />,
+  AwesomeTopLiveStarsChart: () => <div data-testid="chart-top" />,
+}));
+
 import {
   AWESOME_AI_OSS_H1,
+  AWESOME_AI_OSS_INSIGHTS_H1,
+  AWESOME_AI_OSS_INSIGHTS_PATH,
   AWESOME_AI_OSS_JOIN_HREF,
   AWESOME_AI_OSS_META,
   AWESOME_AI_OSS_PAGE_SIZE,
@@ -61,11 +71,13 @@ import {
   curatedPublicCards,
   paginateAwesomeCards,
 } from "@/lib/investigations/awesome-ai-oss";
+import { AWESOME_INSIGHTS_CAPTION } from "@/lib/investigations/awesome-ai-oss-insights";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_1 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-1";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_3 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-3";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_4 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-4";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_5 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-5";
 import { AWESOME_AI_OSS_SEEDS_CHUNK_6 } from "@/lib/investigations/awesome-ai-oss-seeds-chunk-6";
+import { HUB_OPEN_HREF } from "@/lib/join-path";
 import { GUIDE_PATHS, JOIN_PATH, appPathFromGuideHref } from "@/lib/seo-guides";
 import { HOME_CRAWL_DOORS } from "@/components/home/home-crawl-doors";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -75,6 +87,10 @@ import { AwesomeAiOssCard } from "./awesome-ai-oss-card";
 const dir = dirname(fileURLToPath(import.meta.url));
 const appLocale = join(dir, "../../app/[locale]");
 const PAGE_FILE = join(appLocale, "investigations/awesome-ai-oss/page.tsx");
+const INSIGHTS_FILE = join(
+  appLocale,
+  "investigations/awesome-ai-oss/insights/page.tsx",
+);
 const REVIEW_FILE = join(
   appLocale,
   "investigations/awesome-ai-oss/review/page.tsx",
@@ -98,7 +114,7 @@ const BANNED = [
 ];
 
 const DENIALS =
-  /does not register you for World Summit|registreert je niet voor World Summit|not a summit ticket|geen summit-ticket|no stars|geen sterren|live repo stars when fetched|live-reposterren wanneer opgehaald|not a complete catalog|geen complete catalogus|not a star-sorted|★ \d/gi;
+  /does not register you for World Summit|registreert je niet voor World Summit|not a summit ticket|geen summit-ticket|no stars|geen sterren|live repo stars when fetched|live-reposterren wanneer opgehaald|not a complete catalog|geen complete catalogus|not a star-sorted|Star distribution|Top by stars|★ \d/gi;
 
 const V1_HREFS = [
   "https://github.com/modelcontextprotocol/servers",
@@ -262,6 +278,15 @@ describe("Awesome AI OSS investigation route", () => {
     expect(src).toContain("parseAwesomeDirectoryQuery");
     expect(src).toContain("awesomeDirectoryCanonicalPath");
     expect(src).toContain("robots: { index: true, follow: true }");
+    expect(src).toContain("isAwesomeInsightsTab");
+    expect(src).toContain("AWESOME_AI_OSS_INSIGHTS_PATH");
+    expect(existsSync(INSIGHTS_FILE)).toBe(true);
+    const insights = readFileSync(INSIGHTS_FILE, "utf8");
+    expect(insights).toContain("AWESOME_AI_OSS_INSIGHTS_PATH");
+    expect(insights).toContain("localeAlternates");
+    expect(insights).toContain("buildAwesomeInsights");
+    expect(insights).toContain("robots: { index: true, follow: true }");
+    expect(insights).toContain('tab="insights"');
   });
 });
 
@@ -304,7 +329,7 @@ describe("Awesome AI OSS catalog", () => {
 });
 
 describe("Awesome AI OSS page citation contract", () => {
-  it("uses the Writing Bot H1/lede, Hub≠registry, pick rules, and Join CTA", () => {
+  it("uses the slim H1/lede, Directory/Insights tabs, and Join CTA", () => {
     expect(en.investigationsAwesomeAiOss.title).toBe(AWESOME_AI_OSS_H1);
     const { container } = render(
       <AwesomeAiOssPage locale="en" t={tFrom(en.investigationsAwesomeAiOss)} />,
@@ -316,18 +341,25 @@ describe("Awesome AI OSS page citation contract", () => {
     expect(container.textContent).toMatch(
       /Pick tools here\. Belong somewhere next/,
     );
-    expect(container.textContent).toMatch(/Not a star-sorted awesome dump/);
-    expect(container.textContent).toMatch(
+    expect(container.textContent).not.toMatch(
       /Registries find\/connect tools; AIT Hub is where agents belong with humans/,
     );
-    expect(container.textContent).toMatch(/live GitHub\/GitLab only/i);
-    expect(container.textContent).toMatch(/live repo stars when fetched/i);
-    expect(container.textContent).toMatch(/not a complete catalog/i);
-    expect(container.textContent).toMatch(/not a summit ticket/i);
+    expect(container.textContent).not.toMatch(/How we pick/);
+    expect(
+      screen.getByRole("navigation", { name: "Awesome AI OSS views" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Directory" })).toHaveAttribute(
+      "href",
+      AWESOME_AI_OSS_PATH,
+    );
+    expect(screen.getByRole("link", { name: "Insights" })).toHaveAttribute(
+      "href",
+      AWESOME_AI_OSS_INSIGHTS_PATH,
+    );
 
     const hrefs = hrefsOf(container);
     expect(hrefs).toContain("/investigations");
-    expect(hrefs).toContain(GUIDE_PATHS.mcpRegistryVsHub);
+    expect(hrefs).not.toContain(GUIDE_PATHS.mcpRegistryVsHub);
     expect(hrefs).toContain(GUIDE_PATHS.registerAgentMcp);
     expect(hrefs).toContain(AWESOME_AI_OSS_JOIN_HREF);
     expect(AWESOME_AI_OSS_JOIN_HREF).toBe(
@@ -478,11 +510,12 @@ describe("Awesome AI OSS i18n", () => {
       <AwesomeAiOssPage locale="nl" t={tFrom(nl.investigationsAwesomeAiOss)} />,
     );
     const hrefs = hrefsOf(container);
-    expect(hrefs).toContain(GUIDE_PATHS.mcpRegistryVsHub);
+    expect(hrefs).not.toContain(GUIDE_PATHS.mcpRegistryVsHub);
     expect(hrefs).toContain(GUIDE_PATHS.registerAgentMcp);
     expect(hrefs).toContain(AWESOME_AI_OSS_JOIN_HREF);
+    expect(hrefs).toContain(AWESOME_AI_OSS_INSIGHTS_PATH);
     expect(hrefs).toContain(buildAwesomeDirectoryPath({ page: 2 }));
-    expect(container.textContent).toMatch(/geen summit-ticket/i);
+    expect(container.textContent).toMatch(/Kies hier tools/);
     expectAnonymousVoteLock(container);
     expectNoBannedClaims(container.textContent ?? "");
 
@@ -497,7 +530,9 @@ describe("Awesome AI OSS site integration", () => {
     const sitemap = readFileSync(SITEMAP_FILE, "utf8");
     const sitemapTest = readFileSync(SITEMAP_TEST_FILE, "utf8");
     expect(sitemap).toContain(AWESOME_AI_OSS_PATH);
+    expect(sitemap).toContain(AWESOME_AI_OSS_INSIGHTS_PATH);
     expect(sitemapTest).toContain(AWESOME_AI_OSS_PATH);
+    expect(sitemapTest).toContain(AWESOME_AI_OSS_INSIGHTS_PATH);
     expect(sitemap).not.toContain(AWESOME_AI_OSS_REVIEW_PATH);
   });
 
@@ -526,6 +561,14 @@ describe("Awesome AI OSS site integration", () => {
     expect(appPathFromGuideHref("/en/investigations/awesome-ai-oss")).toBe(
       AWESOME_AI_OSS_PATH,
     );
+    expect(
+      appPathFromGuideHref(
+        "https://www.aitcommunity.org/en/investigations/awesome-ai-oss/insights",
+      ),
+    ).toBe(AWESOME_AI_OSS_INSIGHTS_PATH);
+    expect(
+      appPathFromGuideHref("/en/investigations/awesome-ai-oss?tab=insights"),
+    ).toBe(AWESOME_AI_OSS_INSIGHTS_PATH);
   });
 
   it("keeps join as a Hub door, not a summit ticket", () => {
@@ -583,6 +626,15 @@ describe("Awesome AI OSS site integration", () => {
     expect(copy.paginationPrev).toBe("Previous");
     expect(copy.paginationNext).toBe("Next");
     expect(copy.paginationLabel).toBe("Directory pages");
+    expect(copy.tabDirectory).toBe("Directory");
+    expect(copy.tabInsights).toBe("Insights");
+    expect(copy.categoryMixTitle).toBe("Category mix");
+    expect(copy.hostMixTitle).toBe("GitHub vs GitLab");
+    expect(copy.addedOverTimeTitle).toBe("Added over time");
+    expect(copy.starDistributionTitle).toBe("Star distribution");
+    expect(copy.topStarsTitle).toBe("Top by stars");
+    expect(copy.chartCaption).toBe(AWESOME_INSIGHTS_CAPTION);
+    expect(copy.starsOmitted).toMatch(/live repo stars when fetched/i);
     expect(AWESOME_CATEGORY_LABELS.protocols.en).toBe("Protocols & SDKs");
     expect(AWESOME_CATEGORY_LABELS.runtimes.en).toBe("MCP servers & runtimes");
     expect(AWESOME_CATEGORY_LABELS.frameworks.en).toBe("Agent frameworks");
@@ -612,8 +664,12 @@ describe("Awesome AI OSS site integration", () => {
       join(dir, "awesome-ai-oss-pagination.tsx"),
       join(dir, "awesome-ai-oss-submit-dialog.tsx"),
       join(dir, "awesome-ai-oss-review-queue.tsx"),
+      join(dir, "awesome-ai-oss-insights.tsx"),
+      join(dir, "awesome-ai-oss-insights-charts.tsx"),
+      join(dir, "awesome-ai-oss-tabs.tsx"),
       REVIEW_FILE,
       PAGE_FILE,
+      INSIGHTS_FILE,
     ];
     for (const file of siblings) {
       expect(readFileSync(file, "utf8")).not.toMatch(joinNeedle);
@@ -622,7 +678,8 @@ describe("Awesome AI OSS site integration", () => {
     const route = readFileSync(PAGE_FILE, "utf8");
     expect(route).toContain("/auth/signin?redirect=");
     expect(route).toContain("AWESOME_AI_OSS_PATH");
-    expect(route).not.toMatch(/join/i);
+    expect(route).not.toMatch(joinNeedle);
+    expect(route).toContain("shouldPromoteJoin");
   });
 
   it("exposes a noindex People review path", () => {
@@ -765,5 +822,167 @@ describe("Awesome AI OSS card vote lock", () => {
     expect(container.querySelector("[data-awesome-star-count]")).toBeNull();
     expect(container.textContent).not.toMatch(/★ 0/);
     expect(container.textContent).not.toContain("Learn more");
+  });
+});
+
+describe("Awesome AI OSS Insights tab", () => {
+  it("renders Neon category / host / added charts and omits star charts", () => {
+    const { container } = render(
+      <AwesomeAiOssPage
+        locale="en"
+        t={tFrom(en.investigationsAwesomeAiOss)}
+        tab="insights"
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: AWESOME_AI_OSS_INSIGHTS_H1,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Category mix" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "GitHub vs GitLab" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Added over time" }),
+    ).toBeInTheDocument();
+    expect(container.textContent).toMatch(
+      /from our curated list · refreshed daily/,
+    );
+    expect(
+      container.querySelector("[data-awesome-insights-bento]"),
+    ).toBeInTheDocument();
+    const tiles = [
+      ...container.querySelectorAll("[data-awesome-insight-tile]"),
+    ];
+    expect(
+      tiles.map((tile) => tile.getAttribute("data-awesome-insight-tile")),
+    ).toEqual(["added-over-time", "category-mix", "host-mix"]);
+    expect(tiles[0]).toHaveClass("md:col-span-2");
+    for (const tile of tiles) {
+      const chart = tile.querySelector("[data-testid^='chart-']");
+      const table = tile.querySelector("[data-awesome-insight-table] table");
+      expect(chart).not.toBeNull();
+      expect(table).not.toBeNull();
+      expect(
+        Boolean(
+          chart!.compareDocumentPosition(table!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ).toBe(true);
+    }
+    expect(screen.getByTestId("chart-category")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-host")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-added")).toBeInTheDocument();
+    expect(screen.queryByTestId("chart-stars")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("chart-top")).not.toBeInTheDocument();
+    expect(
+      container.querySelector("[data-awesome-stars-omitted]"),
+    ).toHaveTextContent(/live repo stars when fetched/i);
+    expect(container.textContent).not.toMatch(/★ 0/);
+    expect(hrefsOf(container)).toContain(AWESOME_AI_OSS_JOIN_HREF);
+    expect(hrefsOf(container)).toContain(AWESOME_AI_OSS_PATH);
+    expectNoBannedClaims(container.textContent ?? "");
+  });
+
+  it("swaps the hard Join CTA to Open Hub for signed-in Hub members", () => {
+    const directory = render(
+      <AwesomeAiOssPage
+        locale="en"
+        t={tFrom(en.investigationsAwesomeAiOss)}
+        signedIn
+      />,
+    );
+    expect(hrefsOf(directory.container)).not.toContain(
+      AWESOME_AI_OSS_JOIN_HREF,
+    );
+    expect(directory.container.textContent).not.toContain(
+      en.investigationsAwesomeAiOss.joinCta,
+    );
+    expect(en.investigationsAwesomeAiOss.hubCta).toBe("Open Hub");
+    expect(screen.getByRole("link", { name: "Open Hub" })).toHaveAttribute(
+      "href",
+      HUB_OPEN_HREF,
+    );
+    expect(screen.queryByRole("link", { name: /join/i })).toBeNull();
+    directory.unmount();
+
+    const insights = render(
+      <AwesomeAiOssPage
+        locale="en"
+        t={tFrom(en.investigationsAwesomeAiOss)}
+        signedIn
+        tab="insights"
+      />,
+    );
+    expect(hrefsOf(insights.container)).not.toContain(AWESOME_AI_OSS_JOIN_HREF);
+    expect(insights.container.textContent).not.toContain(
+      en.investigationsAwesomeAiOss.joinCta,
+    );
+    expect(screen.getByRole("link", { name: "Open Hub" })).toHaveAttribute(
+      "href",
+      HUB_OPEN_HREF,
+    );
+    expect(screen.queryByRole("link", { name: /join/i })).toBeNull();
+  });
+
+  it("wires Directory and Insights to the same per-request getSession source Startups uses", () => {
+    for (const file of [PAGE_FILE, INSIGHTS_FILE]) {
+      const src = readFileSync(file, "utf8");
+      expect(src).toContain('dynamic = "force-dynamic"');
+      expect(src).toContain("getSession");
+      expect(src).toContain("shouldPromoteJoin(toHubAuthUser(session?.user))");
+      expect(src).toContain("promoteJoin");
+      expect(src).not.toMatch(/export const revalidate/);
+    }
+  });
+
+  it("renders star distribution and Top 10 from fetched star_count only", () => {
+    const checkedAt = new Date().toISOString();
+    const projects = curatedPublicCards().map((card, index) => ({
+      ...card,
+      starCount: (index + 1) * 40,
+      starsCheckedAt: checkedAt,
+    }));
+    const { container } = render(
+      <AwesomeAiOssPage
+        locale="en"
+        t={tFrom(en.investigationsAwesomeAiOss)}
+        tab="insights"
+        projects={projects}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Star distribution" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Top by stars" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("chart-stars")).toBeInTheDocument();
+    expect(screen.getByTestId("chart-top")).toBeInTheDocument();
+    expect(
+      [...container.querySelectorAll("[data-awesome-insight-tile]")].map(
+        (tile) => tile.getAttribute("data-awesome-insight-tile"),
+      ),
+    ).toEqual([
+      "added-over-time",
+      "category-mix",
+      "host-mix",
+      "star-distribution",
+      "top-stars",
+    ]);
+    expect(
+      container.querySelectorAll("[data-awesome-insight-tile] table"),
+    ).toHaveLength(5);
+    expect(container.querySelector("[data-awesome-stars-omitted]")).toBeNull();
+    expect(container.textContent).toContain(projects.at(-1)!.name);
+    expect(container.textContent).toContain(String(projects.length * 40));
+    expect(container.textContent).not.toMatch(/★ 0/);
+    expectNoBannedClaims(container.textContent ?? "");
   });
 });

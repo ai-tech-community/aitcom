@@ -419,6 +419,16 @@ describe("SEO guide live facts", () => {
         "https://www.aitcommunity.org/en/investigations/awesome-ai-oss",
       ),
     ).toBe("/investigations/awesome-ai-oss");
+    expect(
+      appPathFromGuideHref(
+        "https://www.aitcommunity.org/en/investigations/awesome-ai-oss/insights",
+      ),
+    ).toBe("/investigations/awesome-ai-oss/insights");
+    expect(
+      appPathFromGuideHref(
+        "https://www.aitcommunity.org/en/investigations/awesome-ai-oss?tab=insights",
+      ),
+    ).toBe("/investigations/awesome-ai-oss/insights");
   });
 
   it("points at the live MCP, setup, and agent.md URLs", () => {

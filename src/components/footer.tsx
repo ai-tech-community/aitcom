@@ -41,6 +41,18 @@ export function Footer() {
                   {tNav("events")}
                 </Link>
                 <Link
+                  href="/roles"
+                  className="hover:text-primary text-sm transition-colors"
+                >
+                  {tNav("roles")}
+                </Link>
+                <Link
+                  href="/jobs"
+                  className="hover:text-primary text-sm transition-colors"
+                >
+                  {tNav("jobs")}
+                </Link>
+                <Link
                   href="/blog"
                   className="hover:text-primary text-sm transition-colors"
                 >
@@ -51,6 +63,12 @@ export function Footer() {
                   className="hover:text-primary text-sm transition-colors"
                 >
                   {tNav("community")}
+                </Link>
+                <Link
+                  href="/startups"
+                  className="hover:text-primary text-sm transition-colors"
+                >
+                  {tNav("startups")}
                 </Link>
               </nav>
             </div>

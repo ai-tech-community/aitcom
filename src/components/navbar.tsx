@@ -41,13 +41,17 @@ const MessagesNavLink = dynamic(() =>
 // Source of truth for the IA split — see ADR-0010.
 // New top-level destinations default to `primary: false` unless they are a
 // recurring action surface or a flagship product.
+// `/jobs` and `/startups` are primary so the public openings surface is
+// visible without opening More. Hub `/roles` stays its own item.
 const navLinks = [
   { href: "/communities", key: "explore", shortcut: "C", primary: true },
   { href: "/events", key: "events", shortcut: "E", primary: true },
+  { href: "/roles", key: "roles", shortcut: "R", primary: true },
+  { href: "/jobs", key: "jobs", shortcut: "W", primary: true },
+  { href: "/startups", key: "startups", shortcut: "U", primary: true },
   { href: "/challenges", key: "challenges", shortcut: "G", primary: true },
-  { href: "/launchpad", key: "launchpad", shortcut: "L", primary: true },
+  { href: "/launchpad", key: "launchpad", shortcut: "L", primary: false },
   { href: "/benchmark", key: "benchmark", shortcut: "K", primary: false },
-  { href: "/jobs", key: "jobs", shortcut: "W", primary: false },
   { href: "/agents", key: "agents", shortcut: "T", primary: false },
   { href: "/ideas", key: "ideas", shortcut: "F", primary: false },
   { href: "/members", key: "members", shortcut: "M", primary: false },
@@ -61,6 +65,10 @@ const navLinks = [
   { href: "/impact", key: "impact", shortcut: "P", primary: false },
   { href: "/sponsors", key: "sponsors", shortcut: "S", primary: false },
 ] as const;
+
+function isNavHrefActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 const primaryLinks = navLinks.filter((l) => l.primary);
 const overflowLinks = navLinks.filter((l) => !l.primary);
@@ -133,7 +141,9 @@ export function Navbar({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  const overflowActive = overflowLinks.some((l) => pathname === l.href);
+  const overflowActive = overflowLinks.some((l) =>
+    isNavHrefActive(pathname, l.href),
+  );
 
   return (
     <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
@@ -153,7 +163,7 @@ export function Navbar({
                 href={link.href}
                 className={cn(
                   "hover:text-foreground font-mono text-xs transition-colors",
-                  pathname === link.href
+                  isNavHrefActive(pathname, link.href)
                     ? "text-foreground"
                     : "text-muted-foreground",
                 )}
@@ -179,7 +189,8 @@ export function Navbar({
                       href={link.href}
                       className={cn(
                         "font-mono text-xs",
-                        pathname === link.href && "text-foreground",
+                        isNavHrefActive(pathname, link.href) &&
+                          "text-foreground",
                       )}
                     >
                       [{link.shortcut}] {t(link.key).toUpperCase()}
@@ -316,7 +327,7 @@ export function Navbar({
                     onClick={() => setOpen(false)}
                     className={cn(
                       "hover:text-foreground font-mono text-sm transition-colors",
-                      pathname === link.href
+                      isNavHrefActive(pathname, link.href)
                         ? "text-foreground"
                         : "text-muted-foreground",
                     )}
@@ -332,7 +343,7 @@ export function Navbar({
                     onClick={() => setOpen(false)}
                     className={cn(
                       "hover:text-foreground font-mono text-sm transition-colors",
-                      pathname === link.href
+                      isNavHrefActive(pathname, link.href)
                         ? "text-foreground"
                         : "text-muted-foreground",
                     )}

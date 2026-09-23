@@ -71,6 +71,22 @@ describe("buildAlternates", () => {
     expect(pointsToAnotherHreflang(nl.canonical, nl)).toBe(false);
   });
 
+  it("keeps the org-tree roles page self-canonical on www", () => {
+    const en = buildAlternates("/roles", "en");
+    const nl = buildAlternates("/roles", "nl");
+    const enUrl = `${CANONICAL_PRODUCTION_ORIGIN}/en/roles`;
+    const nlUrl = `${CANONICAL_PRODUCTION_ORIGIN}/nl/roles`;
+
+    expect(en.canonical).toBe(enUrl);
+    expect(nl.canonical).toBe(nlUrl);
+    expect(en.canonical).toBe(en.languages.en);
+    expect(nl.canonical).toBe(nl.languages.nl);
+    expect(en.canonical).not.toContain("://aitcommunity.org/");
+    expect(nl.canonical).not.toContain("://aitcommunity.org/");
+    expect(pointsToAnotherHreflang(en.canonical, en)).toBe(false);
+    expect(pointsToAnotherHreflang(nl.canonical, nl)).toBe(false);
+  });
+
   it("keeps unfiltered Awesome AI OSS pagination self-canonical", () => {
     const en = buildAlternates("/investigations/awesome-ai-oss?page=2", "en");
     const nl = buildAlternates("/investigations/awesome-ai-oss?page=2", "nl");

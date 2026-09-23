@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { api } from "@/trpc/server";
 import { Link } from "@/i18n/navigation";
 import { AWESOME_AI_OSS_PATH } from "@/lib/investigations/awesome-ai-oss";
+import { STARTUPS_H1, STARTUPS_PATH } from "@/lib/investigations/startups";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { MissionDialog } from "@/components/datacenters/mission-dialog";
 
@@ -92,6 +93,24 @@ export default async function InvestigationsPage() {
               <p className="text-muted-foreground mt-1 text-sm">
                 A short curated map of open-source building blocks for human +
                 agent pairs. Pick tools here. Belong somewhere next.
+              </p>
+            </div>
+            <span className="text-muted-foreground group-hover:text-primary text-sm">
+              →
+            </span>
+          </div>
+        </Link>
+
+        <Link
+          href={STARTUPS_PATH}
+          className="border-border hover:border-primary group flex flex-col gap-4 rounded-xl border p-6 transition"
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">{STARTUPS_H1}</h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Companies that materially enable AI. Listed after a verified
+                homepage and sources — not a size or price scorecard.
               </p>
             </div>
             <span className="text-muted-foreground group-hover:text-primary text-sm">
