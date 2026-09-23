@@ -129,11 +129,32 @@ Hub operator (`Add a company`).
 
 ## Insights
 
-`/en/startups/insights` aggregates **listed Neon rows only**.
-Bento hero: Added over time. 2×2: Category / Region / Stage / Sources
-coverage. HTML table under each chart. Blank stage omits the chart (no
-fake empty series). **Region mix is soft-omitted until ≥5 distinct sourced
-regions** — never invent region zeros. Directory ↔ Insights are hard links.
+`/en/startups/insights` aggregates **listed Neon rows only**
+(`buildStartupInsights`). It opens with one sentence of headline counts
+(companies, countries, hiring companies and open roles, exits), then one
+section per question:
+
+- **Where they are** — sourced places folded to countries
+  (`startupCountryOf`: "USA" = "United States", US states and US city
+  aliases count as the US; "Remote" / "Middle East" / ambiguous two-letter
+  codes like "IL" or "CA" stay unplaced and are counted in a footnote, never
+  guessed). Top 10 countries plus one "N other countries" row. Soft-omitted
+  until companies from ≥5 countries are listed.
+- **What they build** — categories, each bar split into hiring now / no open
+  roles found; rows link to the filtered directory.
+- **Who is hiring** — hiring companies by open-role band (1–4, 5–9, 10–19,
+  20–39, 40+). The job scan stops at `STARTUP_ROLES_PER_COMPANY_CAP` (40), so
+  40+ means 40 or more and the headline says "at least N open roles"; every
+  company at the cap is named (the scan cannot rank that tie).
+- **How well sourced** — one bar split by 3 / 2 / 1 cited sources.
+- **Exits** — acquired / IPO / shutdown counts linking to the filtered
+  directory, shown only when any exist.
+
+Stage and a monthly listing timeline appear only once sourced (stage) or
+once listings span ≥3 months; until then they are named under **Not shown
+yet**, never drawn as empty charts. Charts are HTML tables with bars in one
+hue (`--chart-2`, plus validated lighter steps), so every value reads
+without hover. Directory ↔ Insights are hard links.
 
 ## Join chrome
 
@@ -151,22 +172,39 @@ browser so CV text is not SSR'd for crawlers. Private CVs live in
 account delete). Do not reuse `/api/upload`. Tailor / coverage map /
 in-app send stay out of this slice.
 
-Directory default is an SSR `<table>`: **Logo** (sourced `logoUrl` only;
-never a favicon or invented mark; logo may link to the homepage) · sticky
-**Name** (hard SSR link to `/en/startups/{slug}`) · **Short description** (sourced blurb only) · Category · City/region · Founders
-(sourced name + profile link; AvatarGroup OK) · Sources (favicon chips) ·
-Jobs · Exit · Stage. Homepage stays a secondary control (logo and/or
-“Open homepage”). Blank cells soft-omit — never invent “—”.
+Directory default is an SSR `<table>` with five columns plus a links cell:
+sticky **Company** (sourced `logoUrl`, or a letters-only monogram when none is
+on record — never a favicon or invented mark; name is the hard SSR link to
+`/en/startups/{slug}`; sourced blurb and founders sit under the name) ·
+Category · Region · **Status** (exit badge, open-role count, stage) · Sources
+(favicon chips). The last cell holds the homepage icon link (“Open homepage”
+for screen readers) and, for moderators, Edit. Blank cells soft-omit — never
+invent “—”. A result count sits above the table with **Clear filters** when
+any filter or search is on; on small screens the five filter menus fold
+behind a **Filters** toggle.
 
 Each listed company has a unique stable `slug` (slugify of the name, with
 `-2` / `-3` on collision). Create/update accept or generate a slug and keep
 it unique. Profile route is `/en/startups/[slug]` (NL
-equivalent). Overview is an Awesome-OSS-style bento; empty tiles and empty
-News / Hiring / Funding/Exit / Team tabs are omitted entirely. Never invent
-copy, faces, marks, metrics, or street addresses.
-Map is behind **Open map** → Sheet (`Map` / `Close`). Every sourced
-region gets a pin at a city/region centroid; unknown / street-like
-strings stay list-only. Empty sheet copy is **No locations listed yet**
+equivalent). The profile is one page, no tabs: a header (logo in crop marks
+or monogram, name, category and exit badges, sourced blurb, Open homepage,
+open-roles count), then Founders / Open roles / In the news sections beside
+an “At a glance” facts sheet (region, stage, listed date, non-press sources)
+and a location map. Sections and fact rows with no sourced data are omitted
+entirely; a profile with no sections shows the facts sheet and map side by
+side. Never invent copy, faces, marks, metrics, or street addresses.
+A **Table / Map** switch sits beside the sort menu; **Map** (`?view=map`,
+no pages, canonical stays `/startups`) replaces the table with a split view:
+a company list beside a map of count bubbles (supercluster). The list shows
+only what the map shows and follows every pan and zoom. Clicking a bubble
+zooms in; a bubble that zooming cannot split (many pins on one centroid)
+narrows the list to exactly those companies ("3,670 companies in Israel"),
+until the map moves or **Show all in view**. Hovering a row turns its pin or
+bubble orange. Companies with no pin are counted under the list, not hidden
+silently. Every sourced region gets a pin at a city/region centroid;
+unknown / street-like strings stay list-only. Maps never zoom past a pin's precision: city
+level (zoom 10) at most, country level (zoom 5) for region centroids, and
+the profile captions the pin as approximate (`≈ 43.7° N, 79.4° W`). Empty sheet copy is **No locations listed yet**
 only when no sourced region can be pinned. No always-on map.
 
 ## Directory filters
@@ -241,8 +279,8 @@ the active filters.
   disappear on a later **successful** scan become `closed` and keep their
   page. A live empty board writes `open_role_count = 0` on `app.startup`
   (do not invent a JD). A failed fetch does not close roles or zero the
-  count. Jobs column shows a count when open roles exist; otherwise the
-  cell is soft-omitted. `/en/roles` remains Hub seats.
+  count. The Status column shows the count when open roles exist;
+  otherwise it is soft-omitted. `/en/roles` remains Hub seats.
 - `/investigations/startups` permanent-redirects to `/startups`.
 - Global nav lists **Jobs** (`[W]`) and **Startups** (`[U]`) inline
   after Hub **Roles** (ADR-0010). `/jobs` is sourced startup openings;

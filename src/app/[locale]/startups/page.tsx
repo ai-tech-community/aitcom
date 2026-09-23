@@ -44,6 +44,7 @@ interface PageProps {
     hiring?: string;
     sort?: string;
     page?: string;
+    view?: string;
     tab?: string;
   }>;
 }

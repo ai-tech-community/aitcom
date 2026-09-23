@@ -3,6 +3,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import type * as NextIntl from "next-intl";
+import type { StartupsClusterMapProps } from "./startups-cluster-map-view";
 
 import en from "../../../messages/en.json";
 import nl from "../../../messages/nl.json";
@@ -12,10 +14,17 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }));
 
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) =>
-    (en.investigationsStartups as Record<string, string>)[key] ?? key,
-}));
+// Client components get the real English translator, so ICU plurals,
+// placeholders, and `t.raw` behave exactly as in production.
+vi.mock("next-intl", async (importOriginal) => {
+  const actual = await importOriginal<typeof NextIntl>();
+  const t = actual.createTranslator({
+    locale: "en",
+    messages: en,
+    namespace: "investigationsStartups",
+  });
+  return { ...actual, useTranslations: () => t };
+});
 
 vi.mock("@/trpc/react", () => ({
   api: {
@@ -72,17 +81,45 @@ vi.mock("@/i18n/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }));
 
-vi.mock("./startups-insights-charts", () => ({
-  StartupCategoryMixChart: () => <div data-testid="chart-category" />,
-  StartupRegionMixChart: () => <div data-testid="chart-region" />,
-  StartupStageMixChart: () => <div data-testid="chart-stage" />,
-  StartupSourcesCoverageChart: () => <div data-testid="chart-sources" />,
-  StartupAddedOverTimeChart: () => <div data-testid="chart-added" />,
-}));
-
 vi.mock("./startups-map", () => ({
   StartupsMap: ({ pins }: { pins: Array<{ id: string }> }) =>
     pins.length > 0 ? <div data-testid="startups-map" /> : null,
+}));
+
+// Stand-in for the Leaflet map: exposes the props contract so tests can
+// drive viewport changes and pin picks the way a viewer would.
+vi.mock("./startups-cluster-map", () => ({
+  StartupsClusterMap: (props: StartupsClusterMapProps) => (
+    <div
+      data-testid="startups-map"
+      data-pins={props.pins.map((pin) => pin.id).join(",")}
+      data-active={props.activeId ?? ""}
+    >
+      <span data-testid="cluster-title">{props.clusterTitle(3)}</span>
+      <button
+        type="button"
+        onClick={() =>
+          props.onViewChange({ west: 0, south: 40, east: 10, north: 60 }, 6)
+        }
+      >
+        Pan to Europe
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          props.onViewChange({ west: -130, south: 20, east: -60, north: 50 }, 4)
+        }
+      >
+        Pan to North America
+      </button>
+      <button
+        type="button"
+        onClick={() => props.onSelect(props.pins.slice(0, 1))}
+      >
+        Pick first pin
+      </button>
+    </div>
+  ),
 }));
 
 import {
@@ -98,7 +135,6 @@ import {
 } from "@/lib/investigations/startups";
 import { StartupsProfilePage } from "./startups-profile";
 import { HUB_OPEN_HREF } from "@/lib/join-path";
-import { STARTUPS_INSIGHTS_CAPTION } from "@/lib/investigations/startups-insights";
 import { appPathFromGuideHref, JOIN_PATH } from "@/lib/seo-guides";
 import { startupsV1PublicCards } from "@/lib/investigations/startups-v1-seeds";
 import { StartupsPage } from "./startups-page";
@@ -203,8 +239,26 @@ const CARD_COPY = {
   edit: "Edit",
 };
 
+// The real next-intl formatter (the module is mocked above), so tests
+// assert ICU plurals and placeholders exactly as production renders them.
+const { createTranslator } =
+  await vi.importActual<typeof NextIntl>("next-intl");
+
 function tFrom(messages: typeof en.investigationsStartups) {
-  return (key: string) => messages[key as keyof typeof messages] ?? "";
+  return profileT(messages === nl.investigationsStartups ? "nl" : "en");
+}
+
+function profileT(locale: "en" | "nl") {
+  const translator = createTranslator({
+    locale,
+    messages: {
+      investigationsStartups: (locale === "nl" ? nl : en)
+        .investigationsStartups,
+    },
+    namespace: "investigationsStartups",
+  });
+  return (key: string, values?: Record<string, string | number>) =>
+    translator(key as Parameters<typeof translator>[0], values);
 }
 
 function hrefsOf(container: HTMLElement) {
@@ -275,9 +329,7 @@ describe("StartupsPage", () => {
     expect(container.querySelectorAll("[data-startup-card]")).toHaveLength(0);
     expect(container.querySelector("table")).toBeNull();
     expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Open map" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Map" })).toBeInTheDocument();
     expect(hrefsOf(container)).toContain(STARTUPS_INSIGHTS_PATH);
     expect(hrefsOf(container)).toContain(STARTUPS_JOBS_PATH);
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
@@ -287,7 +339,7 @@ describe("StartupsPage", () => {
     expect(screen.queryByText("Add a company")).not.toBeInTheDocument();
   });
 
-  it("renders an SSR table with homepage and source links, and keeps the map behind Open map", () => {
+  it("renders an SSR table with homepage and source links, and keeps the map behind the Map view", () => {
     const { container } = render(
       <StartupsPage
         locale="en"
@@ -304,9 +356,7 @@ describe("StartupsPage", () => {
     expect(container.textContent).toContain("Fixture Co");
     expect(container.textContent).toContain("Toronto, Canada");
     expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Open map" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Map" })).toBeInTheDocument();
     expect(
       container.querySelector("img:not([data-startup-source-favicon])"),
     ).toBeNull();
@@ -333,7 +383,7 @@ describe("StartupsPage", () => {
     expect(table?.querySelector("[data-startup-homepage]")?.textContent).toBe(
       "Open homepage",
     );
-    const nameHead = screen.getByRole("columnheader", { name: "Name" });
+    const nameHead = screen.getByRole("columnheader", { name: "Company" });
     expect(nameHead.className).toMatch(/sticky/);
     expect(nameHead.className).toMatch(/left-0/);
     const nameCell = screen
@@ -403,34 +453,38 @@ describe("StartupsPage", () => {
       [...container.querySelectorAll("thead [scope='col']")].map(
         (node) => node.textContent,
       ),
-    ).toEqual([
-      "Logo",
-      "Name",
-      "Short description",
-      "Category",
-      "Region",
-      "Founders",
-      "Sources",
-      "Jobs",
-      "Exit",
-      "Stage",
-    ]);
+    ).toEqual(["Company", "Category", "Region", "Status", "Sources", "Links"]);
+    expect(
+      container.querySelector("[data-startup-results]")?.textContent,
+    ).toContain("1 company");
     expect(
       screen.queryByRole("columnheader", { name: "Homepage" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Open map" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Map" })).toBeInTheDocument();
   });
 
-  it("opens sourced pins in the Map sheet and soft-omits unknown places", () => {
-    const { rerender } = render(
+  it("switches to the Map view and lists exactly what the map shows", () => {
+    const { container } = render(
       <StartupsPage
         locale="en"
         t={tFrom(en.investigationsStartups)}
         companies={[
+          FIXTURE_CARD,
           {
             ...FIXTURE_CARD,
+            id: "ams-co",
+            name: "Amsterdam Co",
+            slug: "amsterdam-co",
+            region: "Amsterdam, Netherlands",
+            lat: 52.37,
+            lng: 4.9,
+          },
+          {
+            ...FIXTURE_CARD,
+            id: "nowhere-co",
+            name: "Nowhere Co",
+            slug: "nowhere-co",
+            region: null,
             lat: null,
             lng: null,
           },
@@ -438,26 +492,76 @@ describe("StartupsPage", () => {
       />,
     );
     expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Open map" }));
-    expect(screen.getByRole("heading", { name: "Map" })).toBeInTheDocument();
-    expect(screen.getByTestId("startups-map")).toBeInTheDocument();
-    expect(
-      screen.queryByText("No locations listed yet"),
-    ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("radio", { name: "Table" })).toBeChecked();
 
-    rerender(
+    fireEvent.click(screen.getByRole("radio", { name: "Map" }));
+    const map = screen.getByTestId("startups-map");
+    expect(container.querySelector("table")).toBeNull();
+    expect(map.getAttribute("data-pins")?.split(",").sort()).toEqual([
+      "ams-co",
+      "fixture-one",
+    ]);
+    expect(screen.getByTestId("cluster-title").textContent).toBe("3 companies");
+    const count = () =>
+      container.querySelector("[data-startups-map-count]")?.textContent;
+    const rows = () =>
+      [...container.querySelectorAll("[data-startups-map-row]")].map((row) =>
+        row.getAttribute("data-startups-map-row"),
+      );
+    expect(count()).toBe("2 in view");
+    // The list keeps the directory's sort (newest, then name), not map order.
+    expect(rows()).toEqual(["ams-co", "fixture-one"]);
+    expect(container.textContent).toContain(
+      "1 company has no location and is not on the map.",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Pan to Europe" }));
+    expect(count()).toBe("1 in view");
+    expect(rows()).toEqual(["ams-co"]);
+    expect(screen.getByRole("link", { name: "Amsterdam Co" })).toHaveAttribute(
+      "href",
+      buildStartupProfilePath("amsterdam-co"),
+    );
+
+    fireEvent.mouseEnter(
+      container.querySelector("[data-startups-map-row='ams-co']")!,
+    );
+    expect(map).toHaveAttribute("data-active", "ams-co");
+
+    fireEvent.click(screen.getByRole("button", { name: "Pick first pin" }));
+    expect(count()).toBe("1 company in Amsterdam, Netherlands");
+    expect(rows()).toEqual(["ams-co"]);
+    fireEvent.click(screen.getByRole("button", { name: "Show all in view" }));
+    expect(count()).toBe("1 in view");
+
+    fireEvent.click(screen.getByRole("button", { name: "Pick first pin" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Pan to North America" }),
+    );
+    // Moving the map ends a pick and hands the list back to the viewport.
+    expect(count()).toBe("1 in view");
+    expect(rows()).toEqual(["fixture-one"]);
+  });
+
+  it("tells the viewer when the visible part of the map is empty", () => {
+    render(
       <StartupsPage
         locale="en"
         t={tFrom(en.investigationsStartups)}
-        companies={[{ ...FIXTURE_CARD, region: null, lat: null, lng: null }]}
+        companies={[FIXTURE_CARD]}
+        query={{
+          q: "",
+          category: "all",
+          sort: "newest",
+          page: 1,
+          view: "map",
+        }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Open map" }));
-    expect(screen.getByRole("heading", { name: "Map" })).toBeInTheDocument();
-    expect(screen.getByText("No locations listed yet")).toBeInTheDocument();
-    expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Pan to Europe" }));
+    expect(
+      screen.getByText(en.investigationsStartups.mapEmptyView),
+    ).toBeInTheDocument();
   });
 
   it("renders crawlable ?page= links when the directory is past ~50 rows", () => {
@@ -701,20 +805,12 @@ describe("StartupsPage", () => {
     expect(table?.textContent).not.toContain("—");
   });
 
-  it("pins live sourced regions in the Map sheet instead of staying empty", () => {
+  it("pins live sourced regions on the map and keeps ?view=map without pages", () => {
     render(
       <StartupsPage
         locale="en"
         t={tFrom(en.investigationsStartups)}
         companies={[
-          {
-            ...FIXTURE_CARD,
-            id: "israel-co",
-            name: "Israel Co",
-            region: "Israel",
-            lat: null,
-            lng: null,
-          },
           {
             ...FIXTURE_CARD,
             id: "sf-co",
@@ -724,18 +820,26 @@ describe("StartupsPage", () => {
             lng: null,
           },
         ]}
+        query={{
+          q: "",
+          category: "all",
+          sort: "newest",
+          page: 3,
+          view: "map",
+        }}
       />,
     );
-    expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Open map" }));
-    expect(screen.getByRole("heading", { name: "Map" })).toBeInTheDocument();
-    expect(screen.getByTestId("startups-map")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Map" })).toBeChecked();
+    expect(screen.getByTestId("startups-map")).toHaveAttribute(
+      "data-pins",
+      "sf-co",
+    );
     expect(
-      screen.queryByText("No locations listed yet"),
+      screen.queryByRole("navigation", { name: "Pagination" }),
     ).not.toBeInTheDocument();
   });
 
-  it("shows the Map sheet empty state when no sourced places are listed", () => {
+  it("shows the map empty state when no sourced places are listed", () => {
     render(
       <StartupsPage
         locale="en"
@@ -743,13 +847,8 @@ describe("StartupsPage", () => {
         companies={[{ ...FIXTURE_CARD, region: null, lat: null, lng: null }]}
       />,
     );
-    expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Open map" }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Map" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Map" }));
     expect(screen.getByText("No locations listed yet")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     expect(screen.queryByTestId("startups-map")).not.toBeInTheDocument();
   });
 
@@ -767,6 +866,48 @@ describe("StartupsPage", () => {
     );
   });
 
+  it("counts matches and clears every filter at once", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[
+          FIXTURE_CARD,
+          { ...FIXTURE_CARD, id: "two", name: "Second Co", slug: "second-co" },
+        ]}
+        query={{ q: "second", category: "all", sort: "newest", page: 1 }}
+      />,
+    );
+    const results = container.querySelector("[data-startup-results]");
+    expect(results?.textContent).toContain("1 company");
+    fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(results?.textContent).toContain("2 companies");
+    expect(
+      screen.queryByRole("button", { name: "Clear filters" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("folds filters behind a toggle on small screens and shows a monogram for logo-less rows", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        companies={[FIXTURE_CARD]}
+      />,
+    );
+    const toggle = screen.getByRole("button", { name: "Filters" });
+    const filters = container.querySelector("#startup-filters");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(filters?.className).toMatch(/max-md:hidden/);
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(filters?.className).not.toMatch(/max-md:hidden/);
+    expect(
+      container.querySelector("[data-startup-card] [data-startup-monogram]")
+        ?.textContent,
+    ).toBe("FC");
+  });
+
   it("keeps Dutch Founders and Short description chrome on the directory table", () => {
     const { container } = render(
       <StartupsPage
@@ -776,11 +917,7 @@ describe("StartupsPage", () => {
       />,
     );
     expect(nl.investigationsStartups.foundersColumn).toBe("Oprichters");
-    expect(nl.investigationsStartups.logoColumn).toBe("Logo");
-    expect(nl.investigationsStartups.descriptionColumn).toBe(
-      "Korte beschrijving",
-    );
-    expect(nl.investigationsStartups.nameColumn).toBe("Naam");
+    expect(nl.investigationsStartups.companyColumn).toBe("Bedrijf");
     expect(container.querySelector("table")).not.toBeNull();
     expect(container.querySelector("[data-startup-profile]")).toHaveAttribute(
       "href",
@@ -794,19 +931,48 @@ describe("StartupsPage", () => {
       "Fixture Co",
     );
     expect(
-      screen.getByRole("columnheader", { name: "Short description" }),
+      screen.getByRole("columnheader", { name: "Company" }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("columnheader", { name: "Homepage" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Open map" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Map" })).toBeInTheDocument();
   });
 });
 
 describe("Startups Insights tab", () => {
-  it("soft-fails empty and renders a CSS bento with table fallbacks when listed", () => {
+  const place = (
+    id: string,
+    region: string,
+    extra: Partial<StartupPublicCard> = {},
+  ): StartupPublicCard => ({
+    ...FIXTURE_CARD,
+    id,
+    name: `Co ${id}`,
+    slug: `co-${id}`,
+    region,
+    ...extra,
+  });
+  const LISTED = [
+    place("a", "Tel Aviv, Israel", {
+      openRoleCount: 40,
+      category: "agents",
+      sources: [
+        "https://a.example/1",
+        "https://a.example/2",
+        "https://a.example/3",
+      ],
+    }),
+    place("b", "Israel", { openRoleCount: 3, exitStatus: "acquired" }),
+    place("c", "San Francisco, CA, USA"),
+    place("d", "Austin, TX"),
+    place("e", "London, United Kingdom"),
+    place("f", "Berlin, Germany"),
+    place("g", "Paris, France"),
+    place("h", "Remote"),
+  ];
+
+  it("soft-fails empty and leads with a sentence of sourced counts", () => {
     const empty = render(
       <StartupsPage
         locale="en"
@@ -821,7 +987,7 @@ describe("Startups Insights tab", () => {
       empty.container.querySelector("[data-startups-insights-empty]"),
     ).not.toBeNull();
     expect(
-      empty.container.querySelector("[data-startups-insights-bento]"),
+      empty.container.querySelector("[data-startups-insights]"),
     ).toBeNull();
     empty.unmount();
 
@@ -830,136 +996,150 @@ describe("Startups Insights tab", () => {
         locale="en"
         t={tFrom(en.investigationsStartups)}
         tab="insights"
-        companies={[FIXTURE_CARD]}
+        companies={LISTED}
       />,
     );
-    expect(
-      container.querySelector("[data-startups-insights-bento]"),
-    ).not.toBeNull();
-    const tiles = [
-      ...container.querySelectorAll("[data-startups-insight-tile]"),
-    ];
-    expect(
-      tiles.map((tile) => tile.getAttribute("data-startups-insight-tile")),
-    ).toEqual([
-      "added-over-time",
-      "category-mix",
-      "region-mix",
-      "stage-mix",
-      "sources-coverage",
-    ]);
-    // Region stays omitted until ≥5 distinct sourced regions — one seed is not enough.
-    expect(tiles[0]).toHaveClass("md:col-span-2");
-    expect(
-      screen.getByRole("heading", { level: 2, name: "Added over time" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { level: 2, name: "Category" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { level: 2, name: "Region" }),
-    ).toBeInTheDocument();
-    const regionTile = tiles.find(
-      (tile) =>
-        tile.getAttribute("data-startups-insight-tile") === "region-mix",
-    );
-    expect(regionTile?.hasAttribute("data-startups-insight-omitted")).toBe(
-      true,
-    );
-    expect(screen.queryByTestId("chart-region")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { level: 2, name: "Stage" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { level: 2, name: "Sources coverage" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Directory" })).toHaveAttribute(
-      "href",
-      STARTUPS_PATH,
-    );
-    const chartTiles = tiles.filter(
-      (tile) =>
-        tile.querySelector("[data-startups-insight-table] table") != null,
+    expect(container.querySelector("[data-insights-lede]")?.textContent).toBe(
+      "8 AI companies across 5 countries. 2 are hiring, with at least 43 open roles. 1 has been acquired or gone public.",
     );
     expect(
-      chartTiles.map((tile) => tile.getAttribute("data-startups-insight-tile")),
-    ).toEqual(["added-over-time", "category-mix", "sources-coverage"]);
-    const stageTile = tiles.find(
-      (tile) => tile.getAttribute("data-startups-insight-tile") === "stage-mix",
-    );
-    expect(stageTile?.hasAttribute("data-startups-insight-omitted")).toBe(true);
+      [...container.querySelectorAll("[data-insights-lede] strong")].map(
+        (node) => node.textContent,
+      ),
+    ).toEqual(["8", "5", "2", "43", "1"]);
     expect(
-      stageTile?.querySelector("[data-startups-insight-table]"),
-    ).toBeNull();
-    expect(screen.queryByTestId("chart-stage")).not.toBeInTheDocument();
-    expect(screen.getByTestId("chart-sources")).toBeInTheDocument();
-    expect(container.textContent).toContain(STARTUPS_INSIGHTS_CAPTION);
+      [...container.querySelectorAll("[data-startups-insight-tile]")].map(
+        (tile) => tile.getAttribute("data-startups-insight-tile"),
+      ),
+    ).toEqual(["where", "what", "hiring", "sources", "exits"]);
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
+    expect(container.textContent).not.toMatch(BANNED);
   });
 
-  it("omits a Region table even if a Toronto/NY stub mix is passed in", () => {
+  it("groups places into countries and says what it could not place", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        tab="insights"
+        companies={LISTED}
+      />,
+    );
+    const where = container.querySelector(
+      "[data-startups-insight-tile=where]",
+    )!;
+    expect(
+      [...where.querySelectorAll("[data-insight-row]")].map((row) =>
+        row.getAttribute("data-insight-row"),
+      ),
+    ).toEqual([
+      "Israel",
+      "United States",
+      "France",
+      "Germany",
+      "United Kingdom",
+    ]);
+    expect(where.textContent).toContain(
+      "Israel and United States hold 57% of companies with a known country.",
+    );
+    expect(where.textContent).toContain(
+      "1 company lists no single country: remote, several regions, or unclear.",
+    );
+    expect(
+      screen.getByRole("table", { name: "Where they are" }),
+    ).toBeInTheDocument();
+  });
+
+  it("marks capped role counts with a plus and explains the cap", () => {
+    const { container } = render(
+      <StartupsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        tab="insights"
+        companies={LISTED}
+      />,
+    );
+    const hiring = container.querySelector(
+      "[data-startups-insight-tile=hiring]",
+    )!;
+    expect(
+      [...hiring.querySelectorAll("[data-insight-row]")].map(
+        (row) => row.textContent,
+      ),
+    ).toEqual([
+      "1–4 roles1",
+      "5–9 roles0",
+      "10–19 roles0",
+      "20–39 roles0",
+      "40+ roles1",
+    ]);
+    // Only companies at the cap are named: the scan cannot rank that tie.
+    const top = hiring.querySelector("[data-insights-top-hiring]")!;
+    expect(
+      [...top.querySelectorAll("a")].map((link) => link.getAttribute("href")),
+    ).toEqual([buildStartupProfilePath("co-a")]);
+    expect(top.textContent).toContain("Co a");
+    expect(top.textContent).toContain("40+");
+    expect(screen.getByRole("link", { name: /Co a/ })).toHaveAttribute(
+      "href",
+      buildStartupProfilePath("co-a"),
+    );
+    expect(hiring.textContent).toContain(
+      "We count up to 40 roles per company, so 40+ means 40 or more.",
+    );
+    const what = container.querySelector("[data-startups-insight-tile=what]")!;
+    expect(
+      what.querySelector("[data-insight-row=agents]")?.textContent,
+    ).toContain("1 · 1 hiring");
+    expect(screen.getByRole("link", { name: "Agents" })).toHaveAttribute(
+      "href",
+      "/startups?category=agents",
+    );
+  });
+
+  it("lists sections without data under Not shown yet instead of empty panels", () => {
     const { container } = render(
       <StartupsPage
         locale="en"
         t={tFrom(en.investigationsStartups)}
         tab="insights"
         companies={[FIXTURE_CARD]}
-        insights={{
-          total: 2,
-          categoryMix: [{ id: "models", label: "Models", count: 2 }],
-          regionMix: [
-            { region: "Toronto, Canada", count: 1 },
-            { region: "New York, US", count: 1 },
-          ],
-          stageMix: null,
-          sourcesCoverage: [{ sources: 1, label: "1 source", count: 2 }],
-          addedOverTime: [{ month: "2026-09", label: "Sep 2026", count: 2 }],
-        }}
       />,
     );
-    const regionTile = [
-      ...container.querySelectorAll("[data-startups-insight-tile]"),
-    ].find(
-      (tile) =>
-        tile.getAttribute("data-startups-insight-tile") === "region-mix",
+    expect(
+      container.querySelector("[data-startups-insight-tile=where]"),
+    ).toBeNull();
+    expect(
+      container.querySelector("[data-startups-insight-tile=stage]"),
+    ).toBeNull();
+    const notYet = container.querySelector("[data-insights-not-yet]");
+    expect(notYet?.textContent).toContain(
+      en.investigationsStartups.countriesOmitted,
     );
-    expect(regionTile?.hasAttribute("data-startups-insight-omitted")).toBe(
-      true,
+    expect(notYet?.textContent).toContain(
+      en.investigationsStartups.stageOmitted,
+    );
+    expect(notYet?.textContent).toContain(
+      en.investigationsStartups.timelineOmitted,
     );
     expect(
-      regionTile?.querySelector("[data-startups-insight-table]"),
-    ).toBeNull();
-    expect(screen.queryByTestId("chart-region")).not.toBeInTheDocument();
-    expect(container.textContent).not.toContain("Toronto, Canada");
-    expect(container.textContent).not.toContain("New York, US");
-    expect(container.textContent).toContain(
-      en.investigationsStartups.regionOmitted,
-    );
+      container.querySelector("[data-startups-insight-tile=hiring]")
+        ?.textContent,
+    ).toContain(en.investigationsStartups.hiringNone);
+  });
 
-    const nlView = render(
+  it("uses Dutch number format and copy", () => {
+    const { container } = render(
       <StartupsPage
         locale="nl"
         t={tFrom(nl.investigationsStartups)}
         tab="insights"
-        companies={[FIXTURE_CARD]}
-        insights={{
-          total: 2,
-          categoryMix: [{ id: "models", label: "Models", count: 2 }],
-          regionMix: [
-            { region: "Toronto, Canada", count: 1 },
-            { region: "New York, US", count: 1 },
-          ],
-          stageMix: null,
-          sourcesCoverage: [{ sources: 1, label: "1 bron", count: 2 }],
-          addedOverTime: [{ month: "2026-09", label: "sep 2026", count: 2 }],
-        }}
+        companies={LISTED}
       />,
     );
-    expect(nlView.container.textContent).toContain(
-      nl.investigationsStartups.regionOmitted,
+    expect(container.querySelector("[data-insights-lede]")?.textContent).toBe(
+      "8 AI-bedrijven in 5 landen. 2 nemen aan, met minstens 43 open posities. 1 is overgenomen of naar de beurs gegaan.",
     );
-    expect(nlView.container.textContent).not.toContain("Toronto, Canada");
-    nlView.unmount();
   });
 
   it("swaps Directory and Insights Join to Open Hub for signed-in Hub members", () => {
@@ -1204,19 +1384,13 @@ describe("Startups i18n", () => {
       Object.keys(en.investigationsStartups).sort(),
     );
     expect(en.investigationsStartups.title).toBe(STARTUPS_H1);
-    expect(en.investigationsStartups.openMap).toBe("Open map");
-    expect(en.investigationsStartups.mapTitle).toBe("Map");
-    expect(en.investigationsStartups.mapClose).toBe("Close");
+    expect(en.investigationsStartups.viewMap).toBe("Map");
+    expect(en.investigationsStartups.viewTable).toBe("Table");
     expect(en.investigationsStartups.mapEmpty).toBe("No locations listed yet");
-    expect(en.investigationsStartups.nameColumn).toBe("Name");
-    expect(en.investigationsStartups.logoColumn).toBe("Logo");
-    expect(en.investigationsStartups.descriptionColumn).toBe(
-      "Short description",
-    );
+    expect(en.investigationsStartups.companyColumn).toBe("Company");
+    expect(en.investigationsStartups.statusColumn).toBe("Status");
     expect(en.investigationsStartups.foundersColumn).toBe("Founders");
     expect(en.investigationsStartups.homepageColumn).toBe("Homepage");
-    expect(en.investigationsStartups.exitColumn).toBe("Exit");
-    expect(en.investigationsStartups.jobsColumn).toBe("Jobs");
     expect(en.investigationsStartups.tabJobs).toBe("Open positions");
     expect(en.investigationsStartups.jobsTitle).toBe("Open positions");
     expect(en.investigationsStartups.roleJoinCta).toBe(
@@ -1228,30 +1402,18 @@ describe("Startups i18n", () => {
     expect(en.investigationsStartups.joinCta).toBe("Join the Hub");
     expect(nl.investigationsStartups.tabJobs).toBe("Open posities");
     expect(nl.investigationsStartups.foundersColumn).toBe("Oprichters");
-    expect(nl.investigationsStartups.logoColumn).toBe("Logo");
-    expect(nl.investigationsStartups.descriptionColumn).toBe(
-      "Korte beschrijving",
-    );
     expect(nl.investigationsStartups.homepageColumn).toBe("Homepage");
-    expect(nl.investigationsStartups.openMap).toBe("Open kaart");
-    expect(nl.investigationsStartups.mapTitle).toBe("Kaart");
-    expect(nl.investigationsStartups.mapClose).toBe("Sluiten");
+    expect(nl.investigationsStartups.viewMap).toBe("Kaart");
+    expect(nl.investigationsStartups.viewTable).toBe("Tabel");
     expect(nl.investigationsStartups.mapEmpty).toBe(
       "Nog geen locaties op de lijst.",
     );
-    expect(en.investigationsStartups.tabOverview).toBe("Overview");
-    expect(en.investigationsStartups.tabNews).toBe("News");
-    expect(en.investigationsStartups.tabHiring).toBe("Hiring");
-    expect(en.investigationsStartups.tabFunding).toBe("Funding / Exit");
-    expect(en.investigationsStartups.tabTeam).toBe("Team");
-    expect(nl.investigationsStartups.tabOverview).toBe("Overzicht");
-    expect(nl.investigationsStartups.tabNews).toBe("Nieuws");
-    expect(nl.investigationsStartups.tabHiring).toBe("Vacatures");
-    expect(nl.investigationsStartups.tabFunding).toBe("Funding / Exit");
-    expect(nl.investigationsStartups.tabTeam).toBe("Team");
-    expect(en.investigationsStartups.chartCaption).toBe(
-      STARTUPS_INSIGHTS_CAPTION,
-    );
+    expect(en.investigationsStartups.sectionFounders).toBe("Founders");
+    expect(en.investigationsStartups.sectionHiring).toBe("Open roles");
+    expect(en.investigationsStartups.sectionNews).toBe("In the news");
+    expect(nl.investigationsStartups.sectionFounders).toBe("Oprichters");
+    expect(nl.investigationsStartups.sectionHiring).toBe("Open posities");
+    expect(nl.investigationsStartups.sectionNews).toBe("In het nieuws");
     expect(Object.values(en.investigationsStartups).join("\n")).not.toMatch(
       BANNED,
     );
@@ -1262,11 +1424,11 @@ describe("Startups i18n", () => {
 });
 
 describe("Startups profile page", () => {
-  it("renders Overview bento chrome and soft-omits empty tiles and extra tabs", () => {
+  it("renders a thin record as a facts sheet with no empty sections", () => {
     const { container } = render(
       <StartupsProfilePage
         locale="en"
-        t={tFrom(en.investigationsStartups)}
+        t={profileT("en")}
         card={FIXTURE_CARD}
       />,
     );
@@ -1279,50 +1441,31 @@ describe("Startups profile page", () => {
     );
     expect(hrefsOf(container)).toContain(STARTUPS_PATH);
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
-    const bento = container.querySelector("[data-startup-profile-bento]");
-    expect(bento).not.toBeNull();
-    expect(bento?.className).toContain("grid");
-    expect(bento?.className).toContain("md:grid-cols-2");
-    const tiles = [
-      ...container.querySelectorAll("[data-startup-profile-tile]"),
-    ];
     expect(
-      tiles.map((node) => node.getAttribute("data-startup-profile-tile")),
-    ).toEqual(["category", "region", "sources", "map"]);
-    expect(tiles.every((node) => node.className.includes("rounded-xl"))).toBe(
-      true,
+      container.querySelector("[data-startup-profile-layout]"),
+    ).toHaveAttribute("data-startup-profile-layout", "sheet");
+    expect(
+      container.querySelector("[data-startup-profile-section]"),
+    ).toBeNull();
+    expect(
+      [...container.querySelectorAll("[data-startup-fact]")].map((node) =>
+        node.getAttribute("data-startup-fact"),
+      ),
+    ).toEqual(["region", "listed", "sources"]);
+    expect(container.querySelector("[data-startup-region]")?.textContent).toBe(
+      "Toronto, Canada",
     );
+    expect(container.querySelector("[data-startup-coords]")?.textContent).toBe(
+      "≈ 43.7° N, 79.4° W",
+    );
+    expect(container.querySelector("[data-startup-logo]")).toBeNull();
     expect(
-      container.querySelector("[data-startup-profile-tile=logo]"),
-    ).toBeNull();
-    expect(
-      container.querySelector("[data-startup-profile-tile=blurb]"),
-    ).toBeNull();
-    expect(
-      container.querySelector("[data-startup-profile-tile=stage]"),
-    ).toBeNull();
-    expect(
-      container.querySelector("[data-startup-profile-tile=exit]"),
-    ).toBeNull();
-    expect(
-      container.querySelector("[data-startup-profile-tile=founders]"),
-    ).toBeNull();
-    expect(
-      container.querySelector("[data-startup-profile-tile=jobs]"),
-    ).toBeNull();
-    expect(container.querySelector("[data-startup-profile-tabs]")).toBeNull();
-    expect(
-      container.querySelector("[data-startup-profile-tab=news]"),
-    ).toBeNull();
-    expect(
-      container.querySelector("[data-startup-profile-tab=hiring]"),
-    ).toBeNull();
-    expect(
-      container.querySelector("[data-startup-profile-tab=funding]"),
-    ).toBeNull();
-    expect(
-      container.querySelector("[data-startup-profile-tab=team]"),
-    ).toBeNull();
+      container.querySelector("[data-startup-monogram]")?.textContent,
+    ).toBe("FC");
+    expect(container.querySelector("[data-startup-description]")).toBeNull();
+    expect(container.querySelector("[data-startup-stage]")).toBeNull();
+    expect(container.querySelector("[data-startup-exit]")).toBeNull();
+    expect(container.querySelector("[data-startup-jobs]")).toBeNull();
     const data = JSON.parse(
       container.querySelector("script[type='application/ld+json']")
         ?.textContent ?? "null",
@@ -1333,11 +1476,11 @@ describe("Startups profile page", () => {
     expect(container.textContent).not.toContain("—");
   });
 
-  it("shows sourced extra tabs only and never invents News/Hiring/Funding/Team copy", () => {
+  it("shows sourced sections only and never invents founder, role, or press copy", () => {
     const { container } = render(
       <StartupsProfilePage
         locale="en"
-        t={tFrom(en.investigationsStartups)}
+        t={profileT("en")}
         card={{
           ...FIXTURE_CARD,
           description: "Sourced short blurb from Pulse.",
@@ -1358,24 +1501,42 @@ describe("Startups profile page", () => {
       />,
     );
     expect(
-      container.querySelector("[data-startup-profile-tabs]"),
-    ).not.toBeNull();
+      container.querySelector("[data-startup-profile-layout]"),
+    ).toHaveAttribute("data-startup-profile-layout", "dossier");
     expect(
-      [...container.querySelectorAll("[data-startup-profile-tab]")].map(
-        (node) => node.getAttribute("data-startup-profile-tab"),
+      [...container.querySelectorAll("[data-startup-profile-section]")].map(
+        (node) => node.getAttribute("data-startup-profile-section"),
       ),
-    ).toEqual(["overview", "news", "hiring", "funding", "team"]);
+    ).toEqual(["founders", "hiring", "news"]);
     expect(
-      container.querySelector("[data-startup-profile-tile=logo]"),
-    ).not.toBeNull();
+      screen.getByRole("heading", { level: 2, name: /Open roles/ }),
+    ).toBeInTheDocument();
+    expect(container.querySelector("[data-startup-logo]")).toHaveAttribute(
+      "src",
+      "https://fixture.example/logo.png",
+    );
+    expect(container.querySelector("[data-startup-monogram]")).toBeNull();
     expect(
       container.querySelector("[data-startup-description]")?.textContent,
     ).toBe("Sourced short blurb from Pulse.");
+    expect(container.querySelector("[data-startup-exit]")).toHaveAttribute(
+      "data-startup-exit",
+      "acquired",
+    );
+    expect(container.querySelector("[data-startup-stage]")?.textContent).toBe(
+      "Series B",
+    );
     expect(container.querySelector("[data-startup-jobs]")).toHaveAttribute(
       "href",
       "/jobs?company=fixture-co",
     );
-    fireEvent.click(screen.getByRole("button", { name: "Hiring" }));
+    expect(container.querySelector("[data-startup-jobs]")?.textContent).toBe(
+      "1 open role",
+    );
+    expect(container.querySelector("[data-startup-all-roles]")).toHaveAttribute(
+      "href",
+      "/jobs?company=fixture-co",
+    );
     expect(
       screen.getByRole("link", { name: "Staff Engineer" }),
     ).toHaveAttribute("href", "/jobs/fixture-co-staff-engineer");
@@ -1385,6 +1546,21 @@ describe("Startups profile page", () => {
     expect(
       container.querySelector("[data-startup-hiring-work-type]")?.textContent,
     ).toBe("Full-time");
+    expect(
+      container.querySelector("[data-startup-founder-name='Ada Example']"),
+    ).not.toBeNull();
+    const news = container.querySelector("[data-startup-profile-section=news]");
+    expect(
+      [...(news?.querySelectorAll("[data-startup-source-chip]") ?? [])].map(
+        (node) => node.getAttribute("href"),
+      ),
+    ).toEqual(["https://fixture.example/newsroom"]);
+    const sources = container.querySelector("[data-startup-fact=sources]");
+    expect(
+      [...(sources?.querySelectorAll("[data-startup-source-chip]") ?? [])].map(
+        (node) => node.getAttribute("href"),
+      ),
+    ).toEqual(["https://fixture.example/about"]);
     const data = JSON.parse(
       container.querySelector("script[type='application/ld+json']")
         ?.textContent ?? "null",
@@ -1393,49 +1569,50 @@ describe("Startups profile page", () => {
     expect(JSON.stringify(data)).not.toContain("Person");
   });
 
-  it("uses Dutch profile tab chrome", () => {
+  it("uses Dutch profile section and fact copy", () => {
     render(
       <StartupsProfilePage
         locale="nl"
-        t={tFrom(nl.investigationsStartups)}
+        t={profileT("nl")}
         card={{
           ...FIXTURE_CARD,
           jobsUrl: "https://fixture.example/careers",
           openRoleCount: 1,
           founders: [{ name: "Ada Example", url: null, imageUrl: null }],
-          exitStatus: "ipo",
-          exitOn: "2024",
           sources: ["https://fixture.example/newsroom"],
         }}
       />,
     );
     expect(
-      screen.getByRole("button", { name: "Overzicht" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Nieuws" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Vacatures" }),
+      screen.getByRole("heading", { level: 2, name: /Oprichters/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Funding / Exit" }),
+      screen.getByRole("heading", { level: 2, name: /Open posities/ }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Team" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: /In het nieuws/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("In het kort")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Bekijk de 1 open positie/ }),
+    ).toBeInTheDocument();
   });
 
-  it("keeps source-chip favicon onError behind a client boundary so profile SSR cannot throw", () => {
+  it("keeps event handlers behind client boundaries so profile SSR cannot throw", () => {
     const chips = readFileSync(join(dir, "startups-source-chips.tsx"), "utf8");
-    const overview = readFileSync(
-      join(dir, "startups-profile-overview.tsx"),
-      "utf8",
-    );
-    const profile = readFileSync(join(dir, "startups-profile.tsx"), "utf8");
+    const serverFiles = [
+      "startups-profile.tsx",
+      "startups-profile-header.tsx",
+      "startups-profile-sections.tsx",
+      "startups-profile-facts.tsx",
+    ].map((file) => readFileSync(join(dir, file), "utf8"));
     const route = readFileSync(PROFILE_FILE, "utf8");
-    expect(overview).toContain("StartupsSourceChips");
-    expect(profile).toContain("StartupsSourceChips");
+    expect(serverFiles.join("\n")).toContain("StartupsSourceChips");
     expect(chips).toMatch(/^["']use client["']/);
-    expect(overview).not.toMatch(/\bon(?:Error|Click|Change|Load)\s*=/);
-    expect(profile).not.toMatch(/\bon(?:Error|Click|Change|Load)\s*=/);
-    expect(route).not.toMatch(/\bon(?:Error|Click|Change|Load)\s*=/);
+    for (const source of [...serverFiles, route]) {
+      expect(source).not.toMatch(/^["']use client["']/);
+      expect(source).not.toMatch(/\bon(?:Error|Click|Change|Load)\s*=/);
+    }
   });
 });
 
@@ -1884,7 +2061,8 @@ describe("Startups site integration", () => {
       "jobs_url",
     );
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/description|blurb/i);
-    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Short description/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/sticky \*\*Company\*\*/);
+    expect(readFileSync(OPS_DOC, "utf8")).toMatch(/\*\*Status\*\*/);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Open positions/);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/Role Brief/);
     expect(readFileSync(OPS_DOC, "utf8")).toMatch(/startup_member_cv/);

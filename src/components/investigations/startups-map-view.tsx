@@ -7,6 +7,7 @@ import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 
 import { Link } from "@/i18n/navigation";
 import {
+  STARTUP_PIN_ZOOM,
   buildStartupProfilePath,
   type StartupMapPin,
 } from "@/lib/investigations/startups";
@@ -25,7 +26,14 @@ const markerIcon = L.divIcon({
   iconAnchor: [7, 7],
 });
 
-export function StartupsMapView({ pins }: { pins: StartupMapPin[] }) {
+export function StartupsMapView({
+  pins,
+  height = 320,
+}: {
+  pins: StartupMapPin[];
+  /** Map height in px. */
+  height?: number;
+}) {
   const bounds = useMemo<L.LatLngBoundsLiteral | null>(() => {
     if (pins.length === 0) return null;
     const lats = pins.map((pin) => pin.lat);
@@ -35,6 +43,11 @@ export function StartupsMapView({ pins }: { pins: StartupMapPin[] }) {
       [Math.max(...lats), Math.max(...lngs)],
     ];
   }, [pins]);
+  // Fit never zooms past the least exact pin: a region centroid must not
+  // read as a street address.
+  const maxZoom = Math.min(
+    ...pins.map((pin) => STARTUP_PIN_ZOOM[pin.precision]),
+  );
 
   if (pins.length === 0) return null;
 
@@ -45,10 +58,11 @@ export function StartupsMapView({ pins }: { pins: StartupMapPin[] }) {
     >
       <MapContainer
         bounds={bounds ?? undefined}
+        boundsOptions={{ maxZoom, padding: [24, 24] }}
         center={bounds ? undefined : [20, 0]}
         zoom={bounds ? undefined : 2}
         scrollWheelZoom
-        style={{ height: "320px", width: "100%" }}
+        style={{ height, width: "100%" }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

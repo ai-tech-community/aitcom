@@ -1,26 +1,65 @@
+import { STARTUP_ROLES_PER_COMPANY_CAP } from "./startup-roles";
 import {
   STARTUP_CATEGORY_IDS,
   STARTUP_CATEGORY_LABELS,
+  displayStartupLogoUrl,
+  displayStartupSources,
   presentText,
   type StartupCategoryId,
   type StartupLocale,
   type StartupPublicCard,
 } from "./startups";
+import { startupCountryOf } from "./startups-countries";
 
-export const STARTUPS_INSIGHTS_CAPTION = "from listed companies · Neon only";
+/** Countries shown by name; the rest fold into one "other countries" row. */
+export const STARTUPS_INSIGHTS_TOP_COUNTRIES = 10;
 
-/** Soft-omit the Region tile until this many distinct sourced regions exist. */
-export const STARTUPS_REGION_INSIGHTS_MIN = 5;
+/** Soft-omit "Where they are" until this many countries are listed. */
+export const STARTUPS_INSIGHTS_COUNTRIES_MIN = 5;
+
+/** Companies named in "Who is hiring" when none reach the scan cap. */
+export const STARTUPS_INSIGHTS_TOP_HIRING = 8;
+
+/**
+ * Open-role bands for hiring companies. The last band starts at the scan
+ * cap, so "40+" is the only band whose true size may be larger.
+ */
+export const STARTUPS_INSIGHTS_ROLE_BANDS = [
+  { min: 1, max: 4 },
+  { min: 5, max: 9 },
+  { min: 10, max: 19 },
+  { min: 20, max: STARTUP_ROLES_PER_COMPANY_CAP - 1 },
+  { min: STARTUP_ROLES_PER_COMPANY_CAP, max: null },
+] as const;
+
+export type StartupsInsightsRoleBand = {
+  min: number;
+  /** null for the open-ended cap band. */
+  max: number | null;
+  count: number;
+};
+
+/** A timeline needs a shape; until listings span this many months, omit it. */
+export const STARTUPS_INSIGHTS_TIMELINE_MIN_MONTHS = 3;
+
+export type StartupsInsightsCountryRow = { country: string; count: number };
 
 export type StartupsInsightsCategoryRow = {
   id: StartupCategoryId;
   label: string;
   count: number;
+  /** Companies in this category with at least one sourced open role. */
+  hiring: number;
 };
 
-export type StartupsInsightsRegionRow = {
-  region: string;
-  count: number;
+export type StartupsInsightsHiringRow = {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  roles: number;
+  /** The scan stops at the per-company cap, so the real count may be higher. */
+  capped: boolean;
 };
 
 export type StartupsInsightsMonthRow = {
@@ -29,24 +68,39 @@ export type StartupsInsightsMonthRow = {
   count: number;
 };
 
-export type StartupsInsightsStageRow = {
-  stage: string;
-  count: number;
-};
-
-export type StartupsInsightsSourcesRow = {
-  sources: 1 | 2 | 3;
-  label: string;
-  count: number;
-};
+export type StartupsInsightsStageRow = { stage: string; count: number };
 
 export type StartupsInsightsStats = {
   total: number;
-  categoryMix: StartupsInsightsCategoryRow[];
-  regionMix: StartupsInsightsRegionRow[] | null;
+  /** Distinct countries with at least one listed company. */
+  countryCount: number;
+  countries: {
+    /** Top countries, largest first. */
+    rows: StartupsInsightsCountryRow[];
+    /** Companies in countries past the top list, and how many countries. */
+    other: { companies: number; countries: number };
+    /** Companies whose place is not one country (remote, multi-region). */
+    unplaced: number;
+  } | null;
+  categories: StartupsInsightsCategoryRow[];
+  hiring: {
+    companies: number;
+    roles: number;
+    /** True when any company hit the cap, so `roles` is a floor. */
+    rolesCapped: boolean;
+    /** Hiring companies by number of open roles. */
+    bands: StartupsInsightsRoleBand[];
+    /**
+     * Companies with the most openings: every company at the cap (a tie the
+     * scan cannot break), else the top few by count.
+     */
+    top: StartupsInsightsHiringRow[];
+  };
+  exits: { acquired: number; ipo: number; shutdown: number };
+  /** Companies by number of cited sources; always all three buckets. */
+  sourceDepth: Array<{ sources: 1 | 2 | 3; count: number }>;
+  timeline: StartupsInsightsMonthRow[] | null;
   stageMix: StartupsInsightsStageRow[] | null;
-  sourcesCoverage: StartupsInsightsSourcesRow[] | null;
-  addedOverTime: StartupsInsightsMonthRow[];
 };
 
 export function isStartupInsightsTab(
@@ -70,113 +124,153 @@ export function formatStartupInsightMonth(
   }).format(date);
 }
 
+function increment<K>(map: Map<K, number>, key: K): void {
+  map.set(key, (map.get(key) ?? 0) + 1);
+}
+
 /**
- * Aggregates listed directory cards. Never invents valuation, headcount,
- * attendance, or growth — only category / verified region / listed-on counts.
+ * Aggregates listed directory cards into counts of sourced fields only.
+ * Never invents valuation, headcount, attendance, or growth rates.
  */
-function sourcesCoverageLabel(count: 1 | 2 | 3, locale: StartupLocale): string {
-  if (locale === "nl") {
-    return count === 1 ? "1 bron" : `${count} bronnen`;
-  }
-  return count === 1 ? "1 source" : `${count} sources`;
-}
-
-/** Render-time gate: never show a Region table with fewer than five places. */
-export function showStartupRegionMix(
-  regionMix: StartupsInsightsRegionRow[] | null | undefined,
-): regionMix is StartupsInsightsRegionRow[] {
-  return (
-    Array.isArray(regionMix) &&
-    regionMix.length >= STARTUPS_REGION_INSIGHTS_MIN &&
-    regionMix.every((row) => row.count > 0)
-  );
-}
-
 export function buildStartupInsights(
   cards: readonly StartupPublicCard[],
   locale: StartupLocale,
 ): StartupsInsightsStats {
+  const countryCounts = new Map<string, number>();
   const categoryCounts = new Map<StartupCategoryId, number>();
-  const regionCounts = new Map<string, number>();
+  const categoryHiring = new Map<StartupCategoryId, number>();
   const stageCounts = new Map<string, number>();
-  const sourceBucketCounts = new Map<1 | 2 | 3, number>();
   const monthCounts = new Map<string, number>();
+  const depthCounts = new Map<1 | 2 | 3, number>();
+  const exits = { acquired: 0, ipo: 0, shutdown: 0 };
+  let unplaced = 0;
+  let hiringCompanies = 0;
+  let roles = 0;
+  let rolesCapped = false;
 
   for (const card of cards) {
-    categoryCounts.set(
-      card.category,
-      (categoryCounts.get(card.category) ?? 0) + 1,
-    );
-    const region = presentText(card.region);
-    if (region) {
-      regionCounts.set(region, (regionCounts.get(region) ?? 0) + 1);
+    const country = startupCountryOf(card.region);
+    if (country) increment(countryCounts, country);
+    else unplaced += 1;
+
+    increment(categoryCounts, card.category);
+    if (card.openRoleCount > 0) {
+      increment(categoryHiring, card.category);
+      hiringCompanies += 1;
+      roles += card.openRoleCount;
+      if (card.openRoleCount >= STARTUP_ROLES_PER_COMPANY_CAP) {
+        rolesCapped = true;
+      }
     }
+
     const stage = presentText(card.stage);
-    if (stage) {
-      stageCounts.set(stage, (stageCounts.get(stage) ?? 0) + 1);
-    }
-    const sourceCount = card.sources.length;
-    if (sourceCount === 1 || sourceCount === 2 || sourceCount === 3) {
-      sourceBucketCounts.set(
-        sourceCount,
-        (sourceBucketCounts.get(sourceCount) ?? 0) + 1,
-      );
-    }
+    if (stage) increment(stageCounts, stage);
+
     const month = card.listedOn.slice(0, 7);
-    if (/^\d{4}-\d{2}$/.test(month)) {
-      monthCounts.set(month, (monthCounts.get(month) ?? 0) + 1);
+    if (/^\d{4}-\d{2}$/.test(month)) increment(monthCounts, month);
+
+    const depth = Math.min(displayStartupSources(card.sources).length, 3);
+    if (depth === 1 || depth === 2 || depth === 3) {
+      increment(depthCounts, depth);
     }
+
+    if (card.exitStatus) exits[card.exitStatus] += 1;
   }
 
-  const categoryMix = STARTUP_CATEGORY_IDS.filter(
+  const rankedCountries = [...countryCounts.entries()]
+    .map(([country, count]) => ({ country, count }))
+    .sort((a, b) => b.count - a.count || a.country.localeCompare(b.country));
+  const topCountries = rankedCountries.slice(
+    0,
+    STARTUPS_INSIGHTS_TOP_COUNTRIES,
+  );
+  const restCountries = rankedCountries.slice(STARTUPS_INSIGHTS_TOP_COUNTRIES);
+
+  const categories = STARTUP_CATEGORY_IDS.filter(
     (id) => (categoryCounts.get(id) ?? 0) > 0,
   )
     .map((id) => ({
       id,
       label: STARTUP_CATEGORY_LABELS[id][locale],
       count: categoryCounts.get(id)!,
+      hiring: categoryHiring.get(id) ?? 0,
     }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 
-  const countedRegions = [...regionCounts.entries()]
-    .map(([region, count]) => ({ region, count }))
-    .sort((a, b) => b.count - a.count || a.region.localeCompare(b.region));
-  const regionMix = showStartupRegionMix(countedRegions)
-    ? countedRegions
-    : null;
+  const hiringCards = cards
+    .filter((card) => card.openRoleCount > 0)
+    .sort(
+      (a, b) =>
+        b.openRoleCount - a.openRoleCount || a.name.localeCompare(b.name),
+    );
+  const atCap = hiringCards.filter(
+    (card) => card.openRoleCount >= STARTUP_ROLES_PER_COMPANY_CAP,
+  );
+  const hiringTop = (
+    atCap.length > 0
+      ? atCap
+      : hiringCards.slice(0, STARTUPS_INSIGHTS_TOP_HIRING)
+  ).map((card) => ({
+    id: card.id,
+    name: card.name,
+    slug: card.slug,
+    logoUrl: displayStartupLogoUrl(card.logoUrl),
+    roles: card.openRoleCount,
+    capped: card.openRoleCount >= STARTUP_ROLES_PER_COMPANY_CAP,
+  }));
 
-  const addedOverTime = [...monthCounts.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([month, count]) => ({
-      month,
-      label: formatStartupInsightMonth(month, locale),
-      count,
-    }));
-
-  const stageMix =
-    stageCounts.size === 0
-      ? null
-      : [...stageCounts.entries()]
-          .map(([stage, count]) => ({ stage, count }))
-          .sort((a, b) => b.count - a.count || a.stage.localeCompare(b.stage));
-
-  const sourcesCoverage =
-    sourceBucketCounts.size === 0
-      ? null
-      : ([1, 2, 3] as const)
-          .filter((sources) => (sourceBucketCounts.get(sources) ?? 0) > 0)
-          .map((sources) => ({
-            sources,
-            label: sourcesCoverageLabel(sources, locale),
-            count: sourceBucketCounts.get(sources)!,
-          }));
+  const months = [...monthCounts.keys()].sort();
 
   return {
     total: cards.length,
-    categoryMix,
-    regionMix,
-    stageMix,
-    sourcesCoverage,
-    addedOverTime,
+    countryCount: countryCounts.size,
+    countries:
+      countryCounts.size >= STARTUPS_INSIGHTS_COUNTRIES_MIN
+        ? {
+            rows: topCountries,
+            other: {
+              companies: restCountries.reduce((sum, row) => sum + row.count, 0),
+              countries: restCountries.length,
+            },
+            unplaced,
+          }
+        : null,
+    categories,
+    hiring: {
+      companies: hiringCompanies,
+      roles,
+      rolesCapped,
+      bands: STARTUPS_INSIGHTS_ROLE_BANDS.map((band) => ({
+        min: band.min,
+        max: band.max,
+        count: hiringCards.filter(
+          (card) =>
+            card.openRoleCount >= band.min &&
+            (band.max === null || card.openRoleCount <= band.max),
+        ).length,
+      })),
+      top: hiringTop,
+    },
+    exits,
+    sourceDepth: ([1, 2, 3] as const).map((sources) => ({
+      sources,
+      count: depthCounts.get(sources) ?? 0,
+    })),
+    timeline:
+      months.length >= STARTUPS_INSIGHTS_TIMELINE_MIN_MONTHS
+        ? months.map((month) => ({
+            month,
+            label: formatStartupInsightMonth(month, locale),
+            count: monthCounts.get(month)!,
+          }))
+        : null,
+    stageMix:
+      stageCounts.size === 0
+        ? null
+        : [...stageCounts.entries()]
+            .map(([stage, count]) => ({ stage, count }))
+            .sort(
+              (a, b) => b.count - a.count || a.stage.localeCompare(b.stage),
+            ),
   };
 }

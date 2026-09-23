@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  List,
+  Map as MapIcon,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -8,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Select,
   SelectContent,
@@ -17,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StartupsDirectoryTable } from "@/components/investigations/startups-directory-table";
-import { StartupsMapSheet } from "@/components/investigations/startups-map-sheet";
+import { StartupsDirectoryMap } from "@/components/investigations/startups-directory-map";
 import { StartupsPagination } from "@/components/investigations/startups-pagination";
 import { StartupsSubmitDialog } from "@/components/investigations/startups-submit-dialog";
 import {
@@ -31,15 +39,16 @@ import {
   paginateStartupCards,
   parseStartupDirectoryQuery,
   startupDirectoryFilterOptions,
-  startupMapPins,
   type StartupCategoryId,
   type StartupDirectoryQuery,
+  type StartupDirectoryView,
   type StartupExitFilter,
   type StartupHiringFilter,
   type StartupLocale,
   type StartupPublicCard,
   type StartupSort,
 } from "@/lib/investigations/startups";
+import { cn } from "@/lib/utils";
 
 export function StartupsDirectory({
   companies,
@@ -77,7 +86,6 @@ export function StartupsDirectory({
     () => paginateStartupCards(filtered, query.page),
     [filtered, query.page],
   );
-  const pins = useMemo(() => startupMapPins(filtered), [filtered]);
   const filterOptions = useMemo(
     () => startupDirectoryFilterOptions(companies),
     [companies],
@@ -120,23 +128,54 @@ export function StartupsDirectory({
 
   const emptyCatalog = companies.length === 0;
   const emptyFiltered = pagination.items.length === 0;
+  const activeFilters = [
+    query.category !== "all",
+    Boolean(query.region && query.region !== "all"),
+    Boolean(query.stage && query.stage !== "all"),
+    Boolean(query.status && query.status !== "all"),
+    query.hiring === "hiring",
+  ].filter(Boolean).length;
+  const [filtersOpen, setFiltersOpen] = useState(activeFilters > 0);
+  const isMap = query.view === "map";
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
             <Label htmlFor="startup-search" className="sr-only">
               {t("searchPlaceholder")}
             </Label>
+            <Search
+              aria-hidden="true"
+              className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+            />
             <Input
               id="startup-search"
+              type="search"
               value={query.q}
               placeholder={t("searchPlaceholder")}
               onChange={(event) => replaceQuery({ q: event.target.value })}
+              className="pl-9"
             />
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="md:hidden"
+              aria-expanded={filtersOpen}
+              aria-controls="startup-filters"
+              onClick={() => setFiltersOpen((open) => !open)}
+            >
+              <SlidersHorizontal aria-hidden="true" />
+              {t("filtersToggle")}
+              {activeFilters > 0 ? (
+                <span className="bg-foreground text-background rounded-full px-1.5 font-mono text-xs tabular-nums">
+                  {activeFilters}
+                </span>
+              ) : null}
+            </Button>
             <Label htmlFor="startup-sort" className="sr-only">
               {t("sortNewest")}
             </Label>
@@ -146,7 +185,10 @@ export function StartupsDirectory({
                 replaceQuery({ sort: value as StartupSort })
               }
             >
-              <SelectTrigger id="startup-sort" className="w-full min-w-44">
+              <SelectTrigger
+                id="startup-sort"
+                className="min-w-0 flex-1 sm:w-40 sm:flex-none"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -163,153 +205,143 @@ export function StartupsDirectory({
                 </SelectGroup>
               </SelectContent>
             </Select>
+            <SegmentedControl<StartupDirectoryView>
+              aria-label={t("viewToggle")}
+              value={isMap ? "map" : "table"}
+              onValueChange={(view) => replaceQuery({ view })}
+              className="h-9 shrink-0"
+              options={[
+                {
+                  value: "table",
+                  label: (
+                    <>
+                      <List aria-hidden="true" className="size-4" />
+                      <span className="max-sm:sr-only">{t("viewTable")}</span>
+                    </>
+                  ),
+                },
+                {
+                  value: "map",
+                  label: (
+                    <>
+                      <MapIcon aria-hidden="true" className="size-4" />
+                      <span className="max-sm:sr-only">{t("viewMap")}</span>
+                    </>
+                  ),
+                },
+              ]}
+            />
+            {isModerator ? (
+              <Button
+                type="button"
+                onClick={() => {
+                  setEditing(null);
+                  setSubmitOpen(true);
+                }}
+              >
+                {t("addCompany")}
+              </Button>
+            ) : null}
           </div>
-          <StartupsMapSheet
-            pins={pins}
-            copy={{
-              openMap: t("openMap"),
-              title: t("mapTitle"),
-              close: t("mapClose"),
-              empty: t("mapEmpty"),
-            }}
+        </div>
+        <div
+          id="startup-filters"
+          className={cn(
+            "grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-5",
+            !filtersOpen && "max-md:hidden",
+          )}
+        >
+          <FilterSelect
+            id="startup-filter"
+            label={t("filterLabel")}
+            allLabel={t("filterLabel")}
+            value={query.category}
+            options={STARTUP_CATEGORY_IDS.map((id) => ({
+              value: id,
+              label: STARTUP_CATEGORY_LABELS[id][locale],
+            }))}
+            onChange={(value) =>
+              replaceQuery({ category: value as StartupCategoryId | "all" })
+            }
           />
-          {isModerator ? (
-            <Button
-              type="button"
-              onClick={() => {
-                setEditing(null);
-                setSubmitOpen(true);
-              }}
-            >
-              {t("addCompany")}
-            </Button>
-          ) : null}
+          <FilterSelect
+            id="startup-region"
+            label={t("filterRegion")}
+            allLabel={t("filterRegion")}
+            value={query.region ?? "all"}
+            options={regionOptions.map((region) => ({
+              value: region,
+              label: region,
+            }))}
+            onChange={(value) => replaceQuery({ region: value })}
+          />
+          <FilterSelect
+            id="startup-stage"
+            label={t("filterStage")}
+            allLabel={t("filterStage")}
+            value={query.stage ?? "all"}
+            options={stageOptions.map((stage) => ({
+              value: stage,
+              label: stage,
+            }))}
+            onChange={(value) => replaceQuery({ stage: value })}
+          />
+          <FilterSelect
+            id="startup-status"
+            label={t("filterExit")}
+            allLabel={t("filterExitAll")}
+            value={query.status ?? "all"}
+            options={STARTUP_EXIT_FILTER_IDS.map((id) => ({
+              value: id,
+              label: STARTUP_EXIT_FILTER_LABELS[id][locale],
+            }))}
+            onChange={(value) =>
+              replaceQuery({ status: value as StartupExitFilter | "all" })
+            }
+          />
+          <FilterSelect
+            id="startup-hiring"
+            label={t("filterHiring")}
+            allLabel={t("filterHiringAll")}
+            value={query.hiring ?? "all"}
+            options={[{ value: "hiring", label: t("filterHiringOpen") }]}
+            onChange={(value) =>
+              replaceQuery({ hiring: value as StartupHiringFilter })
+            }
+          />
         </div>
-        <div className="flex flex-wrap gap-3">
-          <div className="flex min-w-44 flex-1 flex-col gap-2">
-            <Label htmlFor="startup-filter" className="sr-only">
-              {t("filterLabel")}
-            </Label>
-            <Select
-              value={query.category}
-              onValueChange={(value) =>
-                replaceQuery({
-                  category: value as StartupCategoryId | "all",
-                })
-              }
-            >
-              <SelectTrigger id="startup-filter" className="w-full">
-                <SelectValue placeholder={t("filterLabel")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="all">{t("filterLabel")}</SelectItem>
-                  {STARTUP_CATEGORY_IDS.map((id) => (
-                    <SelectItem key={id} value={id}>
-                      {STARTUP_CATEGORY_LABELS[id][locale]}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex min-w-44 flex-1 flex-col gap-2">
-            <Label htmlFor="startup-region" className="sr-only">
-              {t("filterRegion")}
-            </Label>
-            <Select
-              value={query.region ?? "all"}
-              onValueChange={(value) => replaceQuery({ region: value })}
-            >
-              <SelectTrigger id="startup-region" className="w-full">
-                <SelectValue placeholder={t("filterRegion")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="all">{t("filterRegion")}</SelectItem>
-                  {regionOptions.map((region) => (
-                    <SelectItem key={region} value={region}>
-                      {region}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex min-w-44 flex-1 flex-col gap-2">
-            <Label htmlFor="startup-stage" className="sr-only">
-              {t("filterStage")}
-            </Label>
-            <Select
-              value={query.stage ?? "all"}
-              onValueChange={(value) => replaceQuery({ stage: value })}
-            >
-              <SelectTrigger id="startup-stage" className="w-full">
-                <SelectValue placeholder={t("filterStage")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="all">{t("filterStage")}</SelectItem>
-                  {stageOptions.map((stage) => (
-                    <SelectItem key={stage} value={stage}>
-                      {stage}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex min-w-44 flex-1 flex-col gap-2">
-            <Label htmlFor="startup-status" className="sr-only">
-              {t("filterExit")}
-            </Label>
-            <Select
-              value={query.status ?? "all"}
-              onValueChange={(value) =>
-                replaceQuery({
-                  status: value as StartupExitFilter | "all",
-                })
-              }
-            >
-              <SelectTrigger id="startup-status" className="w-full">
-                <SelectValue placeholder={t("filterExit")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="all">{t("filterExitAll")}</SelectItem>
-                  {STARTUP_EXIT_FILTER_IDS.map((id) => (
-                    <SelectItem key={id} value={id}>
-                      {STARTUP_EXIT_FILTER_LABELS[id][locale]}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex min-w-44 flex-1 flex-col gap-2">
-            <Label htmlFor="startup-hiring" className="sr-only">
-              {t("filterHiring")}
-            </Label>
-            <Select
-              value={query.hiring ?? "all"}
-              onValueChange={(value) =>
-                replaceQuery({ hiring: value as StartupHiringFilter })
-              }
-            >
-              <SelectTrigger id="startup-hiring" className="w-full">
-                <SelectValue placeholder={t("filterHiring")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  <SelectItem value="all">{t("filterHiringAll")}</SelectItem>
-                  <SelectItem value="hiring">
-                    {t("filterHiringOpen")}
-                  </SelectItem>
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+      </div>
+
+      <div
+        data-startup-results=""
+        className="-mb-2 flex min-h-9 items-center justify-between gap-4"
+      >
+        <p
+          aria-live="polite"
+          className="text-muted-foreground font-mono text-xs font-medium tracking-wider uppercase tabular-nums"
+        >
+          {t("resultsCount", { count: filtered.length })}
+        </p>
+        {activeFilters > 0 || query.q ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              replaceQuery({
+                q: "",
+                category: "all",
+                region: "all",
+                stage: "all",
+                status: "all",
+                hiring: "all",
+              })
+            }
+          >
+            <X aria-hidden="true" />
+            {t("clearFilters")}
+          </Button>
+        ) : null}
       </div>
 
       {emptyFiltered ? (
@@ -317,24 +349,23 @@ export function StartupsDirectory({
           title={emptyCatalog ? t("empty") : t("emptyFiltered")}
           description={emptyCatalog ? t("emptyHelp") : undefined}
         />
+      ) : isMap ? (
+        <StartupsDirectoryMap companies={filtered} locale={locale} />
       ) : (
         <StartupsDirectoryTable
           companies={pagination.items}
           locale={locale}
           isModerator={isModerator}
           copy={{
-            logoColumn: t("logoColumn"),
-            nameColumn: t("nameColumn"),
-            descriptionColumn: t("descriptionColumn"),
-            foundersColumn: t("foundersColumn"),
+            companyColumn: t("companyColumn"),
             categoryColumn: t("categoryColumn"),
             regionColumn: t("regionColumn"),
-            stageColumn: t("stageColumn"),
-            exitColumn: t("exitColumn"),
+            statusColumn: t("statusColumn"),
             sourcesColumn: t("sourcesColumn"),
-            jobsColumn: t("jobsColumn"),
-            openJobs: t("openJobs"),
-            openRoles: t("openRoles"),
+            linksColumn: t("linksColumn"),
+            foundersColumn: t("foundersColumn"),
+            // The table fills {count} per row, so it needs the raw message.
+            openRoles: t.raw("openRoles") as string,
             openHomepage: t("openHomepage"),
             edit: t("edit"),
             caption: t("tabDirectory"),
@@ -346,13 +377,15 @@ export function StartupsDirectory({
         />
       )}
 
-      <StartupsPagination
-        query={{ ...query, page: pagination.page }}
-        totalPages={pagination.totalPages}
-        prevLabel={t("paginationPrev")}
-        nextLabel={t("paginationNext")}
-        navLabel={t("paginationLabel")}
-      />
+      {isMap ? null : (
+        <StartupsPagination
+          query={{ ...query, page: pagination.page }}
+          totalPages={pagination.totalPages}
+          prevLabel={t("paginationPrev")}
+          nextLabel={t("paginationNext")}
+          navLabel={t("paginationLabel")}
+        />
+      )}
 
       {isModerator ? (
         <StartupsSubmitDialog
@@ -393,6 +426,46 @@ export function StartupsDirectory({
           }}
         />
       ) : null}
+    </div>
+  );
+}
+
+/** A labelled filter menu whose first item resets it to "all". */
+function FilterSelect({
+  id,
+  label,
+  allLabel,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  allLabel: string;
+  value: string;
+  options: ReadonlyArray<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col">
+      <Label htmlFor={id} className="sr-only">
+        {label}
+      </Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger id={id} className="w-full">
+          <SelectValue placeholder={label} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="all">{allLabel}</SelectItem>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
     </div>
   );
 }

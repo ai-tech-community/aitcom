@@ -32,7 +32,7 @@ export const STARTUPS_META =
 export const STARTUPS_INSIGHTS_H1 = "AI startups insights";
 
 export const STARTUPS_INSIGHTS_META =
-  "Added over time, plus category, region, stage, and source coverage — from the live directory only. Blank stage stays omitted. Region mix waits until five distinct sourced regions are listed.";
+  "Where listed AI startups are, what they build, who is hiring, and how well each listing is sourced. Counted from the live directory only; nothing estimated.";
 
 export const STARTUPS_JOIN_HREF =
   "https://www.aitcommunity.org/en/join?utm_source=aitcom&utm_medium=startups&utm_campaign=startups";
@@ -169,8 +169,12 @@ export type StartupDirectoryFilters = {
   sort?: StartupSort;
 };
 
+/** How the directory shows results. Not a filter: it never narrows rows. */
+export type StartupDirectoryView = "table" | "map";
+
 export type StartupDirectoryQuery = StartupDirectoryFilters & {
   page: number;
+  view?: StartupDirectoryView;
 };
 
 export const STARTUP_SORT_IDS = [
@@ -186,6 +190,9 @@ export const STARTUP_EXIT_FILTER_IDS = [
   "shutdown",
 ] as const satisfies readonly StartupExitFilter[];
 
+/** How exact a pin is. Pins are never more exact than a city. */
+export type StartupPinPrecision = "city" | "region";
+
 export type StartupMapPin = {
   id: string;
   name: string;
@@ -195,6 +202,7 @@ export type StartupMapPin = {
   lng: number;
   /** Sourced city/region string only — never a fabricated street address. */
   region: string | null;
+  precision: StartupPinPrecision;
 };
 
 export const STARTUP_CATEGORY_IDS = [
@@ -307,19 +315,11 @@ export function allocateStartupSlug(
   return `${base}-${n}`;
 }
 
-export type StartupOverviewTile =
-  | "logo"
-  | "blurb"
-  | "category"
-  | "region"
-  | "stage"
-  | "exit"
-  | "founders"
-  | "jobs"
-  | "sources"
-  | "map";
+/** Main-column sections of a profile, in reading order. Sourced data only. */
+export type StartupProfileSection = "founders" | "hiring" | "news";
 
-export type StartupProfileExtraTab = "news" | "hiring" | "funding" | "team";
+/** Rows of the profile facts sheet, in reading order. Sourced data only. */
+export type StartupProfileFact = "region" | "stage" | "listed" | "sources";
 
 export function startupNewsSources(
   sources: readonly string[] | null | undefined,
@@ -329,32 +329,60 @@ export function startupNewsSources(
   );
 }
 
-export function startupOverviewTiles(
-  card: StartupPublicCard,
-): StartupOverviewTile[] {
-  const tiles: StartupOverviewTile[] = [];
-  if (displayStartupLogoUrl(card.logoUrl)) tiles.push("logo");
-  if (sanitizeStartupDescription(card.description)) tiles.push("blurb");
-  tiles.push("category");
-  if (presentText(card.region)) tiles.push("region");
-  if (presentText(card.stage)) tiles.push("stage");
-  if (card.exitStatus) tiles.push("exit");
-  if (displayStartupFounders(card.founders).length > 0) tiles.push("founders");
-  if (startupHasOpenJobs(card)) tiles.push("jobs");
-  if (displayStartupSources(card.sources).length > 0) tiles.push("sources");
-  if (verifiedStartupPin(card)) tiles.push("map");
-  return tiles;
+/** Sources that are not press coverage — docs, deep dives, talks. */
+export function startupReferenceSources(
+  sources: readonly string[] | null | undefined,
+): string[] {
+  return displayStartupSources(sources).filter(
+    (href) => startupCiteKind(href) !== "news",
+  );
 }
 
-export function startupProfileExtraTabs(
+export function startupProfileSections(
   card: StartupPublicCard,
-): StartupProfileExtraTab[] {
-  const tabs: StartupProfileExtraTab[] = [];
-  if (startupNewsSources(card.sources).length > 0) tabs.push("news");
-  if (startupHasOpenJobs(card)) tabs.push("hiring");
-  if (card.exitStatus) tabs.push("funding");
-  if (displayStartupFounders(card.founders).length > 0) tabs.push("team");
-  return tabs;
+): StartupProfileSection[] {
+  const sections: StartupProfileSection[] = [];
+  if (displayStartupFounders(card.founders).length > 0) {
+    sections.push("founders");
+  }
+  if (startupHasOpenJobs(card)) sections.push("hiring");
+  if (startupNewsSources(card.sources).length > 0) sections.push("news");
+  return sections;
+}
+
+export function startupProfileFacts(
+  card: StartupPublicCard,
+): StartupProfileFact[] {
+  const facts: StartupProfileFact[] = [];
+  if (presentText(card.region)) facts.push("region");
+  if (presentText(card.stage)) facts.push("stage");
+  if (parseStartupListedOn(card.listedOn)) facts.push("listed");
+  if (startupReferenceSources(card.sources).length > 0) facts.push("sources");
+  return facts;
+}
+
+/** `YYYY-MM-DD` listing date, or null when the stored value is not one. */
+export function parseStartupListedOn(
+  value: string | null | undefined,
+): string | null {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(value?.trim() ?? "");
+  return match ? match[1]! : null;
+}
+
+/**
+ * Coordinate readout for a map pin, rounded to one decimal and marked
+ * approximate: pins may be city or region centroids, never a street address.
+ */
+export function formatStartupPinCoords(pin: {
+  lat: number;
+  lng: number;
+}): string {
+  // Round half-up on the decimal value; toFixed() rounds 43.65 down to 43.6.
+  const deg = (value: number) =>
+    (Math.round(Math.abs(value) * 10) / 10).toFixed(1);
+  const lat = `${deg(pin.lat)}° ${pin.lat >= 0 ? "N" : "S"}`;
+  const lng = `${deg(pin.lng)}° ${pin.lng >= 0 ? "E" : "W"}`;
+  return `≈ ${lat}, ${lng}`;
 }
 
 export function startupProfileSitemapPaths(slugs: readonly string[]): string[] {
@@ -807,7 +835,41 @@ export function verifiedStartupPin(
     lat: coords.lat,
     lng: coords.lng,
     region: sourcedStartupPlaceLabel(card.region),
+    precision: startupPinPrecision(card.region, coords),
   };
+}
+
+/**
+ * Region-level when the pin sits on a country/region centroid (writes store
+ * the resolved centroid as lat/lng), otherwise city-level.
+ */
+function startupPinPrecision(
+  region: string | null,
+  coords: { lat: number; lng: number },
+): StartupPinPrecision {
+  const centroid = startupPlaceCentroid(region);
+  const onCentroid =
+    centroid != null &&
+    Math.abs(centroid.lat - coords.lat) < 1e-4 &&
+    Math.abs(centroid.lng - coords.lng) < 1e-4;
+  return onCentroid && centroid.kind === "region" ? "region" : "city";
+}
+
+/** Map zoom that shows a pin no more exactly than its precision. */
+export const STARTUP_PIN_ZOOM: Record<StartupPinPrecision, number> = {
+  city: 10,
+  region: 5,
+};
+
+/** One or two letters for a company with no logo. Letters and digits only. */
+export function startupMonogram(name: string): string {
+  const words = name
+    .split(/\s+/)
+    .map((word) => word.replace(/[^\p{L}\p{N}]/gu, ""))
+    .filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0]!.slice(0, 1).toUpperCase();
+  return `${words[0]![0]}${words[words.length - 1]![0]}`.toUpperCase();
 }
 
 export function startupMapPins(
@@ -894,6 +956,7 @@ export function parseStartupDirectoryQuery(raw: {
   hiring?: string | string[];
   sort?: string | string[];
   page?: string | string[] | number;
+  view?: string | string[];
 }): StartupDirectoryQuery {
   const q = firstParam(raw.q)?.trim() ?? "";
   const category = parseStartupCategory(firstParam(raw.category)) ?? "all";
@@ -910,7 +973,9 @@ export function parseStartupDirectoryQuery(raw: {
         ? Math.floor(raw.page)
         : 1
       : parseStartupPage(raw.page);
-  return { q, category, region, stage, status, hiring, sort, page };
+  const view: StartupDirectoryView =
+    firstParam(raw.view) === "map" ? "map" : "table";
+  return { q, category, region, stage, status, hiring, sort, page, view };
 }
 
 export function applyStartupDirectoryQuery(
@@ -1025,7 +1090,9 @@ export function buildStartupDirectoryPath(
   }
   if (parsed.hiring === "hiring") params.set("hiring", "1");
   if (parsed.sort && parsed.sort !== "newest") params.set("sort", parsed.sort);
-  if (parsed.page > 1) params.set("page", String(parsed.page));
+  // The map shows every match at once, so it has no pages.
+  if (parsed.view === "map") params.set("view", "map");
+  else if (parsed.page > 1) params.set("page", String(parsed.page));
   const qs = params.toString();
   return qs ? `${STARTUPS_PATH}?${qs}` : STARTUPS_PATH;
 }
@@ -1048,6 +1115,7 @@ export function startupDirectoryCanonicalPath(
   query: StartupDirectoryQuery,
 ): string {
   if (startupDirectoryHasFilters(query)) return STARTUPS_PATH;
+  if (query.view === "map") return STARTUPS_PATH;
   if (query.page > 1) return `${STARTUPS_PATH}?page=${query.page}`;
   return STARTUPS_PATH;
 }
