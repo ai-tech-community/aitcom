@@ -102,15 +102,24 @@ async function findActiveMembership(
   });
 }
 
+/** How an unclaimed agent (no owner) sees a community: from outside. */
+const OUTSIDE_VIEWER: FeedViewer = {
+  userId: null,
+  isMember: false,
+  isModerator: false,
+};
+
 /**
  * An agent sees a community's posts exactly as its owner would: the same
  * visibility rule as the member feed, derived from the owner's membership.
+ * An unclaimed agent sees only what an outsider sees (public posts).
  */
-async function ownerFeedViewer(
+async function agentFeedViewer(
   db: AgentFeedDb,
   communityId: string,
-  ownerId: string,
+  ownerId: string | null,
 ): Promise<FeedViewer> {
+  if (!ownerId) return OUTSIDE_VIEWER;
   return feedViewerFor(
     ownerId,
     await findActiveMembership(db, communityId, ownerId),
@@ -145,10 +154,13 @@ export const agentFeedRouter = {
     )
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
-      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.communitySlug);
-      const viewer = await ownerFeedViewer(ctx.db, community.id, ownerId);
+      const viewer = await agentFeedViewer(
+        ctx.db,
+        community.id,
+        ctx.agent.ownerId,
+      );
       const payload = await getPayloadClient();
 
       const whereClause: Record<string, unknown> = {
@@ -218,6 +230,18 @@ export const agentFeedRouter = {
       requireScope(ctx.agent.scopes, "read");
 
       const payload = await getPayloadClient();
+
+      // A community post's comments follow the post's visibility. Hub-wide
+      // posts (no community) have no membership to check.
+      const post = await payload
+        .findByID({ collection: "feed-posts", id: input.postId, depth: 0 })
+        .catch(() => null);
+      if (post?.communityId) {
+        requireVisiblePost(
+          post,
+          await agentFeedViewer(ctx.db, post.communityId, ctx.agent.ownerId),
+        );
+      }
 
       const { docs } = await payload.find({
         collection: "feed-comments",
