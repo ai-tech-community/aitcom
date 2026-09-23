@@ -1270,6 +1270,8 @@
     "jobsFollowHelp": "Marks roles added here after your last visit. No email, and no employer publish date unless the careers page printed one.",
     "jobsNewSince": "New since you last looked",
     "jobsNewBadge": "New",
+    "jobsTrack": "Track",
+    "jobsTracking": "Tracking",
     "roleColumn": "Role",
     "companyColumn": "Company",
     "locationColumn": "Location",

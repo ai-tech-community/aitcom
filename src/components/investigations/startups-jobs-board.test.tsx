@@ -19,6 +19,24 @@ vi.mock("@/i18n/navigation", () => ({
   ),
 }));
 
+vi.mock("@/trpc/react", () => ({
+  api: {
+    useUtils: () => ({
+      startups: {
+        getMyRoleApplication: { invalidate: vi.fn() },
+      },
+    }),
+    startups: {
+      setMyRoleApplication: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      setMyTrackedRoleStatus: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+    },
+  },
+}));
+
 const ROLE: StartupRolePublic = {
   id: "role-1",
   startupId: "startup-1",
@@ -38,20 +56,22 @@ const ROLE: StartupRolePublic = {
 };
 
 describe("StartupsJobsBoard", () => {
-  it("tracks a sourced role and posts a help note to one community", () => {
+  it("shows only tracked roles and posts a help note from a sheet", () => {
     render(
       <StartupsJobsBoard
         locale="en"
-        roles={[ROLE]}
+        tracked={[{ role: ROLE, status: "applying" }]}
         communities={[{ slug: "ait", name: "AIT" }]}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Track" }));
+    expect(screen.queryByRole("button", { name: "Track" })).toBeNull();
     expect(
       screen.getByRole("heading", { name: "Applying" }),
     ).toBeInTheDocument();
+    expect(document.querySelector("[data-startup-help-sheet]")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Ask for help" }));
+    expect(document.querySelector("[data-startup-help-sheet]")).not.toBeNull();
     fireEvent.change(screen.getByLabelText("What do you want help with?"), {
       target: { value: "A walkthrough of the system design section." },
     });

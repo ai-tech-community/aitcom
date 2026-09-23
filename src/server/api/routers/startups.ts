@@ -47,6 +47,7 @@ import {
 } from "@/server/startups/cv";
 import {
   findStartupRoleApplication,
+  setMyTrackedRoleStatus,
   setStartupJobsFollow,
   setStartupRoleApplication,
 } from "@/server/startups/member-jobs";
@@ -54,6 +55,7 @@ import {
   startupJobsFollowFromQuery,
   STARTUP_JOBS_FOLLOW_Q_MAX,
 } from "@/lib/investigations/startup-roles";
+import { TRACKING_STATUSES } from "@/lib/investigations/startup-tracking";
 import {
   extractStartupCvText,
   parseStartupCvFileName,
@@ -528,6 +530,28 @@ export const startupsRouter = createTRPCRouter({
           userId: ctx.session.user.id,
           roleId: input.roleId,
           applying: input.applying,
+        });
+      } catch {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Role not found",
+        });
+      }
+    }),
+
+  setMyTrackedRoleStatus: protectedProcedure
+    .input(
+      z.object({
+        roleId: z.string().trim().min(1).max(255),
+        status: z.enum(TRACKING_STATUSES),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await setMyTrackedRoleStatus({
+          userId: ctx.session.user.id,
+          roleId: input.roleId,
+          status: input.status,
         });
       } catch {
         throw new TRPCError({

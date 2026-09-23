@@ -149,7 +149,7 @@ export async function listApprovedPublicStartupSlugs(): Promise<string[]> {
   }
 }
 
-function toPublicRole(
+export function toPublicRole(
   role: typeof startupRoles.$inferSelect,
   startup: {
     slug: string;

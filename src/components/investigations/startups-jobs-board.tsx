@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 import { Link } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -14,23 +16,31 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SectionLabel } from "@/components/ui/section-label";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  TRACKING_STATUSES,
+  type TrackingStatus,
+} from "@/lib/investigations/startup-tracking";
+import type { StartupRolePublic } from "@/lib/investigations/startup-roles";
+import {
+  STARTUPS_JOBS_PATH,
   buildStartupProfilePath,
   buildStartupRolePath,
 } from "@/lib/investigations/startups";
-import type { StartupRolePublic } from "@/lib/investigations/startup-roles";
+import { api } from "@/trpc/react";
 
-export const TRACKING_STATUSES = [
-  "applying",
-  "applied",
-  "talking",
-  "offer",
-  "passed",
-] as const;
-
-export type TrackingStatus = (typeof TRACKING_STATUSES)[number];
+export type TrackedBoardRole = {
+  role: StartupRolePublic;
+  status: TrackingStatus;
+};
 
 export type TrackingHelp = {
   roleId: string;
@@ -43,10 +53,10 @@ const COPY = {
   en: {
     kicker: "Jobs",
     title: "Your board",
-    lead: "Track sourced roles you are pursuing. This board is private to your dashboard. A help request goes to one community you belong to, with your note and an optional classroom.",
-    preview: "Private to your dashboard. Nothing is saved yet.",
+    lead: "Roles you track on open positions land here. Only you can see this board.",
+    empty:
+      "Nothing tracked yet. Track a role on open positions and it shows up in Applying.",
     open: "Open positions",
-    track: "Track",
     remove: "Remove",
     ask: "Ask for help",
     cancel: "Cancel",
@@ -57,8 +67,8 @@ const COPY = {
     classroomHelp:
       "Optional. Only a classroom that already exists in that community.",
     post: "Post to community",
+    sheetLead: "This note stays on your board. It is not sent yet.",
     helpTitle: "What the community sees",
-    helpEmpty: "No requests for this community yet.",
     helpPick: "Preview community",
     member: "A member",
     applying: "Applying",
@@ -70,10 +80,10 @@ const COPY = {
   nl: {
     kicker: "Vacatures",
     title: "Jouw bord",
-    lead: "Volg geverifieerde rollen waar je mee bezig bent. Dit bord is privé in je dashboard. Een hulpvraag gaat naar één community waar je lid van bent, met je notitie en een optioneel classroom.",
-    preview: "Privé in je dashboard. Er wordt nog niets opgeslagen.",
+    lead: "Rollen die je bijhoudt bij open posities komen hier. Alleen jij ziet dit bord.",
+    empty:
+      "Nog niets bijgehouden. Houd een rol bij op open posities en hij verschijnt bij Solliciteren.",
     open: "Open posities",
-    track: "Volgen",
     remove: "Verwijderen",
     ask: "Vraag om hulp",
     cancel: "Annuleren",
@@ -84,8 +94,8 @@ const COPY = {
     classroomHelp:
       "Optioneel. Alleen een classroom die al in die community bestaat.",
     post: "Plaats in community",
+    sheetLead: "Deze notitie blijft op je bord. Hij is nog niet verstuurd.",
     helpTitle: "Wat de community ziet",
-    helpEmpty: "Nog geen vragen voor deze community.",
     helpPick: "Bekijk community",
     member: "Een lid",
     applying: "Solliciteren",
@@ -104,17 +114,15 @@ function statusLabel(copy: BoardCopy, status: TrackingStatus): string {
 
 export function StartupsJobsBoard({
   locale,
-  roles,
+  tracked,
   communities,
 }: {
   locale: string;
-  roles: StartupRolePublic[];
+  tracked: TrackedBoardRole[];
   communities: { slug: string; name: string }[];
 }) {
   const copy = locale === "nl" ? COPY.nl : COPY.en;
-  const [statusByRole, setStatusByRole] = useState<
-    Record<string, TrackingStatus>
-  >({});
+  const [rows, setRows] = useState(tracked);
   const [askingId, setAskingId] = useState<string | null>(null);
   const [communitySlug, setCommunitySlug] = useState(
     communities[0]?.slug ?? "",
@@ -123,16 +131,45 @@ export function StartupsJobsBoard({
   const [classroom, setClassroom] = useState("");
   const [help, setHelp] = useState<TrackingHelp[]>([]);
   const [previewSlug, setPreviewSlug] = useState(communities[0]?.slug ?? "");
+  const utils = api.useUtils();
+  const setStatus = api.startups.setMyTrackedRoleStatus.useMutation({
+    onError: (error) => toast.error(error.message),
+  });
+  const removeTrack = api.startups.setMyRoleApplication.useMutation({
+    onSuccess: async (_data, variables) => {
+      await utils.startups.getMyRoleApplication.invalidate({
+        roleId: variables.roleId,
+      });
+    },
+    onError: (error) => toast.error(error.message),
+  });
 
-  const tracked = useMemo(
-    () => roles.filter((role) => statusByRole[role.id]),
-    [roles, statusByRole],
-  );
-  const open = roles.filter((role) => !statusByRole[role.id]);
+  const asking = rows.find((row) => row.role.id === askingId)?.role ?? null;
   const visibleHelp = help.filter((row) => row.communitySlug === previewSlug);
 
-  function track(roleId: string) {
-    setStatusByRole((current) => ({ ...current, [roleId]: "applying" }));
+  function move(roleId: string, status: TrackingStatus) {
+    const previous = rows;
+    setRows((current) =>
+      current.map((row) => (row.role.id === roleId ? { ...row, status } : row)),
+    );
+    setStatus.mutate({ roleId, status }, { onError: () => setRows(previous) });
+  }
+
+  function remove(roleId: string) {
+    const previous = rows;
+    setRows((current) => current.filter((row) => row.role.id !== roleId));
+    if (askingId === roleId) setAskingId(null);
+    removeTrack.mutate(
+      { roleId, applying: false },
+      { onError: () => setRows(previous) },
+    );
+  }
+
+  function openHelp(roleId: string) {
+    setAskingId(roleId);
+    setNote("");
+    setClassroom("");
+    setCommunitySlug(communities[0]?.slug ?? "");
   }
 
   function postHelp(roleId: string) {
@@ -159,54 +196,49 @@ export function StartupsJobsBoard({
   return (
     <div data-startup-jobs-board="">
       <SectionLabel as="div">{copy.kicker}</SectionLabel>
-      <div className="mt-6 flex max-w-2xl flex-col gap-2">
-        <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          {copy.title}
-        </h2>
-        <p className="text-muted-foreground text-base leading-relaxed">
-          {copy.lead}
-        </p>
-        <p className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
-          {copy.preview}
-        </p>
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
+        <div className="flex max-w-2xl flex-col gap-2">
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            {copy.title}
+          </h2>
+          <p className="text-muted-foreground text-base leading-relaxed">
+            {copy.lead}
+          </p>
+        </div>
+        <Link
+          href={STARTUPS_JOBS_PATH}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          {copy.open}
+        </Link>
       </div>
 
-      <section className="mt-10" data-startup-board-open="">
-        <SectionLabel as="h2">{copy.open}</SectionLabel>
-        <ul className="mt-4 flex flex-col gap-2">
-          {open.map((role) => (
-            <li
-              key={role.id}
-              className="border-border flex flex-wrap items-baseline justify-between gap-3 border-b py-3"
-            >
-              <RoleLine role={role} />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => track(role.id)}
-              >
-                {copy.track}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="mt-10" data-startup-board="">
-        <div className="grid gap-4 lg:grid-cols-5">
-          {TRACKING_STATUSES.map((status) => (
-            <div key={status} className="flex flex-col gap-3">
-              <h2 className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
-                {statusLabel(copy, status)}
-              </h2>
-              {tracked
-                .filter((role) => statusByRole[role.id] === status)
-                .map((role) => (
+      {rows.length === 0 ? (
+        <p className="text-muted-foreground mt-10 max-w-xl text-sm leading-relaxed">
+          {copy.empty}
+        </p>
+      ) : (
+        <div
+          className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-5"
+          data-startup-board=""
+        >
+          {TRACKING_STATUSES.map((status) => {
+            const column = rows.filter((row) => row.status === status);
+            return (
+              <section key={status} className="flex min-w-0 flex-col gap-3">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h2 className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
+                    {statusLabel(copy, status)}
+                  </h2>
+                  <span className="text-muted-foreground font-mono text-xs">
+                    {column.length}
+                  </span>
+                </div>
+                {column.map(({ role }) => (
                   <article
                     key={role.id}
                     data-startup-board-card={role.slug}
-                    className="border-border flex flex-col gap-3 rounded-xl border p-3"
+                    className="border-border flex flex-col gap-3 rounded-xl border p-4"
                   >
                     <RoleLine role={role} />
                     <Label className="sr-only" htmlFor={`status-${role.id}`}>
@@ -215,10 +247,7 @@ export function StartupsJobsBoard({
                     <Select
                       value={status}
                       onValueChange={(value) =>
-                        setStatusByRole((current) => ({
-                          ...current,
-                          [role.id]: value as TrackingStatus,
-                        }))
+                        move(role.id, value as TrackingStatus)
                       }
                     >
                       <SelectTrigger
@@ -237,137 +266,59 @@ export function StartupsJobsBoard({
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    {askingId === role.id ? (
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor={`community-${role.id}`}>
-                          {copy.community}
-                        </Label>
-                        <Select
-                          value={communitySlug}
-                          onValueChange={setCommunitySlug}
-                        >
-                          <SelectTrigger id={`community-${role.id}`}>
-                            <SelectValue placeholder={copy.community} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {communities.length === 0 ? (
-                                <SelectItem value="none" disabled>
-                                  {copy.communityEmpty}
-                                </SelectItem>
-                              ) : (
-                                communities.map((community) => (
-                                  <SelectItem
-                                    key={community.slug}
-                                    value={community.slug}
-                                  >
-                                    {community.name}
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                        <Label htmlFor={`note-${role.id}`}>{copy.note}</Label>
-                        <Textarea
-                          id={`note-${role.id}`}
-                          value={note}
-                          onChange={(event) => setNote(event.target.value)}
-                        />
-                        <Label htmlFor={`classroom-${role.id}`}>
-                          {copy.classroom}
-                        </Label>
-                        <Input
-                          id={`classroom-${role.id}`}
-                          value={classroom}
-                          placeholder={copy.classroom}
-                          onChange={(event) => setClassroom(event.target.value)}
-                        />
-                        <p className="text-muted-foreground text-xs">
-                          {copy.classroomHelp}
-                        </p>
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={!note.trim() || !communitySlug}
-                            onClick={() => postHelp(role.id)}
-                          >
-                            {copy.post}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setAskingId(null)}
-                          >
-                            {copy.cancel}
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setAskingId(role.id);
-                            setNote("");
-                            setClassroom("");
-                          }}
-                        >
-                          {copy.ask}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setStatusByRole((current) => {
-                              const next = { ...current };
-                              delete next[role.id];
-                              return next;
-                            })
-                          }
-                        >
-                          {copy.remove}
-                        </Button>
-                      </div>
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openHelp(role.id)}
+                      >
+                        {copy.ask}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => remove(role.id)}
+                      >
+                        {copy.remove}
+                      </Button>
+                    </div>
                   </article>
                 ))}
-            </div>
-          ))}
+              </section>
+            );
+          })}
         </div>
-      </section>
+      )}
 
-      <section className="mt-16" data-startup-board-help="">
-        <SectionLabel as="h2">{copy.helpTitle}</SectionLabel>
-        <div className="mt-4 flex max-w-sm flex-col gap-2">
-          <Label htmlFor="help-preview">{copy.helpPick}</Label>
-          <Select value={previewSlug} onValueChange={setPreviewSlug}>
-            <SelectTrigger id="help-preview">
-              <SelectValue placeholder={copy.helpPick} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {communities.map((community) => (
-                  <SelectItem key={community.slug} value={community.slug}>
-                    {community.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
-        {visibleHelp.length === 0 ? (
-          <p className="text-muted-foreground mt-4 text-sm">{copy.helpEmpty}</p>
-        ) : (
-          <ul className="mt-4 flex flex-col gap-3">
+      {help.length > 0 ? (
+        <section className="mt-16" data-startup-board-help="">
+          <SectionLabel as="h2">{copy.helpTitle}</SectionLabel>
+          {communities.length > 1 ? (
+            <div className="mt-4 flex max-w-sm flex-col gap-2">
+              <Label htmlFor="help-preview">{copy.helpPick}</Label>
+              <Select value={previewSlug} onValueChange={setPreviewSlug}>
+                <SelectTrigger id="help-preview">
+                  <SelectValue placeholder={copy.helpPick} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {communities.map((community) => (
+                      <SelectItem key={community.slug} value={community.slug}>
+                        {community.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+          <ul className="mt-4 flex max-w-xl flex-col gap-3">
             {visibleHelp.map((row) => {
-              const role = roles.find((item) => item.id === row.roleId);
+              const role = rows.find(
+                (item) => item.role.id === row.roleId,
+              )?.role;
               if (!role) return null;
               return (
                 <li
@@ -392,8 +343,100 @@ export function StartupsJobsBoard({
               );
             })}
           </ul>
-        )}
-      </section>
+        </section>
+      ) : null}
+
+      <Sheet
+        open={asking !== null}
+        onOpenChange={(open) => {
+          if (!open) setAskingId(null);
+        }}
+      >
+        <SheetContent className="sm:max-w-md" data-startup-help-sheet="">
+          {asking ? (
+            <>
+              <SheetHeader>
+                <SheetTitle>{copy.ask}</SheetTitle>
+                <SheetDescription>
+                  {asking.title} · {asking.startupName}. {copy.sheetLead}
+                </SheetDescription>
+              </SheetHeader>
+              <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor={`community-${asking.id}`}>
+                    {copy.community}
+                  </Label>
+                  {communities.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">
+                      {copy.communityEmpty}
+                    </p>
+                  ) : (
+                    <Select
+                      value={communitySlug}
+                      onValueChange={setCommunitySlug}
+                    >
+                      <SelectTrigger id={`community-${asking.id}`}>
+                        <SelectValue placeholder={copy.community} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {communities.map((community) => (
+                            <SelectItem
+                              key={community.slug}
+                              value={community.slug}
+                            >
+                              {community.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor={`note-${asking.id}`}>{copy.note}</Label>
+                  <Textarea
+                    id={`note-${asking.id}`}
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor={`classroom-${asking.id}`}>
+                    {copy.classroom}
+                  </Label>
+                  <Input
+                    id={`classroom-${asking.id}`}
+                    value={classroom}
+                    placeholder={copy.classroom}
+                    onChange={(event) => setClassroom(event.target.value)}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    {copy.classroomHelp}
+                  </p>
+                </div>
+              </div>
+              <SheetFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!note.trim() || !communitySlug}
+                  onClick={() => postHelp(asking.id)}
+                >
+                  {copy.post}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setAskingId(null)}
+                >
+                  {copy.cancel}
+                </Button>
+              </SheetFooter>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -414,7 +457,7 @@ function RoleLine({ role }: { role: StartupRolePublic }) {
         {role.startupName}
       </Link>
       {role.location || role.workType ? (
-        <p className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
+        <p className="text-muted-foreground text-sm">
           {[role.location, role.workType].filter(Boolean).join(" · ")}
         </p>
       ) : null}
