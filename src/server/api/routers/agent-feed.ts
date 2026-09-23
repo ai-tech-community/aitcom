@@ -16,6 +16,16 @@ import {
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
+import {
+  canPostToFeed,
+  type FeedMemberRole,
+} from "@/server/communities/feed-posts";
+import {
+  canViewPost,
+  feedViewerFor,
+  postVisibilityWhere,
+  type FeedViewer,
+} from "@/server/communities/post-visibility";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -67,13 +77,7 @@ async function requireActiveMembership(
   communityId: string,
   ownerId: string,
 ) {
-  const membership = await db.query.communityMemberships.findFirst({
-    where: and(
-      eq(communityMemberships.communityId, communityId),
-      eq(communityMemberships.userId, ownerId),
-      eq(communityMemberships.status, "active"),
-    ),
-  });
+  const membership = await findActiveMembership(db, communityId, ownerId);
   if (!membership) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -81,6 +85,46 @@ async function requireActiveMembership(
     });
   }
   return membership;
+}
+
+/** The owner's active membership in a community, or undefined. */
+async function findActiveMembership(
+  db: AgentFeedDb,
+  communityId: string,
+  ownerId: string,
+) {
+  return db.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, communityId),
+      eq(communityMemberships.userId, ownerId),
+      eq(communityMemberships.status, "active"),
+    ),
+  });
+}
+
+/**
+ * An agent sees a community's posts exactly as its owner would: the same
+ * visibility rule as the member feed, derived from the owner's membership.
+ */
+async function ownerFeedViewer(
+  db: AgentFeedDb,
+  communityId: string,
+  ownerId: string,
+): Promise<FeedViewer> {
+  return feedViewerFor(
+    ownerId,
+    await findActiveMembership(db, communityId, ownerId),
+  );
+}
+
+/** NOT_FOUND unless the owner may see this post (hidden, community-only). */
+function requireVisiblePost(
+  post: Parameters<typeof canViewPost>[0],
+  viewer: FeedViewer,
+) {
+  if (!canViewPost(post, viewer)) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
+  }
 }
 
 // ── Procedures ───────────────────────────────────────────────────────────────
@@ -101,14 +145,16 @@ export const agentFeedRouter = {
     )
     .query(async ({ ctx, input }) => {
       requireScope(ctx.agent.scopes, "read");
+      const ownerId = requireOwner(ctx.agent.ownerId);
 
       const community = await resolveCommunity(ctx.db, input.communitySlug);
+      const viewer = await ownerFeedViewer(ctx.db, community.id, ownerId);
       const payload = await getPayloadClient();
 
       const whereClause: Record<string, unknown> = {
         and: [
           { communityId: { equals: community.id } },
-          { isDeleted: { not_equals: true } },
+          postVisibilityWhere(viewer),
         ],
       };
 
@@ -219,10 +265,12 @@ export const agentFeedRouter = {
         ownerId,
       );
 
-      // Enforce feed post policy
+      // Enforce feed post policy, the same rule as member posting.
       if (
-        community.feedPostPolicy === "admins_only" &&
-        !["owner", "admin", "moderator"].includes(membership.role)
+        !canPostToFeed(
+          community.feedPostPolicy ?? "all_members",
+          membership.role as FeedMemberRole,
+        )
       ) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -296,7 +344,12 @@ export const agentFeedRouter = {
 
       // Verify owner is an active member of the post's community
       const postCommunityId = post.communityId ?? "";
-      await requireActiveMembership(ctx.db, postCommunityId, ownerId);
+      const membership = await requireActiveMembership(
+        ctx.db,
+        postCommunityId,
+        ownerId,
+      );
+      requireVisiblePost(post, feedViewerFor(ownerId, membership));
       const community = await ctx.db.query.communities.findFirst({
         where: and(
           eq(communities.id, postCommunityId),
@@ -372,7 +425,12 @@ export const agentFeedRouter = {
       }
 
       // Verify owner is an active member of the post's community
-      await requireActiveMembership(ctx.db, post.communityId ?? "", ownerId);
+      const membership = await requireActiveMembership(
+        ctx.db,
+        post.communityId ?? "",
+        ownerId,
+      );
+      requireVisiblePost(post, feedViewerFor(ownerId, membership));
 
       // Check for existing like
       const { docs: existingLikes } = await payload.find({
