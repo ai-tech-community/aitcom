@@ -2,6 +2,8 @@
 import { ValidationError } from "payload";
 import { describe, expect, it, vi } from "vitest";
 
+import { FINISH_WINDOW_HOURS } from "@/lib/video-rules";
+
 import {
   cleanUpDeletedPostVideo,
   finishVideoPost,
@@ -41,6 +43,7 @@ const upload = (over: Record<string, unknown> = {}) => ({
   communityId: "c1",
   visibility: "public",
   finishedAt: null,
+  createdAt: new Date(NOW.getTime() - 60 * 60 * 1000).toISOString(),
   ...over,
 });
 
@@ -151,6 +154,24 @@ describe("finishVideoPost", () => {
   it("refuses someone else's upload", async () => {
     const { deps } = fakes({ uploads: [upload({ userId: "other" })] });
     await expect(finishVideoPost(deps, finish)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("refuses to finish a grant past the finish window, leaving it for the daily cleanup", async () => {
+    const old = new Date(
+      NOW.getTime() - (FINISH_WINDOW_HOURS + 1) * 60 * 60 * 1000,
+    ).toISOString();
+    const { deps, payload, storage } = fakes({
+      uploads: [upload({ createdAt: old })],
+      heads: goodHeads(),
+    });
+    await expect(finishVideoPost(deps, finish)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "That upload has expired. Please try again.",
+    });
+    expect(payload.create).not.toHaveBeenCalled();
+    expect(payload.update).not.toHaveBeenCalled();
+    expect(payload.delete).not.toHaveBeenCalled();
+    expect(storage.remove).not.toHaveBeenCalled();
   });
 
   it("deletes the files and refuses when a file is missing, wrong, or too big", async () => {

@@ -14,6 +14,11 @@ export const VIDEO_UPLOADS_PER_DAY = 20;
 export const UPLOAD_GRANT_SECONDS = 600;
 export const PLAYBACK_LINK_SECONDS = 3600;
 export const ABANDONED_UPLOAD_HOURS = 24;
+/**
+ * Must stay below ABANDONED_UPLOAD_HOURS so a finish and the daily cleanup
+ * can never act on the same grant at once.
+ */
+export const FINISH_WINDOW_HOURS = ABANDONED_UPLOAD_HOURS - 1;
 export const VIDEO_CONTENT_TYPE = "video/mp4";
 export const THUMB_CONTENT_TYPE = "image/jpeg";
 

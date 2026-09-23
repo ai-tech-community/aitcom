@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { ValidationError } from "payload";
 
 import {
+  FINISH_WINDOW_HOURS,
   MAX_THUMB_BYTES,
   MAX_VIDEO_BYTES,
   MAX_VIDEO_SECONDS,
@@ -131,6 +132,13 @@ export async function finishVideoPost(
   ) {
     throw new TRPCError({ code: "NOT_FOUND", message: UPLOAD_EXPIRED });
   }
+  const now = deps.now?.() ?? new Date();
+  const finishCutoff = new Date(now.getTime() - FINISH_WINDOW_HOURS * 60 * 60 * 1000);
+  if (new Date(grant.createdAt) < finishCutoff) {
+    // Past the finish window: the daily cleanup may already be acting on
+    // this grant, so don't touch storage or the grant here either.
+    throw new TRPCError({ code: "NOT_FOUND", message: UPLOAD_EXPIRED });
+  }
   const visibility = grant.visibility;
   const keys = videoObjectKeys({
     visibility,
@@ -196,7 +204,7 @@ export async function finishVideoPost(
   await deps.payload.update({
     collection: "video-uploads",
     id: grant.id,
-    data: { finishedAt: (deps.now?.() ?? new Date()).toISOString() },
+    data: { finishedAt: now.toISOString() },
   });
   return post;
 }

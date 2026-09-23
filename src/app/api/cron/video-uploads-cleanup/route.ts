@@ -6,6 +6,7 @@ import { getPayloadClient } from "@/server/payload";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 /**
  * Cron job: runs daily to delete files and grants for video uploads nobody
