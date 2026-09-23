@@ -17,6 +17,14 @@ import {
   requireActiveFeedMember,
   requireFeedPoster,
 } from "@/server/communities/feed-posts";
+import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
+import { isCommunityVideosEnabled } from "@/lib/community-videos-flag";
+import { getVideoStorage } from "@/server/media/video-storage";
+import {
+  cleanUpDeletedPostVideo,
+  finishVideoPost,
+  issueVideoUpload,
+} from "@/server/communities/video-posts";
 
 export const feedRouter = createTRPCRouter({
   // ── getFeed ─────────────────────────────────────────────────────────────────
@@ -174,6 +182,79 @@ export const feedRouter = createTRPCRouter({
       return post;
     }),
 
+  // ── createVideoUpload ───────────────────────────────────────────────────────
+  createVideoUpload: protectedProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        visibility: z.enum(VIDEO_VISIBILITIES),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!isCommunityVideosEnabled()) {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      const community = await requireFeedPoster(
+        ctx.db,
+        input.communitySlug,
+        ctx.session.user.id,
+      );
+      return issueVideoUpload(
+        { payload: await getPayloadClient(), storage: getVideoStorage() },
+        {
+          userId: ctx.session.user.id,
+          communityId: community.id,
+          visibility: input.visibility,
+        },
+      );
+    }),
+
+  // ── finishVideoPost ─────────────────────────────────────────────────────────
+  finishVideoPost: protectedProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        uploadId: z.string().uuid(),
+        caption: z.string().trim().min(1).max(2000),
+        topicSlug: z.string().optional(),
+        durationSeconds: z.number().positive(),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const community = await requireFeedPoster(
+        ctx.db,
+        input.communitySlug,
+        ctx.session.user.id,
+      );
+      const post = await finishVideoPost(
+        { payload: await getPayloadClient(), storage: getVideoStorage() },
+        {
+          userId: ctx.session.user.id,
+          authorName: ctx.session.user.name ?? "member",
+          communityId: community.id,
+          uploadId: input.uploadId,
+          caption: input.caption,
+          topicSlug: input.topicSlug ?? "general",
+          durationSeconds: input.durationSeconds,
+          width: input.width,
+          height: input.height,
+        },
+      );
+      await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.FEED_POST_CREATE);
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "feed.post_created",
+        targetType: "feed-posts",
+        targetId: String(post.id),
+        communityId: community.id,
+        metadata: { communityId: community.id, video: true },
+      });
+      return post;
+    }),
+
   // ── editPost ────────────────────────────────────────────────────────────────
   editPost: protectedProcedure
     .input(
@@ -250,7 +331,7 @@ export const feedRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      return payload.update({
+      const deleted = await payload.update({
         collection: "feed-posts",
         id: input.postId,
         data: {
@@ -260,6 +341,10 @@ export const feedRouter = createTRPCRouter({
           imageUrl: null,
         },
       });
+      // Best effort: the post is already gone, so a storage failure is logged
+      // rather than surfaced.
+      await cleanUpDeletedPostVideo(getVideoStorage, post);
+      return deleted;
     }),
 
   // ── pinPost ─────────────────────────────────────────────────────────────────
