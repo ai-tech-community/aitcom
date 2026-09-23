@@ -87,6 +87,33 @@ function sampleCard(
   };
 }
 
+function organizationFromDirectory(card: StartupPublicCard) {
+  const data = startupsDirectoryJsonLd([card]);
+  const item = (
+    data.itemListElement as Array<{ item: Record<string, unknown> }>
+  )[0]?.item;
+  return { data, item };
+}
+
+/** Profile and directory Organization nodes share the same sameAs rule. */
+function expectSameAs(card: StartupPublicCard, sameAs: string[]) {
+  const profile = startupProfileJsonLd(card);
+  const { data, item } = organizationFromDirectory(card);
+  expect(profile.sameAs).toEqual(sameAs);
+  expect(item?.sameAs).toEqual(sameAs);
+  expect(JSON.stringify(profile)).not.toContain("eu-startups.com");
+  expect(JSON.stringify(data)).not.toContain("eu-startups.com");
+}
+
+function expectNoEuStartupsSameAs(card: StartupPublicCard) {
+  const profile = startupProfileJsonLd(card);
+  const { data, item } = organizationFromDirectory(card);
+  expect(profile).not.toHaveProperty("sameAs");
+  expect(item).not.toHaveProperty("sameAs");
+  expect(JSON.stringify(profile)).not.toContain("eu-startups.com");
+  expect(JSON.stringify(data)).not.toContain("eu-startups.com");
+}
+
 describe("startups investigation contract", () => {
   it("lives under /startups with a dedicated insights path", () => {
     expect(STARTUPS_PATH).toBe("/startups");
@@ -1031,8 +1058,8 @@ describe("startup slugs and profile contract", () => {
       "@type": "Organization",
       name: "Fixture Co",
       url: "https://fixture.example",
-      sameAs: ["https://fixture.example/about"],
     });
+    expect(blank).not.toHaveProperty("sameAs");
     expect(blank).not.toHaveProperty("description");
     expect(JSON.stringify(blank)).not.toMatch(BANNED_METRIC);
     expect(JSON.stringify(blank)).not.toMatch(/"@type":"Person"/);
@@ -1058,6 +1085,36 @@ describe("startup slugs and profile contract", () => {
     );
     expect(JSON.stringify(sourced)).not.toContain("Person");
     expect(sourced.description).not.toMatch(/worth watching/i);
+  });
+
+  it("omits sameAs when sources are only an eu-startups directory citation", () => {
+    const directory = "https://www.eu-startups.com/directory/fixture-co/";
+    const card = sampleCard({ sources: [directory] });
+    expect(displayStartupSources(card.sources)).toEqual([
+      "https://www.eu-startups.com/directory/fixture-co",
+    ]);
+    expect(displayStartupSourceChips(card.sources)).toEqual([
+      {
+        href: "https://www.eu-startups.com/directory/fixture-co",
+        label: "Docs",
+      },
+    ]);
+    expectNoEuStartupsSameAs(card);
+  });
+
+  it("keeps sameAs to LinkedIn when sources mix a directory citation and LinkedIn", () => {
+    const directory = "https://eu-startups.com/directory/fixture-co";
+    const linkedin = "https://www.linkedin.com/company/fixture-co";
+    const card = sampleCard({ sources: [directory, linkedin] });
+    expect(displayStartupSources(card.sources)).toEqual([directory, linkedin]);
+    expectSameAs(card, [linkedin]);
+  });
+
+  it("uses a LinkedIn profile as sameAs when it is the only source", () => {
+    const linkedin = "https://www.linkedin.com/in/ada-example";
+    const card = sampleCard({ sources: [linkedin] });
+    expect(displayStartupSources(card.sources)).toEqual([linkedin]);
+    expectSameAs(card, [linkedin]);
   });
 });
 
@@ -1100,6 +1157,7 @@ describe("json-ld", () => {
       name: "Fixture Co",
       url: "https://fixture.example",
     });
+    expect(item).not.toHaveProperty("sameAs");
     expect(item).not.toHaveProperty("description");
     const withFounderPhoto = startupsDirectoryJsonLd([
       sampleCard({
