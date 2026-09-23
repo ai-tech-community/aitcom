@@ -34,7 +34,7 @@ async function feedPostQueries(viewer: FeedViewer) {
     community: { id: "c1", slug: "makers" },
     viewerId: viewer.userId ?? "",
     viewer,
-    storage,
+    storage: () => storage,
     cursor: null,
     limit: 15,
   });

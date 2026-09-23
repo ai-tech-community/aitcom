@@ -13,7 +13,11 @@ import {
   videoObjectKeys,
   type VideoVisibility,
 } from "@/lib/video-rules";
-import type { PresignedUpload, VideoStorage } from "@/server/media/video-storage";
+import type {
+  PresignedUpload,
+  VideoStorage,
+  VideoStorageSource,
+} from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -220,7 +224,7 @@ export async function removePostVideo(
  * line is the only signal that files were left behind.
  */
 export async function cleanUpDeletedPostVideo(
-  getStorage: () => VideoStorage,
+  getStorage: VideoStorageSource,
   post: PostVideoFiles & { id: number },
   log: (message: string, detail: unknown) => void = console.error,
 ): Promise<void> {

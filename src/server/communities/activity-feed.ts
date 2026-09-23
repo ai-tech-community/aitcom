@@ -23,7 +23,7 @@ import {
   postVisibilityWhere,
   type FeedViewer,
 } from "@/server/communities/post-visibility";
-import type { VideoStorage } from "@/server/media/video-storage";
+import type { VideoStorageSource } from "@/server/media/video-storage";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -103,7 +103,7 @@ export async function loadCommunityActivity({
   viewerId: string;
   /** Who is looking; decides which posts (hidden, community-only) show. */
   viewer: FeedViewer;
-  storage: VideoStorage;
+  storage: VideoStorageSource;
   cursor: ActivityCursor | null;
   limit: number;
 }): Promise<CommunityActivityPage> {

@@ -44,7 +44,7 @@ describe("decorateFeedPosts video view", () => {
         { ...base, id: 2 },
       ] as never,
       null,
-      storage,
+      () => storage,
     );
     expect(withVideo!.video).toEqual({
       url: "private:private/videos/c1/u.mp4",
@@ -56,5 +56,20 @@ describe("decorateFeedPosts video view", () => {
     });
     expect(JSON.stringify(withVideo)).not.toContain('"key"');
     expect(plain!.video).toBeNull();
+  });
+
+  it("never reaches video storage when no post has a video", async () => {
+    const storage = vi.fn(() => {
+      throw new Error("S3 is not configured for video storage");
+    });
+    const views = await decorateFeedPosts(
+      {} as never,
+      {} as never,
+      [base, { ...base, id: 2 }] as never,
+      null,
+      storage,
+    );
+    expect(storage).not.toHaveBeenCalled();
+    expect(views.map((view) => view.video)).toEqual([null, null]);
   });
 });

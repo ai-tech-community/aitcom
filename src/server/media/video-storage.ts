@@ -32,6 +32,13 @@ export type VideoStorage = {
   remove(keys: readonly string[]): Promise<void>;
 };
 
+/**
+ * A lazy way to reach video storage. Callers that may never touch a video
+ * (text-only feeds) take this instead of a VideoStorage, so a missing S3
+ * config only fails the requests that actually need it.
+ */
+export type VideoStorageSource = () => VideoStorage;
+
 export function createVideoStorage({
   client,
   bucket,

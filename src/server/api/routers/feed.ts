@@ -102,7 +102,7 @@ export const feedRouter = createTRPCRouter({
         payload,
         page,
         ctx.session.user.id,
-        getVideoStorage(),
+        getVideoStorage,
       );
       const last = page.at(-1);
       const nextCursor =
@@ -142,7 +142,7 @@ export const feedRouter = createTRPCRouter({
           isMember: true,
           isModerator: isModeratorRole(community.role),
         },
-        storage: getVideoStorage(),
+        storage: getVideoStorage,
         cursor: input.cursor ?? null,
         limit: input.limit,
       });

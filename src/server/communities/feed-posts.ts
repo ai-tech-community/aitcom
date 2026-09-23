@@ -6,7 +6,7 @@ import { communities, communityMemberships, user } from "@/server/db/schema";
 import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 import type { CommunityRole } from "@/server/communities/role-utils";
-import type { VideoStorage } from "@/server/media/video-storage";
+import type { VideoStorageSource } from "@/server/media/video-storage";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -102,13 +102,15 @@ export type FeedPostView = Omit<FeedPost, "video"> & {
 
 async function videoView(
   post: FeedPost,
-  storage: VideoStorage,
+  storage: VideoStorageSource,
 ): Promise<FeedVideoView | null> {
   const video = post.video;
   if (!video?.key || !video.thumbnailKey || !video.storage) return null;
+  // Reached only for a real video, so text-only feeds never need S3.
+  const videoStorage = storage();
   const [url, thumbnailUrl] = await Promise.all([
-    storage.playbackUrl(video.key, video.storage),
-    storage.playbackUrl(video.thumbnailKey, video.storage),
+    videoStorage.playbackUrl(video.key, video.storage),
+    videoStorage.playbackUrl(video.thumbnailKey, video.storage),
   ]);
   return {
     url,
@@ -145,7 +147,7 @@ export async function decorateFeedPosts(
   payload: Payload,
   posts: readonly FeedPost[],
   viewerId: string | null | undefined,
-  storage: VideoStorage,
+  storage: VideoStorageSource,
 ): Promise<FeedPostView[]> {
   if (posts.length === 0) return [];
   const images = await loadUserImages(
