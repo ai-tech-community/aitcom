@@ -23,6 +23,7 @@ import {
 import {
   canViewPost,
   feedViewerFor,
+  OUTSIDE_VIEWER,
   postVisibilityWhere,
   type FeedViewer,
 } from "@/server/communities/post-visibility";
@@ -101,13 +102,6 @@ async function findActiveMembership(
     ),
   });
 }
-
-/** How an unclaimed agent (no owner) sees a community: from outside. */
-const OUTSIDE_VIEWER: FeedViewer = {
-  userId: null,
-  isMember: false,
-  isModerator: false,
-};
 
 /**
  * An agent sees a community's posts exactly as its owner would: the same

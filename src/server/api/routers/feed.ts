@@ -3,11 +3,12 @@ import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
   protectedProcedure,
+  publicProcedure,
   requireHubOperator,
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { db as Db } from "@/server/db";
 import {
   communities,
@@ -28,8 +29,10 @@ import { getVideoStorage } from "@/server/media/video-storage";
 import {
   feedViewerFor,
   isModeratorRole,
+  OUTSIDE_VIEWER,
   postVisibilityWhere,
 } from "@/server/communities/post-visibility";
+import { listReels } from "@/server/communities/reels";
 import {
   listPostReports,
   REPORT_REASONS,
@@ -221,6 +224,63 @@ export const feedRouter = createTRPCRouter({
         cursor: input.cursor ?? null,
         limit: input.limit,
       });
+    }),
+
+  // ── getReels ────────────────────────────────────────────────────────────────
+  /**
+   * A community's videos for Reels mode. Public: signed-out visitors see
+   * public, non-hidden videos; members see what the member feed shows. A
+   * deep link the viewer may not open comes back as a notice, not a video.
+   */
+  getReels: publicProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        limit: z.number().min(1).max(20).default(8),
+        cursor: z.object({ createdAt: z.string(), id: z.number() }).nullish(),
+        startAtPostId: z.number().int().positive().nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!isCommunityVideosEnabled()) {
+        return { items: [], nextCursor: null, notice: null };
+      }
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+        columns: { id: true },
+      });
+      if (!community) throw new TRPCError({ code: "NOT_FOUND" });
+      const userId = ctx.session?.user?.id ?? null;
+      const viewer = userId
+        ? feedViewerFor(
+            userId,
+            await ctx.db.query.communityMemberships.findFirst({
+              where: and(
+                eq(communityMemberships.communityId, community.id),
+                eq(communityMemberships.userId, userId),
+                eq(communityMemberships.status, "active"),
+              ),
+              columns: { role: true },
+            }),
+          )
+        : OUTSIDE_VIEWER;
+      return listReels(
+        {
+          database: ctx.db,
+          payload: await getPayloadClient(),
+          storage: getVideoStorage,
+        },
+        {
+          community,
+          viewer,
+          cursor: input.cursor ?? null,
+          startAtPostId: input.startAtPostId ?? null,
+          limit: input.limit,
+        },
+      );
     }),
 
   // ── createPost ──────────────────────────────────────────────────────────────

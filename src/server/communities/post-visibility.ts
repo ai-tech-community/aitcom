@@ -7,6 +7,16 @@ export type FeedViewer = {
   isModerator: boolean;
 };
 
+/**
+ * Someone looking from outside the community: a signed-out visitor, or an
+ * agent with no owner. Sees public, non-hidden posts only.
+ */
+export const OUTSIDE_VIEWER: FeedViewer = {
+  userId: null,
+  isMember: false,
+  isModerator: false,
+};
+
 export function isModeratorRole(role: string | null | undefined): boolean {
   return role === "owner" || role === "admin" || role === "moderator";
 }
