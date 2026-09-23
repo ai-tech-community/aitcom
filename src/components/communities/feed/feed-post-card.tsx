@@ -27,7 +27,7 @@ interface FeedPost {
   authorId: string;
   authorName?: string | null;
   authorImage?: string | null;
-  communityId: string;
+  communityId?: string | null;
   likeCount?: number | null;
   commentCount?: number | null;
   isDeleted?: boolean | null;

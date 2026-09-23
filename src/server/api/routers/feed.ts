@@ -7,10 +7,15 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
-import { and, eq, isNull, inArray } from "drizzle-orm";
-import { communities, communityMemberships, user } from "@/server/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
+import { communities, communityMemberships } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { MAX_PINS } from "@/lib/feed-sort";
+import { loadCommunityActivity } from "@/server/communities/activity-feed";
+import {
+  decorateFeedPosts,
+  requireActiveFeedMember,
+} from "@/server/communities/feed-posts";
 
 export const feedRouter = createTRPCRouter({
   // ── getFeed ─────────────────────────────────────────────────────────────────
@@ -24,32 +29,11 @@ export const feedRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
-        where: and(
-          eq(communities.slug, input.communitySlug),
-          isNull(communities.deletedAt),
-        ),
-        columns: { id: true },
-      });
-      if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
-      // Verify active membership
-      const membership = await ctx.db.query.communityMemberships.findFirst({
-        where: and(
-          eq(communityMemberships.communityId, community.id),
-          eq(communityMemberships.userId, ctx.session.user.id),
-          eq(communityMemberships.status, "active"),
-        ),
-      });
-      if (!membership) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Must be a community member to view the feed",
-        });
-      }
-
+      const community = await requireActiveFeedMember(
+        ctx.db,
+        input.communitySlug,
+        ctx.session.user.id,
+      );
       const payload = await getPayloadClient();
 
       const whereClause: Record<string, unknown> = {
@@ -94,68 +78,49 @@ export const feedRouter = createTRPCRouter({
       });
 
       const hasMore = docs.length > input.limit;
-      const posts = hasMore ? docs.slice(0, input.limit) : docs;
-
-      // Fetch author images
-      const authorIds = [
-        ...new Set(posts.map((p) => p.authorId).filter(Boolean)),
-      ] as string[];
-      const authorImageMap = new Map<string, string | null>();
-      if (authorIds.length > 0) {
-        const authors = await ctx.db
-          .select({ id: user.id, image: user.image })
-          .from(user)
-          .where(inArray(user.id, authorIds));
-        for (const a of authors) {
-          authorImageMap.set(a.id, a.image);
-        }
-      }
-
-      const userId = ctx.session?.user?.id;
-
-      if (userId && posts.length > 0) {
-        const postIds = posts.map((p) => p.id);
-        const { docs: myLikes } = await payload.find({
-          collection: "feed-likes",
-          where: {
-            and: [{ userId: { equals: userId } }, { post: { in: postIds } }],
-          },
-          limit: postIds.length,
-          depth: 0,
-        });
-        const likedPostIds = new Set(
-          myLikes.map((l) =>
-            typeof l.post === "object" ? (l.post as { id: number }).id : l.post,
-          ),
-        );
-        const postsWithLike = posts.map((p) => ({
-          ...p,
-          authorImage: authorImageMap.get(p.authorId) ?? null,
-          hasLiked: likedPostIds.has(p.id),
-        }));
-        const nextCursor =
-          hasMore && posts.length > 0
-            ? {
-                createdAt: posts[posts.length - 1]!.createdAt,
-                id: posts[posts.length - 1]!.id,
-              }
-            : undefined;
-        return { posts: postsWithLike, nextCursor };
-      }
-
-      const postsWithLike = posts.map((p) => ({
-        ...p,
-        authorImage: authorImageMap.get(p.authorId) ?? null,
-        hasLiked: false,
-      }));
+      const page = hasMore ? docs.slice(0, input.limit) : docs;
+      const posts = await decorateFeedPosts(
+        ctx.db,
+        payload,
+        page,
+        ctx.session.user.id,
+      );
+      const last = page.at(-1);
       const nextCursor =
-        hasMore && posts.length > 0
-          ? {
-              createdAt: posts[posts.length - 1]!.createdAt,
-              id: posts[posts.length - 1]!.id,
-            }
+        hasMore && last
+          ? { createdAt: last.createdAt, id: last.id }
           : undefined;
-      return { posts: postsWithLike, nextCursor };
+      return { posts, nextCursor };
+    }),
+
+  // ── getActivity ─────────────────────────────────────────────────────────────
+  /**
+   * The community Overview: posts, forum threads, ideas, events, and joins
+   * in one time-ordered stream, read from the content tables themselves.
+   * Pinned posts ride on the first page. Members only, like getFeed.
+   */
+  getActivity: protectedProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        limit: z.number().min(1).max(30).default(15),
+        cursor: z.object({ at: z.string(), key: z.string() }).nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const community = await requireActiveFeedMember(
+        ctx.db,
+        input.communitySlug,
+        ctx.session.user.id,
+      );
+      return loadCommunityActivity({
+        database: ctx.db,
+        payload: await getPayloadClient(),
+        community,
+        viewerId: ctx.session.user.id,
+        cursor: input.cursor ?? null,
+        limit: input.limit,
+      });
     }),
 
   // ── createPost ──────────────────────────────────────────────────────────────

@@ -316,3 +316,20 @@ export function formatEventIsoWithOffset(
   const om = String(abs % 60).padStart(2, "0");
   return `${local}${sign}${oh}:${om}`;
 }
+
+/**
+ * Events on or after today, soonest first. "Today" is the event's own
+ * calendar day in its own zone, so an evening meetup stays upcoming until
+ * that day ends where it happens.
+ */
+export function upcomingEvents<
+  T extends { date: string; timezone?: string | null },
+>(events: readonly T[], now: Date = new Date()): T[] {
+  return events
+    .filter((event) => {
+      const day = event.date.slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+      return day >= instantToZonedDateString(now.toISOString(), event.timezone);
+    })
+    .sort((a, b) => a.date.slice(0, 10).localeCompare(b.date.slice(0, 10)));
+}
