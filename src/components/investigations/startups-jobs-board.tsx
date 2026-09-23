@@ -96,10 +96,9 @@ const COPY = {
   },
 } as const;
 
-function statusLabel(
-  copy: (typeof COPY)["en"],
-  status: TrackingStatus,
-): string {
+type BoardCopy = (typeof COPY)[keyof typeof COPY];
+
+function statusLabel(copy: BoardCopy, status: TrackingStatus): string {
   return copy[status];
 }
 
