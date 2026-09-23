@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   canViewPost,
+  feedViewerFor,
   isModeratorRole,
   postVisibilityWhere,
   type FeedViewer,
@@ -71,5 +72,30 @@ describe("postVisibilityWhere", () => {
     expect(["owner", "admin", "moderator"].every(isModeratorRole)).toBe(true);
     expect(isModeratorRole("member")).toBe(false);
     expect(isModeratorRole(null)).toBe(false);
+  });
+});
+
+describe("feedViewerFor", () => {
+  it("derives the viewer from an active membership, or its absence", () => {
+    expect(feedViewerFor("u", { role: "moderator" })).toEqual({
+      userId: "u",
+      isMember: true,
+      isModerator: true,
+    });
+    expect(feedViewerFor("u", { role: "member" })).toEqual({
+      userId: "u",
+      isMember: true,
+      isModerator: false,
+    });
+    expect(feedViewerFor("u", null)).toEqual({
+      userId: "u",
+      isMember: false,
+      isModerator: false,
+    });
+    expect(feedViewerFor("u", undefined)).toEqual({
+      userId: "u",
+      isMember: false,
+      isModerator: false,
+    });
   });
 });

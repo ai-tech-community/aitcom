@@ -12,6 +12,21 @@ export function isModeratorRole(role: string | null | undefined): boolean {
 }
 
 /**
+ * The viewer behind a user and their active membership in the post's
+ * community (null or undefined when they aren't an active member).
+ */
+export function feedViewerFor(
+  userId: string,
+  membership: { role: string } | null | undefined,
+): FeedViewer {
+  return {
+    userId,
+    isMember: Boolean(membership),
+    isModerator: isModeratorRole(membership?.role),
+  };
+}
+
+/**
  * The one visibility rule for community posts, as a Payload filter. Every
  * list (feed, activity, pinned, reels) applies it, so a hidden or
  * community-only post can't leak through a list that forgot a check.

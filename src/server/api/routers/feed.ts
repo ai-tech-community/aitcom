@@ -7,8 +7,13 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
-import { and, eq } from "drizzle-orm";
-import { communityMemberships } from "@/server/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
+import type { db as Db } from "@/server/db";
+import {
+  communities,
+  communityMemberships,
+  notifications,
+} from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { MAX_PINS } from "@/lib/feed-sort";
 import { loadCommunityActivity } from "@/server/communities/activity-feed";
@@ -21,14 +26,84 @@ import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
 import { isCommunityVideosEnabled } from "@/lib/community-videos-flag";
 import { getVideoStorage } from "@/server/media/video-storage";
 import {
+  feedViewerFor,
   isModeratorRole,
   postVisibilityWhere,
 } from "@/server/communities/post-visibility";
+import {
+  listPostReports,
+  REPORT_REASONS,
+  reportPost,
+  reviewReport,
+} from "@/server/communities/post-reports";
 import {
   cleanUpDeletedPostVideo,
   finishVideoPost,
   issueVideoUpload,
 } from "@/server/communities/video-posts";
+
+type Database = typeof Db;
+type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
+
+/**
+ * A community post and the caller's active membership in its community, for
+ * the reporting and moderation procedures. Only community posts can be
+ * reported, so a missing post or a hub-wide one is NOT_FOUND.
+ */
+async function loadCommunityPostForCaller(
+  database: Database,
+  payload: Payload,
+  postId: number,
+  userId: string,
+) {
+  const post = await payload
+    .findByID({ collection: "feed-posts", id: postId, depth: 0 })
+    .catch(() => null);
+  if (!post?.communityId) throw new TRPCError({ code: "NOT_FOUND" });
+  const membership = await database.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, post.communityId),
+      eq(communityMemberships.userId, userId),
+      eq(communityMemberships.status, "active"),
+    ),
+    columns: { role: true },
+  });
+  return { post, viewer: feedViewerFor(userId, membership) };
+}
+
+/** Tells the community's owners, admins and moderators a post was hidden. */
+async function notifyPostReported(
+  database: Database,
+  input: { communityId: string; postId: number },
+) {
+  const community = await database.query.communities.findFirst({
+    where: eq(communities.id, input.communityId),
+    columns: { slug: true, name: true },
+  });
+  if (!community) return;
+  const moderators = await database
+    .select({ userId: communityMemberships.userId })
+    .from(communityMemberships)
+    .where(
+      and(
+        eq(communityMemberships.communityId, input.communityId),
+        eq(communityMemberships.status, "active"),
+        inArray(communityMemberships.role, ["owner", "admin", "moderator"]),
+      ),
+    );
+  if (moderators.length === 0) return;
+  const path = `/communities/${community.slug}`;
+  await database.insert(notifications).values(
+    moderators.map(({ userId }) => ({
+      userId,
+      type: "post_reported",
+      title: "A post was reported",
+      content: `A post in **${community.name}** was reported and is hidden until you review it. [Review it](${path}).`,
+      communityId: input.communityId,
+      metadata: { postId: input.postId, path },
+    })),
+  );
+}
 
 export const feedRouter = createTRPCRouter({
   // ── getFeed ─────────────────────────────────────────────────────────────────
@@ -699,5 +774,80 @@ export const feedRouter = createTRPCRouter({
       }
 
       return { deleted: true };
+    }),
+
+  // ── reportPost ──────────────────────────────────────────────────────────────
+  reportPost: protectedProcedure
+    .input(
+      z.object({
+        postId: z.number(),
+        reason: z.enum(REPORT_REASONS),
+        note: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const { viewer } = await loadCommunityPostForCaller(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.session.user.id,
+      );
+      return reportPost(
+        {
+          payload,
+          storage: getVideoStorage,
+          notifyModerators: (args) => notifyPostReported(ctx.db, args),
+        },
+        {
+          postId: input.postId,
+          reporterId: ctx.session.user.id,
+          reason: input.reason,
+          note: input.note ?? "",
+          viewer,
+        },
+      );
+    }),
+
+  // ── getPostReports ──────────────────────────────────────────────────────────
+  /** Why a hidden post was reported, for the community's moderators only. */
+  getPostReports: protectedProcedure
+    .input(z.object({ postId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const { post, viewer } = await loadCommunityPostForCaller(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.session.user.id,
+      );
+      if (post.isDeleted) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!viewer.isModerator) throw new TRPCError({ code: "FORBIDDEN" });
+      return listPostReports(payload, post.id);
+    }),
+
+  // ── reviewReport ────────────────────────────────────────────────────────────
+  reviewReport: protectedProcedure
+    .input(
+      z.object({ postId: z.number(), action: z.enum(["restore", "remove"]) }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const { viewer } = await loadCommunityPostForCaller(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.session.user.id,
+      );
+      if (!viewer.isModerator) throw new TRPCError({ code: "FORBIDDEN" });
+      await reviewReport(
+        {
+          payload,
+          storage: getVideoStorage,
+          notifyModerators: async () => undefined,
+        },
+        input,
+      );
+      return { ok: true };
     }),
 });
