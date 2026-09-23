@@ -81,12 +81,19 @@ export function createVideoStorage({
     },
     async remove(keys) {
       if (keys.length === 0) return;
-      await client.send(
+      const result = await client.send(
         new DeleteObjectsCommand({
           Bucket: bucket,
           Delete: { Objects: keys.map((Key) => ({ Key })), Quiet: true },
         }),
       );
+      const errors = result.Errors ?? [];
+      if (errors.length > 0) {
+        const detail = errors
+          .map((e) => `${e.Key ?? "?"} (${e.Code ?? "unknown"})`)
+          .join(", ");
+        throw new Error(`Failed to delete: ${detail}`);
+      }
     },
   };
 }

@@ -80,4 +80,12 @@ describe("video storage", () => {
       Delete: { Objects: [{ Key: "a" }, { Key: "b" }], Quiet: true },
     });
   });
+
+  it("rejects when S3 reports a partial delete failure", async () => {
+    const { storage, send } = setup();
+    send.mockResolvedValue({
+      Errors: [{ Key: "a", Code: "AccessDenied" }],
+    });
+    await expect(storage.remove(["a", "b"])).rejects.toThrow(/a.*AccessDenied/);
+  });
 });
