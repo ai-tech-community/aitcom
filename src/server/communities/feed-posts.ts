@@ -9,6 +9,8 @@ import type { FeedPost } from "@/payload-types";
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
+export type FeedMemberRole = "owner" | "admin" | "moderator" | "member";
+
 /**
  * The community behind a feed, for an active member only. Feeds are
  * members-only: anyone else gets FORBIDDEN, an unknown slug NOT_FOUND.
@@ -17,13 +19,18 @@ export async function requireActiveFeedMember(
   database: Database,
   communitySlug: string,
   userId: string,
-): Promise<{ id: string; slug: string }> {
+): Promise<{
+  id: string;
+  slug: string;
+  role: FeedMemberRole;
+  feedPostPolicy: "all_members" | "admins_only";
+}> {
   const community = await database.query.communities.findFirst({
     where: and(
       eq(communities.slug, communitySlug),
       isNull(communities.deletedAt),
     ),
-    columns: { id: true, slug: true },
+    columns: { id: true, slug: true, feedPostPolicy: true },
   });
   if (!community) {
     throw new TRPCError({ code: "NOT_FOUND" });
@@ -34,13 +41,43 @@ export async function requireActiveFeedMember(
       eq(communityMemberships.userId, userId),
       eq(communityMemberships.status, "active"),
     ),
-    columns: { id: true },
+    columns: { id: true, role: true },
   });
   if (!membership) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Must be a community member to view the feed",
     });
+  }
+  return {
+    id: community.id,
+    slug: community.slug,
+    role: membership.role as FeedMemberRole,
+    feedPostPolicy: community.feedPostPolicy ?? "all_members",
+  };
+}
+
+export function canPostToFeed(
+  policy: "all_members" | "admins_only",
+  role: FeedMemberRole,
+): boolean {
+  if (policy === "all_members") return true;
+  return role === "owner" || role === "admin" || role === "moderator";
+}
+
+/** An active member who may post under the community's feed policy. */
+export async function requireFeedPoster(
+  database: Database,
+  communitySlug: string,
+  userId: string,
+) {
+  const community = await requireActiveFeedMember(
+    database,
+    communitySlug,
+    userId,
+  );
+  if (!canPostToFeed(community.feedPostPolicy, community.role)) {
+    throw new TRPCError({ code: "FORBIDDEN" });
   }
   return community;
 }

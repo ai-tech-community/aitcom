@@ -7,14 +7,15 @@ import {
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
-import { and, eq, isNull } from "drizzle-orm";
-import { communities, communityMemberships } from "@/server/db/schema";
+import { and, eq } from "drizzle-orm";
+import { communityMemberships } from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { MAX_PINS } from "@/lib/feed-sort";
 import { loadCommunityActivity } from "@/server/communities/activity-feed";
 import {
   decorateFeedPosts,
   requireActiveFeedMember,
+  requireFeedPoster,
 } from "@/server/communities/feed-posts";
 
 export const feedRouter = createTRPCRouter({
@@ -134,41 +135,11 @@ export const feedRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
-        where: and(
-          eq(communities.slug, input.communitySlug),
-          isNull(communities.deletedAt),
-        ),
-      });
-      if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
-      // Verify active membership
-      const membership = await ctx.db.query.communityMemberships.findFirst({
-        where: and(
-          eq(communityMemberships.communityId, community.id),
-          eq(communityMemberships.userId, ctx.session.user.id),
-          eq(communityMemberships.status, "active"),
-        ),
-      });
-      if (!membership) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-
-      // Enforce feed post policy
-      const feedPolicy =
-        (community as unknown as { feedPostPolicy?: string }).feedPostPolicy ??
-        "all_members";
-      if (feedPolicy === "admins_only") {
-        const isPrivileged =
-          membership.role === "owner" ||
-          membership.role === "admin" ||
-          membership.role === "moderator";
-        if (!isPrivileged) {
-          throw new TRPCError({ code: "FORBIDDEN" });
-        }
-      }
+      const community = await requireFeedPoster(
+        ctx.db,
+        input.communitySlug,
+        ctx.session.user.id,
+      );
 
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
