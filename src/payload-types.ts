@@ -78,6 +78,8 @@ export interface Config {
     'launchpad-projects': LaunchpadProject;
     comments: Comment;
     'feed-posts': FeedPost;
+    'post-reports': PostReport;
+    'video-uploads': VideoUpload;
     'feed-comments': FeedComment;
     'feed-likes': FeedLike;
     'community-topics': CommunityTopic;
@@ -119,6 +121,8 @@ export interface Config {
     'launchpad-projects': LaunchpadProjectsSelect<false> | LaunchpadProjectsSelect<true>;
     comments: CommentsSelect<false> | CommentsSelect<true>;
     'feed-posts': FeedPostsSelect<false> | FeedPostsSelect<true>;
+    'post-reports': PostReportsSelect<false> | PostReportsSelect<true>;
+    'video-uploads': VideoUploadsSelect<false> | VideoUploadsSelect<true>;
     'feed-comments': FeedCommentsSelect<false> | FeedCommentsSelect<true>;
     'feed-likes': FeedLikesSelect<false> | FeedLikesSelect<true>;
     'community-topics': CommunityTopicsSelect<false> | CommunityTopicsSelect<true>;
@@ -671,6 +675,58 @@ export interface FeedPost {
   isDeleted?: boolean | null;
   isEdited?: boolean | null;
   editedAt?: string | null;
+  /**
+   * Only video posts may be public. Fixed after posting.
+   */
+  visibility: 'community' | 'public';
+  /**
+   * Set on video posts only. See ADR-0036.
+   */
+  video?: {
+    key?: string | null;
+    thumbnailKey?: string | null;
+    storage?: ('public' | 'private') | null;
+    durationSeconds?: number | null;
+    width?: number | null;
+    height?: number | null;
+    bytes?: number | null;
+  };
+  /**
+   * Set by the first report; cleared when a moderator restores.
+   */
+  hiddenAt?: string | null;
+  reportCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Member reports on community posts. One per reporter per post.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-reports".
+ */
+export interface PostReport {
+  id: number;
+  post: number | FeedPost;
+  reporterId: string;
+  reason: 'spam' | 'inappropriate' | 'copyright' | 'other';
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Upload grants for community videos. Unfinished ones are cleaned up daily.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "video-uploads".
+ */
+export interface VideoUpload {
+  id: number;
+  uploadId: string;
+  userId: string;
+  communityId: string;
+  visibility: 'community' | 'public';
+  finishedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1470,6 +1526,14 @@ export interface PayloadLockedDocument {
         value: number | FeedPost;
       } | null)
     | ({
+        relationTo: 'post-reports';
+        value: number | PostReport;
+      } | null)
+    | ({
+        relationTo: 'video-uploads';
+        value: number | VideoUpload;
+      } | null)
+    | ({
         relationTo: 'feed-comments';
         value: number | FeedComment;
       } | null)
@@ -1859,6 +1923,45 @@ export interface FeedPostsSelect<T extends boolean = true> {
   isDeleted?: T;
   isEdited?: T;
   editedAt?: T;
+  visibility?: T;
+  video?:
+    | T
+    | {
+        key?: T;
+        thumbnailKey?: T;
+        storage?: T;
+        durationSeconds?: T;
+        width?: T;
+        height?: T;
+        bytes?: T;
+      };
+  hiddenAt?: T;
+  reportCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "post-reports_select".
+ */
+export interface PostReportsSelect<T extends boolean = true> {
+  post?: T;
+  reporterId?: T;
+  reason?: T;
+  note?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "video-uploads_select".
+ */
+export interface VideoUploadsSelect<T extends boolean = true> {
+  uploadId?: T;
+  userId?: T;
+  communityId?: T;
+  visibility?: T;
+  finishedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

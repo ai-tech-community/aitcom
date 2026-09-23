@@ -184,6 +184,7 @@ export const feedRouter = createTRPCRouter({
           likeCount: 0,
           commentCount: 0,
           topicSlug: input.topicSlug ?? "general",
+          visibility: "community",
         },
       });
 

@@ -74,6 +74,59 @@ export const FeedPosts: CollectionConfig = {
       type: "date",
       admin: { position: "sidebar", readOnly: true },
     },
+    {
+      name: "visibility",
+      type: "select",
+      required: true,
+      defaultValue: "community",
+      index: true,
+      options: [
+        { label: "Community only", value: "community" },
+        { label: "Public", value: "public" },
+      ],
+      admin: {
+        position: "sidebar",
+        description: "Only video posts may be public. Fixed after posting.",
+      },
+    },
+    {
+      name: "video",
+      type: "group",
+      admin: { description: "Set on video posts only. See ADR-0036." },
+      fields: [
+        // Unique: a concurrent double-submit of the same upload cannot
+        // create two posts. Postgres UNIQUE allows many NULLs (text posts).
+        { name: "key", type: "text", unique: true },
+        { name: "thumbnailKey", type: "text" },
+        {
+          name: "storage",
+          type: "select",
+          options: [
+            { label: "Public", value: "public" },
+            { label: "Private", value: "private" },
+          ],
+        },
+        { name: "durationSeconds", type: "number" },
+        { name: "width", type: "number" },
+        { name: "height", type: "number" },
+        { name: "bytes", type: "number" },
+      ],
+    },
+    {
+      name: "hiddenAt",
+      type: "date",
+      index: true,
+      admin: {
+        position: "sidebar",
+        description: "Set by the first report; cleared when a moderator restores.",
+      },
+    },
+    {
+      name: "reportCount",
+      type: "number",
+      defaultValue: 0,
+      admin: { position: "sidebar", readOnly: true },
+    },
   ],
   timestamps: true,
 };
