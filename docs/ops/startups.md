@@ -229,14 +229,22 @@ the active filters.
   Organization JSON-LD uses sourced fields only and includes `description`
   only when a sourced blurb exists. Sitemap lists each profile slug.
 - Open positions live at `/jobs` with one page per sourced role
-  (`/jobs/{roleSlug}`). The table filters by company, location, work type,
-  and search, and sorts by role, company, or location. A signed-in member can
-  follow a filtered search; the next visit lists roles this directory stored
+  (`/jobs/{roleSlug}`). The list filters by company, location, work type,
+  and search, and sorts by company (default: roles grouped under each company
+  with its logo and role count; `sort=company` stays out of the URL), role, or
+  location. Work types are folded from careers-board spellings ("FullTime",
+  "Salaried, full-time") into full-time / part-time / contract / internship /
+  temporary; unknown text shows no type, and old raw `workType` links still
+  match. `location=remote` (the **Remote** toggle) means remote-friendly: the
+  sourced location or work type says remote. It is a location value, not a
+  new param, so saved searches need no schema change. Each row links the
+  original posting. Quick-search chips (Engineer, Research, …) only fill the
+  search box. A signed-in member can follow a filtered search (bell toggle); the next visit lists roles this directory stored
   after the last look, with no employer publish date unless the careers page
   printed one. Each startup profile hiring list shows location and work type
   when the board provided them. A role link opens that startup
   job page. Hub members can privately mark “I’m applying” on that page, and
-  track a role from the jobs table. `/dashboard/jobs` lists only those tracked
+  track a role from the jobs list (bookmark toggle). `/dashboard/jobs` lists only those tracked
   roles and lets the member move them through Applying, Applied, Talking,
   Offer, and Passed. Ask for help posts a question in one community the member
   belongs to, with their note and a classroom only when that community already

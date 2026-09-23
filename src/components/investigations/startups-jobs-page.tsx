@@ -1,29 +1,21 @@
 import { Link } from "@/i18n/navigation";
 import { PromoteJoinCta } from "@/components/join/promote-join-cta";
+import { EmptyState } from "@/components/ui/empty-state";
 import { SectionLabel } from "@/components/ui/section-label";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { StartupsJobsFilters } from "@/components/investigations/startups-jobs-filters";
 import { StartupsJobsFollow } from "@/components/investigations/startups-jobs-follow";
-import { StartupsJobsTrackButton } from "@/components/investigations/startups-jobs-track-button";
+import { StartupsJobsList } from "@/components/investigations/startups-jobs-list";
 import { StartupsTabs } from "@/components/investigations/startups-tabs";
 import {
   STARTUPS_JOIN_HREF,
   STARTUPS_PATH,
   buildStartupJobsPath,
-  buildStartupProfilePath,
   buildStartupRolePath,
 } from "@/lib/investigations/startups";
 import {
   applyStartupJobsQuery,
   paginateStartupRoles,
+  startupJobsFacets,
   type StartupJobsFollow,
   type StartupJobsQuery,
   type StartupRolePublic,
@@ -59,23 +51,30 @@ export type StartupsJobsKey =
   | "jobsSortCompany"
   | "jobsSortLocation"
   | "jobsEmptyFiltered"
+  | "jobsFilterClearHelp"
   | "jobsFollow"
   | "jobsFollowing"
   | "jobsUnfollow"
   | "jobsFollowHelp"
   | "jobsNewSince"
   | "jobsNewBadge"
+  | "jobsRemote"
+  | "jobsLocationRemote"
+  | "jobsTry"
+  | "jobsResults"
+  | "jobsCompanyRoles"
   | "jobsTrack"
   | "jobsTracking"
-  | "roleColumn"
-  | "companyColumn"
-  | "locationColumn"
+  | "openOriginal"
+  | "filtersToggle"
+  | "clearFilters"
   | "paginationPrev"
   | "paginationNext"
   | "paginationLabel"
   | "howWeListJobs";
 
 export function StartupsJobsPage({
+  locale,
   t,
   roles,
   query,
@@ -86,7 +85,7 @@ export function StartupsJobsPage({
   trackedRoleIds = [],
 }: {
   locale: string;
-  t: (key: StartupsJobsKey) => string;
+  t: (key: StartupsJobsKey, values?: Record<string, string | number>) => string;
   roles: StartupRolePublic[];
   query: StartupJobsQuery;
   promoteJoin?: boolean;
@@ -95,31 +94,17 @@ export function StartupsJobsPage({
   newRoles?: StartupJobsNewRole[];
   trackedRoleIds?: readonly string[];
 }) {
+  const copyLocale = locale === "nl" ? "nl" : "en";
   const filtered = applyStartupJobsQuery(roles, query);
   const pagination = paginateStartupRoles(filtered, query.page);
-  const companies = [
-    ...new Map(
-      roles.map((role) => [
-        role.startupSlug,
-        { slug: role.startupSlug, name: role.startupName },
-      ]),
-    ).values(),
-  ].sort((a, b) => a.name.localeCompare(b.name));
-  const locations = [
-    ...new Set(
-      roles
-        .map((role) => role.location)
-        .filter((location): location is string => Boolean(location)),
-    ),
-  ].sort((a, b) => a.localeCompare(b));
-  const workTypes = [
-    ...new Set(
-      roles
-        .map((role) => role.workType)
-        .filter((workType): workType is string => Boolean(workType)),
-    ),
-  ].sort((a, b) => a.localeCompare(b));
-  const trackedIds = new Set(trackedRoleIds);
+  const facets = startupJobsFacets(roles);
+  const companyTotals = new Map<string, number>();
+  for (const role of filtered) {
+    companyTotals.set(
+      role.startupSlug,
+      (companyTotals.get(role.startupSlug) ?? 0) + 1,
+    );
+  }
   const pageQuery = {
     company: query.company || null,
     q: query.q || null,
@@ -127,7 +112,6 @@ export function StartupsJobsPage({
     workType: query.workType || null,
     sort: query.sort,
   };
-  const newSlugs = new Set(newRoles.map((role) => role.slug));
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-16 sm:px-12">
@@ -162,53 +146,70 @@ export function StartupsJobsPage({
         />
       </div>
 
-      <StartupsJobsFilters
-        query={query}
-        companies={companies}
-        locations={locations}
-        workTypes={workTypes}
-        labels={{
-          search: t("jobsSearch"),
-          company: t("jobsFilterCompany"),
-          companyAll: t("jobsFilterCompanyAll"),
-          location: t("jobsFilterLocation"),
-          locationAll: t("jobsFilterLocationAll"),
-          workType: t("jobsFilterWorkType"),
-          workTypeAll: t("jobsFilterWorkTypeAll"),
-          sortRole: t("jobsSortRole"),
-          sortCompany: t("jobsSortCompany"),
-          sortLocation: t("jobsSortLocation"),
-        }}
-      />
-
-      {follow ? (
-        <div className="mt-4">
-          <StartupsJobsFollow
-            follow={follow}
-            following={following}
-            labels={{
-              follow: t("jobsFollow"),
-              following: t("jobsFollowing"),
-              unfollow: t("jobsUnfollow"),
-              help: t("jobsFollowHelp"),
-            }}
-          />
-        </div>
-      ) : null}
+      <div className="mt-10">
+        <StartupsJobsFilters
+          query={query}
+          locale={copyLocale}
+          companies={facets.companies}
+          locations={facets.locations}
+          workTypes={facets.workTypes}
+          labels={{
+            search: t("jobsSearch"),
+            company: t("jobsFilterCompany"),
+            companyAll: t("jobsFilterCompanyAll"),
+            location: t("jobsFilterLocation"),
+            locationAll: t("jobsFilterLocationAll"),
+            locationRemote: t("jobsLocationRemote"),
+            workType: t("jobsFilterWorkType"),
+            workTypeAll: t("jobsFilterWorkTypeAll"),
+            sortRole: t("jobsSortRole"),
+            sortCompany: t("jobsSortCompany"),
+            sortLocation: t("jobsSortLocation"),
+            filters: t("filtersToggle"),
+            remoteToggle: t("jobsRemote"),
+            tryLabel: t("jobsTry"),
+            results: t("jobsResults", {
+              roles: filtered.length,
+              companies: companyTotals.size,
+            }),
+            clear: t("clearFilters"),
+          }}
+          aside={
+            follow ? (
+              <StartupsJobsFollow
+                follow={follow}
+                following={following}
+                labels={{
+                  follow: t("jobsFollow"),
+                  following: t("jobsFollowing"),
+                  unfollow: t("jobsUnfollow"),
+                  help: t("jobsFollowHelp"),
+                }}
+              />
+            ) : null
+          }
+        />
+      </div>
 
       {newRoles.length > 0 ? (
-        <section className="mt-8" data-startup-jobs-new="">
-          <SectionLabel as="h2">{t("jobsNewSince")}</SectionLabel>
-          <ul className="mt-3 flex flex-col gap-2">
+        <section
+          aria-labelledby="jobs-new"
+          data-startup-jobs-new=""
+          className="border-border mt-6 flex flex-col gap-3 rounded-xl border p-4"
+        >
+          <SectionLabel as="h2" id="jobs-new" bordered={false}>
+            {t("jobsNewSince")}
+          </SectionLabel>
+          <ul className="flex flex-col gap-1.5 text-sm">
             {newRoles.slice(0, 8).map((role) => (
-              <li key={role.slug}>
+              <li key={role.slug} className="flex flex-wrap gap-x-2">
                 <Link
                   href={buildStartupRolePath(role.slug)}
-                  className="hover:underline"
+                  className="font-medium underline-offset-4 hover:underline"
                 >
                   {role.title}
                 </Link>
-                <span className="text-muted-foreground ml-2 text-sm">
+                <span className="text-muted-foreground">
                   {role.startupName}
                 </span>
               </li>
@@ -219,98 +220,36 @@ export function StartupsJobsPage({
 
       <section className="mt-6">
         {pagination.items.length === 0 ? (
-          <p className="text-muted-foreground text-sm">
-            {roles.length === 0
-              ? `${t("jobsEmpty")} ${t("jobsEmptyHelp")}`
-              : t("jobsEmptyFiltered")}
-          </p>
+          <EmptyState
+            title={roles.length === 0 ? t("jobsEmpty") : t("jobsEmptyFiltered")}
+            description={
+              roles.length === 0 ? t("jobsEmptyHelp") : t("jobsFilterClearHelp")
+            }
+          />
         ) : (
-          <div className="border-border overflow-hidden rounded-xl border">
-            <Table>
-              <TableCaption className="sr-only">{t("jobsTitle")}</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  {(
-                    [
-                      ["role", t("roleColumn")],
-                      ["company", t("companyColumn")],
-                      ["location", t("locationColumn")],
-                    ] as const
-                  ).map(([sort, label]) => (
-                    <TableHead
-                      key={sort}
-                      aria-sort={query.sort === sort ? "ascending" : "none"}
-                      className="text-muted-foreground font-mono text-xs tracking-wider uppercase"
-                    >
-                      <Link
-                        href={buildStartupJobsPath({
-                          ...pageQuery,
-                          sort,
-                          page: 1,
-                        })}
-                      >
-                        {label}
-                      </Link>
-                    </TableHead>
-                  ))}
-                  {promoteJoin ? null : (
-                    <TableHead className="w-28">
-                      <span className="sr-only">{t("jobsTrack")}</span>
-                    </TableHead>
-                  )}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pagination.items.map((role) => (
-                  <TableRow key={role.id} data-startup-role={role.slug}>
-                    <TableCell>
-                      <Link
-                        href={buildStartupRolePath(role.slug)}
-                        className="font-medium hover:underline"
-                      >
-                        {role.title}
-                      </Link>
-                      {newSlugs.has(role.slug) ? (
-                        <span className="text-muted-foreground ml-2 font-mono text-xs tracking-wider uppercase">
-                          {t("jobsNewBadge")}
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={buildStartupProfilePath(role.startupSlug)}
-                        className="hover:underline"
-                      >
-                        {role.startupName}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      {role.location ? (
-                        <span data-startup-role-location="">
-                          {role.location}
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    {promoteJoin ? null : (
-                      <TableCell className="text-right">
-                        <StartupsJobsTrackButton
-                          roleId={role.id}
-                          tracked={trackedIds.has(role.id)}
-                          trackLabel={t("jobsTrack")}
-                          trackingLabel={t("jobsTracking")}
-                        />
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <StartupsJobsList
+            roles={pagination.items}
+            grouped={query.sort === "company"}
+            locale={copyLocale}
+            companyTotals={companyTotals}
+            newSlugs={new Set(newRoles.map((role) => role.slug))}
+            trackedIds={new Set(trackedRoleIds)}
+            canTrack={!promoteJoin}
+            copy={{
+              caption: t("jobsTitle"),
+              remote: t("jobsRemote"),
+              newBadge: t("jobsNewBadge"),
+              original: t("openOriginal"),
+              track: t("jobsTrack"),
+              tracking: t("jobsTracking"),
+              companyRoles: (count) => t("jobsCompanyRoles", { count }),
+            }}
+          />
         )}
         {pagination.totalPages > 1 ? (
           <nav
             aria-label={t("paginationLabel")}
-            className="mt-6 flex flex-wrap items-center justify-center gap-1.5 font-mono text-xs tracking-wider"
+            className="mt-6 flex flex-wrap items-center justify-center gap-3 font-mono text-xs tracking-wider"
           >
             {pagination.page > 1 ? (
               <Link
@@ -318,18 +257,21 @@ export function StartupsJobsPage({
                   ...pageQuery,
                   page: pagination.page - 1,
                 })}
-                className="border-border rounded border px-3 py-1.5"
+                className="border-border hover:bg-muted/50 rounded-md border px-3 py-1.5 transition-colors"
               >
                 ← {t("paginationPrev")}
               </Link>
             ) : null}
+            <span className="text-muted-foreground tabular-nums">
+              {pagination.page} / {pagination.totalPages}
+            </span>
             {pagination.page < pagination.totalPages ? (
               <Link
                 href={buildStartupJobsPath({
                   ...pageQuery,
                   page: pagination.page + 1,
                 })}
-                className="border-border rounded border px-3 py-1.5"
+                className="border-border hover:bg-muted/50 rounded-md border px-3 py-1.5 transition-colors"
               >
                 {t("paginationNext")} →
               </Link>

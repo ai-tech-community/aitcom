@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { StartupsDirectoryTable } from "@/components/investigations/startups-directory-table";
 import { StartupsDirectoryMap } from "@/components/investigations/startups-directory-map";
+import { FilterSelect } from "@/components/investigations/startups-filter-select";
 import { StartupsPagination } from "@/components/investigations/startups-pagination";
 import { StartupsSubmitDialog } from "@/components/investigations/startups-submit-dialog";
 import {
@@ -426,46 +427,6 @@ export function StartupsDirectory({
           }}
         />
       ) : null}
-    </div>
-  );
-}
-
-/** A labelled filter menu whose first item resets it to "all". */
-function FilterSelect({
-  id,
-  label,
-  allLabel,
-  value,
-  options,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  allLabel: string;
-  value: string;
-  options: ReadonlyArray<{ value: string; label: string }>;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="flex min-w-0 flex-col">
-      <Label htmlFor={id} className="sr-only">
-        {label}
-      </Label>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger id={id} className="w-full">
-          <SelectValue placeholder={label} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            <SelectItem value="all">{allLabel}</SelectItem>
-            {options.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
     </div>
   );
 }

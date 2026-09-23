@@ -72,9 +72,110 @@ export type ExtractedJobListing = {
   board: StartupRoleBoard;
 };
 
-export const STARTUP_JOBS_SORTS = ["role", "company", "location"] as const;
+/** Company first: it groups each company's roles together. */
+export const STARTUP_JOBS_SORTS = ["company", "role", "location"] as const;
 
 export type StartupJobsSort = (typeof STARTUP_JOBS_SORTS)[number];
+
+export const STARTUP_JOBS_DEFAULT_SORT: StartupJobsSort = "company";
+
+/**
+ * Location filter value meaning "remote-friendly": any role whose sourced
+ * location or work type mentions remote. A facet value rather than a new
+ * param, so saved searches keep working without a schema change.
+ */
+export const STARTUP_JOBS_REMOTE = "remote";
+
+/** Canonical employment types that careers boards spell many ways. */
+export const STARTUP_WORK_TYPES = [
+  "full-time",
+  "part-time",
+  "contract",
+  "internship",
+  "temporary",
+] as const;
+
+export type StartupWorkType = (typeof STARTUP_WORK_TYPES)[number];
+
+export const STARTUP_WORK_TYPE_LABELS: Record<
+  StartupWorkType,
+  Record<"en" | "nl", string>
+> = {
+  "full-time": { en: "Full-time", nl: "Voltijd" },
+  "part-time": { en: "Part-time", nl: "Deeltijd" },
+  contract: { en: "Contract", nl: "Contract" },
+  internship: { en: "Internship", nl: "Stage" },
+  temporary: { en: "Temporary", nl: "Tijdelijk" },
+};
+
+/**
+ * Employment type of a sourced work-type string ("FullTime", "Salaried,
+ * full-time", "Contractor"). Unknown text returns null, never a guess.
+ */
+export function startupWorkTypeOf(
+  value: string | null | undefined,
+): StartupWorkType | null {
+  const text = value?.toLowerCase() ?? "";
+  if (!text.trim()) return null;
+  if (/\bintern|graduate/.test(text)) return "internship";
+  if (/contract|freelance/.test(text)) return "contract";
+  if (/part[\s-]?time/.test(text)) return "part-time";
+  if (/\btemp/.test(text)) return "temporary";
+  if (/full[\s-]?time|salaried|permanent/.test(text)) return "full-time";
+  return null;
+}
+
+/** The sourced location or work type says remote work is possible. */
+export function isRemoteFriendlyRole(
+  role: Pick<StartupRolePublic, "location" | "workType">,
+): boolean {
+  return /\bremote\b/i.test(`${role.location ?? ""} ${role.workType ?? ""}`);
+}
+
+/** Filter options, drawn only from values the listed roles actually have. */
+export function startupJobsFacets(roles: readonly StartupRolePublic[]): {
+  companies: Array<{ slug: string; name: string; logoUrl: string | null }>;
+  locations: string[];
+  workTypes: StartupWorkType[];
+  remote: number;
+} {
+  const companies = new Map<
+    string,
+    { slug: string; name: string; logoUrl: string | null }
+  >();
+  const locations = new Map<string, string>();
+  const workTypes = new Set<StartupWorkType>();
+  let remote = 0;
+  for (const role of roles) {
+    if (!companies.has(role.startupSlug)) {
+      companies.set(role.startupSlug, {
+        slug: role.startupSlug,
+        name: role.startupName,
+        logoUrl: role.startupLogoUrl,
+      });
+    }
+    const location = presentText(role.location);
+    // One option per spelling that differs only in case or spacing.
+    if (location) {
+      const key = location.toLowerCase().replace(/\s+/g, " ");
+      if (key !== STARTUP_JOBS_REMOTE && !locations.has(key)) {
+        locations.set(key, location);
+      }
+    }
+    const workType = startupWorkTypeOf(role.workType);
+    if (workType) workTypes.add(workType);
+    if (isRemoteFriendlyRole(role)) remote += 1;
+  }
+  const collator = new Intl.Collator(undefined, { sensitivity: "base" });
+  return {
+    companies: [...companies.values()].sort((a, b) =>
+      collator.compare(a.name, b.name),
+    ),
+    locations: [...locations.values()].sort((a, b) => collator.compare(a, b)),
+    workTypes: STARTUP_WORK_TYPES.filter((id) => workTypes.has(id)),
+    remote,
+  };
+}
 
 export type StartupJobsQuery = {
   company: string;
@@ -224,7 +325,7 @@ export function parseStartupJobsSort(
   const text = presentText(value);
   return text && (STARTUP_JOBS_SORTS as readonly string[]).includes(text)
     ? (text as StartupJobsSort)
-    : "role";
+    : STARTUP_JOBS_DEFAULT_SORT;
 }
 
 function parseJobsFacet(value: string | null | undefined, max: number): string {
@@ -254,7 +355,8 @@ export function parseStartupJobsQuery(raw: {
     company: parseStartupSlug(first(raw.company)) ?? "",
     q: presentText(first(raw.q)) ?? "",
     location: parseJobsFacet(first(raw.location), 240),
-    workType: parseJobsFacet(first(raw.workType), 80),
+    // Old links carry raw board text ("FullTime"); fold it to the canonical id.
+    workType: startupWorkTypeOf(parseJobsFacet(first(raw.workType), 80)) ?? "",
     sort: parseStartupJobsSort(first(raw.sort)),
     page,
   };
@@ -287,17 +389,22 @@ export function applyStartupJobsQuery(
   query: StartupJobsQuery,
 ): StartupRolePublic[] {
   const company = query.company;
-  const location = query.location.toLowerCase();
-  const workType = query.workType.toLowerCase();
+  const location = query.location.toLowerCase().replace(/\s+/g, " ");
+  const workType = startupWorkTypeOf(query.workType);
   const needle = query.q.trim().toLowerCase();
   const collator = new Intl.Collator(undefined, { sensitivity: "base" });
   return roles
     .filter((role) => {
       if (company && role.startupSlug !== company) return false;
-      if (location && (role.location ?? "").toLowerCase() !== location) {
+      if (location === STARTUP_JOBS_REMOTE) {
+        if (!isRemoteFriendlyRole(role)) return false;
+      } else if (
+        location &&
+        (role.location ?? "").toLowerCase().replace(/\s+/g, " ") !== location
+      ) {
         return false;
       }
-      if (workType && (role.workType ?? "").toLowerCase() !== workType) {
+      if (workType && startupWorkTypeOf(role.workType) !== workType) {
         return false;
       }
       if (!needle) return true;

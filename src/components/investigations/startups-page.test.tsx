@@ -1672,14 +1672,12 @@ describe("Startups open positions", () => {
     expect(
       screen.getByRole("link", { name: "Staff Engineer" }),
     ).toHaveAttribute("href", "/jobs/fixture-co-staff-engineer");
-    expect(screen.getByRole("link", { name: "Role" })).toHaveAttribute(
-      "href",
-      "/jobs",
-    );
-    expect(screen.getByRole("link", { name: "Company" })).toHaveAttribute(
-      "href",
-      "/jobs?sort=company",
-    );
+    expect(
+      screen.getByRole("link", { name: "Open original posting" }),
+    ).toHaveAttribute("href", FIXTURE_ROLE.applyUrl);
+    expect(
+      container.querySelector("[data-jobs-results]")?.textContent,
+    ).toContain("1 open role at 1 company");
     expect(screen.getByLabelText("Search roles…")).toBeInTheDocument();
     expect(screen.getByLabelText("Filter by work type")).toBeInTheDocument();
     expect(container.querySelector("[data-startup-jobs-follow]")).toBeNull();
@@ -1733,9 +1731,10 @@ describe("Startups open positions", () => {
         ]}
       />,
     );
-    expect(
-      screen.getByRole("button", { name: "Stop following" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Following" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(
       screen.getByRole("heading", { name: /New since you last looked/ }),
     ).toBeInTheDocument();
@@ -1746,6 +1745,62 @@ describe("Startups open positions", () => {
       "aria-pressed",
       "false",
     );
+  });
+
+  it("groups roles under their company when sorted by company", () => {
+    const { container } = render(
+      <StartupsJobsPage
+        locale="en"
+        t={tFrom(en.investigationsStartups)}
+        roles={[
+          FIXTURE_ROLE,
+          {
+            ...FIXTURE_ROLE,
+            id: "role-2",
+            slug: "fixture-co-designer",
+            title: "Designer",
+            location: "Remote",
+            workType: "FullTime",
+          },
+          {
+            ...FIXTURE_ROLE,
+            id: "role-3",
+            startupSlug: "other-co",
+            startupName: "Other Co",
+            slug: "other-co-analyst",
+            title: "Analyst",
+          },
+        ]}
+        query={{
+          company: "",
+          q: "",
+          location: "",
+          workType: "",
+          sort: "company",
+          page: 1,
+        }}
+      />,
+    );
+    const groups = [...container.querySelectorAll("[data-jobs-company]")];
+    expect(
+      groups.map((group) => group.getAttribute("data-jobs-company")),
+    ).toEqual(["fixture-co", "other-co"]);
+    expect(groups[0]?.textContent).toContain("2 roles");
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Fixture Co" }),
+    ).toBeInTheDocument();
+    const designer = container.querySelector(
+      "[data-startup-role=fixture-co-designer]",
+    );
+    expect(designer?.querySelector("[data-role-remote]")?.textContent).toBe(
+      "Remote",
+    );
+    expect(
+      designer?.querySelector("[data-role-meta=work-type]")?.textContent,
+    ).toContain("Full-time");
+    expect(
+      container.querySelector("[data-jobs-results]")?.textContent,
+    ).toContain("3 open roles at 2 companies");
   });
 
   it("marks a tracked role for a signed-in member and hides Track from guests", () => {

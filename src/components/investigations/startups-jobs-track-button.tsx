@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Bookmark } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -31,9 +32,11 @@ export function StartupsJobsTrackButton({
   return (
     <Button
       type="button"
-      variant="outline"
-      size="sm"
+      variant="ghost"
+      size="icon-sm"
       aria-pressed={on}
+      aria-label={on ? trackingLabel : trackLabel}
+      title={on ? trackingLabel : trackLabel}
       data-startup-track=""
       disabled={setApplying.isPending}
       onClick={() => {
@@ -45,7 +48,10 @@ export function StartupsJobsTrackButton({
         );
       }}
     >
-      {on ? trackingLabel : trackLabel}
+      <Bookmark
+        aria-hidden="true"
+        className={on ? "fill-current" : undefined}
+      />
     </Button>
   );
 }

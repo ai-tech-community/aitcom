@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
+import { buildStartupJobsPath } from "./startups";
 import {
+  STARTUP_JOBS_DEFAULT_SORT,
+  STARTUP_JOBS_REMOTE,
+  applyStartupJobsQuery,
+  startupJobsFacets,
+  startupWorkTypeOf,
   parseStartupJobsQuery,
   parseStartupRoleTitle,
   rolesListedSince,
@@ -225,6 +231,86 @@ describe("startupRoleJsonLd", () => {
   });
 });
 
+describe("startup jobs facets", () => {
+  it("folds careers-board spellings into one work type and never guesses", () => {
+    expect(startupWorkTypeOf("FullTime")).toBe("full-time");
+    expect(startupWorkTypeOf("Salaried, full-time")).toBe("full-time");
+    expect(startupWorkTypeOf("Full Time / Remote")).toBe("full-time");
+    expect(startupWorkTypeOf("PartTime")).toBe("part-time");
+    expect(startupWorkTypeOf("Contractor")).toBe("contract");
+    expect(startupWorkTypeOf("Intern")).toBe("internship");
+    expect(startupWorkTypeOf("Graduate")).toBe("internship");
+    expect(startupWorkTypeOf("Temporary")).toBe("temporary");
+    expect(startupWorkTypeOf("Hybrid")).toBeNull();
+    expect(startupWorkTypeOf(null)).toBeNull();
+  });
+
+  it("filters by canonical work type, and old raw links still match", () => {
+    const roles = [
+      sampleRole({ id: "a", slug: "a", workType: "FullTime" }),
+      sampleRole({ id: "b", slug: "b", workType: "Contractor" }),
+    ];
+    const ids = (workType: string) =>
+      applyStartupJobsQuery(roles, parseStartupJobsQuery({ workType })).map(
+        (role) => role.id,
+      );
+    expect(ids("full-time")).toEqual(["a"]);
+    expect(ids("Full-time")).toEqual(["a"]);
+    expect(ids("contract")).toEqual(["b"]);
+    expect(parseStartupJobsQuery({ workType: "Volunteer" }).workType).toBe("");
+  });
+
+  it("treats the remote location as remote-friendly roles", () => {
+    const roles = [
+      sampleRole({ id: "a", slug: "a", location: "Santa Clara, CA or Remote" }),
+      sampleRole({ id: "b", slug: "b", location: "Paris" }),
+      sampleRole({
+        id: "c",
+        slug: "c",
+        location: null,
+        workType: "Full Time / Remote",
+      }),
+      sampleRole({ id: "d", slug: "d", location: "Remoteville" }),
+    ];
+    expect(
+      applyStartupJobsQuery(
+        roles,
+        parseStartupJobsQuery({ location: STARTUP_JOBS_REMOTE }),
+      )
+        .map((role) => role.id)
+        .sort(),
+    ).toEqual(["a", "c"]);
+    expect(startupJobsFacets(roles).remote).toBe(2);
+  });
+
+  it("offers only values the roles have, deduped by case and spacing", () => {
+    const facets = startupJobsFacets([
+      sampleRole({
+        id: "a",
+        slug: "a",
+        location: "New York",
+        workType: "FullTime",
+      }),
+      sampleRole({
+        id: "b",
+        slug: "b",
+        location: "new  york",
+        workType: "Intern",
+      }),
+      sampleRole({ id: "c", slug: "c", location: "Remote", workType: null }),
+    ]);
+    expect(facets.locations).toEqual(["New York"]);
+    expect(facets.workTypes).toEqual(["full-time", "internship"]);
+  });
+
+  it("sorts by company by default and keeps that default out of the URL", () => {
+    expect(parseStartupJobsQuery({}).sort).toBe(STARTUP_JOBS_DEFAULT_SORT);
+    expect(STARTUP_JOBS_DEFAULT_SORT).toBe("company");
+    expect(buildStartupJobsPath({ sort: "company" })).toBe("/jobs");
+    expect(buildStartupJobsPath({ sort: "role" })).toBe("/jobs?sort=role");
+  });
+});
+
 describe("startup jobs follow", () => {
   it("refuses an empty catalog follow and keeps roles added after the last look", () => {
     expect(
@@ -243,7 +329,7 @@ describe("startup jobs follow", () => {
       company: "cursor-anysphere",
       q: "staff",
       location: "",
-      workType: "Full-time",
+      workType: "full-time",
     });
     const older = sampleRole({
       id: "old",
