@@ -57,7 +57,7 @@ export function DatacentersMapView({ datacenters }: DatacentersMapViewProps) {
   }, [datacenters]);
 
   return (
-    <div className="border-border h-[70vh] min-h-[500px] overflow-hidden rounded-xl border">
+    <div className="border-border h-full overflow-hidden rounded-xl border">
       <MapContainer
         bounds={bounds ?? undefined}
         center={bounds ? undefined : [40, 0]}

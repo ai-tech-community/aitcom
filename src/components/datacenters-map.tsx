@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { cn } from "@/lib/utils";
 import type { MapDatacenter } from "./datacenters-map-view";
 
 const InnerMap = dynamic(
@@ -8,7 +9,7 @@ const InnerMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="border-border flex h-[70vh] min-h-[500px] items-center justify-center rounded-xl border">
+      <div className="border-border flex h-full items-center justify-center rounded-xl border">
         <p className="text-muted-foreground font-mono text-xs tracking-wider">
           LOADING MAP…
         </p>
@@ -17,8 +18,23 @@ const InnerMap = dynamic(
   },
 );
 
-export function DatacentersMap(props: { datacenters: MapDatacenter[] }) {
-  return <InnerMap {...props} />;
+/**
+ * The map owns no height of its own: this box sizes both the loading state and
+ * the loaded map, so swapping one for the other never shifts the page.
+ */
+export function DatacentersMap({
+  datacenters,
+  className = "h-[70vh] min-h-[500px]",
+}: {
+  datacenters: MapDatacenter[];
+  /** Sizing for the map box. */
+  className?: string;
+}) {
+  return (
+    <div className={cn("relative isolate", className)}>
+      <InnerMap datacenters={datacenters} />
+    </div>
+  );
 }
 
 export type { MapDatacenter };

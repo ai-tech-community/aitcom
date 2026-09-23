@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
@@ -26,6 +26,15 @@ import {
 } from "@/server/db/schema";
 import { opacityScore } from "@/server/datacenters/jurisdiction-secrecy";
 import { recordedCreate } from "@/server/investigations/recorded-write";
+import {
+  facilitiesPageSchema,
+  facilityFiltersSchema,
+  facilityOrderBy,
+  facilityWhere,
+  supplierCountSql,
+} from "@/server/datacenters/facility-query";
+import { defaultSortDir } from "@/lib/investigations/facilities-query";
+import { isReservedDatacenterSlug } from "@/lib/investigations/datacenter-investigation-routes";
 
 function isAdmin(ctx: { session: { user: unknown } }): boolean {
   return (ctx.session.user as { role?: string }).role === "admin";
@@ -59,62 +68,12 @@ const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const datacentersRouter = createTRPCRouter({
   list: publicProcedure
     .input(
-      z
-        .object({
-          country: z.string().length(2).toUpperCase().optional(),
-          status: z.enum(DATACENTER_STATUS).optional(),
-          operatorSlug: z.string().optional(),
-          supplierSlug: z.string().optional(),
-          minMw: z.number().nonnegative().optional(),
-          aiOnly: z.boolean().optional(),
-          includeUnverified: z.boolean().optional(),
-          q: z.string().min(1).max(100).optional(),
-          withSuppliers: z.boolean().optional(),
-          limit: z.number().int().min(1).max(500).optional(),
-        })
+      facilityFiltersSchema
+        .extend({ limit: z.number().int().min(1).max(500).optional() })
         .optional(),
     )
     .query(async ({ ctx, input }) => {
       const i = input ?? {};
-      const limit = i.limit ?? 200;
-      const conds = [] as ReturnType<typeof eq>[];
-      if (i.country) conds.push(eq(datacenters.country, i.country));
-      if (i.status) conds.push(eq(datacenters.status, i.status));
-      if (i.aiOnly) conds.push(eq(datacenters.aiDedicated, true));
-      if (!i.includeUnverified) conds.push(eq(datacenters.verified, true));
-      if (i.withSuppliers) {
-        conds.push(
-          sql`EXISTS (SELECT 1 FROM "app"."datacenter_supplier" s WHERE s.datacenter_id = ${datacenters.id})`,
-        );
-      }
-      if (i.minMw !== undefined) {
-        conds.push(sql`${datacenters.capacityMw} >= ${i.minMw}`);
-      }
-      if (i.operatorSlug) {
-        conds.push(
-          sql`${datacenters.operatorId} = (SELECT id FROM "app"."brand" WHERE slug = ${i.operatorSlug} LIMIT 1)`,
-        );
-      }
-      if (i.supplierSlug) {
-        conds.push(
-          sql`EXISTS (
-            SELECT 1 FROM "app"."datacenter_supplier" s
-            JOIN "app"."brand" b ON b.id = s.supplier_id
-            WHERE s.datacenter_id = ${datacenters.id} AND b.slug = ${i.supplierSlug}
-          )`,
-        );
-      }
-      if (i.q) {
-        const like = `%${i.q}%`;
-        conds.push(
-          or(
-            ilike(datacenters.name, like),
-            ilike(datacenters.city, like),
-            ilike(datacenters.region, like),
-          )!,
-        );
-      }
-
       const rows = await ctx.db
         .select({
           id: datacenters.id,
@@ -137,18 +96,114 @@ export const datacentersRouter = createTRPCRouter({
             slug: brands.slug,
             canonicalName: brands.canonicalName,
           },
-          supplierCount: sql<number>`(
-            SELECT COUNT(*)::int FROM "app"."datacenter_supplier" s
-            WHERE s.datacenter_id = ${datacenters.id}
-          )`,
+          supplierCount: supplierCountSql,
         })
         .from(datacenters)
         .innerJoin(brands, eq(brands.id, datacenters.operatorId))
-        .where(conds.length ? and(...conds) : undefined)
+        .where(facilityWhere(i))
         .orderBy(desc(datacenters.capacityMw), asc(datacenters.name))
-        .limit(limit);
+        .limit(i.limit ?? 200);
 
       return rows;
+    }),
+
+  /** One sorted, filtered page of facilities for the investigation's data table. */
+  facilities: publicProcedure
+    .input(facilitiesPageSchema)
+    .query(async ({ ctx, input }) => {
+      const { sort, page, pageSize, ...filters } = input;
+      const dir = input.dir ?? defaultSortDir(sort);
+      const where = facilityWhere(filters);
+
+      const [countRow] = await ctx.db
+        .select({ total: sql<number>`COUNT(*)::int` })
+        .from(datacenters)
+        .innerJoin(brands, eq(brands.id, datacenters.operatorId))
+        .where(where);
+      const total = countRow?.total ?? 0;
+      const pageCount = Math.max(1, Math.ceil(total / pageSize));
+      const currentPage = Math.min(page, pageCount);
+
+      const focusSlugs = [filters.operatorSlug, filters.supplierSlug].filter(
+        (s): s is string => Boolean(s),
+      );
+      const [rows, focusBrands] = await Promise.all([
+        ctx.db
+          .select({
+            id: datacenters.id,
+            slug: datacenters.slug,
+            name: datacenters.name,
+            status: datacenters.status,
+            aiDedicated: datacenters.aiDedicated,
+            verified: datacenters.verified,
+            city: datacenters.city,
+            region: datacenters.region,
+            country: datacenters.country,
+            capacityMw: datacenters.capacityMw,
+            capacityMwPlanned: datacenters.capacityMwPlanned,
+            primaryPowerSource: datacenters.primaryPowerSource,
+            operator: {
+              slug: brands.slug,
+              canonicalName: brands.canonicalName,
+            },
+            supplierCount: supplierCountSql,
+          })
+          .from(datacenters)
+          .innerJoin(brands, eq(brands.id, datacenters.operatorId))
+          .where(where)
+          .orderBy(...facilityOrderBy(sort, dir))
+          .limit(pageSize)
+          .offset((currentPage - 1) * pageSize),
+        focusSlugs.length
+          ? ctx.db
+              .select({
+                slug: brands.slug,
+                canonicalName: brands.canonicalName,
+              })
+              .from(brands)
+              .where(inArray(brands.slug, focusSlugs))
+          : Promise.resolve([]),
+      ]);
+
+      const nameFor = (slug?: string) =>
+        slug
+          ? {
+              slug,
+              canonicalName:
+                focusBrands.find((b) => b.slug === slug)?.canonicalName ?? null,
+            }
+          : null;
+
+      return {
+        rows,
+        total,
+        page: currentPage,
+        pageSize,
+        pageCount,
+        sort,
+        dir,
+        focus: {
+          operator: nameFor(filters.operatorSlug),
+          supplier: nameFor(filters.supplierSlug),
+        },
+      };
+    }),
+
+  /** Countries that have facilities, for the table's country filter. */
+  facilityCountries: publicProcedure
+    .input(z.object({ includeUnverified: z.boolean().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      return ctx.db
+        .select({
+          country: datacenters.country,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(datacenters)
+        .where(
+          input?.includeUnverified ? undefined : eq(datacenters.verified, true),
+        )
+        .groupBy(datacenters.country)
+        .orderBy(desc(sql`COUNT(*)`), asc(datacenters.country));
     }),
 
   getBySlug: publicProcedure
@@ -1440,7 +1495,14 @@ export const datacentersRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(2).max(200),
-        slug: z.string().min(2).max(100).regex(SLUG_RE),
+        slug: z
+          .string()
+          .min(2)
+          .max(100)
+          .regex(SLUG_RE)
+          .refine((slug) => !isReservedDatacenterSlug(slug), {
+            message: "This slug is reserved by an investigation page",
+          }),
         operatorBrandId: z.string().uuid(),
         status: z.enum(DATACENTER_STATUS).default("announced"),
         aiDedicated: z.boolean().default(false),

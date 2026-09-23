@@ -39,9 +39,9 @@ const METHOD_PAGE = join(
   dir,
   "../../app/[locale]/investigations/datacenters/method/page.tsx",
 );
-const PARENT_PAGE = join(
+const RED_FLAGS_TAB = join(
   dir,
-  "../../app/[locale]/investigations/datacenters/page.tsx",
+  "../../app/[locale]/investigations/datacenters/(dashboard)/red-flags/page.tsx",
 );
 const ROUTER = join(dir, "../../server/api/routers/datacenters.ts");
 
@@ -89,10 +89,11 @@ describe("datacenters method cite page", () => {
     expect(src).toContain("datacenterMethod");
   });
 
-  it("is linked from the live investigation as Method / How we flag", () => {
-    const src = readFileSync(PARENT_PAGE, "utf8");
-    expect(src).toContain(METHOD_PATH);
-    expect(src).toMatch(/How we flag|Method/);
+  it("is linked from the live investigation's red flags as How we flag", () => {
+    const src = readFileSync(RED_FLAGS_TAB, "utf8");
+    expect(src).toMatch(/href=\{METHOD_PATH\}/);
+    expect(src).toContain('t("howWeFlag")');
+    expect(en.datacenterInvestigation.redFlags.howWeFlag).toBe("How we flag");
   });
 
   it("documents the three Pulse flags from the live computation", () => {

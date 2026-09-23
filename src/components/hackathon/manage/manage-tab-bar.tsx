@@ -1,7 +1,6 @@
 "use client";
 
-import { Link, usePathname } from "@/i18n/navigation";
-import { cn } from "@/lib/utils";
+import { RouteTabs } from "@/components/ui/route-tabs";
 
 type ManageTabKey = "setup" | "tasks" | "analytics" | "lifecycle";
 
@@ -23,37 +22,19 @@ export function ManageTabBar({
   eventSlug: string;
   labels: Record<ManageTabKey, string>;
 }) {
-  const pathname = usePathname();
   const base = `/communities/${communitySlug}/events/${eventSlug}/manage`;
 
   return (
-    <nav
+    <RouteTabs
       aria-label="Manage sections"
-      className="flex gap-1 overflow-x-auto border-b"
-    >
-      {ORDER.map((key) => {
+      tabs={ORDER.map((key) => {
         const seg = SEGMENTS[key];
-        const href = seg ? `${base}/${seg}` : base;
-        const active =
-          seg === ""
-            ? pathname === base
-            : pathname === href || pathname.startsWith(`${href}/`);
-        return (
-          <Link
-            key={key}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
-              active
-                ? "border-foreground text-foreground"
-                : "text-foreground/60 hover:text-foreground border-transparent",
-            )}
-          >
-            {labels[key]}
-          </Link>
-        );
+        return {
+          href: seg ? `${base}/${seg}` : base,
+          label: labels[key],
+          match: seg ? "prefix" : "exact",
+        };
       })}
-    </nav>
+    />
   );
 }
