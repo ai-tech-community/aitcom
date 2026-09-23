@@ -798,6 +798,7 @@ describe("directory query", () => {
       hiring: "hiring",
       sort: "name",
       page: 3,
+      view: "table",
     });
     expect(startupDirectoryCanonicalPath(query)).toBe(STARTUPS_PATH);
     expect(buildStartupDirectoryPath({ page: 2 })).toBe(
@@ -986,6 +987,23 @@ describe("startup slugs and profile contract", () => {
     expect(startupMonogram("4Point AI")).toBe("4A");
     expect(startupMonogram("  ")).toBe("?");
     expect(startupMonogram("Été Labs")).toBe("ÉL");
+  });
+
+  it("keeps the map view in the URL without pages and canonicalises it to the table", () => {
+    expect(parseStartupDirectoryQuery({ view: "map" }).view).toBe("map");
+    expect(parseStartupDirectoryQuery({ view: "globe" }).view).toBe("table");
+    expect(parseStartupDirectoryQuery({}).view).toBe("table");
+    expect(
+      buildStartupDirectoryPath({ view: "map", page: 4, category: "agents" }),
+    ).toBe("/startups?category=agents&view=map");
+    expect(buildStartupDirectoryPath({ view: "table", page: 4 })).toBe(
+      "/startups?page=4",
+    );
+    expect(
+      startupDirectoryCanonicalPath(
+        parseStartupDirectoryQuery({ view: "map", page: "3" }),
+      ),
+    ).toBe("/startups");
   });
 
   it("reads the listing date and never invents one", () => {

@@ -172,9 +172,16 @@ an “At a glance” facts sheet (region, stage, listed date, non-press sources)
 and a location map. Sections and fact rows with no sourced data are omitted
 entirely; a profile with no sections shows the facts sheet and map side by
 side. Never invent copy, faces, marks, metrics, or street addresses.
-Map is behind **Open map** → Sheet (`Map` / `Close`). Every sourced
-region gets a pin at a city/region centroid; unknown / street-like
-strings stay list-only. Maps never zoom past a pin's precision: city
+A **Table / Map** switch sits beside the sort menu; **Map** (`?view=map`,
+no pages, canonical stays `/startups`) replaces the table with a split view:
+a company list beside a map of count bubbles (supercluster). The list shows
+only what the map shows and follows every pan and zoom. Clicking a bubble
+zooms in; a bubble that zooming cannot split (many pins on one centroid)
+narrows the list to exactly those companies ("3,670 companies in Israel"),
+until the map moves or **Show all in view**. Hovering a row turns its pin or
+bubble orange. Companies with no pin are counted under the list, not hidden
+silently. Every sourced region gets a pin at a city/region centroid;
+unknown / street-like strings stay list-only. Maps never zoom past a pin's precision: city
 level (zoom 10) at most, country level (zoom 5) for region centroids, and
 the profile captions the pin as approximate (`≈ 43.7° N, 79.4° W`). Empty sheet copy is **No locations listed yet**
 only when no sourced region can be pinned. No always-on map.

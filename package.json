@@ -96,6 +96,7 @@
     "shiki": "^3.22.0",
     "sonner": "^2.0.7",
     "streamdown": "^2.3.0",
+    "supercluster": "^9.1.0",
     "superjson": "^2.2.1",
     "tailwind-merge": "^3.5.0",
     "tokenlens": "^1.3.1",

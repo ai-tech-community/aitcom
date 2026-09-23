@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import {
+  List,
+  Map as MapIcon,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -9,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Select,
   SelectContent,
@@ -18,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StartupsDirectoryTable } from "@/components/investigations/startups-directory-table";
-import { StartupsMapSheet } from "@/components/investigations/startups-map-sheet";
+import { StartupsDirectoryMap } from "@/components/investigations/startups-directory-map";
 import { StartupsPagination } from "@/components/investigations/startups-pagination";
 import { StartupsSubmitDialog } from "@/components/investigations/startups-submit-dialog";
 import {
@@ -32,9 +39,9 @@ import {
   paginateStartupCards,
   parseStartupDirectoryQuery,
   startupDirectoryFilterOptions,
-  startupMapPins,
   type StartupCategoryId,
   type StartupDirectoryQuery,
+  type StartupDirectoryView,
   type StartupExitFilter,
   type StartupHiringFilter,
   type StartupLocale,
@@ -79,7 +86,6 @@ export function StartupsDirectory({
     () => paginateStartupCards(filtered, query.page),
     [filtered, query.page],
   );
-  const pins = useMemo(() => startupMapPins(filtered), [filtered]);
   const filterOptions = useMemo(
     () => startupDirectoryFilterOptions(companies),
     [companies],
@@ -130,6 +136,7 @@ export function StartupsDirectory({
     query.hiring === "hiring",
   ].filter(Boolean).length;
   const [filtersOpen, setFiltersOpen] = useState(activeFilters > 0);
+  const isMap = query.view === "map";
 
   return (
     <div className="flex flex-col gap-5">
@@ -198,14 +205,31 @@ export function StartupsDirectory({
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <StartupsMapSheet
-              pins={pins}
-              copy={{
-                openMap: t("openMap"),
-                title: t("mapTitle"),
-                close: t("mapClose"),
-                empty: t("mapEmpty"),
-              }}
+            <SegmentedControl<StartupDirectoryView>
+              aria-label={t("viewToggle")}
+              value={isMap ? "map" : "table"}
+              onValueChange={(view) => replaceQuery({ view })}
+              className="h-9 shrink-0"
+              options={[
+                {
+                  value: "table",
+                  label: (
+                    <>
+                      <List aria-hidden="true" className="size-4" />
+                      <span className="max-sm:sr-only">{t("viewTable")}</span>
+                    </>
+                  ),
+                },
+                {
+                  value: "map",
+                  label: (
+                    <>
+                      <MapIcon aria-hidden="true" className="size-4" />
+                      <span className="max-sm:sr-only">{t("viewMap")}</span>
+                    </>
+                  ),
+                },
+              ]}
             />
             {isModerator ? (
               <Button
@@ -325,6 +349,8 @@ export function StartupsDirectory({
           title={emptyCatalog ? t("empty") : t("emptyFiltered")}
           description={emptyCatalog ? t("emptyHelp") : undefined}
         />
+      ) : isMap ? (
+        <StartupsDirectoryMap companies={filtered} locale={locale} />
       ) : (
         <StartupsDirectoryTable
           companies={pagination.items}
@@ -351,13 +377,15 @@ export function StartupsDirectory({
         />
       )}
 
-      <StartupsPagination
-        query={{ ...query, page: pagination.page }}
-        totalPages={pagination.totalPages}
-        prevLabel={t("paginationPrev")}
-        nextLabel={t("paginationNext")}
-        navLabel={t("paginationLabel")}
-      />
+      {isMap ? null : (
+        <StartupsPagination
+          query={{ ...query, page: pagination.page }}
+          totalPages={pagination.totalPages}
+          prevLabel={t("paginationPrev")}
+          nextLabel={t("paginationNext")}
+          navLabel={t("paginationLabel")}
+        />
+      )}
 
       {isModerator ? (
         <StartupsSubmitDialog

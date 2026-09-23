@@ -169,8 +169,12 @@ export type StartupDirectoryFilters = {
   sort?: StartupSort;
 };
 
+/** How the directory shows results. Not a filter: it never narrows rows. */
+export type StartupDirectoryView = "table" | "map";
+
 export type StartupDirectoryQuery = StartupDirectoryFilters & {
   page: number;
+  view?: StartupDirectoryView;
 };
 
 export const STARTUP_SORT_IDS = [
@@ -952,6 +956,7 @@ export function parseStartupDirectoryQuery(raw: {
   hiring?: string | string[];
   sort?: string | string[];
   page?: string | string[] | number;
+  view?: string | string[];
 }): StartupDirectoryQuery {
   const q = firstParam(raw.q)?.trim() ?? "";
   const category = parseStartupCategory(firstParam(raw.category)) ?? "all";
@@ -968,7 +973,9 @@ export function parseStartupDirectoryQuery(raw: {
         ? Math.floor(raw.page)
         : 1
       : parseStartupPage(raw.page);
-  return { q, category, region, stage, status, hiring, sort, page };
+  const view: StartupDirectoryView =
+    firstParam(raw.view) === "map" ? "map" : "table";
+  return { q, category, region, stage, status, hiring, sort, page, view };
 }
 
 export function applyStartupDirectoryQuery(
@@ -1083,7 +1090,9 @@ export function buildStartupDirectoryPath(
   }
   if (parsed.hiring === "hiring") params.set("hiring", "1");
   if (parsed.sort && parsed.sort !== "newest") params.set("sort", parsed.sort);
-  if (parsed.page > 1) params.set("page", String(parsed.page));
+  // The map shows every match at once, so it has no pages.
+  if (parsed.view === "map") params.set("view", "map");
+  else if (parsed.page > 1) params.set("page", String(parsed.page));
   const qs = params.toString();
   return qs ? `${STARTUPS_PATH}?${qs}` : STARTUPS_PATH;
 }
@@ -1106,6 +1115,7 @@ export function startupDirectoryCanonicalPath(
   query: StartupDirectoryQuery,
 ): string {
   if (startupDirectoryHasFilters(query)) return STARTUPS_PATH;
+  if (query.view === "map") return STARTUPS_PATH;
   if (query.page > 1) return `${STARTUPS_PATH}?page=${query.page}`;
   return STARTUPS_PATH;
 }
