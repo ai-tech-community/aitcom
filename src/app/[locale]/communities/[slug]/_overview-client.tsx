@@ -82,7 +82,6 @@ export function CommunityOverviewPageClient({
 
       <FeedPage
         slug={slug}
-        communityDescription={community?.description}
         memberRole={memberRole}
         currentUserId={user?.id}
         feedPostPolicy={community?.feedPostPolicy ?? "all_members"}

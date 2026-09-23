@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  upcomingEvents,
   DEFAULT_EVENT_TIMEZONE,
   eventWallTimeToUtc,
   formatEventIsoWithOffset,
@@ -357,5 +358,44 @@ describe("formatEventIsoWithOffset", () => {
     expect(
       formatEventIsoWithOffset("not-a-date", "18:00", "Europe/Amsterdam"),
     ).toBe("not-a-dateT18:00:00");
+  });
+});
+
+describe("upcomingEvents", () => {
+  // 22:30 UTC = 00:30 on the 24th in Amsterdam (CEST), 18:30 on the 23rd in New York.
+  const now = new Date("2026-09-23T22:30:00.000Z");
+
+  it("keeps today and later, soonest first, and drops past events", () => {
+    expect(
+      upcomingEvents(
+        [
+          { id: "later", date: "2026-10-05T00:00:00.000Z", timezone: "UTC" },
+          { id: "past", date: "2026-09-01T00:00:00.000Z", timezone: "UTC" },
+          { id: "today", date: "2026-09-23T00:00:00.000Z", timezone: "UTC" },
+        ],
+        now,
+      ).map((event) => event.id),
+    ).toEqual(["today", "later"]);
+  });
+
+  it("judges today in the event's own zone", () => {
+    // Already the 24th in Amsterdam, so an event there on the 23rd is past.
+    expect(
+      upcomingEvents(
+        [{ id: "ams", date: "2026-09-23", timezone: "Europe/Amsterdam" }],
+        now,
+      ),
+    ).toEqual([]);
+    // …but still the 23rd in New York.
+    expect(
+      upcomingEvents(
+        [{ id: "nyc", date: "2026-09-23", timezone: "America/New_York" }],
+        now,
+      ).map((event) => event.id),
+    ).toEqual(["nyc"]);
+  });
+
+  it("drops rows without a usable date", () => {
+    expect(upcomingEvents([{ date: "soon" }], now)).toEqual([]);
   });
 });

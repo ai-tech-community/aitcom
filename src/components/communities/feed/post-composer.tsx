@@ -32,6 +32,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
       setContent("");
       setImageUrl(null);
       void utils.feed.getFeed.invalidate();
+      void utils.feed.getActivity.invalidate({ communitySlug: slug });
     },
     onError: () => {
       toast.error(t("toastCreateError"));
@@ -130,7 +131,8 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
             {t("addImage")}
           </Button>
 
-          {topics && topics.length > 0 ? (
+          {/* One topic is no choice; the select appears once there are two. */}
+          {topics && topics.length > 1 ? (
             <select
               value={topicSlug}
               onChange={(e) => setTopicSlug(e.target.value)}

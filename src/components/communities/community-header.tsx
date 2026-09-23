@@ -51,6 +51,15 @@ export function CommunityHeader({
                 ) : null}
               </div>
 
+              {community.description ? (
+                <p
+                  data-community-tagline=""
+                  className="text-muted-foreground line-clamp-2 max-w-2xl text-sm leading-relaxed sm:text-base"
+                >
+                  {community.description}
+                </p>
+              ) : null}
+
               <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
                 <Users className="size-4" />
                 <span>

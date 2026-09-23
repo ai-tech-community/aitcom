@@ -2,14 +2,12 @@
 
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
-import { formatEventTimeRange } from "@/lib/event-time";
+import { formatEventTimeRange, upcomingEvents } from "@/lib/event-time";
 import { Badge } from "@/components/ui/badge";
-import { RelativeTime } from "@/components/ui/relative-time";
 import { SectionLabel } from "@/components/ui/section-label";
-import { Skeleton as UiSkeleton } from "@/components/ui/skeleton";
-import { EmptyState as UiEmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "@/i18n/navigation";
-import { MessageSquare, Calendar, ChevronUp } from "lucide-react";
+import { Calendar, ChevronUp } from "lucide-react";
 
 const typeLabels: Record<string, string> = {
   workshop: "WORKSHOP",
@@ -25,66 +23,52 @@ function formatDate(dateStr: string): string {
 
 interface CommunitySidebarProps {
   slug: string;
-  description?: string | null;
 }
 
-export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
+/**
+ * Supporting context beside the feed: who is here, links, what is coming
+ * up, and the ideas members back most. Discussions live in the feed itself.
+ * Sections with nothing to show are left out rather than saying "none".
+ */
+export function CommunitySidebar({ slug }: CommunitySidebarProps) {
   const t = useTranslations("communities.profile");
 
-  const {
-    data: threadsData,
-    isLoading: threadsLoading,
-    isError: threadsError,
-  } = api.forum.getThreads.useQuery({
+  const { data: eventsData, isLoading: eventsLoading } =
+    api.events.getCommunityEvents.useQuery({ communitySlug: slug });
+  const { data: ideasData } = api.forum.getIdeas.useQuery({
     communitySlug: slug,
-    sort: "lastActive",
-    limit: 3,
+    sort: "votes",
   });
-
-  const {
-    data: eventsData,
-    isLoading: eventsLoading,
-    isError: eventsError,
-  } = api.events.getCommunityEvents.useQuery({ communitySlug: slug });
-
-  const {
-    data: ideasData,
-    isLoading: ideasLoading,
-    isError: ideasError,
-  } = api.forum.getIdeas.useQuery({ communitySlug: slug, sort: "votes" });
-
   const { data: links } = api.links.list.useQuery({ communitySlug: slug });
   const { data: community } = api.communities.getBySlug.useQuery({ slug });
 
-  const threads = (threadsData?.threads ?? []).slice(0, 3);
-  const events = (eventsData ?? []).slice(0, 3);
-  const ideas = (ideasData ?? []).slice(0, 3);
+  const events = upcomingEvents(eventsData ?? []).slice(0, 3);
+  const ideas = (ideasData ?? [])
+    .filter((idea) => (idea.voteCount ?? 0) > 0)
+    .slice(0, 3);
+  const active = community?.liveness?.activeContributors ?? 0;
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Stats */}
       {community ? (
-        <section>
-          <SectionHeader title="Stats" />
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <Stat value={community.memberCount} label={t("members")} />
-            {"adminCount" in community ? (
-              <Stat
-                value={(community as { adminCount: number }).adminCount}
-                label={t("admins")}
-              />
+        <section data-sidebar-section="about">
+          <SectionHeader title={t("members")} />
+          <p className="mt-3 text-sm">
+            <span className="font-medium">
+              {t("membersSentence", { count: community.memberCount })}
+            </span>
+            {active > 0 ? (
+              <span className="text-muted-foreground">
+                {" · "}
+                {t("activeSentence", { count: active })}
+              </span>
             ) : null}
-            <Stat
-              value={community.liveness?.activeContributors ?? 0}
-              label={t("activeThisWeek")}
-            />
-          </div>
+          </p>
         </section>
       ) : null}
 
-      {/* Links */}
       {links && links.length > 0 ? (
-        <section>
+        <section data-sidebar-section="links">
           <SectionHeader title={t("links")} />
           <div className="mt-3 space-y-1">
             {links.map((link) => (
@@ -109,162 +93,80 @@ export function CommunitySidebar({ slug, description }: CommunitySidebarProps) {
         </section>
       ) : null}
 
-      {/* About */}
-      {description ? (
-        <section>
-          <SectionHeader title="About" />
-          <p className="text-muted-foreground mt-4 text-sm leading-relaxed whitespace-pre-wrap">
-            {description}
-          </p>
-        </section>
-      ) : null}
-
-      {/* Upcoming Events */}
-      {eventsError ? null : (
-        <section>
+      {eventsLoading ? (
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-14 rounded-lg" />
+        </div>
+      ) : events.length > 0 ? (
+        <section data-sidebar-section="events">
           <SectionHeader
             title={t("upcomingEvents")}
             linkHref={`/communities/${slug}/events`}
             linkLabel={t("viewAll")}
-            show={events.length > 0}
           />
-          {eventsLoading ? (
-            <Skeleton count={2} />
-          ) : events.length === 0 ? (
-            <EmptyState>{t("noEventsYet")}</EmptyState>
-          ) : (
-            <div className="mt-3 space-y-1">
-              {events.map((event) => (
-                <Link
-                  key={event.id}
-                  href={`/events/${event.slug}` as never}
-                  className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
-                >
-                  <Calendar className="text-muted-foreground size-4 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {event.title}
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                      {formatDate(event.date)}
-                      {event.startTime &&
-                        ` · ${formatEventTimeRange({
-                          date: event.date,
-                          startTime: event.startTime,
-                          endTime: event.endTime,
-                          timezone: event.timezone,
-                        })}`}
-                      {event.location && ` · ${event.location}`}
-                    </p>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="shrink-0 text-xs uppercase"
-                  >
-                    {typeLabels[event.type] ?? event.type}
-                  </Badge>
-                </Link>
-              ))}
-            </div>
-          )}
+          <div className="mt-3 space-y-1">
+            {events.map((event) => (
+              <Link
+                key={event.id}
+                href={`/events/${event.slug}` as never}
+                className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
+              >
+                <Calendar className="text-muted-foreground size-4 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{event.title}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {formatDate(event.date)}
+                    {event.startTime &&
+                      ` · ${formatEventTimeRange({
+                        date: event.date,
+                        startTime: event.startTime,
+                        endTime: event.endTime,
+                        timezone: event.timezone,
+                      })}`}
+                    {event.location && ` · ${event.location}`}
+                  </p>
+                </div>
+                <Badge variant="outline" className="shrink-0 text-xs uppercase">
+                  {typeLabels[event.type] ?? event.type}
+                </Badge>
+              </Link>
+            ))}
+          </div>
         </section>
-      )}
+      ) : null}
 
-      {/* Recent Threads */}
-      {threadsError ? null : (
-        <section>
-          <SectionHeader
-            title={t("recentThreads")}
-            linkHref={`/communities/${slug}/forum`}
-            linkLabel={t("viewAll")}
-            show={threads.length > 0}
-          />
-          {threadsLoading ? (
-            <Skeleton count={3} />
-          ) : threads.length === 0 ? (
-            <EmptyState>{t("noThreadsYet")}</EmptyState>
-          ) : (
-            <div className="mt-3 space-y-1">
-              {threads.map((thread) => (
-                <Link
-                  key={thread.id}
-                  href={`/communities/${slug}/forum/${thread.slug}` as never}
-                  className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
-                >
-                  <MessageSquare className="text-muted-foreground size-4 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {thread.title}
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                      {thread.authorName} ·{" "}
-                      <RelativeTime
-                        date={thread.lastActivityAt ?? thread.createdAt}
-                        className="text-xs"
-                      />
-                      {(thread.replyCount ?? 0) > 0 &&
-                        ` · ${t("replies", { count: thread.replyCount ?? 0 })}`}
-                    </p>
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className="shrink-0 text-xs uppercase"
-                  >
-                    {thread.category}
-                  </Badge>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Top Ideas */}
-      {ideasError ? null : (
-        <section>
+      {ideas.length > 0 ? (
+        <section data-sidebar-section="ideas">
           <SectionHeader
             title={t("topIdeas")}
             linkHref={`/communities/${slug}/ideas`}
             linkLabel={t("viewAll")}
-            show={ideas.length > 0}
           />
-          {ideasLoading ? (
-            <Skeleton count={3} />
-          ) : ideas.length === 0 ? (
-            <EmptyState>{t("noIdeasYet")}</EmptyState>
-          ) : (
-            <div className="mt-3 space-y-1">
-              {ideas.map((idea) => (
-                <div
-                  key={idea.id}
-                  className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
-                >
-                  <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
-                    <ChevronUp className="text-muted-foreground size-3" />
-                    <span className="font-mono text-xs font-semibold">
-                      {idea.voteCount ?? 0}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{idea.title}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {idea.authorName}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      idea.status === "implemented" ? "default" : "secondary"
-                    }
-                    className="shrink-0 text-xs uppercase"
-                  >
-                    {idea.status}
-                  </Badge>
+          <div className="mt-3 space-y-1">
+            {ideas.map((idea) => (
+              <Link
+                key={idea.id}
+                href={`/communities/${slug}/ideas` as never}
+                className="border-border hover:bg-secondary/50 flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors"
+              >
+                <div className="flex shrink-0 flex-col items-center gap-0.5 px-1">
+                  <ChevronUp className="text-muted-foreground size-3" />
+                  <span className="font-mono text-xs font-semibold">
+                    {idea.voteCount ?? 0}
+                  </span>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{idea.title}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {idea.authorName}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
         </section>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -273,17 +175,15 @@ function SectionHeader({
   title,
   linkHref,
   linkLabel,
-  show = true,
 }: {
   title: string;
   linkHref?: string;
   linkLabel?: string;
-  show?: boolean;
 }) {
   return (
     <div className="border-border flex items-center justify-between border-b pb-2">
       <SectionLabel bordered={false}>{title}</SectionLabel>
-      {show && linkHref && linkLabel ? (
+      {linkHref && linkLabel ? (
         <Link
           href={linkHref as never}
           className="text-muted-foreground hover:text-foreground font-mono text-xs tracking-wider transition-colors"
@@ -293,29 +193,4 @@ function SectionHeader({
       ) : null}
     </div>
   );
-}
-
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="border-border rounded-lg border px-2 py-3">
-      <div className="text-lg font-semibold">{value}</div>
-      <div className="text-muted-foreground text-xs tracking-wider uppercase">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-function Skeleton({ count }: { count: number }) {
-  return (
-    <div className="mt-3 space-y-2">
-      {Array.from({ length: count }).map((_, i) => (
-        <UiSkeleton key={i} className="h-14 rounded-lg" />
-      ))}
-    </div>
-  );
-}
-
-function EmptyState({ children }: { children: React.ReactNode }) {
-  return <UiEmptyState title={children} className="px-0 py-6" />;
 }

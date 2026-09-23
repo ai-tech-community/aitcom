@@ -63,7 +63,8 @@ export function TopicChips({
     communitySlug: slug,
   });
   if (isError) return null; // supplementary widget — may stay absent on error (No-Silent-Failure)
-  if (!topics || topics.length === 0) return null;
+  // "All" plus a single topic filters nothing; show chips from two topics up.
+  if (!topics || topics.length < 2) return null;
   return (
     <TopicChipsView
       topics={topics as TopicChip[]}

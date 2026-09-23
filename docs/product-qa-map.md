@@ -386,17 +386,36 @@ Payload tables from `20260326_community_feed_schema` (and later).
 **no** `/feed` route.
 
 **Code:** `src/server/api/routers/feed.ts`,
+`src/server/communities/activity-feed.ts`,
+`src/lib/community-activity.ts`,
 `src/components/communities/feed/feed-page.tsx`, Payload
 `feed-posts`. MCP: `src/app/api/mcp/feed-tools.ts`.
 
 ### How it works
 
-`getFeed` / `createPost` are **protected** and require an
-**active** `community_membership`. `feedPostPolicy` is
-`all_members` or `admins_only`. Posts log `feed.post_created`.
+The Overview is one activity stream (`feed.getActivity`): posts,
+forum threads, ideas, published events, and member joins, merged
+newest first with an exclusive `(at, key)` cursor. It reads the
+content tables, **not** `activity_event` (the log misses most
+history: posts before June 2026, threads logged without a
+`communityId`). Deleted posts/threads, unpublished events, and
+inactive memberships never appear. Neighbouring joins fold into one
+"N joined" row; the Hub (`ait`) shows no joins. Pinned posts ride on
+the first page and are left out of the stream.
 
-The query is `enabled` only when authenticated **and** a member.
-Non-members see the chrome without data.
+Picking a topic chip switches to posts only (`getFeed`, keyset cursor).
+Chips and the composer's topic select show only when a community has
+two or more topics.
+
+`getActivity`, `getFeed`, and `createPost` are **protected** and
+require an **active** `community_membership`
+(`requireActiveFeedMember`). `feedPostPolicy` is `all_members` or
+`admins_only`. Posts log `feed.post_created`.
+
+The queries are `enabled` only when authenticated **and** a member.
+Non-members see the chrome without data. The sidebar shows members,
+links, upcoming events (event-local "today" or later), and top ideas
+with votes; empty sections are left out.
 
 ### Works when
 
