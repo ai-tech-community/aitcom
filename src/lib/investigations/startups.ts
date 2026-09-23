@@ -410,8 +410,8 @@ export function startupProfileJsonLd(
   if (description) item.description = description;
   const logo = displayStartupLogoUrl(card.logoUrl);
   if (logo) item.logo = logo;
-  const sources = displayStartupSources(card.sources);
-  if (sources.length > 0) item.sameAs = sources;
+  const sameAs = startupOrganizationSameAs(card.sources);
+  if (sameAs.length > 0) item.sameAs = sameAs;
   return item;
 }
 
@@ -689,6 +689,36 @@ function startupSourceHost(
   } catch {
     return null;
   }
+}
+
+/**
+ * schema.org `sameAs` is an official identity profile. LinkedIn company
+ * pages and member profiles qualify. eu-startups.com directory listings
+ * stay in `sources` for citation chips and are never identity.
+ * Empty means omit `sameAs`.
+ */
+function startupOrganizationSameAs(
+  sources: readonly string[] | null | undefined,
+): string[] {
+  return displayStartupSources(sources).filter(isOfficialStartupIdentityUrl);
+}
+
+function isOfficialStartupIdentityUrl(href: string): boolean {
+  const parsed = startupSourceHost(href);
+  if (!parsed) return false;
+  if (isEuStartupsDirectoryHost(parsed.host)) return false;
+  return isLinkedinIdentityUrl(parsed.host, parsed.path);
+}
+
+function isEuStartupsDirectoryHost(host: string): boolean {
+  return host === "eu-startups.com" || host.endsWith(".eu-startups.com");
+}
+
+/** LinkedIn company page or public profile. Not posts, feed, or the bare host. */
+function isLinkedinIdentityUrl(host: string, path: string): boolean {
+  if (host !== "linkedin.com") return false;
+  const [kind, slug] = path.split("/").filter(Boolean);
+  return (kind === "company" || kind === "in") && Boolean(slug);
 }
 
 function isCursorJoiningSpacexSource(host: string, path: string): boolean {
@@ -1213,8 +1243,8 @@ export function startupsDirectoryJsonLd(
       };
       const description = sanitizeStartupDescription(card.description);
       if (description) item.description = description;
-      const sources = displayStartupSources(card.sources);
-      if (sources.length > 0) item.sameAs = sources;
+      const sameAs = startupOrganizationSameAs(card.sources);
+      if (sameAs.length > 0) item.sameAs = sameAs;
       // Organization only — never Person nodes or invented founder images.
       return {
         "@type": "ListItem",
