@@ -4360,6 +4360,36 @@ export const startupRoleApplications = appSchema.table(
   (t) => [primaryKey({ columns: [t.userId, t.roleId] })],
 );
 
+/** Forum question a member posted while asking one community for help on a tracked role. */
+export const startupRoleHelp = appSchema.table(
+  "startup_role_help",
+  (d) => ({
+    userId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    roleId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => startupRoles.id, { onDelete: "cascade" }),
+    communityId: d
+      .varchar({ length: 255 })
+      .notNull()
+      .references(() => communities.id, { onDelete: "cascade" }),
+    note: d.text().notNull(),
+    classroomTitle: d.text().notNull().default(""),
+    classroomSlug: d.text().notNull().default(""),
+    threadId: d.integer().notNull(),
+    threadSlug: d.text().notNull(),
+    createdAt: d
+      .timestamp({ withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: d.timestamp({ withTimezone: true }),
+  }),
+  (t) => [primaryKey({ columns: [t.userId, t.roleId, t.communityId] })],
+);
+
 /** Private extracted CV text for member startup applications. One row per user. */
 export const startupMemberCvs = appSchema.table("startup_member_cv", (d) => ({
   userId: d
