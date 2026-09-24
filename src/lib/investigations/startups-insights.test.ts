@@ -19,7 +19,6 @@ import {
   isStartupInsightsTab,
   startupInsightsOgSpec,
   startupInsightsShareFacts,
-  startupInsightsShareLines,
   type StartupsInsightsStats,
 } from "./startups-insights";
 
@@ -30,7 +29,7 @@ function insightsT(locale: StartupLocale) {
     namespace: "investigationsStartups",
   });
   return (key: string, values?: Record<string, string | number>) =>
-    translator(key as "shareHero", values);
+    translator(key as "shareOgKicker", values);
 }
 
 function card(overrides: Partial<StartupPublicCard> = {}): StartupPublicCard {
@@ -281,16 +280,14 @@ function shareStats(
   };
 }
 
-describe("startup insights share card", () => {
+describe("startup insights Open Graph", () => {
   it("formats Open Graph from live hiring counts", () => {
-    const facts = startupInsightsShareFacts(shareStats(), "en");
-    expect(facts).toMatchObject({
+    const facts = startupInsightsShareFacts(shareStats());
+    expect(facts).toEqual({
       companies: 8172,
       hiringCompanies: 460,
       roles: 3635,
       rolesCapped: true,
-      mapLeaders: { first: "Israel", second: "the US" },
-      categoryLead: "Vertical",
     });
     const spec = startupInsightsOgSpec(facts);
     const t = insightsT("en");
@@ -301,15 +298,9 @@ describe("startup insights share card", () => {
     expect(t(spec!.descriptionKey, spec!.descriptionValues)).toBe(
       "Live from the AIT directory: 8,172 AI companies, 460 hiring, at least 3,635 open roles. Nothing estimated.",
     );
-    const lines = startupInsightsShareLines(facts);
-    expect(lines.map((line) => t(line.key, line.values))).toEqual([
-      "8,172 AI companies listed — with country and what they build.",
-      "460 are hiring now — at least 3,635 open roles on the board.",
-      "Israel and the US hold most of the map; Vertical leads what they build.",
-    ]);
   });
 
-  it("drops at least when the role count is exact, and omits a tied category", () => {
+  it("drops at least when the role count is exact", () => {
     const facts = startupInsightsShareFacts(
       shareStats({
         hiring: {
@@ -319,41 +310,18 @@ describe("startup insights share card", () => {
           bands: [],
           top: [],
         },
-        categories: [
-          { id: "vertical", label: "Vertical", count: 4, hiring: 1 },
-          { id: "models", label: "Models", count: 4, hiring: 1 },
-        ],
-        countries: null,
       }),
-      "en",
     );
-    expect(facts.mapLeaders).toBeNull();
-    expect(facts.categoryLead).toBeNull();
     const spec = startupInsightsOgSpec(facts)!;
     expect(insightsT("en")(spec.descriptionKey, spec.descriptionValues)).toBe(
       "Live from the AIT directory: 8,172 AI companies, 2 hiring, 5 open roles. Nothing estimated.",
     );
-    expect(startupInsightsShareLines(facts).map((line) => line.id)).toEqual([
-      "listed",
-      "hiring",
-    ]);
   });
 
-  it("omits the map line unless the top two countries are a majority", () => {
+  it("leaves hiring out of the title when nobody is hiring", () => {
     const facts = startupInsightsShareFacts(
       shareStats({
         total: 6,
-        countries: {
-          rows: [
-            { country: "Israel", count: 1 },
-            { country: "United States", count: 1 },
-            { country: "France", count: 1 },
-            { country: "Germany", count: 1 },
-            { country: "Japan", count: 1 },
-          ],
-          other: { companies: 1, countries: 1 },
-          unplaced: 0,
-        },
         hiring: {
           companies: 0,
           roles: 0,
@@ -362,32 +330,17 @@ describe("startup insights share card", () => {
           top: [],
         },
       }),
-      "nl",
     );
-    expect(facts.mapLeaders).toBeNull();
-    expect(facts.categoryLead).toBe("Vertical");
     const spec = startupInsightsOgSpec(facts)!;
     expect(spec.titleKey).toBe("shareOgTitleNoHiring");
     expect(insightsT("nl")(spec.titleKey, spec.titleValues)).toBe(
       "AI-startups inzichten — 6 bedrijven",
     );
-    expect(
-      startupInsightsShareLines(facts).map((line) =>
-        insightsT("nl")(line.key, line.values),
-      ),
-    ).toEqual([
-      "6 AI-bedrijven vermeld — met land en wat ze bouwen.",
-      "Vertical leidt in wat ze bouwen.",
-    ]);
   });
 
-  it("keeps an empty directory off the share card and off counted Open Graph", () => {
-    const facts = startupInsightsShareFacts(
-      buildStartupInsights([], "en"),
-      "en",
-    );
+  it("keeps an empty directory off counted Open Graph", () => {
+    const facts = startupInsightsShareFacts(buildStartupInsights([], "en"));
     expect(facts.companies).toBe(0);
-    expect(startupInsightsShareLines(facts)).toEqual([]);
     expect(startupInsightsOgSpec(facts)).toBeNull();
   });
 });

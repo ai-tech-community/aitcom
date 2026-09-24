@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 import { Link } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionLabel } from "@/components/ui/section-label";
 import {
@@ -16,17 +15,12 @@ import { STARTUP_ROLES_PER_COMPANY_CAP } from "@/lib/investigations/startup-role
 import {
   STARTUP_EXIT_STATUS_LABELS,
   STARTUP_EXIT_STATUS_IDS,
-  STARTUPS_INSIGHTS_PATH,
   STARTUPS_JOBS_PATH,
   buildStartupDirectoryPath,
   buildStartupProfilePath,
   type StartupLocale,
 } from "@/lib/investigations/startups";
-import {
-  startupInsightsShareLines,
-  startupInsightsShareFacts,
-  type StartupsInsightsStats,
-} from "@/lib/investigations/startups-insights";
+import { type StartupsInsightsStats } from "@/lib/investigations/startups-insights";
 
 export type StartupsInsightsKey =
   | "insightsLedeCompanies"
@@ -68,15 +62,6 @@ export type StartupsInsightsKey =
   | "sectionHiring"
   | "empty"
   | "emptyHelp"
-  | "shareHero"
-  | "shareSub"
-  | "shareProofListed"
-  | "shareProofHiring"
-  | "shareProofMap"
-  | "shareProofMapOnly"
-  | "shareProofCategory"
-  | "shareSeeInsights"
-  | "shareOpenPositions"
   | "shareOgKicker"
   | "shareOgTitle"
   | "shareOgTitleNoHiring"
@@ -87,69 +72,6 @@ export type StartupsInsightsT = (
   key: StartupsInsightsKey,
   values?: Record<string, string | number>,
 ) => string;
-
-/**
- * Share card for the public Insights page. Proof lines and the counts in
- * them come from `startupInsightsShareFacts` (the same aggregate as the
- * charts). A line with nothing sourced is omitted.
- */
-export function StartupsInsightsShareCard({
-  stats,
-  locale,
-  t,
-  shareUrl,
-}: {
-  stats: StartupsInsightsStats;
-  locale: StartupLocale;
-  t: StartupsInsightsT;
-  /** Absolute www Insights URL. Rendered for share targets, never a Hub path. */
-  shareUrl?: string;
-}) {
-  const facts = startupInsightsShareFacts(stats, locale);
-  const lines = startupInsightsShareLines(facts);
-  if (lines.length === 0) return null;
-
-  return (
-    <aside
-      aria-labelledby="insights-share-hero"
-      data-startups-insights-share=""
-      data-insights-share-url={shareUrl}
-      className="border-border bg-background max-w-3xl rounded-xl border p-6 sm:p-8"
-    >
-      <h2
-        id="insights-share-hero"
-        className="text-2xl font-semibold tracking-tight text-balance sm:text-3xl"
-      >
-        {t("shareHero")}
-      </h2>
-      <p className="text-muted-foreground mt-2 max-w-2xl text-base leading-relaxed">
-        {t("shareSub")}
-      </p>
-      <ul className="mt-6 flex flex-col gap-3">
-        {lines.map((line) => (
-          <li
-            key={line.id}
-            data-insights-share-proof={line.id}
-            className="border-border rounded-lg border px-4 py-3 text-sm leading-relaxed"
-          >
-            {emphasizeNumbers(t(line.key, line.values))}
-          </li>
-        ))}
-      </ul>
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <Button asChild variant="outline" size="sm">
-          <Link href={STARTUPS_INSIGHTS_PATH}>{t("shareSeeInsights")}</Link>
-        </Button>
-        <span aria-hidden="true" className="text-muted-foreground text-sm">
-          →
-        </span>
-        <Button asChild variant="outline" size="sm">
-          <Link href={STARTUPS_JOBS_PATH}>{t("shareOpenPositions")}</Link>
-        </Button>
-      </div>
-    </aside>
-  );
-}
 
 /**
  * Insights as a short read: one sentence of headline counts, then one
