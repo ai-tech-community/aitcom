@@ -49,6 +49,7 @@ export function ReportDialog({
           onOpenChange(false);
           void utils.feed.getActivity.invalidate();
           void utils.feed.getFeed.invalidate();
+          void utils.feed.getReels.invalidate();
         },
         onError: (error) =>
           toast.error(

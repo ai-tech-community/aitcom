@@ -32,6 +32,7 @@ export function ReelSlide({
   reel,
   position,
   loadVideo,
+  isCurrent,
   canReport,
   likePending,
   onLike,
@@ -46,6 +47,11 @@ export function ReelSlide({
   position: { current: number; total: number };
   /** Mount a real video element (the current reel and the next one). */
   loadVideo: boolean;
+  /**
+   * The reel on screen buffers fully; the next one fetches only its metadata,
+   * so scrolling past it never costs a whole file.
+   */
+  isCurrent: boolean;
   canReport: boolean;
   likePending: boolean;
   onLike: () => void;
@@ -77,7 +83,7 @@ export function ReelSlide({
       {video && loadVideo ? (
         <FeedVideoPlayer
           video={video}
-          preload="auto"
+          preload={isCurrent ? "auto" : "metadata"}
           onExpired={onVideoExpired}
           className={fit}
         />

@@ -8,6 +8,7 @@ import { FeedVideoPlayer } from "./feed-video-player";
 let visible: (ratio: number) => void = () => undefined;
 const play = vi.fn().mockResolvedValue(undefined);
 const pause = vi.fn();
+const load = vi.fn();
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -28,11 +29,16 @@ beforeEach(() => {
     configurable: true,
     value: pause,
   });
+  Object.defineProperty(HTMLMediaElement.prototype, "load", {
+    configurable: true,
+    value: load,
+  });
 });
 afterEach(() => {
   vi.unstubAllGlobals();
   play.mockClear();
   pause.mockClear();
+  load.mockClear();
 });
 
 const video = {
@@ -41,7 +47,7 @@ const video = {
   durationSeconds: 12,
   width: 720,
   height: 1280,
-  visibility: "public" as const,
+  visibility: "community" as const,
 };
 
 function renderPlayer(
@@ -129,6 +135,34 @@ describe("FeedVideoPlayer", () => {
     const { container } = renderPlayer(false, { onExpired });
     fireEvent.error(container.querySelector("video")!);
     await act(async () => undefined);
+    expect(screen.queryByText("Video unavailable.")).not.toBeInTheDocument();
+  });
+
+  it("shows unavailable at once for a public video (its link never changes)", () => {
+    const onExpired = vi.fn();
+    const { container } = renderPlayer(false, {
+      onExpired,
+      video: { ...video, visibility: "public" },
+    });
+    fireEvent.error(container.querySelector("video")!);
+    expect(onExpired).not.toHaveBeenCalled();
+    expect(screen.getByText("Video unavailable.")).toBeInTheDocument();
+  });
+
+  it("tries again from unavailable: reloads and may ask for a fresh link once more", () => {
+    const onExpired = vi.fn();
+    const { container } = renderPlayer(false, { onExpired });
+    const el = container.querySelector("video")!;
+    fireEvent.error(el);
+    fireEvent.error(el);
+    expect(screen.getByText("Video unavailable.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(screen.queryByText("Video unavailable.")).not.toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(1);
+
+    fireEvent.error(el);
+    expect(onExpired).toHaveBeenCalledTimes(2);
     expect(screen.queryByText("Video unavailable.")).not.toBeInTheDocument();
   });
 

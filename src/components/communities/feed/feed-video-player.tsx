@@ -40,12 +40,16 @@ function prefersReducedMotion() {
  *   screens). Once the viewer pauses, scrolling back does not restart it.
  * - Tapping the video toggles sound.
  * - `preload` defaults to "metadata" (the feed fetches almost nothing until
- *   the video plays). Reels passes "auto" so the next video buffers ahead.
- * - A private playback link expires after an hour. On a load error the player
- *   asks the caller once for a fresh link through `onExpired`; a second error
- *   in a row shows "Video unavailable". A caller that answers with a promise
- *   says whether a fresh link is coming: `false` (or a rejection) shows
- *   "Video unavailable" at once, since no second error would ever fire.
+ *   the video plays). Reels passes "auto" for the reel on screen only.
+ * - A private playback link expires. On a load error the player asks the
+ *   caller once for a fresh link through `onExpired`; a second error in a row
+ *   shows "Video unavailable". A caller that answers with a promise says
+ *   whether a fresh link is coming: `false` (or a rejection) shows "Video
+ *   unavailable" at once, since no second error would ever fire. A public
+ *   video's link never changes, so its error shows "Video unavailable" at
+ *   once without asking.
+ * - "Video unavailable" offers Try again: it reloads the video and allows one
+ *   more fresh-link request.
  */
 export function FeedVideoPlayer({
   video,
@@ -59,6 +63,7 @@ export function FeedVideoPlayer({
   preload?: "metadata" | "auto";
 }) {
   const t = useTranslations("communities.report");
+  const tVideo = useTranslations("communities.video");
   const ref = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [reduced, setReduced] = useState(false);
@@ -116,7 +121,10 @@ export function FeedVideoPlayer({
   const bigPlay = reduced && !playing;
 
   function handleError() {
-    if (!askedForFreshLink.current && onExpired) {
+    // A public link is stable: asking for a "fresh" one returns the same URL
+    // and nothing would reload.
+    const linkCanChange = video.visibility !== "public";
+    if (linkCanChange && !askedForFreshLink.current && onExpired) {
       askedForFreshLink.current = true;
       const failedLink = video.url;
       const answer = onExpired();
@@ -131,6 +139,12 @@ export function FeedVideoPlayer({
       return;
     }
     setFailedUrl(video.url);
+  }
+
+  function retry() {
+    askedForFreshLink.current = false;
+    setFailedUrl(null);
+    ref.current?.load();
   }
 
   return (
@@ -161,12 +175,12 @@ export function FeedVideoPlayer({
         className="size-full cursor-pointer object-cover"
       />
       {failed ? (
-        <p
-          role="status"
-          className="bg-background/80 text-foreground absolute inset-0 flex items-center justify-center text-sm"
-        >
-          {t("unavailable")}
-        </p>
+        <div className="bg-background/80 text-foreground absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm">
+          <p role="status">{t("unavailable")}</p>
+          <Button type="button" variant="secondary" size="sm" onClick={retry}>
+            {tVideo("retry")}
+          </Button>
+        </div>
       ) : null}
       {failed ? null : (
         <Button

@@ -225,7 +225,7 @@ describe("ReelsViewer", () => {
       screen
         .getAllByTestId("player")
         .map((p) => p.getAttribute("data-preload")),
-    ).toEqual(["auto", "auto"]);
+    ).toEqual(["auto", "metadata"]);
     fireEvent.keyDown(screen.getByRole("dialog", { name: "Reels" }), {
       key: "ArrowDown",
     });

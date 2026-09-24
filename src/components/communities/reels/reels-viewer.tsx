@@ -340,6 +340,7 @@ export function ReelsViewer({
             reel={reel}
             position={{ current: i + 1, total: items.length }}
             loadVideo={i === index || i === index + 1}
+            isCurrent={i === index}
             canReport={
               !!currentUserId &&
               reel.authorId !== currentUserId &&

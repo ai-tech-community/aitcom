@@ -4,13 +4,22 @@ import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../../messages/en.json";
 
-const mutate = vi.fn();
+const { mutate, invalidate } = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  invalidate: {
+    getActivity: vi.fn(),
+    getFeed: vi.fn(),
+    getReels: vi.fn(),
+  },
+}));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/trpc/react", () => ({
   api: {
     useUtils: () => ({
       feed: {
-        getActivity: { invalidate: vi.fn() },
-        getFeed: { invalidate: vi.fn() },
+        getActivity: { invalidate: invalidate.getActivity },
+        getFeed: { invalidate: invalidate.getFeed },
+        getReels: { invalidate: invalidate.getReels },
       },
     }),
     feed: {
@@ -55,5 +64,18 @@ describe("ReportDialog", () => {
       { postId: 5, reason: "spam" },
       expect.anything(),
     );
+  });
+
+  it("refreshes the feed, activity, and reels after a report", () => {
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: "Send report" }));
+    const [, callbacks] = mutate.mock.calls[0]! as [
+      unknown,
+      { onSuccess: () => void },
+    ];
+    callbacks.onSuccess();
+    expect(invalidate.getActivity).toHaveBeenCalled();
+    expect(invalidate.getFeed).toHaveBeenCalled();
+    expect(invalidate.getReels).toHaveBeenCalled();
   });
 });
