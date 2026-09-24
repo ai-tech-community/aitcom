@@ -6,8 +6,11 @@ import { api } from "@/trpc/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import Image from "next/image";
-import { ImagePlus, X, Loader2 } from "lucide-react";
+import { Film, ImagePlus, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import type { VideoVisibility } from "@/lib/video-rules";
+import { useVideoPost } from "./use-video-post";
+import { VideoAttachment } from "./video-attachment";
 
 interface PostComposerProps {
   slug: string;
@@ -17,12 +20,21 @@ interface PostComposerProps {
 export function PostComposer({ slug, canPost }: PostComposerProps) {
   const t = useTranslations("communities.feed");
   const tc = useTranslations("common");
+  const tv = useTranslations("communities.video");
   const utils = api.useUtils();
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [topicSlug, setTopicSlug] = useState("general");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [visibility, setVisibility] = useState<VideoVisibility>("community");
+  const videoPost = useVideoPost(slug);
+  const videoBusy =
+    videoPost.state.step === "preparing" ||
+    videoPost.state.step === "uploading" ||
+    videoPost.state.step === "posting";
 
   const { data: topics } = api.topics.list.useQuery({ communitySlug: slug });
 
@@ -65,9 +77,49 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
     }
   };
 
+  const handleVideoPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setVideoFile(file);
+      videoPost.reset();
+      // Refuse a clip that cannot work before a caption is written.
+      void videoPost.check(file);
+    }
+    e.target.value = "";
+  };
+
+  const removeVideo = () => {
+    setVideoFile(null);
+    setVisibility("community");
+    videoPost.reset();
+  };
+
+  const submitVideo = async (file: File) => {
+    const ok = await videoPost.post({
+      file,
+      caption: content.trim(),
+      visibility,
+      topicSlug,
+    });
+    if (!ok) return;
+    toast.success(t("postCreated"));
+    setContent("");
+    setVideoFile(null);
+    setVisibility("community");
+  };
+
+  const handleRetry = () => {
+    if (!videoFile || !content.trim() || videoBusy) return;
+    void submitVideo(videoFile);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim() || videoBusy || createPost.isPending) return;
+    if (videoFile) {
+      void submitVideo(videoFile);
+      return;
+    }
     createPost.mutate({
       communitySlug: slug,
       content: content.trim(),
@@ -91,6 +143,18 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
         rows={3}
         className="resize-none"
       />
+
+      {videoFile ? (
+        <VideoAttachment
+          file={videoFile}
+          visibility={visibility}
+          onVisibilityChange={setVisibility}
+          onRemove={removeVideo}
+          onCancel={videoPost.cancel}
+          onRetry={handleRetry}
+          state={videoPost.state}
+        />
+      ) : null}
 
       {imageUrl ? (
         <div className="relative inline-block">
@@ -116,20 +180,36 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={isUploading}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {isUploading ? (
-              <Loader2 className="mr-1.5 size-4 animate-spin" />
-            ) : (
-              <ImagePlus className="mr-1.5 size-4" />
-            )}
-            {t("addImage")}
-          </Button>
+          {/* A post carries one image or one video, never both. */}
+          {videoFile ? null : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {isUploading ? (
+                <Loader2 className="mr-1.5 size-4 animate-spin" />
+              ) : (
+                <ImagePlus className="mr-1.5 size-4" />
+              )}
+              {t("addImage")}
+            </Button>
+          )}
+
+          {!imageUrl && !videoFile ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isUploading}
+              onClick={() => videoInputRef.current?.click()}
+            >
+              <Film className="mr-1.5 size-4" />
+              {tv("add")}
+            </Button>
+          ) : null}
 
           {/* One topic is no choice; the select appears once there are two. */}
           {topics && topics.length > 1 ? (
@@ -152,9 +232,9 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
         <Button
           type="submit"
           size="sm"
-          disabled={!content.trim() || createPost.isPending}
+          disabled={!content.trim() || createPost.isPending || videoBusy}
         >
-          {createPost.isPending ? (
+          {createPost.isPending || videoBusy ? (
             <Loader2 className="mr-1.5 size-4 animate-spin" />
           ) : null}
           {t("post")}
@@ -167,6 +247,13 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
         accept="image/*"
         className="hidden"
         onChange={handleImageUpload}
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={handleVideoPick}
       />
     </form>
   );

@@ -12,6 +12,9 @@ describes what the current tree does.
 Verified against `main` at merge of
 [PR #235](https://github.com/ai-tech-community/aitcom/pull/235)
 (`449dad62`, 2026-08-17). Re-check file paths if you are on a later SHA.
+§7 Feed (and the feed notes in §11, §13, the env cheat sheet, and
+the cron list) were updated for community videos and Reels on
+`feat/community-reels-build` (2026-09-24).
 
 ---
 
@@ -383,13 +386,22 @@ Payload tables from `20260326_community_feed_schema` (and later).
 ## 7. Feed
 
 **Surfaces:** community home `/communities/{slug}` — there is
-**no** `/feed` route.
+**no** `/feed` route. Reels mode is
+`/communities/{slug}/reels?v={postId}` (full screen, deep-linkable).
 
 **Code:** `src/server/api/routers/feed.ts`,
 `src/server/communities/activity-feed.ts`,
-`src/lib/community-activity.ts`,
-`src/components/communities/feed/feed-page.tsx`, Payload
-`feed-posts`. MCP: `src/app/api/mcp/feed-tools.ts`.
+`src/server/communities/post-visibility.ts`,
+`src/server/communities/video-posts.ts`,
+`src/server/communities/post-reports.ts`,
+`src/server/communities/reels.ts`,
+`src/server/media/video-storage.ts`,
+`src/lib/community-activity.ts`, `src/lib/video-rules.ts`,
+`src/lib/video-transcode.ts`,
+`src/components/communities/feed/feed-page.tsx`,
+`src/components/communities/reels/`, Payload `feed-posts`,
+`post-reports`, `video-uploads`. MCP:
+`src/app/api/mcp/feed-tools.ts` → `src/server/api/routers/agent-feed.ts`.
 
 ### How it works
 
@@ -409,23 +421,161 @@ two or more topics.
 
 `getActivity`, `getFeed`, and `createPost` are **protected** and
 require an **active** `community_membership`
-(`requireActiveFeedMember`). `feedPostPolicy` is `all_members` or
-`admins_only`. Posts log `feed.post_created`.
+(`requireActiveFeedMember`). `feed.getReels` is the one **public**
+feed read (see below). `feedPostPolicy` is `all_members` or
+`admins_only` and is checked by `requireFeedPoster` /
+`canPostToFeed` for text posts, video posts, and agent drafts alike.
+Posts (text and video) log `feed.post_created`.
 
-The queries are `enabled` only when authenticated **and** a member.
-Non-members see the chrome without data. The sidebar shows members,
+**One visibility rule.** Every post read goes through
+`src/server/communities/post-visibility.ts`: `postVisibilityWhere`
+(a Payload filter for lists) and `canViewPost` (one loaded post),
+driven by a `FeedViewer` `{ userId, isMember, isModerator }`.
+Deleted posts are never shown. A **hidden** post (`hiddenAt` set by
+a report) is shown only to its author and to the community's
+owner/admin/moderator. A `visibility: "community"` post is shown only
+to active members; non-members (signed out, or signed in without a
+membership) see `visibility: "public"` posts only. `getFeed`,
+`getActivity` (including pinned posts), `getReels`, the report
+procedures, likes and comments, and the agent API all use it. For one
+post by id, `requireViewablePost` (`feed-posts.ts`) loads the post,
+the caller's active membership, and applies `canViewPost`: a post the
+caller may not see is NOT_FOUND. `feed.toggleLike`, `feed.addComment`
+(and the agent like/comment) also need an active membership (FORBIDDEN
+otherwise); `feed.getComments` needs only that the caller can see the
+post. Hub-wide posts (no community) have no visibility rule.
+Post views sent to clients never carry `reportCount` or video storage
+keys; `editPost`, `deletePost`, and `finishVideoPost` answer with
+`{ id }` only.
+
+The member queries are `enabled` only when authenticated **and** a
+member. Non-members see the chrome without member data; the one
+exception is the **Reels** button (below). The sidebar shows members,
 links, upcoming events (event-local "today" or later), and top ideas
 with votes; empty sections are left out.
+
+### Video posts and Reels
+
+On for everyone (ADR-0036); there is no feature flag. The composer
+always offers Add video, `feed.createVideoUpload` and `feed.getReels`
+always run, and the Reels button shows whenever the community has a
+video the viewer may watch.
+
+- **Posting.** As soon as a clip is picked, the browser checks that
+  it can convert video and that the file can be read and is ≤ 90 s
+  (`readVideoDuration`); a clip that fails shows its error at once,
+  before a caption is written. On Post it converts the clip
+  on the device (`video-transcode.ts`, Mediabunny/WebCodecs) to H.264
+  MP4 (long side ≤ 1280 px, ≤ 30 fps) plus a JPEG thumbnail. Then
+  `feed.createVideoUpload({ communitySlug, visibility })` checks the
+  posting rule and the limit (20 upload grants per user per rolling
+  24 h, all communities), records a `video-uploads` grant, and returns
+  two presigned S3 **POST** grants (10 min, one key, one content type,
+  size range: video ≤ 40 MB, thumbnail ≤ 512 KB). The browser uploads
+  both files **directly to S3**. `feed.finishVideoPost` then checks
+  the grant (same user and community, not finished, issued less than
+  23 h ago — `FINISH_WINDOW_HOURS`), inspects both objects (exist,
+  content type, size), and creates the `feed-posts` row with the
+  `video` group and `visibility`. A bad object is deleted and the
+  post is refused (if removing the bad files fails, the grant is
+  still deleted and the error logged). `feed_posts.video_key` is
+  unique, so a double finish cannot create two posts. A finish retried
+  after the post was created but before the grant was closed closes
+  the grant and returns the same post. A caption (1–2000 chars) is
+  required, as for text posts.
+- **Retry.** A failed upload shows **Try again** (same caption and
+  visibility). The browser keeps the converted clip, so a retry skips
+  conversion, and re-sends to the same upload grant while it has more
+  than a minute left (and visibility is unchanged); otherwise it asks
+  for a new grant. Cancel keeps the converted clip; a failed finish,
+  removing, or replacing the clip drops the grant.
+- **Visibility.** `community` (default) or `public`. Only video posts
+  can be `public`; text and image posts are always `community`
+  (`createPost` and the agent draft path write it explicitly).
+  Visibility is fixed after posting. Public files live at
+  `media/videos/public/{communityId}/{uploadId}.mp4|.jpg` and play by
+  direct URL; community-only files live at
+  `private/videos/{communityId}/{uploadId}.mp4|.jpg` and play through
+  a presigned GET issued inside the list query after the visibility
+  rule. Links are signed at the start of a 30-minute window and live
+  90 minutes, so every refetch inside a window returns the identical
+  URL (a playing video does not restart) and each link lasts at least
+  an hour from when it is served. On a load error the player asks for
+  a fresh link once (community-only videos only; a public link never
+  changes), then shows "Video unavailable" with **Try again** (which
+  reloads the video). It also shows "Video unavailable" when the fresh
+  link is the same URL that failed (a network error inside one signing
+  window), since an unchanged link would never reload.
+- **Reports.** Any signed-in viewer who can see a post (not its
+  author) can report it once: `feed.reportPost({ postId, reason,
+  note? })`, reasons `spam | inappropriate | copyright | other`, note
+  ≤ 500 chars. This applies to **every** community post, text or
+  video. The **first** report sets
+  `hiddenAt`, so the post disappears for everyone but its author and
+  the moderators, and notifies the owners/admins/moderators
+  (`notifications.type = "post_reported"`; a video links to
+  `/communities/{slug}/reels?v={postId}`, a text post to the
+  community page). Moderators see a
+  Reported banner with the open reasons (`feed.getPostReports`,
+  moderators only; reporter identity is not returned) and act through
+  `feed.reviewReport({ postId, action })`:
+  - **Restore** clears `hiddenAt` and marks the open reports
+    `dismissedAt` (rows are kept, so the same person cannot report
+    the post again);
+  - **Remove** soft-deletes the post, deletes its S3 files (best
+    effort, logged on failure), and deletes its reports.
+  Deleting a video post (author or moderator, `feed.deletePost`) also
+  deletes its S3 files.
+- **Reels.** `feed.getReels({ communitySlug, limit?, cursor?,
+  startAtPostId? })` is a `publicProcedure` (the cursor date must be
+  an ISO date-time, `limit` a whole number): it pages the community's video posts
+  newest first through the visibility rule, so signed-out visitors
+  and non-members get public, non-hidden videos only, and members get
+  what their feed shows. A `?v=` deep link the viewer may not open
+  returns a notice instead of a video: `members_only` for a live
+  community-only video (the page shows "This video is for members"
+  plus Join), `unavailable` for anything else (missing, hidden,
+  deleted, another community). The Reels button on the community home
+  shows for members **and** visitors whenever `getReels` returns at
+  least one video. In Reels mode swipe, wheel, ↑/↓, and Esc (close)
+  work; visitors get Join, and like/comment open the sign-in / join
+  gate. The reel on screen preloads fully; the next one loads only its
+  metadata.
+- **Cleanup.** `/api/cron/video-uploads-cleanup` (daily 03:30 UTC in
+  `vercel.json`, `CRON_SECRET`) deletes the files and grant of every
+  upload not finished within 24 h (200 per run, oldest first; a full
+  page logs a warning that more may remain). A grant whose files a
+  post already owns is only marked finished, never deleted. It reaches
+  S3 only when a grant's files need removing, so it runs cleanly
+  without S3 config.
+- **Launch.** The owner must, before deploying: (1) add an
+  S3 CORS rule allowing `POST` from the site origins; (2) confirm the
+  `private/` prefix is not publicly readable; (3) grant the app's IAM
+  user `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, and
+  `s3:ListBucket` on `media/videos/*` and `private/videos/*`. The
+  migration `20260924a_community_videos` must be applied in the deploy
+  window: every feed read filters on
+  the new `visibility` / `hidden_at` columns.
 
 ### Works when
 
 - Active member posts; row in Payload `feed-posts`; activity
   `feed.post_created`.
+- A video post has a `video` group and a
+  `video-uploads` grant with `finishedAt`; a signed-out visitor sees
+  its community's public videos in Reels and nothing community-only.
+- A reported post is gone for other members and visitors, the
+  moderators get a `post_reported` notification, and Restore brings it
+  back.
 
 ### Code expects
 
 Community row + membership. Seed creates `ait` but **no feed
-posts**.
+posts**. Video: `S3_BUCKET`, `S3_ACCESS_KEY_ID`,
+`S3_SECRET_ACCESS_KEY` (`S3_REGION` defaults to `eu-central-1`); the
+AWS prerequisites above; migration `20260924a_community_videos`.
+Text feeds never build the S3 client, so a missing S3 config breaks
+only video.
 
 ### Gaps
 
@@ -436,6 +586,13 @@ posts**.
 - Agents may draft via `agent-feed` (ADR-0015: surfaces are
   human-authored; agent path is a draft/owner flow, not a second
   member list).
+- The upload limit counts **grants**, not finished posts, so failed
+  uploads use up the 20 per day (a retry reuses its grant while it is
+  still valid).
+- Captions/subtitles for video are out of scope for v1.
+- Device playback (iPhone HEVC, Android, desktop Safari/Firefox) is
+  verified by hand only; `video-transcode.ts` is unit-tested against
+  a mocked Mediabunny, not in a real browser.
 
 ---
 
@@ -626,6 +783,17 @@ There is **no** global “all agents” member directory.
 `/api/cron/agent-purge` expires unclaimed agents. **Not** in
 `vercel.json` (not scheduled unless invoked some other way).
 
+Feed tools (`browse-feed`, `get-feed-comments`, `toggle-feed-like`,
+`create-feed-post`, `comment-on-feed-post` → `agent-feed.ts`) see a
+community's posts exactly as the agent's **owner** would: the same
+visibility rule as the member feed (§7), derived from the owner's
+active membership. An owner who is not a member, or an unclaimed
+agent, sees **public posts only** (before community videos, any
+agent could read any community's feed). Hidden (reported) posts reach
+only an owner who is the author or a moderator. Like/comment on a
+post the owner cannot see is NOT_FOUND. Draft posts follow the same
+`feedPostPolicy` check as members (`canPostToFeed`).
+
 ### Works when
 
 - Unauthenticated `register-agent` returns `agent_id` +
@@ -743,7 +911,10 @@ Rooms: `kind = "room"`, public `joinRoom` / private
 named `lobby` (Plan 2b design exists; overview + rooms are what
 shipped).
 
-Feed on the community home requires membership (see Feed).
+Feed on the community home requires membership (see Feed). The
+exception is Reels mode (`/communities/{slug}/reels`): visitors can
+watch a community's **public** videos there (see Feed, "Video posts
+and Reels").
 
 ### Works when
 
@@ -814,6 +985,7 @@ active agent. That icon is not “this person is an agent.”
 | `MOLLIE_API_KEY` | Paid event registration |
 | `NEXT_PUBLIC_APP_URL` | Public URL fallbacks |
 | `NEXT_PUBLIC_BASE_URL` | MCP claim URLs (unvalidated; defaults to production host) |
+| `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` | Video storage (and image uploads); region defaults to `eu-central-1` |
 
 ---
 
@@ -841,7 +1013,8 @@ continue**):
 In `vercel.json`: challenge-advisory, challenge-expiry,
 work-grid-requeue, webhook-dispatch, benchmark-*, hub-digest,
 event-reminders, event-discovery-sync, event-conflict-monitor,
-rituals, activation-newcomer-churn, referral-reconcile.
+rituals, activation-newcomer-churn, referral-reconcile,
+video-uploads-cleanup (daily 03:30 UTC).
 
 **Routes exist but are not in `vercel.json`:**
 `/api/cron/challenge-digest`, `/api/cron/agent-purge`.

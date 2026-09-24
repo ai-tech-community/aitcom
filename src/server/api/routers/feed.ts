@@ -3,19 +3,123 @@ import { TRPCError } from "@trpc/server";
 import {
   createTRPCRouter,
   protectedProcedure,
+  publicProcedure,
   requireHubOperator,
 } from "@/server/api/trpc";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
-import { and, eq, isNull } from "drizzle-orm";
-import { communities, communityMemberships } from "@/server/db/schema";
+import { and, eq, inArray, isNull } from "drizzle-orm";
+import type { db as Db } from "@/server/db";
+import {
+  communities,
+  communityMemberships,
+  notifications,
+} from "@/server/db/schema";
 import { awardXp, XP_AMOUNTS } from "@/lib/gamification";
 import { MAX_PINS } from "@/lib/feed-sort";
 import { loadCommunityActivity } from "@/server/communities/activity-feed";
 import {
   decorateFeedPosts,
   requireActiveFeedMember,
+  requireFeedPoster,
+  requireViewablePost,
 } from "@/server/communities/feed-posts";
+import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
+import { getVideoStorage } from "@/server/media/video-storage";
+import {
+  feedViewerFor,
+  isModeratorRole,
+  OUTSIDE_VIEWER,
+  postVisibilityWhere,
+} from "@/server/communities/post-visibility";
+import { listReels } from "@/server/communities/reels";
+import {
+  listPostReports,
+  REPORT_REASONS,
+  reportPost,
+  reviewReport,
+} from "@/server/communities/post-reports";
+import {
+  cleanUpDeletedPostVideo,
+  finishVideoPost,
+  issueVideoUpload,
+} from "@/server/communities/video-posts";
+
+type Database = typeof Db;
+type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
+
+/**
+ * A community post and the caller's active membership in its community, for
+ * the reporting and moderation procedures. Only community posts can be
+ * reported, so a missing post or a hub-wide one is NOT_FOUND.
+ */
+async function loadCommunityPostForCaller(
+  database: Database,
+  payload: Payload,
+  postId: number,
+  userId: string,
+) {
+  const post = await payload
+    .findByID({ collection: "feed-posts", id: postId, depth: 0 })
+    .catch(() => null);
+  if (!post?.communityId) throw new TRPCError({ code: "NOT_FOUND" });
+  const membership = await database.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, post.communityId),
+      eq(communityMemberships.userId, userId),
+      eq(communityMemberships.status, "active"),
+    ),
+    columns: { role: true },
+  });
+  return { post, viewer: feedViewerFor(userId, membership) };
+}
+
+/**
+ * Where a moderator reviews a reported post: a video opens on its reel, a
+ * text post on the community page.
+ */
+function reportedPostPath(
+  communitySlug: string,
+  post: { postId: number; isVideo: boolean },
+): string {
+  return post.isVideo
+    ? `/communities/${communitySlug}/reels?v=${post.postId}`
+    : `/communities/${communitySlug}`;
+}
+
+/** Tells the community's owners, admins and moderators a post was hidden. */
+async function notifyPostReported(
+  database: Database,
+  input: { communityId: string; postId: number; isVideo: boolean },
+) {
+  const community = await database.query.communities.findFirst({
+    where: eq(communities.id, input.communityId),
+    columns: { slug: true, name: true },
+  });
+  if (!community) return;
+  const moderators = await database
+    .select({ userId: communityMemberships.userId })
+    .from(communityMemberships)
+    .where(
+      and(
+        eq(communityMemberships.communityId, input.communityId),
+        eq(communityMemberships.status, "active"),
+        inArray(communityMemberships.role, ["owner", "admin", "moderator"]),
+      ),
+    );
+  if (moderators.length === 0) return;
+  const path = reportedPostPath(community.slug, input);
+  await database.insert(notifications).values(
+    moderators.map(({ userId }) => ({
+      userId,
+      type: "post_reported",
+      title: "A post was reported",
+      content: `A post in **${community.name}** was reported and is hidden until you review it. [Review it](${path}).`,
+      communityId: input.communityId,
+      metadata: { postId: input.postId, path },
+    })),
+  );
+}
 
 export const feedRouter = createTRPCRouter({
   // ── getFeed ─────────────────────────────────────────────────────────────────
@@ -40,6 +144,11 @@ export const feedRouter = createTRPCRouter({
         and: [
           { communityId: { equals: community.id } },
           { isDeleted: { not_equals: true } },
+          postVisibilityWhere({
+            userId: ctx.session.user.id,
+            isMember: true,
+            isModerator: isModeratorRole(community.role),
+          }),
         ],
       };
 
@@ -84,6 +193,7 @@ export const feedRouter = createTRPCRouter({
         payload,
         page,
         ctx.session.user.id,
+        getVideoStorage,
       );
       const last = page.at(-1);
       const nextCursor =
@@ -118,9 +228,71 @@ export const feedRouter = createTRPCRouter({
         payload: await getPayloadClient(),
         community,
         viewerId: ctx.session.user.id,
+        viewer: {
+          userId: ctx.session.user.id,
+          isMember: true,
+          isModerator: isModeratorRole(community.role),
+        },
+        storage: getVideoStorage,
         cursor: input.cursor ?? null,
         limit: input.limit,
       });
+    }),
+
+  // ── getReels ────────────────────────────────────────────────────────────────
+  /**
+   * A community's videos for Reels mode. Public: signed-out visitors see
+   * public, non-hidden videos; members see what the member feed shows. A
+   * deep link the viewer may not open comes back as a notice, not a video.
+   */
+  getReels: publicProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        limit: z.number().int().min(1).max(20).default(8),
+        cursor: z
+          .object({ createdAt: z.string().datetime(), id: z.number().int() })
+          .nullish(),
+        startAtPostId: z.number().int().positive().nullish(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const community = await ctx.db.query.communities.findFirst({
+        where: and(
+          eq(communities.slug, input.communitySlug),
+          isNull(communities.deletedAt),
+        ),
+        columns: { id: true },
+      });
+      if (!community) throw new TRPCError({ code: "NOT_FOUND" });
+      const userId = ctx.session?.user?.id ?? null;
+      const viewer = userId
+        ? feedViewerFor(
+            userId,
+            await ctx.db.query.communityMemberships.findFirst({
+              where: and(
+                eq(communityMemberships.communityId, community.id),
+                eq(communityMemberships.userId, userId),
+                eq(communityMemberships.status, "active"),
+              ),
+              columns: { role: true },
+            }),
+          )
+        : OUTSIDE_VIEWER;
+      return listReels(
+        {
+          database: ctx.db,
+          payload: await getPayloadClient(),
+          storage: getVideoStorage,
+        },
+        {
+          community,
+          viewer,
+          cursor: input.cursor ?? null,
+          startAtPostId: input.startAtPostId ?? null,
+          limit: input.limit,
+        },
+      );
     }),
 
   // ── createPost ──────────────────────────────────────────────────────────────
@@ -134,41 +306,11 @@ export const feedRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const community = await ctx.db.query.communities.findFirst({
-        where: and(
-          eq(communities.slug, input.communitySlug),
-          isNull(communities.deletedAt),
-        ),
-      });
-      if (!community) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
-      // Verify active membership
-      const membership = await ctx.db.query.communityMemberships.findFirst({
-        where: and(
-          eq(communityMemberships.communityId, community.id),
-          eq(communityMemberships.userId, ctx.session.user.id),
-          eq(communityMemberships.status, "active"),
-        ),
-      });
-      if (!membership) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-
-      // Enforce feed post policy
-      const feedPolicy =
-        (community as unknown as { feedPostPolicy?: string }).feedPostPolicy ??
-        "all_members";
-      if (feedPolicy === "admins_only") {
-        const isPrivileged =
-          membership.role === "owner" ||
-          membership.role === "admin" ||
-          membership.role === "moderator";
-        if (!isPrivileged) {
-          throw new TRPCError({ code: "FORBIDDEN" });
-        }
-      }
+      const community = await requireFeedPoster(
+        ctx.db,
+        input.communitySlug,
+        ctx.session.user.id,
+      );
 
       const payload = await getPayloadClient();
       const userName = ctx.session.user.name ?? "member";
@@ -184,6 +326,7 @@ export const feedRouter = createTRPCRouter({
           likeCount: 0,
           commentCount: 0,
           topicSlug: input.topicSlug ?? "general",
+          visibility: "community",
         },
       });
 
@@ -199,6 +342,76 @@ export const feedRouter = createTRPCRouter({
         metadata: { communityId: community.id },
       });
 
+      return post;
+    }),
+
+  // ── createVideoUpload ───────────────────────────────────────────────────────
+  createVideoUpload: protectedProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        visibility: z.enum(VIDEO_VISIBILITIES),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const community = await requireFeedPoster(
+        ctx.db,
+        input.communitySlug,
+        ctx.session.user.id,
+      );
+      return issueVideoUpload(
+        { payload: await getPayloadClient(), storage: getVideoStorage() },
+        {
+          userId: ctx.session.user.id,
+          communityId: community.id,
+          visibility: input.visibility,
+        },
+      );
+    }),
+
+  // ── finishVideoPost ─────────────────────────────────────────────────────────
+  finishVideoPost: protectedProcedure
+    .input(
+      z.object({
+        communitySlug: z.string(),
+        uploadId: z.string().uuid(),
+        caption: z.string().trim().min(1).max(2000),
+        topicSlug: z.string().optional(),
+        durationSeconds: z.number().positive(),
+        width: z.number().int().positive(),
+        height: z.number().int().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const community = await requireFeedPoster(
+        ctx.db,
+        input.communitySlug,
+        ctx.session.user.id,
+      );
+      const post = await finishVideoPost(
+        { payload: await getPayloadClient(), storage: getVideoStorage() },
+        {
+          userId: ctx.session.user.id,
+          authorName: ctx.session.user.name ?? "member",
+          communityId: community.id,
+          uploadId: input.uploadId,
+          caption: input.caption,
+          topicSlug: input.topicSlug ?? "general",
+          durationSeconds: input.durationSeconds,
+          width: input.width,
+          height: input.height,
+        },
+      );
+      await awardXp(ctx.db, ctx.session.user.id, XP_AMOUNTS.FEED_POST_CREATE);
+      await logActivity(ctx.db, {
+        actorId: ctx.session.user.id,
+        actorType: "member",
+        action: "feed.post_created",
+        targetType: "feed-posts",
+        targetId: String(post.id),
+        communityId: community.id,
+        metadata: { communityId: community.id, video: true },
+      });
       return post;
     }),
 
@@ -226,7 +439,7 @@ export const feedRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      return payload.update({
+      await payload.update({
         collection: "feed-posts",
         id: input.postId,
         data: {
@@ -235,6 +448,8 @@ export const feedRouter = createTRPCRouter({
           editedAt: new Date().toISOString(),
         },
       });
+      // The id only: the stored post carries the video's storage keys.
+      return { id: post.id };
     }),
 
   // ── deletePost ──────────────────────────────────────────────────────────────
@@ -278,7 +493,7 @@ export const feedRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      return payload.update({
+      await payload.update({
         collection: "feed-posts",
         id: input.postId,
         data: {
@@ -288,6 +503,13 @@ export const feedRouter = createTRPCRouter({
           imageUrl: null,
         },
       });
+      // Best effort: the post is already gone, so a storage failure is logged
+      // rather than surfaced.
+      await cleanUpDeletedPostVideo(getVideoStorage, post, {
+        context: "feed.deletePost",
+      });
+      // The id only: the stored post carries the video's storage keys.
+      return { id: post.id };
     }),
 
   // ── pinPost ─────────────────────────────────────────────────────────────────
@@ -365,27 +587,14 @@ export const feedRouter = createTRPCRouter({
       const payload = await getPayloadClient();
       const userId = ctx.session.user.id;
 
-      const post = await payload.findByID({
-        collection: "feed-posts",
-        id: input.postId,
-        depth: 0,
-      });
-
-      if (!post || post.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
-      // Verify active membership
-      const membership = await ctx.db.query.communityMemberships.findFirst({
-        where: and(
-          eq(communityMemberships.communityId, post.communityId ?? ""),
-          eq(communityMemberships.userId, userId),
-          eq(communityMemberships.status, "active"),
-        ),
-      });
-      if (!membership) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      // Only an active member who can see the post may like it.
+      const { post } = await requireViewablePost(
+        ctx.db,
+        payload,
+        input.postId,
+        userId,
+        { requireMembership: true },
+      );
 
       const { docs: existingLikes } = await payload.find({
         collection: "feed-likes",
@@ -438,8 +647,15 @@ export const feedRouter = createTRPCRouter({
         limit: z.number().min(1).max(200).default(50),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
+      // A post's comments follow the post's visibility.
+      await requireViewablePost(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.session.user.id,
+      );
 
       const { docs } = await payload.find({
         collection: "feed-comments",
@@ -468,27 +684,14 @@ export const feedRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
 
-      const post = await payload.findByID({
-        collection: "feed-posts",
-        id: input.postId,
-        depth: 0,
-      });
-
-      if (!post || post.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
-      // Verify active membership
-      const membership = await ctx.db.query.communityMemberships.findFirst({
-        where: and(
-          eq(communityMemberships.communityId, post.communityId ?? ""),
-          eq(communityMemberships.userId, ctx.session.user.id),
-          eq(communityMemberships.status, "active"),
-        ),
-      });
-      if (!membership) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      // Only an active member who can see the post may comment on it.
+      const { post } = await requireViewablePost(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.session.user.id,
+        { requireMembership: true },
+      );
 
       const userName = ctx.session.user.name ?? "member";
 
@@ -626,5 +829,81 @@ export const feedRouter = createTRPCRouter({
       }
 
       return { deleted: true };
+    }),
+
+  // ── reportPost ──────────────────────────────────────────────────────────────
+  reportPost: protectedProcedure
+    .input(
+      z.object({
+        postId: z.number(),
+        reason: z.enum(REPORT_REASONS),
+        note: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const { viewer } = await loadCommunityPostForCaller(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.session.user.id,
+      );
+      return reportPost(
+        {
+          payload,
+          storage: getVideoStorage,
+          notifyModerators: (args) => notifyPostReported(ctx.db, args),
+        },
+        {
+          postId: input.postId,
+          reporterId: ctx.session.user.id,
+          reason: input.reason,
+          note: input.note ?? "",
+          viewer,
+        },
+      );
+    }),
+
+  // ── getPostReports ──────────────────────────────────────────────────────────
+  /** Why a hidden post was reported, for the community's moderators only. */
+  getPostReports: protectedProcedure
+    .input(z.object({ postId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const { post, viewer } = await loadCommunityPostForCaller(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.session.user.id,
+      );
+      // Moderators first, so no one else can probe whether a post exists.
+      if (!viewer.isModerator) throw new TRPCError({ code: "FORBIDDEN" });
+      if (post.isDeleted) throw new TRPCError({ code: "NOT_FOUND" });
+      return listPostReports(payload, post.id);
+    }),
+
+  // ── reviewReport ────────────────────────────────────────────────────────────
+  reviewReport: protectedProcedure
+    .input(
+      z.object({ postId: z.number(), action: z.enum(["restore", "remove"]) }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payload = await getPayloadClient();
+      const { viewer } = await loadCommunityPostForCaller(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.session.user.id,
+      );
+      if (!viewer.isModerator) throw new TRPCError({ code: "FORBIDDEN" });
+      await reviewReport(
+        {
+          payload,
+          storage: getVideoStorage,
+          notifyModerators: async () => undefined,
+        },
+        input,
+      );
+      return { ok: true };
     }),
 });

@@ -16,6 +16,17 @@ import {
 } from "@/server/db/schema";
 import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
+import {
+  canPostToFeed,
+  requireViewablePost,
+  type FeedMemberRole,
+} from "@/server/communities/feed-posts";
+import {
+  feedViewerFor,
+  OUTSIDE_VIEWER,
+  postVisibilityWhere,
+  type FeedViewer,
+} from "@/server/communities/post-visibility";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -67,13 +78,7 @@ async function requireActiveMembership(
   communityId: string,
   ownerId: string,
 ) {
-  const membership = await db.query.communityMemberships.findFirst({
-    where: and(
-      eq(communityMemberships.communityId, communityId),
-      eq(communityMemberships.userId, ownerId),
-      eq(communityMemberships.status, "active"),
-    ),
-  });
+  const membership = await findActiveMembership(db, communityId, ownerId);
   if (!membership) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -81,6 +86,38 @@ async function requireActiveMembership(
     });
   }
   return membership;
+}
+
+/** The owner's active membership in a community, or undefined. */
+async function findActiveMembership(
+  db: AgentFeedDb,
+  communityId: string,
+  ownerId: string,
+) {
+  return db.query.communityMemberships.findFirst({
+    where: and(
+      eq(communityMemberships.communityId, communityId),
+      eq(communityMemberships.userId, ownerId),
+      eq(communityMemberships.status, "active"),
+    ),
+  });
+}
+
+/**
+ * An agent sees a community's posts exactly as its owner would: the same
+ * visibility rule as the member feed, derived from the owner's membership.
+ * An unclaimed agent sees only what an outsider sees (public posts).
+ */
+async function agentFeedViewer(
+  db: AgentFeedDb,
+  communityId: string,
+  ownerId: string | null,
+): Promise<FeedViewer> {
+  if (!ownerId) return OUTSIDE_VIEWER;
+  return feedViewerFor(
+    ownerId,
+    await findActiveMembership(db, communityId, ownerId),
+  );
 }
 
 // ── Procedures ───────────────────────────────────────────────────────────────
@@ -103,12 +140,17 @@ export const agentFeedRouter = {
       requireScope(ctx.agent.scopes, "read");
 
       const community = await resolveCommunity(ctx.db, input.communitySlug);
+      const viewer = await agentFeedViewer(
+        ctx.db,
+        community.id,
+        ctx.agent.ownerId,
+      );
       const payload = await getPayloadClient();
 
       const whereClause: Record<string, unknown> = {
         and: [
           { communityId: { equals: community.id } },
-          { isDeleted: { not_equals: true } },
+          postVisibilityWhere(viewer),
         ],
       };
 
@@ -173,6 +215,15 @@ export const agentFeedRouter = {
 
       const payload = await getPayloadClient();
 
+      // A post's comments follow the post's visibility, seen through the
+      // owner's membership (an unclaimed agent sees as an outsider).
+      await requireViewablePost(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.agent.ownerId,
+      );
+
       const { docs } = await payload.find({
         collection: "feed-comments",
         where: {
@@ -219,10 +270,12 @@ export const agentFeedRouter = {
         ownerId,
       );
 
-      // Enforce feed post policy
+      // Enforce feed post policy, the same rule as member posting.
       if (
-        community.feedPostPolicy === "admins_only" &&
-        !["owner", "admin", "moderator"].includes(membership.role)
+        !canPostToFeed(
+          community.feedPostPolicy ?? "all_members",
+          membership.role as FeedMemberRole,
+        )
       ) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -278,25 +331,15 @@ export const agentFeedRouter = {
 
       const payload = await getPayloadClient();
 
-      // Verify the post exists and is not deleted
-      let post;
-      try {
-        post = await payload.findByID({
-          collection: "feed-posts",
-          id: input.postId,
-          depth: 0,
-        });
-      } catch {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
-      }
-
-      if (!post || post.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
-      }
-
-      // Verify owner is an active member of the post's community
+      // The owner must be an active member who can see the post.
+      const { post } = await requireViewablePost(
+        ctx.db,
+        payload,
+        input.postId,
+        ownerId,
+        { requireMembership: true },
+      );
       const postCommunityId = post.communityId ?? "";
-      await requireActiveMembership(ctx.db, postCommunityId, ownerId);
       const community = await ctx.db.query.communities.findFirst({
         where: and(
           eq(communities.id, postCommunityId),
@@ -355,24 +398,14 @@ export const agentFeedRouter = {
 
       const payload = await getPayloadClient();
 
-      // Verify the post exists and is not deleted
-      let post;
-      try {
-        post = await payload.findByID({
-          collection: "feed-posts",
-          id: input.postId,
-          depth: 0,
-        });
-      } catch {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
-      }
-
-      if (!post || post.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
-      }
-
-      // Verify owner is an active member of the post's community
-      await requireActiveMembership(ctx.db, post.communityId ?? "", ownerId);
+      // The owner must be an active member who can see the post.
+      const { post } = await requireViewablePost(
+        ctx.db,
+        payload,
+        input.postId,
+        ownerId,
+        { requireMembership: true },
+      );
 
       // Check for existing like
       const { docs: existingLikes } = await payload.find({

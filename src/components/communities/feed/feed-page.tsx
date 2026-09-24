@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
-import { Loader2, LogIn } from "lucide-react";
+import { Clapperboard, Loader2, LogIn } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
@@ -51,6 +52,8 @@ export function FeedPage({
           <HubFirstSessionPath slug={slug} isMember={isMember} />
         )}
         {isAuthenticated && isMember && <WelcomeChecklist slug={slug} />}
+
+        <ReelsEntry slug={slug} />
 
         <PostComposer slug={slug} canPost={canPost} />
 
@@ -112,6 +115,30 @@ export function FeedPage({
   );
 }
 
+/**
+ * The way into Reels mode, for members and visitors alike. It shows only when
+ * the community has at least one video this viewer may watch (`getReels`
+ * already filters by viewer), so it never leads to an empty screen.
+ */
+function ReelsEntry({ slug }: { slug: string }) {
+  const t = useTranslations("communities.reels");
+  const { data } = api.feed.getReels.useQuery({
+    communitySlug: slug,
+    limit: 1,
+  });
+  if (!data?.items.length) return null;
+  return (
+    <div className="flex justify-end">
+      <Button asChild variant="outline" size="sm">
+        <Link href={`/communities/${slug}/reels`}>
+          <Clapperboard aria-hidden="true" />
+          {t("open")}
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
 /** Posts in one topic, newest first; loads page by page with a cursor. */
 function TopicPostsFeed({
   slug,
@@ -156,7 +183,7 @@ function TopicPostsFeed({
           currentUserId={currentUserId}
           memberRole={memberRole}
           communitySlug={slug}
-          onRefresh={() => void utils.feed.getFeed.invalidate()}
+          onRefresh={() => utils.feed.getFeed.invalidate()}
           onToggleComments={(postId) =>
             setOpenComments((current) => {
               const next = new Set(current);

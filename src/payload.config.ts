@@ -27,6 +27,8 @@ import { RulesAcceptance } from "./collections/RulesAcceptance";
 import { LaunchpadProjects } from "./collections/LaunchpadProjects";
 import { Comments } from "./collections/Comments";
 import { FeedPosts } from "./collections/FeedPosts";
+import { PostReports } from "./collections/PostReports";
+import { VideoUploads } from "./collections/VideoUploads";
 import { FeedComments } from "./collections/FeedComments";
 import { FeedLikes } from "./collections/FeedLikes";
 import { CommunityTopics } from "./collections/CommunityTopics";
@@ -87,6 +89,8 @@ export default buildConfig({
     LaunchpadProjects,
     Comments,
     FeedPosts,
+    PostReports,
+    VideoUploads,
     FeedComments,
     FeedLikes,
     CommunityTopics,
