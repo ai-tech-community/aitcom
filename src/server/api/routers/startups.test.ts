@@ -78,6 +78,8 @@ describe("startups router locks", () => {
     expect(src).toContain("STARTUPS_JOBS_URL_ERROR");
     expect(src).toContain("founders");
     expect(src).toContain("exitStatus");
+    // Country is stored on every write path, never re-guessed on read.
+    expect(src.match(/startupCountryForWrite\(/g)).toHaveLength(3);
     expect(src).toContain("jobsUrl");
     expect(src).toContain("logo_url");
     expect(src).toContain("jobs_url");

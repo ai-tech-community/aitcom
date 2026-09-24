@@ -21,6 +21,7 @@ import {
   startupInsightsShareFacts,
   type StartupsInsightsStats,
 } from "./startups-insights";
+import type { StartupCountryCode } from "./startups-countries";
 
 function insightsT(locale: StartupLocale) {
   const translator = createTranslator({
@@ -42,6 +43,7 @@ function card(overrides: Partial<StartupPublicCard> = {}): StartupPublicCard {
     region: null,
     lat: null,
     lng: null,
+    country: null,
     stage: null,
     logoUrl: null,
     description: null,
@@ -92,38 +94,65 @@ describe("buildStartupInsights", () => {
     expect(stats.stageMix).toBeNull();
   });
 
-  it("groups sourced places by country and folds the tail", () => {
-    const countries = [
-      "Israel",
-      "Israel",
-      "Tel Aviv, Israel",
-      "San Francisco, CA, USA",
-      "Wamego, Kansas, United States",
-      "London",
-      "Berlin, Germany",
-      "Paris, France",
-      ...Array.from({ length: 12 }, (_, i) => `City, Country${i}`),
-      "Remote",
+  it("groups stored countries and folds the tail", () => {
+    const tail = ["BE", "BR", "CA", "CH", "ES", "IN", "IT", "JP", "KR", "NL"];
+    const countries: Array<StartupCountryCode | null> = [
+      "IL",
+      "IL",
+      "IL",
+      "US",
+      "US",
+      "GB",
+      "DE",
+      "FR",
+      ...(tail as StartupCountryCode[]),
+      null,
       null,
     ];
     const stats = buildStartupInsights(
-      countries.map((region, i) => card({ id: `c${i}`, region })),
+      countries.map((country, i) => card({ id: `c${i}`, country })),
       "en",
     );
-    expect(stats.countryCount).toBe(17);
+    expect(stats.countryCount).toBe(15);
     expect(stats.countries?.rows).toHaveLength(STARTUPS_INSIGHTS_TOP_COUNTRIES);
     expect(stats.countries?.rows.slice(0, 2)).toEqual([
-      { country: "Israel", count: 3 },
-      { country: "United States", count: 2 },
+      { code: "IL", label: "Israel", count: 3 },
+      { code: "US", label: "United States", count: 2 },
     ]);
-    expect(stats.countries?.other).toEqual({ companies: 7, countries: 7 });
+    expect(stats.countries?.other).toEqual({ companies: 5, countries: 5 });
     expect(stats.countries?.unplaced).toBe(2);
+  });
+
+  it("never reads a country out of the place text", () => {
+    const stats = buildStartupInsights(
+      ["Berlin", "Munich", "Hamburg", "Israel", "Paris, France"].map(
+        (region, i) => card({ id: `r${i}`, region, country: null }),
+      ),
+      "en",
+    );
+    expect(stats.countryCount).toBe(0);
+  });
+
+  it("names countries in the page language", () => {
+    const stats = buildStartupInsights(
+      (["US", "DE", "NL", "IL", "FR"] as const).map((country, i) =>
+        card({ id: `n${i}`, country }),
+      ),
+      "nl",
+    );
+    expect(stats.countries?.rows.map((row) => row.label)).toEqual([
+      "Duitsland",
+      "Frankrijk",
+      "Israël",
+      "Nederland",
+      "Verenigde Staten",
+    ]);
   });
 
   it("omits the country section until five countries are listed", () => {
     const four = buildStartupInsights(
-      ["Israel", "USA", "France", "Germany"].map((region, i) =>
-        card({ id: `f${i}`, region }),
+      (["IL", "US", "FR", "DE"] as const).map((country, i) =>
+        card({ id: `f${i}`, country }),
       ),
       "en",
     );
@@ -255,8 +284,8 @@ function shareStats(
     countryCount: 2,
     countries: {
       rows: [
-        { country: "Israel", count: 4200 },
-        { country: "United States", count: 2800 },
+        { code: "IL", label: "Israel", count: 4200 },
+        { code: "US", label: "United States", count: 2800 },
       ],
       other: { companies: 0, countries: 0 },
       unplaced: 172,

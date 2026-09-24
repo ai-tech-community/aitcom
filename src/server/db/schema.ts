@@ -4189,6 +4189,11 @@ export const startups = appSchema.table(
     region: d.text(),
     lat: d.doublePrecision(),
     lng: d.doublePrecision(),
+    /**
+     * ISO 3166-1 alpha-2 country of `region`, resolved at write time.
+     * Null when the place is not one country or could not be placed.
+     */
+    country: d.varchar({ length: 2 }),
     stage: d.text(),
     logoUrl: d.text(),
     /** Sourced short blurb only. Soft-omit blank — never invent copy. */

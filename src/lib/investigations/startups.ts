@@ -4,6 +4,7 @@ import {
   sourcedStartupPlaceLabel,
   startupPlaceCentroid,
 } from "./startups-places";
+import type { StartupCountryCode } from "./startups-countries";
 
 export const STARTUPS_PATH = "/startups";
 
@@ -108,6 +109,8 @@ export type StartupPublicCard = {
   region: string | null;
   lat: number | null;
   lng: number | null;
+  /** Country of `region`, resolved at write time. Null when not placed. */
+  country: StartupCountryCode | null;
   stage: string | null;
   logoUrl: string | null;
   /** Sourced short blurb only. Soft-omit blank — never invent copy. */

@@ -20,6 +20,7 @@
     "db:push": "drizzle-kit push",
     "db:seed": "bash scripts/seed-all.sh",
     "db:backfill-hub": "tsx --env-file=.env src/server/db/backfill-hub-enrollment.ts",
+    "db:backfill-startup-countries": "tsx --env-file=.env src/server/startups/backfill-countries.ts",
     "db:studio": "drizzle-kit studio",
     "dev": "next dev --turbo",
     "dev:bootstrap": "tsx --env-file=.env scripts/seed-dev-user.ts",
