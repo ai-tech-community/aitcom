@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { createTranslator } from "next-intl";
 
+import en from "../../../messages/en.json";
+import nl from "../../../messages/nl.json";
 import {
   STARTUPS_INSIGHTS_H1,
   STARTUPS_INSIGHTS_META,
   STARTUPS_INSIGHTS_PATH,
+  type StartupLocale,
   type StartupPublicCard,
 } from "./startups";
 import {
@@ -13,7 +17,21 @@ import {
   STARTUPS_INSIGHTS_TOP_HIRING,
   buildStartupInsights,
   isStartupInsightsTab,
+  startupInsightsOgSpec,
+  startupInsightsShareFacts,
+  startupInsightsShareLines,
+  type StartupsInsightsStats,
 } from "./startups-insights";
+
+function insightsT(locale: StartupLocale) {
+  const translator = createTranslator({
+    locale,
+    messages: locale === "nl" ? nl : en,
+    namespace: "investigationsStartups",
+  });
+  return (key: string, values?: Record<string, string | number>) =>
+    translator(key as "shareHero", values);
+}
 
 function card(overrides: Partial<StartupPublicCard> = {}): StartupPublicCard {
   return {
@@ -227,5 +245,149 @@ describe("buildStartupInsights", () => {
       "en",
     );
     expect(stats.stageMix).toEqual([{ stage: "Seed", count: 1 }]);
+  });
+});
+
+function shareStats(
+  overrides: Partial<StartupsInsightsStats> = {},
+): StartupsInsightsStats {
+  return {
+    total: 8172,
+    countryCount: 2,
+    countries: {
+      rows: [
+        { country: "Israel", count: 4200 },
+        { country: "United States", count: 2800 },
+      ],
+      other: { companies: 0, countries: 0 },
+      unplaced: 172,
+    },
+    categories: [
+      { id: "vertical", label: "Vertical", count: 5000, hiring: 300 },
+      { id: "models", label: "Models", count: 2000, hiring: 100 },
+    ],
+    hiring: {
+      companies: 460,
+      roles: 3635,
+      rolesCapped: true,
+      bands: [],
+      top: [],
+    },
+    exits: { acquired: 0, ipo: 0, shutdown: 0 },
+    sourceDepth: [],
+    timeline: null,
+    stageMix: null,
+    ...overrides,
+  };
+}
+
+describe("startup insights share card", () => {
+  it("formats Open Graph from live hiring counts", () => {
+    const facts = startupInsightsShareFacts(shareStats(), "en");
+    expect(facts).toMatchObject({
+      companies: 8172,
+      hiringCompanies: 460,
+      roles: 3635,
+      rolesCapped: true,
+      mapLeaders: { first: "Israel", second: "the US" },
+      categoryLead: "Vertical",
+    });
+    const spec = startupInsightsOgSpec(facts);
+    const t = insightsT("en");
+    expect(spec).not.toBeNull();
+    expect(t(spec!.titleKey, spec!.titleValues)).toBe(
+      "AI startups insights — 8,172 companies, 460 hiring",
+    );
+    expect(t(spec!.descriptionKey, spec!.descriptionValues)).toBe(
+      "Live from the AIT directory: 8,172 AI companies, 460 hiring, at least 3,635 open roles. Nothing estimated.",
+    );
+    const lines = startupInsightsShareLines(facts);
+    expect(lines.map((line) => t(line.key, line.values))).toEqual([
+      "8,172 AI companies listed — with country and what they build.",
+      "460 are hiring now — at least 3,635 open roles on the board.",
+      "Israel and the US hold most of the map; Vertical leads what they build.",
+    ]);
+  });
+
+  it("drops at least when the role count is exact, and omits a tied category", () => {
+    const facts = startupInsightsShareFacts(
+      shareStats({
+        hiring: {
+          companies: 2,
+          roles: 5,
+          rolesCapped: false,
+          bands: [],
+          top: [],
+        },
+        categories: [
+          { id: "vertical", label: "Vertical", count: 4, hiring: 1 },
+          { id: "models", label: "Models", count: 4, hiring: 1 },
+        ],
+        countries: null,
+      }),
+      "en",
+    );
+    expect(facts.mapLeaders).toBeNull();
+    expect(facts.categoryLead).toBeNull();
+    const spec = startupInsightsOgSpec(facts)!;
+    expect(insightsT("en")(spec.descriptionKey, spec.descriptionValues)).toBe(
+      "Live from the AIT directory: 8,172 AI companies, 2 hiring, 5 open roles. Nothing estimated.",
+    );
+    expect(startupInsightsShareLines(facts).map((line) => line.id)).toEqual([
+      "listed",
+      "hiring",
+    ]);
+  });
+
+  it("omits the map line unless the top two countries are a majority", () => {
+    const facts = startupInsightsShareFacts(
+      shareStats({
+        total: 6,
+        countries: {
+          rows: [
+            { country: "Israel", count: 1 },
+            { country: "United States", count: 1 },
+            { country: "France", count: 1 },
+            { country: "Germany", count: 1 },
+            { country: "Japan", count: 1 },
+          ],
+          other: { companies: 1, countries: 1 },
+          unplaced: 0,
+        },
+        hiring: {
+          companies: 0,
+          roles: 0,
+          rolesCapped: false,
+          bands: [],
+          top: [],
+        },
+      }),
+      "nl",
+    );
+    expect(facts.mapLeaders).toBeNull();
+    expect(facts.categoryLead).toBe("Vertical");
+    const spec = startupInsightsOgSpec(facts)!;
+    expect(spec.titleKey).toBe("shareOgTitleNoHiring");
+    expect(insightsT("nl")(spec.titleKey, spec.titleValues)).toBe(
+      "AI-startups inzichten — 6 bedrijven",
+    );
+    expect(
+      startupInsightsShareLines(facts).map((line) =>
+        insightsT("nl")(line.key, line.values),
+      ),
+    ).toEqual([
+      "6 AI-bedrijven vermeld — met land en wat ze bouwen.",
+      "Vertical leidt in wat ze bouwen.",
+    ]);
+  });
+
+  it("keeps an empty directory off the share card and off counted Open Graph", () => {
+    const facts = startupInsightsShareFacts(
+      buildStartupInsights([], "en"),
+      "en",
+    );
+    expect(facts.companies).toBe(0);
+    expect(startupInsightsShareLines(facts)).toEqual([]);
+    expect(startupInsightsOgSpec(facts)).toBeNull();
   });
 });
