@@ -110,7 +110,8 @@ function isDuplicateVideoKey(error: unknown): boolean {
  * Turns a finished upload into a post. Trusts nothing from the client for
  * access: the grant must be the caller's and unused, and both stored objects
  * must exist with the right type and size. Size and length from the client
- * are kept for layout only, after a sanity check.
+ * are kept for layout only, after a sanity check. Returns the new post's id
+ * only, so the storage keys never reach the client.
  */
 export async function finishVideoPost(
   deps: VideoPostDeps,
@@ -125,7 +126,7 @@ export async function finishVideoPost(
     width: number;
     height: number;
   },
-) {
+): Promise<{ id: number }> {
   const { docs } = await deps.payload.find({
     collection: "video-uploads",
     where: { uploadId: { equals: input.uploadId } },
@@ -216,7 +217,7 @@ export async function finishVideoPost(
     id: grant.id,
     data: { finishedAt: now.toISOString() },
   });
-  return post;
+  return { id: post.id };
 }
 
 function videoKeysOf(post: PostVideoFiles): string[] {

@@ -132,7 +132,9 @@ describe("finishVideoPost", () => {
       heads: goodHeads(),
     });
     const post = await finishVideoPost(deps, finish);
-    expect(post).toMatchObject({
+    // The client gets the id only: storage keys never leave the server.
+    expect(post).toEqual({ id: 7 });
+    expect(payload.create.mock.calls[0]![0].data).toMatchObject({
       content: "Demo",
       visibility: "public",
       video: {

@@ -431,7 +431,7 @@ export const feedRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      return payload.update({
+      await payload.update({
         collection: "feed-posts",
         id: input.postId,
         data: {
@@ -440,6 +440,8 @@ export const feedRouter = createTRPCRouter({
           editedAt: new Date().toISOString(),
         },
       });
+      // The id only: the stored post carries the video's storage keys.
+      return { id: post.id };
     }),
 
   // ── deletePost ──────────────────────────────────────────────────────────────
@@ -483,7 +485,7 @@ export const feedRouter = createTRPCRouter({
         throw new TRPCError({ code: "FORBIDDEN" });
       }
 
-      const deleted = await payload.update({
+      await payload.update({
         collection: "feed-posts",
         id: input.postId,
         data: {
@@ -496,7 +498,8 @@ export const feedRouter = createTRPCRouter({
       // Best effort: the post is already gone, so a storage failure is logged
       // rather than surfaced.
       await cleanUpDeletedPostVideo(getVideoStorage, post);
-      return deleted;
+      // The id only: the stored post carries the video's storage keys.
+      return { id: post.id };
     }),
 
   // ── pinPost ─────────────────────────────────────────────────────────────────

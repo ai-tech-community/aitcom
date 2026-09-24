@@ -58,6 +58,20 @@ describe("decorateFeedPosts video view", () => {
     expect(plain!.video).toBeNull();
   });
 
+  it("keeps the report count for moderators only (not in the view)", async () => {
+    const [view] = await decorateFeedPosts(
+      {} as never,
+      {} as never,
+      [
+        { ...base, reportCount: 2, hiddenAt: "2026-09-24T00:00:00.000Z" },
+      ] as never,
+      null,
+      vi.fn(),
+    );
+    expect(view).not.toHaveProperty("reportCount");
+    expect(view).toHaveProperty("hiddenAt", "2026-09-24T00:00:00.000Z");
+  });
+
   it("never reaches video storage when no post has a video", async () => {
     const storage = vi.fn(() => {
       throw new Error("S3 is not configured for video storage");

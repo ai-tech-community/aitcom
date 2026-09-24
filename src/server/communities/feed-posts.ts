@@ -152,7 +152,11 @@ export type FeedVideoView = {
   visibility: "community" | "public";
 };
 
-export type FeedPostView = Omit<FeedPost, "video"> & {
+/**
+ * What a client sees of a post. The report count stays on the server:
+ * moderators read reports through getPostReports.
+ */
+export type FeedPostView = Omit<FeedPost, "video" | "reportCount"> & {
   authorImage: string | null;
   hasLiked: boolean;
   video: FeedVideoView | null;
@@ -232,7 +236,7 @@ export async function decorateFeedPosts(
     );
   }
   return Promise.all(
-    posts.map(async (post) => ({
+    posts.map(async ({ reportCount: _reportCount, ...post }) => ({
       ...post,
       authorImage: images.get(post.authorId) ?? null,
       hasLiked: liked.has(post.id),
