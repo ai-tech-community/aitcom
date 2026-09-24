@@ -11,6 +11,7 @@ import {
   startupSlugFromName,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
+import { isStartupCountryCode } from "@/lib/investigations/startups-countries";
 import {
   parseStartupRoleTitle,
   sanitizeStartupRoleDescription,
@@ -34,6 +35,7 @@ function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
     region: presentText(row.region),
     lat: row.lat ?? null,
     lng: row.lng ?? null,
+    country: isStartupCountryCode(row.country) ? row.country : null,
     stage: presentText(row.stage),
     logoUrl: presentText(row.logoUrl),
     description: presentText(row.description),

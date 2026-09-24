@@ -73,6 +73,7 @@ function sampleCard(
     region: null,
     lat: null,
     lng: null,
+    country: null,
     stage: null,
     logoUrl: null,
     description: null,

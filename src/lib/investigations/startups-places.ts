@@ -2,12 +2,16 @@
  * City / region centroids for approximate Startups map pins.
  * Place data only — never company rows, never street addresses.
  */
+import type { StartupCountryCode } from "./startups-countries";
+
 export type StartupPlaceKind = "city" | "region";
 
 export type StartupPlaceCentroid = {
   lat: number;
   lng: number;
   kind: StartupPlaceKind;
+  /** ISO 3166-1 alpha-2 code of the country this place is in. */
+  country: StartupCountryCode;
 };
 
 const STREET_WORD =
@@ -40,12 +44,20 @@ export function isStreetLikeStartupPlace(
   return /\d/.test(trimmed) && STREET_WORD.test(trimmed);
 }
 
-function city(lat: number, lng: number): StartupPlaceCentroid {
-  return { lat, lng, kind: "city" };
+function city(
+  lat: number,
+  lng: number,
+  country: StartupCountryCode,
+): StartupPlaceCentroid {
+  return { lat, lng, kind: "city", country };
 }
 
-function region(lat: number, lng: number): StartupPlaceCentroid {
-  return { lat, lng, kind: "region" };
+function region(
+  lat: number,
+  lng: number,
+  country: StartupCountryCode,
+): StartupPlaceCentroid {
+  return { lat, lng, kind: "region", country };
 }
 
 function alias(
@@ -55,109 +67,109 @@ function alias(
   return Object.fromEntries(keys.map((key) => [key, place]));
 }
 
-const TORONTO = city(43.6532, -79.3832);
-const NEW_YORK = city(40.7128, -74.006);
-const SAN_FRANCISCO = city(37.7749, -122.4194);
-const PALO_ALTO = city(37.4419, -122.143);
-const LONDON = city(51.5074, -0.1278);
-const PARIS = city(48.8566, 2.3522);
-const AMSTERDAM = city(52.3676, 4.9041);
-const BERLIN = city(52.52, 13.405);
-const SINGAPORE = city(1.3521, 103.8198);
-const AUSTIN = city(30.2672, -97.7431);
-const SEATTLE = city(47.6062, -122.3321);
-const BOSTON = city(42.3601, -71.0589);
-const LOS_ANGELES = city(34.0522, -118.2437);
-const TEL_AVIV = city(32.0853, 34.7818);
-const JERUSALEM = city(31.7683, 35.2137);
-const HAIFA = city(32.794, 34.9896);
-const HERZLIYA = city(32.1624, 34.8447);
-const BENGALURU = city(12.9716, 77.5946);
-const FRANKFURT = city(50.1109, 8.6821);
-const DALLAS = city(32.7767, -96.797);
-const LIMERICK = city(52.6638, -8.6267);
-const DUBLIN = city(53.3498, -6.2603);
-const CHICAGO = city(41.8781, -87.6298);
-const DENVER = city(39.7392, -104.9903);
-const MIAMI = city(25.7617, -80.1918);
-const ATLANTA = city(33.749, -84.388);
-const WASHINGTON = city(38.9072, -77.0369);
-const MUNICH = city(48.1351, 11.582);
-const ZURICH = city(47.3769, 8.5417);
-const STOCKHOLM = city(59.3293, 18.0686);
-const MADRID = city(40.4168, -3.7038);
-const BARCELONA = city(41.3874, 2.1686);
-const MILAN = city(45.4642, 9.19);
-const TOKYO = city(35.6762, 139.6503);
-const SEOUL = city(37.5665, 126.978);
-const SYDNEY = city(-33.8688, 151.2093);
-const VANCOUVER = city(49.2827, -123.1207);
-const MONTREAL = city(45.5017, -73.5673);
-const CAMBRIDGE = city(42.3736, -71.1097);
-const MOUNTAIN_VIEW = city(37.3861, -122.0839);
-const MENLO_PARK = city(37.453, -122.1817);
-const REDWOOD_CITY = city(37.4852, -122.2364);
-const OAKLAND = city(37.8044, -122.2712);
+const TORONTO = city(43.6532, -79.3832, "CA");
+const NEW_YORK = city(40.7128, -74.006, "US");
+const SAN_FRANCISCO = city(37.7749, -122.4194, "US");
+const PALO_ALTO = city(37.4419, -122.143, "US");
+const LONDON = city(51.5074, -0.1278, "GB");
+const PARIS = city(48.8566, 2.3522, "FR");
+const AMSTERDAM = city(52.3676, 4.9041, "NL");
+const BERLIN = city(52.52, 13.405, "DE");
+const SINGAPORE = city(1.3521, 103.8198, "SG");
+const AUSTIN = city(30.2672, -97.7431, "US");
+const SEATTLE = city(47.6062, -122.3321, "US");
+const BOSTON = city(42.3601, -71.0589, "US");
+const LOS_ANGELES = city(34.0522, -118.2437, "US");
+const TEL_AVIV = city(32.0853, 34.7818, "IL");
+const JERUSALEM = city(31.7683, 35.2137, "IL");
+const HAIFA = city(32.794, 34.9896, "IL");
+const HERZLIYA = city(32.1624, 34.8447, "IL");
+const BENGALURU = city(12.9716, 77.5946, "IN");
+const FRANKFURT = city(50.1109, 8.6821, "DE");
+const DALLAS = city(32.7767, -96.797, "US");
+const LIMERICK = city(52.6638, -8.6267, "IE");
+const DUBLIN = city(53.3498, -6.2603, "IE");
+const CHICAGO = city(41.8781, -87.6298, "US");
+const DENVER = city(39.7392, -104.9903, "US");
+const MIAMI = city(25.7617, -80.1918, "US");
+const ATLANTA = city(33.749, -84.388, "US");
+const WASHINGTON = city(38.9072, -77.0369, "US");
+const MUNICH = city(48.1351, 11.582, "DE");
+const ZURICH = city(47.3769, 8.5417, "CH");
+const STOCKHOLM = city(59.3293, 18.0686, "SE");
+const MADRID = city(40.4168, -3.7038, "ES");
+const BARCELONA = city(41.3874, 2.1686, "ES");
+const MILAN = city(45.4642, 9.19, "IT");
+const TOKYO = city(35.6762, 139.6503, "JP");
+const SEOUL = city(37.5665, 126.978, "KR");
+const SYDNEY = city(-33.8688, 151.2093, "AU");
+const VANCOUVER = city(49.2827, -123.1207, "CA");
+const MONTREAL = city(45.5017, -73.5673, "CA");
+const CAMBRIDGE = city(42.3736, -71.1097, "US");
+const MOUNTAIN_VIEW = city(37.3861, -122.0839, "US");
+const MENLO_PARK = city(37.453, -122.1817, "US");
+const REDWOOD_CITY = city(37.4852, -122.2364, "US");
+const OAKLAND = city(37.8044, -122.2712, "US");
 
-const CALIFORNIA = region(36.7783, -119.4179);
-const TEXAS = region(31.9686, -99.9018);
-const NETHERLANDS = region(52.1326, 5.2913);
-const ISRAEL = region(31.0461, 34.8516);
-const UNITED_STATES = region(39.8283, -98.5795);
-const UNITED_KINGDOM = region(55.3781, -3.436);
-const FRANCE = region(46.2276, 2.2137);
-const GERMANY = region(51.1657, 10.4515);
-const INDIA = region(20.5937, 78.9629);
-const IRELAND = region(53.1424, -7.6921);
-const CANADA = region(56.1304, -106.3468);
-const AUSTRALIA = region(-25.2744, 133.7751);
-const SWITZERLAND = region(46.8182, 8.2275);
-const SWEDEN = region(60.1282, 18.6435);
-const SPAIN = region(40.4637, -3.7492);
-const ITALY = region(41.8719, 12.5674);
-const JAPAN = region(36.2048, 138.2529);
-const SOUTH_KOREA = region(35.9078, 127.7669);
-const BRAZIL = region(-14.235, -51.9253);
-const UAE = region(23.4241, 53.8478);
-const ESTONIA = region(58.5953, 25.0136);
-const FINLAND = region(61.9241, 25.7482);
-const NORWAY = region(60.472, 8.4689);
-const DENMARK = region(56.2639, 9.5018);
-const BELGIUM = region(50.5039, 4.4699);
-const AUSTRIA = region(47.5162, 14.5501);
-const POLAND = region(51.9194, 19.1451);
-const PORTUGAL = region(39.3999, -8.2245);
-const CZECHIA = region(49.8175, 15.473);
-const ROMANIA = region(45.9432, 24.9668);
-const UKRAINE = region(48.3794, 31.1656);
-const MEXICO = region(23.6345, -102.5528);
-const ARGENTINA = region(-38.4161, -63.6167);
-const CHILE = region(-35.6751, -71.543);
-const SOUTH_AFRICA = region(-30.5595, 22.9375);
-const CHINA = region(35.8617, 104.1954);
-const TAIWAN = region(23.6978, 120.9605);
-const HONG_KONG = region(22.3193, 114.1694);
-const NEW_ZEALAND = region(-40.9006, 174.886);
-const TURKEY = region(38.9637, 35.2433);
-const GREECE = region(39.0742, 21.8243);
-const HUNGARY = region(47.1625, 19.5033);
-const LUXEMBOURG = region(49.8153, 6.1296);
-const LITHUANIA = region(55.1694, 23.8813);
-const LATVIA = region(56.8796, 24.6032);
-const ICELAND = region(64.9631, -19.0208);
-const NIGERIA = region(9.082, 8.6753);
-const KENYA = region(-0.0236, 37.9062);
-const INDONESIA = region(-0.7893, 113.9213);
-const VIETNAM = region(14.0583, 108.2772);
-const THAILAND = region(15.87, 100.9925);
-const PHILIPPINES = region(12.8797, 121.774);
-const MALAYSIA = region(4.2105, 101.9758);
-const SAUDI_ARABIA = region(23.8859, 45.0792);
-const QATAR = region(25.3548, 51.1839);
-const EGYPT = region(26.8206, 30.8025);
-const COLOMBIA = region(4.5709, -74.2973);
-const PERU = region(-9.19, -75.0152);
-const SINGAPORE_REGION = region(1.3521, 103.8198);
+const CALIFORNIA = region(36.7783, -119.4179, "US");
+const TEXAS = region(31.9686, -99.9018, "US");
+const NETHERLANDS = region(52.1326, 5.2913, "NL");
+const ISRAEL = region(31.0461, 34.8516, "IL");
+const UNITED_STATES = region(39.8283, -98.5795, "US");
+const UNITED_KINGDOM = region(55.3781, -3.436, "GB");
+const FRANCE = region(46.2276, 2.2137, "FR");
+const GERMANY = region(51.1657, 10.4515, "DE");
+const INDIA = region(20.5937, 78.9629, "IN");
+const IRELAND = region(53.1424, -7.6921, "IE");
+const CANADA = region(56.1304, -106.3468, "CA");
+const AUSTRALIA = region(-25.2744, 133.7751, "AU");
+const SWITZERLAND = region(46.8182, 8.2275, "CH");
+const SWEDEN = region(60.1282, 18.6435, "SE");
+const SPAIN = region(40.4637, -3.7492, "ES");
+const ITALY = region(41.8719, 12.5674, "IT");
+const JAPAN = region(36.2048, 138.2529, "JP");
+const SOUTH_KOREA = region(35.9078, 127.7669, "KR");
+const BRAZIL = region(-14.235, -51.9253, "BR");
+const UAE = region(23.4241, 53.8478, "AE");
+const ESTONIA = region(58.5953, 25.0136, "EE");
+const FINLAND = region(61.9241, 25.7482, "FI");
+const NORWAY = region(60.472, 8.4689, "NO");
+const DENMARK = region(56.2639, 9.5018, "DK");
+const BELGIUM = region(50.5039, 4.4699, "BE");
+const AUSTRIA = region(47.5162, 14.5501, "AT");
+const POLAND = region(51.9194, 19.1451, "PL");
+const PORTUGAL = region(39.3999, -8.2245, "PT");
+const CZECHIA = region(49.8175, 15.473, "CZ");
+const ROMANIA = region(45.9432, 24.9668, "RO");
+const UKRAINE = region(48.3794, 31.1656, "UA");
+const MEXICO = region(23.6345, -102.5528, "MX");
+const ARGENTINA = region(-38.4161, -63.6167, "AR");
+const CHILE = region(-35.6751, -71.543, "CL");
+const SOUTH_AFRICA = region(-30.5595, 22.9375, "ZA");
+const CHINA = region(35.8617, 104.1954, "CN");
+const TAIWAN = region(23.6978, 120.9605, "TW");
+const HONG_KONG = region(22.3193, 114.1694, "HK");
+const NEW_ZEALAND = region(-40.9006, 174.886, "NZ");
+const TURKEY = region(38.9637, 35.2433, "TR");
+const GREECE = region(39.0742, 21.8243, "GR");
+const HUNGARY = region(47.1625, 19.5033, "HU");
+const LUXEMBOURG = region(49.8153, 6.1296, "LU");
+const LITHUANIA = region(55.1694, 23.8813, "LT");
+const LATVIA = region(56.8796, 24.6032, "LV");
+const ICELAND = region(64.9631, -19.0208, "IS");
+const NIGERIA = region(9.082, 8.6753, "NG");
+const KENYA = region(-0.0236, 37.9062, "KE");
+const INDONESIA = region(-0.7893, 113.9213, "ID");
+const VIETNAM = region(14.0583, 108.2772, "VN");
+const THAILAND = region(15.87, 100.9925, "TH");
+const PHILIPPINES = region(12.8797, 121.774, "PH");
+const MALAYSIA = region(4.2105, 101.9758, "MY");
+const SAUDI_ARABIA = region(23.8859, 45.0792, "SA");
+const QATAR = region(25.3548, 51.1839, "QA");
+const EGYPT = region(26.8206, 30.8025, "EG");
+const COLOMBIA = region(4.5709, -74.2973, "CO");
+const PERU = region(-9.19, -75.0152, "PE");
+const SINGAPORE_REGION = region(1.3521, 103.8198, "SG");
 
 /** Canonical city/region centroids. Keys are normalizeStartupPlaceKey aliases. */
 const PLACE_CENTROIDS: Record<string, StartupPlaceCentroid> = {

@@ -35,6 +35,10 @@ import {
 } from "@/server/api/trpc";
 import { startups } from "@/server/db/schema";
 import {
+  createStartupCountryResolver,
+  startupCountryForWrite,
+} from "@/server/startups/country";
+import {
   findStartupByHomepage,
   findStartupById,
   findStartupBySlug,
@@ -300,10 +304,16 @@ export const startupsRouter = createTRPCRouter({
         });
       }
 
+      const country = await startupCountryForWrite(
+        fields.region,
+        createStartupCountryResolver(),
+      );
+
       const [created] = await ctx.db
         .insert(startups)
         .values({
           ...fields,
+          country,
           slug,
           status: "approved",
           source: "staff",
@@ -326,6 +336,7 @@ export const startupsRouter = createTRPCRouter({
 
       const created: string[] = [];
       const skipped: Array<{ homepage: string; reason: string }> = [];
+      const resolveCountry = createStartupCountryResolver();
 
       for (const row of input.rows) {
         let fields: ReturnType<typeof parsedWriteFields>;
@@ -363,10 +374,15 @@ export const startupsRouter = createTRPCRouter({
           continue;
         }
 
+        const country = await startupCountryForWrite(
+          fields.region,
+          resolveCountry,
+        );
         const [inserted] = await ctx.db
           .insert(startups)
           .values({
             ...fields,
+            country,
             slug,
             status: "approved",
             source: "staff",
@@ -406,10 +422,17 @@ export const startupsRouter = createTRPCRouter({
         }
       }
 
+      const country = await startupCountryForWrite(
+        fields.region,
+        createStartupCountryResolver(),
+        existing,
+      );
+
       await ctx.db
         .update(startups)
         .set({
           ...fields,
+          country,
           slug,
           updatedAt: new Date(),
         })

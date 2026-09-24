@@ -10,6 +10,7 @@ import {
   type StartupFounder,
   type StartupPublicCard,
 } from "./startups";
+import { startupCountryCodeOf } from "./startups-countries";
 
 /**
  * Ops-Passed Startups v1 (20/20). Pulse verified + enriched 2026-09-15.
@@ -145,6 +146,7 @@ export function startupsV1PublicCards(): StartupPublicCard[] {
       region: row.region,
       lat: coords?.lat ?? null,
       lng: coords?.lng ?? null,
+      country: startupCountryCodeOf(row.region),
       stage: row.stage,
       logoUrl: row.logoUrl,
       description: row.description,
