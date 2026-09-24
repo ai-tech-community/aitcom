@@ -65,8 +65,56 @@ describe("video storage", () => {
     expect(getSignedUrl).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
+      expect.objectContaining({ expiresIn: 3600 + 1800 }),
+    );
+  });
+
+  it("keeps a private link identical within one 30-minute window", async () => {
+    getSignedUrl.mockImplementation(
+      async (
+        _client: unknown,
+        _command: unknown,
+        options: { signingDate: Date; expiresIn: number },
+      ) =>
+        `https://signed?d=${options.signingDate.toISOString()}&e=${options.expiresIn}`,
+    );
+    let now = Date.parse("2026-09-24T10:31:00.000Z");
+    const storage = createVideoStorage({
+      client: { send: vi.fn() } as never,
+      bucket: "ait-media",
+      region: "eu-central-1",
+      now: () => now,
+    });
+    const first = await storage.playbackUrl(
+      "private/videos/c/u.mp4",
+      "private",
+    );
+    now = Date.parse("2026-09-24T10:59:59.000Z");
+    const second = await storage.playbackUrl(
+      "private/videos/c/u.mp4",
+      "private",
+    );
+    expect(second).toBe(first);
+    expect(getSignedUrl).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
       {
-        expiresIn: 3600,
+        expiresIn: 5400,
+        signingDate: new Date("2026-09-24T10:30:00.000Z"),
+      },
+    );
+    now = Date.parse("2026-09-24T11:00:00.000Z");
+    const third = await storage.playbackUrl(
+      "private/videos/c/u.mp4",
+      "private",
+    );
+    expect(third).not.toBe(first);
+    expect(getSignedUrl).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.anything(),
+      {
+        expiresIn: 5400,
+        signingDate: new Date("2026-09-24T11:00:00.000Z"),
       },
     );
   });

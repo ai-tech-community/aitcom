@@ -13,6 +13,14 @@ export const AUDIO_BITRATE = 128_000;
 export const VIDEO_UPLOADS_PER_DAY = 20;
 export const UPLOAD_GRANT_SECONDS = 600;
 export const PLAYBACK_LINK_SECONDS = 3600;
+/**
+ * Private playback links are signed at the start of a window this long, so
+ * every feed refetch inside the window returns the identical URL and a
+ * playing video is not reloaded. Links live PLAYBACK_LINK_SECONDS plus one
+ * window, so each one still lasts at least PLAYBACK_LINK_SECONDS from the
+ * moment it is served.
+ */
+export const PLAYBACK_LINK_WINDOW_SECONDS = 1800;
 export const ABANDONED_UPLOAD_HOURS = 24;
 /**
  * Must stay below ABANDONED_UPLOAD_HOURS so a finish and the daily cleanup

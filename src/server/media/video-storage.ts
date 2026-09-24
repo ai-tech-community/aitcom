@@ -10,6 +10,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "@/env";
 import {
   PLAYBACK_LINK_SECONDS,
+  PLAYBACK_LINK_WINDOW_SECONDS,
   UPLOAD_GRANT_SECONDS,
   type VideoStorageClass,
 } from "@/lib/video-rules";
@@ -43,10 +44,13 @@ export function createVideoStorage({
   client,
   bucket,
   region,
+  now = Date.now,
 }: {
   client: S3Client;
   bucket: string;
   region: string;
+  /** Clock for the signing window; injectable for tests. */
+  now?: () => number;
 }): VideoStorage {
   return {
     async presignUpload({ key, contentType, maxBytes }) {
@@ -80,10 +84,15 @@ export function createVideoStorage({
       if (storage === "public") {
         return `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
       }
+      const windowMs = PLAYBACK_LINK_WINDOW_SECONDS * 1000;
+      const windowStart = Math.floor(now() / windowMs) * windowMs;
       return getSignedUrl(
         client,
         new GetObjectCommand({ Bucket: bucket, Key: key }),
-        { expiresIn: PLAYBACK_LINK_SECONDS },
+        {
+          signingDate: new Date(windowStart),
+          expiresIn: PLAYBACK_LINK_SECONDS + PLAYBACK_LINK_WINDOW_SECONDS,
+        },
       );
     },
     async remove(keys) {
