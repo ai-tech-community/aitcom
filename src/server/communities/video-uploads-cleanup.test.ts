@@ -31,13 +31,18 @@ function fakes(
         over.removeImpl ?? (() => Promise.resolve(undefined)),
       ),
   };
+  const getStorage = vi.fn(() => storage);
+  const warn = vi.fn();
   return {
     payload,
     storage,
+    getStorage,
+    warn,
     deps: {
       payload: payload as never,
-      storage: storage as never,
+      storage: getStorage as never,
       now: () => NOW,
+      warn,
     },
   };
 }
@@ -57,11 +62,17 @@ describe("cleanupAbandonedUploads", () => {
       removed: 1,
       failed: 0,
     });
-    expect(payload.find.mock.calls[0]![0].where).toEqual({
-      and: [
-        { finishedAt: { exists: false } },
-        { createdAt: { less_than: "2026-09-23T12:00:00.000Z" } },
-      ],
+    expect(payload.find).toHaveBeenCalledWith({
+      collection: "video-uploads",
+      where: {
+        and: [
+          { finishedAt: { exists: false } },
+          { createdAt: { less_than: "2026-09-23T12:00:00.000Z" } },
+        ],
+      },
+      sort: "createdAt",
+      limit: 200,
+      depth: 0,
     });
     expect(storage.remove).toHaveBeenCalledWith([
       `private/videos/c1/${UPLOAD}.mp4`,
@@ -122,5 +133,35 @@ describe("cleanupAbandonedUploads", () => {
       expect.objectContaining({ uploadId: UPLOAD }),
     );
     errorSpy.mockRestore();
+  });
+
+  it("never reaches storage when there is nothing to remove", async () => {
+    const empty = fakes({ uploads: [] });
+    empty.getStorage.mockImplementation(() => {
+      throw new Error("S3 is not configured for video storage");
+    });
+    await expect(cleanupAbandonedUploads(empty.deps)).resolves.toEqual({
+      removed: 0,
+      failed: 0,
+    });
+    expect(empty.getStorage).not.toHaveBeenCalled();
+
+    const owned = fakes({ uploads: [grant()], postExists: true });
+    await cleanupAbandonedUploads(owned.deps);
+    expect(owned.getStorage).not.toHaveBeenCalled();
+  });
+
+  it("warns when a full page came back, since more may remain", async () => {
+    const uploads = Array.from({ length: 200 }, (_, i) => grant({ id: i + 1 }));
+    const full = fakes({ uploads, postExists: true });
+    await cleanupAbandonedUploads(full.deps);
+    expect(full.warn).toHaveBeenCalledWith(
+      "[video-uploads-cleanup] page full; more abandoned uploads may remain",
+      { pageSize: 200 },
+    );
+
+    const partial = fakes({ uploads: [grant()], postExists: true });
+    await cleanupAbandonedUploads(partial.deps);
+    expect(partial.warn).not.toHaveBeenCalled();
   });
 });

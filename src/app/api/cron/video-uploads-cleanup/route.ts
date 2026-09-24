@@ -20,7 +20,8 @@ export async function GET(request: Request) {
 
   const { removed, failed } = await cleanupAbandonedUploads({
     payload: await getPayloadClient(),
-    storage: getVideoStorage(),
+    // Lazy: only reached when an abandoned upload's files need removing.
+    storage: getVideoStorage,
   });
 
   return NextResponse.json({

@@ -1,9 +1,15 @@
 // src/server/communities/video-uploads-cleanup.ts
 import { ABANDONED_UPLOAD_HOURS, videoObjectKeys } from "@/lib/video-rules";
-import type { VideoStorage } from "@/server/media/video-storage";
+import type {
+  VideoStorage,
+  VideoStorageSource,
+} from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
+
+/** Grants handled per run; the oldest go first, the rest wait a day. */
+const CLEANUP_PAGE_SIZE = 200;
 
 /**
  * Daily sweep for upload grants nobody finished within ABANDONED_UPLOAD_HOURS.
@@ -19,11 +25,15 @@ type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
  *
  * One grant's storage failure must not abort the run: it's caught, logged,
  * and the grant is left for tomorrow's run to retry.
+ *
+ * Storage is reached only when a grant's files really need removing, so a
+ * deployment without S3 (and so without video uploads) runs this cleanly.
  */
 export async function cleanupAbandonedUploads(deps: {
   payload: Payload;
-  storage: VideoStorage;
+  storage: VideoStorageSource;
   now?: () => Date;
+  warn?: (message: string, detail: unknown) => void;
 }): Promise<{ removed: number; failed: number }> {
   const now = deps.now?.() ?? new Date();
   const cutoff = new Date(
@@ -37,9 +47,17 @@ export async function cleanupAbandonedUploads(deps: {
         { createdAt: { less_than: cutoff.toISOString() } },
       ],
     },
-    limit: 200,
+    sort: "createdAt",
+    limit: CLEANUP_PAGE_SIZE,
     depth: 0,
   });
+  if (docs.length >= CLEANUP_PAGE_SIZE) {
+    (deps.warn ?? console.warn)(
+      "[video-uploads-cleanup] page full; more abandoned uploads may remain",
+      { pageSize: CLEANUP_PAGE_SIZE },
+    );
+  }
+  let storage: VideoStorage | null = null;
 
   let removed = 0;
   let failed = 0;
@@ -64,7 +82,8 @@ export async function cleanupAbandonedUploads(deps: {
         });
         continue;
       }
-      await deps.storage.remove([keys.video, keys.thumbnail]);
+      storage ??= deps.storage();
+      await storage.remove([keys.video, keys.thumbnail]);
       await deps.payload.delete({ collection: "video-uploads", id: grant.id });
       removed++;
     } catch (error) {
