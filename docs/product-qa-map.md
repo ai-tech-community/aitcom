@@ -502,7 +502,10 @@ video the viewer may watch.
   URL (a playing video does not restart) and each link lasts at least
   an hour from when it is served. On a load error the player asks for
   a fresh link once (community-only videos only; a public link never
-  changes), then shows "Video unavailable" with **Try again**.
+  changes), then shows "Video unavailable" with **Try again** (which
+  reloads the video). It also shows "Video unavailable" when the fresh
+  link is the same URL that failed (a network error inside one signing
+  window), since an unchanged link would never reload.
 - **Reports.** Any signed-in viewer who can see a post (not its
   author) can report it once: `feed.reportPost({ postId, reason,
   note? })`, reasons `spam | inappropriate | copyright | other`, note

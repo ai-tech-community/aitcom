@@ -58,7 +58,7 @@ export function ReelSlide({
   onComments: () => void;
   onCopyLink: () => void;
   onReport: () => void;
-  /** Resolves true when a fresh link is on its way. */
+  /** Resolves true only when a different, fresh link is on its way. */
   onVideoExpired: () => Promise<boolean>;
 }) {
   const t = useTranslations("communities.reels");

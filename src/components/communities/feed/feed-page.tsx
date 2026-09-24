@@ -183,7 +183,7 @@ function TopicPostsFeed({
           currentUserId={currentUserId}
           memberRole={memberRole}
           communitySlug={slug}
-          onRefresh={() => void utils.feed.getFeed.invalidate()}
+          onRefresh={() => utils.feed.getFeed.invalidate()}
           onToggleComments={(postId) =>
             setOpenComments((current) => {
               const next = new Set(current);

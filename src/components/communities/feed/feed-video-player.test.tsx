@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../../messages/en.json";
-import { FeedVideoPlayer } from "./feed-video-player";
+import { FRESH_LINK_SETTLE_MS, FeedVideoPlayer } from "./feed-video-player";
 
 let visible: (ratio: number) => void = () => undefined;
 const play = vi.fn().mockResolvedValue(undefined);
@@ -35,6 +35,7 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   play.mockClear();
   pause.mockClear();
@@ -104,7 +105,7 @@ describe("FeedVideoPlayer", () => {
   });
 
   it("asks for a fresh link once when playback fails, then shows unavailable", () => {
-    const onExpired = vi.fn();
+    const onExpired = vi.fn().mockResolvedValue(true);
     const { container } = renderPlayer(false, { onExpired });
     const el = container.querySelector("video")!;
     fireEvent.error(el);
@@ -138,8 +139,61 @@ describe("FeedVideoPlayer", () => {
     expect(screen.queryByText("Video unavailable.")).not.toBeInTheDocument();
   });
 
+  it("shows unavailable when the refreshed link is the same as the failed one", async () => {
+    // Private links are stable within a signing window, so a load error that
+    // is not an expiry (network drop, 5xx) gets the same URL back. Nothing
+    // reloads and no second error fires: the player must not stay blank.
+    vi.useFakeTimers();
+    const onExpired = vi.fn().mockResolvedValue(true);
+    const { container } = renderPlayer(false, { onExpired });
+    fireEvent.error(container.querySelector("video")!);
+    await act(async () => undefined);
+    expect(screen.queryByText("Video unavailable.")).not.toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(FRESH_LINK_SETTLE_MS);
+    });
+    expect(screen.getByText("Video unavailable.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeVisible();
+  });
+
+  it("plays the new link when the refresh brings a different one", async () => {
+    vi.useFakeTimers();
+    const onExpired = vi.fn().mockResolvedValue(true);
+    const view = renderPlayer(false, { onExpired });
+    fireEvent.error(view.container.querySelector("video")!);
+    await act(async () => undefined);
+    view.rerender(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <FeedVideoPlayer
+          video={{ ...video, url: "https://v/1-fresh.mp4" }}
+          onExpired={onExpired}
+        />
+      </NextIntlClientProvider>,
+    );
+    act(() => {
+      vi.advanceTimersByTime(FRESH_LINK_SETTLE_MS);
+    });
+    expect(screen.queryByText("Video unavailable.")).not.toBeInTheDocument();
+    expect(view.container.querySelector("video")).toHaveAttribute(
+      "src",
+      "https://v/1-fresh.mp4",
+    );
+  });
+
+  it("Try again after an unchanged link really reloads the video", async () => {
+    vi.useFakeTimers();
+    const onExpired = vi.fn().mockResolvedValue(false);
+    const { container } = renderPlayer(false, { onExpired });
+    fireEvent.error(container.querySelector("video")!);
+    await act(async () => undefined);
+    expect(screen.getByText("Video unavailable.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(load).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Video unavailable.")).not.toBeInTheDocument();
+  });
+
   it("shows unavailable at once for a public video (its link never changes)", () => {
-    const onExpired = vi.fn();
+    const onExpired = vi.fn().mockResolvedValue(true);
     const { container } = renderPlayer(false, {
       onExpired,
       video: { ...video, visibility: "public" },
@@ -150,7 +204,7 @@ describe("FeedVideoPlayer", () => {
   });
 
   it("tries again from unavailable: reloads and may ask for a fresh link once more", () => {
-    const onExpired = vi.fn();
+    const onExpired = vi.fn().mockResolvedValue(true);
     const { container } = renderPlayer(false, { onExpired });
     const el = container.querySelector("video")!;
     fireEvent.error(el);
@@ -167,7 +221,7 @@ describe("FeedVideoPlayer", () => {
   });
 
   it("asks again after a refreshed link has loaded (a later expiry)", () => {
-    const onExpired = vi.fn();
+    const onExpired = vi.fn().mockResolvedValue(true);
     const { container } = renderPlayer(false, { onExpired });
     const el = container.querySelector("video")!;
     fireEvent.error(el);

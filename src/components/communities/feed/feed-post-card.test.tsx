@@ -66,7 +66,7 @@ function renderCard(
   post: Partial<React.ComponentProps<typeof FeedPostCard>["post"]> = {},
   props: Partial<React.ComponentProps<typeof FeedPostCard>> = {},
 ) {
-  const onRefresh = vi.fn();
+  const onRefresh = vi.fn().mockResolvedValue(undefined);
   render(
     <NextIntlClientProvider
       locale="en"
@@ -95,12 +95,17 @@ describe("FeedPostCard video and moderation", () => {
     bannerProps.mockClear();
   });
 
-  it("plays the video and asks the feed for fresh links when one expires", () => {
+  it("plays the video and asks the feed for fresh links when one expires", async () => {
     const { onRefresh } = renderCard({ video });
     expect(screen.getByTestId("player")).toBeInTheDocument();
-    expect(playerProps).toHaveBeenCalledWith(
-      expect.objectContaining({ video, onExpired: onRefresh }),
-    );
+    const props = playerProps.mock.calls.at(-1)![0] as {
+      video: unknown;
+      onExpired: () => Promise<boolean>;
+    };
+    expect(props.video).toEqual(video);
+    // Resolves only after the refetch, so the player compares the new URL.
+    await expect(props.onExpired()).resolves.toBe(true);
+    expect(onRefresh).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Public")).toBeInTheDocument();
   });
 

@@ -46,9 +46,8 @@ export function CommunityActivityFeed({
     { getNextPageParam: (last) => last.nextCursor ?? undefined },
   );
 
-  const refresh = () => {
-    void utils.feed.getActivity.invalidate({ communitySlug: slug });
-  };
+  const refresh = () =>
+    utils.feed.getActivity.invalidate({ communitySlug: slug });
   const toggleComments = (postId: number) => {
     setOpenComments((current) => {
       const next = new Set(current);

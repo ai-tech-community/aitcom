@@ -20,6 +20,14 @@ export type FeedVideo = {
 /** Share of the player that must be on screen before it starts by itself. */
 const AUTOPLAY_RATIO = 0.6;
 
+/**
+ * How long the player waits, after the caller says a fresh link is coming,
+ * for that link to reach it as a new `video.url`. If the link is still the
+ * one that failed by then, nothing will reload, so it shows "Video
+ * unavailable".
+ */
+export const FRESH_LINK_SETTLE_MS = 1000;
+
 function prefersReducedMotion() {
   return (
     typeof window !== "undefined" &&
@@ -42,14 +50,17 @@ function prefersReducedMotion() {
  * - `preload` defaults to "metadata" (the feed fetches almost nothing until
  *   the video plays). Reels passes "auto" for the reel on screen only.
  * - A private playback link expires. On a load error the player asks the
- *   caller once for a fresh link through `onExpired`; a second error in a row
- *   shows "Video unavailable". A caller that answers with a promise says
- *   whether a fresh link is coming: `false` (or a rejection) shows "Video
- *   unavailable" at once, since no second error would ever fire. A public
- *   video's link never changes, so its error shows "Video unavailable" at
- *   once without asking.
- * - "Video unavailable" offers Try again: it reloads the video and allows one
- *   more fresh-link request.
+ *   caller once for a fresh link through `onExpired`, which resolves whether
+ *   a fresh link may be coming. `false` (or a rejection) shows "Video
+ *   unavailable" at once. `true` gives the new link `FRESH_LINK_SETTLE_MS` to
+ *   arrive as `video.url`; if the URL is still the one that failed (a stable
+ *   private link re-signed in the same window after a network error), the
+ *   `<video>` would never reload and no second error would fire, so the
+ *   player shows "Video unavailable" rather than staying blank. A second
+ *   error in a row also shows it. A public video's link never changes, so
+ *   its error shows "Video unavailable" at once without asking.
+ * - "Video unavailable" offers Try again: it reloads the video from the
+ *   network (`load()`) and allows one more fresh-link request.
  */
 export function FeedVideoPlayer({
   video,
@@ -58,7 +69,7 @@ export function FeedVideoPlayer({
   preload = "metadata",
 }: {
   video: FeedVideo;
-  onExpired?: () => void | Promise<boolean>;
+  onExpired?: () => Promise<boolean>;
   className?: string;
   preload?: "metadata" | "auto";
 }) {
@@ -70,6 +81,7 @@ export function FeedVideoPlayer({
   const [playing, setPlaying] = useState(false);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const askedForFreshLink = useRef(false);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** The viewer paused on purpose, so scrolling back must not restart it. */
   const pausedByViewer = useRef(false);
 
@@ -91,6 +103,13 @@ export function FeedVideoPlayer({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(
+    () => () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    },
+    [],
+  );
 
   // React does not reliably keep the `muted` DOM property in sync with the
   // attribute, so set the property directly.
@@ -120,6 +139,11 @@ export function FeedVideoPlayer({
   // Under reduced motion a paused video shows a large, always-visible Play.
   const bigPlay = reduced && !playing;
 
+  function clearSettleTimer() {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = null;
+  }
+
   function handleError() {
     // A public link is stable: asking for a "fresh" one returns the same URL
     // and nothing would reload.
@@ -127,21 +151,28 @@ export function FeedVideoPlayer({
     if (linkCanChange && !askedForFreshLink.current && onExpired) {
       askedForFreshLink.current = true;
       const failedLink = video.url;
-      const answer = onExpired();
-      if (answer) {
-        answer.then(
-          (freshLinkComing) => {
-            if (!freshLinkComing) setFailedUrl(failedLink);
-          },
-          () => setFailedUrl(failedLink),
-        );
-      }
+      // `failed` compares against the current `video.url`, so marking the
+      // failed link is a no-op once a different link has arrived.
+      const markFailed = () => setFailedUrl(failedLink);
+      onExpired().then((freshLinkComing) => {
+        if (!freshLinkComing) {
+          markFailed();
+          return;
+        }
+        clearSettleTimer();
+        settleTimer.current = setTimeout(() => {
+          settleTimer.current = null;
+          markFailed();
+        }, FRESH_LINK_SETTLE_MS);
+      }, markFailed);
       return;
     }
+    clearSettleTimer();
     setFailedUrl(video.url);
   }
 
   function retry() {
+    clearSettleTimer();
     askedForFreshLink.current = false;
     setFailedUrl(null);
     ref.current?.load();
@@ -168,6 +199,7 @@ export function FeedVideoPlayer({
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onLoadedData={() => {
+          clearSettleTimer();
           askedForFreshLink.current = false;
         }}
         onError={handleError}

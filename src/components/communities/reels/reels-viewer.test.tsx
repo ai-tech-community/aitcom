@@ -60,7 +60,7 @@ vi.mock("../feed/feed-video-player", () => ({
   }: {
     video: { url: string };
     preload?: string;
-    onExpired?: () => void | Promise<boolean>;
+    onExpired?: () => Promise<boolean>;
   }) => {
     // Stands in for the real player's contract: a false or failed answer
     // means no fresh link is coming, so it shows "Video unavailable".
@@ -379,6 +379,17 @@ describe("ReelsViewer", () => {
 
   it("shows unavailable when re-signing an expired link fails", async () => {
     m.reelsUtils.fetch.mockRejectedValue(new Error("offline"));
+    renderViewer([page([reel(1), reel(2)])]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "expire https://v/1.mp4" }),
+    );
+    expect(await screen.findByText("Video unavailable.")).toBeInTheDocument();
+    expect(m.reelsUtils.setInfiniteData).not.toHaveBeenCalled();
+  });
+
+  it("shows unavailable when the re-signed link is the same as the failed one", async () => {
+    // A same-window refresh of a stable private link: nothing would reload.
+    m.reelsUtils.fetch.mockResolvedValue(page([reel(1)]));
     renderViewer([page([reel(1), reel(2)])]);
     fireEvent.click(
       screen.getByRole("button", { name: "expire https://v/1.mp4" }),

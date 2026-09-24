@@ -244,19 +244,25 @@ export function ReelsViewer({
   }
 
   /**
-   * A private link expired: re-sign only that reel and patch it in place.
+   * A private link failed: re-sign only that reel and patch it in place.
    * Resolves false (or rejects, if the fetch fails) when no fresh link is
-   * coming, e.g. the video can no longer be watched, so the player shows
-   * "Video unavailable" instead of freezing.
+   * coming, so the player shows "Video unavailable" instead of freezing:
+   * the video can no longer be watched, or the re-signed link is the same
+   * one that failed (links are stable within a signing window, so a network
+   * error is not fixed by asking again, and an unchanged `src` never
+   * reloads).
    */
-  async function refreshVideo(postId: number): Promise<boolean> {
+  async function refreshVideo(
+    postId: number,
+    failedUrl: string | undefined,
+  ): Promise<boolean> {
     const fresh = await utils.feed.getReels.fetch(
       { communitySlug: slug, startAtPostId: postId, limit: 1 },
       { staleTime: 0 },
     );
     const reel = fresh.items[0];
     const video = reel?.id === postId ? reel.video : null;
-    if (!video) return false;
+    if (!video || video.url === failedUrl) return false;
     utils.feed.getReels.setInfiniteData(input, (cached) =>
       replaceReelVideo(cached, postId, video),
     );
@@ -357,7 +363,7 @@ export function ReelsViewer({
             }
             onCopyLink={() => copyLink(reel.id)}
             onReport={() => setReportFor(reel.id)}
-            onVideoExpired={() => refreshVideo(reel.id)}
+            onVideoExpired={() => refreshVideo(reel.id, reel.video?.url)}
           />
         ))}
       </div>

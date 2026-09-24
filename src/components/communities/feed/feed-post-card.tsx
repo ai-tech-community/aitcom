@@ -52,7 +52,8 @@ interface FeedPostCardProps {
   currentUserId?: string | null;
   memberRole?: string | null;
   communitySlug: string;
-  onRefresh: () => void;
+  /** Refetches the feed; resolves once the fresh posts are in. */
+  onRefresh: () => Promise<unknown>;
   onToggleComments: (postId: number) => void;
   showComments: boolean;
 }
@@ -82,7 +83,7 @@ export function FeedPostCard({
     memberRole === "moderator";
 
   const toggleLike = api.feed.toggleLike.useMutation({
-    onSuccess: () => onRefresh(),
+    onSuccess: () => void onRefresh(),
     onError: () => toast.error(t("toastLikeError")),
   });
 
@@ -90,7 +91,7 @@ export function FeedPostCard({
     onSuccess: () => {
       toast.success(t("postEdited"));
       setIsEditing(false);
-      onRefresh();
+      void onRefresh();
     },
     onError: () => toast.error(t("toastPostUpdateError")),
   });
@@ -98,18 +99,29 @@ export function FeedPostCard({
   const deletePost = api.feed.deletePost.useMutation({
     onSuccess: () => {
       toast.success(t("postDeleted"));
-      onRefresh();
+      void onRefresh();
     },
     onError: () => toast.error(t("toastPostDeleteError")),
   });
 
   const pinPost = api.feed.pinPost.useMutation({
-    onSuccess: () => onRefresh(),
+    onSuccess: () => void onRefresh(),
     onError: (e) =>
       toast.error(
         e.message === "PIN_CAP_REACHED" ? t("pinCapReached") : "Failed to pin",
       ),
   });
+
+  /**
+   * A private video link failed: refetch the feed, which re-signs it. The
+   * refetch cannot tell whether the link changed (links are stable within a
+   * signing window), so this resolves true once it is done and the player
+   * compares the `video.url` it then receives with the one that failed.
+   */
+  const refreshVideo = async () => {
+    await onRefresh();
+    return true;
+  };
 
   if (post.isDeleted) {
     return (
@@ -250,7 +262,7 @@ export function FeedPostCard({
 
       {/* Media */}
       {post.video ? (
-        <FeedVideoPlayer video={post.video} onExpired={onRefresh} />
+        <FeedVideoPlayer video={post.video} onExpired={refreshVideo} />
       ) : post.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
