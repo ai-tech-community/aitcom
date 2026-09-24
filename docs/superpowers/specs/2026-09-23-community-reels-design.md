@@ -1,6 +1,6 @@
 # Community short videos and Reels mode
 
-**Status:** draft for review · **Date:** 2026-09-23 · **ADR:** [0036](../../adr/0036-short-video-is-transcoded-on-device-and-stored-in-our-s3.md)
+**Status:** implemented (branch `feat/community-reels-build`, 2026-09-24; see [Implementation notes](#implementation-notes)) · **Date:** 2026-09-23 · **ADR:** [0036](../../adr/0036-short-video-is-transcoded-on-device-and-stored-in-our-s3.md)
 **Depends on:** PR #326 (combined community activity feed) merged first.
 
 ## Goal
@@ -229,3 +229,23 @@ A converted 60 s clip is about 20–25 MB.
    - (c) Grant the app's IAM user `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject`, and `s3:ListBucket` on `media/videos/*` and `private/videos/*`.
 3. Run the migration in the same window as the deploy.
 4. Turn the flag on for one community first, then for everyone.
+
+## Implementation notes
+
+What was built differs from this spec in these points (2026-09-24):
+
+- **Restore dismisses, not clears.** Restore sets `dismissedAt` on the open reports and keeps the rows, so one person still can't report the same post twice after a restore. Only open reports hide a post, count, or show to moderators. Remove still deletes the reports.
+- **Moderator reasons query.** A moderator-only `feed.getPostReports({ postId })` returns `{ reason, note, createdAt }[]` (never the reporter) for the Reported banner.
+- **Reports cover every post.** `reportPost` works on any community post the viewer can see, text or video, and is not behind the feature flag.
+- **Agent API follows the visibility rule.** `agent-feed` reads (`browseFeed`, `getFeedComments`, like, comment) use `post-visibility.ts` with a viewer derived from the agent owner's membership; unclaimed agents and non-member owners see public posts only. Agent drafts use `canPostToFeed`.
+- **Double-finish guard.** `feed_posts.video_key` has a unique index, so two concurrent `finishVideoPost` calls can't both create a post.
+- **Finish window 23 h.** `finishVideoPost` refuses grants older than `FINISH_WINDOW_HOURS` (`ABANDONED_UPLOAD_HOURS − 1`), so it never races the daily cleanup on the same grant.
+- **Cleanup skips owned files.** A stale grant whose video key a post already owns is marked finished, not deleted.
+- **Upload limit counts grants.** The 20/day limit is checked in `createVideoUpload` and counts upload grants, not finished posts.
+- **Storage API names.** `video-storage.ts` exposes `presignUpload`, `inspect`, `playbackUrl`, and `remove` (throws on partial `DeleteObjects` errors). `canBePublic` wasn't built: only `createVideoUpload` accepts `public`, and `createPost` and agent drafts write `community`.
+- **`getReels` input.** `{ communitySlug, limit, cursor, startAtPostId }`; a blocked deep link returns a `members_only` or `unavailable` notice. It returns nothing while the flag is off.
+- **Reels entry for everyone.** The Reels button sits above the member/visitor split on the community home, so visitors reach it too.
+- **Reels comments.** Comments open the existing `FeedComments` in a sheet for members; visitors get the sign-in / join gate.
+- **Extra error copy.** The composer tells "browser can't convert" (`unsupported`) apart from "this file can't be read" (`unreadable`: "We can't read this video. Try a different file.").
+- **Flag is per deployment.** The flag is `NEXT_PUBLIC_FEATURE_COMMUNITY_VIDEOS`, set at build time, so Rollout step 4 ("one community first") means one preview or pilot deployment, not one community.
+- **Transcode tests are mocked.** `video-transcode.ts` is unit-tested against a mocked Mediabunny. Real-browser checks are the manual device checklist.
