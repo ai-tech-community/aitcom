@@ -73,7 +73,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   hooks.membership = { role: "member" };
   payload.findByID.mockResolvedValue(post);
-  payload.update.mockImplementation(async ({ data }) => ({ ...post, ...data }));
+  payload.update.mockImplementation(
+    async ({ data }: { data: Record<string, unknown> }) => ({
+      ...post,
+      ...data,
+    }),
+  );
   storage.remove.mockResolvedValue(undefined);
 });
 
