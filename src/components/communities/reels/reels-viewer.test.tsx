@@ -1,5 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../../messages/en.json";
@@ -9,20 +16,18 @@ const m = vi.hoisted(() => ({
   likeMutate: vi.fn(),
   push: vi.fn(),
   promptAuth: vi.fn(),
+  reelsUtils: {
+    cancel: vi.fn(),
+    getInfiniteData: vi.fn(),
+    setInfiniteData: vi.fn(),
+    invalidate: vi.fn(),
+    fetch: vi.fn(),
+  },
 }));
 
 vi.mock("@/trpc/react", () => ({
   api: {
-    useUtils: () => ({
-      feed: {
-        getReels: {
-          cancel: vi.fn(),
-          getInfiniteData: vi.fn(),
-          setInfiniteData: vi.fn(),
-          invalidate: vi.fn(),
-        },
-      },
-    }),
+    useUtils: () => ({ feed: { getReels: m.reelsUtils } }),
     feed: {
       getReels: { useInfiniteQuery: () => m.query },
       toggleLike: {
@@ -50,11 +55,17 @@ vi.mock("../feed/feed-video-player", () => ({
   FeedVideoPlayer: ({
     video,
     preload,
+    onExpired,
   }: {
     video: { url: string };
     preload?: string;
+    onExpired?: () => void;
   }) => (
-    <div data-testid="player" data-src={video.url} data-preload={preload} />
+    <div data-testid="player" data-src={video.url} data-preload={preload}>
+      <button type="button" onClick={onExpired}>
+        {`expire ${video.url}`}
+      </button>
+    </div>
   ),
 }));
 vi.mock("../feed/feed-comments", () => ({
@@ -101,7 +112,7 @@ const MEMBER: Viewer = { currentUserId: "user-9", memberRole: "member" };
 const SIGNED_OUT: Viewer = { currentUserId: null, memberRole: null };
 const OUTSIDER: Viewer = { currentUserId: "user-9", memberRole: null };
 
-function renderViewer(pages: unknown[], viewer: Viewer = MEMBER) {
+function setPages(pages: unknown[]) {
   m.query = {
     data: { pages },
     isLoading: false,
@@ -110,7 +121,11 @@ function renderViewer(pages: unknown[], viewer: Viewer = MEMBER) {
     fetchNextPage: vi.fn(),
     refetch: vi.fn(),
   };
-  return render(
+}
+
+function renderViewer(pages: unknown[], viewer: Viewer = MEMBER) {
+  setPages(pages);
+  const ui = () => (
     <NextIntlClientProvider locale="en" messages={en}>
       <ReelsViewer
         slug="mlops"
@@ -120,8 +135,16 @@ function renderViewer(pages: unknown[], viewer: Viewer = MEMBER) {
         membershipStatus={viewer.memberRole ? "active" : null}
         joinPolicy="open"
       />
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
+  const view = render(ui());
+  return {
+    ...view,
+    rerenderWith: (next: unknown[]) => {
+      setPages(next);
+      view.rerender(ui());
+    },
+  };
 }
 
 const page = (items: unknown[], notice: string | null = null) => ({
@@ -130,7 +153,12 @@ const page = (items: unknown[], notice: string | null = null) => ({
   notice,
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 beforeEach(() => {
+  Object.values(m.reelsUtils).forEach((fn) => fn.mockReset());
   m.likeMutate.mockClear();
   m.push.mockClear();
   m.promptAuth.mockClear();
@@ -268,5 +296,116 @@ describe("ReelsViewer", () => {
   it("says when a linked video is not available", () => {
     renderViewer([page([], "unavailable")]);
     expect(screen.getByText("This video isn't available.")).toBeInTheDocument();
+  });
+  it("re-signs only the reel whose link expired, without refetching the list", async () => {
+    const fresh = { ...reel(2).video, url: "https://v/2-fresh.mp4" };
+    m.reelsUtils.fetch.mockResolvedValue({
+      items: [{ ...reel(2), video: fresh }],
+      nextCursor: null,
+      notice: null,
+    });
+    renderViewer([page([reel(1), reel(2)])]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "expire https://v/2.mp4" }),
+    );
+    await waitFor(() =>
+      expect(m.reelsUtils.setInfiniteData).toHaveBeenCalled(),
+    );
+    expect(m.reelsUtils.fetch).toHaveBeenCalledWith(
+      { communitySlug: "mlops", startAtPostId: 2, limit: 1 },
+      expect.anything(),
+    );
+    expect(m.query.refetch).not.toHaveBeenCalled();
+    const [, update] = m.reelsUtils.setInfiniteData.mock.calls[0]!;
+    const cached = { pageParams: [null], pages: [page([reel(1), reel(2)])] };
+    const next = update(cached);
+    expect(next.pages[0].items[0]).toBe(cached.pages[0]!.items[0]);
+    expect(next.pages[0].items[1].video.url).toBe("https://v/2-fresh.mp4");
+  });
+
+  it("stays on the same video when newer reels arrive on top", () => {
+    const view = renderViewer([page([reel(1), reel(2), reel(3)])]);
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Reels" }), {
+      key: "ArrowDown",
+    });
+    expect(screen.getByText("Video 2 of 3")).toBeInTheDocument();
+    view.rerenderWith([page([reel(9), reel(1), reel(2), reel(3)])]);
+    expect(screen.getByText("Video 3 of 4")).toBeInTheDocument();
+    expect(
+      screen.getAllByTestId("player").map((p) => p.getAttribute("data-src")),
+    ).toEqual(["https://v/2.mp4", "https://v/3.mp4"]);
+  });
+
+  it("clamps to the last reel when the list shrinks under it", () => {
+    const view = renderViewer([page([reel(1), reel(2), reel(3)])]);
+    const dialog = screen.getByRole("dialog", { name: "Reels" });
+    fireEvent.keyDown(dialog, { key: "ArrowDown" });
+    fireEvent.keyDown(dialog, { key: "ArrowDown" });
+    expect(screen.getByText("Video 3 of 3")).toBeInTheDocument();
+    view.rerenderWith([page([reel(1), reel(2)])]);
+    expect(screen.getByText("Video 2 of 2")).toBeInTheDocument();
+  });
+
+  it("moves two reels on a quick double down-arrow", () => {
+    renderViewer([page([reel(1), reel(2), reel(3)])]);
+    const dialog = screen.getByRole("dialog", { name: "Reels" });
+    fireEvent.keyDown(dialog, { key: "ArrowDown" });
+    fireEvent.keyDown(dialog, { key: "ArrowDown" });
+    expect(screen.getByText("Video 3 of 3")).toBeInTheDocument();
+  });
+
+  describe("scrolling", () => {
+    function scroller(height = 800) {
+      const el = document.querySelector(
+        '[aria-roledescription="slide"]',
+      )!.parentElement!;
+      Object.defineProperty(el, "clientHeight", {
+        configurable: true,
+        value: height,
+      });
+      return el;
+    }
+    function scrollTo(el: HTMLElement, top: number) {
+      el.scrollTop = top;
+      fireEvent.scroll(el);
+    }
+
+    it("ignores the in-between frames of a smooth scroll started by a key", () => {
+      vi.useFakeTimers();
+      renderViewer([page([reel(1), reel(2), reel(3)])]);
+      const el = scroller();
+      fireEvent.keyDown(screen.getByRole("dialog", { name: "Reels" }), {
+        key: "ArrowDown",
+      });
+      scrollTo(el, 100);
+      scrollTo(el, 300);
+      expect(screen.getByText("Video 2 of 3")).toBeInTheDocument();
+      scrollTo(el, 800);
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(screen.getByText("Video 2 of 3")).toBeInTheDocument();
+    });
+
+    it("follows a swipe once it comes to rest", () => {
+      vi.useFakeTimers();
+      renderViewer([page([reel(1), reel(2), reel(3)])]);
+      const el = scroller();
+      scrollTo(el, 900);
+      expect(screen.getByText("Video 1 of 3")).toBeInTheDocument();
+      scrollTo(el, 1600);
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(screen.getByText("Video 3 of 3")).toBeInTheDocument();
+    });
+
+    it("reads the resting reel at once on scrollend", () => {
+      renderViewer([page([reel(1), reel(2), reel(3)])]);
+      const el = scroller();
+      el.scrollTop = 800;
+      fireEvent(el, new Event("scrollend"));
+      expect(screen.getByText("Video 2 of 3")).toBeInTheDocument();
+    });
   });
 });

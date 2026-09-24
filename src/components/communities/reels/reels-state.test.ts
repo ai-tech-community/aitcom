@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { parseReelPostId, toggleLikeInPages } from "./reels-state";
+import {
+  parseReelPostId,
+  replaceReelVideo,
+  toggleLikeInPages,
+} from "./reels-state";
 
 describe("parseReelPostId", () => {
   it("reads a positive whole post id", () => {
@@ -53,5 +57,19 @@ describe("toggleLikeInPages", () => {
 
   it("passes through when nothing is cached", () => {
     expect(toggleLikeInPages(undefined, 1)).toBeUndefined();
+  });
+});
+
+describe("replaceReelVideo", () => {
+  const a = { id: 1, video: { url: "a-old" } };
+  const b = { id: 2, video: { url: "b-old" } };
+  const data = { pageParams: [null], pages: [{ items: [a] }, { items: [b] }] };
+
+  it("swaps only the expired reel's links", () => {
+    const next = replaceReelVideo(data, 2, { url: "b-new" })!;
+    expect(next.pages[1]!.items[0]!.video.url).toBe("b-new");
+    expect(next.pages[0]).toBe(data.pages[0]);
+    expect(next.pages[0]!.items[0]).toBe(a);
+    expect(b.video.url).toBe("b-old");
   });
 });

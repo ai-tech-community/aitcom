@@ -29,7 +29,7 @@ import { FeedComments } from "../feed/feed-comments";
 import { ReportDialog } from "../feed/report-dialog";
 import { JoinButton } from "../join-button";
 import { ReelSlide } from "./reel-slide";
-import { toggleLikeInPages } from "./reels-state";
+import { replaceReelVideo, toggleLikeInPages } from "./reels-state";
 
 type MemberRole = "owner" | "admin" | "moderator" | "member";
 type JoinPolicy = "open" | "invite_only" | "approval_required";
@@ -37,6 +37,11 @@ type MembershipStatus = "active" | "pending_approval" | "invited" | null;
 
 /** Reels fetched per page. */
 const PAGE_SIZE = 8;
+/**
+ * How long scrolling must pause before the reel on screen is re-read, for
+ * browsers without the `scrollend` event.
+ */
+const SCROLL_SETTLE_MS = 150;
 
 function prefersReducedMotion() {
   return (
@@ -95,7 +100,17 @@ export function ReelsViewer({
 
   const contentRef = useRef<HTMLDivElement>(null);
   const slides = useRef<Array<HTMLElement | null>>([]);
-  const [index, setIndex] = useState(0);
+  /**
+   * The reel on screen, by id, plus the slot it was last seen in. The id is
+   * the source of truth, so the viewer stays on the same video when the list
+   * is replaced (new posts on top) and falls back to the slot, clamped, when
+   * that video leaves the list.
+   */
+  const [current, setCurrent] = useState<{ id: number | null; slot: number }>({
+    id: null,
+    slot: 0,
+  });
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [commentsFor, setCommentsFor] = useState<number | null>(null);
   const [reportFor, setReportFor] = useState<number | null>(null);
   const [joinPromptOpen, setJoinPromptOpen] = useState(false);
@@ -114,10 +129,38 @@ export function ReelsViewer({
     fetchNextPage,
   } = api.feed.getReels.useInfiniteQuery(input, {
     getNextPageParam: (last) => last.nextCursor ?? undefined,
+    // A refetch re-signs every private link and restarts the video that is
+    // playing. Expired links are refreshed one reel at a time instead.
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
   const items = useMemo(
     () => data?.pages.flatMap((page) => page.items) ?? [],
     [data],
+  );
+  const foundAt =
+    current.id === null ? -1 : items.findIndex((r) => r.id === current.id);
+  const index =
+    foundAt >= 0
+      ? foundAt
+      : Math.min(current.slot, Math.max(items.length - 1, 0));
+
+  // Keep `current` pointing at the reel in `index`. When the list was
+  // replaced and that reel moved, bring its slide back on screen.
+  useEffect(() => {
+    const id = items[index]?.id ?? null;
+    if (id === current.id && index === current.slot) return;
+    if (index !== current.slot) {
+      slides.current[index]?.scrollIntoView?.({ block: "start" });
+    }
+    setCurrent({ id, slot: index });
+  }, [items, index, current]);
+
+  useEffect(
+    () => () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    },
+    [],
   );
   const notice = data?.pages[0]?.notice ?? null;
 
@@ -155,9 +198,13 @@ export function ReelsViewer({
     }
   }, [index, items.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
+  function show(slot: number) {
+    setCurrent({ id: items[slot]?.id ?? null, slot });
+  }
+
   function goTo(next: number) {
     const target = Math.max(0, Math.min(next, items.length - 1));
-    setIndex(target);
+    show(target);
     slides.current[target]?.scrollIntoView?.({
       block: "start",
       behavior: prefersReducedMotion() ? "auto" : "smooth",
@@ -177,6 +224,39 @@ export function ReelsViewer({
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       goTo(index - 1);
+    }
+  }
+
+  /**
+   * Reads which reel the scroller came to rest on. Scroll events in between
+   * never move the index, so a smooth scroll started by ↑/↓ is not pulled
+   * back by its own first frames, and players do not remount mid-swipe.
+   */
+  function settle(el: HTMLElement) {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = null;
+    if (el.clientHeight === 0) return;
+    const slot = Math.max(
+      0,
+      Math.min(Math.round(el.scrollTop / el.clientHeight), items.length - 1),
+    );
+    if (slot !== index) show(slot);
+  }
+
+  /** A private link expired: re-sign only that reel and patch it in place. */
+  async function refreshVideo(postId: number) {
+    try {
+      const fresh = await utils.feed.getReels.fetch(
+        { communitySlug: slug, startAtPostId: postId, limit: 1 },
+        { staleTime: 0 },
+      );
+      const reel = fresh.items[0];
+      if (reel?.id !== postId || !reel.video) return;
+      utils.feed.getReels.setInfiniteData(input, (cached) =>
+        replaceReelVideo(cached, postId, reel.video),
+      );
+    } catch {
+      // The player shows "Video unavailable" on the next failure.
     }
   }
 
@@ -243,10 +323,10 @@ export function ReelsViewer({
         className="h-full snap-y snap-mandatory overflow-y-auto overscroll-contain"
         onScroll={(event) => {
           const el = event.currentTarget;
-          if (el.clientHeight === 0) return;
-          const next = Math.round(el.scrollTop / el.clientHeight);
-          if (next !== index) setIndex(next);
+          if (settleTimer.current) clearTimeout(settleTimer.current);
+          settleTimer.current = setTimeout(() => settle(el), SCROLL_SETTLE_MS);
         }}
+        onScrollEnd={(event) => settle(event.currentTarget)}
       >
         {items.map((reel, i) => (
           <ReelSlide
@@ -273,7 +353,7 @@ export function ReelsViewer({
             }
             onCopyLink={() => copyLink(reel.id)}
             onReport={() => setReportFor(reel.id)}
-            onVideoExpired={() => void refetch()}
+            onVideoExpired={() => void refreshVideo(reel.id)}
           />
         ))}
       </div>

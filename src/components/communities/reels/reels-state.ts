@@ -18,18 +18,19 @@ type LikeableReel = {
   hasLiked: boolean;
   likeCount?: number | null;
 };
-type ReelPages<T extends LikeableReel> = {
+type ReelPages<T extends { id: number }> = {
   pages: Array<{ items: T[] }>;
 };
 
 /**
- * Flips `hasLiked` on one reel and moves its count by one, returning new
- * objects only along the changed path so untouched reels keep their identity.
+ * Applies `update` to one reel, returning new objects only along the changed
+ * path so untouched reels (and their signed video links) keep their identity.
  */
-export function toggleLikeInPages<
-  T extends LikeableReel,
-  D extends ReelPages<T>,
->(data: D | undefined, postId: number): D | undefined {
+function updateReelInPages<T extends { id: number }, D extends ReelPages<T>>(
+  data: D | undefined,
+  postId: number,
+  update: (item: T) => T,
+): D | undefined {
   if (!data) return data;
   return {
     ...data,
@@ -38,19 +39,34 @@ export function toggleLikeInPages<
         ? {
             ...page,
             items: page.items.map((item) =>
-              item.id === postId
-                ? {
-                    ...item,
-                    hasLiked: !item.hasLiked,
-                    likeCount: Math.max(
-                      0,
-                      (item.likeCount ?? 0) + (item.hasLiked ? -1 : 1),
-                    ),
-                  }
-                : item,
+              item.id === postId ? update(item) : item,
             ),
           }
         : page,
     ),
   };
+}
+
+/** Flips `hasLiked` on one reel and moves its count by one. */
+export function toggleLikeInPages<
+  T extends LikeableReel,
+  D extends ReelPages<T>,
+>(data: D | undefined, postId: number): D | undefined {
+  return updateReelInPages<T, D>(data, postId, (item) => ({
+    ...item,
+    hasLiked: !item.hasLiked,
+    likeCount: Math.max(0, (item.likeCount ?? 0) + (item.hasLiked ? -1 : 1)),
+  }));
+}
+
+/**
+ * Swaps in freshly signed video links for one reel whose private link
+ * expired. Every other reel keeps its links, so nothing else reloads.
+ */
+export function replaceReelVideo<
+  V,
+  T extends { id: number; video: V },
+  D extends ReelPages<T>,
+>(data: D | undefined, postId: number, video: V): D | undefined {
+  return updateReelInPages<T, D>(data, postId, (item) => ({ ...item, video }));
 }
