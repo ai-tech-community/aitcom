@@ -13,10 +13,14 @@ import {
   sanitizeStartupRoleDescription,
   startupJobsFollowFromQuery,
   startupRoleJsonLd,
-  startupRoleSearchTerms,
-  startupRoleSearchPlan,
+  startupJobsSortForSearch,
   type StartupRolePublic,
 } from "./startup-roles";
+import {
+  defaultStartupJobsSort,
+  startupRoleSearchPlan,
+  startupRoleSearchTerms,
+} from "./startup-jobs-search";
 
 function sampleRole(
   overrides: Partial<StartupRolePublic> = {},
@@ -418,7 +422,10 @@ describe("jobs full-text search", () => {
       }),
     ];
     // "b" matched on its description, which the listing never carries.
-    const matches = new Set(["b", "c"]);
+    const matches = new Map([
+      ["b", 0],
+      ["c", 1],
+    ]);
     const ids = (raw: Record<string, string>) =>
       applyStartupJobsQuery(roles, parseStartupJobsQuery(raw), matches)
         .map((role) => role.id)
@@ -433,7 +440,7 @@ describe("jobs full-text search", () => {
       applyStartupJobsQuery(roles, parseStartupJobsQuery({ q: "!!!" }), null),
     ).toHaveLength(1);
     expect(
-      applyStartupJobsQuery(roles, parseStartupJobsQuery({}), new Set()),
+      applyStartupJobsQuery(roles, parseStartupJobsQuery({}), new Map()),
     ).toHaveLength(1);
   });
 
@@ -445,5 +452,72 @@ describe("jobs full-text search", () => {
         null,
       ),
     ).toThrow();
+  });
+
+  it("orders a search by best match, as the index ranked it", () => {
+    const roles = [
+      sampleRole({ id: "a", slug: "a", startupName: "Alpha", title: "A" }),
+      sampleRole({ id: "b", slug: "b", startupName: "Beta", title: "B" }),
+      sampleRole({ id: "c", slug: "c", startupName: "Gamma", title: "C" }),
+    ];
+    const matches = new Map([
+      ["c", 0],
+      ["a", 1],
+      ["b", 2],
+    ]);
+    const ids = (raw: Record<string, string>) =>
+      applyStartupJobsQuery(roles, parseStartupJobsQuery(raw), matches).map(
+        (role) => role.id,
+      );
+    expect(ids({ q: "engineer" })).toEqual(["c", "a", "b"]);
+    // A picked order still wins over the ranking.
+    expect(ids({ q: "engineer", sort: "company" })).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("jobs best-match sort", () => {
+  it("defaults to best match while searching, company A–Z otherwise", () => {
+    expect(defaultStartupJobsSort("engineer")).toBe("match");
+    expect(defaultStartupJobsSort("  ")).toBe("company");
+    expect(defaultStartupJobsSort("!!!")).toBe("company");
+    expect(parseStartupJobsQuery({ q: "engineer" }).sort).toBe("match");
+    expect(parseStartupJobsQuery({}).sort).toBe("company");
+    expect(parseStartupJobsQuery({ q: "engineer", sort: "role" }).sort).toBe(
+      "role",
+    );
+  });
+
+  it("falls back to company A–Z when best match has no search", () => {
+    expect(parseStartupJobsQuery({ sort: "match" }).sort).toBe("company");
+    expect(parseStartupJobsQuery({ sort: "match", q: "!!!" }).sort).toBe(
+      "company",
+    );
+  });
+
+  it("keeps the default order for the search out of the URL", () => {
+    expect(buildStartupJobsPath({ q: "engineer", sort: "match" })).toBe(
+      "/jobs?q=engineer",
+    );
+    expect(buildStartupJobsPath({ q: "engineer", sort: "company" })).toBe(
+      "/jobs?q=engineer&sort=company",
+    );
+    expect(buildStartupJobsPath({ sort: "company" })).toBe("/jobs");
+    // Round trip: the URL without a sort reads back as best match.
+    expect(parseStartupJobsQuery({ q: "engineer" }).sort).toBe("match");
+  });
+
+  it("lets the default order follow the search and keeps a picked one", () => {
+    expect(startupJobsSortForSearch({ q: "", sort: "company" }, "eng")).toBe(
+      "match",
+    );
+    expect(startupJobsSortForSearch({ q: "eng", sort: "match" }, "")).toBe(
+      "company",
+    );
+    expect(startupJobsSortForSearch({ q: "", sort: "role" }, "eng")).toBe(
+      "role",
+    );
+    expect(startupJobsSortForSearch({ q: "eng", sort: "company" }, "")).toBe(
+      "company",
+    );
   });
 });

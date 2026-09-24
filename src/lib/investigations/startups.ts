@@ -4,6 +4,7 @@ import {
   sourcedStartupPlaceLabel,
   startupPlaceCentroid,
 } from "./startups-places";
+import { defaultStartupJobsSort } from "./startup-jobs-search";
 import type { StartupCountryCode } from "./startups-countries";
 
 export const STARTUPS_PATH = "/startups";
@@ -287,8 +288,10 @@ export function buildStartupJobsPath(query?: {
   if (workType && workType.toLowerCase() !== "all") {
     params.set("workType", workType);
   }
-  // Company order is the default and stays out of the URL.
-  if (sort && sort !== "company") params.set("sort", sort);
+  // The default order for this search stays out of the URL.
+  if (sort && sort !== defaultStartupJobsSort(needle ?? "")) {
+    params.set("sort", sort);
+  }
   if (query?.page && query.page > 1) params.set("page", String(query.page));
   const suffix = params.toString();
   return suffix ? `${STARTUPS_JOBS_PATH}?${suffix}` : STARTUPS_JOBS_PATH;

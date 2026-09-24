@@ -8,13 +8,13 @@ import {
   startupsPublicRobots,
 } from "@/lib/investigations/startups";
 import {
-  STARTUP_JOBS_DEFAULT_SORT,
   applyStartupJobsQuery,
   paginateStartupRoles,
   parseStartupJobsQuery,
   rolesListedSince,
   startupJobsFollowFromQuery,
 } from "@/lib/investigations/startup-roles";
+import { defaultStartupJobsSort } from "@/lib/investigations/startup-jobs-search";
 import {
   absoluteLocaleUrl,
   localeAlternates,
@@ -69,7 +69,7 @@ export async function generateMetadata({
     query.q ||
     query.location ||
     query.workType ||
-    query.sort !== STARTUP_JOBS_DEFAULT_SORT,
+    query.sort !== defaultStartupJobsSort(query.q),
   );
   const canonical = filteredView
     ? STARTUPS_JOBS_PATH

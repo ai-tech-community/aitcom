@@ -23,11 +23,13 @@ import {
 } from "@/components/ui/select";
 import { FilterSelect } from "@/components/investigations/startups-filter-select";
 import { buildStartupJobsPath } from "@/lib/investigations/startups";
+import { hasStartupJobsSearch } from "@/lib/investigations/startup-jobs-search";
 import {
   STARTUP_JOBS_REMOTE,
   STARTUP_JOBS_SORTS,
   STARTUP_WORK_TYPE_LABELS,
   parseStartupJobsQuery,
+  startupJobsSortForSearch,
   type StartupJobsQuery,
   type StartupJobsSort,
   type StartupWorkType,
@@ -55,6 +57,7 @@ export type StartupsJobsFiltersLabels = {
   locationRemote: string;
   workType: string;
   workTypeAll: string;
+  sortMatch: string;
   sortRole: string;
   sortCompany: string;
   sortLocation: string;
@@ -130,10 +133,12 @@ export function StartupsJobsFilters({
     // left running, it would replace this URL with the older one.
     cancelPendingSearch();
     if (next.q !== undefined) setSearchDraft(next.q);
+    // A filter picked mid-typing keeps what is already in the box.
+    const q = next.q ?? searchDraft;
     const merged = parseStartupJobsQuery({
       ...query,
-      // A filter picked mid-typing keeps what is already in the box.
-      q: searchDraft,
+      q,
+      sort: startupJobsSortForSearch(query, q),
       ...next,
       page: next.page ?? (filterChanged ? 1 : query.page),
     });
@@ -144,7 +149,12 @@ export function StartupsJobsFilters({
     });
   }
 
+  // Best match only means something while searching.
+  const sortOptions = STARTUP_JOBS_SORTS.filter(
+    (id) => id !== "match" || hasStartupJobsSearch(query.q),
+  );
   const sortLabel: Record<StartupJobsSort, string> = {
+    match: labels.sortMatch,
     role: labels.sortRole,
     company: labels.sortCompany,
     location: labels.sortLocation,
@@ -220,7 +230,7 @@ export function StartupsJobsFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {STARTUP_JOBS_SORTS.map((id) => (
+                {sortOptions.map((id) => (
                   <SelectItem key={id} value={id}>
                     {sortLabel[id]}
                   </SelectItem>

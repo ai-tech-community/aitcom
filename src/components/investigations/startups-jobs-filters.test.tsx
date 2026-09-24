@@ -20,6 +20,7 @@ const LABELS = {
   locationRemote: "Remote",
   workType: "Filter by work type",
   workTypeAll: "All work types",
+  sortMatch: "Best match",
   sortRole: "Role A–Z",
   sortCompany: "Company A–Z",
   sortLocation: "Location A–Z",
@@ -130,5 +131,37 @@ describe("StartupsJobsFilters search box", () => {
       vi.advanceTimersByTime(300);
     });
     expect(replace).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a picked order while typing a search", () => {
+    renderFilters({ sort: "role" });
+    fireEvent.change(screen.getByLabelText(LABELS.search), {
+      target: { value: "engineer" },
+    });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(replace).toHaveBeenLastCalledWith("/jobs?q=engineer&sort=role", {
+      scroll: false,
+    });
+  });
+
+  it("goes back to company A–Z when a best-match search is cleared", () => {
+    renderFilters({ q: "engineer" });
+    fireEvent.change(screen.getByLabelText(LABELS.search), {
+      target: { value: "" },
+    });
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(replace).toHaveBeenLastCalledWith("/jobs", { scroll: false });
+  });
+
+  it("keeps a picked order when the search is cleared", () => {
+    renderFilters({ q: "engineer", sort: "role" });
+    fireEvent.click(screen.getByRole("button", { name: LABELS.clear }));
+    expect(replace).toHaveBeenLastCalledWith("/jobs?sort=role", {
+      scroll: false,
+    });
   });
 });
