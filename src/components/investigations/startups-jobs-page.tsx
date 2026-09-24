@@ -48,6 +48,7 @@ export type StartupsJobsKey =
   | "jobsFilterLocationAll"
   | "jobsFilterWorkType"
   | "jobsFilterWorkTypeAll"
+  | "jobsSortMatch"
   | "jobsSortRole"
   | "jobsSortCompany"
   | "jobsSortLocation"
@@ -166,6 +167,7 @@ export function StartupsJobsPage({
             locationRemote: t("jobsLocationRemote"),
             workType: t("jobsFilterWorkType"),
             workTypeAll: t("jobsFilterWorkTypeAll"),
+            sortMatch: t("jobsSortMatch"),
             sortRole: t("jobsSortRole"),
             sortCompany: t("jobsSortCompany"),
             sortLocation: t("jobsSortLocation"),
