@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 import {
   ashbyBoardUrl,
@@ -451,7 +451,12 @@ export async function scanAllStartupJobs(
     .select()
     .from(startups)
     .where(and(eq(startups.status, "approved"), eq(startups.source, "staff")))
-    .orderBy(asc(startups.jobsScannedAt), asc(startups.listedOn));
+    // Postgres ASC is NULLS LAST, so the daily cron would keep re-scanning
+    // already-scanned rows and never drain jobs_scanned_at IS NULL.
+    .orderBy(
+      sql`${startups.jobsScannedAt} ASC NULLS FIRST`,
+      asc(startups.listedOn),
+    );
 
   const targets = rows.filter((row) => presentText(row.jobsUrl));
   const started = Date.now();
