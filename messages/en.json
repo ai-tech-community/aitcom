@@ -2676,6 +2676,28 @@
       "play": "Play video",
       "pause": "Pause video",
       "unavailable": "Video unavailable."
+    },
+    "reels": {
+      "open": "Reels",
+      "title": "Reels",
+      "close": "Close reels",
+      "membersOnly": "This video is for members.",
+      "unavailable": "This video isn't available.",
+      "empty": "No videos here yet.",
+      "copyLink": "Copy link",
+      "linkCopied": "Link copied",
+      "copyFailed": "Couldn't copy the link.",
+      "like": "Like",
+      "comments": "{count, plural, one {# comment} other {# comments}}",
+      "commentsTitle": "Comments",
+      "communityOnly": "Community only",
+      "public": "Public",
+      "position": "Video {current} of {total}",
+      "signInToLike": "Sign in to like videos",
+      "signInToComment": "Sign in to comment on videos",
+      "joinTitle": "Join to like and comment",
+      "joinDescription": "Only members can like and comment on videos here.",
+      "inviteOnly": "This community is invite only. Ask a member for an invite."
     }
   },
   "notificationPrefs": {

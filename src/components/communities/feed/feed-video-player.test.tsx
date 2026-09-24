@@ -159,4 +159,18 @@ describe("FeedVideoPlayer play and pause", () => {
     act(() => visible(0.9));
     expect(play).toHaveBeenCalledTimes(1);
   });
+
+  it("fetches only metadata by default and buffers ahead when asked", () => {
+    const { container, unmount } = renderPlayer();
+    expect(container.querySelector("video")).toHaveAttribute(
+      "preload",
+      "metadata",
+    );
+    unmount();
+    const ahead = renderPlayer(false, { preload: "auto" });
+    expect(ahead.container.querySelector("video")).toHaveAttribute(
+      "preload",
+      "auto",
+    );
+  });
 });

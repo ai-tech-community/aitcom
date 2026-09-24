@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/trpc/react";
-import { Loader2, LogIn } from "lucide-react";
+import { Clapperboard, Loader2, LogIn } from "lucide-react";
+import { Link } from "@/i18n/navigation";
+import { isCommunityVideosEnabled } from "@/lib/community-videos-flag";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorState } from "@/components/ui/error-state";
@@ -51,6 +53,8 @@ export function FeedPage({
           <HubFirstSessionPath slug={slug} isMember={isMember} />
         )}
         {isAuthenticated && isMember && <WelcomeChecklist slug={slug} />}
+
+        <ReelsEntry slug={slug} />
 
         <PostComposer slug={slug} canPost={canPost} />
 
@@ -108,6 +112,31 @@ export function FeedPage({
       <div className="lg:hidden">
         <CommunitySidebar slug={slug} />
       </div>
+    </div>
+  );
+}
+
+/**
+ * The way into Reels mode, for members and visitors alike. It shows only when
+ * the community has at least one video this viewer may watch (`getReels`
+ * already filters by viewer), so it never leads to an empty screen.
+ */
+function ReelsEntry({ slug }: { slug: string }) {
+  const t = useTranslations("communities.reels");
+  const enabled = isCommunityVideosEnabled();
+  const { data } = api.feed.getReels.useQuery(
+    { communitySlug: slug, limit: 1 },
+    { enabled },
+  );
+  if (!enabled || !data?.items.length) return null;
+  return (
+    <div className="flex justify-end">
+      <Button asChild variant="outline" size="sm">
+        <Link href={`/communities/${slug}/reels`}>
+          <Clapperboard aria-hidden="true" />
+          {t("open")}
+        </Link>
+      </Button>
     </div>
   );
 }

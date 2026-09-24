@@ -2676,6 +2676,28 @@
       "play": "Video afspelen",
       "pause": "Video pauzeren",
       "unavailable": "Video niet beschikbaar."
+    },
+    "reels": {
+      "open": "Reels",
+      "title": "Reels",
+      "close": "Reels sluiten",
+      "membersOnly": "Deze video is voor leden.",
+      "unavailable": "Deze video is niet beschikbaar.",
+      "empty": "Hier staan nog geen video's.",
+      "copyLink": "Link kopiëren",
+      "linkCopied": "Link gekopieerd",
+      "copyFailed": "De link kon niet worden gekopieerd.",
+      "like": "Vind ik leuk",
+      "comments": "{count, plural, one {# reactie} other {# reacties}}",
+      "commentsTitle": "Reacties",
+      "communityOnly": "Alleen de community",
+      "public": "Openbaar",
+      "position": "Video {current} van {total}",
+      "signInToLike": "Log in om video's leuk te vinden",
+      "signInToComment": "Log in om op video's te reageren",
+      "joinTitle": "Word lid om te liken en te reageren",
+      "joinDescription": "Alleen leden kunnen hier video's leuk vinden en erop reageren.",
+      "inviteOnly": "Deze community is alleen op uitnodiging. Vraag een lid om een uitnodiging."
     }
   },
   "notificationPrefs": {

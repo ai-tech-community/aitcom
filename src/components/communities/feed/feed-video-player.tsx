@@ -39,6 +39,8 @@ function prefersReducedMotion() {
  *   focusable and show on hover and keyboard focus (and always on touch
  *   screens). Once the viewer pauses, scrolling back does not restart it.
  * - Tapping the video toggles sound.
+ * - `preload` defaults to "metadata" (the feed fetches almost nothing until
+ *   the video plays). Reels passes "auto" so the next video buffers ahead.
  * - A private playback link expires after an hour. On a load error the player
  *   asks the caller once for a fresh link through `onExpired`; a second error
  *   in a row shows "Video unavailable".
@@ -47,10 +49,12 @@ export function FeedVideoPlayer({
   video,
   onExpired,
   className,
+  preload = "metadata",
 }: {
   video: FeedVideo;
   onExpired?: () => void;
   className?: string;
+  preload?: "metadata" | "auto";
 }) {
   const t = useTranslations("communities.report");
   const ref = useRef<HTMLVideoElement>(null);
@@ -135,7 +139,7 @@ export function FeedVideoPlayer({
         muted={muted}
         playsInline
         loop
-        preload="metadata"
+        preload={preload}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onLoadedData={() => {
