@@ -18,10 +18,10 @@ import { getPayloadClient } from "@/server/payload";
 import { logActivity } from "@/server/agent/activity";
 import {
   canPostToFeed,
+  requireViewablePost,
   type FeedMemberRole,
 } from "@/server/communities/feed-posts";
 import {
-  canViewPost,
   feedViewerFor,
   OUTSIDE_VIEWER,
   postVisibilityWhere,
@@ -120,16 +120,6 @@ async function agentFeedViewer(
   );
 }
 
-/** NOT_FOUND unless the owner may see this post (hidden, community-only). */
-function requireVisiblePost(
-  post: Parameters<typeof canViewPost>[0],
-  viewer: FeedViewer,
-) {
-  if (!canViewPost(post, viewer)) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
-  }
-}
-
 // ── Procedures ───────────────────────────────────────────────────────────────
 
 export const agentFeedRouter = {
@@ -225,17 +215,14 @@ export const agentFeedRouter = {
 
       const payload = await getPayloadClient();
 
-      // A community post's comments follow the post's visibility. Hub-wide
-      // posts (no community) have no membership to check.
-      const post = await payload
-        .findByID({ collection: "feed-posts", id: input.postId, depth: 0 })
-        .catch(() => null);
-      if (post?.communityId) {
-        requireVisiblePost(
-          post,
-          await agentFeedViewer(ctx.db, post.communityId, ctx.agent.ownerId),
-        );
-      }
+      // A post's comments follow the post's visibility, seen through the
+      // owner's membership (an unclaimed agent sees as an outsider).
+      await requireViewablePost(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.agent.ownerId,
+      );
 
       const { docs } = await payload.find({
         collection: "feed-comments",
@@ -344,30 +331,15 @@ export const agentFeedRouter = {
 
       const payload = await getPayloadClient();
 
-      // Verify the post exists and is not deleted
-      let post;
-      try {
-        post = await payload.findByID({
-          collection: "feed-posts",
-          id: input.postId,
-          depth: 0,
-        });
-      } catch {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
-      }
-
-      if (!post || post.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
-      }
-
-      // Verify owner is an active member of the post's community
-      const postCommunityId = post.communityId ?? "";
-      const membership = await requireActiveMembership(
+      // The owner must be an active member who can see the post.
+      const { post } = await requireViewablePost(
         ctx.db,
-        postCommunityId,
+        payload,
+        input.postId,
         ownerId,
+        { requireMembership: true },
       );
-      requireVisiblePost(post, feedViewerFor(ownerId, membership));
+      const postCommunityId = post.communityId ?? "";
       const community = await ctx.db.query.communities.findFirst({
         where: and(
           eq(communities.id, postCommunityId),
@@ -426,29 +398,14 @@ export const agentFeedRouter = {
 
       const payload = await getPayloadClient();
 
-      // Verify the post exists and is not deleted
-      let post;
-      try {
-        post = await payload.findByID({
-          collection: "feed-posts",
-          id: input.postId,
-          depth: 0,
-        });
-      } catch {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
-      }
-
-      if (!post || post.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
-      }
-
-      // Verify owner is an active member of the post's community
-      const membership = await requireActiveMembership(
+      // The owner must be an active member who can see the post.
+      const { post } = await requireViewablePost(
         ctx.db,
-        post.communityId ?? "",
+        payload,
+        input.postId,
         ownerId,
+        { requireMembership: true },
       );
-      requireVisiblePost(post, feedViewerFor(ownerId, membership));
 
       // Check for existing like
       const { docs: existingLikes } = await payload.find({

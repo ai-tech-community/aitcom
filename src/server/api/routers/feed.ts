@@ -22,6 +22,7 @@ import {
   decorateFeedPosts,
   requireActiveFeedMember,
   requireFeedPoster,
+  requireViewablePost,
 } from "@/server/communities/feed-posts";
 import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
 import { isCommunityVideosEnabled } from "@/lib/community-videos-flag";
@@ -573,27 +574,14 @@ export const feedRouter = createTRPCRouter({
       const payload = await getPayloadClient();
       const userId = ctx.session.user.id;
 
-      const post = await payload.findByID({
-        collection: "feed-posts",
-        id: input.postId,
-        depth: 0,
-      });
-
-      if (!post || post.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
-      // Verify active membership
-      const membership = await ctx.db.query.communityMemberships.findFirst({
-        where: and(
-          eq(communityMemberships.communityId, post.communityId ?? ""),
-          eq(communityMemberships.userId, userId),
-          eq(communityMemberships.status, "active"),
-        ),
-      });
-      if (!membership) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      // Only an active member who can see the post may like it.
+      const { post } = await requireViewablePost(
+        ctx.db,
+        payload,
+        input.postId,
+        userId,
+        { requireMembership: true },
+      );
 
       const { docs: existingLikes } = await payload.find({
         collection: "feed-likes",
@@ -646,8 +634,15 @@ export const feedRouter = createTRPCRouter({
         limit: z.number().min(1).max(200).default(50),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
+      // A post's comments follow the post's visibility.
+      await requireViewablePost(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.session.user.id,
+      );
 
       const { docs } = await payload.find({
         collection: "feed-comments",
@@ -676,27 +671,14 @@ export const feedRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
 
-      const post = await payload.findByID({
-        collection: "feed-posts",
-        id: input.postId,
-        depth: 0,
-      });
-
-      if (!post || post.isDeleted) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
-      // Verify active membership
-      const membership = await ctx.db.query.communityMemberships.findFirst({
-        where: and(
-          eq(communityMemberships.communityId, post.communityId ?? ""),
-          eq(communityMemberships.userId, ctx.session.user.id),
-          eq(communityMemberships.status, "active"),
-        ),
-      });
-      if (!membership) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      // Only an active member who can see the post may comment on it.
+      const { post } = await requireViewablePost(
+        ctx.db,
+        payload,
+        input.postId,
+        ctx.session.user.id,
+        { requireMembership: true },
+      );
 
       const userName = ctx.session.user.name ?? "member";
 

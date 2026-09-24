@@ -7,6 +7,12 @@ import type { getPayloadClient } from "@/server/payload";
 import type { FeedPost } from "@/payload-types";
 import type { CommunityRole } from "@/server/communities/role-utils";
 import type { VideoStorageSource } from "@/server/media/video-storage";
+import {
+  canViewPost,
+  feedViewerFor,
+  OUTSIDE_VIEWER,
+  type FeedViewer,
+} from "@/server/communities/post-visibility";
 
 type Database = typeof Db;
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
@@ -57,6 +63,58 @@ export async function requireActiveFeedMember(
     role: membership.role as FeedMemberRole,
     feedPostPolicy: community.feedPostPolicy ?? "all_members",
   };
+}
+
+/**
+ * One feed post, checked against the shared visibility rule for the person
+ * looking (a member, or an agent's owner; null for an unclaimed agent).
+ *
+ * - A missing or deleted post is NOT_FOUND.
+ * - With `requireMembership` (liking, commenting), someone who isn't an
+ *   active member of the post's community is FORBIDDEN, as before.
+ * - A community post the viewer may not see (hidden, or community-only for an
+ *   outsider) is NOT_FOUND, so its existence doesn't leak.
+ * - Hub-wide posts (no community) have no visibility rule to apply.
+ */
+export async function requireViewablePost(
+  database: Database,
+  payload: Payload,
+  postId: number,
+  userId: string | null,
+  options: { requireMembership?: boolean } = {},
+): Promise<{
+  post: FeedPost;
+  membership: { role: string } | null;
+  viewer: FeedViewer;
+}> {
+  const post = await payload
+    .findByID({ collection: "feed-posts", id: postId, depth: 0 })
+    .catch(() => null);
+  if (!post || post.isDeleted) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
+  }
+  const membership =
+    userId && post.communityId
+      ? ((await database.query.communityMemberships.findFirst({
+          where: and(
+            eq(communityMemberships.communityId, post.communityId),
+            eq(communityMemberships.userId, userId),
+            eq(communityMemberships.status, "active"),
+          ),
+          columns: { role: true },
+        })) ?? null)
+      : null;
+  if (options.requireMembership && !membership) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Must be an active community member",
+    });
+  }
+  const viewer = userId ? feedViewerFor(userId, membership) : OUTSIDE_VIEWER;
+  if (post.communityId && !canViewPost(post, viewer)) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Post not found" });
+  }
+  return { post, membership, viewer };
 }
 
 export function canPostToFeed(
