@@ -32,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("investigationsStartups");
   const companies = await listApprovedPublicStartups();
   const insights = buildStartupInsights(companies, copyLocale);
-  const facts = startupInsightsShareFacts(insights, copyLocale);
+  const facts = startupInsightsShareFacts(insights);
   const ogSpec = startupInsightsOgSpec(facts);
   const title = ogSpec
     ? t(ogSpec.titleKey, ogSpec.titleValues)
@@ -72,7 +72,6 @@ export default async function StartupsInsightsPage() {
       tab="insights"
       insights={insights}
       promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
-      shareUrl={startupsInsightsShareUrl(copyLocale)}
     />
   );
 }

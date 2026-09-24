@@ -4,7 +4,6 @@ import { SectionLabel } from "@/components/ui/section-label";
 import { StartupsDirectory } from "@/components/investigations/startups-directory";
 import {
   StartupsInsights,
-  StartupsInsightsShareCard,
   type StartupsInsightsKey,
 } from "@/components/investigations/startups-insights";
 import { StartupsTabs } from "@/components/investigations/startups-tabs";
@@ -49,7 +48,6 @@ export function StartupsPage({
   tab = "directory",
   insights,
   promoteJoin = true,
-  shareUrl,
 }: {
   locale: string;
   t: (key: StartupsKey, values?: Record<string, string | number>) => string;
@@ -59,15 +57,12 @@ export function StartupsPage({
   tab?: "directory" | "insights";
   insights?: StartupsInsightsStats;
   promoteJoin?: boolean;
-  /** Absolute www Insights URL shown on the share card. */
-  shareUrl?: string;
 }) {
   const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
   const isInsights = tab === "insights";
   const insightStats =
     insights ??
     (isInsights ? buildStartupInsights(companies, copyLocale) : undefined);
-  const showShare = isInsights && (insightStats?.total ?? 0) > 0;
   const directoryQuery = parseStartupDirectoryQuery(query);
   const directoryPage = isInsights
     ? null
@@ -84,30 +79,16 @@ export function StartupsPage({
 
       <SectionLabel as="div">{t("kicker")}</SectionLabel>
 
-      <div className="mt-6 flex flex-col gap-8">
-        <div className="flex max-w-2xl flex-col gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {isInsights ? t("insightsTitle") : t("title")}
-          </h1>
-          {showShare ? null : (
-            <>
-              <p className="text-muted-foreground text-base leading-relaxed">
-                {isInsights ? t("insightsLead") : t("lead")}
-              </p>
-              <p className="text-muted-foreground text-base leading-relaxed">
-                {isInsights ? t("insightsLead2") : t("lead2")}
-              </p>
-            </>
-          )}
-        </div>
-        {showShare && insightStats ? (
-          <StartupsInsightsShareCard
-            stats={insightStats}
-            locale={copyLocale}
-            t={t}
-            shareUrl={shareUrl}
-          />
-        ) : null}
+      <div className="mt-6 flex max-w-2xl flex-col gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          {isInsights ? t("insightsTitle") : t("title")}
+        </h1>
+        <p className="text-muted-foreground text-base leading-relaxed">
+          {isInsights ? t("insightsLead") : t("lead")}
+        </p>
+        <p className="text-muted-foreground text-base leading-relaxed">
+          {isInsights ? t("insightsLead2") : t("lead2")}
+        </p>
       </div>
 
       <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
