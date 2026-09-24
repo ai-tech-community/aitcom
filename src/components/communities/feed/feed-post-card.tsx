@@ -6,6 +6,7 @@ import { api } from "@/trpc/react";
 import { useConfirm } from "@/components/confirm-dialog";
 import { useRequireAuth } from "@/components/auth/auth-required-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { getInitials } from "@/lib/avatar";
 import { Button } from "@/components/ui/button";
@@ -16,9 +17,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Heart, MessageSquare, MoreHorizontal, Pin } from "lucide-react";
+import { Flag, Heart, MessageSquare, MoreHorizontal, Pin } from "lucide-react";
 import { toast } from "sonner";
 import { FeedComments } from "./feed-comments";
+import { FeedVideoPlayer, type FeedVideo } from "./feed-video-player";
+import { ReportDialog } from "./report-dialog";
+import { ReportedBanner } from "./reported-banner";
 
 interface FeedPost {
   id: number;
@@ -37,6 +41,10 @@ interface FeedPost {
   isPinned?: boolean | null;
   topicSlug?: string | null;
   hasLiked: boolean;
+  video?: FeedVideo | null;
+  /** Set when the post was reported; only its author and moderators see it. */
+  hiddenAt?: string | null;
+  visibility?: "community" | "public" | null;
 }
 
 interface FeedPostCardProps {
@@ -59,10 +67,13 @@ export function FeedPostCard({
   showComments,
 }: FeedPostCardProps) {
   const t = useTranslations("communities.feed");
+  const tReport = useTranslations("communities.report");
+  const tVideo = useTranslations("communities.video");
   const confirm = useConfirm();
   const { requireAuth } = useRequireAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const isAuthor = !!currentUserId && post.authorId === currentUserId;
   const isPrivileged =
@@ -137,6 +148,9 @@ export function FeedPostCard({
                 <RelativeTime date={post.createdAt} className="text-xs" />
                 {post.isEdited ? ` · (${t("edited")})` : ""}
               </span>
+              {post.video?.visibility === "public" ? (
+                <Badge variant="outline">{tVideo("publicBadge")}</Badge>
+              ) : null}
             </p>
           </div>
         </div>
@@ -191,6 +205,10 @@ export function FeedPostCard({
         ) : null}
       </div>
 
+      {post.hiddenAt ? (
+        <ReportedBanner postId={post.id} canReview={isPrivileged} />
+      ) : null}
+
       {/* Content */}
       {isEditing ? (
         <div className="space-y-2">
@@ -230,8 +248,10 @@ export function FeedPostCard({
         </p>
       )}
 
-      {/* Image */}
-      {post.imageUrl ? (
+      {/* Media */}
+      {post.video ? (
+        <FeedVideoPlayer video={post.video} onExpired={onRefresh} />
+      ) : post.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={post.imageUrl}
@@ -271,6 +291,26 @@ export function FeedPostCard({
             {post.commentCount ?? 0}
           </span>
         </button>
+
+        {currentUserId && !isAuthor && !post.hiddenAt ? (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground ml-auto"
+              onClick={() => setReportOpen(true)}
+            >
+              <Flag aria-hidden="true" />
+              {tReport("action")}
+            </Button>
+            <ReportDialog
+              postId={post.id}
+              open={reportOpen}
+              onOpenChange={setReportOpen}
+            />
+          </>
+        ) : null}
       </div>
 
       {/* Comments — part of the same card/thread as the post */}

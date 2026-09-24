@@ -2641,6 +2641,7 @@
       "visibilityLabel": "Who can watch",
       "community": "Community only",
       "public": "Public — anyone with the link can watch",
+      "publicBadge": "Public",
       "preparing": "Preparing video…",
       "uploading": "Uploading…",
       "posting": "Posting…",
@@ -2650,6 +2651,30 @@
       "unreadable": "We can't read this video. Try a different file.",
       "failed": "The video didn't upload. Please try again.",
       "limit": "You've posted the most videos allowed for today. Try again tomorrow."
+    },
+    "report": {
+      "action": "Report",
+      "title": "Report this post",
+      "reasonLabel": "What's wrong?",
+      "spam": "Spam",
+      "inappropriate": "Inappropriate",
+      "copyright": "Copyright",
+      "other": "Something else",
+      "noteLabel": "Anything to add? (optional)",
+      "submit": "Send report",
+      "sent": "Thanks. The post is hidden while a moderator reviews it.",
+      "alreadyReported": "You already reported this post.",
+      "failed": "Something went wrong. Please try again.",
+      "hiddenForAuthor": "Hidden while a moderator reviews a report.",
+      "hiddenForModerator": "Reported and hidden from members.",
+      "reasons": "Why members reported it",
+      "restore": "Restore",
+      "remove": "Remove",
+      "removeConfirm": "Remove this post? It will be deleted for everyone.",
+      "unmute": "Turn sound on",
+      "mute": "Turn sound off",
+      "play": "Play video",
+      "unavailable": "Video unavailable."
     }
   },
   "notificationPrefs": {

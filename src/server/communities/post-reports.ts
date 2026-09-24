@@ -4,19 +4,22 @@ import { ValidationError, type Where } from "payload";
 import type { PostReport } from "@/payload-types";
 import type { VideoStorageSource } from "@/server/media/video-storage";
 import type { getPayloadClient } from "@/server/payload";
+import type { ReportReason } from "@/lib/post-report-reasons";
 import { canViewPost, type FeedViewer } from "./post-visibility";
 import { cleanUpDeletedPostVideo } from "./video-posts";
 
 type Payload = Awaited<ReturnType<typeof getPayloadClient>>;
 
-export const REPORT_REASONS = ["spam", "inappropriate", "copyright", "other"] as const;
-export type ReportReason = (typeof REPORT_REASONS)[number];
+export { REPORT_REASONS, type ReportReason } from "@/lib/post-report-reasons";
 
 export type ReportDeps = {
   payload: Payload;
   /** Reached only when a removed post has a video, so text moderation never needs S3. */
   storage: VideoStorageSource;
-  notifyModerators: (input: { communityId: string; postId: number }) => Promise<void>;
+  notifyModerators: (input: {
+    communityId: string;
+    postId: number;
+  }) => Promise<void>;
   now?: () => Date;
   log?: (message: string, detail: unknown) => void;
 };
@@ -36,12 +39,18 @@ const ALREADY_REPORTED = "You already reported this post.";
  * for them; only open reports count toward hiding and show to moderators.
  */
 function openReportsOf(postId: number): Where {
-  return { and: [{ post: { equals: postId } }, { dismissedAt: { exists: false } }] };
+  return {
+    and: [{ post: { equals: postId } }, { dismissedAt: { exists: false } }],
+  };
 }
 
 async function loadPost(payload: Payload, postId: number) {
   try {
-    return await payload.findByID({ collection: "feed-posts", id: postId, depth: 0 });
+    return await payload.findByID({
+      collection: "feed-posts",
+      id: postId,
+      depth: 0,
+    });
   } catch {
     return null;
   }
@@ -54,7 +63,9 @@ async function loadPost(payload: Payload, postId: number) {
  * this collection can only be that.
  */
 function isDuplicateReport(error: unknown): boolean {
-  return error instanceof ValidationError && error.data.collection === "post-reports";
+  return (
+    error instanceof ValidationError && error.data.collection === "post-reports"
+  );
 }
 
 /** The first report hides the post until a moderator reviews it. */
@@ -73,12 +84,18 @@ export async function reportPost(
     throw new TRPCError({ code: "NOT_FOUND" });
   }
   if (post.authorId === input.reporterId) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "You can't report your own post." });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "You can't report your own post.",
+    });
   }
   const { docs: existing } = await deps.payload.find({
     collection: "post-reports",
     where: {
-      and: [{ post: { equals: post.id } }, { reporterId: { equals: input.reporterId } }],
+      and: [
+        { post: { equals: post.id } },
+        { reporterId: { equals: input.reporterId } },
+      ],
     },
     limit: 1,
     depth: 0,
@@ -121,12 +138,18 @@ export async function reportPost(
     // The report and the hide are stored; a failed notification must not
     // tell the reporter it failed (a retry would only say "already reported").
     try {
-      await deps.notifyModerators({ communityId: post.communityId, postId: post.id });
-    } catch (error) {
-      (deps.log ?? console.error)("[feed.reportPost] moderator notification failed", {
+      await deps.notifyModerators({
+        communityId: post.communityId,
         postId: post.id,
-        error,
       });
+    } catch (error) {
+      (deps.log ?? console.error)(
+        "[feed.reportPost] moderator notification failed",
+        {
+          postId: post.id,
+          error,
+        },
+      );
     }
   }
   return { hidden: true };
@@ -149,7 +172,10 @@ export async function reviewReport(
   const post = await loadPost(deps.payload, input.postId);
   if (!post || post.isDeleted) {
     await clearReports();
-    throw new TRPCError({ code: "NOT_FOUND", message: "This post no longer exists." });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "This post no longer exists.",
+    });
   }
   if (input.action === "restore") {
     await deps.payload.update({
