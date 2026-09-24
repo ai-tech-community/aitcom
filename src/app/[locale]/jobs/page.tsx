@@ -25,7 +25,10 @@ import {
   toHubAuthUser,
 } from "@/server/better-auth/hub-session";
 import { getSession } from "@/server/better-auth/server";
-import { listPublicStartupRoles } from "@/server/startups/queries";
+import {
+  listPublicStartupRoles,
+  matchPublicStartupRoleIds,
+} from "@/server/startups/queries";
 import {
   findStartupJobsFollow,
   listMyTrackedRoleIds,
@@ -55,8 +58,11 @@ export async function generateMetadata({
   const locale = await getLocale();
   const raw = await searchParams;
   const query = parseStartupJobsQuery(raw);
-  const roles = await listPublicStartupRoles();
-  const filtered = applyStartupJobsQuery(roles, query);
+  const [roles, textMatches] = await Promise.all([
+    listPublicStartupRoles(),
+    matchPublicStartupRoleIds(query.q),
+  ]);
+  const filtered = applyStartupJobsQuery(roles, query, textMatches);
   const pagination = paginateStartupRoles(filtered, query.page);
   const filteredView = Boolean(
     query.company ||
@@ -105,20 +111,26 @@ export default async function JobsRoute({ searchParams }: PageProps) {
   const session = await getSession();
   const promoteJoin = shouldPromoteJoin(toHubAuthUser(session?.user));
   const query = parseStartupJobsQuery(await searchParams);
-  const roles = await listPublicStartupRoles();
+  const [roles, textMatches] = await Promise.all([
+    listPublicStartupRoles(),
+    matchPublicStartupRoleIds(query.q),
+  ]);
   const follow = promoteJoin ? null : startupJobsFollowFromQuery(query);
   const saved =
     session?.user?.id && follow
       ? await findStartupJobsFollow(session.user.id, follow)
       : null;
   const newRoles = saved
-    ? rolesListedSince(roles, query, saved.lastSeenAt.toISOString()).map(
-        (role) => ({
-          slug: role.slug,
-          title: role.title,
-          startupName: role.startupName,
-        }),
-      )
+    ? rolesListedSince(
+        roles,
+        query,
+        textMatches,
+        saved.lastSeenAt.toISOString(),
+      ).map((role) => ({
+        slug: role.slug,
+        title: role.title,
+        startupName: role.startupName,
+      }))
     : [];
   if (session?.user?.id && follow && saved) {
     await markStartupJobsFollowSeen(session.user.id, follow);
@@ -133,6 +145,7 @@ export default async function JobsRoute({ searchParams }: PageProps) {
       locale={locale}
       t={t}
       roles={roles}
+      textMatches={textMatches}
       query={query}
       promoteJoin={promoteJoin}
       follow={follow}

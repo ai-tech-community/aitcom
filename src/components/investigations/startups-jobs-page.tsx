@@ -18,7 +18,8 @@ import {
   startupJobsFacets,
   type StartupJobsFollow,
   type StartupJobsQuery,
-  type StartupRolePublic,
+  type StartupRoleListing,
+  type StartupRoleTextMatches,
 } from "@/lib/investigations/startup-roles";
 
 export type StartupJobsNewRole = {
@@ -77,6 +78,7 @@ export function StartupsJobsPage({
   locale,
   t,
   roles,
+  textMatches = null,
   query,
   promoteJoin = true,
   follow = null,
@@ -86,7 +88,9 @@ export function StartupsJobsPage({
 }: {
   locale: string;
   t: (key: StartupsJobsKey, values?: Record<string, string | number>) => string;
-  roles: StartupRolePublic[];
+  roles: StartupRoleListing[];
+  /** Full-text index matches for `query.q`; `null` when there is no search. */
+  textMatches?: StartupRoleTextMatches;
   query: StartupJobsQuery;
   promoteJoin?: boolean;
   follow?: StartupJobsFollow | null;
@@ -95,7 +99,7 @@ export function StartupsJobsPage({
   trackedRoleIds?: readonly string[];
 }) {
   const copyLocale = locale === "nl" ? "nl" : "en";
-  const filtered = applyStartupJobsQuery(roles, query);
+  const filtered = applyStartupJobsQuery(roles, query, textMatches);
   const pagination = paginateStartupRoles(filtered, query.page);
   const facets = startupJobsFacets(roles);
   const companyTotals = new Map<string, number>();

@@ -13,6 +13,8 @@ import {
   sanitizeStartupRoleDescription,
   startupJobsFollowFromQuery,
   startupRoleJsonLd,
+  startupRoleSearchTerms,
+  startupRoleSearchPlan,
   type StartupRolePublic,
 } from "./startup-roles";
 
@@ -251,9 +253,11 @@ describe("startup jobs facets", () => {
       sampleRole({ id: "b", slug: "b", workType: "Contractor" }),
     ];
     const ids = (workType: string) =>
-      applyStartupJobsQuery(roles, parseStartupJobsQuery({ workType })).map(
-        (role) => role.id,
-      );
+      applyStartupJobsQuery(
+        roles,
+        parseStartupJobsQuery({ workType }),
+        null,
+      ).map((role) => role.id);
     expect(ids("full-time")).toEqual(["a"]);
     expect(ids("Full-time")).toEqual(["a"]);
     expect(ids("contract")).toEqual(["b"]);
@@ -276,6 +280,7 @@ describe("startup jobs facets", () => {
       applyStartupJobsQuery(
         roles,
         parseStartupJobsQuery({ location: STARTUP_JOBS_REMOTE }),
+        null,
       )
         .map((role) => role.id)
         .sort(),
@@ -357,8 +362,88 @@ describe("startup jobs follow", () => {
         company: "cursor-anysphere",
         workType: "Full-time",
       }),
+      null,
       "2026-09-10T00:00:00.000Z",
     );
     expect(added.map((role) => role.id)).toEqual(["new"]);
+  });
+});
+
+describe("jobs full-text search", () => {
+  it("splits a search into lowercase words and drops tsquery syntax", () => {
+    expect(startupRoleSearchTerms("  ML   Engineer ")).toEqual([
+      "ml",
+      "engineer",
+    ]);
+    expect(startupRoleSearchTerms("c++ & (rust | go):* !java")).toEqual([
+      "c",
+      "rust",
+      "go",
+      "java",
+    ]);
+    expect(startupRoleSearchTerms("Zürich Straße")).toEqual([
+      "zürich",
+      "straße",
+    ]);
+    expect(startupRoleSearchTerms("engineer Engineer")).toEqual(["engineer"]);
+    expect(startupRoleSearchTerms("!!! ---")).toEqual([]);
+  });
+
+  it("caps the number and length of terms", () => {
+    const many = Array.from({ length: 20 }, (_, i) => `w${i}`).join(" ");
+    expect(startupRoleSearchTerms(many)).toHaveLength(8);
+    expect(startupRoleSearchTerms("a".repeat(500))[0]).toHaveLength(64);
+  });
+
+  it("matches short words whole and longer words also as prefixes", () => {
+    expect(startupRoleSearchPlan("Senior engin ml c++")).toEqual([
+      { term: "senior", prefix: true },
+      { term: "engin", prefix: true },
+      { term: "ml", prefix: false },
+      { term: "c", prefix: false },
+    ]);
+    expect(startupRoleSearchPlan("   ")).toEqual([]);
+    expect(startupRoleSearchPlan("&|!")).toEqual([]);
+  });
+
+  it("keeps only roles the index matched, with the other filters applied", () => {
+    const roles = [
+      sampleRole({ id: "a", slug: "a", title: "Staff Engineer" }),
+      sampleRole({ id: "b", slug: "b", title: "Designer" }),
+      sampleRole({
+        id: "c",
+        slug: "c",
+        title: "Researcher",
+        workType: "Contract",
+      }),
+    ];
+    // "b" matched on its description, which the listing never carries.
+    const matches = new Set(["b", "c"]);
+    const ids = (raw: Record<string, string>) =>
+      applyStartupJobsQuery(roles, parseStartupJobsQuery(raw), matches)
+        .map((role) => role.id)
+        .sort();
+    expect(ids({ q: "pytorch" })).toEqual(["b", "c"]);
+    expect(ids({ q: "pytorch", workType: "contract" })).toEqual(["c"]);
+  });
+
+  it("ignores index matches when the search has no words", () => {
+    const roles = [sampleRole({ id: "a", slug: "a" })];
+    expect(
+      applyStartupJobsQuery(roles, parseStartupJobsQuery({ q: "!!!" }), null),
+    ).toHaveLength(1);
+    expect(
+      applyStartupJobsQuery(roles, parseStartupJobsQuery({}), new Set()),
+    ).toHaveLength(1);
+  });
+
+  it("refuses a search without index matches instead of guessing", () => {
+    expect(() =>
+      applyStartupJobsQuery(
+        [sampleRole()],
+        parseStartupJobsQuery({ q: "engineer" }),
+        null,
+      ),
+    ).toThrow();
   });
 });
