@@ -72,6 +72,24 @@ describe("StartupsJobsFilters search box", () => {
     });
   });
 
+  it("keeps a filter picked while a search is still pending", () => {
+    renderFilters();
+    fireEvent.change(screen.getByLabelText(LABELS.search), {
+      target: { value: "eng" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: LABELS.remoteToggle }));
+
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenLastCalledWith("/jobs?q=eng&location=remote", {
+      scroll: false,
+    });
+
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps a trailing space when the trimmed search comes back", () => {
     const { rerender } = renderFilters();
     const box = screen.getByLabelText(LABELS.search);

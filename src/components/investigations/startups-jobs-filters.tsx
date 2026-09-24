@@ -126,10 +126,10 @@ export function StartupsJobsFilters({
       next.location !== undefined ||
       next.workType !== undefined ||
       next.sort !== undefined;
-    if (next.q !== undefined) {
-      cancelPendingSearch();
-      setSearchDraft(next.q);
-    }
+    // The draft goes into this URL, so a pending search is now redundant;
+    // left running, it would replace this URL with the older one.
+    cancelPendingSearch();
+    if (next.q !== undefined) setSearchDraft(next.q);
     const merged = parseStartupJobsQuery({
       ...query,
       // A filter picked mid-typing keeps what is already in the box.
@@ -231,7 +231,7 @@ export function StartupsJobsFilters({
         </div>
       </div>
 
-      {searchDraft ? null : (
+      {searchDraft.trim() ? null : (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground text-xs">
             {labels.tryLabel}
@@ -313,7 +313,7 @@ export function StartupsJobsFilters({
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {aside}
-          {activeFilters > 0 || searchDraft ? (
+          {activeFilters > 0 || searchDraft.trim() ? (
             <Button
               type="button"
               variant="ghost"

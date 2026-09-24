@@ -4246,8 +4246,9 @@ export const startups = appSchema.table(
   ],
 );
 
-/** Sourced job postings scanned from a startup's verified careers URL. */
 /**
+ * Sourced job postings scanned from a startup's verified careers URL.
+ *
  * The table also has `search_vector`, a GIN-indexed tsvector over title,
  * company name, location, work type and description. Database triggers keep
  * it current (migration 20260924c_startup_role_search); never write it from

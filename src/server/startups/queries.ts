@@ -263,22 +263,24 @@ export const listPublicStartupRoles = cache(
 );
 
 /**
- * Generated column, kept out of the Drizzle table so whole-row selects do not
- * carry it. See the note on `startupRoles` in the schema.
+ * Trigger-maintained column, kept out of the Drizzle table so whole-row
+ * selects do not carry it. See the note on `startupRoles` in the schema.
  */
 const startupRoleSearchVector = sql`${startupRoles}."search_vector"`;
 
 /**
  * One search word as a tsquery. The stemmed `english` form finds other forms
- * of a whole word ("engineers" → "engineer"); the unstemmed `simple` prefix
- * finds a half-typed one. The vector carries both forms (see the migration).
- * Terms are letters and digits only, so `:*` is the only syntax added.
+ * of a whole word ("engineers" → "engineer"). The unstemmed `simple` form
+ * finds the word as written: as a prefix for a half-typed word, and exactly
+ * for a short one `english` drops as a stop word ("IT"). The vector carries
+ * both forms (see the migration). Terms are letters and digits only, so `:*`
+ * is the only syntax added.
  */
 function searchTermTsQuery({ term, prefix }: StartupRoleSearchTerm): SQL {
-  const whole = sql`plainto_tsquery('english', ${term})`;
-  return prefix
-    ? sql`(${whole} || to_tsquery('simple', ${`${term}:*`}))`
-    : whole;
+  const asWritten = prefix
+    ? sql`to_tsquery('simple', ${`${term}:*`})`
+    : sql`plainto_tsquery('simple', ${term})`;
+  return sql`(plainto_tsquery('english', ${term}) || ${asWritten})`;
 }
 
 /**
