@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Play, Volume2, VolumeX } from "lucide-react";
+import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,12 @@ function prefersReducedMotion() {
  *
  * - Starts muted once 60% of it is on screen and pauses when scrolled away.
  * - Under `prefers-reduced-motion` it never starts by itself: the thumbnail
- *   shows with a play button.
- * - Tapping the video toggles sound; the sound button is always focusable and
- *   shows on hover and keyboard focus (and always on touch screens).
+ *   shows with a play button, which comes back whenever the video is paused
+ *   (for example after scrolling away and back).
+ * - A labelled play/pause button (WCAG 2.2.2) and a sound button are always
+ *   focusable and show on hover and keyboard focus (and always on touch
+ *   screens). Once the viewer pauses, scrolling back does not restart it.
+ * - Tapping the video toggles sound.
  * - A private playback link expires after an hour. On a load error the player
  *   asks the caller once for a fresh link through `onExpired`; a second error
  *   in a row shows "Video unavailable".
@@ -53,9 +56,11 @@ export function FeedVideoPlayer({
   const ref = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [reduced, setReduced] = useState(false);
-  const [started, setStarted] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const askedForFreshLink = useRef(false);
+  /** The viewer paused on purpose, so scrolling back must not restart it. */
+  const pausedByViewer = useRef(false);
 
   useEffect(() => {
     const reduce = prefersReducedMotion();
@@ -66,7 +71,9 @@ export function FeedVideoPlayer({
       ([entry]) => {
         if (!entry) return;
         if (entry.intersectionRatio < AUTOPLAY_RATIO) el.pause();
-        else if (!reduce) void el.play()?.catch(() => undefined);
+        else if (!reduce && !pausedByViewer.current) {
+          void el.play()?.catch(() => undefined);
+        }
       },
       { threshold: [0, AUTOPLAY_RATIO, 1] },
     );
@@ -83,6 +90,24 @@ export function FeedVideoPlayer({
   const failed = failedUrl === video.url;
   const ratio =
     video.width > 0 && video.height > 0 ? video.width / video.height : 9 / 16;
+
+  function togglePlay() {
+    const el = ref.current;
+    if (!el) return;
+    if (playing) {
+      pausedByViewer.current = true;
+      el.pause();
+    } else {
+      pausedByViewer.current = false;
+      void el.play()?.catch(() => undefined);
+    }
+  }
+
+  // Controls show on hover and keyboard focus, and always on touch screens.
+  const revealOnHover =
+    "opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100";
+  // Under reduced motion a paused video shows a large, always-visible Play.
+  const bigPlay = reduced && !playing;
 
   function handleError() {
     if (!askedForFreshLink.current && onExpired) {
@@ -111,7 +136,8 @@ export function FeedVideoPlayer({
         playsInline
         loop
         preload="metadata"
-        onPlay={() => setStarted(true)}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
         onLoadedData={() => {
           askedForFreshLink.current = false;
         }}
@@ -127,24 +153,32 @@ export function FeedVideoPlayer({
           {t("unavailable")}
         </p>
       ) : null}
-      {reduced && !started && !failed ? (
+      {failed ? null : (
         <Button
           type="button"
           variant="secondary"
-          size="icon"
-          className="absolute inset-0 m-auto size-12 rounded-full"
-          aria-label={t("play")}
-          onClick={() => void ref.current?.play()?.catch(() => undefined)}
+          size={bigPlay ? "icon" : "icon-sm"}
+          className={cn(
+            "absolute rounded-full",
+            bigPlay
+              ? "inset-0 m-auto size-12"
+              : cn("bottom-2 left-2", revealOnHover),
+          )}
+          aria-label={playing ? t("pause") : t("play")}
+          onClick={togglePlay}
         >
-          <Play aria-hidden="true" />
+          {playing ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
         </Button>
-      ) : null}
+      )}
       {failed ? null : (
         <Button
           type="button"
           variant="secondary"
           size="icon-sm"
-          className="absolute right-2 bottom-2 rounded-full opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100"
+          className={cn(
+            "absolute right-2 bottom-2 rounded-full",
+            revealOnHover,
+          )}
           aria-label={muted ? t("unmute") : t("mute")}
           onClick={() => setMuted((value) => !value)}
         >

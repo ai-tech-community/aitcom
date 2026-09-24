@@ -119,3 +119,44 @@ describe("FeedVideoPlayer", () => {
     expect(onExpired).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("FeedVideoPlayer play and pause", () => {
+  it("lets a reduced-motion viewer play again after scrolling away and back", () => {
+    const { container } = renderPlayer(true);
+    const el = container.querySelector("video")!;
+    fireEvent.click(screen.getByRole("button", { name: "Play video" }));
+    fireEvent.play(el);
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("button", { name: "Pause video" }),
+    ).toBeInTheDocument();
+
+    act(() => visible(0.1));
+    expect(pause).toHaveBeenCalled();
+    fireEvent.pause(el);
+    act(() => visible(1));
+    expect(play).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Play video" }));
+    expect(play).toHaveBeenCalledTimes(2);
+  });
+
+  it("pauses a playing video with the pause button and stays paused on scroll back", () => {
+    const { container } = renderPlayer();
+    const el = container.querySelector("video")!;
+    act(() => visible(0.7));
+    fireEvent.play(el);
+    expect(play).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Pause video" }));
+    expect(pause).toHaveBeenCalledTimes(1);
+    fireEvent.pause(el);
+    expect(
+      screen.getByRole("button", { name: "Play video" }),
+    ).toBeInTheDocument();
+
+    act(() => visible(0.1));
+    act(() => visible(0.9));
+    expect(play).toHaveBeenCalledTimes(1);
+  });
+});

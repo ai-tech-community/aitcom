@@ -2674,6 +2674,7 @@
       "unmute": "Turn sound on",
       "mute": "Turn sound off",
       "play": "Play video",
+      "pause": "Pause video",
       "unavailable": "Video unavailable."
     }
   },
