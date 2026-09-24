@@ -2650,7 +2650,8 @@
       "unsupported": "Your browser can't prepare videos. Update it or use a recent Chrome, Safari, Edge, or Firefox.",
       "unreadable": "We can't read this video. Try a different file.",
       "failed": "The video didn't upload. Please try again.",
-      "limit": "You've posted the most videos allowed for today. Try again tomorrow."
+      "limit": "You've posted the most videos allowed for today. Try again tomorrow.",
+      "retry": "Try again"
     },
     "report": {
       "action": "Report",

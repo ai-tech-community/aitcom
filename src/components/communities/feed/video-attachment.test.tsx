@@ -13,6 +13,7 @@ function renderIt(
   const onVisibilityChange = vi.fn();
   const onRemove = vi.fn();
   const onCancel = vi.fn();
+  const onRetry = vi.fn();
   render(
     <NextIntlClientProvider locale="en" messages={en}>
       <VideoAttachment
@@ -21,12 +22,13 @@ function renderIt(
         onVisibilityChange={onVisibilityChange}
         onRemove={onRemove}
         onCancel={onCancel}
+        onRetry={onRetry}
         state={{ step: "idle" }}
         {...props}
       />
     </NextIntlClientProvider>,
   );
-  return { onVisibilityChange, onRemove, onCancel };
+  return { onVisibilityChange, onRemove, onCancel, onRetry };
 }
 
 describe("VideoAttachment", () => {
@@ -73,10 +75,29 @@ describe("VideoAttachment", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("offers to try again after a failed upload", () => {
+    const { onRetry } = renderIt({
+      state: {
+        step: "error",
+        message: en.communities.video.failed,
+        retryable: true,
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalled();
+  });
+
   it("shows the error in plain words", () => {
     renderIt({
-      state: { step: "error", message: en.communities.video.tooLong },
+      state: {
+        step: "error",
+        message: en.communities.video.tooLong,
+        retryable: false,
+      },
     });
+    expect(
+      screen.queryByRole("button", { name: "Try again" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Videos can be up to 90 seconds.",
     );

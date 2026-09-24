@@ -3,12 +3,13 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import type { VideoVisibility } from "@/lib/video-rules";
+import { UPLOAD_GRANT_SECONDS, type VideoVisibility } from "@/lib/video-rules";
 import {
   UnsupportedVideoError,
   VideoTooLongError,
   canTranscode,
   transcodeForUpload,
+  type TranscodeResult,
 } from "@/lib/video-transcode";
 import { api } from "@/trpc/react";
 
@@ -16,7 +17,8 @@ export type VideoPostState =
   | { step: "idle" }
   | { step: "preparing" | "uploading"; share: number }
   | { step: "posting" }
-  | { step: "error"; message: string };
+  /** `retryable`: trying the same clip again may work (a network failure). */
+  | { step: "error"; message: string; retryable: boolean };
 
 export type VideoPostInput = {
   file: File;
@@ -26,6 +28,32 @@ export type VideoPostInput = {
 };
 
 type UploadGrant = { url: string; fields: Record<string, string> };
+type VideoUploadGrant = {
+  uploadId: string;
+  video: UploadGrant;
+  thumbnail: UploadGrant;
+};
+
+/**
+ * A grant is reused on retry only while it has at least this long left, so
+ * the re-sent files still arrive before S3 stops accepting them.
+ */
+const GRANT_REUSE_MARGIN_MS = 60_000;
+
+/** The converted clip, kept so a retry skips the slow conversion. */
+type PreparedCache = { file: File; output: TranscodeResult };
+/** The last upload grant, kept so a retry re-sends to the same place. */
+type GrantCache = {
+  file: File;
+  visibility: VideoVisibility;
+  grant: VideoUploadGrant;
+  issuedAt: number;
+};
+
+function isGrantFresh(cached: GrantCache): boolean {
+  const age = Date.now() - cached.issuedAt;
+  return age < UPLOAD_GRANT_SECONDS * 1000 - GRANT_REUSE_MARGIN_MS;
+}
 
 /** The browser has no H.264 encoder, so nothing was tried. */
 class CannotConvertHereError extends Error {}
@@ -87,12 +115,20 @@ function uploadToGrant(
  * Only one post runs at a time; a second call while one is in flight returns
  * false without doing anything. `cancel()` stops preparing or uploading and
  * returns to idle with no error.
+ *
+ * Retrying the same clip picks up where it can: the converted clip is kept
+ * (per File), and the upload grant is reused while it is still valid for the
+ * same visibility. A cancel keeps the converted clip but drops the grant; a
+ * failure while creating the post drops the grant (the server may have used
+ * or removed it). `reset()` forgets both, for a removed or replaced clip.
  */
 export function useVideoPost(slug: string) {
   const t = useTranslations("communities.video");
   const utils = api.useUtils();
   const [state, setState] = useState<VideoPostState>({ step: "idle" });
   const inFlight = useRef<AbortController | null>(null);
+  const preparedCache = useRef<PreparedCache | null>(null);
+  const grantCache = useRef<GrantCache | null>(null);
   const createUpload = api.feed.createVideoUpload.useMutation();
   const finish = api.feed.finishVideoPost.useMutation();
 
@@ -105,26 +141,71 @@ export function useVideoPost(slug: string) {
     return t("failed");
   }
 
+  function isRetryable(error: unknown): boolean {
+    if (
+      error instanceof CannotConvertHereError ||
+      error instanceof VideoTooLongError ||
+      error instanceof UnsupportedVideoError
+    ) {
+      return false;
+    }
+    const code = (error as { data?: { code?: string } } | null)?.data?.code;
+    return code !== "TOO_MANY_REQUESTS";
+  }
+
+  async function prepare(
+    file: File,
+    signal: AbortSignal,
+  ): Promise<TranscodeResult> {
+    const cached = preparedCache.current;
+    if (cached?.file === file) return cached.output;
+    preparedCache.current = null;
+    grantCache.current = null;
+    if (!(await canTranscode())) throw new CannotConvertHereError();
+    signal.throwIfAborted();
+    setState({ step: "preparing", share: 0 });
+    const output = await transcodeForUpload(file, {
+      signal,
+      onProgress: (share) => setState({ step: "preparing", share }),
+    });
+    preparedCache.current = { file, output };
+    return output;
+  }
+
+  async function grantFor(input: VideoPostInput): Promise<VideoUploadGrant> {
+    const cached = grantCache.current;
+    if (
+      cached?.file === input.file &&
+      cached.visibility === input.visibility &&
+      isGrantFresh(cached)
+    ) {
+      return cached.grant;
+    }
+    grantCache.current = null;
+    const grant = await createUpload.mutateAsync({
+      communitySlug: slug,
+      visibility: input.visibility,
+    });
+    grantCache.current = {
+      file: input.file,
+      visibility: input.visibility,
+      grant,
+      issuedAt: Date.now(),
+    };
+    return grant;
+  }
+
   async function post(input: VideoPostInput): Promise<boolean> {
     if (inFlight.current) return false;
     const controller = new AbortController();
     inFlight.current = controller;
     const { signal } = controller;
     try {
-      if (!(await canTranscode())) throw new CannotConvertHereError();
+      const prepared = await prepare(input.file, signal);
       signal.throwIfAborted();
 
-      setState({ step: "preparing", share: 0 });
-      const prepared = await transcodeForUpload(input.file, {
-        signal,
-        onProgress: (share) => setState({ step: "preparing", share }),
-      });
-
       setState({ step: "uploading", share: 0 });
-      const grant = await createUpload.mutateAsync({
-        communitySlug: slug,
-        visibility: input.visibility,
-      });
+      const grant = await grantFor(input);
       await uploadToGrant(
         grant.thumbnail,
         prepared.thumbnail,
@@ -140,26 +221,38 @@ export function useVideoPost(slug: string) {
       signal.throwIfAborted();
 
       setState({ step: "posting" });
-      await finish.mutateAsync({
-        communitySlug: slug,
-        uploadId: grant.uploadId,
-        caption: input.caption,
-        topicSlug: input.topicSlug,
-        durationSeconds: prepared.durationSeconds,
-        width: prepared.width,
-        height: prepared.height,
-      });
+      try {
+        await finish.mutateAsync({
+          communitySlug: slug,
+          uploadId: grant.uploadId,
+          caption: input.caption,
+          topicSlug: input.topicSlug,
+          durationSeconds: prepared.durationSeconds,
+          width: prepared.width,
+          height: prepared.height,
+        });
+      } catch (error) {
+        grantCache.current = null;
+        throw error;
+      }
+      preparedCache.current = null;
+      grantCache.current = null;
       void utils.feed.getActivity.invalidate({ communitySlug: slug });
       void utils.feed.getFeed.invalidate();
       void utils.feed.getReels.invalidate({ communitySlug: slug });
       setState({ step: "idle" });
       return true;
     } catch (error) {
-      setState(
-        signal.aborted
-          ? { step: "idle" }
-          : { step: "error", message: messageFor(error) },
-      );
+      if (signal.aborted) {
+        grantCache.current = null;
+        setState({ step: "idle" });
+      } else {
+        setState({
+          step: "error",
+          message: messageFor(error),
+          retryable: isRetryable(error),
+        });
+      }
       return false;
     } finally {
       inFlight.current = null;
@@ -170,6 +263,10 @@ export function useVideoPost(slug: string) {
     state,
     post,
     cancel: () => inFlight.current?.abort(),
-    reset: () => setState({ step: "idle" }),
+    reset: () => {
+      preparedCache.current = null;
+      grantCache.current = null;
+      setState({ step: "idle" });
+    },
   };
 }

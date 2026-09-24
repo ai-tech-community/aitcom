@@ -16,6 +16,7 @@ export function VideoAttachment({
   onVisibilityChange,
   onRemove,
   onCancel,
+  onRetry,
   state,
 }: {
   file: File;
@@ -23,6 +24,8 @@ export function VideoAttachment({
   onVisibilityChange: (visibility: VideoVisibility) => void;
   onRemove: () => void;
   onCancel: () => void;
+  /** Try the same post again (same caption and visibility). */
+  onRetry: () => void;
   state: VideoPostState;
 }) {
   const t = useTranslations("communities.video");
@@ -103,9 +106,16 @@ export function VideoAttachment({
       ) : null}
 
       {state.step === "error" ? (
-        <p role="alert" className="text-destructive text-sm">
-          {state.message}
-        </p>
+        <div className="flex items-center gap-3">
+          <p role="alert" className="text-destructive min-w-0 flex-1 text-sm">
+            {state.message}
+          </p>
+          {state.retryable ? (
+            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+              {t("retry")}
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

@@ -107,6 +107,11 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
     setVisibility("community");
   };
 
+  const handleRetry = () => {
+    if (!videoFile || !content.trim() || videoBusy) return;
+    void submitVideo(videoFile);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim() || videoBusy || createPost.isPending) return;
@@ -145,6 +150,7 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
           onVisibilityChange={setVisibility}
           onRemove={removeVideo}
           onCancel={videoPost.cancel}
+          onRetry={handleRetry}
           state={videoPost.state}
         />
       ) : null}

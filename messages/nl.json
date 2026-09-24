@@ -2650,7 +2650,8 @@
       "unsupported": "Je browser kan geen video's voorbereiden. Werk hem bij of gebruik een recente Chrome, Safari, Edge of Firefox.",
       "unreadable": "We kunnen deze video niet lezen. Probeer een ander bestand.",
       "failed": "De video is niet geüpload. Probeer het opnieuw.",
-      "limit": "Je hebt vandaag het maximale aantal video's geplaatst. Probeer het morgen opnieuw."
+      "limit": "Je hebt vandaag het maximale aantal video's geplaatst. Probeer het morgen opnieuw.",
+      "retry": "Opnieuw proberen"
     },
     "report": {
       "action": "Melden",

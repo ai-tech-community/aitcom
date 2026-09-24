@@ -150,6 +150,35 @@ describe("PostComposer video", () => {
     expect(screen.getByRole("textbox")).toHaveValue("Our trip");
   });
 
+  it("tries the same post again from the error", async () => {
+    m.post.mockResolvedValue(false);
+    const { videoInput } = renderComposer();
+    pickVideo(videoInput());
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Our trip" },
+    });
+    fireEvent.click(screen.getByRole("radio", { name: /Public/ }));
+    fireEvent.click(postButton());
+    await waitFor(() => expect(m.post).toHaveBeenCalledTimes(1));
+
+    m.videoState = {
+      step: "error",
+      message: en.communities.video.failed,
+      retryable: true,
+    };
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "Our trip " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(m.post).toHaveBeenCalledTimes(2));
+    expect(m.post).toHaveBeenLastCalledWith({
+      file: clip,
+      caption: "Our trip",
+      visibility: "public",
+      topicSlug: "general",
+    });
+  });
+
   it("does not start a second post while one is on its way", () => {
     m.videoState = { step: "uploading", share: 0.3 };
     const { videoInput } = renderComposer();

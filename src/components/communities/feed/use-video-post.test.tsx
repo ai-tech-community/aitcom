@@ -204,6 +204,7 @@ describe("useVideoPost", () => {
       expect(result.current.state).toEqual({
         step: "error",
         message: en.communities.video[key],
+        retryable: false,
       });
       expect(m.createUpload).not.toHaveBeenCalled();
       expect(FakeXHR.sent).toEqual([]);
@@ -233,6 +234,7 @@ describe("useVideoPost", () => {
     expect(result.current.state).toEqual({
       step: "error",
       message: en.communities.video.limit,
+      retryable: false,
     });
     expect(m.finish).not.toHaveBeenCalled();
   });
@@ -248,6 +250,7 @@ describe("useVideoPost", () => {
     expect(result.current.state).toEqual({
       step: "error",
       message: en.communities.video.failed,
+      retryable: true,
     });
     expect(m.finish).not.toHaveBeenCalled();
   });
@@ -317,5 +320,144 @@ describe("useVideoPost", () => {
     });
     expect(m.createUpload).toHaveBeenCalledTimes(1);
     expect(m.finish).toHaveBeenCalledTimes(1);
+  });
+
+  describe("retrying after a failed upload", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    async function failOnceThenRetry(
+      result: { current: ReturnType<typeof useVideoPost> },
+      beforeRetry: () => void = () => undefined,
+    ) {
+      FakeXHR.status = 500;
+      await act(async () => {
+        await result.current.post(input);
+      });
+      expect(result.current.state).toMatchObject({ step: "error" });
+      FakeXHR.status = 204;
+      beforeRetry();
+      let ok = false;
+      await act(async () => {
+        ok = await result.current.post(input);
+      });
+      return ok;
+    }
+
+    it("reuses the prepared video and a fresh grant", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      const { result } = renderIt();
+      const ok = await failOnceThenRetry(result, () =>
+        vi.advanceTimersByTime(60_000),
+      );
+      expect(ok).toBe(true);
+      expect(m.transcodeForUpload).toHaveBeenCalledTimes(1);
+      expect(m.createUpload).toHaveBeenCalledTimes(1);
+      expect(m.finish).toHaveBeenCalledTimes(1);
+      expect(m.finish).toHaveBeenCalledWith(
+        expect.objectContaining({ uploadId: grant.uploadId }),
+      );
+    });
+
+    it("asks for a new grant once the old one is about to expire", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      const { result } = renderIt();
+      const ok = await failOnceThenRetry(result, () =>
+        vi.advanceTimersByTime(9.5 * 60_000),
+      );
+      expect(ok).toBe(true);
+      expect(m.transcodeForUpload).toHaveBeenCalledTimes(1);
+      expect(m.createUpload).toHaveBeenCalledTimes(2);
+    });
+
+    it("asks for a new grant when the visibility changed", async () => {
+      const { result } = renderIt();
+      FakeXHR.status = 500;
+      await act(async () => {
+        await result.current.post(input);
+      });
+      FakeXHR.status = 204;
+      await act(async () => {
+        await result.current.post({ ...input, visibility: "community" });
+      });
+      expect(m.transcodeForUpload).toHaveBeenCalledTimes(1);
+      expect(m.createUpload).toHaveBeenCalledTimes(2);
+      expect(m.createUpload).toHaveBeenLastCalledWith({
+        communitySlug: "mlops",
+        visibility: "community",
+      });
+    });
+
+    it("asks for a new grant when creating the post failed", async () => {
+      m.finish.mockRejectedValueOnce(new Error("boom"));
+      const { result } = renderIt();
+      await act(async () => {
+        await result.current.post(input);
+      });
+      await act(async () => {
+        await result.current.post(input);
+      });
+      expect(m.transcodeForUpload).toHaveBeenCalledTimes(1);
+      expect(m.createUpload).toHaveBeenCalledTimes(2);
+    });
+
+    it("prepares again for a different file", async () => {
+      const { result } = renderIt();
+      FakeXHR.status = 500;
+      await act(async () => {
+        await result.current.post(input);
+      });
+      FakeXHR.status = 204;
+      const other = new File(["other"], "b.mov", { type: "video/quicktime" });
+      await act(async () => {
+        await result.current.post({ ...input, file: other });
+      });
+      expect(m.transcodeForUpload).toHaveBeenCalledTimes(2);
+      expect(m.createUpload).toHaveBeenCalledTimes(2);
+    });
+
+    it("forgets the prepared video on reset (clip removed or replaced)", async () => {
+      const { result } = renderIt();
+      FakeXHR.status = 500;
+      await act(async () => {
+        await result.current.post(input);
+      });
+      act(() => result.current.reset());
+      FakeXHR.status = 204;
+      await act(async () => {
+        await result.current.post(input);
+      });
+      expect(m.transcodeForUpload).toHaveBeenCalledTimes(2);
+      expect(m.createUpload).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps the prepared video after a cancel, with a new grant", async () => {
+      const sending: FakeXHR[] = [];
+      class HangingXHR extends FakeXHR {
+        override send() {
+          sending.push(this);
+        }
+      }
+      vi.stubGlobal("XMLHttpRequest", HangingXHR);
+      const { result } = renderIt();
+      let pending!: Promise<boolean>;
+      act(() => {
+        pending = result.current.post(input);
+      });
+      await vi.waitFor(() => expect(sending).toHaveLength(1));
+      await act(async () => {
+        result.current.cancel();
+        await pending;
+      });
+      vi.stubGlobal("XMLHttpRequest", FakeXHR);
+      let ok = false;
+      await act(async () => {
+        ok = await result.current.post(input);
+      });
+      expect(ok).toBe(true);
+      expect(m.transcodeForUpload).toHaveBeenCalledTimes(1);
+      expect(m.createUpload).toHaveBeenCalledTimes(2);
+    });
   });
 });
