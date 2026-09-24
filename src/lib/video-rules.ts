@@ -26,7 +26,9 @@ export const VIDEO_VISIBILITIES = ["community", "public"] as const;
 export type VideoVisibility = (typeof VIDEO_VISIBILITIES)[number];
 export type VideoStorageClass = "public" | "private";
 
-export function storageClassFor(visibility: VideoVisibility): VideoStorageClass {
+export function storageClassFor(
+  visibility: VideoVisibility,
+): VideoStorageClass {
   return visibility === "public" ? "public" : "private";
 }
 

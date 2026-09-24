@@ -104,7 +104,9 @@ describe("feed.reviewReport", () => {
 describe("feed.getPostReports", () => {
   it("refuses a plain member", async () => {
     hooks.membership = { role: "member" };
-    await expect(caller().feed.getPostReports({ postId: 5 })).rejects.toMatchObject({
+    await expect(
+      caller().feed.getPostReports({ postId: 5 }),
+    ).rejects.toMatchObject({
       code: "FORBIDDEN",
     });
     expect(payload.find).not.toHaveBeenCalled();
@@ -113,11 +115,15 @@ describe("feed.getPostReports", () => {
   it("says not found for a deleted or missing post", async () => {
     hooks.membership = { role: "admin" };
     hooks.post = communityPost({ isDeleted: true });
-    await expect(caller().feed.getPostReports({ postId: 5 })).rejects.toMatchObject({
+    await expect(
+      caller().feed.getPostReports({ postId: 5 }),
+    ).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
     hooks.post = null;
-    await expect(caller().feed.getPostReports({ postId: 5 })).rejects.toMatchObject({
+    await expect(
+      caller().feed.getPostReports({ postId: 5 }),
+    ).rejects.toMatchObject({
       code: "NOT_FOUND",
     });
     expect(payload.find).not.toHaveBeenCalled();
@@ -126,7 +132,9 @@ describe("feed.getPostReports", () => {
   it("gives an owner the open reports", async () => {
     hooks.membership = { role: "owner" };
     payload.find.mockResolvedValueOnce({
-      docs: [{ reason: "spam", note: null, createdAt: "2026-09-24T12:00:00.000Z" }],
+      docs: [
+        { reason: "spam", note: null, createdAt: "2026-09-24T12:00:00.000Z" },
+      ],
     });
     await expect(caller().feed.getPostReports({ postId: 5 })).resolves.toEqual([
       { reason: "spam", note: null, createdAt: "2026-09-24T12:00:00.000Z" },
@@ -134,7 +142,9 @@ describe("feed.getPostReports", () => {
     expect(payload.find).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: "post-reports",
-        where: { and: [{ post: { equals: 5 } }, { dismissedAt: { exists: false } }] },
+        where: {
+          and: [{ post: { equals: 5 } }, { dismissedAt: { exists: false } }],
+        },
       }),
     );
   });

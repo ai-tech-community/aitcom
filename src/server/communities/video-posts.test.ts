@@ -14,25 +14,40 @@ import {
 const UPLOAD = "1b4e28ba-2fa1-41d2-883f-0016d3cca427";
 const NOW = new Date("2026-09-24T12:00:00.000Z");
 
-function fakes(over: { uploads?: unknown[]; recent?: number; heads?: unknown[] } = {}) {
+function fakes(
+  over: { uploads?: unknown[]; recent?: number; heads?: unknown[] } = {},
+) {
   const payload = {
     count: vi.fn().mockResolvedValue({ totalDocs: over.recent ?? 0 }),
-    create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: 7, ...data })),
+    create: vi
+      .fn()
+      .mockImplementation(({ data }) => Promise.resolve({ id: 7, ...data })),
     find: vi.fn().mockResolvedValue({ docs: over.uploads ?? [] }),
     update: vi.fn().mockResolvedValue({}),
     delete: vi.fn().mockResolvedValue({}),
   };
   const heads = [...(over.heads ?? [])];
   const storage = {
-    presignUpload: vi.fn().mockImplementation(({ key }) => Promise.resolve({ url: "u", fields: { key } })),
-    inspect: vi.fn().mockImplementation(() => Promise.resolve(heads.shift() ?? null)),
+    presignUpload: vi
+      .fn()
+      .mockImplementation(({ key }) =>
+        Promise.resolve({ url: "u", fields: { key } }),
+      ),
+    inspect: vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(heads.shift() ?? null)),
     playbackUrl: vi.fn(),
     remove: vi.fn().mockResolvedValue(undefined),
   };
   return {
     payload,
     storage,
-    deps: { payload: payload as never, storage, now: () => NOW, newUploadId: () => UPLOAD },
+    deps: {
+      payload: payload as never,
+      storage,
+      now: () => NOW,
+      newUploadId: () => UPLOAD,
+    },
   };
 }
 
@@ -67,29 +82,55 @@ const goodHeads = () => [
 describe("issueVideoUpload", () => {
   it("records the grant and signs the video and thumbnail keys", async () => {
     const { deps, payload, storage } = fakes();
-    const grant = await issueVideoUpload(deps, { userId: "u1", communityId: "c1", visibility: "community" });
+    const grant = await issueVideoUpload(deps, {
+      userId: "u1",
+      communityId: "c1",
+      visibility: "community",
+    });
     expect(grant.uploadId).toBe(UPLOAD);
     expect(payload.create).toHaveBeenCalledWith({
       collection: "video-uploads",
-      data: { uploadId: UPLOAD, userId: "u1", communityId: "c1", visibility: "community" },
+      data: {
+        uploadId: UPLOAD,
+        userId: "u1",
+        communityId: "c1",
+        visibility: "community",
+      },
     });
-    expect(storage.presignUpload.mock.calls.map(([c]: unknown[]) => c)).toEqual([
-      { key: `private/videos/c1/${UPLOAD}.mp4`, contentType: "video/mp4", maxBytes: 40 * 1024 * 1024 },
-      { key: `private/videos/c1/${UPLOAD}.jpg`, contentType: "image/jpeg", maxBytes: 512 * 1024 },
-    ]);
+    expect(storage.presignUpload.mock.calls.map(([c]: unknown[]) => c)).toEqual(
+      [
+        {
+          key: `private/videos/c1/${UPLOAD}.mp4`,
+          contentType: "video/mp4",
+          maxBytes: 40 * 1024 * 1024,
+        },
+        {
+          key: `private/videos/c1/${UPLOAD}.jpg`,
+          contentType: "image/jpeg",
+          maxBytes: 512 * 1024,
+        },
+      ],
+    );
   });
 
   it("stops at 20 uploads a day", async () => {
     const { deps } = fakes({ recent: 20 });
     await expect(
-      issueVideoUpload(deps, { userId: "u1", communityId: "c1", visibility: "public" }),
+      issueVideoUpload(deps, {
+        userId: "u1",
+        communityId: "c1",
+        visibility: "public",
+      }),
     ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
   });
 });
 
 describe("finishVideoPost", () => {
   it("creates the post only after both files check out, then closes the grant", async () => {
-    const { deps, payload } = fakes({ uploads: [upload()], heads: goodHeads() });
+    const { deps, payload } = fakes({
+      uploads: [upload()],
+      heads: goodHeads(),
+    });
     const post = await finishVideoPost(deps, finish);
     expect(post).toMatchObject({
       content: "Demo",
@@ -112,14 +153,21 @@ describe("finishVideoPost", () => {
   });
 
   it("refuses a second finish for the same upload (double submit)", async () => {
-    const { deps, payload } = fakes({ uploads: [upload({ finishedAt: NOW.toISOString() })] });
-    await expect(finishVideoPost(deps, finish)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const { deps, payload } = fakes({
+      uploads: [upload({ finishedAt: NOW.toISOString() })],
+    });
+    await expect(finishVideoPost(deps, finish)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
     expect(payload.create).not.toHaveBeenCalled();
   });
 
   it("refuses a concurrent second finish that loses the unique video key race, keeping the files", async () => {
     for (const path of ["video.key", "video_key"]) {
-      const { deps, payload, storage } = fakes({ uploads: [upload()], heads: goodHeads() });
+      const { deps, payload, storage } = fakes({
+        uploads: [upload()],
+        heads: goodHeads(),
+      });
       payload.create.mockRejectedValueOnce(
         new ValidationError({
           collection: "feed-posts",
@@ -144,7 +192,10 @@ describe("finishVideoPost", () => {
         errors: [{ message: "This field is required.", path: "content" }],
       }),
     ]) {
-      const { deps, payload, storage } = fakes({ uploads: [upload()], heads: goodHeads() });
+      const { deps, payload, storage } = fakes({
+        uploads: [upload()],
+        heads: goodHeads(),
+      });
       payload.create.mockRejectedValueOnce(error);
       await expect(finishVideoPost(deps, finish)).rejects.toBe(error);
       expect(storage.remove).not.toHaveBeenCalled();
@@ -153,7 +204,9 @@ describe("finishVideoPost", () => {
 
   it("refuses someone else's upload", async () => {
     const { deps } = fakes({ uploads: [upload({ userId: "other" })] });
-    await expect(finishVideoPost(deps, finish)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(finishVideoPost(deps, finish)).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 
   it("refuses to finish a grant past the finish window, leaving it for the daily cleanup", async () => {
@@ -177,25 +230,41 @@ describe("finishVideoPost", () => {
   it("deletes the files and refuses when a file is missing, wrong, or too big", async () => {
     for (const heads of [
       [null, { contentType: "image/jpeg", bytes: 10 }],
-      [{ contentType: "video/quicktime", bytes: 10 }, { contentType: "image/jpeg", bytes: 10 }],
-      [{ contentType: "video/mp4", bytes: 41 * 1024 * 1024 }, { contentType: "image/jpeg", bytes: 10 }],
+      [
+        { contentType: "video/quicktime", bytes: 10 },
+        { contentType: "image/jpeg", bytes: 10 },
+      ],
+      [
+        { contentType: "video/mp4", bytes: 41 * 1024 * 1024 },
+        { contentType: "image/jpeg", bytes: 10 },
+      ],
     ]) {
       const { deps, storage, payload } = fakes({ uploads: [upload()], heads });
-      await expect(finishVideoPost(deps, finish)).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      await expect(finishVideoPost(deps, finish)).rejects.toMatchObject({
+        code: "BAD_REQUEST",
+      });
       expect(storage.remove).toHaveBeenCalledWith([
         `media/videos/public/c1/${UPLOAD}.mp4`,
         `media/videos/public/c1/${UPLOAD}.jpg`,
       ]);
-      expect(payload.delete).toHaveBeenCalledWith({ collection: "video-uploads", id: 3 });
+      expect(payload.delete).toHaveBeenCalledWith({
+        collection: "video-uploads",
+        id: 3,
+      });
     }
   });
 
   it("refuses an impossible length", async () => {
     const { deps } = fakes({
       uploads: [upload()],
-      heads: [{ contentType: "video/mp4", bytes: 10 }, { contentType: "image/jpeg", bytes: 10 }],
+      heads: [
+        { contentType: "video/mp4", bytes: 10 },
+        { contentType: "image/jpeg", bytes: 10 },
+      ],
     });
-    await expect(finishVideoPost(deps, { ...finish, durationSeconds: 400 })).rejects.toMatchObject({
+    await expect(
+      finishVideoPost(deps, { ...finish, durationSeconds: 400 }),
+    ).rejects.toMatchObject({
       code: "BAD_REQUEST",
     });
   });
@@ -204,7 +273,9 @@ describe("finishVideoPost", () => {
 describe("removePostVideo", () => {
   it("removes both files of a video post and ignores other posts", async () => {
     const { storage } = fakes();
-    await removePostVideo(storage, { video: { key: "a.mp4", thumbnailKey: "a.jpg" } });
+    await removePostVideo(storage, {
+      video: { key: "a.mp4", thumbnailKey: "a.jpg" },
+    });
     expect(storage.remove).toHaveBeenCalledWith(["a.mp4", "a.jpg"]);
     storage.remove.mockClear();
     await removePostVideo(storage, { video: null });
@@ -215,7 +286,10 @@ describe("removePostVideo", () => {
 describe("cleanUpDeletedPostVideo", () => {
   it("removes the files of a deleted video post", async () => {
     const { storage } = fakes();
-    await cleanUpDeletedPostVideo(() => storage, { id: 9, video: { key: "a.mp4", thumbnailKey: "a.jpg" } });
+    await cleanUpDeletedPostVideo(() => storage, {
+      id: 9,
+      video: { key: "a.mp4", thumbnailKey: "a.jpg" },
+    });
     expect(storage.remove).toHaveBeenCalledWith(["a.mp4", "a.jpg"]);
   });
 
@@ -231,7 +305,11 @@ describe("cleanUpDeletedPostVideo", () => {
     storage.remove.mockRejectedValueOnce(failure);
     const log = vi.fn();
     await expect(
-      cleanUpDeletedPostVideo(() => storage, { id: 9, video: { key: "a.mp4", thumbnailKey: "a.jpg" } }, log),
+      cleanUpDeletedPostVideo(
+        () => storage,
+        { id: 9, video: { key: "a.mp4", thumbnailKey: "a.jpg" } },
+        log,
+      ),
     ).resolves.toBeUndefined();
     expect(log).toHaveBeenCalledWith("[feed.deletePost] video cleanup failed", {
       postId: 9,

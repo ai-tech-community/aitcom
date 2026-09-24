@@ -93,7 +93,8 @@ export async function listReels(
   const start = link.kind === "start" ? link.post : null;
 
   const after =
-    input.cursor ?? (start ? { createdAt: start.createdAt, id: start.id } : null);
+    input.cursor ??
+    (start ? { createdAt: start.createdAt, id: start.id } : null);
   const clauses: Where[] = [
     { communityId: { equals: input.community.id } },
     { "video.key": { exists: true } },

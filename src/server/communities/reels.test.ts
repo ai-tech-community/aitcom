@@ -113,7 +113,9 @@ describe("listReels", () => {
     });
     expect(page.items.map((p) => p.id)).toEqual([3, 2]);
     const where = JSON.stringify(payload.find.mock.calls[0]![0].where);
-    expect(where).toContain(`"createdAt":{"less_than":"${video(3).createdAt}"}`);
+    expect(where).toContain(
+      `"createdAt":{"less_than":"${video(3).createdAt}"}`,
+    );
   });
 
   it("says 'members only' for a community-only deep link opened by a visitor", async () => {

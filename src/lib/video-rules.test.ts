@@ -17,13 +17,21 @@ describe("video rules", () => {
 
   it("stores public videos under media/ and community-only under private/", () => {
     expect(
-      videoObjectKeys({ visibility: "public", communityId: "c-1", uploadId: UPLOAD }),
+      videoObjectKeys({
+        visibility: "public",
+        communityId: "c-1",
+        uploadId: UPLOAD,
+      }),
     ).toEqual({
       video: `media/videos/public/c-1/${UPLOAD}.mp4`,
       thumbnail: `media/videos/public/c-1/${UPLOAD}.jpg`,
     });
     expect(
-      videoObjectKeys({ visibility: "community", communityId: "c-1", uploadId: UPLOAD }),
+      videoObjectKeys({
+        visibility: "community",
+        communityId: "c-1",
+        uploadId: UPLOAD,
+      }),
     ).toEqual({
       video: `private/videos/c-1/${UPLOAD}.mp4`,
       thumbnail: `private/videos/c-1/${UPLOAD}.jpg`,
@@ -35,10 +43,18 @@ describe("video rules", () => {
     expect(isUploadId(UPLOAD)).toBe(true);
     expect(isUploadId("../x")).toBe(false);
     expect(() =>
-      videoObjectKeys({ visibility: "public", communityId: "../c", uploadId: UPLOAD }),
+      videoObjectKeys({
+        visibility: "public",
+        communityId: "../c",
+        uploadId: UPLOAD,
+      }),
     ).toThrow();
     expect(() =>
-      videoObjectKeys({ visibility: "public", communityId: "c", uploadId: "x/y" }),
+      videoObjectKeys({
+        visibility: "public",
+        communityId: "c",
+        uploadId: "x/y",
+      }),
     ).toThrow();
   });
 

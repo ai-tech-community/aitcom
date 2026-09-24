@@ -12,7 +12,12 @@ const names = (fields: ReadonlyArray<{ name?: string }>) =>
 describe("community video schema", () => {
   it("adds video, visibility, and moderation fields to feed posts", () => {
     expect(names(FeedPosts.fields as never)).toEqual(
-      expect.arrayContaining(["visibility", "video", "hiddenAt", "reportCount"]),
+      expect.arrayContaining([
+        "visibility",
+        "video",
+        "hiddenAt",
+        "reportCount",
+      ]),
     );
   });
 
@@ -67,7 +72,10 @@ describe("community video schema", () => {
     ]) {
       expect(sql).toContain(needle);
     }
-    const index = readFileSync(join(process.cwd(), "src/migrations/index.ts"), "utf8");
+    const index = readFileSync(
+      join(process.cwd(), "src/migrations/index.ts"),
+      "utf8",
+    );
     expect(index).toContain('name: "20260924a_community_videos"');
   });
 });

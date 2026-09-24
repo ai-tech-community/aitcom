@@ -15,11 +15,13 @@ function fakes(
   over: { existing?: unknown[]; reportTotal?: number } = {},
 ) {
   const payload = {
-    findByID: vi.fn().mockImplementation(() =>
-      post
-        ? Promise.resolve(post)
-        : Promise.reject(Object.assign(new Error("nf"), { status: 404 })),
-    ),
+    findByID: vi
+      .fn()
+      .mockImplementation(() =>
+        post
+          ? Promise.resolve(post)
+          : Promise.reject(Object.assign(new Error("nf"), { status: 404 })),
+      ),
     find: vi.fn().mockResolvedValue({ docs: over.existing ?? [] }),
     count: vi.fn().mockResolvedValue({ totalDocs: over.reportTotal ?? 1 }),
     create: vi.fn().mockResolvedValue({}),
@@ -61,7 +63,13 @@ describe("reportPost", () => {
   it("records the report, hides the post, and tells moderators once", async () => {
     const { deps, payload, notifyModerators } = fakes(video);
     await expect(
-      reportPost(deps, { postId: 5, reporterId: "r1", reason: "spam", note: "", viewer: member }),
+      reportPost(deps, {
+        postId: 5,
+        reporterId: "r1",
+        reason: "spam",
+        note: "",
+        viewer: member,
+      }),
     ).resolves.toEqual({ hidden: true });
     expect(payload.create).toHaveBeenCalledWith({
       collection: "post-reports",
@@ -76,7 +84,10 @@ describe("reportPost", () => {
       id: 5,
       data: { hiddenAt: NOW.toISOString(), reportCount: 1 },
     });
-    expect(notifyModerators).toHaveBeenCalledWith({ communityId: "c1", postId: 5 });
+    expect(notifyModerators).toHaveBeenCalledWith({
+      communityId: "c1",
+      postId: 5,
+    });
   });
 
   // Once hidden, only the author and moderators still see the post, so a
@@ -144,7 +155,13 @@ describe("reportPost", () => {
       }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     await expect(
-      reportPost(fakes(null).deps, { postId: 5, reporterId: "r1", reason: "spam", note: "", viewer: member }),
+      reportPost(fakes(null).deps, {
+        postId: 5,
+        reporterId: "r1",
+        reason: "spam",
+        note: "",
+        viewer: member,
+      }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
@@ -157,7 +174,13 @@ describe("reportPost", () => {
       }),
     );
     await expect(
-      reportPost(deps, { postId: 5, reporterId: "r1", reason: "spam", note: "", viewer: member }),
+      reportPost(deps, {
+        postId: 5,
+        reporterId: "r1",
+        reason: "spam",
+        note: "",
+        viewer: member,
+      }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
     expect(payload.update).not.toHaveBeenCalled();
   });
@@ -166,7 +189,13 @@ describe("reportPost", () => {
     const { deps, notifyModerators, log } = fakes(video);
     notifyModerators.mockRejectedValueOnce(new Error("db down"));
     await expect(
-      reportPost(deps, { postId: 5, reporterId: "r1", reason: "spam", note: "", viewer: member }),
+      reportPost(deps, {
+        postId: 5,
+        reporterId: "r1",
+        reason: "spam",
+        note: "",
+        viewer: member,
+      }),
     ).resolves.toEqual({ hidden: true });
     expect(log).toHaveBeenCalledWith(
       "[feed.reportPost] moderator notification failed",
@@ -183,11 +212,19 @@ describe("after a moderator restores a post", () => {
       existing: [{ id: 1, reporterId: "r1", dismissedAt: NOW.toISOString() }],
     });
     await expect(
-      reportPost(deps, { postId: 5, reporterId: "r1", reason: "spam", note: "", viewer: member }),
+      reportPost(deps, {
+        postId: 5,
+        reporterId: "r1",
+        reason: "spam",
+        note: "",
+        viewer: member,
+      }),
     ).rejects.toMatchObject({ code: "CONFLICT" });
     expect(payload.find).toHaveBeenCalledWith({
       collection: "post-reports",
-      where: { and: [{ post: { equals: 5 } }, { reporterId: { equals: "r1" } }] },
+      where: {
+        and: [{ post: { equals: 5 } }, { reporterId: { equals: "r1" } }],
+      },
       limit: 1,
       depth: 0,
     });
@@ -195,23 +232,41 @@ describe("after a moderator restores a post", () => {
   });
 
   it("a different member can report it, which hides it again and counts only open reports", async () => {
-    const { deps, payload, notifyModerators } = fakes(restored, { reportTotal: 1 });
+    const { deps, payload, notifyModerators } = fakes(restored, {
+      reportTotal: 1,
+    });
     await expect(
-      reportPost(deps, { postId: 5, reporterId: "r3", reason: "inappropriate", note: "", viewer: { ...member, userId: "r3" } }),
+      reportPost(deps, {
+        postId: 5,
+        reporterId: "r3",
+        reason: "inappropriate",
+        note: "",
+        viewer: { ...member, userId: "r3" },
+      }),
     ).resolves.toEqual({ hidden: true });
-    expect(payload.count).toHaveBeenCalledWith({ collection: "post-reports", where: OPEN_REPORTS });
+    expect(payload.count).toHaveBeenCalledWith({
+      collection: "post-reports",
+      where: OPEN_REPORTS,
+    });
     expect(payload.update).toHaveBeenCalledWith({
       collection: "feed-posts",
       id: 5,
       data: { hiddenAt: NOW.toISOString(), reportCount: 1 },
     });
-    expect(notifyModerators).toHaveBeenCalledWith({ communityId: "c1", postId: 5 });
+    expect(notifyModerators).toHaveBeenCalledWith({
+      communityId: "c1",
+      postId: 5,
+    });
   });
 });
 
 describe("reviewReport", () => {
   it("restore shows the post again and dismisses its open reports, keeping the rows", async () => {
-    const { deps, payload, getStorage } = fakes({ ...video, hiddenAt: NOW.toISOString(), reportCount: 2 });
+    const { deps, payload, getStorage } = fakes({
+      ...video,
+      hiddenAt: NOW.toISOString(),
+      reportCount: 2,
+    });
     await reviewReport(deps, { postId: 5, action: "restore" });
     expect(payload.update).toHaveBeenCalledWith({
       collection: "post-reports",
@@ -228,7 +283,10 @@ describe("reviewReport", () => {
   });
 
   it("remove deletes the post, its files, and its reports", async () => {
-    const { deps, payload, storage } = fakes({ ...video, hiddenAt: NOW.toISOString() });
+    const { deps, payload, storage } = fakes({
+      ...video,
+      hiddenAt: NOW.toISOString(),
+    });
     await reviewReport(deps, { postId: 5, action: "remove" });
     expect(payload.update).toHaveBeenCalledWith({
       collection: "feed-posts",
@@ -236,7 +294,10 @@ describe("reviewReport", () => {
       data: { isDeleted: true, content: "", authorName: "", imageUrl: null },
     });
     expect(storage.remove).toHaveBeenCalledWith(["k.mp4", "k.jpg"]);
-    expect(payload.delete).toHaveBeenCalledWith({ collection: "post-reports", where: { post: { equals: 5 } } });
+    expect(payload.delete).toHaveBeenCalledWith({
+      collection: "post-reports",
+      where: { post: { equals: 5 } },
+    });
   });
 
   it("remove still succeeds when storage is unreachable, and never needs storage for a text post", async () => {
@@ -244,7 +305,9 @@ describe("reviewReport", () => {
     broken.getStorage.mockImplementation(() => {
       throw new Error("S3 not configured");
     });
-    await expect(reviewReport(broken.deps, { postId: 5, action: "remove" })).resolves.toBeUndefined();
+    await expect(
+      reviewReport(broken.deps, { postId: 5, action: "remove" }),
+    ).resolves.toBeUndefined();
     expect(broken.payload.delete).toHaveBeenCalledWith({
       collection: "post-reports",
       where: { post: { equals: 5 } },
@@ -257,8 +320,13 @@ describe("reviewReport", () => {
 
   it("reviewing a post its author already deleted clears its reports and says not found", async () => {
     const { deps, payload } = fakes({ ...video, isDeleted: true });
-    await expect(reviewReport(deps, { postId: 5, action: "restore" })).rejects.toMatchObject({ code: "NOT_FOUND" });
-    expect(payload.delete).toHaveBeenCalledWith({ collection: "post-reports", where: { post: { equals: 5 } } });
+    await expect(
+      reviewReport(deps, { postId: 5, action: "restore" }),
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(payload.delete).toHaveBeenCalledWith({
+      collection: "post-reports",
+      where: { post: { equals: 5 } },
+    });
   });
 });
 
@@ -267,12 +335,28 @@ describe("listPostReports", () => {
     const { payload } = fakes(video);
     payload.find.mockResolvedValueOnce({
       docs: [
-        { id: 2, reporterId: "r2", reason: "other", note: "Stolen clip", createdAt: "2026-09-24T11:00:00.000Z" },
-        { id: 1, reporterId: "r1", reason: "spam", note: null, createdAt: "2026-09-24T10:00:00.000Z" },
+        {
+          id: 2,
+          reporterId: "r2",
+          reason: "other",
+          note: "Stolen clip",
+          createdAt: "2026-09-24T11:00:00.000Z",
+        },
+        {
+          id: 1,
+          reporterId: "r1",
+          reason: "spam",
+          note: null,
+          createdAt: "2026-09-24T10:00:00.000Z",
+        },
       ],
     });
     await expect(listPostReports(payload as never, 5)).resolves.toEqual([
-      { reason: "other", note: "Stolen clip", createdAt: "2026-09-24T11:00:00.000Z" },
+      {
+        reason: "other",
+        note: "Stolen clip",
+        createdAt: "2026-09-24T11:00:00.000Z",
+      },
       { reason: "spam", note: null, createdAt: "2026-09-24T10:00:00.000Z" },
     ]);
     expect(payload.find).toHaveBeenCalledWith({

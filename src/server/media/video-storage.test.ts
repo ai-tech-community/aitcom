@@ -26,10 +26,17 @@ beforeEach(() => {
 
 describe("video storage", () => {
   it("grants one key, one type, a size range, for ten minutes", async () => {
-    createPresignedPost.mockResolvedValue({ url: "https://s3/", fields: { key: "k" } });
+    createPresignedPost.mockResolvedValue({
+      url: "https://s3/",
+      fields: { key: "k" },
+    });
     const { storage } = setup();
     await expect(
-      storage.presignUpload({ key: "private/videos/c/u.mp4", contentType: "video/mp4", maxBytes: 100 }),
+      storage.presignUpload({
+        key: "private/videos/c/u.mp4",
+        contentType: "video/mp4",
+        maxBytes: 100,
+      }),
     ).resolves.toEqual({ url: "https://s3/", fields: { key: "k" } });
     expect(createPresignedPost).toHaveBeenCalledWith(expect.anything(), {
       Bucket: "ait-media",
@@ -46,25 +53,38 @@ describe("video storage", () => {
   it("links public videos directly and signs private ones for an hour", async () => {
     getSignedUrl.mockResolvedValue("https://signed");
     const { storage } = setup();
-    await expect(storage.playbackUrl("media/videos/public/c/u.mp4", "public")).resolves.toBe(
+    await expect(
+      storage.playbackUrl("media/videos/public/c/u.mp4", "public"),
+    ).resolves.toBe(
       "https://ait-media.s3.eu-central-1.amazonaws.com/media/videos/public/c/u.mp4",
     );
     expect(getSignedUrl).not.toHaveBeenCalled();
-    await expect(storage.playbackUrl("private/videos/c/u.mp4", "private")).resolves.toBe(
-      "https://signed",
+    await expect(
+      storage.playbackUrl("private/videos/c/u.mp4", "private"),
+    ).resolves.toBe("https://signed");
+    expect(getSignedUrl).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      {
+        expiresIn: 3600,
+      },
     );
-    expect(getSignedUrl).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
-      expiresIn: 3600,
-    });
   });
 
   it("inspects an object, and reports a missing one as null", async () => {
     const { storage, send } = setup();
     send.mockResolvedValueOnce({ ContentType: "video/mp4", ContentLength: 42 });
-    await expect(storage.inspect("k")).resolves.toEqual({ contentType: "video/mp4", bytes: 42 });
-    send.mockRejectedValueOnce(Object.assign(new Error("nf"), { name: "NotFound" }));
+    await expect(storage.inspect("k")).resolves.toEqual({
+      contentType: "video/mp4",
+      bytes: 42,
+    });
+    send.mockRejectedValueOnce(
+      Object.assign(new Error("nf"), { name: "NotFound" }),
+    );
     await expect(storage.inspect("k")).resolves.toBeNull();
-    send.mockRejectedValueOnce(Object.assign(new Error("boom"), { name: "AccessDenied" }));
+    send.mockRejectedValueOnce(
+      Object.assign(new Error("boom"), { name: "AccessDenied" }),
+    );
     await expect(storage.inspect("k")).rejects.toThrow("boom");
   });
 

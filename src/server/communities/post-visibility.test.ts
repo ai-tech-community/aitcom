@@ -10,8 +10,16 @@ import {
 
 const member: FeedViewer = { userId: "m", isMember: true, isModerator: false };
 const mod: FeedViewer = { userId: "mod", isMember: true, isModerator: true };
-const visitor: FeedViewer = { userId: null, isMember: false, isModerator: false };
-const signedInOutsider: FeedViewer = { userId: "o", isMember: false, isModerator: false };
+const visitor: FeedViewer = {
+  userId: null,
+  isMember: false,
+  isModerator: false,
+};
+const signedInOutsider: FeedViewer = {
+  userId: "o",
+  isMember: false,
+  isModerator: false,
+};
 
 const post = (over: Record<string, unknown> = {}) => ({
   authorId: "a",
@@ -30,7 +38,10 @@ describe("canViewPost", () => {
   });
 
   it("hides reported posts from everyone except the author and moderators", () => {
-    const hidden = post({ hiddenAt: "2026-09-24T00:00:00.000Z", visibility: "public" });
+    const hidden = post({
+      hiddenAt: "2026-09-24T00:00:00.000Z",
+      visibility: "public",
+    });
     expect(canViewPost(hidden, member)).toBe(false);
     expect(canViewPost(hidden, visitor)).toBe(false);
     expect(canViewPost(hidden, mod)).toBe(true);
@@ -47,7 +58,9 @@ describe("postVisibilityWhere", () => {
     expect(postVisibilityWhere(member)).toEqual({
       and: [
         { isDeleted: { not_equals: true } },
-        { or: [{ hiddenAt: { exists: false } }, { authorId: { equals: "m" } }] },
+        {
+          or: [{ hiddenAt: { exists: false } }, { authorId: { equals: "m" } }],
+        },
       ],
     });
   });

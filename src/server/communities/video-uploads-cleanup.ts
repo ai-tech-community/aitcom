@@ -26,7 +26,9 @@ export async function cleanupAbandonedUploads(deps: {
   now?: () => Date;
 }): Promise<{ removed: number; failed: number }> {
   const now = deps.now?.() ?? new Date();
-  const cutoff = new Date(now.getTime() - ABANDONED_UPLOAD_HOURS * 60 * 60 * 1000);
+  const cutoff = new Date(
+    now.getTime() - ABANDONED_UPLOAD_HOURS * 60 * 60 * 1000,
+  );
   const { docs } = await deps.payload.find({
     collection: "video-uploads",
     where: {
@@ -67,7 +69,10 @@ export async function cleanupAbandonedUploads(deps: {
       removed++;
     } catch (error) {
       failed++;
-      console.error("[video-uploads-cleanup] failed", { uploadId: grant.uploadId, error });
+      console.error("[video-uploads-cleanup] failed", {
+        uploadId: grant.uploadId,
+        error,
+      });
     }
   }
 

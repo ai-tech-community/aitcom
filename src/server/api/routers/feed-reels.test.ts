@@ -103,7 +103,11 @@ describe("feed.getReels", () => {
       communitySlug: "town",
       startAtPostId: 7,
     });
-    expect(page).toEqual({ items: [], nextCursor: null, notice: "unavailable" });
+    expect(page).toEqual({
+      items: [],
+      nextCursor: null,
+      notice: "unavailable",
+    });
     expect(decorateFeedPosts).not.toHaveBeenCalled();
   });
 

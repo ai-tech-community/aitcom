@@ -5,7 +5,8 @@ export const PostReports: CollectionConfig = {
   admin: {
     useAsTitle: "reason",
     defaultColumns: ["post", "reason", "reporterId", "createdAt"],
-    description: "Member reports on community posts. One per reporter per post.",
+    description:
+      "Member reports on community posts. One per reporter per post.",
   },
   indexes: [{ fields: ["post", "reporterId"], unique: true }],
   fields: [

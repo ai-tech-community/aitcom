@@ -5,7 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { postVisibilityWhere } from "@/server/communities/post-visibility";
 
 const hooks = {
-  agent: { agentId: "agent-1", ownerId: "owner-1" as string | null, scopes: ["read", "contribute"] },
+  agent: {
+    agentId: "agent-1",
+    ownerId: "owner-1" as string | null,
+    scopes: ["read", "contribute"],
+  },
   membership: undefined as { role: string } | undefined,
   membershipLookups: 0,
   post: null as Record<string, unknown> | null,
@@ -99,7 +103,11 @@ function browseWhere() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  hooks.agent = { agentId: "agent-1", ownerId: "owner-1", scopes: ["read", "contribute"] };
+  hooks.agent = {
+    agentId: "agent-1",
+    ownerId: "owner-1",
+    scopes: ["read", "contribute"],
+  };
   hooks.membership = undefined;
   hooks.membershipLookups = 0;
   hooks.post = post();
@@ -119,7 +127,11 @@ describe("agent.browseFeed", () => {
     expect(browseWhere()).toEqual({
       and: [
         { communityId: { equals: "c-1" } },
-        postVisibilityWhere({ userId: "owner-1", isMember: true, isModerator: false }),
+        postVisibilityWhere({
+          userId: "owner-1",
+          isMember: true,
+          isModerator: false,
+        }),
       ],
     });
   });
@@ -128,16 +140,26 @@ describe("agent.browseFeed", () => {
     hooks.membership = { role: "moderator" };
     await agentCaller().agent.browseFeed({ communitySlug: "makers" });
     expect(browseWhere().and[1]).toEqual(
-      postVisibilityWhere({ userId: "owner-1", isMember: true, isModerator: true }),
+      postVisibilityWhere({
+        userId: "owner-1",
+        isMember: true,
+        isModerator: true,
+      }),
     );
   });
 
   it("shows a non-member owner's agent public posts only", async () => {
     await agentCaller().agent.browseFeed({ communitySlug: "makers" });
     expect(browseWhere().and[1]).toEqual(
-      postVisibilityWhere({ userId: "owner-1", isMember: false, isModerator: false }),
+      postVisibilityWhere({
+        userId: "owner-1",
+        isMember: false,
+        isModerator: false,
+      }),
     );
-    expect(JSON.stringify(browseWhere())).toContain('"visibility":{"equals":"public"}');
+    expect(JSON.stringify(browseWhere())).toContain(
+      '"visibility":{"equals":"public"}',
+    );
   });
 
   it("lets an unclaimed agent browse as an outsider instead of refusing it", async () => {
@@ -146,7 +168,11 @@ describe("agent.browseFeed", () => {
       agentCaller().agent.browseFeed({ communitySlug: "makers" }),
     ).resolves.toEqual({ posts: [], nextCursor: undefined });
     expect(browseWhere().and[1]).toEqual(
-      postVisibilityWhere({ userId: null, isMember: false, isModerator: false }),
+      postVisibilityWhere({
+        userId: null,
+        isMember: false,
+        isModerator: false,
+      }),
     );
     expect(hooks.membershipLookups).toBe(0);
   });
@@ -165,14 +191,22 @@ describe("agent.toggleFeedLike", () => {
 
   it("still likes a visible post", async () => {
     hooks.membership = { role: "member" };
-    await expect(agentCaller().agent.toggleFeedLike({ postId: 5 })).resolves.toEqual({
+    await expect(
+      agentCaller().agent.toggleFeedLike({ postId: 5 }),
+    ).resolves.toEqual({
       liked: true,
     });
   });
 });
 
 describe("agent.getFeedComments", () => {
-  const comment = { id: 9, content: "Nice", authorId: "m-1", authorName: "M", createdAt: "2026-09-24T12:00:00.000Z" };
+  const comment = {
+    id: 9,
+    content: "Nice",
+    authorId: "m-1",
+    authorName: "M",
+    createdAt: "2026-09-24T12:00:00.000Z",
+  };
 
   it("says not found for a community-only post the owner can't see", async () => {
     await expect(
@@ -193,15 +227,25 @@ describe("agent.getFeedComments", () => {
     hooks.agent = { ...hooks.agent, ownerId: null };
     hooks.post = post({ visibility: "public" });
     payload.find.mockResolvedValueOnce({ docs: [comment] });
-    await expect(agentCaller().agent.getFeedComments({ postId: 5 })).resolves.toEqual([
-      { id: 9, content: "Nice", authorId: "m-1", authorName: "M", createdAt: comment.createdAt },
+    await expect(
+      agentCaller().agent.getFeedComments({ postId: 5 }),
+    ).resolves.toEqual([
+      {
+        id: 9,
+        content: "Nice",
+        authorId: "m-1",
+        authorName: "M",
+        createdAt: comment.createdAt,
+      },
     ]);
   });
 
   it("keeps hub-wide posts (no community) readable as before", async () => {
     hooks.post = post({ communityId: null });
     payload.find.mockResolvedValueOnce({ docs: [comment] });
-    await expect(agentCaller().agent.getFeedComments({ postId: 5 })).resolves.toHaveLength(1);
+    await expect(
+      agentCaller().agent.getFeedComments({ postId: 5 }),
+    ).resolves.toHaveLength(1);
     expect(hooks.membershipLookups).toBe(0);
   });
 });

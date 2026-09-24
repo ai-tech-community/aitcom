@@ -118,7 +118,8 @@ export const FeedPosts: CollectionConfig = {
       index: true,
       admin: {
         position: "sidebar",
-        description: "Set by the first report; cleared when a moderator restores.",
+        description:
+          "Set by the first report; cleared when a moderator restores.",
       },
     },
     {

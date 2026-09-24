@@ -40,19 +40,27 @@ const UPLOAD_EXPIRED = "That upload has expired. Please try again.";
 export async function issueVideoUpload(
   deps: VideoPostDeps,
   input: { userId: string; communityId: string; visibility: VideoVisibility },
-): Promise<{ uploadId: string; video: PresignedUpload; thumbnail: PresignedUpload }> {
+): Promise<{
+  uploadId: string;
+  video: PresignedUpload;
+  thumbnail: PresignedUpload;
+}> {
   const now = deps.now?.() ?? new Date();
   const since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const { totalDocs } = await deps.payload.count({
     collection: "video-uploads",
     where: {
-      and: [{ userId: { equals: input.userId } }, { createdAt: { greater_than: since } }],
+      and: [
+        { userId: { equals: input.userId } },
+        { createdAt: { greater_than: since } },
+      ],
     },
   });
   if (totalDocs >= VIDEO_UPLOADS_PER_DAY) {
     throw new TRPCError({
       code: "TOO_MANY_REQUESTS",
-      message: "You've posted the most videos allowed for today. Try again tomorrow.",
+      message:
+        "You've posted the most videos allowed for today. Try again tomorrow.",
     });
   }
   const uploadId = deps.newUploadId?.() ?? randomUUID();
@@ -133,7 +141,9 @@ export async function finishVideoPost(
     throw new TRPCError({ code: "NOT_FOUND", message: UPLOAD_EXPIRED });
   }
   const now = deps.now?.() ?? new Date();
-  const finishCutoff = new Date(now.getTime() - FINISH_WINDOW_HOURS * 60 * 60 * 1000);
+  const finishCutoff = new Date(
+    now.getTime() - FINISH_WINDOW_HOURS * 60 * 60 * 1000,
+  );
   if (new Date(grant.createdAt) < finishCutoff) {
     // Past the finish window: the daily cleanup may already be acting on
     // this grant, so don't touch storage or the grant here either.
@@ -241,6 +251,10 @@ export async function cleanUpDeletedPostVideo(
   try {
     await removePostVideo(getStorage(), post);
   } catch (error) {
-    log("[feed.deletePost] video cleanup failed", { postId: post.id, keys, error });
+    log("[feed.deletePost] video cleanup failed", {
+      postId: post.id,
+      keys,
+      error,
+    });
   }
 }
