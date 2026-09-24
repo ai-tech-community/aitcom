@@ -230,9 +230,18 @@ the active filters.
   only when a sourced blurb exists. Sitemap lists each profile slug.
 - Open positions live at `/jobs` with one page per sourced role
   (`/jobs/{roleSlug}`). The list filters by company, location, work type,
-  and search, and sorts by company (default: roles grouped under each company
-  with its logo and role count; `sort=company` stays out of the URL), role, or
-  location. Work types are folded from careers-board spellings ("FullTime",
+  and search, and sorts by best match, company, role, or location. The default
+  order is best match while the search has words and company otherwise (roles
+  grouped under each company with its logo and role count); the default for
+  the current search stays out of the URL, so `/jobs?q=engineer&sort=company`
+  carries it but `/jobs?sort=company` does not. An order the user picks is
+  kept while they type; the default one follows the search. Search is
+  Postgres full-text over title, company, location, work type and
+  description (`startup_role.search_vector`, trigger-maintained, migration
+  `20260924c_startup_role_search`). Best match puts roles whose title or
+  company hold every word first, then those matched once location and work
+  type count, then description-only matches; `ts_rank` orders within each
+  group. Work types are folded from careers-board spellings ("FullTime",
   "Salaried, full-time") into full-time / part-time / contract / internship /
   temporary; unknown text shows no type, and old raw `workType` links still
   match. `location=remote` (the **Remote** toggle) means remote-friendly: the

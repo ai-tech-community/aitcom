@@ -288,10 +288,14 @@ function searchTermTsQuery({ term, prefix }: StartupRoleSearchTerm): SQL {
 /**
  * Match tier for best-match order: every word found in the title or company
  * (weights A, B) beats every word found once location and work type (C)
- * count, which beats matches that need the description (D). Postgres's
- * `ts_rank` alone gives near-full credit for a partial title hit, so a role
- * titled "Engineer" at another company would outrank the searched
- * company's own roles; the tier keeps "acme engineer" on Acme.
+ * count, which beats matches that need the description (D).
+ *
+ * `ts_rank` alone cannot do this. For an AND query it scores the proximity
+ * of whichever query lexemes it finds, not whether all words are present;
+ * and a word whose stem differs from its spelling ("remote" → `remot`,
+ * `remote`) is two nearby lexemes here. So a role titled "Other | Remote"
+ * scored near full for "remote research" with "research" only in its
+ * description.
  */
 function searchMatchTier(tsQuery: SQL): SQL<number> {
   return sql<number>`case
@@ -307,8 +311,11 @@ function searchMatchTier(tsQuery: SQL): SQL<number> {
  * engineer"). One GIN-indexed lookup on the trigger-maintained
  * `search_vector` column (migration 20260924c_startup_role_search).
  *
- * Returns role id → best-match order (0 first): match tier, then `ts_rank`
- * within the tier, then company and title so equal scores stay stable.
+ * Returns role id → best-match order (0 first): match tier; within a tier,
+ * `ts_rank` on title, company, location and work type, so a long
+ * description repeating a word cannot outrank a short exact title; then
+ * `ts_rank` on everything; then company and title so equal scores stay
+ * stable.
  * Returns `null` when `q` has no search terms.
  */
 export const matchPublicStartupRoleIds = cache(
@@ -326,6 +333,9 @@ export const matchPublicStartupRoleIds = cache(
         )
         .orderBy(
           desc(searchMatchTier(tsQuery)),
+          desc(
+            sql`ts_rank(ts_filter(${startupRoleSearchVector}, '{a,b,c}'), (${tsQuery}))`,
+          ),
           desc(sql`ts_rank(${startupRoleSearchVector}, (${tsQuery}))`),
           asc(startups.name),
           asc(startupRoles.title),

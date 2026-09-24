@@ -156,4 +156,12 @@ describe("StartupsJobsFilters search box", () => {
     });
     expect(replace).toHaveBeenLastCalledWith("/jobs", { scroll: false });
   });
+
+  it("keeps a picked order when the search is cleared", () => {
+    renderFilters({ q: "engineer", sort: "role" });
+    fireEvent.click(screen.getByRole("button", { name: LABELS.clear }));
+    expect(replace).toHaveBeenLastCalledWith("/jobs?sort=role", {
+      scroll: false,
+    });
+  });
 });
