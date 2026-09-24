@@ -6,10 +6,15 @@ import {
   STARTUPS_INSIGHTS_H1,
   STARTUPS_INSIGHTS_META,
   STARTUPS_INSIGHTS_PATH,
+  startupsInsightsShareUrl,
   startupsPublicRobots,
   type StartupLocale,
 } from "@/lib/investigations/startups";
-import { buildStartupInsights } from "@/lib/investigations/startups-insights";
+import {
+  buildStartupInsights,
+  startupInsightsOgSpec,
+  startupInsightsShareFacts,
+} from "@/lib/investigations/startups-insights";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { userIsHubOperator } from "@/server/awesome-ai-oss/operator";
 import {
@@ -22,16 +27,27 @@ import { listApprovedPublicStartups } from "@/server/startups/queries";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  const copyLocale: StartupLocale = locale === "nl" ? "nl" : "en";
+  const t = await getTranslations("investigationsStartups");
   const companies = await listApprovedPublicStartups();
+  const insights = buildStartupInsights(companies, copyLocale);
+  const facts = startupInsightsShareFacts(insights, copyLocale);
+  const ogSpec = startupInsightsOgSpec(facts);
+  const title = ogSpec
+    ? t(ogSpec.titleKey, ogSpec.titleValues)
+    : STARTUPS_INSIGHTS_H1;
+  const description = ogSpec
+    ? t(ogSpec.descriptionKey, ogSpec.descriptionValues)
+    : STARTUPS_INSIGHTS_META;
+  const shareUrl = startupsInsightsShareUrl(copyLocale);
+  const og = buildOgMeta(title, description, t("shareOgKicker"));
   return {
-    title: STARTUPS_INSIGHTS_H1,
-    description: STARTUPS_INSIGHTS_META,
+    title,
+    description,
     robots: startupsPublicRobots(companies.length),
-    ...buildOgMeta(
-      STARTUPS_INSIGHTS_H1,
-      STARTUPS_INSIGHTS_META,
-      "Investigation",
-    ),
+    openGraph: { ...og.openGraph, url: shareUrl },
+    twitter: og.twitter,
     alternates: await localeAlternates(STARTUPS_INSIGHTS_PATH),
   };
 }
@@ -56,6 +72,7 @@ export default async function StartupsInsightsPage() {
       tab="insights"
       insights={insights}
       promoteJoin={shouldPromoteJoin(toHubAuthUser(session?.user))}
+      shareUrl={startupsInsightsShareUrl(copyLocale)}
     />
   );
 }

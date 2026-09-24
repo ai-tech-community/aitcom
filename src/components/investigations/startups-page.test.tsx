@@ -297,6 +297,11 @@ describe("Startups investigation route", () => {
     expect(existsSync(join(appLocale, "startups/layout.tsx"))).toBe(false);
     const insights = readFileSync(INSIGHTS_FILE, "utf8");
     expect(insights).toContain("buildStartupInsights");
+    expect(insights).toContain("startupInsightsShareFacts");
+    expect(insights).toContain("startupInsightsOgSpec");
+    expect(insights).toContain("startupsInsightsShareUrl");
+    expect(insights).toContain("openGraph: { ...og.openGraph, url: shareUrl }");
+    expect(insights).not.toContain("/communities/ait");
     expect(insights).toContain("listApprovedPublicStartups");
     expect(insights).toContain("startupsPublicRobots");
     expect(insights).toContain('dynamic = "force-dynamic"');
@@ -989,6 +994,9 @@ describe("Startups Insights tab", () => {
     expect(
       empty.container.querySelector("[data-startups-insights]"),
     ).toBeNull();
+    expect(
+      empty.container.querySelector("[data-startups-insights-share]"),
+    ).toBeNull();
     empty.unmount();
 
     const { container } = render(
@@ -997,6 +1005,7 @@ describe("Startups Insights tab", () => {
         t={tFrom(en.investigationsStartups)}
         tab="insights"
         companies={LISTED}
+        shareUrl="https://www.aitcommunity.org/en/startups/insights"
       />,
     );
     expect(container.querySelector("[data-insights-lede]")?.textContent).toBe(
@@ -1014,6 +1023,30 @@ describe("Startups Insights tab", () => {
     ).toEqual(["where", "what", "hiring", "sources", "exits"]);
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
     expect(container.textContent).not.toMatch(BANNED);
+
+    const share = container.querySelector("[data-startups-insights-share]")!;
+    expect(share).not.toBeNull();
+    expect(share.getAttribute("data-insights-share-url")).toBe(
+      "https://www.aitcommunity.org/en/startups/insights",
+    );
+    expect(share.textContent).toContain(
+      "AI startups, mapped — and who's hiring right now.",
+    );
+    expect(share.textContent).toContain(
+      "Counted live from the AIT directory. Nothing estimated.",
+    );
+    expect(
+      [...share.querySelectorAll("[data-insights-share-proof]")].map(
+        (node) => node.textContent,
+      ),
+    ).toEqual([
+      "8 AI companies listed — with country and what they build.",
+      "2 are hiring now — at least 43 open roles on the board.",
+      "Israel and the US hold most of the map; Models leads what they build.",
+    ]);
+    expect(share.querySelector("a[href='/startups/insights']")).not.toBeNull();
+    expect(share.querySelector("a[href='/jobs']")).not.toBeNull();
+    expect(share.innerHTML).not.toContain("/communities/");
   });
 
   it("groups places into countries and says what it could not place", () => {
@@ -1140,6 +1173,20 @@ describe("Startups Insights tab", () => {
     expect(container.querySelector("[data-insights-lede]")?.textContent).toBe(
       "8 AI-bedrijven in 5 landen. 2 nemen aan, met minstens 43 open posities. 1 is overgenomen of naar de beurs gegaan.",
     );
+    const share = container.querySelector("[data-startups-insights-share]")!;
+    expect(share.textContent).toContain(
+      "AI-startups, in kaart — en wie er nu aanneemt.",
+    );
+    expect(
+      [...share.querySelectorAll("[data-insights-share-proof]")].map(
+        (node) => node.textContent,
+      ),
+    ).toEqual([
+      "8 AI-bedrijven vermeld — met land en wat ze bouwen.",
+      "2 nemen nu aan — minstens 43 open posities op de lijst.",
+      "Israel en de VS beslaan het grootste deel van de kaart; Modellen leidt in wat ze bouwen.",
+    ]);
+    expect(share.innerHTML).not.toContain("/communities/");
   });
 
   it("swaps Directory and Insights Join to Open Hub for signed-in Hub members", () => {

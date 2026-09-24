@@ -103,6 +103,178 @@ export type StartupsInsightsStats = {
   stageMix: StartupsInsightsStageRow[] | null;
 };
 
+/**
+ * Display names for the share sentence only. The stat is still the sourced
+ * country from `countries.rows` ("United States"); this is how that country
+ * reads in prose.
+ */
+const SHARE_COUNTRY_DISPLAY: Record<string, Record<StartupLocale, string>> = {
+  "United States": { en: "the US", nl: "de VS" },
+  "United Kingdom": { en: "the UK", nl: "het VK" },
+};
+
+export function startupInsightsCountryShareLabel(
+  country: string,
+  locale: StartupLocale,
+): string {
+  return SHARE_COUNTRY_DISPLAY[country]?.[locale] ?? country;
+}
+
+export type StartupsInsightsShareFacts = {
+  companies: number;
+  hiringCompanies: number;
+  roles: number;
+  /** True when `roles` is a floor (`hiring.rolesCapped`). */
+  rolesCapped: boolean;
+  /**
+   * Top two countries when they are a majority of companies with a known
+   * country. Null otherwise — the card omits the map line.
+   */
+  mapLeaders: { first: string; second: string } | null;
+  /** Leading category when it is strictly ahead. Null on a tie or when empty. */
+  categoryLead: string | null;
+};
+
+/**
+ * Share-card and Open Graph facts from the same Insights aggregate.
+ * Counts are `total`, `hiring.companies`, `hiring.roles`, and
+ * `hiring.rolesCapped`. Map and category lines use `countries.rows` and
+ * `categories` and are omitted when those claims would not be true.
+ */
+export function startupInsightsShareFacts(
+  stats: StartupsInsightsStats,
+  locale: StartupLocale,
+): StartupsInsightsShareFacts {
+  const countries = stats.countries;
+  const [first, second] = countries?.rows ?? [];
+  const placed = countries ? stats.total - countries.unplaced : 0;
+  const mapLeaders =
+    countries &&
+    first &&
+    second &&
+    placed > 0 &&
+    (first.count + second.count) / placed > 0.5
+      ? {
+          first: startupInsightsCountryShareLabel(first.country, locale),
+          second: startupInsightsCountryShareLabel(second.country, locale),
+        }
+      : null;
+
+  const [lead, next] = stats.categories;
+  const categoryLead =
+    lead && lead.count > 0 && (!next || lead.count > next.count)
+      ? lead.label
+      : null;
+
+  return {
+    companies: stats.total,
+    hiringCompanies: stats.hiring.companies,
+    roles: stats.hiring.roles,
+    rolesCapped: stats.hiring.rolesCapped,
+    mapLeaders,
+    categoryLead,
+  };
+}
+
+export type StartupInsightsShareLine = {
+  id: "listed" | "hiring" | "map";
+  key:
+    | "shareProofListed"
+    | "shareProofHiring"
+    | "shareProofMap"
+    | "shareProofMapOnly"
+    | "shareProofCategory";
+  values: Record<string, string | number>;
+};
+
+/** Proof tiles. Empty claims are left out so the card never invents a line. */
+export function startupInsightsShareLines(
+  facts: StartupsInsightsShareFacts,
+): StartupInsightsShareLine[] {
+  if (facts.companies <= 0) return [];
+  const lines: StartupInsightsShareLine[] = [
+    {
+      id: "listed",
+      key: "shareProofListed",
+      values: { companies: facts.companies },
+    },
+  ];
+  if (facts.hiringCompanies > 0) {
+    lines.push({
+      id: "hiring",
+      key: "shareProofHiring",
+      values: {
+        companies: facts.hiringCompanies,
+        roles: facts.roles,
+        capped: String(facts.rolesCapped),
+      },
+    });
+  }
+  if (facts.mapLeaders && facts.categoryLead) {
+    lines.push({
+      id: "map",
+      key: "shareProofMap",
+      values: {
+        first: facts.mapLeaders.first,
+        second: facts.mapLeaders.second,
+        category: facts.categoryLead,
+      },
+    });
+  } else if (facts.mapLeaders) {
+    lines.push({
+      id: "map",
+      key: "shareProofMapOnly",
+      values: {
+        first: facts.mapLeaders.first,
+        second: facts.mapLeaders.second,
+      },
+    });
+  } else if (facts.categoryLead) {
+    lines.push({
+      id: "map",
+      key: "shareProofCategory",
+      values: { category: facts.categoryLead },
+    });
+  }
+  return lines;
+}
+
+export type StartupInsightsOgSpec = {
+  titleKey: "shareOgTitle" | "shareOgTitleNoHiring";
+  titleValues: Record<string, number>;
+  descriptionKey: "shareOgDescription" | "shareOgDescriptionNoHiring";
+  descriptionValues: Record<string, string | number>;
+};
+
+/** Null when the directory is empty — callers keep the static Insights title. */
+export function startupInsightsOgSpec(
+  facts: StartupsInsightsShareFacts,
+): StartupInsightsOgSpec | null {
+  if (facts.companies <= 0) return null;
+  if (facts.hiringCompanies <= 0) {
+    return {
+      titleKey: "shareOgTitleNoHiring",
+      titleValues: { companies: facts.companies },
+      descriptionKey: "shareOgDescriptionNoHiring",
+      descriptionValues: { companies: facts.companies },
+    };
+  }
+  return {
+    titleKey: "shareOgTitle",
+    titleValues: {
+      companies: facts.companies,
+      hiring: facts.hiringCompanies,
+    },
+    descriptionKey: "shareOgDescription",
+    descriptionValues: {
+      companies: facts.companies,
+      hiring: facts.hiringCompanies,
+      roles: facts.roles,
+      capped: String(facts.rolesCapped),
+    },
+  };
+}
+
 export function isStartupInsightsTab(
   value: string | string[] | undefined,
 ): boolean {

@@ -9,6 +9,15 @@ export const STARTUPS_PATH = "/startups";
 
 export const STARTUPS_INSIGHTS_PATH = "/startups/insights";
 
+/**
+ * Absolute public Insights URL on www. Share and Open Graph use this —
+ * never a Hub path.
+ */
+export function startupsInsightsShareUrl(locale: string): string {
+  const resolved = locale === "nl" ? "nl" : "en";
+  return `${CANONICAL_PRODUCTION_ORIGIN}/${resolved}${STARTUPS_INSIGHTS_PATH}`;
+}
+
 export const STARTUPS_JOBS_PATH = "/jobs";
 
 /** Pre-IA investigation URLs. Permanent-redirect in next.config. */
