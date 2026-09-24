@@ -64,5 +64,10 @@ describe("video rules", () => {
     expect(fitWithin(640, 360)).toEqual({ width: 640, height: 360 });
     expect(fitWithin(1081, 1921)).toEqual({ width: 720, height: 1280 });
     expect(() => fitWithin(0, 100)).toThrow();
+    expect(() => fitWithin(Infinity, 100)).toThrow("invalid video size");
+    expect(() => fitWithin(100, Number.POSITIVE_INFINITY)).toThrow(
+      "invalid video size",
+    );
+    expect(() => fitWithin(Number.NaN, 100)).toThrow("invalid video size");
   });
 });

@@ -46,9 +46,14 @@ describe("VideoAttachment", () => {
     expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
   });
 
+  it("announces each step in a status region", () => {
+    renderIt({ state: { step: "uploading", share: 0.2 } });
+    expect(screen.getByRole("status")).toHaveTextContent("Uploading…");
+  });
+
   it("shows progress while preparing, with a cancel", () => {
     const { onCancel } = renderIt({ state: { step: "preparing", share: 0.4 } });
-    expect(screen.getByText("Preparing video…")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Preparing video…");
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-valuenow",
       "40",
@@ -69,7 +74,7 @@ describe("VideoAttachment", () => {
 
   it("offers no cancel once the post is being created", () => {
     renderIt({ state: { step: "posting" } });
-    expect(screen.getByText("Posting…")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Posting…");
     expect(
       screen.queryByRole("button", { name: "Cancel" }),
     ).not.toBeInTheDocument();

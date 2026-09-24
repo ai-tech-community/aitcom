@@ -50,6 +50,11 @@ export function VideoAttachment({
 
   return (
     <div className="border-border flex flex-col gap-3 rounded-lg border p-3">
+      {/* Always mounted, so screen readers hear each step as it changes
+          (WCAG 4.1.3). The visible label below is hidden from them. */}
+      <p role="status" className="sr-only">
+        {label ?? ""}
+      </p>
       <div className="flex items-center gap-2 text-sm">
         <Film aria-hidden="true" className="text-muted-foreground size-4" />
         <span className="min-w-0 flex-1 truncate">{file.name}</span>

@@ -71,7 +71,12 @@ export function fitWithin(
   height: number,
   longSide: number = VIDEO_LONG_SIDE,
 ): { width: number; height: number } {
-  if (!(width > 0 && height > 0)) throw new Error("invalid video size");
+  const valid =
+    Number.isFinite(width) &&
+    Number.isFinite(height) &&
+    width > 0 &&
+    height > 0;
+  if (!valid) throw new Error("invalid video size");
   const scale = Math.min(1, longSide / Math.max(width, height));
   const even = (n: number) => Math.max(2, Math.round((n * scale) / 2) * 2);
   return { width: even(width), height: even(height) };
