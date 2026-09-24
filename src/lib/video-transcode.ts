@@ -86,17 +86,26 @@ export async function transcodeForUpload(
   opts: TranscodeOptions,
 ): Promise<TranscodeResult> {
   const { signal } = opts;
-  const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+  const input = new Input({
+    source: new BlobSource(file),
+    formats: ALL_FORMATS,
+  });
   try {
     signal?.throwIfAborted();
+    // Unknown containers would otherwise surface as UnsupportedInputFormatError.
+    if (!(await input.canRead())) {
+      throw new UnsupportedVideoError("unrecognized file format");
+    }
     const durationSeconds = await input.computeDuration();
     if (durationSeconds > MAX_VIDEO_SECONDS) throw new VideoTooLongError();
     const track = await input.getPrimaryVideoTrack();
     if (!track) throw new UnsupportedVideoError("no video track");
-    const size = fitWithin(
-      await track.getDisplayWidth(),
-      await track.getDisplayHeight(),
-    );
+    const displayWidth = await track.getDisplayWidth();
+    const displayHeight = await track.getDisplayHeight();
+    if (!(displayWidth > 0 && displayHeight > 0)) {
+      throw new UnsupportedVideoError("video has no picture size");
+    }
+    const size = fitWithin(displayWidth, displayHeight);
 
     if (!(await canEncodeAudio("aac"))) {
       const { registerAacEncoder } = await import("@mediabunny/aac-encoder");
@@ -189,7 +198,9 @@ async function firstFrameJpeg(
   return new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
       (blob) =>
-        blob ? resolve(blob) : reject(new UnsupportedVideoError("no thumbnail")),
+        blob
+          ? resolve(blob)
+          : reject(new UnsupportedVideoError("no thumbnail")),
       THUMB_CONTENT_TYPE,
       THUMBNAIL_JPEG_QUALITY,
     ),

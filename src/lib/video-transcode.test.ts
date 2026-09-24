@@ -10,6 +10,7 @@ type FakeConversion = {
 
 const mb = vi.hoisted(() => ({
   duration: 30,
+  readable: true,
   track: null as unknown,
   init: vi.fn(),
   isValid: true,
@@ -25,6 +26,7 @@ const mb = vi.hoisted(() => ({
 vi.mock("mediabunny", () => {
   class ConversionCanceledError extends Error {}
   class Input {
+    canRead = async () => mb.readable;
     computeDuration = async () => mb.duration;
     getPrimaryVideoTrack = async () => mb.track;
     dispose() {
@@ -104,6 +106,7 @@ const portraitTrack = () => ({
 
 beforeEach(() => {
   mb.duration = 30;
+  mb.readable = true;
   mb.track = portraitTrack();
   mb.init.mockReset();
   mb.isValid = true;
@@ -118,7 +121,9 @@ beforeEach(() => {
 describe("transcodeForUpload", () => {
   it("keeps portrait clips portrait, using the display (post-rotation) size", async () => {
     const result = await transcodeForUpload(file, {});
-    const opts = mb.init.mock.calls[0]![0] as { video: Record<string, unknown> };
+    const opts = mb.init.mock.calls[0]![0] as {
+      video: Record<string, unknown>;
+    };
     expect(opts.video).toMatchObject({
       codec: "avc",
       width: 720,
@@ -129,7 +134,11 @@ describe("transcodeForUpload", () => {
       // Rotation is baked into the frames, not left as file metadata.
       allowTransformationMetadata: false,
     });
-    expect(result).toMatchObject({ width: 720, height: 1280, durationSeconds: 30 });
+    expect(result).toMatchObject({
+      width: 720,
+      height: 1280,
+      durationSeconds: 30,
+    });
     expect(result.video.type).toBe("video/mp4");
     expect(result.video.size).toBe(8);
     expect(result.thumbnail.type).toBe("image/jpeg");
@@ -138,25 +147,60 @@ describe("transcodeForUpload", () => {
 
   it("refuses clips over 90 seconds before converting", async () => {
     mb.duration = 91;
-    await expect(transcodeForUpload(file, {})).rejects.toBeInstanceOf(VideoTooLongError);
+    await expect(transcodeForUpload(file, {})).rejects.toBeInstanceOf(
+      VideoTooLongError,
+    );
     expect(mb.init).not.toHaveBeenCalled();
     expect(mb.dispose).toHaveBeenCalledTimes(1);
   });
 
   it("accepts clips with no audio track", async () => {
-    mb.discarded = [{ track: { type: "audio" }, reason: "undecodable_source_codec" }];
-    await expect(transcodeForUpload(file, {})).resolves.toMatchObject({ width: 720 });
+    mb.discarded = [
+      { track: { type: "audio" }, reason: "undecodable_source_codec" },
+    ];
+    await expect(transcodeForUpload(file, {})).resolves.toMatchObject({
+      width: 720,
+    });
   });
 
   it("refuses files without a usable video track", async () => {
     mb.track = null;
-    await expect(transcodeForUpload(file, {})).rejects.toBeInstanceOf(UnsupportedVideoError);
+    await expect(transcodeForUpload(file, {})).rejects.toBeInstanceOf(
+      UnsupportedVideoError,
+    );
     mb.track = portraitTrack();
     mb.isValid = false;
-    await expect(transcodeForUpload(file, {})).rejects.toBeInstanceOf(UnsupportedVideoError);
+    await expect(transcodeForUpload(file, {})).rejects.toBeInstanceOf(
+      UnsupportedVideoError,
+    );
     mb.isValid = true;
-    mb.discarded = [{ track: { type: "video" }, reason: "undecodable_source_codec" }];
-    await expect(transcodeForUpload(file, {})).rejects.toBeInstanceOf(UnsupportedVideoError);
+    mb.discarded = [
+      { track: { type: "video" }, reason: "undecodable_source_codec" },
+    ];
+    await expect(transcodeForUpload(file, {})).rejects.toBeInstanceOf(
+      UnsupportedVideoError,
+    );
+  });
+
+  it("refuses files in a format it cannot read, before probing them", async () => {
+    mb.readable = false;
+    await expect(transcodeForUpload(file, {})).rejects.toBeInstanceOf(
+      UnsupportedVideoError,
+    );
+    expect(mb.init).not.toHaveBeenCalled();
+    expect(mb.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a video track with no picture size", async () => {
+    mb.track = {
+      ...portraitTrack(),
+      getDisplayWidth: async () => 0,
+      getDisplayHeight: async () => 0,
+    };
+    await expect(transcodeForUpload(file, {})).rejects.toBeInstanceOf(
+      UnsupportedVideoError,
+    );
+    expect(mb.init).not.toHaveBeenCalled();
   });
 
   it("registers the fallback AAC encoder only when the browser has none", async () => {
