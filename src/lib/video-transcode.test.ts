@@ -92,6 +92,7 @@ vi.mock("@mediabunny/aac-encoder", () => ({
 import {
   UnsupportedVideoError,
   VideoTooLongError,
+  readVideoDuration,
   transcodeForUpload,
 } from "./video-transcode";
 
@@ -254,5 +255,45 @@ describe("transcodeForUpload cancelling", () => {
     await expect(
       transcodeForUpload(file, { signal: controller.signal }),
     ).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("swallows a failing cancel, still rejecting with the abort reason", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      mb.cancel.mockImplementation(() => {
+        throw new Error("conversion already finished");
+      });
+      const controller = new AbortController();
+      mb.execute = async () => {
+        controller.abort();
+      };
+      await expect(
+        transcodeForUpload(file, { signal: controller.signal }),
+      ).rejects.toMatchObject({ name: "AbortError" });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mb.cancel).toHaveBeenCalledTimes(1);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  });
+});
+
+describe("readVideoDuration", () => {
+  it("reads the length in seconds and frees the file", async () => {
+    mb.duration = 42.5;
+    await expect(readVideoDuration(file)).resolves.toBe(42.5);
+    expect(mb.dispose).toHaveBeenCalledTimes(1);
+    expect(mb.init).not.toHaveBeenCalled();
+  });
+
+  it("refuses a file it cannot read, and still frees it", async () => {
+    mb.readable = false;
+    await expect(readVideoDuration(file)).rejects.toBeInstanceOf(
+      UnsupportedVideoError,
+    );
+    expect(mb.dispose).toHaveBeenCalledTimes(1);
   });
 });

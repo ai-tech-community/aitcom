@@ -3,11 +3,16 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { UPLOAD_GRANT_SECONDS, type VideoVisibility } from "@/lib/video-rules";
+import {
+  MAX_VIDEO_SECONDS,
+  UPLOAD_GRANT_SECONDS,
+  type VideoVisibility,
+} from "@/lib/video-rules";
 import {
   UnsupportedVideoError,
   VideoTooLongError,
   canTranscode,
+  readVideoDuration,
   transcodeForUpload,
   type TranscodeResult,
 } from "@/lib/video-transcode";
@@ -121,6 +126,11 @@ function uploadToGrant(
  * same visibility. A cancel keeps the converted clip but drops the grant; a
  * failure while creating the post drops the grant (the server may have used
  * or removed it). `reset()` forgets both, for a removed or replaced clip.
+ *
+ * `check(file)` runs the quick checks (can this browser convert, can the file
+ * be read, is it short enough) as soon as a clip is picked, so a clip that
+ * cannot work is refused before the member writes a caption. `post()` runs
+ * the same checks again as it converts.
  */
 export function useVideoPost(slug: string) {
   const t = useTranslations("communities.video");
@@ -129,6 +139,8 @@ export function useVideoPost(slug: string) {
   const inFlight = useRef<AbortController | null>(null);
   const preparedCache = useRef<PreparedCache | null>(null);
   const grantCache = useRef<GrantCache | null>(null);
+  /** The clip whose pick-time check may still report; null once superseded. */
+  const checking = useRef<File | null>(null);
   const createUpload = api.feed.createVideoUpload.useMutation();
   const finish = api.feed.finishVideoPost.useMutation();
 
@@ -195,8 +207,35 @@ export function useVideoPost(slug: string) {
     return grant;
   }
 
+  async function check(file: File): Promise<void> {
+    checking.current = file;
+    let problem: Error | null = null;
+    try {
+      if (!(await canTranscode())) problem = new CannotConvertHereError();
+      else if ((await readVideoDuration(file)) > MAX_VIDEO_SECONDS) {
+        problem = new VideoTooLongError();
+      }
+    } catch (error) {
+      problem =
+        error instanceof Error
+          ? error
+          : new UnsupportedVideoError(String(error));
+    }
+    // A removed or replaced clip, or a post already underway, wins.
+    if (checking.current !== file) return;
+    checking.current = null;
+    if (problem) {
+      setState({
+        step: "error",
+        message: messageFor(problem),
+        retryable: false,
+      });
+    }
+  }
+
   async function post(input: VideoPostInput): Promise<boolean> {
     if (inFlight.current) return false;
+    checking.current = null;
     const controller = new AbortController();
     inFlight.current = controller;
     const { signal } = controller;
@@ -263,7 +302,9 @@ export function useVideoPost(slug: string) {
     state,
     post,
     cancel: () => inFlight.current?.abort(),
+    check,
     reset: () => {
+      checking.current = null;
       preparedCache.current = null;
       grantCache.current = null;
       setState({ step: "idle" });

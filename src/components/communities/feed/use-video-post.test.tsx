@@ -12,6 +12,7 @@ const m = vi.hoisted(() => {
     VideoTooLongError,
     UnsupportedVideoError,
     canTranscode: vi.fn(),
+    readVideoDuration: vi.fn(),
     transcodeForUpload: vi.fn(),
     createUpload: vi.fn(),
     finish: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock("@/lib/video-transcode", () => ({
   VideoTooLongError: m.VideoTooLongError,
   UnsupportedVideoError: m.UnsupportedVideoError,
   canTranscode: m.canTranscode,
+  readVideoDuration: m.readVideoDuration,
   transcodeForUpload: m.transcodeForUpload,
 }));
 
@@ -118,6 +120,7 @@ beforeEach(() => {
   FakeXHR.status = 204;
   vi.stubGlobal("XMLHttpRequest", FakeXHR);
   m.canTranscode.mockResolvedValue(true);
+  m.readVideoDuration.mockResolvedValue(30);
   m.transcodeForUpload.mockResolvedValue({
     video,
     thumbnail,
@@ -458,6 +461,59 @@ describe("useVideoPost", () => {
       expect(ok).toBe(true);
       expect(m.transcodeForUpload).toHaveBeenCalledTimes(1);
       expect(m.createUpload).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("checking a clip when it is picked", () => {
+    it.each([
+      ["unsupported", () => m.canTranscode.mockResolvedValue(false)],
+      ["tooLong", () => m.readVideoDuration.mockResolvedValue(91)],
+      [
+        "unreadable",
+        () =>
+          m.readVideoDuration.mockRejectedValue(new m.UnsupportedVideoError()),
+      ],
+    ] as const)("shows %s at once", async (key, arrange) => {
+      arrange();
+      const { result } = renderIt();
+      await act(async () => {
+        await result.current.check(file);
+      });
+      expect(result.current.state).toEqual({
+        step: "error",
+        message: en.communities.video[key],
+        retryable: false,
+      });
+      expect(m.transcodeForUpload).not.toHaveBeenCalled();
+    });
+
+    it("stays quiet for a clip that will work", async () => {
+      const { result } = renderIt();
+      await act(async () => {
+        await result.current.check(file);
+      });
+      expect(result.current.state).toEqual({ step: "idle" });
+      expect(m.readVideoDuration).toHaveBeenCalledWith(file);
+    });
+
+    it("ignores a check that finishes after the clip was removed", async () => {
+      let finishProbe!: (seconds: number) => void;
+      m.readVideoDuration.mockReturnValue(
+        new Promise<number>((resolve) => {
+          finishProbe = resolve;
+        }),
+      );
+      const { result } = renderIt();
+      let pending!: Promise<void>;
+      act(() => {
+        pending = result.current.check(file);
+      });
+      act(() => result.current.reset());
+      await act(async () => {
+        finishProbe(120);
+        await pending;
+      });
+      expect(result.current.state).toEqual({ step: "idle" });
     });
   });
 });

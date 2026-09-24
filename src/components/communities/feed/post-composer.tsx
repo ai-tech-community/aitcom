@@ -83,6 +83,8 @@ export function PostComposer({ slug, canPost }: PostComposerProps) {
     if (file) {
       setVideoFile(file);
       videoPost.reset();
+      // Refuse a clip that cannot work before a caption is written.
+      void videoPost.check(file);
     }
     e.target.value = "";
   };

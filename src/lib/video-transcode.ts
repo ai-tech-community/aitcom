@@ -74,6 +74,29 @@ export async function canTranscode(): Promise<boolean> {
 }
 
 /**
+ * A clip's length in seconds, read from its container without converting
+ * anything, so a too-long or unreadable pick can be refused at once.
+ * Throws UnsupportedVideoError for a file it cannot read.
+ */
+export async function readVideoDuration(file: File): Promise<number> {
+  const input = new Input({
+    source: new BlobSource(file),
+    formats: ALL_FORMATS,
+  });
+  try {
+    if (!(await input.canRead())) {
+      throw new UnsupportedVideoError("unrecognized file format");
+    }
+    return await input.computeDuration();
+  } catch (error) {
+    if (error instanceof UnsupportedVideoError) throw error;
+    throw new UnsupportedVideoError("video cannot be read");
+  } finally {
+    input.dispose();
+  }
+}
+
+/**
  * Converts a picked clip to a 720p H.264 MP4 and a JPEG thumbnail, on the
  * device. Sizes come from the track's display size, which Mediabunny reports
  * after rotation, so portrait phone clips stay portrait. The rotation is baked
@@ -165,7 +188,9 @@ async function runCancellable(
   conversion: Conversion,
   signal: AbortSignal | undefined,
 ): Promise<void> {
-  const onAbort = () => void conversion.cancel();
+  // A cancel that fails (the run already ended) changes nothing: the abort
+  // is still reported below. Catch it so it never surfaces as unhandled.
+  const onAbort = () => void conversion.cancel().catch(() => undefined);
   signal?.addEventListener("abort", onAbort, { once: true });
   try {
     // The listener does not fire for an abort that happened before it was added.

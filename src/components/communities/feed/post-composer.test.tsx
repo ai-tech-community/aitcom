@@ -11,6 +11,7 @@ const m = vi.hoisted(() => ({
   videoState: { step: "idle" } as VideoPostState,
   post: vi.fn(),
   reset: vi.fn(),
+  check: vi.fn(),
   cancel: vi.fn(),
   createPost: vi.fn(),
   toastSuccess: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock("./use-video-post", () => ({
     post: m.post,
     cancel: m.cancel,
     reset: m.reset,
+    check: m.check,
   }),
 }));
 
@@ -177,6 +179,13 @@ describe("PostComposer video", () => {
       visibility: "public",
       topicSlug: "general",
     });
+  });
+
+  it("checks a clip as soon as it is picked", () => {
+    const { videoInput } = renderComposer();
+    pickVideo(videoInput());
+    expect(m.reset).toHaveBeenCalled();
+    expect(m.check).toHaveBeenCalledWith(clip);
   });
 
   it("does not start a second post while one is on its way", () => {
