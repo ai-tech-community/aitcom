@@ -4189,6 +4189,11 @@ export const startups = appSchema.table(
     region: d.text(),
     lat: d.doublePrecision(),
     lng: d.doublePrecision(),
+    /**
+     * ISO 3166-1 alpha-2 country of `region`, resolved at write time.
+     * Null when the place is not one country or could not be placed.
+     */
+    country: d.varchar({ length: 2 }),
     stage: d.text(),
     logoUrl: d.text(),
     /** Sourced short blurb only. Soft-omit blank — never invent copy. */
@@ -4241,7 +4246,15 @@ export const startups = appSchema.table(
   ],
 );
 
-/** Sourced job postings scanned from a startup's verified careers URL. */
+/**
+ * Sourced job postings scanned from a startup's verified careers URL.
+ *
+ * The table also has `search_vector`, a GIN-indexed tsvector over title,
+ * company name, location, work type and description. Database triggers keep
+ * it current (migration 20260924c_startup_role_search); never write it from
+ * code. It is not declared here so whole-row selects stay small;
+ * `matchPublicStartupRoleIds` queries it directly.
+ */
 export const startupRoles = appSchema.table(
   "startup_role",
   (d) => ({

@@ -1,5 +1,9 @@
 import { slugify } from "@/lib/text-utils";
 import {
+  defaultStartupJobsSort,
+  hasStartupJobsSearch,
+} from "./startup-jobs-search";
+import {
   STARTUPS_JOBS_PATH,
   STARTUPS_PAGE_SIZE,
   parseStartupSlug,
@@ -59,6 +63,20 @@ export type StartupRolePublic = {
   status: "open" | "closed";
 };
 
+/**
+ * A role as the jobs list shows it. The description is left out on purpose:
+ * all open descriptions together are tens of megabytes, and the list never
+ * renders them. Full-text search reads them in the database instead.
+ */
+export type StartupRoleListing = Omit<StartupRolePublic, "descriptionText">;
+
+/**
+ * What the full-text search index matched for `query.q`: role id → match
+ * order (0 is the best match). `null` when the query has no search terms and
+ * no text filter applies.
+ */
+export type StartupRoleTextMatches = ReadonlyMap<string, number> | null;
+
 export type ExtractedJobListing = {
   title: string;
   sourceUrl: string;
@@ -72,12 +90,21 @@ export type ExtractedJobListing = {
   board: StartupRoleBoard;
 };
 
-/** Company first: it groups each company's roles together. */
-export const STARTUP_JOBS_SORTS = ["company", "role", "location"] as const;
+/**
+ * Jobs list orders. `match` (best match) only applies while searching; see
+ * `defaultStartupJobsSort` for which order is used when none is picked.
+ */
+export const STARTUP_JOBS_SORTS = [
+  "match",
+  "company",
+  "role",
+  "location",
+] as const;
 
 export type StartupJobsSort = (typeof STARTUP_JOBS_SORTS)[number];
 
-export const STARTUP_JOBS_DEFAULT_SORT: StartupJobsSort = "company";
+/** Order when browsing without a search: company A–Z groups each company. */
+export const STARTUP_JOBS_DEFAULT_SORT = "company" satisfies StartupJobsSort;
 
 /**
  * Location filter value meaning "remote-friendly": any role whose sourced
@@ -133,7 +160,7 @@ export function isRemoteFriendlyRole(
 }
 
 /** Filter options, drawn only from values the listed roles actually have. */
-export function startupJobsFacets(roles: readonly StartupRolePublic[]): {
+export function startupJobsFacets(roles: readonly StartupRoleListing[]): {
   companies: Array<{ slug: string; name: string; logoUrl: string | null }>;
   locations: string[];
   workTypes: StartupWorkType[];
@@ -319,13 +346,23 @@ export function allocateStartupRoleSlug(
   return `${base.slice(0, STARTUP_ROLE_SLUG_MAX - suffix.length)}${suffix}`;
 }
 
+/**
+ * The order for a jobs query: the one picked, when valid, else the default
+ * for the search. Best match without a search has nothing to rank by, so it
+ * falls back to the browsing order.
+ */
 export function parseStartupJobsSort(
   value: string | null | undefined,
+  q = "",
 ): StartupJobsSort {
   const text = presentText(value);
-  return text && (STARTUP_JOBS_SORTS as readonly string[]).includes(text)
-    ? (text as StartupJobsSort)
-    : STARTUP_JOBS_DEFAULT_SORT;
+  const picked =
+    text && (STARTUP_JOBS_SORTS as readonly string[]).includes(text)
+      ? (text as StartupJobsSort)
+      : defaultStartupJobsSort(q);
+  return picked === "match" && !hasStartupJobsSearch(q)
+    ? STARTUP_JOBS_DEFAULT_SORT
+    : picked;
 }
 
 function parseJobsFacet(value: string | null | undefined, max: number): string {
@@ -357,9 +394,23 @@ export function parseStartupJobsQuery(raw: {
     location: parseJobsFacet(first(raw.location), 240),
     // Old links carry raw board text ("FullTime"); fold it to the canonical id.
     workType: startupWorkTypeOf(parseJobsFacet(first(raw.workType), 80)) ?? "",
-    sort: parseStartupJobsSort(first(raw.sort)),
+    sort: parseStartupJobsSort(first(raw.sort), first(raw.q) ?? ""),
     page,
   };
+}
+
+/**
+ * The order to keep when the search text changes. An order the user picked
+ * stays; the default one follows the search, so typing a search switches
+ * company A–Z to best match and clearing it switches back.
+ */
+export function startupJobsSortForSearch(
+  current: Pick<StartupJobsQuery, "q" | "sort">,
+  nextQ: string,
+): StartupJobsSort {
+  return current.sort === defaultStartupJobsSort(current.q)
+    ? defaultStartupJobsSort(nextQ)
+    : current.sort;
 }
 
 /** A follow needs at least one filter. The full catalog is not a saved search. */
@@ -378,20 +429,33 @@ export function startupJobsFollowFromQuery(
   return follow;
 }
 
-function jobsSortKey(role: StartupRolePublic, sort: StartupJobsSort): string {
+function jobsSortKey(
+  role: StartupRoleListing,
+  sort: Exclude<StartupJobsSort, "match">,
+): string {
   if (sort === "company") return role.startupName;
   if (sort === "location") return role.location ?? "";
   return role.title;
 }
 
-export function applyStartupJobsQuery(
-  roles: readonly StartupRolePublic[],
+/**
+ * Filters and sorts roles for the jobs list. Text search is not done here:
+ * `textMatches` is the full-text index's answer for `query.q` (see
+ * `matchPublicStartupRoleIds`), and this function only intersects with it.
+ */
+export function applyStartupJobsQuery<R extends StartupRoleListing>(
+  roles: readonly R[],
   query: StartupJobsQuery,
-): StartupRolePublic[] {
+  textMatches: StartupRoleTextMatches,
+): R[] {
   const company = query.company;
   const location = query.location.toLowerCase().replace(/\s+/g, " ");
   const workType = startupWorkTypeOf(query.workType);
-  const needle = query.q.trim().toLowerCase();
+  const searching = hasStartupJobsSearch(query.q);
+  if (searching && !textMatches) {
+    throw new Error("A jobs search needs the full-text index matches.");
+  }
+  const matches = searching ? textMatches : null;
   const collator = new Intl.Collator(undefined, { sensitivity: "base" });
   return roles
     .filter((role) => {
@@ -407,25 +471,25 @@ export function applyStartupJobsQuery(
       if (workType && startupWorkTypeOf(role.workType) !== workType) {
         return false;
       }
-      if (!needle) return true;
-      const haystack = [
-        role.title,
-        role.startupName,
-        role.location ?? "",
-        role.workType ?? "",
-      ]
-        .join("\n")
-        .toLowerCase();
-      return haystack.includes(needle);
+      return !matches || matches.has(role.id);
     })
     .sort((a, b) => {
+      if (query.sort === "match" && matches) {
+        return (
+          (matches.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+          (matches.get(b.id) ?? Number.MAX_SAFE_INTEGER)
+        );
+      }
       if (query.sort === "location") {
         if (!a.location && b.location) return 1;
         if (a.location && !b.location) return -1;
       }
+      // Best match with no search to rank by reads as the browsing order.
+      const sort =
+        query.sort === "match" ? STARTUP_JOBS_DEFAULT_SORT : query.sort;
       const byKey = collator.compare(
-        jobsSortKey(a, query.sort),
-        jobsSortKey(b, query.sort),
+        jobsSortKey(a, sort),
+        jobsSortKey(b, sort),
       );
       if (byKey !== 0) return byKey;
       return collator.compare(a.title, b.title);
@@ -437,14 +501,15 @@ export function applyStartupJobsQuery(
  * `lastSeenAt`. No employer publish date is invented; roles without `listedAt`
  * stay out of the set.
  */
-export function rolesListedSince(
-  roles: readonly StartupRolePublic[],
+export function rolesListedSince<R extends StartupRoleListing>(
+  roles: readonly R[],
   query: StartupJobsQuery,
+  textMatches: StartupRoleTextMatches,
   lastSeenAt: string,
-): StartupRolePublic[] {
+): R[] {
   const seen = Date.parse(lastSeenAt);
   if (!Number.isFinite(seen)) return [];
-  return applyStartupJobsQuery(roles, { ...query, page: 1 })
+  return applyStartupJobsQuery(roles, { ...query, page: 1 }, textMatches)
     .filter((role) => {
       const listed = Date.parse(role.listedAt ?? "");
       return Number.isFinite(listed) && listed > seen;
@@ -454,12 +519,12 @@ export function rolesListedSince(
     );
 }
 
-export function paginateStartupRoles(
-  roles: readonly StartupRolePublic[],
+export function paginateStartupRoles<R extends StartupRoleListing>(
+  roles: readonly R[],
   page: number,
   pageSize: number = STARTUPS_PAGE_SIZE,
 ): {
-  items: StartupRolePublic[];
+  items: R[];
   page: number;
   totalPages: number;
   total: number;

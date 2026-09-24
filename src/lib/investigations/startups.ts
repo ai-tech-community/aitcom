@@ -4,10 +4,21 @@ import {
   sourcedStartupPlaceLabel,
   startupPlaceCentroid,
 } from "./startups-places";
+import { defaultStartupJobsSort } from "./startup-jobs-search";
+import type { StartupCountryCode } from "./startups-countries";
 
 export const STARTUPS_PATH = "/startups";
 
 export const STARTUPS_INSIGHTS_PATH = "/startups/insights";
+
+/**
+ * Absolute public Insights URL on www. Share and Open Graph use this —
+ * never a Hub path.
+ */
+export function startupsInsightsShareUrl(locale: string): string {
+  const resolved = locale === "nl" ? "nl" : "en";
+  return `${CANONICAL_PRODUCTION_ORIGIN}/${resolved}${STARTUPS_INSIGHTS_PATH}`;
+}
 
 export const STARTUPS_JOBS_PATH = "/jobs";
 
@@ -99,6 +110,8 @@ export type StartupPublicCard = {
   region: string | null;
   lat: number | null;
   lng: number | null;
+  /** Country of `region`, resolved at write time. Null when not placed. */
+  country: StartupCountryCode | null;
   stage: string | null;
   logoUrl: string | null;
   /** Sourced short blurb only. Soft-omit blank — never invent copy. */
@@ -275,8 +288,10 @@ export function buildStartupJobsPath(query?: {
   if (workType && workType.toLowerCase() !== "all") {
     params.set("workType", workType);
   }
-  // Company order is the default and stays out of the URL.
-  if (sort && sort !== "company") params.set("sort", sort);
+  // The default order for this search stays out of the URL.
+  if (sort && sort !== defaultStartupJobsSort(needle ?? "")) {
+    params.set("sort", sort);
+  }
   if (query?.page && query.page > 1) params.set("page", String(query.page));
   const suffix = params.toString();
   return suffix ? `${STARTUPS_JOBS_PATH}?${suffix}` : STARTUPS_JOBS_PATH;

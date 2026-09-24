@@ -9,7 +9,10 @@ import {
   type StartupLocale,
   type StartupPublicCard,
 } from "./startups";
-import { startupCountryOf } from "./startups-countries";
+import {
+  startupCountryLabel,
+  type StartupCountryCode,
+} from "./startups-countries";
 
 /** Countries shown by name; the rest fold into one "other countries" row. */
 export const STARTUPS_INSIGHTS_TOP_COUNTRIES = 10;
@@ -42,7 +45,12 @@ export type StartupsInsightsRoleBand = {
 /** A timeline needs a shape; until listings span this many months, omit it. */
 export const STARTUPS_INSIGHTS_TIMELINE_MIN_MONTHS = 3;
 
-export type StartupsInsightsCountryRow = { country: string; count: number };
+export type StartupsInsightsCountryRow = {
+  code: StartupCountryCode;
+  /** Country name in the page language. */
+  label: string;
+  count: number;
+};
 
 export type StartupsInsightsCategoryRow = {
   id: StartupCategoryId;
@@ -103,6 +111,65 @@ export type StartupsInsightsStats = {
   stageMix: StartupsInsightsStageRow[] | null;
 };
 
+export type StartupsInsightsShareFacts = {
+  companies: number;
+  hiringCompanies: number;
+  roles: number;
+  /** True when `roles` is a floor (`hiring.rolesCapped`). */
+  rolesCapped: boolean;
+};
+
+/**
+ * Open Graph facts from the same Insights aggregate: `total`,
+ * `hiring.companies`, `hiring.roles`, and `hiring.rolesCapped`.
+ */
+export function startupInsightsShareFacts(
+  stats: StartupsInsightsStats,
+): StartupsInsightsShareFacts {
+  return {
+    companies: stats.total,
+    hiringCompanies: stats.hiring.companies,
+    roles: stats.hiring.roles,
+    rolesCapped: stats.hiring.rolesCapped,
+  };
+}
+
+export type StartupInsightsOgSpec = {
+  titleKey: "shareOgTitle" | "shareOgTitleNoHiring";
+  titleValues: Record<string, number>;
+  descriptionKey: "shareOgDescription" | "shareOgDescriptionNoHiring";
+  descriptionValues: Record<string, string | number>;
+};
+
+/** Null when the directory is empty — callers keep the static Insights title. */
+export function startupInsightsOgSpec(
+  facts: StartupsInsightsShareFacts,
+): StartupInsightsOgSpec | null {
+  if (facts.companies <= 0) return null;
+  if (facts.hiringCompanies <= 0) {
+    return {
+      titleKey: "shareOgTitleNoHiring",
+      titleValues: { companies: facts.companies },
+      descriptionKey: "shareOgDescriptionNoHiring",
+      descriptionValues: { companies: facts.companies },
+    };
+  }
+  return {
+    titleKey: "shareOgTitle",
+    titleValues: {
+      companies: facts.companies,
+      hiring: facts.hiringCompanies,
+    },
+    descriptionKey: "shareOgDescription",
+    descriptionValues: {
+      companies: facts.companies,
+      hiring: facts.hiringCompanies,
+      roles: facts.roles,
+      capped: String(facts.rolesCapped),
+    },
+  };
+}
+
 export function isStartupInsightsTab(
   value: string | string[] | undefined,
 ): boolean {
@@ -136,7 +203,7 @@ export function buildStartupInsights(
   cards: readonly StartupPublicCard[],
   locale: StartupLocale,
 ): StartupsInsightsStats {
-  const countryCounts = new Map<string, number>();
+  const countryCounts = new Map<StartupCountryCode, number>();
   const categoryCounts = new Map<StartupCategoryId, number>();
   const categoryHiring = new Map<StartupCategoryId, number>();
   const stageCounts = new Map<string, number>();
@@ -149,8 +216,7 @@ export function buildStartupInsights(
   let rolesCapped = false;
 
   for (const card of cards) {
-    const country = startupCountryOf(card.region);
-    if (country) increment(countryCounts, country);
+    if (card.country) increment(countryCounts, card.country);
     else unplaced += 1;
 
     increment(categoryCounts, card.category);
@@ -178,8 +244,13 @@ export function buildStartupInsights(
   }
 
   const rankedCountries = [...countryCounts.entries()]
-    .map(([country, count]) => ({ country, count }))
-    .sort((a, b) => b.count - a.count || a.country.localeCompare(b.country));
+    .map(([code, count]) => ({
+      code,
+      label: startupCountryLabel(code, locale),
+      count,
+    }))
+    // Ties break on the code, so both page languages rank the same.
+    .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
   const topCountries = rankedCountries.slice(
     0,
     STARTUPS_INSIGHTS_TOP_COUNTRIES,

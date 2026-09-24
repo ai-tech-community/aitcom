@@ -136,6 +136,7 @@ import {
 import { StartupsProfilePage } from "./startups-profile";
 import { HUB_OPEN_HREF } from "@/lib/join-path";
 import { appPathFromGuideHref, JOIN_PATH } from "@/lib/seo-guides";
+import { startupCountryCodeOf } from "@/lib/investigations/startups-countries";
 import { startupsV1PublicCards } from "@/lib/investigations/startups-v1-seeds";
 import { StartupsPage } from "./startups-page";
 import { StartupsJobsPage } from "./startups-jobs-page";
@@ -199,6 +200,7 @@ const FIXTURE_CARD: StartupPublicCard = {
   region: "Toronto, Canada",
   lat: 43.65,
   lng: -79.38,
+  country: "CA",
   stage: null,
   logoUrl: null,
   description: null,
@@ -297,6 +299,11 @@ describe("Startups investigation route", () => {
     expect(existsSync(join(appLocale, "startups/layout.tsx"))).toBe(false);
     const insights = readFileSync(INSIGHTS_FILE, "utf8");
     expect(insights).toContain("buildStartupInsights");
+    expect(insights).toContain("startupInsightsShareFacts");
+    expect(insights).toContain("startupInsightsOgSpec");
+    expect(insights).toContain("startupsInsightsShareUrl");
+    expect(insights).toContain("openGraph: { ...og.openGraph, url: shareUrl }");
+    expect(insights).not.toContain("/communities/ait");
     expect(insights).toContain("listApprovedPublicStartups");
     expect(insights).toContain("startupsPublicRobots");
     expect(insights).toContain('dynamic = "force-dynamic"');
@@ -951,6 +958,8 @@ describe("Startups Insights tab", () => {
     name: `Co ${id}`,
     slug: `co-${id}`,
     region,
+    // Stored at write time from the same place text.
+    country: startupCountryCodeOf(region),
     ...extra,
   });
   const LISTED = [
@@ -1014,6 +1023,10 @@ describe("Startups Insights tab", () => {
     ).toEqual(["where", "what", "hiring", "sources", "exits"]);
     expect(hrefsOf(container)).toContain(STARTUPS_JOIN_HREF);
     expect(container.textContent).not.toMatch(BANNED);
+
+    expect(
+      container.querySelector("[data-startups-insights-share]"),
+    ).toBeNull();
   });
 
   it("groups places into countries and says what it could not place", () => {
@@ -1032,11 +1045,16 @@ describe("Startups Insights tab", () => {
       [...where.querySelectorAll("[data-insight-row]")].map((row) =>
         row.getAttribute("data-insight-row"),
       ),
+    ).toEqual(["IL", "US", "DE", "FR", "GB"]);
+    expect(
+      [...where.querySelectorAll("[data-insight-row]")].map((row) =>
+        row.textContent?.replace(/\d+$/, ""),
+      ),
     ).toEqual([
       "Israel",
       "United States",
-      "France",
       "Germany",
+      "France",
       "United Kingdom",
     ]);
     expect(where.textContent).toContain(

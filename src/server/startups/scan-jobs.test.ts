@@ -460,6 +460,7 @@ describe("startup jobs scan locks", () => {
     expect(src).not.toMatch(/const SCAN_BATCH = 25/);
     expect(src).not.toMatch(/\.slice\(0, limit\)/);
     expect(src).toContain("presentText(row.jobsUrl)");
+    expect(src).toContain("${startups.jobsScannedAt} ASC NULLS FIRST");
     expect(src).toContain('status === "open"');
     expect(src).not.toMatch(/openrouter/i);
     expect(src).toContain("startupJobsScanTablePatch");

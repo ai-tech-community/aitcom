@@ -12,14 +12,17 @@ describe("startup place centroids", () => {
       lat: 43.6532,
       lng: -79.3832,
       kind: "city",
+      country: "CA",
     });
     expect(startupPlaceCentroid("New York, US")).toEqual({
       lat: 40.7128,
       lng: -74.006,
       kind: "city",
+      country: "US",
     });
     expect(startupPlaceCentroid("California")).toMatchObject({
       kind: "region",
+      country: "US",
     });
     expect(startupPlaceCentroid(null)).toBeNull();
     expect(startupPlaceCentroid("")).toBeNull();

@@ -483,7 +483,9 @@
     "threadEdited": "Onderwerp bijgewerkt",
     "replyEdited": "Reactie bijgewerkt",
     "threadDeleted": "Onderwerp verwijderd",
-    "replyDeleted": "Reactie verwijderd"
+    "replyDeleted": "Reactie verwijderd",
+    "membersOnlyTitle": "Dit forum is alleen voor leden",
+    "membersOnlyDescription": "Discussies in deze community zijn alleen zichtbaar voor de leden."
   },
   "challengesLanding": {
     "title": "AI Challenges",
@@ -1217,6 +1219,11 @@
     "insightsTitle": "AI-startups inzichten",
     "insightsLead": "Waar vermelde AI-startups zitten, wat ze bouwen en wie er aanneemt.",
     "insightsLead2": "Live geteld uit de directory. Niets is geschat: elk getal is een telling van onderbouwde vermeldingen.",
+    "shareOgKicker": "Inzichten",
+    "shareOgTitle": "AI-startups inzichten — {companies, number} bedrijven, {hiring, number} nemen aan",
+    "shareOgTitleNoHiring": "AI-startups inzichten — {companies, number} bedrijven",
+    "shareOgDescription": "Live uit de AIT-directory: {companies, plural, one {# AI-bedrijf} other {# AI-bedrijven}}, {hiring, number} nemen aan, {capped, select, true {minstens } other {}}{roles, plural, one {# open positie} other {# open posities}}. Niets is geschat.",
+    "shareOgDescriptionNoHiring": "Live uit de AIT-directory: {companies, plural, one {# AI-bedrijf} other {# AI-bedrijven}}. Niets is geschat.",
     "backLink": "Alle onderzoeken",
     "joinCta": "Word lid van de Hub",
     "roleJoinCta": "Word lid van de AIT-community voor meer",
@@ -1260,6 +1267,7 @@
     "jobsFilterLocationAll": "Alle locaties",
     "jobsFilterWorkType": "Filter op dienstverband",
     "jobsFilterWorkTypeAll": "Alle dienstverbanden",
+    "jobsSortMatch": "Beste match",
     "jobsSortRole": "Rol A–Z",
     "jobsSortCompany": "Bedrijf A–Z",
     "jobsSortLocation": "Locatie A–Z",

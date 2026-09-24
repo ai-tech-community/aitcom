@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { Globe, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -17,11 +23,13 @@ import {
 } from "@/components/ui/select";
 import { FilterSelect } from "@/components/investigations/startups-filter-select";
 import { buildStartupJobsPath } from "@/lib/investigations/startups";
+import { hasStartupJobsSearch } from "@/lib/investigations/startup-jobs-search";
 import {
   STARTUP_JOBS_REMOTE,
   STARTUP_JOBS_SORTS,
   STARTUP_WORK_TYPE_LABELS,
   parseStartupJobsQuery,
+  startupJobsSortForSearch,
   type StartupJobsQuery,
   type StartupJobsSort,
   type StartupWorkType,
@@ -34,6 +42,12 @@ import { cn } from "@/lib/utils";
  */
 const QUICK_SEARCHES = ["Engineer", "Research", "Sales", "Design", "Product"];
 
+/**
+ * Wait after the last keystroke before asking the server for results. The
+ * box itself updates at once; only the URL (and so the search) waits.
+ */
+const SEARCH_DEBOUNCE_MS = 300;
+
 export type StartupsJobsFiltersLabels = {
   search: string;
   company: string;
@@ -43,6 +57,7 @@ export type StartupsJobsFiltersLabels = {
   locationRemote: string;
   workType: string;
   workTypeAll: string;
+  sortMatch: string;
   sortRole: string;
   sortCompany: string;
   sortLocation: string;
@@ -78,6 +93,34 @@ export function StartupsJobsFilters({
   ).length;
   const [filtersOpen, setFiltersOpen] = useState(activeFilters > 0);
   const remoteOn = query.location === STARTUP_JOBS_REMOTE;
+  const [, startTransition] = useTransition();
+  // What the user typed. The URL (`query.q`) catches up after the debounce.
+  const [searchDraft, setSearchDraft] = useState(query.q);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function cancelPendingSearch() {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+  }
+
+  // Back/forward, a quick-search chip or Clear changes the URL: show it. The
+  // URL holds the trimmed text, so keep the draft when only spacing differs,
+  // or a space typed before the next word would vanish.
+  useEffect(() => {
+    if (searchTimer.current) return;
+    setSearchDraft((draft) => (draft.trim() === query.q ? draft : query.q));
+  }, [query.q]);
+
+  useEffect(() => cancelPendingSearch, []);
+
+  function onSearchChange(value: string) {
+    setSearchDraft(value);
+    cancelPendingSearch();
+    searchTimer.current = setTimeout(() => {
+      searchTimer.current = null;
+      replaceQuery({ q: value });
+    }, SEARCH_DEBOUNCE_MS);
+  }
 
   function replaceQuery(next: Partial<StartupJobsQuery>) {
     const filterChanged =
@@ -86,17 +129,32 @@ export function StartupsJobsFilters({
       next.location !== undefined ||
       next.workType !== undefined ||
       next.sort !== undefined;
+    // The draft goes into this URL, so a pending search is now redundant;
+    // left running, it would replace this URL with the older one.
+    cancelPendingSearch();
+    if (next.q !== undefined) setSearchDraft(next.q);
+    // A filter picked mid-typing keeps what is already in the box.
+    const q = next.q ?? searchDraft;
     const merged = parseStartupJobsQuery({
       ...query,
+      q,
+      sort: startupJobsSortForSearch(query, q),
       ...next,
       page: next.page ?? (filterChanged ? 1 : query.page),
     });
     const path = buildStartupJobsPath(merged);
     const qs = path.includes("?") ? path.slice(path.indexOf("?") + 1) : "";
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    startTransition(() => {
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    });
   }
 
+  // Best match only means something while searching.
+  const sortOptions = STARTUP_JOBS_SORTS.filter(
+    (id) => id !== "match" || hasStartupJobsSearch(query.q),
+  );
   const sortLabel: Record<StartupJobsSort, string> = {
+    match: labels.sortMatch,
     role: labels.sortRole,
     company: labels.sortCompany,
     location: labels.sortLocation,
@@ -116,9 +174,9 @@ export function StartupsJobsFilters({
           <Input
             id="jobs-search"
             type="search"
-            value={query.q}
+            value={searchDraft}
             placeholder={labels.search}
-            onChange={(event) => replaceQuery({ q: event.target.value })}
+            onChange={(event) => onSearchChange(event.target.value)}
             className="pl-9"
           />
         </div>
@@ -172,7 +230,7 @@ export function StartupsJobsFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
-                {STARTUP_JOBS_SORTS.map((id) => (
+                {sortOptions.map((id) => (
                   <SelectItem key={id} value={id}>
                     {sortLabel[id]}
                   </SelectItem>
@@ -183,7 +241,7 @@ export function StartupsJobsFilters({
         </div>
       </div>
 
-      {query.q ? null : (
+      {searchDraft.trim() ? null : (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground text-xs">
             {labels.tryLabel}
@@ -265,7 +323,7 @@ export function StartupsJobsFilters({
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {aside}
-          {activeFilters > 0 || query.q ? (
+          {activeFilters > 0 || searchDraft.trim() ? (
             <Button
               type="button"
               variant="ghost"

@@ -24,6 +24,12 @@ import {
 } from "@/server/payload-numeric";
 import { IDEA_CATEGORIES } from "@/lib/idea-categories";
 import { forumThreadCommunityWhere } from "@/server/communities/forum-scope";
+import { communityContentReadableWhere } from "@/server/communities/content-visibility";
+import {
+  findReadableCommunityBySlug,
+  hiddenContentCommunityIds,
+  viewerCanReadContentOf,
+} from "@/server/communities/content-visibility-queries";
 import { buildIdeasWhere } from "./ideas-filter";
 
 async function requireRulesAcceptance(userId: string, communityId?: string) {
@@ -202,13 +208,13 @@ export const forumRouter = createTRPCRouter({
 
       let communityId: string | undefined;
       if (input.communitySlug) {
-        const community = await ctx.db.query.communities.findFirst({
-          where: and(
-            eq(communities.slug, input.communitySlug),
-            isNull(communities.deletedAt),
-          ),
-          columns: { id: true },
-        });
+        // Unreadable answers like missing (an empty list), so an unlisted
+        // community's ideas are neither shown nor confirmed to exist.
+        const community = await findReadableCommunityBySlug(
+          ctx.db,
+          input.communitySlug,
+          ctx.session?.user?.id,
+        );
         if (!community) return [];
         communityId = community.id;
       }
@@ -389,22 +395,26 @@ export const forumRouter = createTRPCRouter({
       const conditions: Where[] = [];
       conditions.push({ isDeleted: { not_equals: true } });
 
+      const userId = ctx.session?.user?.id;
       if (input.communitySlug) {
-        const community = await ctx.db.query.communities.findFirst({
-          where: and(
-            eq(communities.slug, input.communitySlug),
-            isNull(communities.deletedAt),
-          ),
-          columns: { id: true },
-        });
-        if (community) {
-          conditions.push(
-            forumThreadCommunityWhere({
-              id: community.id,
-              slug: input.communitySlug,
-            }),
-          );
+        // An unknown slug must not fall through to an unfiltered listing.
+        const community = await findReadableCommunityBySlug(
+          ctx.db,
+          input.communitySlug,
+          userId,
+        );
+        if (!community) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Community not found",
+          });
         }
+        conditions.push(forumThreadCommunityWhere(community));
+      } else {
+        const readable = communityContentReadableWhere(
+          await hiddenContentCommunityIds(ctx.db, userId),
+        );
+        if (readable) conditions.push(readable);
       }
 
       if (input.category !== "all") {
@@ -446,7 +456,7 @@ export const forumRouter = createTRPCRouter({
 
   getThread: publicProcedure
     .input(z.object({ slug: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
       const result = await payload.find({
         collection: "forum-threads",
@@ -454,10 +464,20 @@ export const forumRouter = createTRPCRouter({
         limit: 1,
         depth: 0,
       });
-      if (result.docs.length === 0) {
+      const thread = result.docs[0];
+      // Unreadable answers like missing, so an unlisted thread is not
+      // confirmed to exist.
+      if (
+        !thread ||
+        !(await viewerCanReadContentOf(
+          ctx.db,
+          thread.communityId,
+          ctx.session?.user?.id,
+        ))
+      ) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
       }
-      return result.docs[0]!;
+      return thread;
     }),
 
   incrementViewCount: publicProcedure
@@ -677,8 +697,27 @@ export const forumRouter = createTRPCRouter({
         threadId: z.number(),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       const payload = await getPayloadClient();
+
+      const thread = await payload.findByID({
+        collection: "forum-threads",
+        id: input.threadId,
+        depth: 0,
+        disableErrors: true,
+      });
+      // Unreadable answers like missing, so an unlisted thread is not
+      // confirmed to exist.
+      if (
+        !thread ||
+        !(await viewerCanReadContentOf(
+          ctx.db,
+          thread.communityId,
+          ctx.session?.user?.id,
+        ))
+      ) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Thread not found" });
+      }
 
       const { docs } = await payload.find({
         collection: "forum-replies",

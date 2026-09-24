@@ -72,14 +72,23 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
     setPage(1);
   }, []);
 
-  const { data, isLoading, isError, refetch } = api.forum.getThreads.useQuery({
-    category,
-    sort,
-    search: debouncedSearch || undefined,
-    limit: PAGE_SIZE,
-    page,
-    communitySlug,
-  });
+  const { data, isLoading, isError, error, refetch } =
+    api.forum.getThreads.useQuery(
+      {
+        category,
+        sort,
+        search: debouncedSearch || undefined,
+        limit: PAGE_SIZE,
+        page,
+        communitySlug,
+      },
+      {
+        // NOT_FOUND is a final answer (unlisted community, viewer not a member).
+        retry: (failureCount, err) =>
+          err.data?.code !== "NOT_FOUND" && failureCount < 3,
+      },
+    );
+  const membersOnly = !!communitySlug && error?.data?.code === "NOT_FOUND";
 
   const threads = data?.threads ?? [];
   const hasNextPage = data?.hasNextPage ?? false;
@@ -163,6 +172,13 @@ export function ForumPage({ communitySlug, memberRole }: ForumPageProps = {}) {
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-16 rounded-lg" />
           ))}
+        </div>
+      ) : membersOnly ? (
+        <div className="bg-primary/5 border-primary/20 rounded-md border p-4">
+          <h2 className="font-medium">{t("membersOnlyTitle")}</h2>
+          <p className="text-muted-foreground text-sm">
+            {t("membersOnlyDescription")}
+          </p>
         </div>
       ) : isError ? (
         <ErrorState onRetry={() => void refetch()} />

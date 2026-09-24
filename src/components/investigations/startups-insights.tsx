@@ -20,7 +20,7 @@ import {
   buildStartupProfilePath,
   type StartupLocale,
 } from "@/lib/investigations/startups";
-import type { StartupsInsightsStats } from "@/lib/investigations/startups-insights";
+import { type StartupsInsightsStats } from "@/lib/investigations/startups-insights";
 
 export type StartupsInsightsKey =
   | "insightsLedeCompanies"
@@ -61,7 +61,12 @@ export type StartupsInsightsKey =
   | "countColumn"
   | "sectionHiring"
   | "empty"
-  | "emptyHelp";
+  | "emptyHelp"
+  | "shareOgKicker"
+  | "shareOgTitle"
+  | "shareOgTitleNoHiring"
+  | "shareOgDescription"
+  | "shareOgDescriptionNoHiring";
 
 export type StartupsInsightsT = (
   key: StartupsInsightsKey,
@@ -156,8 +161,8 @@ export function StartupsInsights({
               valueHeader={t("countColumn")}
               rows={[
                 ...stats.countries.rows.map((row) => ({
-                  key: row.country,
-                  label: row.country,
+                  key: row.code,
+                  label: row.label,
                   value: row.count,
                   display: format(row.count),
                 })),
@@ -431,8 +436,8 @@ function whereTakeaway(
   if (!countries || !first || !second) return undefined;
   const placed = stats.total - countries.unplaced;
   return t("whereTakeaway", {
-    first: first.country,
-    second: second.country,
+    first: first.label,
+    second: second.label,
     share: (first.count + second.count) / placed,
   });
 }

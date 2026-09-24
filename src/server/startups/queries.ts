@@ -1,4 +1,5 @@
-import { and, count, desc, eq } from "drizzle-orm";
+import { cache } from "react";
+import { and, asc, count, desc, eq, sql, type SQL } from "drizzle-orm";
 
 import {
   displayStartupFounders,
@@ -11,11 +12,18 @@ import {
   startupSlugFromName,
   type StartupPublicCard,
 } from "@/lib/investigations/startups";
+import { isStartupCountryCode } from "@/lib/investigations/startups-countries";
 import {
   parseStartupRoleTitle,
   sanitizeStartupRoleDescription,
+  type StartupRoleListing,
   type StartupRolePublic,
+  type StartupRoleTextMatches,
 } from "@/lib/investigations/startup-roles";
+import {
+  startupRoleSearchPlan,
+  type StartupRoleSearchTerm,
+} from "@/lib/investigations/startup-jobs-search";
 import { db } from "@/server/db";
 import { startupRoles, startups } from "@/server/db/schema";
 
@@ -34,6 +42,7 @@ function toPublicCard(row: typeof startups.$inferSelect): StartupPublicCard {
     region: presentText(row.region),
     lat: row.lat ?? null,
     lng: row.lng ?? null,
+    country: isStartupCountryCode(row.country) ? row.country : null,
     stage: presentText(row.stage),
     logoUrl: presentText(row.logoUrl),
     description: presentText(row.description),
@@ -149,14 +158,37 @@ export async function listApprovedPublicStartupSlugs(): Promise<string[]> {
   }
 }
 
-export function toPublicRole(
-  role: typeof startupRoles.$inferSelect,
-  startup: {
-    slug: string;
-    name: string;
-    logoUrl: string | null;
-  },
-): StartupRolePublic | null {
+/** Every role column except the description, which the jobs list never shows. */
+const startupRoleListingColumns = {
+  id: startupRoles.id,
+  startupId: startupRoles.startupId,
+  slug: startupRoles.slug,
+  title: startupRoles.title,
+  location: startupRoles.location,
+  workType: startupRoles.workType,
+  sourceUrl: startupRoles.sourceUrl,
+  applyUrl: startupRoles.applyUrl,
+  fetchedAt: startupRoles.fetchedAt,
+  postedAt: startupRoles.postedAt,
+  board: startupRoles.board,
+  status: startupRoles.status,
+  createdAt: startupRoles.createdAt,
+};
+
+type StartupRoleListingRow = {
+  [K in keyof typeof startupRoleListingColumns]: (typeof startupRoles.$inferSelect)[K];
+};
+
+type StartupRoleOwner = {
+  slug: string;
+  name: string;
+  logoUrl: string | null;
+};
+
+function toPublicRoleListing(
+  role: StartupRoleListingRow,
+  startup: StartupRoleOwner,
+): StartupRoleListing | null {
   if (role.status === "pending_review") return null;
   const slug = parseStartupSlug(role.slug);
   const startupSlug = parseStartupSlug(startup.slug);
@@ -175,7 +207,6 @@ export function toPublicRole(
     workType: presentText(role.workType),
     sourceUrl: role.sourceUrl,
     applyUrl: presentText(role.applyUrl),
-    descriptionText: sanitizeStartupRoleDescription(role.descriptionText),
     fetchedAt: role.fetchedAt.toISOString(),
     listedAt: role.createdAt.toISOString(),
     postedAt: role.postedAt?.toISOString() ?? null,
@@ -184,34 +215,139 @@ export function toPublicRole(
   };
 }
 
-export async function listPublicStartupRoles(): Promise<StartupRolePublic[]> {
-  try {
-    const rows = await db
-      .select({
-        role: startupRoles,
-        startupSlug: startups.slug,
-        startupName: startups.name,
-        startupLogoUrl: startups.logoUrl,
-        startupStatus: startups.status,
-      })
-      .from(startupRoles)
-      .innerJoin(startups, eq(startupRoles.startupId, startups.id))
-      .where(
-        and(eq(startups.status, "approved"), eq(startupRoles.status, "open")),
-      )
-      .orderBy(desc(startupRoles.fetchedAt), desc(startupRoles.createdAt));
-    return rows.flatMap((row) => {
-      const role = toPublicRole(row.role, {
-        slug: row.startupSlug,
-        name: row.startupName,
-        logoUrl: row.startupLogoUrl,
-      });
-      return role ? [role] : [];
-    });
-  } catch {
-    return [];
-  }
+export function toPublicRole(
+  role: typeof startupRoles.$inferSelect,
+  startup: StartupRoleOwner,
+): StartupRolePublic | null {
+  const listing = toPublicRoleListing(role, startup);
+  if (!listing) return null;
+  return {
+    ...listing,
+    descriptionText: sanitizeStartupRoleDescription(role.descriptionText),
+  };
 }
+
+const publicOpenRole = and(
+  eq(startups.status, "approved"),
+  eq(startupRoles.status, "open"),
+);
+
+/**
+ * Every public open role, without descriptions. Cached per request: the jobs
+ * page reads it for both its metadata and its body.
+ */
+export const listPublicStartupRoles = cache(
+  async (): Promise<StartupRoleListing[]> => {
+    try {
+      const rows = await db
+        .select({
+          role: startupRoleListingColumns,
+          startupSlug: startups.slug,
+          startupName: startups.name,
+          startupLogoUrl: startups.logoUrl,
+        })
+        .from(startupRoles)
+        .innerJoin(startups, eq(startupRoles.startupId, startups.id))
+        .where(publicOpenRole)
+        .orderBy(desc(startupRoles.fetchedAt), desc(startupRoles.createdAt));
+      return rows.flatMap((row) => {
+        const role = toPublicRoleListing(row.role, {
+          slug: row.startupSlug,
+          name: row.startupName,
+          logoUrl: row.startupLogoUrl,
+        });
+        return role ? [role] : [];
+      });
+    } catch {
+      return [];
+    }
+  },
+);
+
+/**
+ * Trigger-maintained column, kept out of the Drizzle table so whole-row
+ * selects do not carry it. See the note on `startupRoles` in the schema.
+ */
+const startupRoleSearchVector = sql`${startupRoles}."search_vector"`;
+
+/**
+ * One search word as a tsquery. The stemmed `english` form finds other forms
+ * of a whole word ("engineers" → "engineer"). The unstemmed `simple` form
+ * finds the word as written: as a prefix for a half-typed word, and exactly
+ * for a short one `english` drops as a stop word ("IT"). The vector carries
+ * both forms (see the migration). Terms are letters and digits only, so `:*`
+ * is the only syntax added.
+ */
+function searchTermTsQuery({ term, prefix }: StartupRoleSearchTerm): SQL {
+  const asWritten = prefix
+    ? sql`to_tsquery('simple', ${`${term}:*`})`
+    : sql`plainto_tsquery('simple', ${term})`;
+  return sql`(plainto_tsquery('english', ${term}) || ${asWritten})`;
+}
+
+/**
+ * Match tier for best-match order: every word found in the title or company
+ * (weights A, B) beats every word found once location and work type (C)
+ * count, which beats matches that need the description (D).
+ *
+ * `ts_rank` alone cannot do this. For an AND query it scores the proximity
+ * of whichever query lexemes it finds, not whether all words are present;
+ * and a word whose stem differs from its spelling ("remote" → `remot`,
+ * `remote`) is two nearby lexemes here. So a role titled "Other | Remote"
+ * scored near full for "remote research" with "research" only in its
+ * description.
+ */
+function searchMatchTier(tsQuery: SQL): SQL<number> {
+  return sql<number>`case
+    when ts_filter(${startupRoleSearchVector}, '{a,b}') @@ (${tsQuery}) then 2
+    when ts_filter(${startupRoleSearchVector}, '{a,b,c}') @@ (${tsQuery}) then 1
+    else 0
+  end`;
+}
+
+/**
+ * Full-text search over public open roles: title, company, location, work
+ * type and description, so a search can span company and role ("stripe
+ * engineer"). One GIN-indexed lookup on the trigger-maintained
+ * `search_vector` column (migration 20260924c_startup_role_search).
+ *
+ * Returns role id → best-match order (0 first): match tier; within a tier,
+ * `ts_rank` on title, company, location and work type, so a long
+ * description repeating a word cannot outrank a short exact title; then
+ * `ts_rank` on everything; then company and title so equal scores stay
+ * stable.
+ * Returns `null` when `q` has no search terms.
+ */
+export const matchPublicStartupRoleIds = cache(
+  async (q: string): Promise<StartupRoleTextMatches> => {
+    const plan = startupRoleSearchPlan(q);
+    if (plan.length === 0) return null;
+    const tsQuery = sql.join(plan.map(searchTermTsQuery), sql` && `);
+    try {
+      const rows = await db
+        .select({ id: startupRoles.id })
+        .from(startupRoles)
+        .innerJoin(startups, eq(startupRoles.startupId, startups.id))
+        .where(
+          and(publicOpenRole, sql`${startupRoleSearchVector} @@ (${tsQuery})`),
+        )
+        .orderBy(
+          desc(searchMatchTier(tsQuery)),
+          desc(
+            sql`ts_rank(ts_filter(${startupRoleSearchVector}, '{a,b,c}'), (${tsQuery}))`,
+          ),
+          desc(sql`ts_rank(${startupRoleSearchVector}, (${tsQuery}))`),
+          asc(startups.name),
+          asc(startupRoles.title),
+          asc(startupRoles.id),
+        );
+      return new Map(rows.map((row, order) => [row.id, order]));
+    } catch (error) {
+      console.error("[startups] jobs full-text search failed", error);
+      return new Map();
+    }
+  },
+);
 
 export async function listOpenStartupRolesForCompany(
   startupId: string,

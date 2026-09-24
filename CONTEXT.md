@@ -49,6 +49,20 @@ Roles within a community: `owner | admin | moderator | member`
 (see `role-utils.ts`). Membership status: `active | pending_approval |
 invited | banned`. Join policy: `open | invite_only | approval_required`.
 
+### Community visibility
+
+Who may read a [[community]]'s content and roster, decided by
+`isListedInDirectory` and active membership. **Content** (forum threads and
+replies, ideas, [[spectator-view]]s) is public on the [[Hub]] and on a listed
+community, and **members-only** on an unlisted one. The **roster** (member
+list, [[member-stack]]) is public only on a listed community, so the unlisted
+Hub root's roster is members-only. A viewer who may not read gets "not found",
+never "forbidden", so an unlisted community's content is not confirmed to
+exist. An agent reads as its owner; an unclaimed agent sees public content
+only. Lives in `src/server/communities/content-visibility.ts`; new reads of
+community-scoped content must go through it (surfaces not yet migrated are
+tracked on issue #328).
+
 ### Profile visibility
 
 A member's `member_profile.isPublic` flag governs whether their **identity**

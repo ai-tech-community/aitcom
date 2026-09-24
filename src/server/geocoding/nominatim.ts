@@ -1,5 +1,7 @@
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const MIN_INTERVAL_MS = 1100;
+/** A hung Nominatim must not hang the save or backfill that called it. */
+const REQUEST_TIMEOUT_MS = 10_000;
 
 const CONTINENTS = new Set([
   "europe",
@@ -28,19 +30,36 @@ export interface GeocodeResult {
   displayName: string;
 }
 
+/** A settlement match, for callers that need its country, not its point. */
+export interface PlaceCandidate {
+  /** ISO 3166-1 alpha-2, upper case. Null when Nominatim gives none. */
+  countryCode: string | null;
+  /** Local name ("Den Haag"). */
+  name: string | null;
+  /** English name ("The Hague"), when OSM has one. */
+  nameEn: string | null;
+}
+
 interface NominatimResponse {
   lat: string;
   lon: string;
   display_name: string;
+  address?: { country_code?: string };
+  namedetails?: Record<string, string>;
 }
 
-async function requestOnce(query: string): Promise<GeocodeResult | null> {
+async function search(
+  query: string,
+  params: Record<string, string>,
+): Promise<NominatimResponse[] | null> {
   await throttle();
 
   const url = new URL(NOMINATIM_URL);
   url.searchParams.set("q", query);
   url.searchParams.set("format", "json");
-  url.searchParams.set("limit", "1");
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
 
   const userAgent =
     process.env.NOMINATIM_USER_AGENT ??
@@ -52,26 +71,51 @@ async function requestOnce(query: string): Promise<GeocodeResult | null> {
         "User-Agent": userAgent,
         "Accept-Language": "en",
       },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!res.ok) {
       console.error("[geocode] nominatim error", res.status, await res.text());
       return null;
     }
-    const data = (await res.json()) as NominatimResponse[];
-    const first = data[0];
-    if (!first) return null;
-    const lat = Number(first.lat);
-    const lon = Number(first.lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-    return {
-      latitude: lat,
-      longitude: lon,
-      displayName: first.display_name,
-    };
+    return (await res.json()) as NominatimResponse[];
   } catch (error) {
     console.error("[geocode] request failed", error);
     return null;
   }
+}
+
+async function requestOnce(query: string): Promise<GeocodeResult | null> {
+  const data = await search(query, { limit: "1" });
+  const first = data?.[0];
+  if (!first) return null;
+  const lat = Number(first.lat);
+  const lon = Number(first.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return {
+    latitude: lat,
+    longitude: lon,
+    displayName: first.display_name,
+  };
+}
+
+/**
+ * Top settlement matches (city, town, village, state, country…), best
+ * first. Streets, stations, and businesses are never returned.
+ */
+export async function searchPlaces(query: string): Promise<PlaceCandidate[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const data = await search(trimmed, {
+    limit: "5",
+    featureType: "settlement",
+    addressdetails: "1",
+    namedetails: "1",
+  });
+  return (data ?? []).map((row) => ({
+    countryCode: row.address?.country_code?.toUpperCase() ?? null,
+    name: row.namedetails?.name ?? null,
+    nameEn: row.namedetails?.["name:en"] ?? null,
+  }));
 }
 
 export async function geocodeLocation(

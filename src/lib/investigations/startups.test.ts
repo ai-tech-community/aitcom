@@ -4,6 +4,7 @@ import {
   STARTUPS_BATCH_MAX,
   STARTUPS_H1,
   STARTUPS_INSIGHTS_PATH,
+  startupsInsightsShareUrl,
   STARTUPS_JOBS_PATH,
   JOBS_ROLE_JOIN_HREF,
   STARTUPS_JOIN_HREF,
@@ -72,6 +73,7 @@ function sampleCard(
     region: null,
     lat: null,
     lng: null,
+    country: null,
     stage: null,
     logoUrl: null,
     description: null,
@@ -118,6 +120,14 @@ describe("startups investigation contract", () => {
   it("lives under /startups with a dedicated insights path", () => {
     expect(STARTUPS_PATH).toBe("/startups");
     expect(STARTUPS_INSIGHTS_PATH).toBe("/startups/insights");
+    expect(startupsInsightsShareUrl("en")).toBe(
+      "https://www.aitcommunity.org/en/startups/insights",
+    );
+    expect(startupsInsightsShareUrl("nl")).toBe(
+      "https://www.aitcommunity.org/nl/startups/insights",
+    );
+    expect(startupsInsightsShareUrl("en")).not.toContain("/communities/");
+    expect(startupsInsightsShareUrl("nl")).not.toMatch(/hub/i);
     expect(STARTUPS_JOBS_PATH).toBe("/jobs");
     expect(STARTUPS_H1).toBe("AI startups worth watching");
     expect(STARTUPS_META).toMatch(/homepage and sources verified/i);

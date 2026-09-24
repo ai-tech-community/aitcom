@@ -108,6 +108,8 @@ import * as migration_20260923a_startup_role_application_status from "./20260923
 import * as migration_20260923b_startup_role_help from "./20260923b_startup_role_help";
 import * as migration_20260923c_startup_role_posted_at from "./20260923c_startup_role_posted_at";
 import * as migration_20260924a_community_videos from "./20260924a_community_videos";
+import * as migration_20260924b_startup_country from "./20260924b_startup_country";
+import * as migration_20260924c_startup_role_search from "./20260924c_startup_role_search";
 
 export const migrations = [
   {
@@ -659,5 +661,15 @@ export const migrations = [
     up: migration_20260924a_community_videos.up,
     down: migration_20260924a_community_videos.down,
     name: "20260924a_community_videos",
+  },
+  {
+    up: migration_20260924b_startup_country.up,
+    down: migration_20260924b_startup_country.down,
+    name: "20260924b_startup_country",
+  },
+  {
+    up: migration_20260924c_startup_role_search.up,
+    down: migration_20260924c_startup_role_search.down,
+    name: "20260924c_startup_role_search",
   },
 ];

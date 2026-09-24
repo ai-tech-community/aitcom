@@ -483,7 +483,9 @@
     "threadEdited": "Thread updated",
     "replyEdited": "Reply updated",
     "threadDeleted": "Thread deleted",
-    "replyDeleted": "Reply deleted"
+    "replyDeleted": "Reply deleted",
+    "membersOnlyTitle": "This forum is for members only",
+    "membersOnlyDescription": "Discussions in this community are visible to its members only."
   },
   "challengesLanding": {
     "title": "AI Challenges",
@@ -1217,6 +1219,11 @@
     "insightsTitle": "AI startups insights",
     "insightsLead": "Where listed AI startups are, what they build, and who is hiring.",
     "insightsLead2": "Counted live from the directory. Nothing is estimated: every number is a count of sourced listings.",
+    "shareOgKicker": "Insights",
+    "shareOgTitle": "AI startups insights — {companies, number} companies, {hiring, number} hiring",
+    "shareOgTitleNoHiring": "AI startups insights — {companies, number} companies",
+    "shareOgDescription": "Live from the AIT directory: {companies, plural, one {# AI company} other {# AI companies}}, {hiring, number} hiring, {capped, select, true {at least } other {}}{roles, plural, one {# open role} other {# open roles}}. Nothing estimated.",
+    "shareOgDescriptionNoHiring": "Live from the AIT directory: {companies, plural, one {# AI company} other {# AI companies}}. Nothing estimated.",
     "backLink": "All investigations",
     "joinCta": "Join the Hub",
     "roleJoinCta": "Join the AIT community to get more",
@@ -1260,6 +1267,7 @@
     "jobsFilterLocationAll": "All locations",
     "jobsFilterWorkType": "Filter by work type",
     "jobsFilterWorkTypeAll": "All work types",
+    "jobsSortMatch": "Best match",
     "jobsSortRole": "Role A–Z",
     "jobsSortCompany": "Company A–Z",
     "jobsSortLocation": "Location A–Z",

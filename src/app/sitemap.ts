@@ -10,6 +10,7 @@ import {
   HUB_FORUM_PATH,
   forumThreadSitemapPath,
 } from "@/server/communities/forum-scope";
+import { communityContentReadableWhere } from "@/server/communities/content-visibility";
 import { getPayloadClient } from "@/server/payload";
 
 // Time-based ISR instead of force-dynamic: a sitemap does not need to be
@@ -114,6 +115,14 @@ async function defaultCommunitySlugById(): Promise<
   }
 }
 
+/** Communities whose threads a signed-out visitor may not read (ADR-0030). */
+async function defaultHiddenCommunityIds(): Promise<string[]> {
+  const { db } = await import("@/server/db");
+  const { hiddenContentCommunityIds } =
+    await import("@/server/communities/content-visibility-queries");
+  return hiddenContentCommunityIds(db, null);
+}
+
 async function defaultAwesomePagePaths(): Promise<string[]> {
   try {
     const { listApprovedPublicCards } =
@@ -157,6 +166,9 @@ export async function buildSitemapEntries(
   > = defaultCommunitySlugById,
   getAwesomePagePaths: () => Promise<string[]> = defaultAwesomePagePaths,
   getStartupPagePaths: () => Promise<string[]> = defaultStartupPagePaths,
+  getHiddenCommunityIds: () => Promise<
+    readonly string[]
+  > = defaultHiddenCommunityIds,
 ): Promise<MetadataRoute.Sitemap> {
   let awesomePagePaths: string[] = [];
   try {
@@ -189,6 +201,15 @@ export async function buildSitemapEntries(
     return staticEntries;
   }
 
+  // Fail closed: if we cannot tell which communities are members-only, list
+  // no threads rather than risk publishing an unlisted community's slugs.
+  let hiddenCommunityIds: readonly string[] | null = null;
+  try {
+    hiddenCommunityIds = await getHiddenCommunityIds();
+  } catch (error) {
+    console.error("[sitemap] hidden community lookup failed", error);
+  }
+
   const [eventsResult, articlesResult, threadsResult] =
     await Promise.allSettled([
       payload.find({
@@ -210,11 +231,15 @@ export async function buildSitemapEntries(
         limit: 1000,
         depth: 0,
       }),
-      payload.find({
-        collection: "forum-threads",
-        limit: 1000,
-        depth: 0,
-      }),
+      hiddenCommunityIds === null
+        ? Promise.resolve({ docs: [] })
+        : payload.find({
+            collection: "forum-threads",
+            where:
+              communityContentReadableWhere(hiddenCommunityIds) ?? undefined,
+            limit: 1000,
+            depth: 0,
+          }),
     ]);
 
   const eventEntries = docsFromSettled(eventsResult, "events").map((event) =>
