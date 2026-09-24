@@ -64,9 +64,12 @@ export function toggleLikeInPages<
  * expired. Every other reel keeps its links, so nothing else reloads.
  */
 export function replaceReelVideo<
-  V,
-  T extends { id: number; video: V },
+  T extends { id: number; video: unknown },
   D extends ReelPages<T>,
->(data: D | undefined, postId: number, video: V): D | undefined {
+>(
+  data: D | undefined,
+  postId: number,
+  video: D["pages"][number]["items"][number]["video"],
+): D | undefined {
   return updateReelInPages<T, D>(data, postId, (item) => ({ ...item, video }));
 }

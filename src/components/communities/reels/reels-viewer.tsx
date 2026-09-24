@@ -243,21 +243,24 @@ export function ReelsViewer({
     if (slot !== index) show(slot);
   }
 
-  /** A private link expired: re-sign only that reel and patch it in place. */
-  async function refreshVideo(postId: number) {
-    try {
-      const fresh = await utils.feed.getReels.fetch(
-        { communitySlug: slug, startAtPostId: postId, limit: 1 },
-        { staleTime: 0 },
-      );
-      const reel = fresh.items[0];
-      if (reel?.id !== postId || !reel.video) return;
-      utils.feed.getReels.setInfiniteData(input, (cached) =>
-        replaceReelVideo(cached, postId, reel.video),
-      );
-    } catch {
-      // The player shows "Video unavailable" on the next failure.
-    }
+  /**
+   * A private link expired: re-sign only that reel and patch it in place.
+   * Resolves false (or rejects, if the fetch fails) when no fresh link is
+   * coming, e.g. the video can no longer be watched, so the player shows
+   * "Video unavailable" instead of freezing.
+   */
+  async function refreshVideo(postId: number): Promise<boolean> {
+    const fresh = await utils.feed.getReels.fetch(
+      { communitySlug: slug, startAtPostId: postId, limit: 1 },
+      { staleTime: 0 },
+    );
+    const reel = fresh.items[0];
+    const video = reel?.id === postId ? reel.video : null;
+    if (!video) return false;
+    utils.feed.getReels.setInfiniteData(input, (cached) =>
+      replaceReelVideo(cached, postId, video),
+    );
+    return true;
   }
 
   /** Members act; everyone else gets the sign-in dialog or the Join prompt. */
@@ -353,7 +356,7 @@ export function ReelsViewer({
             }
             onCopyLink={() => copyLink(reel.id)}
             onReport={() => setReportFor(reel.id)}
-            onVideoExpired={() => void refreshVideo(reel.id)}
+            onVideoExpired={() => refreshVideo(reel.id)}
           />
         ))}
       </div>

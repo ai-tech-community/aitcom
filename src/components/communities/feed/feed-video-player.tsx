@@ -43,7 +43,9 @@ function prefersReducedMotion() {
  *   the video plays). Reels passes "auto" so the next video buffers ahead.
  * - A private playback link expires after an hour. On a load error the player
  *   asks the caller once for a fresh link through `onExpired`; a second error
- *   in a row shows "Video unavailable".
+ *   in a row shows "Video unavailable". A caller that answers with a promise
+ *   says whether a fresh link is coming: `false` (or a rejection) shows
+ *   "Video unavailable" at once, since no second error would ever fire.
  */
 export function FeedVideoPlayer({
   video,
@@ -52,7 +54,7 @@ export function FeedVideoPlayer({
   preload = "metadata",
 }: {
   video: FeedVideo;
-  onExpired?: () => void;
+  onExpired?: () => void | Promise<boolean>;
   className?: string;
   preload?: "metadata" | "auto";
 }) {
@@ -116,7 +118,16 @@ export function FeedVideoPlayer({
   function handleError() {
     if (!askedForFreshLink.current && onExpired) {
       askedForFreshLink.current = true;
-      onExpired();
+      const failedLink = video.url;
+      const answer = onExpired();
+      if (answer) {
+        answer.then(
+          (freshLinkComing) => {
+            if (!freshLinkComing) setFailedUrl(failedLink);
+          },
+          () => setFailedUrl(failedLink),
+        );
+      }
       return;
     }
     setFailedUrl(video.url);

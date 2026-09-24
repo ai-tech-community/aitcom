@@ -109,6 +109,29 @@ describe("FeedVideoPlayer", () => {
     expect(screen.getByText("Video unavailable.")).toBeInTheDocument();
   });
 
+  it("shows unavailable when the caller says no fresh link is coming", async () => {
+    const onExpired = vi.fn().mockResolvedValue(false);
+    const { container } = renderPlayer(false, { onExpired });
+    fireEvent.error(container.querySelector("video")!);
+    expect(onExpired).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Video unavailable.")).toBeInTheDocument();
+  });
+
+  it("shows unavailable when asking for a fresh link fails", async () => {
+    const onExpired = vi.fn().mockRejectedValue(new Error("offline"));
+    const { container } = renderPlayer(false, { onExpired });
+    fireEvent.error(container.querySelector("video")!);
+    expect(await screen.findByText("Video unavailable.")).toBeInTheDocument();
+  });
+
+  it("waits for the new link when the caller says one is coming", async () => {
+    const onExpired = vi.fn().mockResolvedValue(true);
+    const { container } = renderPlayer(false, { onExpired });
+    fireEvent.error(container.querySelector("video")!);
+    await act(async () => undefined);
+    expect(screen.queryByText("Video unavailable.")).not.toBeInTheDocument();
+  });
+
   it("asks again after a refreshed link has loaded (a later expiry)", () => {
     const onExpired = vi.fn();
     const { container } = renderPlayer(false, { onExpired });

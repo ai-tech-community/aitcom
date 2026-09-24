@@ -7,6 +7,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { useState } from "react";
 import { NextIntlClientProvider } from "next-intl";
 
 import en from "../../../../messages/en.json";
@@ -59,14 +60,30 @@ vi.mock("../feed/feed-video-player", () => ({
   }: {
     video: { url: string };
     preload?: string;
-    onExpired?: () => void;
-  }) => (
-    <div data-testid="player" data-src={video.url} data-preload={preload}>
-      <button type="button" onClick={onExpired}>
-        {`expire ${video.url}`}
-      </button>
-    </div>
-  ),
+    onExpired?: () => void | Promise<boolean>;
+  }) => {
+    // Stands in for the real player's contract: a false or failed answer
+    // means no fresh link is coming, so it shows "Video unavailable".
+    const [failed, setFailed] = useState(false);
+    return (
+      <div data-testid="player" data-src={video.url} data-preload={preload}>
+        <button
+          type="button"
+          onClick={() => {
+            const answer = onExpired?.();
+            if (answer)
+              answer.then(
+                (ok) => setFailed(!ok),
+                () => setFailed(true),
+              );
+          }}
+        >
+          {`expire ${video.url}`}
+        </button>
+        {failed ? <p>Video unavailable.</p> : null}
+      </div>
+    );
+  },
 }));
 vi.mock("../feed/feed-comments", () => ({
   FeedComments: ({ postId }: { postId: number }) => (
@@ -316,7 +333,13 @@ describe("ReelsViewer", () => {
       expect.anything(),
     );
     expect(m.query.refetch).not.toHaveBeenCalled();
-    const [, update] = m.reelsUtils.setInfiniteData.mock.calls[0]!;
+    const [key, update] = m.reelsUtils.setInfiniteData.mock.calls[0]!;
+    expect(key).toEqual({
+      communitySlug: "mlops",
+      limit: 8,
+      startAtPostId: null,
+    });
+    expect(screen.queryByText("Video unavailable.")).not.toBeInTheDocument();
     const cached = { pageParams: [null], pages: [page([reel(1), reel(2)])] };
     const next = update(cached);
     expect(next.pages[0].items[0]).toBe(cached.pages[0]!.items[0]);
@@ -352,6 +375,26 @@ describe("ReelsViewer", () => {
     fireEvent.keyDown(dialog, { key: "ArrowDown" });
     fireEvent.keyDown(dialog, { key: "ArrowDown" });
     expect(screen.getByText("Video 3 of 3")).toBeInTheDocument();
+  });
+
+  it("shows unavailable when re-signing an expired link fails", async () => {
+    m.reelsUtils.fetch.mockRejectedValue(new Error("offline"));
+    renderViewer([page([reel(1), reel(2)])]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "expire https://v/1.mp4" }),
+    );
+    expect(await screen.findByText("Video unavailable.")).toBeInTheDocument();
+    expect(m.reelsUtils.setInfiniteData).not.toHaveBeenCalled();
+  });
+
+  it("shows unavailable when the video can no longer be watched", async () => {
+    m.reelsUtils.fetch.mockResolvedValue(page([], "unavailable"));
+    renderViewer([page([reel(1), reel(2)])]);
+    fireEvent.click(
+      screen.getByRole("button", { name: "expire https://v/1.mp4" }),
+    );
+    expect(await screen.findByText("Video unavailable.")).toBeInTheDocument();
+    expect(m.reelsUtils.setInfiniteData).not.toHaveBeenCalled();
   });
 
   describe("scrolling", () => {

@@ -52,7 +52,8 @@ export function ReelSlide({
   onComments: () => void;
   onCopyLink: () => void;
   onReport: () => void;
-  onVideoExpired: () => void;
+  /** Resolves true when a fresh link is on its way. */
+  onVideoExpired: () => Promise<boolean>;
 }) {
   const t = useTranslations("communities.reels");
   const tReport = useTranslations("communities.report");
