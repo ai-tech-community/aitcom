@@ -28,7 +28,6 @@ describe("classifyStartupPlace", () => {
   it("reads a sourced country name, with or without a city before it", () => {
     expect(codeOf("Israel")).toBe("IL");
     expect(codeOf("Kefar Malal, Central District, Israel")).toBe("IL");
-    expect(codeOf("Tbilisi, Georgia")).toBe("GE");
     expect(codeOf("Zürich, ZH, Switzerland")).toBe("CH");
     expect(codeOf("Hong Kong, Hong Kong")).toBe("HK");
   });
@@ -48,12 +47,41 @@ describe("classifyStartupPlace", () => {
     expect(codeOf("Frankfurt am Main")).toBe("DE");
   });
 
-  it("resolves an ambiguous state code only through a known city", () => {
+  it("uses the city list only for the whole place, never part of it", () => {
     // IL is Illinois and Israel; CA is California and Canada.
-    expect(codeOf("Tel Aviv, IL")).toBe("IL");
     expect(codeOf("Chicago, IL")).toBe("US");
-    expect(codeOf("Toronto, CA")).toBe("CA");
+    expect(codeOf("San Francisco, CA")).toBe("US");
+    expect(codeOf("Tel Aviv, IL")).toBe("unknown");
+    expect(codeOf("Toronto, CA")).toBe("unknown");
+    expect(codeOf("Dublin, CA")).toBe("unknown");
+    expect(codeOf("London, ON")).toBe("unknown");
+    expect(codeOf("London, Ontario")).toBe("unknown");
+    expect(codeOf("Cambridge, Ontario")).toBe("unknown");
     expect(codeOf("Springfield, IL")).toBe("unknown");
+  });
+
+  it("never reads a state code that is also a country code", () => {
+    expect(codeOf("Baku, AZ")).toBe("unknown");
+    expect(codeOf("George Town, KY")).toBe("unknown");
+    expect(codeOf("Ottawa, CA")).toBe("unknown");
+    expect(codeOf("CA")).toBe("none");
+    expect(codeOf("IL")).toBe("none");
+    expect(codeOf("Houston, TX")).toBe("US");
+  });
+
+  it("reads Georgia as the country only when it stands alone", () => {
+    expect(codeOf("Georgia")).toBe("GE");
+    expect(codeOf("Atlanta, Georgia")).toBe("unknown");
+    expect(codeOf("Tbilisi, Georgia")).toBe("unknown");
+    expect(codeOf("Atlanta, Georgia, United States")).toBe("US");
+  });
+
+  it("reads country names written with and, straight quotes, or common names", () => {
+    expect(codeOf("Sarajevo, Bosnia and Herzegovina")).toBe("BA");
+    expect(codeOf("Port of Spain, Trinidad and Tobago")).toBe("TT");
+    expect(codeOf("Abidjan, Cote d'Ivoire")).toBe("CI");
+    expect(codeOf("Kinshasa, Democratic Republic of the Congo")).toBe("CD");
+    expect(codeOf("Kinshasa, DR Congo")).toBe("CD");
   });
 
   it("never turns a city it does not know into a country", () => {

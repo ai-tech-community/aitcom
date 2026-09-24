@@ -9,10 +9,7 @@
  * write time) or `none` (remote, multi-region). Nothing outside the closed
  * code list is ever shown as a country.
  */
-import {
-  normalizeStartupPlaceKey,
-  startupPlaceCentroid,
-} from "./startups-places";
+import { normalizeStartupPlaceKey, startupPlaceByKey } from "./startups-places";
 import type { StartupLocale } from "./startups";
 
 /** Assigned ISO 3166-1 alpha-2 codes, plus XK (Kosovo). */
@@ -73,6 +70,10 @@ const COUNTRY_ALIASES: Record<string, StartupCountryCode> = {
   swaziland: "SZ",
   macau: "MO",
   luxemburg: "LU",
+  "democratic republic of the congo": "CD",
+  "dr congo": "CD",
+  drc: "CD",
+  "republic of the congo": "CG",
 };
 
 const US_STATES = [
@@ -130,26 +131,40 @@ const US_STATES = [
 
 /**
  * US state codes that are also ISO country codes ("IL" = Illinois or
- * Israel). A bare code like this is never read as a state; only a known
- * city before it ("Chicago, IL") can place it.
+ * Israel, "AZ" = Arizona or Azerbaijan). Derived, so none is missed. These
+ * are never read as a state or a country on their own.
  */
-// prettier-ignore
-const AMBIGUOUS_CODES = new Set([
-  "al", "ar", "ca", "co", "de", "ga", "id", "il", "in", "la", "ma", "md",
-  "me", "mn", "mo", "ms", "mt", "nc", "ne", "pa", "sc", "sd", "tn", "va",
-]);
+const AMBIGUOUS_CODES: ReadonlySet<string> = new Set(
+  US_STATES.map(([code]) => code).filter((code) =>
+    CODE_SET.has(code.toUpperCase()),
+  ),
+);
 
 /**
- * Place key → country code. ICU English names (long and short) for every
- * code, then aliases, then US states. "georgia" stays the country: US
- * Georgia places are written "…, Georgia, United States".
+ * Names that are a country alone but a US state after a city ("Tbilisi,
+ * Georgia" vs "Atlanta, Georgia"). After a city they go to the geocoder.
+ */
+const COUNTRY_ONLY_ALONE = new Set(["georgia"]);
+
+/** Country-name key: place key with "&" as "and" and straight quotes. */
+function countryKey(value: string | null | undefined): string | null {
+  return (
+    normalizeStartupPlaceKey(value)
+      ?.replace(/\s*&\s*/g, " and ")
+      .replace(/[\u2018\u2019]/g, "'") ?? null
+  );
+}
+
+/**
+ * Country-name key → country code. ICU English names (long and short) for
+ * every code, then aliases, then US states.
  */
 const COUNTRY_BY_NAME: ReadonlyMap<string, StartupCountryCode> = (() => {
   const byName = new Map<string, StartupCountryCode>();
   const add = (name: string | undefined, code: StartupCountryCode) => {
-    const key = normalizeStartupPlaceKey(name);
+    const key = countryKey(name);
     // Two-letter keys are codes, not names; only the explicit aliases
-    // ("us", "uk") may claim one.
+    // ("us", "uk") and unambiguous state codes may claim one.
     if (key && key.length > 2 && !byName.has(key)) byName.set(key, code);
   };
   for (const style of ["long", "short"] as const) {
@@ -179,6 +194,15 @@ export type StartupPlaceClass =
   /** A place this list cannot name. `query` is the first sourced place. */
   | { kind: "unknown"; query: string };
 
+/**
+ * Country of the first sourced place, from local lists only:
+ * 1. the last comma part names a country or unambiguous US state;
+ * 2. else the whole place is a known entry in the map-pin place list
+ *    ("Berlin", "Chicago, IL") — never a part of it, so "Dublin, CA" is
+ *    not Dublin, Ireland;
+ * 3. else `unknown` for the geocoder, or `none` when it cannot be one
+ *    country (remote, a region, a bare ambiguous code).
+ */
 export function classifyStartupPlace(
   region: string | null | undefined,
 ): StartupPlaceClass {
@@ -188,14 +212,19 @@ export function classifyStartupPlace(
     .split(",")
     .map((part) => part.trim())
     .filter(Boolean);
-  const last = normalizeStartupPlaceKey(parts.at(-1));
+  const last = countryKey(parts.at(-1));
   if (!last || NOT_A_COUNTRY.test(last)) return { kind: "none" };
 
-  const named = COUNTRY_BY_NAME.get(last);
+  const alone = parts.length === 1;
+  const named =
+    alone || !COUNTRY_ONLY_ALONE.has(last) ? COUNTRY_BY_NAME.get(last) : null;
   if (named) return { kind: "country", code: named };
 
-  const centroid = startupPlaceCentroid(place);
-  if (centroid) return { kind: "country", code: centroid.country };
+  // A bare two-letter code that is not a US state is not a place.
+  if (alone && last.length <= 2) return { kind: "none" };
+
+  const known = startupPlaceByKey(parts.join(", "));
+  if (known) return { kind: "country", code: known.country };
 
   return { kind: "unknown", query: parts.join(", ") };
 }

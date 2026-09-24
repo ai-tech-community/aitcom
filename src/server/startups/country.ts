@@ -95,24 +95,39 @@ export async function startupCountryForWrite(
 
 export type StartupCountryBackfillGroup = {
   region: string | null;
-  ids: string[];
   country: StartupCountryCode | null;
+  ids: string[];
+  /**
+   * Rows to write: stored country differs from `country`. Never a row that
+   * would lose a stored country to a null result (a failed lookup).
+   */
+  stale: string[];
 };
 
 /** One group per distinct region, resolved once. Largest first. */
 export async function planStartupCountryBackfill(
-  rows: ReadonlyArray<{ id: string; region: string | null }>,
+  rows: ReadonlyArray<{
+    id: string;
+    region: string | null;
+    country: string | null;
+  }>,
   resolve: StartupCountryResolver,
 ): Promise<StartupCountryBackfillGroup[]> {
-  const byRegion = new Map<string | null, string[]>();
+  const byRegion = new Map<string | null, typeof rows>();
   for (const row of rows) {
-    const ids = byRegion.get(row.region) ?? [];
-    ids.push(row.id);
-    byRegion.set(row.region, ids);
+    byRegion.set(row.region, [...(byRegion.get(row.region) ?? []), row]);
   }
   const groups: StartupCountryBackfillGroup[] = [];
-  for (const [region, ids] of byRegion) {
-    groups.push({ region, ids, country: await resolve(region) });
+  for (const [region, members] of byRegion) {
+    const country = await resolve(region);
+    groups.push({
+      region,
+      country,
+      ids: members.map((row) => row.id),
+      stale: country
+        ? members.filter((row) => row.country !== country).map((row) => row.id)
+        : [],
+    });
   }
   return groups.sort((a, b) => b.ids.length - a.ids.length);
 }

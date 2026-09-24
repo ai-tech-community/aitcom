@@ -404,6 +404,15 @@ export function startupPlaceCentroid(
   return null;
 }
 
+/** The place list entry for exactly this place, with no partial matches. */
+export function startupPlaceByKey(
+  value: string | null | undefined,
+): StartupPlaceCentroid | null {
+  if (isStreetLikeStartupPlace(value)) return null;
+  const key = normalizeStartupPlaceKey(value);
+  return key ? (PLACE_CENTROIDS[key] ?? null) : null;
+}
+
 export function sourcedStartupPlaceLabel(
   value: string | null | undefined,
 ): string | null {

@@ -1,5 +1,7 @@
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 const MIN_INTERVAL_MS = 1100;
+/** A hung Nominatim must not hang the save or backfill that called it. */
+const REQUEST_TIMEOUT_MS = 10_000;
 
 const CONTINENTS = new Set([
   "europe",
@@ -69,6 +71,7 @@ async function search(
         "User-Agent": userAgent,
         "Accept-Language": "en",
       },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
     if (!res.ok) {
       console.error("[geocode] nominatim error", res.status, await res.text());

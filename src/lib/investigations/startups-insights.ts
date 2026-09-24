@@ -249,7 +249,8 @@ export function buildStartupInsights(
       label: startupCountryLabel(code, locale),
       count,
     }))
-    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    // Ties break on the code, so both page languages rank the same.
+    .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
   const topCountries = rankedCountries.slice(
     0,
     STARTUPS_INSIGHTS_TOP_COUNTRIES,

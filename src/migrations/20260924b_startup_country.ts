@@ -1,6 +1,7 @@
 // ISO country of the sourced region, resolved at write time. Existing rows
-// are filled by src/scripts/backfill-startup-countries.ts (geocoder calls
-// do not belong in a deploy-time migration).
+// are filled by `pnpm db:backfill-startup-countries`
+// (src/server/startups/backfill-countries.ts): geocoder calls do not belong
+// in a deploy-time migration.
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
 import { sql } from "@payloadcms/db-postgres";
 

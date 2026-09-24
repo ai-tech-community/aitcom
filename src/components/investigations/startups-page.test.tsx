@@ -1045,7 +1045,7 @@ describe("Startups Insights tab", () => {
       [...where.querySelectorAll("[data-insight-row]")].map((row) =>
         row.getAttribute("data-insight-row"),
       ),
-    ).toEqual(["IL", "US", "FR", "DE", "GB"]);
+    ).toEqual(["IL", "US", "DE", "FR", "GB"]);
     expect(
       [...where.querySelectorAll("[data-insight-row]")].map((row) =>
         row.textContent?.replace(/\d+$/, ""),
@@ -1053,8 +1053,8 @@ describe("Startups Insights tab", () => {
     ).toEqual([
       "Israel",
       "United States",
-      "France",
       "Germany",
+      "France",
       "United Kingdom",
     ]);
     expect(where.textContent).toContain(

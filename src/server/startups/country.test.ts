@@ -156,16 +156,31 @@ describe("planStartupCountryBackfill", () => {
     );
     const groups = await planStartupCountryBackfill(
       [
-        { id: "a", region: "Hamburg" },
-        { id: "b", region: "Remote" },
-        { id: "c", region: "Hamburg" },
+        { id: "a", region: "Hamburg", country: null },
+        { id: "b", region: "Remote", country: null },
+        { id: "c", region: "Hamburg", country: null },
       ],
       resolve,
     );
     expect(groups).toEqual([
-      { region: "Hamburg", ids: ["a", "c"], country: "DE" },
-      { region: "Remote", ids: ["b"], country: null },
+      { region: "Hamburg", country: "DE", ids: ["a", "c"], stale: ["a", "c"] },
+      { region: "Remote", country: null, ids: ["b"], stale: [] },
     ]);
     expect(resolve).toHaveBeenCalledTimes(2);
+  });
+
+  it("rewrites a wrong stored country but never clears one", async () => {
+    const resolve = vi.fn(async (region: string | null | undefined) =>
+      region === "Atlanta, Georgia" ? ("US" as const) : null,
+    );
+    const groups = await planStartupCountryBackfill(
+      [
+        { id: "a", region: "Atlanta, Georgia", country: "GE" },
+        { id: "b", region: "Atlanta, Georgia", country: "US" },
+        { id: "c", region: "Hamburg", country: "DE" },
+      ],
+      resolve,
+    );
+    expect(groups.map((group) => group.stale)).toEqual([["a"], []]);
   });
 });
