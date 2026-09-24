@@ -1,5 +1,7 @@
 import type { CollectionConfig } from "payload";
 
+import { VIDEO_VISIBILITIES, VIDEO_VISIBILITY_LABELS } from "@/lib/video-rules";
+
 export const FeedPosts: CollectionConfig = {
   slug: "feed-posts",
   admin: {
@@ -80,10 +82,10 @@ export const FeedPosts: CollectionConfig = {
       required: true,
       defaultValue: "community",
       index: true,
-      options: [
-        { label: "Community only", value: "community" },
-        { label: "Public", value: "public" },
-      ],
+      options: VIDEO_VISIBILITIES.map((value) => ({
+        label: VIDEO_VISIBILITY_LABELS[value],
+        value,
+      })),
       admin: {
         position: "sidebar",
         description: "Only video posts may be public. Fixed after posting.",

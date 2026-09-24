@@ -32,6 +32,11 @@ export const THUMB_CONTENT_TYPE = "image/jpeg";
 
 export const VIDEO_VISIBILITIES = ["community", "public"] as const;
 export type VideoVisibility = (typeof VIDEO_VISIBILITIES)[number];
+/** Names for the admin panel (members see translated copy instead). */
+export const VIDEO_VISIBILITY_LABELS: Record<VideoVisibility, string> = {
+  community: "Community only",
+  public: "Public",
+};
 export type VideoStorageClass = "public" | "private";
 
 export function storageClassFor(

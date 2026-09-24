@@ -10,3 +10,11 @@ export const REPORT_REASONS = [
   "other",
 ] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
+
+/** Names for the admin panel (members see translated copy instead). */
+export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
+  spam: "Spam",
+  inappropriate: "Inappropriate",
+  copyright: "Copyright",
+  other: "Other",
+};

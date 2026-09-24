@@ -2,6 +2,9 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
+import { REPORT_REASONS } from "@/lib/post-report-reasons";
+import { VIDEO_VISIBILITIES } from "@/lib/video-rules";
+
 import { FeedPosts } from "./FeedPosts";
 import { PostReports } from "./PostReports";
 import { VideoUploads } from "./VideoUploads";
@@ -27,6 +30,33 @@ describe("community video schema", () => {
     ) as { fields: Array<{ name: string; unique?: boolean }> } | undefined;
     const key = video?.fields.find((field) => field.name === "key");
     expect(key?.unique).toBe(true);
+  });
+
+  it("takes select options from the shared value lists, with admin labels", () => {
+    const optionsOf = (fields: unknown, name: string) =>
+      (
+        (fields as Array<{ name?: string; options?: unknown }>).find(
+          (field) => field.name === name,
+        ) as { options: Array<{ label: string; value: string }> }
+      ).options;
+    expect(optionsOf(PostReports.fields, "reason")).toEqual([
+      { label: "Spam", value: "spam" },
+      { label: "Inappropriate", value: "inappropriate" },
+      { label: "Copyright", value: "copyright" },
+      { label: "Other", value: "other" },
+    ]);
+    expect(
+      optionsOf(PostReports.fields, "reason").map((option) => option.value),
+    ).toEqual([...REPORT_REASONS]);
+    for (const fields of [FeedPosts.fields, VideoUploads.fields]) {
+      expect(optionsOf(fields, "visibility")).toEqual([
+        { label: "Community only", value: "community" },
+        { label: "Public", value: "public" },
+      ]);
+      expect(
+        optionsOf(fields, "visibility").map((option) => option.value),
+      ).toEqual([...VIDEO_VISIBILITIES]);
+    }
   });
 
   it("defines reports and uploads collections", () => {

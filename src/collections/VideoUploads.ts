@@ -1,5 +1,7 @@
 import type { CollectionConfig } from "payload";
 
+import { VIDEO_VISIBILITIES, VIDEO_VISIBILITY_LABELS } from "@/lib/video-rules";
+
 export const VideoUploads: CollectionConfig = {
   slug: "video-uploads",
   admin: {
@@ -28,10 +30,10 @@ export const VideoUploads: CollectionConfig = {
       name: "visibility",
       type: "select",
       required: true,
-      options: [
-        { label: "Community only", value: "community" },
-        { label: "Public", value: "public" },
-      ],
+      options: VIDEO_VISIBILITIES.map((value) => ({
+        label: VIDEO_VISIBILITY_LABELS[value],
+        value,
+      })),
     },
     { name: "finishedAt", type: "date", index: true },
   ],

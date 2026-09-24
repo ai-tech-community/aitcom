@@ -1,5 +1,10 @@
 import type { CollectionConfig } from "payload";
 
+import {
+  REPORT_REASON_LABELS,
+  REPORT_REASONS,
+} from "@/lib/post-report-reasons";
+
 export const PostReports: CollectionConfig = {
   slug: "post-reports",
   admin: {
@@ -22,12 +27,10 @@ export const PostReports: CollectionConfig = {
       name: "reason",
       type: "select",
       required: true,
-      options: [
-        { label: "Spam", value: "spam" },
-        { label: "Inappropriate", value: "inappropriate" },
-        { label: "Copyright", value: "copyright" },
-        { label: "Other", value: "other" },
-      ],
+      options: REPORT_REASONS.map((value) => ({
+        label: REPORT_REASON_LABELS[value],
+        value,
+      })),
     },
     { name: "note", type: "text", maxLength: 500 },
     {
