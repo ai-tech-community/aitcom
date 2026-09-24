@@ -628,6 +628,7 @@ describe("startup role slugs and jobs query", () => {
         },
       ],
       query,
+      null,
     );
     expect(filtered).toHaveLength(1);
     expect(filtered[0]?.startupSlug).toBe("cursor-anysphere");
@@ -662,12 +663,17 @@ describe("startup role slugs and jobs query", () => {
         location: "London",
         sort: "role",
       }),
+      null,
     );
     expect(sorted.map((row) => row.title)).toEqual(["Advisor"]);
-    const byWorkType = applyStartupJobsQuery(sorted, {
-      ...parseStartupJobsQuery({ workType: "Full-time" }),
-      company: "",
-    });
+    const byWorkType = applyStartupJobsQuery(
+      sorted,
+      {
+        ...parseStartupJobsQuery({ workType: "Full-time" }),
+        company: "",
+      },
+      null,
+    );
     expect(byWorkType).toHaveLength(0);
   });
 });

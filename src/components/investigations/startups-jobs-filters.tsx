@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { Globe, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { usePathname, useRouter } from "@/i18n/navigation";
@@ -33,6 +39,12 @@ import { cn } from "@/lib/utils";
  * classification: a chip only fills the search box.
  */
 const QUICK_SEARCHES = ["Engineer", "Research", "Sales", "Design", "Product"];
+
+/**
+ * Wait after the last keystroke before asking the server for results. The
+ * box itself updates at once; only the URL (and so the search) waits.
+ */
+const SEARCH_DEBOUNCE_MS = 300;
 
 export type StartupsJobsFiltersLabels = {
   search: string;
@@ -78,6 +90,34 @@ export function StartupsJobsFilters({
   ).length;
   const [filtersOpen, setFiltersOpen] = useState(activeFilters > 0);
   const remoteOn = query.location === STARTUP_JOBS_REMOTE;
+  const [, startTransition] = useTransition();
+  // What the user typed. The URL (`query.q`) catches up after the debounce.
+  const [searchDraft, setSearchDraft] = useState(query.q);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function cancelPendingSearch() {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+  }
+
+  // Back/forward, a quick-search chip or Clear changes the URL: show it. The
+  // URL holds the trimmed text, so keep the draft when only spacing differs,
+  // or a space typed before the next word would vanish.
+  useEffect(() => {
+    if (searchTimer.current) return;
+    setSearchDraft((draft) => (draft.trim() === query.q ? draft : query.q));
+  }, [query.q]);
+
+  useEffect(() => cancelPendingSearch, []);
+
+  function onSearchChange(value: string) {
+    setSearchDraft(value);
+    cancelPendingSearch();
+    searchTimer.current = setTimeout(() => {
+      searchTimer.current = null;
+      replaceQuery({ q: value });
+    }, SEARCH_DEBOUNCE_MS);
+  }
 
   function replaceQuery(next: Partial<StartupJobsQuery>) {
     const filterChanged =
@@ -86,14 +126,22 @@ export function StartupsJobsFilters({
       next.location !== undefined ||
       next.workType !== undefined ||
       next.sort !== undefined;
+    if (next.q !== undefined) {
+      cancelPendingSearch();
+      setSearchDraft(next.q);
+    }
     const merged = parseStartupJobsQuery({
       ...query,
+      // A filter picked mid-typing keeps what is already in the box.
+      q: searchDraft,
       ...next,
       page: next.page ?? (filterChanged ? 1 : query.page),
     });
     const path = buildStartupJobsPath(merged);
     const qs = path.includes("?") ? path.slice(path.indexOf("?") + 1) : "";
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    startTransition(() => {
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    });
   }
 
   const sortLabel: Record<StartupJobsSort, string> = {
@@ -116,9 +164,9 @@ export function StartupsJobsFilters({
           <Input
             id="jobs-search"
             type="search"
-            value={query.q}
+            value={searchDraft}
             placeholder={labels.search}
-            onChange={(event) => replaceQuery({ q: event.target.value })}
+            onChange={(event) => onSearchChange(event.target.value)}
             className="pl-9"
           />
         </div>
@@ -183,7 +231,7 @@ export function StartupsJobsFilters({
         </div>
       </div>
 
-      {query.q ? null : (
+      {searchDraft ? null : (
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground text-xs">
             {labels.tryLabel}
@@ -265,7 +313,7 @@ export function StartupsJobsFilters({
         </p>
         <div className="flex flex-wrap items-center gap-2">
           {aside}
-          {activeFilters > 0 || query.q ? (
+          {activeFilters > 0 || searchDraft ? (
             <Button
               type="button"
               variant="ghost"

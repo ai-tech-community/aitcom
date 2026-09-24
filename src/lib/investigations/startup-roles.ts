@@ -59,6 +59,19 @@ export type StartupRolePublic = {
   status: "open" | "closed";
 };
 
+/**
+ * A role as the jobs list shows it. The description is left out on purpose:
+ * all open descriptions together are tens of megabytes, and the list never
+ * renders them. Full-text search reads them in the database instead.
+ */
+export type StartupRoleListing = Omit<StartupRolePublic, "descriptionText">;
+
+/**
+ * Role ids the full-text search index matched for `query.q`, or `null` when
+ * the query has no search terms and no text filter applies.
+ */
+export type StartupRoleTextMatches = ReadonlySet<string> | null;
+
 export type ExtractedJobListing = {
   title: string;
   sourceUrl: string;
@@ -133,7 +146,7 @@ export function isRemoteFriendlyRole(
 }
 
 /** Filter options, drawn only from values the listed roles actually have. */
-export function startupJobsFacets(roles: readonly StartupRolePublic[]): {
+export function startupJobsFacets(roles: readonly StartupRoleListing[]): {
   companies: Array<{ slug: string; name: string; logoUrl: string | null }>;
   locations: string[];
   workTypes: StartupWorkType[];
@@ -378,20 +391,70 @@ export function startupJobsFollowFromQuery(
   return follow;
 }
 
-function jobsSortKey(role: StartupRolePublic, sort: StartupJobsSort): string {
+/** Longest search term kept; longer input is noise, not a word. */
+const STARTUP_ROLE_SEARCH_TERM_MAX = 64;
+
+/** More terms than this only narrow an already-empty result. */
+const STARTUP_ROLE_SEARCH_TERMS_MAX = 8;
+
+/**
+ * Words of a jobs search, lowercased. Only letters and digits survive, so a
+ * term can never carry tsquery syntax (`&`, `|`, `!`, `:`, parentheses).
+ */
+export function startupRoleSearchTerms(q: string): string[] {
+  const terms: string[] = [];
+  for (const match of q.toLowerCase().matchAll(/[\p{L}\p{N}]+/gu)) {
+    const term = match[0].slice(0, STARTUP_ROLE_SEARCH_TERM_MAX);
+    if (!terms.includes(term)) terms.push(term);
+    if (terms.length === STARTUP_ROLE_SEARCH_TERMS_MAX) break;
+  }
+  return terms;
+}
+
+/**
+ * Shorter words match only as whole words: as prefixes, "c" or "go" would
+ * match most of the catalog.
+ */
+export const STARTUP_ROLE_SEARCH_PREFIX_MIN = 3;
+
+export type StartupRoleSearchTerm = { term: string; prefix: boolean };
+
+/**
+ * How each word of a jobs search matches: every word must match, and a word
+ * long enough also matches as a prefix, so results follow the user while
+ * they type ("engin" finds "engineering").
+ */
+export function startupRoleSearchPlan(q: string): StartupRoleSearchTerm[] {
+  return startupRoleSearchTerms(q).map((term) => ({
+    term,
+    prefix: term.length >= STARTUP_ROLE_SEARCH_PREFIX_MIN,
+  }));
+}
+
+function jobsSortKey(role: StartupRoleListing, sort: StartupJobsSort): string {
   if (sort === "company") return role.startupName;
   if (sort === "location") return role.location ?? "";
   return role.title;
 }
 
-export function applyStartupJobsQuery(
-  roles: readonly StartupRolePublic[],
+/**
+ * Filters and sorts roles for the jobs list. Text search is not done here:
+ * `textMatches` is the full-text index's answer for `query.q` (see
+ * `matchPublicStartupRoleIds`), and this function only intersects with it.
+ */
+export function applyStartupJobsQuery<R extends StartupRoleListing>(
+  roles: readonly R[],
   query: StartupJobsQuery,
-): StartupRolePublic[] {
+  textMatches: StartupRoleTextMatches,
+): R[] {
   const company = query.company;
   const location = query.location.toLowerCase().replace(/\s+/g, " ");
   const workType = startupWorkTypeOf(query.workType);
-  const needle = query.q.trim().toLowerCase();
+  const searching = startupRoleSearchTerms(query.q).length > 0;
+  if (searching && !textMatches) {
+    throw new Error("A jobs search needs the full-text index matches.");
+  }
+  const matches = searching ? textMatches : null;
   const collator = new Intl.Collator(undefined, { sensitivity: "base" });
   return roles
     .filter((role) => {
@@ -407,16 +470,7 @@ export function applyStartupJobsQuery(
       if (workType && startupWorkTypeOf(role.workType) !== workType) {
         return false;
       }
-      if (!needle) return true;
-      const haystack = [
-        role.title,
-        role.startupName,
-        role.location ?? "",
-        role.workType ?? "",
-      ]
-        .join("\n")
-        .toLowerCase();
-      return haystack.includes(needle);
+      return !matches || matches.has(role.id);
     })
     .sort((a, b) => {
       if (query.sort === "location") {
@@ -437,14 +491,15 @@ export function applyStartupJobsQuery(
  * `lastSeenAt`. No employer publish date is invented; roles without `listedAt`
  * stay out of the set.
  */
-export function rolesListedSince(
-  roles: readonly StartupRolePublic[],
+export function rolesListedSince<R extends StartupRoleListing>(
+  roles: readonly R[],
   query: StartupJobsQuery,
+  textMatches: StartupRoleTextMatches,
   lastSeenAt: string,
-): StartupRolePublic[] {
+): R[] {
   const seen = Date.parse(lastSeenAt);
   if (!Number.isFinite(seen)) return [];
-  return applyStartupJobsQuery(roles, { ...query, page: 1 })
+  return applyStartupJobsQuery(roles, { ...query, page: 1 }, textMatches)
     .filter((role) => {
       const listed = Date.parse(role.listedAt ?? "");
       return Number.isFinite(listed) && listed > seen;
@@ -454,12 +509,12 @@ export function rolesListedSince(
     );
 }
 
-export function paginateStartupRoles(
-  roles: readonly StartupRolePublic[],
+export function paginateStartupRoles<R extends StartupRoleListing>(
+  roles: readonly R[],
   page: number,
   pageSize: number = STARTUPS_PAGE_SIZE,
 ): {
-  items: StartupRolePublic[];
+  items: R[];
   page: number;
   totalPages: number;
   total: number;

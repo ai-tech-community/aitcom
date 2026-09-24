@@ -13,7 +13,7 @@ import {
   STARTUP_WORK_TYPE_LABELS,
   isRemoteFriendlyRole,
   startupWorkTypeOf,
-  type StartupRolePublic,
+  type StartupRoleListing,
 } from "@/lib/investigations/startup-roles";
 
 export type StartupsJobsListCopy = {
@@ -31,7 +31,7 @@ type Group = {
   slug: string;
   name: string;
   logoUrl: string | null;
-  roles: StartupRolePublic[];
+  roles: StartupRoleListing[];
 };
 
 /**
@@ -49,7 +49,7 @@ export function StartupsJobsList({
   canTrack,
   copy,
 }: {
-  roles: readonly StartupRolePublic[];
+  roles: readonly StartupRoleListing[];
   grouped: boolean;
   locale: "en" | "nl";
   /** Matching roles per company across all pages, for group headers. */
@@ -146,7 +146,7 @@ function RoleRow({
   canTrack,
   copy,
 }: {
-  role: StartupRolePublic;
+  role: StartupRoleListing;
   showCompany: boolean;
   locale: "en" | "nl";
   newSlugs: ReadonlySet<string>;
