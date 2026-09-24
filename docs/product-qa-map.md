@@ -437,7 +437,16 @@ owner/admin/moderator. A `visibility: "community"` post is shown only
 to active members; non-members (signed out, or signed in without a
 membership) see `visibility: "public"` posts only. `getFeed`,
 `getActivity` (including pinned posts), `getReels`, the report
-procedures, and the agent API all use it.
+procedures, likes and comments, and the agent API all use it. For one
+post by id, `requireViewablePost` (`feed-posts.ts`) loads the post,
+the caller's active membership, and applies `canViewPost`: a post the
+caller may not see is NOT_FOUND. `feed.toggleLike`, `feed.addComment`
+(and the agent like/comment) also need an active membership (FORBIDDEN
+otherwise); `feed.getComments` needs only that the caller can see the
+post. Hub-wide posts (no community) have no visibility rule.
+Post views sent to clients never carry `reportCount` or video storage
+keys; `editPost`, `deletePost`, and `finishVideoPost` answer with
+`{ id }` only.
 
 The member queries are `enabled` only when authenticated **and** a
 member. Non-members see the chrome without member data; the one
@@ -454,7 +463,10 @@ off), and `feed.getReels` (empty when off). It is a `NEXT_PUBLIC_`
 variable, so it is set per deployment at build time, not per
 community.
 
-- **Posting.** The browser checks the clip (≤ 90 s) and converts it
+- **Posting.** As soon as a clip is picked, the browser checks that
+  it can convert video and that the file can be read and is ≤ 90 s
+  (`readVideoDuration`); a clip that fails shows its error at once,
+  before a caption is written. On Post it converts the clip
   on the device (`video-transcode.ts`, Mediabunny/WebCodecs) to H.264
   MP4 (long side ≤ 1280 px, ≤ 30 fps) plus a JPEG thumbnail. Then
   `feed.createVideoUpload({ communitySlug, visibility })` checks the
@@ -467,9 +479,18 @@ community.
   23 h ago — `FINISH_WINDOW_HOURS`), inspects both objects (exist,
   content type, size), and creates the `feed-posts` row with the
   `video` group and `visibility`. A bad object is deleted and the
-  post is refused. `feed_posts.video_key` is unique, so a double
-  finish cannot create two posts. A caption (1–2000 chars) is
+  post is refused (if removing the bad files fails, the grant is
+  still deleted and the error logged). `feed_posts.video_key` is
+  unique, so a double finish cannot create two posts. A finish retried
+  after the post was created but before the grant was closed closes
+  the grant and returns the same post. A caption (1–2000 chars) is
   required, as for text posts.
+- **Retry.** A failed upload shows **Try again** (same caption and
+  visibility). The browser keeps the converted clip, so a retry skips
+  conversion, and re-sends to the same upload grant while it has more
+  than a minute left (and visibility is unchanged); otherwise it asks
+  for a new grant. Cancel keeps the converted clip; a failed finish,
+  removing, or replacing the clip drops the grant.
 - **Visibility.** `community` (default) or `public`. Only video posts
   can be `public`; text and image posts are always `community`
   (`createPost` and the agent draft path write it explicitly).
@@ -477,9 +498,13 @@ community.
   `media/videos/public/{communityId}/{uploadId}.mp4|.jpg` and play by
   direct URL; community-only files live at
   `private/videos/{communityId}/{uploadId}.mp4|.jpg` and play through
-  a 1-hour presigned GET issued inside the list query after the
-  visibility rule. The player refetches once when a link expires,
-  then shows "Video unavailable".
+  a presigned GET issued inside the list query after the visibility
+  rule. Links are signed at the start of a 30-minute window and live
+  90 minutes, so every refetch inside a window returns the identical
+  URL (a playing video does not restart) and each link lasts at least
+  an hour from when it is served. On a load error the player asks for
+  a fresh link once (community-only videos only; a public link never
+  changes), then shows "Video unavailable" with **Try again**.
 - **Reports.** Any signed-in viewer who can see a post (not its
   author) can report it once: `feed.reportPost({ postId, reason,
   note? })`, reasons `spam | inappropriate | copyright | other`, note
@@ -487,7 +512,9 @@ community.
   video, and is not behind the flag. The **first** report sets
   `hiddenAt`, so the post disappears for everyone but its author and
   the moderators, and notifies the owners/admins/moderators
-  (`notifications.type = "post_reported"`). Moderators see a
+  (`notifications.type = "post_reported"`; a video links to
+  `/communities/{slug}/reels?v={postId}`, a text post to the
+  community page). Moderators see a
   Reported banner with the open reasons (`feed.getPostReports`,
   moderators only; reporter identity is not returned) and act through
   `feed.reviewReport({ postId, action })`:
@@ -498,8 +525,9 @@ community.
     effort, logged on failure), and deletes its reports.
   Deleting a video post (author or moderator, `feed.deletePost`) also
   deletes its S3 files.
-- **Reels.** `feed.getReels({ communitySlug, cursor?, startAtPostId?
-  })` is a `publicProcedure`: it pages the community's video posts
+- **Reels.** `feed.getReels({ communitySlug, limit?, cursor?,
+  startAtPostId? })` is a `publicProcedure` (the cursor date must be
+  an ISO date-time, `limit` a whole number): it pages the community's video posts
   newest first through the visibility rule, so signed-out visitors
   and non-members get public, non-hidden videos only, and members get
   what their feed shows. A `?v=` deep link the viewer may not open
@@ -510,11 +538,15 @@ community.
   shows for members **and** visitors whenever `getReels` returns at
   least one video. In Reels mode swipe, wheel, ↑/↓, and Esc (close)
   work; visitors get Join, and like/comment open the sign-in / join
-  gate.
+  gate. The reel on screen preloads fully; the next one loads only its
+  metadata.
 - **Cleanup.** `/api/cron/video-uploads-cleanup` (daily 03:30 UTC in
   `vercel.json`, `CRON_SECRET`) deletes the files and grant of every
-  upload not finished within 24 h (200 per run). A grant whose files a
-  post already owns is only marked finished, never deleted.
+  upload not finished within 24 h (200 per run, oldest first; a full
+  page logs a warning that more may remain). A grant whose files a
+  post already owns is only marked finished, never deleted. It reaches
+  S3 only when a grant's files need removing, so it runs cleanly
+  without S3 config.
 - **Launch.** The owner must, before turning the flag on: (1) add an
   S3 CORS rule allowing `POST` from the site origins; (2) confirm the
   `private/` prefix is not publicly readable; (3) grant the app's IAM
@@ -553,12 +585,9 @@ only video.
 - Agents may draft via `agent-feed` (ADR-0015: surfaces are
   human-authored; agent path is a draft/owner flow, not a second
   member list).
-- `feed.toggleLike`, `feed.getComments`, and `feed.addComment` check
-  membership but **not** `canViewPost`: a member who knows the id of a
-  hidden post can still like or comment on it. (The agent API does
-  apply `canViewPost` on these paths.)
-- The upload limit counts **grants**, not finished posts, so failed or
-  retried uploads use up the 20 per day.
+- The upload limit counts **grants**, not finished posts, so failed
+  uploads use up the 20 per day (a retry reuses its grant while it is
+  still valid).
 - Captions/subtitles for video are out of scope for v1.
 - Device playback (iPhone HEVC, Android, desktop Safari/Firefox) is
   verified by hand only; `video-transcode.ts` is unit-tested against
