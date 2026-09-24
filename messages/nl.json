@@ -483,7 +483,9 @@
     "threadEdited": "Onderwerp bijgewerkt",
     "replyEdited": "Reactie bijgewerkt",
     "threadDeleted": "Onderwerp verwijderd",
-    "replyDeleted": "Reactie verwijderd"
+    "replyDeleted": "Reactie verwijderd",
+    "membersOnlyTitle": "Dit forum is alleen voor leden",
+    "membersOnlyDescription": "Discussies in deze community zijn alleen zichtbaar voor de leden."
   },
   "challengesLanding": {
     "title": "AI Challenges",

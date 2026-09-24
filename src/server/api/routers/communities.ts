@@ -40,6 +40,7 @@ import {
 } from "@/server/communities/member-stack-queries";
 import { HUB_SLUG } from "@/server/api/trpc";
 import { listMyCommunities } from "@/server/communities/my-communities";
+import { viewerCanReadRoster } from "@/server/communities/content-visibility-queries";
 
 /** Escape SQL LIKE/ILIKE pattern characters */
 function escapeLike(str: string): string {
@@ -259,22 +260,10 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      // Unlisted communities: only members can view the member list
-      if (!community.isListedInDirectory) {
-        const userId = ctx.session?.user?.id;
-        if (!userId) {
-          throw new TRPCError({ code: "NOT_FOUND" });
-        }
-        const membership = await ctx.db.query.communityMemberships.findFirst({
-          where: and(
-            eq(communityMemberships.communityId, community.id),
-            eq(communityMemberships.userId, userId),
-            eq(communityMemberships.status, "active"),
-          ),
-        });
-        if (!membership) {
-          throw new TRPCError({ code: "NOT_FOUND" });
-        }
+      if (
+        !(await viewerCanReadRoster(ctx.db, community, ctx.session?.user?.id))
+      ) {
+        throw new TRPCError({ code: "NOT_FOUND" });
       }
 
       const conditions = [
@@ -343,22 +332,11 @@ export const communitiesRouter = createTRPCRouter({
         throw new TRPCError({ code: "NOT_FOUND" });
       }
 
-      // Same access rule as getMembers: unlisted communities are members-only.
-      if (!community.isListedInDirectory) {
-        const userId = ctx.session?.user?.id;
-        if (!userId) {
-          return { faces: [], total: 0 };
-        }
-        const membership = await ctx.db.query.communityMemberships.findFirst({
-          where: and(
-            eq(communityMemberships.communityId, community.id),
-            eq(communityMemberships.userId, userId),
-            eq(communityMemberships.status, "active"),
-          ),
-        });
-        if (!membership) {
-          return { faces: [], total: 0 };
-        }
+      // Same access rule as getMembers.
+      if (
+        !(await viewerCanReadRoster(ctx.db, community, ctx.session?.user?.id))
+      ) {
+        return { faces: [], total: 0 };
       }
 
       const [memberCountResult] = await ctx.db

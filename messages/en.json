@@ -483,7 +483,9 @@
     "threadEdited": "Thread updated",
     "replyEdited": "Reply updated",
     "threadDeleted": "Thread deleted",
-    "replyDeleted": "Reply deleted"
+    "replyDeleted": "Reply deleted",
+    "membersOnlyTitle": "This forum is for members only",
+    "membersOnlyDescription": "Discussions in this community are visible to its members only."
   },
   "challengesLanding": {
     "title": "AI Challenges",

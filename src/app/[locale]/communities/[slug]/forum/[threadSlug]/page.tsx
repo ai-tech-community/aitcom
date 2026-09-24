@@ -4,21 +4,21 @@ import { getPayloadClient } from "@/server/payload";
 import { localeAlternates, buildOgMeta } from "@/lib/metadata";
 import { CommunityThreadDetail } from "@/components/forum/community-thread-detail";
 import { forumThreadMatchesCommunity } from "@/server/communities/forum-scope";
+import { findReadableCommunityBySlug } from "@/server/communities/content-visibility-queries";
+import { getSession } from "@/server/better-auth/server";
 import { db } from "@/server/db";
-import { communities } from "@/server/db/schema";
-import { and, eq, isNull } from "drizzle-orm";
 
 async function findThreadInCommunity(
   communitySlug: string,
   threadSlug: string,
 ) {
-  const community = await db.query.communities.findFirst({
-    where: and(
-      eq(communities.slug, communitySlug),
-      isNull(communities.deletedAt),
-    ),
-    columns: { id: true },
-  });
+  // Unlisted communities are members-only; answer as if the thread is absent.
+  const session = await getSession();
+  const community = await findReadableCommunityBySlug(
+    db,
+    communitySlug,
+    session?.user?.id,
+  );
   if (!community) return null;
 
   const payload = await getPayloadClient();
