@@ -241,11 +241,18 @@ function crawlableRepoHrefs() {
   return hrefs;
 }
 
+/**
+ * Every link href inside `container`, in document order. A plain selector,
+ * not `getAllByRole("link")`: the role query computes the accessibility tree
+ * for the whole document on each call (~170 ms per rendered directory page
+ * here), which pushed these multi-page tests past the 5 s timeout when the
+ * full suite ran in parallel. The selector matches the same elements (the
+ * page has no hidden links) in under a millisecond.
+ */
 function hrefsOf(container: HTMLElement) {
-  return screen
-    .getAllByRole("link")
-    .filter((node) => container.contains(node))
-    .map((node) => node.getAttribute("href"));
+  return Array.from(
+    container.querySelectorAll('a[href], area[href], [role="link"]'),
+  ).map((node) => node.getAttribute("href"));
 }
 
 function expectNoBannedClaims(text: string) {
