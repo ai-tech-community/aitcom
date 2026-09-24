@@ -308,6 +308,10 @@ describe("reviewReport", () => {
     await expect(
       reviewReport(broken.deps, { postId: 5, action: "remove" }),
     ).resolves.toBeUndefined();
+    expect(broken.log).toHaveBeenCalledWith(
+      "[feed.reviewReport] video cleanup failed",
+      expect.objectContaining({ postId: 5 }),
+    );
     expect(broken.payload.delete).toHaveBeenCalledWith({
       collection: "post-reports",
       where: { post: { equals: 5 } },

@@ -15,18 +15,31 @@ const UPLOAD = "1b4e28ba-2fa1-41d2-883f-0016d3cca427";
 const NOW = new Date("2026-09-24T12:00:00.000Z");
 
 function fakes(
-  over: { uploads?: unknown[]; recent?: number; heads?: unknown[] } = {},
+  over: {
+    uploads?: unknown[];
+    posts?: unknown[];
+    recent?: number;
+    heads?: unknown[];
+  } = {},
 ) {
   const payload = {
     count: vi.fn().mockResolvedValue({ totalDocs: over.recent ?? 0 }),
     create: vi
       .fn()
       .mockImplementation(({ data }) => Promise.resolve({ id: 7, ...data })),
-    find: vi.fn().mockResolvedValue({ docs: over.uploads ?? [] }),
+    find: vi.fn().mockImplementation(({ collection }: { collection: string }) =>
+      Promise.resolve({
+        docs:
+          collection === "feed-posts"
+            ? (over.posts ?? [])
+            : (over.uploads ?? []),
+      }),
+    ),
     update: vi.fn().mockResolvedValue({}),
     delete: vi.fn().mockResolvedValue({}),
   };
   const heads = [...(over.heads ?? [])];
+  const log = vi.fn();
   const storage = {
     presignUpload: vi
       .fn()
@@ -42,11 +55,13 @@ function fakes(
   return {
     payload,
     storage,
+    log,
     deps: {
       payload: payload as never,
       storage,
       now: () => NOW,
       newUploadId: () => UPLOAD,
+      log,
     },
   };
 }
@@ -204,6 +219,35 @@ describe("finishVideoPost", () => {
     }
   });
 
+  it("returns the existing post when an earlier finish created it but didn't close the grant", async () => {
+    const { deps, payload, storage } = fakes({
+      uploads: [upload()],
+      posts: [{ id: 11, authorId: "u1" }],
+      heads: goodHeads(),
+    });
+    await expect(finishVideoPost(deps, finish)).resolves.toEqual({ id: 11 });
+    expect(payload.find).toHaveBeenCalledWith({
+      collection: "feed-posts",
+      where: {
+        and: [
+          { "video.key": { equals: `media/videos/public/c1/${UPLOAD}.mp4` } },
+          { authorId: { equals: "u1" } },
+          { isDeleted: { not_equals: true } },
+        ],
+      },
+      limit: 1,
+      depth: 0,
+    });
+    expect(payload.update).toHaveBeenCalledWith({
+      collection: "video-uploads",
+      id: 3,
+      data: { finishedAt: NOW.toISOString() },
+    });
+    expect(payload.create).not.toHaveBeenCalled();
+    expect(storage.inspect).not.toHaveBeenCalled();
+    expect(storage.remove).not.toHaveBeenCalled();
+  });
+
   it("refuses someone else's upload", async () => {
     const { deps } = fakes({ uploads: [upload({ userId: "other" })] });
     await expect(finishVideoPost(deps, finish)).rejects.toMatchObject({
@@ -256,6 +300,34 @@ describe("finishVideoPost", () => {
     }
   });
 
+  it("still closes the grant with the friendly error when removing the bad files fails", async () => {
+    const { deps, storage, payload, log } = fakes({
+      uploads: [upload()],
+      heads: [null, null],
+    });
+    const failure = new Error("S3 down");
+    storage.remove.mockRejectedValueOnce(failure);
+    await expect(finishVideoPost(deps, finish)).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "The video didn't upload correctly. Please try again.",
+    });
+    expect(payload.delete).toHaveBeenCalledWith({
+      collection: "video-uploads",
+      id: 3,
+    });
+    expect(log).toHaveBeenCalledWith(
+      "[feed.finishVideoPost] removing a bad upload failed",
+      {
+        uploadId: UPLOAD,
+        keys: [
+          `media/videos/public/c1/${UPLOAD}.mp4`,
+          `media/videos/public/c1/${UPLOAD}.jpg`,
+        ],
+        error: failure,
+      },
+    );
+  });
+
   it("refuses an impossible length", async () => {
     const { deps } = fakes({
       uploads: [upload()],
@@ -288,16 +360,21 @@ describe("removePostVideo", () => {
 describe("cleanUpDeletedPostVideo", () => {
   it("removes the files of a deleted video post", async () => {
     const { storage } = fakes();
-    await cleanUpDeletedPostVideo(() => storage, {
-      id: 9,
-      video: { key: "a.mp4", thumbnailKey: "a.jpg" },
-    });
+    await cleanUpDeletedPostVideo(
+      () => storage,
+      { id: 9, video: { key: "a.mp4", thumbnailKey: "a.jpg" } },
+      { context: "feed.deletePost" },
+    );
     expect(storage.remove).toHaveBeenCalledWith(["a.mp4", "a.jpg"]);
   });
 
   it("does not touch storage for a post without a video", async () => {
     const getStorage = vi.fn();
-    await cleanUpDeletedPostVideo(getStorage, { id: 9, video: null });
+    await cleanUpDeletedPostVideo(
+      getStorage,
+      { id: 9, video: null },
+      { context: "feed.deletePost" },
+    );
     expect(getStorage).not.toHaveBeenCalled();
   });
 
@@ -310,7 +387,7 @@ describe("cleanUpDeletedPostVideo", () => {
       cleanUpDeletedPostVideo(
         () => storage,
         { id: 9, video: { key: "a.mp4", thumbnailKey: "a.jpg" } },
-        log,
+        { context: "feed.deletePost", log },
       ),
     ).resolves.toBeUndefined();
     expect(log).toHaveBeenCalledWith("[feed.deletePost] video cleanup failed", {
@@ -328,12 +405,15 @@ describe("cleanUpDeletedPostVideo", () => {
         throw failure;
       },
       { id: 9, video: { key: "a.mp4", thumbnailKey: null } },
-      log,
+      { context: "feed.reviewReport", log },
     );
-    expect(log).toHaveBeenCalledWith("[feed.deletePost] video cleanup failed", {
-      postId: 9,
-      keys: ["a.mp4"],
-      error: failure,
-    });
+    expect(log).toHaveBeenCalledWith(
+      "[feed.reviewReport] video cleanup failed",
+      {
+        postId: 9,
+        keys: ["a.mp4"],
+        error: failure,
+      },
+    );
   });
 });

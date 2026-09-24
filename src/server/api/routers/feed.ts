@@ -497,7 +497,9 @@ export const feedRouter = createTRPCRouter({
       });
       // Best effort: the post is already gone, so a storage failure is logged
       // rather than surfaced.
-      await cleanUpDeletedPostVideo(getVideoStorage, post);
+      await cleanUpDeletedPostVideo(getVideoStorage, post, {
+        context: "feed.deletePost",
+      });
       // The id only: the stored post carries the video's storage keys.
       return { id: post.id };
     }),

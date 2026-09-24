@@ -197,7 +197,10 @@ export async function reviewReport(
   });
   // Best effort: the post is already removed, so a storage failure is
   // logged rather than failing the moderator's action.
-  await cleanUpDeletedPostVideo(deps.storage, post, deps.log);
+  await cleanUpDeletedPostVideo(deps.storage, post, {
+    context: "feed.reviewReport",
+    log: deps.log,
+  });
   await clearReports();
 }
 

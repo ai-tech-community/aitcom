@@ -28,6 +28,7 @@ export type VideoPostDeps = {
   storage: VideoStorage;
   now?: () => Date;
   newUploadId?: () => string;
+  log?: (message: string, detail: unknown) => void;
 };
 
 type PostVideoFiles = {
@@ -142,6 +143,31 @@ export async function finishVideoPost(
     throw new TRPCError({ code: "NOT_FOUND", message: UPLOAD_EXPIRED });
   }
   const now = deps.now?.() ?? new Date();
+  const visibility = grant.visibility;
+  const keys = videoObjectKeys({
+    visibility,
+    communityId: grant.communityId,
+    uploadId: grant.uploadId,
+  });
+  // A retry after a finish that created the post but crashed before closing
+  // the grant: close it now and hand back the same post.
+  const { docs: existingPosts } = await deps.payload.find({
+    collection: "feed-posts",
+    where: {
+      and: [
+        { "video.key": { equals: keys.video } },
+        { authorId: { equals: input.userId } },
+        { isDeleted: { not_equals: true } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+  });
+  const existingPost = existingPosts[0];
+  if (existingPost) {
+    await markGrantFinished(deps, grant.id, now);
+    return { id: existingPost.id };
+  }
   const finishCutoff = new Date(
     now.getTime() - FINISH_WINDOW_HOURS * 60 * 60 * 1000,
   );
@@ -150,12 +176,6 @@ export async function finishVideoPost(
     // this grant, so don't touch storage or the grant here either.
     throw new TRPCError({ code: "NOT_FOUND", message: UPLOAD_EXPIRED });
   }
-  const visibility = grant.visibility;
-  const keys = videoObjectKeys({
-    visibility,
-    communityId: grant.communityId,
-    uploadId: grant.uploadId,
-  });
   const [video, thumbnail] = await Promise.all([
     deps.storage.inspect(keys.video),
     deps.storage.inspect(keys.thumbnail),
@@ -174,7 +194,17 @@ export async function finishVideoPost(
     input.height > 0 &&
     input.height <= 4096;
   if (!valid) {
-    await deps.storage.remove([keys.video, keys.thumbnail]);
+    const badKeys = [keys.video, keys.thumbnail];
+    try {
+      await deps.storage.remove(badKeys);
+    } catch (error) {
+      // The member still gets the plain answer; the daily cleanup never sees
+      // these files once the grant is gone, so the log is the only trace.
+      (deps.log ?? console.error)(
+        "[feed.finishVideoPost] removing a bad upload failed",
+        { uploadId: grant.uploadId, keys: badKeys, error },
+      );
+    }
     await deps.payload.delete({ collection: "video-uploads", id: grant.id });
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -212,12 +242,20 @@ export async function finishVideoPost(
     }
     throw error;
   }
+  await markGrantFinished(deps, grant.id, now);
+  return { id: post.id };
+}
+
+async function markGrantFinished(
+  deps: VideoPostDeps,
+  grantId: number,
+  now: Date,
+): Promise<void> {
   await deps.payload.update({
     collection: "video-uploads",
-    id: grant.id,
+    id: grantId,
     data: { finishedAt: now.toISOString() },
   });
-  return { id: post.id };
 }
 
 function videoKeysOf(post: PostVideoFiles): string[] {
@@ -245,17 +283,24 @@ export async function removePostVideo(
 export async function cleanUpDeletedPostVideo(
   getStorage: VideoStorageSource,
   post: PostVideoFiles & { id: number },
-  log: (message: string, detail: unknown) => void = console.error,
+  options: {
+    /** The action that deleted the post, e.g. "feed.deletePost", for the log. */
+    context: string;
+    log?: (message: string, detail: unknown) => void;
+  },
 ): Promise<void> {
   const keys = videoKeysOf(post);
   if (keys.length === 0) return;
   try {
     await removePostVideo(getStorage(), post);
   } catch (error) {
-    log("[feed.deletePost] video cleanup failed", {
-      postId: post.id,
-      keys,
-      error,
-    });
+    (options.log ?? console.error)(
+      `[${options.context}] video cleanup failed`,
+      {
+        postId: post.id,
+        keys,
+        error,
+      },
+    );
   }
 }
